@@ -1,0 +1,266 @@
+/* ══════════════════════════
+   AuditLogs.module.css
+   ERP Software – Light Theme
+══════════════════════════ */
+
+.auditLogs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #FFFFFF;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.sectionHeader h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.2rem 0;
+}
+
+.sectionHeader p {
+  color: #6B7280;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.totalBadge {
+  background: #E1EFFE;
+  color: #1E40AF;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Filter Bar ─── */
+.exportGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.btnExport {
+  background: white;
+  border: 1px solid #cbd5e1;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.btnExport:hover:not(:disabled) { background: #f1f5f9; border-color: #6366f1; color: #4f46e5; }
+.btnExport:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Filter Bar */
+.filterBar {
+  background: #FFFFFF;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.searchRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.filterRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterInput {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: #F9FAFB;
+  color: #111827;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+  flex-grow: 1;
+  min-width: 120px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.filterInput:focus {
+  border-color: #1C64F2;
+  box-shadow: 0 0 0 3px rgba(28,100,242,0.1);
+  background: #FFFFFF;
+}
+
+.btnSecondary {
+  background: #F9FAFB;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+  font-family: inherit;
+}
+.btnSecondary:hover:not(:disabled) { background: #F3F4F6; color: #111827; }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Table ─── */
+.tableContainer {
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  overflow-x: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.dataTable th, .dataTable td {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.dataTable th {
+  background: #F9FAFB;
+  color: #6B7280;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.row:hover td { background: #F9FAFB; }
+.rowExpanded td { background: #EFF6FF; }
+
+/* ── Badges ─── */
+.badge {
+  padding: 0.2rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: inline-block;
+}
+
+.badgeDefault { background: #F3F4F6; color: #6B7280; }
+.badgeSuccess { background: #DEF7EC; color: #057A55; }
+.badgeDanger  { background: #FDE8E8; color: #C81E1E; }
+.badgeWarning { background: #FDF6B2; color: #92400E; }
+
+/* ── Text Helpers ─── */
+.textMuted   { color: #6B7280; }
+.textXs      { font-size: 0.75rem; }
+.textSm      { font-size: 0.875rem; }
+.textDanger  { color: #C81E1E; font-size: 0.875rem; }
+.textSuccess { color: #057A55; font-size: 0.875rem; }
+
+/* ── Expand Button ─── */
+.btnExpand {
+  background: none;
+  border: 1px solid #BFDBFE;
+  color: #1C64F2;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: inherit;
+}
+.btnExpand:hover { background: #EFF6FF; }
+
+/* ── Diff Viewer ─── */
+.expandedContent td {
+  background: #F9FAFB;
+  padding: 1rem 1.5rem;
+}
+
+.diffViewer {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.diffBefore, .diffAfter {
+  flex: 1;
+  min-width: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+}
+
+.diffBefore { border-top: 3px solid #FCA5A5; }
+.diffAfter  { border-top: 3px solid #6EE7B7; }
+
+.diffLabel {
+  display: block;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.diffBefore .diffLabel { background: #FEF2F2; color: #B91C1C; }
+.diffAfter  .diffLabel { background: #F0FDF4; color: #15803D; }
+
+.diffCode {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 0.78rem;
+  font-family: 'Courier New', monospace;
+  background: #FFFFFF;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* ── Empty / Loading / Pagination ─── */
+.emptyState {
+  text-align: center;
+  padding: 3rem;
+  color: #9CA3AF;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem;
+  color: #6B7280;
+  font-size: 0.9375rem;
+}

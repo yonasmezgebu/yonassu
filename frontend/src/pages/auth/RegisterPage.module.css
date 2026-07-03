@@ -1,0 +1,371 @@
+/* ── Google Font ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ─────────────────────────────────────────────────────
+   PAGE WRAPPER — dark deep-navy background
+───────────────────────────────────────────────────── */
+.authContainer {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  background: #0e0e2c;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* ── Blue/purple glowing orb — top right ── */
+.authContainer::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(88, 86, 214, 0.55) 0%, rgba(100, 60, 220, 0.3) 50%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Smaller purple orb — bottom left ── */
+.authContainer::after {
+  content: '';
+  position: absolute;
+  bottom: 40px;
+  left: -60px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100, 60, 220, 0.35) 0%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─────────────────────────────────────────────────────
+   CARD — centered, no border, dark bg
+───────────────────────────────────────────────────── */
+.authCard {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  padding: 52px 40px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* We need the wave to be at the bottom, so extra bottom padding */
+  padding-bottom: 220px;
+}
+
+/* ─────────────────────────────────────────────────────
+   HEADER
+───────────────────────────────────────────────────── */
+.authHeader {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+/* Hide the SUTANA logo text — design has no logo, just "Sign Up" title */
+.logo {
+  display: none;
+}
+
+.authHeader h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────────────────
+   ERROR ALERT
+───────────────────────────────────────────────────── */
+.errorAlert {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  font-size: 0.85rem;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  text-align: center;
+  animation: fadeUp 0.3s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────────────
+   FORM
+───────────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.formGroup label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Underline-style inputs (no box) ── */
+.input {
+  width: 100%;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.25s ease;
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+
+.input:focus {
+  border-bottom-color: #5b5de8;
+}
+
+/* ── Account type toggle buttons ── */
+.formGroup > div[style] {
+  gap: 10px !important;
+}
+
+.formGroup > div > button {
+  flex: 1;
+  padding: 9px !important;
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-family: inherit !important;
+}
+
+/* Customer button — override inline style via specificity */
+.formGroup > div > button:first-child {
+  background: rgba(91, 93, 232, 0.15) !important;
+  border: 1.5px solid rgba(91, 93, 232, 0.4) !important;
+  color: #a5b4fc !important;
+}
+
+.formGroup > div > button:first-child:hover {
+  background: rgba(91, 93, 232, 0.25) !important;
+  border-color: #a5b4fc !important;
+}
+
+/* Employee button — hidden */
+.formGroup > div > button:last-child {
+  display: none !important;
+}
+
+/* ── Password wrapper ── */
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputWrapper .input {
+  padding-right: 2.5rem;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.passwordToggle:hover {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ─────────────────────────────────────────────────────
+   PRIMARY BUTTON — blue to purple gradient
+───────────────────────────────────────────────────── */
+.btnPrimary {
+  width: 100%;
+  margin-top: 4px;
+  padding: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 28px rgba(91, 93, 232, 0.45);
+  letter-spacing: 0.04em;
+  font-family: inherit;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
+  box-shadow: 0 8px 36px rgba(91, 93, 232, 0.6);
+  transform: translateY(-2px);
+}
+
+.btnPrimary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────────
+   BOTTOM SECTION — Already a user?
+───────────────────────────────────────────────────── */
+.registerSection {
+  margin-top: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.divider {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+/* Hide the divider lines — just show text inline */
+.divider::before,
+.divider::after {
+  display: none;
+}
+
+.registerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #818cf8;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  font-family: inherit;
+  justify-content: center;
+}
+
+.registerBtn:hover {
+  color: #a5b4fc;
+  text-decoration: underline;
+}
+
+.adminNote {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.loginLink {
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.loginLink:hover {
+  color: #a5b4fc;
+}
+
+/* ─────────────────────────────────────────────────────
+   BACK HOME BUTTON
+───────────────────────────────────────────────────── */
+.backHome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.28);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 20px;
+  transition: color 0.2s ease;
+  font-family: inherit;
+}
+
+.backHome:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ─────────────────────────────────────────────────────
+   WAVE BOTTOM — blue-to-purple layered wave
+   Done via a pseudo on a wrapping div we inject via
+   the authCard padding trick + absolute positioning
+───────────────────────────────────────────────────── */
+.authCard::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 220px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 220' preserveAspectRatio='none'%3E%3Cpath d='M0,120 C200,180 400,60 600,120 C800,180 1000,60 1200,120 C1300,150 1380,130 1440,120 L1440,220 L0,220 Z' fill='rgba(91,93,232,0.18)'/%3E%3Cpath d='M0,150 C240,100 480,190 720,150 C960,110 1200,185 1440,150 L1440,220 L0,220 Z' fill='rgba(124,58,237,0.22)'/%3E%3Cpath d='M0,175 C360,145 720,200 1080,172 C1260,158 1380,180 1440,175 L1440,220 L0,220 Z' fill='rgba(59,130,246,0.28)'/%3E%3Cpath d='M0,195 C480,175 960,210 1440,195 L1440,220 L0,220 Z' fill='rgba(109,40,217,0.55)'/%3E%3C/svg%3E") no-repeat bottom center / 100% 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .authCard {
+    padding: 40px 24px 220px;
+  }
+
+  .authHeader h2 {
+    font-size: 1.75rem;
+  }
+}

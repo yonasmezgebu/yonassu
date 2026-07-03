@@ -1,0 +1,844 @@
+const { catchAsync } = require('../../utils/catchAsync');
+const AppError = require('../../utils/appError');
+const { db } = require('../../config/database');
+const { audit } = require('../../config/logger');
+const OrderModel = require('../../models/Order.model');
+const { generateOrderNumber } = require('../../utils/orderNumber');
+const deleteFile = (path) => console.log('Deleted file:', path);
+const calculatePrintingPrice = (params) => {
+  const model = new OrderModel({
+    paperType: params.paperType,
+    pagesPerCopy: params.pagesPerCopy,
+    quantity: params.quantity,
+    colorPrinting: params.colorPrinting,
+    bindingType: params.bindingType
+  });
+  return model.calculatePrice();
+};
+exports.getAllOrders = catchAsync(async (req, res) => {
+  const { page = 1, limit = 25, status, search, startDate, endDate } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  let query = db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .leftJoin('users as u', 'po.created_by', 'u.id')
+    .select(
+      'po.id', 'po.order_number', 'po.total_price', 'po.quantity',
+      'po.product_type', 'po.paper_type', 'po.color_printing', 'po.pages_per_copy',
+      'po.due_date', 'po.binding_type',
+      'po.created_at', 'po.completed_at', 'po.updated_at',
+      'po.due_date', 'po.created_at', 'po.completed_at', 'po.updated_at',
+      'os.status_name', 'os.status_code', 'os.color_hex',
+      'c.name as customer_name', 'c.phone as customer_phone',
+      'u.full_name as created_by_name'
+    )
+    .whereNull('po.deleted_at');
+  if (status) query = query.where('os.status_code', status);
+  if (search) {
+    query = query.where(function() {
+      this.where('po.order_number', 'like', `%${search}%`)
+        .orWhere('c.name', 'like', `%${search}%`);
+    });
+  }
+  if (startDate && endDate) query = query.whereBetween('po.created_at', [startDate, endDate]);
+  const total = await query.clone().clearSelect().count('po.id as count').first();
+  const orders = await query.orderBy('po.due_date', 'asc').limit(parseInt(limit)).offset(offset);
+  res.json({
+    status: 'success',
+    data: {
+      orders,
+      pagination: {
+        page: parseInt(page), limit: parseInt(limit),
+        total: parseInt(total.count),
+        totalPages: Math.ceil(total.count / parseInt(limit))
+      }
+    }
+  });
+});
+exports.getPendingOrders = catchAsync(async (req, res) => {
+  const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
+  const orders = await db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .select('po.*', 'os.status_name', 'os.color_hex', 'c.name as customer_name')
+    .whereNull('po.deleted_at')
+    .where('po.status_id', '!=', deliveredStatus?.id || 5)
+    .orderBy('po.due_date', 'asc');
+  res.json({ status: 'success', data: { orders } });
+});
+exports.getOrderById = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .leftJoin('users as u', 'po.created_by', 'u.id')
+    .select(
+      'po.*',
+      'os.status_name', 'os.status_code', 'os.color_hex',
+      'c.name as customer_name', 'c.phone as customer_phone',
+      'u.full_name as created_by_name'
+    )
+    .where('po.id', id)
+    .whereNull('po.deleted_at')
+    .first();
+  if (!order) throw new AppError('Order not found', 404);
+  res.json({ status: 'success', data: { order } });
+});
+exports.createOrder = catchAsync(async (req, res) => {
+  const {
+    customer,        
+    productType,
+    quantity,
+    paperType,
+    pagesPerCopy,
+    colorPrinting,
+    bindingType,
+    dueDate,
+    specialInstructions
+  } = req.body;
+  const userId = req.user.id;
+  let resolvedCustomerId = req.body.customerId || null;
+  let resolvedCustomerTypeId = parseInt(customer?.customerTypeId) || 1;
+  if (!resolvedCustomerId && customer?.phone) {
+    const existing = await db('customers').where('phone', customer.phone).whereNull('deleted_at').first();
+    if (!existing) {
+      const [newId] = await db('customers').insert({
+        name: customer.name || 'Walk-in Customer',
+        phone: customer.phone,
+        customer_type_id: resolvedCustomerTypeId,
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+      resolvedCustomerId = newId;
+    } else {
+      resolvedCustomerId = existing.id;
+      resolvedCustomerTypeId = existing.customer_type_id || resolvedCustomerTypeId;
+    }
+  } else if (resolvedCustomerId) {
+    const existingCustomer = await db('customers').where('id', resolvedCustomerId).first();
+    if (existingCustomer) resolvedCustomerTypeId = existingCustomer.customer_type_id || resolvedCustomerTypeId;
+  }
+  const OrderModel = require('../../models/Order.model');
+  const orderModel = new OrderModel({
+    paperType: paperType || 'A4',
+    pagesPerCopy: parseInt(pagesPerCopy) || 1,
+    quantity: parseInt(quantity) || 1,
+    colorPrinting: colorPrinting === true || colorPrinting === 'true',
+    bindingType: bindingType || 'None'
+  });
+  const pricing = orderModel.calculatePrice();
+  const orderNumber = await generateOrderNumber('PRT');
+  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
+  const [orderId] = await db('printing_orders').insert({
+    order_number: orderNumber,
+    customer_id: resolvedCustomerId,
+    customer_type_id: resolvedCustomerTypeId,
+    product_type: productType || 'Book',
+    paper_type: paperType || 'A4',
+    pages_per_copy: parseInt(pagesPerCopy) || 1,
+    color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
+    binding_type: bindingType || 'None',
+    quantity: parseInt(quantity) || 1,
+    special_instructions: specialInstructions || null,
+    due_date: dueDate || null,
+    price_per_unit: pricing.pricePerUnit,
+    binding_cost: pricing.bindingCost,
+    total_price: pricing.totalPrice,
+    status_id: initialStatus?.id || 1,
+    created_by: userId,
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+  await audit('PRINTING_ORDER_CREATED', userId, { ip: req.ip, resourceId: orderId });
+
+  // NOTIFY PRINTING DEPARTMENT
+  try {
+    const printingStaff = await db('users')
+      .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
+      .leftJoin('roles', 'user_roles.role_id', 'roles.id')
+      .whereIn('roles.name', ['Printing Supervisor', 'Admin'])
+      .select('users.id');
+
+    if (printingStaff && printingStaff.length > 0) {
+      const notificationsToInsert = printingStaff.map(staff => ({
+        user_id: staff.id,
+        title: 'New Printing Order',
+        message: `Order ${orderNumber} has been created.`,
+        type: 'printing_order',
+        link_url: `/printing/orders`,
+        is_read: false,
+        created_at: db.fn.now()
+      }));
+      await db('user_notifications').insert(notificationsToInsert);
+    }
+  } catch (notifErr) {
+    console.error('Failed to notify printing staff:', notifErr.message);
+  }
+
+  // INVENTORY CHECK: warn if paper stock is low for this order
+  try {
+    const paperProduct = await db('products')
+      .where('name', 'like', `%${paperType || order.paper_type}%`)
+      .where('is_active', true)
+      .first();
+    if (paperProduct) {
+      const stock = await db('inventory').where('product_id', paperProduct.id).first();
+      const estimatedSheets = (parseInt(pagesPerCopy) || 1) * (parseInt(quantity) || 1);
+      if (stock && parseInt(stock.quantity) < estimatedSheets) {
+        console.warn(`LOW STOCK: ${paperType} paper has ${stock.quantity} units, order needs ~${estimatedSheets}`);
+      }
+    }
+  } catch (stockErr) {
+    console.error('Stock check failed:', stockErr.message);
+  }
+
+  res.status(201).json({ status: 'success', data: { orderId, orderNumber } });
+});
+exports.updateOrderStatus = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { statusId, status, notes } = req.body;  
+  const userId = req.user.id;
+  const order = await db('printing_orders').where('id', id).first();
+  if (!order) throw new AppError('Order not found', 404);
+  let statusRow;
+  if (statusId && !isNaN(parseInt(statusId))) {
+    statusRow = await db('order_statuses').where('id', parseInt(statusId)).first();
+  } else if (status) {
+    statusRow = await db('order_statuses')
+      .where('status_code', status)
+      .orWhere('status_name', status)
+      .first();
+  }
+  if (!statusRow) throw new AppError(`Status '${status || statusId}' not found`, 400);
+  const newStatusId = statusRow.id;
+  const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
+  const deliveredId = deliveredStatus?.id || 5;
+  const updateData = {
+    status_id: newStatusId,
+    updated_at: db.fn.now()
+  };
+  if (newStatusId === deliveredId) {
+    updateData.completed_at = db.fn.now();
+  }
+  await db('printing_orders').where('id', id).update(updateData);
+  await db('order_status_history').insert({
+    order_id: id,
+    status_id: newStatusId,
+    changed_by: userId,
+    notes: notes || null,
+    created_at: db.fn.now()
+  }).catch(() => {});
+  if (order.customer_id) {
+    // Insert into customer_notifications (for Customer Portal view)
+    await db('customer_notifications').insert({
+      customer_id: order.customer_id,
+      title: 'Order Status Update',
+      message: `Your order ${order.order_number} is now ${statusRow.status_name}.`,
+      type: 'order_update',
+      link_url: `/customer/orders/${id}/track`,
+      created_at: db.fn.now()
+    }).catch(err => console.error('Customer notification failed:', err.message));
+
+    // Also insert into user_notifications for the internal user linked to this customer (if any)
+    // This ensures Admins/Employees who placed orders via the ERP dashboard also get navbar alerts
+    const linkedCustomer = await db('customers').where('id', order.customer_id).first();
+    if (linkedCustomer && linkedCustomer.user_id) {
+      await db('user_notifications').insert({
+        user_id: linkedCustomer.user_id,
+        title: 'Order Status Update',
+        message: `Your printing order ${order.order_number} is now ${statusRow.status_name}.`,
+        type: 'order_update',
+        link_url: `/customer/orders/${id}/track`,
+        created_at: db.fn.now()
+      }).catch(err => console.error('User notification failed:', err.message));
+    }
+  }
+  // INVENTORY INTEGRATION: decrement stock when order moves to in_progress
+  const inProgressStatus = await db('order_statuses').where('status_code', 'in_progress').first();
+  if (inProgressStatus && newStatusId === inProgressStatus.id) {
+    try {
+      const paperProduct = await db('products')
+        .where('name', 'like', `%${order.paper_type}%`)
+        .where('is_active', true)
+        .first();
+      if (paperProduct) {
+        const currentStock = await db('inventory').where('product_id', paperProduct.id).first();
+        const currentQty = currentStock ? parseInt(currentStock.quantity) : 0;
+        const sheetsConsumed = (order.pages_per_copy || 1) * (order.quantity || 1);
+        await db('inventory_movements').insert({
+          product_id: paperProduct.id,
+          quantity_change: -sheetsConsumed,
+          quantity_before: currentQty,
+          quantity_after: Math.max(0, currentQty - sheetsConsumed),
+          transaction_type: 'Production',
+          reference_type: 'printing_order',
+          reference_id: order.id,
+          reason: `Paper consumed for order ${order.order_number}`,
+          performed_by: userId,
+          created_at: db.fn.now()
+        });
+        await db('inventory')
+          .where('product_id', paperProduct.id)
+          .update({ quantity: db.raw('GREATEST(quantity - ?, 0)', [sheetsConsumed]) });
+        // AUTO-PURCHASE TRIGGER: if stock drops below reorder level
+        if (paperProduct.reorder_level > 0 && (currentQty - sheetsConsumed) <= paperProduct.reorder_level) {
+          const supplierId = paperProduct.supplier_id;
+          const existingPending = await db('purchase_orders')
+            .where('supplier_id', supplierId)
+            .where('status', 'pending')
+            .first();
+          if (!existingPending) {
+            const poNumber = 'PO-PRT-' + Date.now().toString(36).toUpperCase();
+            await db('purchase_orders').insert({
+              order_number: poNumber,
+              supplier_id: supplierId || 1,
+              status: 'pending',
+              total_amount: paperProduct.selling_price * paperProduct.reorder_level,
+              ordered_by: userId,
+              notes: `Auto-generated: ${paperProduct.name} below reorder level after printing order ${order.order_number}`,
+              created_at: db.fn.now(),
+              updated_at: db.fn.now()
+            });
+            console.log(`Auto PO ${poNumber} generated for ${paperProduct.name}`);
+          }
+        }
+      }
+    } catch (invErr) {
+      console.error('Inventory movement / auto-PO failed:', invErr.message);
+    }
+  }
+
+  await audit('PRINTING_ORDER_STATUS_UPDATED', userId, {
+    ip: req.ip, resourceId: id,
+    afterState: { status_code: statusRow.status_code, completed_at: updateData.completed_at || null }
+  });
+  res.json({ status: 'success', message: 'Order status updated successfully', data: { statusCode: statusRow.status_code, statusName: statusRow.status_name } });
+});
+exports.uploadAttachments = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const ip = req.ip;
+  const order = await db('printing_orders')
+    .where('id', id)
+    .whereNull('deleted_at')
+    .first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+  if (!req.files || req.files.length === 0) {
+    throw new AppError('No files uploaded', 400);
+  }
+  let attachments = order.attachments || [];
+  if (typeof attachments === 'string') {
+    attachments = JSON.parse(attachments);
+  }
+  const newAttachments = req.files.map(file => ({
+    id: Date.now() + Math.random().toString(36).substr(2, 9),
+    filename: file.filename,
+    originalName: file.originalname,
+    size: file.size,
+    mimeType: file.mimetype,
+    path: file.path,
+    uploadedBy: userId,
+    uploadedAt: new Date().toISOString()
+  }));
+  attachments.push(...newAttachments);
+  await db('printing_orders')
+    .where('id', id)
+    .update({
+      attachments: JSON.stringify(attachments),
+      updated_at: db.fn.now()
+    });
+  await audit('PRINTING_ORDER_ATTACHMENTS_UPLOADED', id, {
+    ip,
+    details: {
+      fileCount: newAttachments.length,
+      filenames: newAttachments.map(f => f.originalName)
+    }
+  });
+  res.json({
+    status: 'success',
+    message: `${newAttachments.length} file(s) uploaded successfully`,
+    data: {
+      attachments: newAttachments.map(a => ({
+        id: a.id,
+        filename: a.filename,
+        originalName: a.originalName,
+        size: a.size,
+        uploadedAt: a.uploadedAt
+      }))
+    }
+  });
+});
+exports.deleteAttachment = catchAsync(async (req, res) => {
+  const { id, attachmentId } = req.params;
+  const userId = req.user.id;
+  const ip = req.ip;
+  const order = await db('printing_orders')
+    .where('id', id)
+    .whereNull('deleted_at')
+    .first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+  let attachments = order.attachments || [];
+  if (typeof attachments === 'string') {
+    attachments = JSON.parse(attachments);
+  }
+  const attachmentToDelete = attachments.find(a => a.id === attachmentId);
+  if (!attachmentToDelete) {
+    throw new AppError('Attachment not found', 404);
+  }
+  deleteFile(attachmentToDelete.path);
+  const updatedAttachments = attachments.filter(a => a.id !== attachmentId);
+  await db('printing_orders')
+    .where('id', id)
+    .update({
+      attachments: updatedAttachments.length > 0 ? JSON.stringify(updatedAttachments) : null,
+      updated_at: db.fn.now()
+    });
+  await audit('PRINTING_ORDER_ATTACHMENT_DELETED', id, {
+    ip,
+    details: {
+      attachmentId,
+      filename: attachmentToDelete.originalName
+    }
+  });
+  res.json({
+    status: 'success',
+    message: 'Attachment deleted successfully'
+  });
+});
+exports.getOrderHistory = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await db('printing_orders')
+    .where('id', id)
+    .whereNull('deleted_at')
+    .first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+  const history = await db('order_status_history as osh')
+    .leftJoin('users as u', 'osh.changed_by', 'u.id')
+    .select(
+      'osh.*',
+      'u.full_name as changed_by_name'
+    )
+    .where('osh.order_id', id)
+    .orderBy('osh.changed_at', 'desc');
+  res.json({
+    status: 'success',
+    data: { history }
+  });
+});
+exports.getRemainingTaxAllowance = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+  const order = await db('printing_orders')
+    .where('id', orderId)
+    .whereNull('deleted_at')
+    .first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+  if (order.product_type !== 'TaxReceipt') {
+    throw new AppError('This order is not a tax receipt order', 400);
+  }
+  const taxReceipt = await db('tax_receipts')
+    .where('order_id', orderId)
+    .whereNull('deleted_at')
+    .first();
+  if (!taxReceipt) {
+    throw new AppError('No tax receipt record found for this order', 404);
+  }
+  res.json({
+    status: 'success',
+    data: {
+      orderId: parseInt(orderId),
+      orderNumber: order.order_number,
+      serialNumber: taxReceipt.serial_number,
+      totalApproved: taxReceipt.approval_amount_total,
+      usedCount: taxReceipt.used_count,
+      remaining: taxReceipt.remaining,
+      canPrintMore: taxReceipt.remaining > 0,
+      maxPrintQuantity: Math.min(order.quantity - taxReceipt.used_count, taxReceipt.remaining)
+    }
+  });
+});
+exports.printTaxReceipt = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+  const { approvalAmountTotal, approvedDate, approvalDocument } = req.body;
+  const userId = req.user.id;
+  const ip = req.ip;
+  const order = await db('printing_orders')
+    .leftJoin('customers', 'printing_orders.customer_id', 'customers.id')
+    .leftJoin('customer_types', 'printing_orders.customer_type_id', 'customer_types.id')
+    .select(
+      'printing_orders.*',
+      'customers.name as customer_name',
+      'customers.tax_id',
+      'customer_types.name as customer_type_name'
+    )
+    .where('printing_orders.id', orderId)
+    .whereNull('printing_orders.deleted_at')
+    .first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+  const serialNumber = `TR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+  let taxReceipt = await db('tax_receipts')
+    .where('order_id', orderId)
+    .whereNull('deleted_at')
+    .first();
+  let newUsedCount, newRemaining;
+  if (!taxReceipt) {
+    const [receiptId] = await db('tax_receipts').insert({
+      serial_number: serialNumber,
+      order_id: orderId,
+      customer_name: order.customer_name || 'Walk-in Customer',
+      customer_type_id: order.customer_type_id || 1,
+      approval_amount_total: parseInt(approvalAmountTotal),
+      used_count: 1,
+      remaining: parseInt(approvalAmountTotal) - 1,
+      approved_date: approvedDate,
+      approval_document: approvalDocument || '',
+      printed_by: userId,
+      ip_address: ip,
+      printed_at: db.fn.now()
+    });
+    newUsedCount = 1;
+    newRemaining = parseInt(approvalAmountTotal) - 1;
+    taxReceipt = { id: receiptId, approval_amount_total: parseInt(approvalAmountTotal) };
+  } else {
+    // Already exists — increment usage
+    newUsedCount  = taxReceipt.used_count + 1;
+    newRemaining  = taxReceipt.remaining - 1;
+    await db('tax_receipts')
+      .where('id', taxReceipt.id)
+      .update({
+        used_count: newUsedCount,
+        remaining: newRemaining,
+        printed_by: userId,
+        ip_address: ip,
+        printed_at: db.fn.now()
+      });
+  }
+  await audit('TAX_RECEIPT_PRINTED', userId, {
+    ip,
+    details: { serialNumber, customerName: order.customer_name, usedCount: newUsedCount, remaining: newRemaining }
+  });
+  res.json({
+    status: 'success',
+    message: 'Tax receipt printed successfully',
+    data: {
+      receipt: {
+        serialNumber,
+        orderNumber: order.order_number,
+        customerName: order.customer_name || 'Walk-in Customer',
+        customerType: order.customer_type_name,
+        taxId: order.tax_id,
+        approvalAmountTotal: taxReceipt.approval_amount_total,
+        usedCount: newUsedCount,
+        remaining: newRemaining,
+        approvedDate,
+        printedAt: new Date().toISOString(),
+        printedBy: req.user.full_name
+      },
+      canPrintMore: newRemaining > 0
+    }
+  });
+});
+exports.getAllTaxReceipts = catchAsync(async (req, res) => {
+  const {
+    page = 1,
+    limit = 25,
+    startDate,
+    endDate
+  } = req.query;
+  const offset = (page - 1) * limit;
+  let query = db('tax_receipts as tr')
+    .leftJoin('printing_orders as po', 'tr.order_id', 'po.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .leftJoin('customer_types as ct', 'tr.customer_type_id', 'ct.id')
+    .leftJoin('users as u', 'tr.printed_by', 'u.id')
+    .select(
+      'tr.*',
+      'po.order_number',
+      'c.name as customer_name',
+      'c.phone as customer_phone',
+      'ct.name as customer_type_name',
+      'u.full_name as printed_by_name'
+    )
+    .whereNull('tr.deleted_at');
+  if (startDate && endDate) {
+    query = query.whereBetween('tr.printed_at', [startDate, endDate]);
+  }
+  const total = await query.clone().clearSelect().count('tr.id as total').first();
+  const receipts = await query
+    .orderBy('tr.printed_at', 'desc')
+    .limit(limit)
+    .offset(offset);
+  res.json({
+    status: 'success',
+    data: {
+      receipts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: parseInt(total.total),
+        totalPages: Math.ceil(total.total / limit)
+      }
+    }
+  });
+});
+exports.getPrintingStatistics = catchAsync(async (req, res) => {
+  const statusCounts = await db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .select('os.status_name', 'os.status_code', 'os.color_hex', db.raw('COUNT(*) as count'))
+    .whereNull('po.deleted_at')
+    .groupBy('po.status_id', 'os.status_name', 'os.status_code', 'os.color_hex');
+  const monthlyRevenue = await db('printing_orders')
+    .select(
+      db.raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+      db.raw('SUM(total_price) as revenue'),
+      db.raw('COUNT(*) as order_count')
+    )
+    .whereNull('deleted_at')
+    .where('status_id', '!=', (await db('order_statuses').where('status_code', 'received').first())?.id)
+    .groupBy(db.raw('DATE_FORMAT(created_at, "%Y-%m")'))
+    .orderBy('month', 'desc')
+    .limit(6);
+  const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
+  const pendingCount = await db('printing_orders')
+    .where('status_id', '!=', deliveredStatus?.id)
+    .whereNull('deleted_at')
+    .count('id as count')
+    .first();
+  const pastDueCount = await db('printing_orders')
+    .where('due_date', '<', db.fn.now())
+    .where('status_id', '!=', deliveredStatus?.id)
+    .whereNull('deleted_at')
+    .count('id as count')
+    .first();
+  const customerTypeBreakdown = await db('printing_orders as po')
+    .leftJoin('customer_types as ct', 'po.customer_type_id', 'ct.id')
+    .select('ct.name', 'ct.color_code', db.raw('COUNT(*) as count'), db.raw('SUM(po.total_price) as total_revenue'))
+    .whereNull('po.deleted_at')
+    .groupBy('po.customer_type_id', 'ct.name', 'ct.color_code')
+    .orderBy('count', 'desc');
+  res.json({
+    status: 'success',
+    data: {
+      statusBreakdown: statusCounts,
+      monthlyRevenue,
+      pendingOrders: parseInt(pendingCount.count),
+      pastDueOrders: parseInt(pastDueCount.count),
+      customerTypeBreakdown,
+      totalOrders: statusCounts.reduce((sum, s) => sum + parseInt(s.count), 0)
+    }
+  });
+});
+exports.calculatePrice = catchAsync(async (req, res) => {
+  const {
+    paperType,
+    pagesPerCopy,
+    quantity,
+    colorPrinting = false,
+    bindingType = 'None'
+  } = req.query;
+  if (!paperType || !pagesPerCopy || !quantity) {
+    throw new AppError('Missing required parameters: paperType, pagesPerCopy, quantity', 400);
+  }
+  const priceCalculation = calculatePrintingPrice({
+    paperType,
+    pagesPerCopy: parseInt(pagesPerCopy),
+    quantity: parseInt(quantity),
+    bindingType,
+    colorPrinting: colorPrinting === 'true'
+  });
+  res.json({
+    status: 'success',
+    data: {
+      calculation: {
+        paperType,
+        pagesPerCopy: parseInt(pagesPerCopy),
+        quantity: parseInt(quantity),
+        colorPrinting: colorPrinting === 'true',
+        bindingType
+      },
+      pricePerUnit: priceCalculation.pricePerUnit,
+      bindingCost: priceCalculation.bindingCost,
+      subtotal: priceCalculation.subtotal,
+      totalPrice: priceCalculation.totalPrice,
+      formula: {
+        basePricePerPage: paperType === 'A4' ? 0.50 : paperType === 'A5' ? 0.75 : 1.00,
+        colorMultiplier: colorPrinting === 'true' ? 2.0 : 1.0,
+        bindingCostPerCopy: bindingType === 'Spiral' ? 500 : bindingType === 'Thermal' ? 300 : 0
+      }
+    }
+  });
+});
+exports.createCustomerOrder = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const {
+    productType, quantity, paperType, pagesPerCopy,
+    colorPrinting, bindingType, dueDate, specialInstructions
+  } = req.body;
+
+  const OrderModel = require('../../models/Order.model');
+  const orderModel = new OrderModel({
+    paperType: paperType || 'A4',
+    pagesPerCopy: parseInt(pagesPerCopy) || 1,
+    quantity: parseInt(quantity) || 1,
+    colorPrinting: colorPrinting === true || colorPrinting === 'true',
+    bindingType: bindingType || 'None'
+  });
+  const pricing = orderModel.calculatePrice();
+  const orderNumber = await generateOrderNumber('PRT');
+  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
+
+  const user = await db('users').where('id', userId).first();
+  let customerId = null;
+  if (user) {
+    const existing = await db('customers').where('phone', user.phone).whereNull('deleted_at').first();
+    if (existing) {
+      customerId = existing.id;
+    } else {
+      const [newId] = await db('customers').insert({
+        name: user.full_name || 'Customer',
+        phone: user.phone || '',
+        customer_type_id: 1,
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+      customerId = newId;
+    }
+  }
+
+  const [orderId] = await db('printing_orders').insert({
+    order_number: orderNumber,
+    customer_id: customerId,
+    customer_type_id: 1,
+    product_type: productType || 'Book',
+    paper_type: paperType || 'A4',
+    pages_per_copy: parseInt(pagesPerCopy) || 1,
+    color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
+    binding_type: bindingType || 'None',
+    quantity: parseInt(quantity) || 1,
+    special_instructions: specialInstructions || null,
+    due_date: dueDate || null,
+    price_per_unit: pricing.pricePerUnit,
+    binding_cost: pricing.bindingCost,
+    total_price: pricing.totalPrice,
+    status_id: initialStatus?.id || 1,
+    created_by: userId,
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+
+  res.status(201).json({ status: 'success', message: 'Order placed successfully', data: { orderId, orderNumber, totalPrice: pricing.totalPrice } });
+});
+
+exports.getCustomerOrders = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const user = await db('users').where('id', userId).first();
+  if (!user) throw new AppError('User not found', 404);
+
+  const customer = await db('customers').where('phone', user.phone).whereNull('deleted_at').first();
+  if (!customer) {
+    return res.json({ status: 'success', data: { orders: [] } });
+  }
+
+  const orders = await db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .select('po.*', 'os.status_name', 'os.status_code', 'os.color_hex')
+    .where('po.customer_id', customer.id)
+    .whereNull('po.deleted_at')
+    .orderBy('po.created_at', 'desc');
+
+  res.json({ status: 'success', data: { orders } });
+});
+
+exports.getCustomerTypes = catchAsync(async (req, res) => {
+  const customerTypes = await db('customer_types')
+    .select('id', 'name', 'color_code', 'icon_name', 'sort_order')
+    .orderBy('sort_order', 'asc');
+  res.json({
+    status: 'success',
+    data: { customerTypes }
+  });
+});
+exports.getOrderStatuses = catchAsync(async (req, res) => {
+  const statuses = await db('order_statuses')
+    .select('id', 'status_code', 'status_name', 'color_hex', 'sort_order')
+    .orderBy('sort_order', 'asc');
+  res.json({
+    status: 'success',
+    data: { statuses }
+  });
+});
+exports.getPaperTypes = catchAsync(async (req, res) => {
+  const paperTypes = [
+    { code: 'A3', name: 'A3', description: '297mm x 420mm' },
+    { code: 'A4', name: 'A4', description: '210mm x 297mm' },
+    { code: 'A5', name: 'A5', description: '148mm x 210mm' }
+  ];
+  res.json({
+    status: 'success',
+    data: { paperTypes }
+  });
+});
+exports.getBindingTypes = catchAsync(async (req, res) => {
+  const bindingTypes = [
+    { code: 'None', name: 'No Binding', price: 0 },
+    { code: 'Spiral', name: 'Spiral Binding', price: 500 },
+    { code: 'Thermal', name: 'Thermal Binding', price: 300 }
+  ];
+  res.json({
+    status: 'success',
+    data: { bindingTypes }
+  });
+});
+exports.getProductTypes = catchAsync(async (req, res) => {
+  let productTypes;
+  try {
+    productTypes = await db('printing_product_types')
+      .select('id', 'code', 'name', 'base_price_per_page', 'color_multiplier', 'is_active')
+      .where('is_active', true)
+      .orderBy('sort_order', 'asc');
+  } catch (e) {
+    productTypes = [];
+  }
+  if (!productTypes || productTypes.length === 0) {
+    productTypes = [
+      { code: 'Book', name: 'Book Printing', base_price_per_page: 0.50, color_multiplier: 2.00, is_active: true },
+      { code: 'Module', name: 'Module Printing', base_price_per_page: 0.60, color_multiplier: 2.00, is_active: true },
+      { code: 'Exam', name: 'Exam Paper Printing', base_price_per_page: 0.75, color_multiplier: 2.50, is_active: true },
+      { code: 'Brochure', name: 'Brochure Printing', base_price_per_page: 0.40, color_multiplier: 1.50, is_active: true },
+      { code: 'TaxReceipt', name: 'Government Tax Receipt', base_price_per_page: 0.30, color_multiplier: 1.00, is_active: true }
+    ];
+  }
+  res.json({
+    status: 'success',
+    data: { productTypes }
+  });
+});
+
+exports.closeShift = catchAsync(async (req, res) => {
+  const worker_id = req.user.id;
+  const today = new Date().toISOString().split('T')[0];
+  const sales = await db('printing_orders').where('status', 'Delivered').whereRaw('DATE(created_at) = ?', [today]);
+  const totalSales = sales.reduce((sum, o) => sum + parseFloat(o.total_price), 0);
+  const financeUser = await db('users').join('user_roles', 'users.id', 'user_roles.user_id').join('roles', 'user_roles.role_id', 'roles.id').where('roles.name', 'Finance').first() || { user_id: 3 };
+  await db('cash_handovers').insert({
+    from_user_id: worker_id,
+    to_user_id: financeUser.user_id,
+    handover_type: 'PRINTING_TO_FINANCE',
+    total_cash: totalSales,
+    total_amount: totalSales,
+    notes: 'Printing Daily Sales Handover',
+    status: 'PENDING',
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+  res.json({ status: 'success', message: 'Printing daily sales handed over to finance.' });
+});

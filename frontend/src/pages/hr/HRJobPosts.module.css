@@ -1,0 +1,150 @@
+.container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.pageSubtitle {
+  color: #64748b;
+  margin: 0;
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.exportBtn {
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addBtn {
+  background: #0f172a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.addBtn:hover { background: #1e293b; }
+
+.tableWrapper {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+
+.table th {
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 12px;
+  background: #f8fafc;
+}
+
+.jobTitle { font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+
+.internalBadge {
+  background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;
+}
+
+.deadline { color: #ef4444; font-weight: 500; }
+.appCount { background: #e0f2fe; color: #0369a1; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.Open { background: #dcfce7; color: #166534; }
+.Closed { background: #f1f5f9; color: #475569; }
+
+.actionBtn {
+  background: transparent;
+  color: #3b82f6;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.actionBtn:hover { background: #eff6ff; border-radius: 4px; }
+
+/* Modals */
+.modalOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white; border-radius: 12px; width: 100%; max-width: 600px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-height: 90vh; overflow-y: auto;
+}
+
+.modalHeader {
+  padding: 20px 24px; border-bottom: 1px solid #e2e8f0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.modalTitle { margin: 0; font-size: 18px; font-weight: 600; }
+.closeBtn { background: none; border: none; font-size: 24px; cursor: pointer; }
+
+.modalBody { padding: 24px; }
+.formRow { display: flex; gap: 16px; margin-bottom: 16px; }
+.formGroup { flex: 1; margin-bottom: 16px; }
+.formRow .formGroup { margin-bottom: 0; }
+
+.formGroup label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+.input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit;}
+
+.checkboxGroup { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.checkboxGroup label { font-size: 14px; font-weight: 500; color: #334155; }
+
+.modalActions {
+  padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;
+}
+.cancelBtn { padding: 8px 16px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; cursor: pointer; }
+.saveBtn { padding: 8px 16px; border-radius: 6px; background: #0f172a; color: white; border: none; cursor: pointer; }
+
+@media print { .noPrint { display: none !important; } }

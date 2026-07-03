@@ -1,0 +1,159 @@
+.container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.pageSubtitle {
+  color: #64748b;
+  margin: 0;
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.datePicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+.datePicker span {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dateInput {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #0f172a;
+  font-family: inherit;
+  background: transparent;
+}
+
+.exportBtn {
+  padding: 10px 20px;
+  background: #0f172a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.exportBtn:hover {
+  background: #1e293b;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.summaryCard {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+}
+
+.summaryCard h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.summaryValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.chartCard {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+}
+
+.chartTitle {
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.chartWrapper {
+  height: 350px;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px;
+  color: #64748b;
+  font-size: 18px;
+}
+
+.overlayLoading {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* Print styles for PDF export via window.print() */
+@media print {
+  .actions {
+    display: none !important;
+  }
+  .container {
+    padding: 0;
+  }
+  .chartCard, .summaryCard {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+}

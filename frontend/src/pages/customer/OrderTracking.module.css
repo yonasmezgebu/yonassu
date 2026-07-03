@@ -1,0 +1,9 @@
+.centerState, .errorState {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.1rem;
+  color: #64748b;
+}
+.errorState {
+  color: #b91c1c;
+}

@@ -1,0 +1,34 @@
+/* ══════════════════════════
+   AdminDashboard.module.css
+   ERP Software – Light Theme
+══════════════════════════ */
+
+.adminDashboard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: transparent;
+}
+
+.dashboardContent {
+  padding: 1.5rem 2rem;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  margin-bottom: 1.5rem;
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.pageSubtitle {
+  color: #6B7280;
+  font-size: 0.875rem;
+}

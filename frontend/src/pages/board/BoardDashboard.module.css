@@ -1,0 +1,77 @@
+.dashboardWrapper {
+  display: flex;
+  flex-direction: column;
+  background-color: #f8fafc;
+  width: 100%;
+}
+.dashboardContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@media (max-width: 768px) {
+  .dashboardContent {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboardContent {
+    padding: 0.75rem;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.placeholderModule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  .placeholderModule {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .placeholderModule {
+    min-height: 200px;
+  }
+}
+
+.placeholderIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.placeholderTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.placeholderDesc {
+  font-size: 0.9375rem;
+  color: #94a3b8;
+  max-width: 360px;
+  line-height: 1.5;
+}

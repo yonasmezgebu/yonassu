@@ -1,0 +1,7 @@
+exports.up = async function (knex) {
+  await knex.schema.raw("ALTER TABLE procurement_requests MODIFY COLUMN status ENUM('DRAFT','PENDING_CEO_REVIEW','CEO_APPROVED','CEO_REJECTED','IN_MARKET','TENDER_CREATED','FUND_REQUESTED','FUND_APPROVED','PAYMENT_MADE','SHIPPED','RECEIVED','CANCELLED') DEFAULT 'DRAFT'");
+};
+
+exports.down = async function (knex) {
+  await knex.schema.raw("ALTER TABLE procurement_requests MODIFY COLUMN status ENUM('DRAFT','PENDING_CEO_REVIEW','CEO_APPROVED','CEO_REJECTED','IN_MARKET','TENDER_CREATED','FUND_REQUESTED','FUND_APPROVED','PAYMENT_MADE','RECEIVED','CANCELLED') DEFAULT 'DRAFT'");
+};

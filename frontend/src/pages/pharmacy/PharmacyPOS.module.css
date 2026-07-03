@@ -1,0 +1,143 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 100px);
+  gap: 1.25rem;
+  padding: 0;
+}
+
+.tabHeader {
+  display: flex;
+  gap: 0.75rem;
+  background: #ffffff;
+  padding: 0.75rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.tabBtn {
+  flex: 1;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tabBtn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.tabActive {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.tabActive:hover {
+  background: linear-gradient(135deg, #0284c7, #1d4ed8);
+  color: #ffffff;
+}
+
+.contentArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.pendingContainer {
+  padding: 1.5rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.pendingCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.pendingCard:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.12);
+  transform: translateY(-2px);
+}
+
+.pendingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.pendingTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+}
+
+.pendingStatus {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f59e0b;
+  background: #fffbeb;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.pendingPrice {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.actionBtn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+.actionBtn:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+  text-align: center;
+}
