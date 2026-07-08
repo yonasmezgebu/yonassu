@@ -1,0 +1,201 @@
+.container {
+  padding: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #1f2937;
+}
+
+.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+  border-top: 4px solid #3b82f6;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1f2937;
+}
+
+.formRow {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.fieldGroup {
+  flex: 1;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.input {
+  margin-top: 4px;
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+.submitBtn {
+  background: #2563eb;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover {
+  background: #1d4ed8;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tableCard {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tableHeader {
+  font-size: 20px;
+  font-weight: 600;
+  padding: 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
+  color: #1f2937;
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 12px 24px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.cellNowrap {
+  white-space: nowrap;
+}
+
+.statusBadge {
+  padding: 2px 8px;
+  display: inline-flex;
+  font-size: 12px;
+  line-height: 1.25rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.statusCompleted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusRejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.statusPending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.cancelBtn {
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 16px;
+}
+
+.cancelBtn:hover {
+  color: #b91c1c;
+}
+
+.receiveBtn {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.receiveBtn:hover {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.emptyRow {
+  padding: 16px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
