@@ -1,0 +1,155 @@
+/* CustomerPharmacyPortal.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.cp-portal {
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2027 100%);
+  color: #e2e8f0;
+}
+
+/* HEADER */
+.cp-header {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+}
+.cp-header-inner {
+  max-width: 1280px; margin: 0 auto; padding: 14px 24px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.cp-brand { display: flex; align-items: center; gap: 12px; }
+.cp-brand-icon { font-size: 36px; }
+.cp-brand-name { font-size: 20px; font-weight: 700; color: #38bdf8; line-height: 1.2; }
+.cp-brand-sub { font-size: 11px; color: #64748b; }
+.cp-nav { display: flex; gap: 4px; flex: 1; justify-content: center; flex-wrap: wrap; }
+.cp-nav-btn {
+  background: transparent; border: 1px solid transparent; color: #94a3b8;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  font-family: inherit; transition: all 0.2s;
+}
+.cp-nav-btn:hover { background: rgba(59,130,246,0.1); color: #93c5fd; border-color: rgba(59,130,246,0.3); }
+.cp-nav-btn.active { background: rgba(56,189,248,0.15); color: #38bdf8; border-color: #38bdf8; font-weight: 600; }
+.cp-auth-area { margin-left: auto; }
+.cp-user-pill { display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 13px; }
+.cp-logout-btn { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: inherit; }
+.cp-logout-btn:hover { background: #ef4444; color: white; }
+.cp-btn-outline { background: transparent; border: 1px solid #38bdf8; color: #38bdf8; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit; transition: all 0.2s; }
+.cp-btn-outline:hover { background: rgba(56,189,248,0.1); }
+.cp-btn-primary { background: linear-gradient(135deg, #0ea5e9, #3b82f6); color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.2s; }
+.cp-btn-primary:hover { opacity: 0.85; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.4); }
+.cp-btn-full { width: 100%; padding: 12px; font-size: 15px; margin-top: 8px; }
+.cp-btn-rx { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; border: none; padding: 7px 14px; border-radius: 7px; cursor: pointer; font-size: 12px; font-family: inherit; }
+
+/* MAIN */
+.cp-main { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
+
+/* BROWSE */
+.cp-browse-hero { text-align: center; margin-bottom: 36px; }
+.cp-browse-hero h2 { font-size: 32px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
+.cp-browse-hero p { color: #64748b; margin-bottom: 20px; }
+.cp-search-row { display: flex; justify-content: center; }
+.cp-search {
+  width: 100%; max-width: 520px; padding: 14px 20px; border-radius: 12px;
+  background: rgba(30,41,59,0.8); border: 1px solid rgba(59,130,246,0.3);
+  color: #e2e8f0; font-size: 15px; font-family: inherit;
+  transition: border-color 0.2s; outline: none;
+}
+.cp-search:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,0.2); }
+.cp-loading { text-align: center; padding: 40px; color: #64748b; font-size: 16px; }
+.cp-empty { text-align: center; color: #475569; padding: 40px; }
+.cp-drug-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+.cp-drug-card {
+  background: rgba(30,41,59,0.7); border: 1px solid rgba(71,85,105,0.4);
+  border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px;
+  transition: all 0.25s; backdrop-filter: blur(10px);
+}
+.cp-drug-card:hover { border-color: rgba(56,189,248,0.4); transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+.cp-drug-header { display: flex; align-items: center; justify-content: space-between; }
+.cp-drug-icon { font-size: 28px; }
+.cp-rx-badge { background: rgba(139,92,246,0.2); color: #a78bfa; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; border: 1px solid rgba(139,92,246,0.4); }
+.cp-drug-name { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+.cp-drug-strength { font-size: 12px; color: #64748b; }
+.cp-drug-cat { background: rgba(16,185,129,0.15); color: #34d399; font-size: 11px; padding: 3px 8px; border-radius: 20px; display: inline-block; }
+.cp-drug-use { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+.cp-drug-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(71,85,105,0.3); }
+.cp-drug-price { font-size: 15px; font-weight: 700; color: #38bdf8; }
+.cp-drug-price small { font-size: 10px; font-weight: 400; color: #64748b; }
+
+/* CARD */
+.cp-card {
+  background: rgba(30,41,59,0.8); border: 1px solid rgba(71,85,105,0.4);
+  border-radius: 20px; padding: 28px; backdrop-filter: blur(10px);
+}
+.cp-card h3 { font-size: 18px; font-weight: 600; color: #f1f5f9; margin-bottom: 20px; }
+.cp-card-center { max-width: 520px; margin: 60px auto; text-align: center; }
+.cp-card-center h2 { font-size: 24px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
+.cp-card-center p { color: #64748b; margin-bottom: 24px; }
+
+/* RX */
+.cp-rx-tab h2.cp-section-title { font-size: 24px; font-weight: 700; color: #f1f5f9; margin-bottom: 24px; }
+.cp-rx-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 768px) { .cp-rx-layout { grid-template-columns: 1fr; } }
+.cp-rx-form { display: flex; flex-direction: column; gap: 16px; }
+.cp-rx-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #94a3b8; }
+.cp-rx-form input, .cp-rx-form select, .cp-rx-form textarea {
+  background: rgba(15,23,42,0.6); border: 1px solid rgba(71,85,105,0.5);
+  color: #e2e8f0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+  font-family: inherit; transition: border-color 0.2s; outline: none;
+}
+.cp-rx-form input:focus, .cp-rx-form select:focus, .cp-rx-form textarea:focus {
+  border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,0.15);
+}
+.req { color: #ef4444; }
+.cp-hint { font-size: 12px; color: #475569; text-align: center; margin-top: 8px; }
+.cp-link { background: none; border: none; color: #38bdf8; cursor: pointer; font-family: inherit; font-size: inherit; text-decoration: underline; }
+.cp-success-box { text-align: center; padding: 20px; }
+.cp-success-icon { font-size: 48px; margin-bottom: 12px; }
+.cp-success-box h4 { font-size: 20px; color: #10b981; margin-bottom: 8px; }
+.cp-ref-code { font-size: 22px; font-weight: 700; color: #38bdf8; background: rgba(14,165,233,0.1); padding: 12px 24px; border-radius: 12px; margin: 12px 0; letter-spacing: 2px; border: 1px solid rgba(14,165,233,0.3); }
+.cp-ref-hint { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+.cp-rx-list { display: flex; flex-direction: column; gap: 12px; }
+.cp-rx-item { background: rgba(15,23,42,0.5); border-radius: 10px; padding: 14px; border: 1px solid rgba(71,85,105,0.3); }
+.cp-rx-ref { font-weight: 600; color: #38bdf8; font-size: 13px; margin-bottom: 6px; }
+.cp-rx-meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+.cp-rx-date { font-size: 11px; color: #475569; }
+
+/* TRACK */
+.cp-track-icon { font-size: 56px; margin-bottom: 16px; }
+.cp-track-form { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center; }
+.cp-track-input {
+  flex: 1; min-width: 260px; padding: 12px 16px; border-radius: 10px;
+  background: rgba(15,23,42,0.6); border: 1px solid rgba(71,85,105,0.5);
+  color: #e2e8f0; font-size: 14px; font-family: inherit; outline: none;
+}
+.cp-track-input:focus { border-color: #38bdf8; }
+.cp-track-result { text-align: left; background: rgba(15,23,42,0.6); border-radius: 12px; padding: 20px; margin-top: 8px; }
+.cp-track-result p { margin: 8px 0; color: #94a3b8; font-size: 14px; }
+.cp-status-badge { display: inline-block; color: white; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+.cp-pickup-notice { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #34d399; padding: 12px 16px; border-radius: 10px; margin-top: 12px; font-size: 13px; }
+.cp-error-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; padding: 12px 16px; border-radius: 10px; margin-top: 8px; }
+
+/* AUTH */
+.cp-auth-tab { display: flex; justify-content: center; padding: 40px 24px; }
+.cp-auth-card {
+  width: 100%; max-width: 420px; background: rgba(30,41,59,0.9);
+  border: 1px solid rgba(71,85,105,0.4); border-radius: 20px; padding: 36px;
+  backdrop-filter: blur(20px);
+}
+.cp-auth-card h2 { font-size: 24px; font-weight: 700; color: #f1f5f9; margin-bottom: 24px; text-align: center; }
+.cp-auth-card form { display: flex; flex-direction: column; gap: 16px; }
+.cp-auth-card label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #94a3b8; }
+.cp-auth-card input {
+  background: rgba(15,23,42,0.6); border: 1px solid rgba(71,85,105,0.5);
+  color: #e2e8f0; padding: 11px 14px; border-radius: 10px; font-size: 14px;
+  font-family: inherit; outline: none;
+}
+.cp-auth-card input:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,0.15); }
+.cp-auth-msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+.cp-auth-msg.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+.cp-auth-msg.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+.cp-switch { text-align: center; margin-top: 20px; font-size: 13px; color: #64748b; }
