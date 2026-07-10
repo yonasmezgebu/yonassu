@@ -1,0 +1,155 @@
+.container {
+  padding: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #1f2937;
+}
+
+.card {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  border-top: 4px solid #7c3aed;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  padding: 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
+  color: #1f2937;
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 12px 24px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.discrepancyRow {
+  background: #fef2f2;
+}
+
+.cellNowrap {
+  white-space: nowrap;
+}
+
+.qtyBold {
+  font-weight: 700;
+}
+
+.statusBadge {
+  padding: 2px 8px;
+  display: inline-flex;
+  font-size: 12px;
+  line-height: 1.25rem;
+  font-weight: 600;
+  border-radius: 9999px;
+}
+
+.statusPending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.statusDiscrepancy {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.statusDefault {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.discrepancyReason {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btnApprove {
+  background: #16a34a;
+  color: #fff;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btnApprove:hover {
+  background: #15803d;
+}
+
+.btnApprove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnReject {
+  background: #dc2626;
+  color: #fff;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btnReject:hover {
+  background: #b91c1c;
+}
+
+.btnReject:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.emptyRow {
+  padding: 16px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
