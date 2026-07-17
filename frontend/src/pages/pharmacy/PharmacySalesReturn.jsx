@@ -1,44 +1,127 @@
 import React, { useState } from 'react';
-import { RefreshCcw, Search, ArrowRight, ShieldAlert, CheckCircle } from 'lucide-react';
+import { RefreshCcw, Search, ArrowRight, ShieldAlert, CheckCircle, Package, Receipt, AlertCircle, Loader } from 'lucide-react';
+import apiClient from '../../services/apiClient';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 
 const PharmacySalesReturn = () => {
   const [step, setStep] = useState(1);
   const [searchSale, setSearchSale] = useState('');
   const [saleFound, setSaleFound] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   
   const [returnItems, setReturnItems] = useState([]);
   const [refundMethod, setRefundMethod] = useState('');
   const [reason, setReason] = useState('');
+  const [returnProcessed, setReturnProcessed] = useState(null);
 
-  const handleSearch = () => {
-    if (searchSale.trim()) {
-      setSaleFound({
-        id: searchSale,
-        date: '2026-07-01',
-        customer: 'Walk-in',
-        items: [
-          { id: 1, name: 'Paracetamol 500mg', originalQty: 2, price: 50 },
-          { id: 2, name: 'Amoxicillin 250mg', originalQty: 1, price: 350 }
-        ]
-      });
-      setReturnItems([
-        { id: 1, name: 'Paracetamol 500mg', returnQty: 0, price: 50, condition: 'GOOD' },
-        { id: 2, name: 'Amoxicillin 250mg', returnQty: 0, price: 350, condition: 'GOOD' }
-      ]);
-      setStep(3);
+  const handleSearch = async () => {
+    if (!searchSale.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient.get(`/pharmacy/sales/${searchSale.trim()}`);
+      if (res?.status === 'success' && res?.data) {
+        const saleData = res.data;
+        if (saleData.sale_type === 'CANCELED' || saleData.sale_type === 'RETURNED') {
+          setError('This sale has already been fully canceled or returned.');
+          setSaleFound(null);
+        } else {
+          setSaleFound(saleData);
+          // Initialize return items state based on sale items
+          const initialReturnItems = (saleData.items || []).map(item => ({
+            id: item.id,
+            name: item.drug_name,
+            originalQty: item.quantity,
+            price: item.unit_price,
+            returnQty: 0,
+            condition: 'GOOD'
+          }));
+          setReturnItems(initialReturnItems);
+          setStep(2);
+        }
+      } else {
+        setError('Sale not found.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Sale not found or error fetching sale.');
+      setSaleFound(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const refundTotal = returnItems.reduce((sum, item) => sum + (item.returnQty * item.price), 0);
+  const handleReturnQtyChange = (idx, value) => {
+    const item = returnItems[idx];
+    const newQty = Math.min(Math.max(0, parseInt(value) || 0), item.originalQty);
+    const newItems = [...returnItems];
+    newItems[idx].returnQty = newQty;
+    setReturnItems(newItems);
+  };
 
-  const handleProcessReturn = () => {
-    if (!reason || !refundMethod || refundTotal === 0) {
-      alert('Please select items to return, provide a reason, and select a refund method.');
+  const handleConditionChange = (idx, value) => {
+    const newItems = [...returnItems];
+    newItems[idx].condition = value;
+    setReturnItems(newItems);
+  };
+
+  const refundTotal = returnItems.reduce((sum, item) => sum + (item.returnQty * item.price), 0);
+  const isValidReturn = returnItems.some(i => i.returnQty > 0) && reason.trim() && refundMethod;
+
+  const handleProcessReturnClick = () => {
+    if (!isValidReturn) {
+      setError('Please select items to return, provide a reason, and select a refund method.');
       return;
     }
-    submitNotification('Return Processed', `Refund of $${refundTotal} issued via ${refundMethod}. Inventory updated.`);
-    setStep(8);
+    setError(null);
+    setShowConfirm(true);
+  };
+
+  const executeProcessReturn = async () => {
+    setShowConfirm(false);
+    setIsLoading(true);
+    try {
+      const payload = {
+        items: returnItems.filter(i => i.returnQty > 0).map(i => ({
+          id: i.id,
+          returnQty: i.returnQty,
+          condition: i.condition
+        })),
+        reason,
+        refundMethod
+      };
+
+      const res = await apiClient.post(`/pharmacy/sales/${saleFound.id}/return`, payload);
+      if (res?.status === 'success') {
+        submitNotification('Return Processed', `Refund of ETB ${refundTotal} issued. Inventory & totals updated.`);
+        setReturnProcessed({
+          refundTotal,
+          method: refundMethod,
+          receiptNo: saleFound.receipt_no || saleFound.id
+        });
+        setStep(3);
+      } else {
+        setError('Failed to process return.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Error processing return.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setStep(1);
+    setSearchSale('');
+    setSaleFound(null);
+    setReturnItems([]);
+    setRefundMethod('');
+    setReason('');
+    setError(null);
+    setReturnProcessed(null);
   };
 
   return (
@@ -48,133 +131,238 @@ const PharmacySalesReturn = () => {
           <h2 style={{ fontSize: 24, fontWeight: 'bold', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <RefreshCcw size={24} color="#f97316" /> SALES RETURN
           </h2>
-          <p style={{ color: '#64748b', margin: 0 }}>🔗 Process Sales Returns (Manager Only)</p>
+          <p style={{ color: '#64748b', margin: 0 }}>Process Sales Returns, Cancellations, and Refunds</p>
         </div>
         <div style={{ background: '#fef2f2', color: '#ef4444', padding: '8px 16px', borderRadius: 8, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldAlert size={20} /> Manager Authorization Active
+          <ShieldAlert size={20} /> Manager / Authorized Role Required
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 24, maxWidth: 800 }}>
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', padding: 32, maxWidth: 900, margin: '0 auto' }}>
+        
+        {/* STEP 1: Search */}
         {step === 1 && (
-          <div>
-            <h3 style={{ fontSize: 18, marginBottom: 16 }}>Step 2: Locate Original Sale</h3>
-            <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ width: 64, height: 64, background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Receipt size={32} color="#f97316" />
+            </div>
+            <h3 style={{ fontSize: 20, marginBottom: 8, color: '#0f172a' }}>Locate Original Sale</h3>
+            <p style={{ color: '#64748b', marginBottom: 24 }}>Enter the Receipt No. or Sale ID to begin the return process.</p>
+            
+            <div style={{ display: 'flex', gap: 12, maxWidth: 500, margin: '0 auto' }}>
               <input 
                 type="text" 
-                placeholder="Enter Receipt Number..." 
+                placeholder="e.g. RCP-1002" 
                 value={searchSale}
                 onChange={e => setSearchSale(e.target.value)}
-                style={{ flex: 1, padding: 12, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                style={{ flex: 1, padding: '14px 16px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 16 }}
               />
-              <button onClick={handleSearch} style={{ background: '#1e293b', color: 'white', padding: '0 24px', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Search size={18} /> Find Sale
+              <button 
+                onClick={handleSearch} 
+                disabled={isLoading || !searchSale.trim()}
+                style={{ background: '#f97316', color: 'white', padding: '0 24px', border: 'none', borderRadius: 8, cursor: isLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 16, opacity: isLoading || !searchSale.trim() ? 0.7 : 1 }}
+              >
+                {isLoading ? <Loader size={18} className="spin" /> : <Search size={18} />} 
+                Find Sale
               </button>
             </div>
+            {error && (
+              <div style={{ marginTop: 16, color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <AlertCircle size={16} /> {error}
+              </div>
+            )}
           </div>
         )}
 
-        {step === 3 && saleFound && (
+        {/* STEP 2: Process */}
+        {step === 2 && saleFound && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: 16, background: '#f8fafc', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: 20, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
               <div>
-                <strong>Receipt:</strong> {saleFound.id}<br/>
-                <span style={{ color: '#64748b' }}>Date: {saleFound.date} | Customer: {saleFound.customer}</span>
+                <div style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Sale Information</div>
+                <div style={{ fontSize: 18, fontWeight: 'bold', color: '#0f172a' }}>Receipt: {saleFound.receipt_no || saleFound.id}</div>
+                <div style={{ color: '#475569', marginTop: 4 }}>
+                  Date: {new Date(saleFound.created_at).toLocaleDateString()} | Type: {saleFound.sale_type}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Total Amount</div>
+                <div style={{ fontSize: 24, fontWeight: 'bold', color: '#10b981' }}>ETB {saleFound.total_amount}</div>
               </div>
             </div>
 
-            <h3 style={{ fontSize: 18, marginBottom: 16 }}>Step 3 & 4: Select Items & Verify Condition</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
-              <thead style={{ background: '#f1f5f9' }}>
-                <tr>
-                  <th style={{ padding: 12, textAlign: 'left' }}>Item</th>
-                  <th style={{ padding: 12, textAlign: 'center' }}>Original Qty</th>
-                  <th style={{ padding: 12, textAlign: 'center' }}>Return Qty</th>
-                  <th style={{ padding: 12, textAlign: 'left' }}>Condition</th>
-                  <th style={{ padding: 12, textAlign: 'right' }}>Refund Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {returnItems.map((item, idx) => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: 12 }}>{item.name} <div style={{ color: '#64748b', fontSize: 12 }}>${item.price}/ea</div></td>
-                    <td style={{ padding: 12, textAlign: 'center' }}>{saleFound.items[idx].originalQty}</td>
-                    <td style={{ padding: 12, textAlign: 'center' }}>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max={saleFound.items[idx].originalQty}
-                        value={item.returnQty}
-                        onChange={e => {
-                          const newQty = Math.min(Math.max(0, parseInt(e.target.value) || 0), saleFound.items[idx].originalQty);
-                          const newItems = [...returnItems];
-                          newItems[idx].returnQty = newQty;
-                          setReturnItems(newItems);
-                        }}
-                        style={{ width: 60, padding: 4 }}
-                      />
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      <select 
-                        value={item.condition}
-                        onChange={e => {
-                          const newItems = [...returnItems];
-                          newItems[idx].condition = e.target.value;
-                          setReturnItems(newItems);
-                        }}
-                        style={{ padding: 4 }}
-                      >
-                        <option value="GOOD">GOOD (Return to stock)</option>
-                        <option value="DAMAGED">DAMAGED (Write-off)</option>
-                        <option value="EXPIRED">EXPIRED (Write-off)</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: 12, textAlign: 'right', fontWeight: 'bold' }}>
-                      ${item.returnQty * item.price}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {error && (
+              <div style={{ marginBottom: 20, padding: 12, background: '#fef2f2', color: '#b91c1c', borderRadius: 8, border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertCircle size={18} /> {error}
+              </div>
+            )}
 
-            <h3 style={{ fontSize: 18, marginBottom: 16 }}>Step 5 & 6: Refund Details</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package size={20} color="#475569" /> Select Items to Return
+            </h3>
+            
+            <div style={{ overflowX: 'auto', marginBottom: 32 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f1f5f9' }}>
+                  <tr>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', color: '#475569', fontWeight: 600, borderRadius: '8px 0 0 8px' }}>Item Name</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>Original Qty</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>Return Qty</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', color: '#475569', fontWeight: 600 }}>Condition</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', color: '#475569', fontWeight: 600, borderRadius: '0 8px 8px 0' }}>Refund</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {returnItems.map((item, idx) => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{item.name}</div>
+                        <div style={{ color: '#64748b', fontSize: 13 }}>ETB {item.price} / unit</div>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center', fontWeight: 600, color: '#475569' }}>
+                        {item.originalQty}
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max={item.originalQty}
+                          value={item.returnQty}
+                          onChange={e => handleReturnQtyChange(idx, e.target.value)}
+                          style={{ width: 70, padding: '8px', textAlign: 'center', borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600 }}
+                        />
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <select 
+                          value={item.condition}
+                          onChange={e => handleConditionChange(idx, e.target.value)}
+                          disabled={item.returnQty === 0}
+                          style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', width: '100%', background: item.returnQty === 0 ? '#f8fafc' : 'white', opacity: item.returnQty === 0 ? 0.6 : 1 }}
+                        >
+                          <option value="GOOD">GOOD (Return to stock)</option>
+                          <option value="DAMAGED">DAMAGED (Write-off)</option>
+                          <option value="EXPIRED">EXPIRED (Write-off)</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: item.returnQty > 0 ? '#10b981' : '#94a3b8' }}>
+                        ETB {(item.returnQty * item.price).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ fontSize: 18, marginBottom: 16 }}>Refund Details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>Refund Method</label>
-                <select value={refundMethod} onChange={e => setRefundMethod(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 6, border: '1px solid #cbd5e1' }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#475569' }}>Refund Method</label>
+                <select 
+                  value={refundMethod} 
+                  onChange={e => setRefundMethod(e.target.value)} 
+                  style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 15 }}
+                >
                   <option value="">Select Method...</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Telbir">Telbir</option>
+                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="TELBIR">Telbir</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 'bold' }}>Return Reason (Required)</label>
-                <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="Why is the customer returning this?" style={{ width: '100%', padding: 12, borderRadius: 6, border: '1px solid #cbd5e1' }} />
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#475569' }}>Return Reason <span style={{color:'#ef4444'}}>*</span></label>
+                <input 
+                  type="text" 
+                  value={reason} 
+                  onChange={e => setReason(e.target.value)} 
+                  placeholder="e.g. Customer changed mind, Defective..." 
+                  style={{ width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 15 }} 
+                />
               </div>
             </div>
 
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: 24, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', padding: 24, borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ color: '#1d4ed8', fontWeight: 'bold' }}>Total Refund Amount</div>
-                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1e3a8a' }}>${refundTotal.toFixed(2)}</div>
+                <div style={{ color: '#c2410c', fontWeight: 600, textTransform: 'uppercase', fontSize: 13, marginBottom: 4 }}>Total Refund Amount</div>
+                <div style={{ fontSize: 32, fontWeight: 'bold', color: '#9a3412' }}>ETB {refundTotal.toFixed(2)}</div>
               </div>
-              <button onClick={handleProcessReturn} style={{ background: '#f97316', color: 'white', padding: '16px 32px', borderRadius: 8, border: 'none', fontWeight: 'bold', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                PROCESS RETURN <ArrowRight size={20} />
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button 
+                  onClick={handleReset} 
+                  style={{ background: 'white', color: '#475569', padding: '14px 24px', borderRadius: 8, border: '1px solid #cbd5e1', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleProcessReturnClick} 
+                  disabled={!isValidReturn || isLoading}
+                  style={{ background: '#f97316', color: 'white', padding: '14px 32px', borderRadius: 8, border: 'none', fontWeight: 'bold', fontSize: 16, cursor: !isValidReturn || isLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, opacity: !isValidReturn || isLoading ? 0.6 : 1 }}
+                >
+                  {isLoading ? <Loader size={20} className="spin" /> : 'PROCESS RETURN'} <ArrowRight size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Success */}
+        {step === 3 && returnProcessed && (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ width: 80, height: 80, background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <CheckCircle size={40} color="#16a34a" />
+            </div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: '#16a34a', marginBottom: 12 }}>Return Processed Successfully!</h2>
+            <p style={{ color: '#475569', fontSize: 16, marginBottom: 32, maxWidth: 500, margin: '0 auto 32px' }}>
+              A refund of <strong style={{color: '#0f172a'}}>ETB {returnProcessed.refundTotal.toFixed(2)}</strong> has been issued via {returnProcessed.method}. The items have been processed and inventory/totals are updated.
+            </p>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+              <button 
+                onClick={handleReset} 
+                style={{ padding: '14px 32px', background: '#1e293b', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                <RefreshCcw size={18} /> Process Another Return
               </button>
             </div>
           </div>
         )}
-
-        {step === 8 && (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <CheckCircle size={64} color="#f97316" style={{ margin: '0 auto 16px' }} />
-            <h2>Return Completed!</h2>
-            <p style={{ color: '#64748b', marginBottom: 24 }}>Refund issued. Inventory updated. Return Note generated.</p>
-            <button onClick={() => { setStep(1); setSearchSale(''); setSaleFound(null); }} style={{ padding: '12px 24px', background: '#1e293b', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Process Another Return</button>
-          </div>
-        )}
       </div>
+
+      {showConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: 'white', padding: 32, borderRadius: 12, maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            <AlertCircle size={48} color="#f97316" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Confirm Return</h3>
+            <p style={{ color: '#475569', marginBottom: 24, fontSize: 15 }}>
+              Are you sure you want to process a return of <strong>ETB {refundTotal.toFixed(2)}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button 
+                onClick={() => setShowConfirm(false)}
+                style={{ padding: '10px 20px', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, fontWeight: 600, cursor: 'pointer', flex: 1 }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeProcessReturn}
+                style={{ padding: '10px 20px', background: '#f97316', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer', flex: 1 }}
+              >
+                Yes, Process
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

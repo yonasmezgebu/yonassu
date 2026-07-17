@@ -1,19 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart2, Download, Printer, Filter } from 'lucide-react';
-import { storeInfo } from '../../utils/storeNotifications';
-
-const mockInventory = [
-  { id: 'ITM-001', name: 'Paracetamol 500mg', category: 'Pharmaceuticals', qty: 12000, reorder: 5000, price: 0.05, loc: 'Main Store - Rack A', expiry: '2027-12-31', batch: 'B-9901' },
-  { id: 'ITM-002', name: 'Surgical Gloves (L)', category: 'Medical Supplies', qty: 80, reorder: 100, price: 15.00, loc: 'Main Store - Rack B', expiry: '2028-05-15', batch: 'B-9902' },
-  { id: 'ITM-003', name: 'A4 Paper', category: 'Office Supplies', qty: 5, reorder: 10, price: 4.50, loc: 'Office Supply Rm', expiry: 'N/A', batch: 'N/A' },
-  { id: 'ITM-004', name: 'MRI Contrast Agent', category: 'Pharmaceuticals', qty: 50, reorder: 20, price: 120.00, loc: 'Cold Storage', expiry: '2026-10-01', batch: 'B-9877' },
-  { id: 'ITM-005', name: 'Syringes 5ml', category: 'Medical Supplies', qty: 0, reorder: 500, price: 0.10, loc: 'Main Store - Rack B', expiry: '2029-01-01', batch: 'B-9880' },
-];
+import { getInventory } from '../../utils/storeApi';
 
 const StoreStockReport = () => {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterCat, setFilterCat] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
+
   useEffect(() => {
-    storeInfo('📊 Stock Report Ready', '📊 Stock Report', 'Your comprehensive stock report is ready for viewing.');
+    getInventory().then(r => { setRows(r.data || []); setLoading(false); }).catch(() => setLoading(false));
   }, []);
+
+  const categories = [...new Set(rows.map(i => i.category).filter(Boolean))];
+  const filtered = rows.filter(i => {
+    if (filterCat !== 'All' && i.category !== filterCat) return false;
+    const st = Number(i.quantity) === 0 ? 'Out of Stock' : Number(i.quantity) <= Number(i.min_level || 0) ? 'Low Stock' : 'In Stock';
+    if (filterStatus !== 'All' && st !== filterStatus) return false;
+    return true;
+  });
+
+  if (loading) return <div style={{ padding: 24, fontFamily: "'Inter', sans-serif" }}>Loading...</div>;
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
@@ -33,29 +40,19 @@ const StoreStockReport = () => {
           </button>
         </div>
       </div>
-
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', alignItems: 'center' }}>
         <Filter size={15} color="#64748b" />
-        <select style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
+        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
           <option>All Categories</option>
-          <option>Pharmaceuticals</option>
-          <option>Medical Supplies</option>
-          <option>Office Supplies</option>
+          {categories.map(c => <option key={c}>{c}</option>)}
         </select>
-        <select style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-          <option>All Locations</option>
-          <option>Main Store</option>
-          <option>Cold Storage</option>
-          <option>Office Supply Rm</option>
-        </select>
-        <select style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
           <option>All Statuses (In Stock/Low/Out)</option>
           <option>In Stock</option>
           <option>Low Stock</option>
           <option>Out of Stock</option>
         </select>
       </div>
-
       <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
@@ -66,32 +63,35 @@ const StoreStockReport = () => {
             </tr>
           </thead>
           <tbody>
-            {mockInventory.map(item => {
-              const statusColor = item.qty === 0 ? '#b91c1c' : item.qty <= item.reorder ? '#b45309' : '#15803d';
-              const statusBg = item.qty === 0 ? '#fee2e2' : item.qty <= item.reorder ? '#fef3c7' : '#dcfce7';
+            {filtered.map(i => {
+              const q = Number(i.quantity);
+              const ml = Number(i.min_level || 0);
+              const statusColor = q === 0 ? '#b91c1c' : q <= ml ? '#b45309' : '#15803d';
+              const statusBg = q === 0 ? '#fee2e2' : q <= ml ? '#fef3c7' : '#dcfce7';
               return (
-                <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <tr key={i.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '12px 14px' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{item.name}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>{item.id}</div>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{i.drug_name}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>{'ITM-' + String(i.id).padStart(3,'0')}</div>
                   </td>
-                  <td style={{ padding: '12px 14px', color: '#475569' }}>{item.category}</td>
+                  <td style={{ padding: '12px 14px', color: '#475569' }}>{i.category || '—'}</td>
                   <td style={{ padding: '12px 14px' }}>
                     <span style={{ padding: '4px 8px', borderRadius: 6, fontWeight: 700, background: statusBg, color: statusColor }}>
-                      {item.qty.toLocaleString()}
+                      {q.toLocaleString()}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 14px', color: '#64748b' }}>{item.reorder.toLocaleString()}</td>
-                  <td style={{ padding: '12px 14px', fontFamily: 'monospace' }}>${item.price.toFixed(2)}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, fontFamily: 'monospace', color: '#0f172a' }}>${(item.qty * item.price).toFixed(2)}</td>
-                  <td style={{ padding: '12px 14px', color: '#475569' }}>{item.loc}</td>
+                  <td style={{ padding: '12px 14px', color: '#64748b' }}>{ml.toLocaleString()}</td>
+                  <td style={{ padding: '12px 14px', fontFamily: 'monospace' }}>ETB {Number(i.unit_price).toFixed(2)}</td>
+                  <td style={{ padding: '12px 14px', fontWeight: 600, fontFamily: 'monospace', color: '#0f172a' }}>ETB {(q * Number(i.unit_price)).toFixed(2)}</td>
+                  <td style={{ padding: '12px 14px', color: '#475569' }}>{i.storage_location || '—'}</td>
                   <td style={{ padding: '12px 14px' }}>
-                    <div style={{ fontFamily: 'monospace', color: '#475569' }}>{item.batch}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>Exp: {item.expiry}</div>
+                    <div style={{ fontFamily: 'monospace', color: '#475569' }}>{i.batch_no || '—'}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>Exp: {i.expiry_date || 'N/A'}</div>
                   </td>
                 </tr>
-              )
+              );
             })}
+            {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>No items found</td></tr>}
           </tbody>
         </table>
       </div>

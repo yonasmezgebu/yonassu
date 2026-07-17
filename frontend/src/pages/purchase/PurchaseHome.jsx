@@ -45,8 +45,8 @@ const PurchaseHome = () => {
 
         <QuickSummaryCard title="Pending Deliveries" value={summary.pendingDeliveries} icon={Clock} color="#d97706" bg="#fef3c7" />
         <QuickSummaryCard title="Received Today" value={summary.receivedToday} icon={Truck} color="#06b6d4" bg="#cffafe" />
-        <QuickSummaryCard title="Total Spend (MTD)" value={`$${summary.totalSpend.toLocaleString()}`} icon={DollarSign} color="#dc2626" bg="#fef2f2" />
-        <QuickSummaryCard title="Budget Remaining" value={`$${summary.budgetRemaining.toLocaleString()}`} icon={Wallet} color="#16a34a" bg="#dcfce7" />
+        <QuickSummaryCard title="Total Spend (MTD)" value={`ETB ${summary.totalSpend.toLocaleString()}`} icon={DollarSign} color="#dc2626" bg="#fef2f2" />
+        <QuickSummaryCard title="Budget Remaining" value={`ETB ${summary.budgetRemaining.toLocaleString()}`} icon={Wallet} color="#16a34a" bg="#dcfce7" />
         <QuickSummaryCard title="Active Returns" value={summary.returns} icon={RotateCcw} color="#ea580c" bg="#ffedd5" />
       </div>
 

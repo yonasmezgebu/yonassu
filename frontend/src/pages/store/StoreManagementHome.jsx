@@ -4,7 +4,7 @@ import { Package, DollarSign, AlertTriangle, TrendingUp, Clock, Inbox, ArrowUpRi
 const StoreManagementHome = () => {
   const summaryCards = [
     { label: 'Total Items in Stock', value: '8', icon: <Package size={22} color="#3b82f6" />, bg: '#eff6ff', color: '#1d4ed8' },
-    { label: 'Total Stock Value', value: '$4,901.50', icon: <DollarSign size={22} color="#10b981" />, bg: '#f0fdf4', color: '#15803d' },
+    { label: 'Total Stock Value', value: 'ETB 4,901.50', icon: <DollarSign size={22} color="#10b981" />, bg: '#f0fdf4', color: '#15803d' },
     { label: 'Low Stock Items', value: '2', icon: <AlertTriangle size={22} color="#f59e0b" />, bg: '#fef3c7', color: '#b45309' },
     { label: 'Overstock Items', value: '1', icon: <TrendingUp size={22} color="#f97316" />, bg: '#fff7ed', color: '#9a3412' },
     { label: 'Pending Requisitions', value: '3', icon: <Clock size={22} color="#8b5cf6" />, bg: '#ede9fe', color: '#6d28d9' },

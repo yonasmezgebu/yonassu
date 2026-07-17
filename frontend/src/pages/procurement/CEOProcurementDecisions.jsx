@@ -125,7 +125,40 @@ export default function CEOProcurementDecisions() {
                 </div>
               )}
 
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              {selected.new_drug_flag === 'YES' && (
+                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: 13, textTransform: 'uppercase' }}>🆕 New Drug Additional Info</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 12, color: '#475569' }}>
+                    <div><strong>Category:</strong> {selected.drug_category}</div>
+                    <div><strong>Classification:</strong> {selected.drug_classification}</div>
+                    <div style={{ gridColumn: '1 / -1' }}><strong>Therapeutic Use:</strong> {selected.therapeutic_use}</div>
+                    <div style={{ gridColumn: '1 / -1' }}><strong>Request Reason:</strong> {selected.request_reason}</div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', marginBottom: 6, fontWeight: 700 }}>Requested &amp; Authorized by</div>
+                  {selected.manager_signature ? (
+                    <div style={{ position: 'relative', width: 240 }}>
+                      <img
+                        src={selected.manager_signature}
+                        alt="Manager Signature"
+                        style={{ width: 220, height: 80, objectFit: 'contain', display: 'block', filter: 'contrast(1.15)' }}
+                      />
+                      <div style={{ width: 220, borderBottom: '1.5px solid #94a3b8', marginTop: 2 }} />
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: "'Caveat', cursive", fontSize: 36, color: '#1e40af', transform: 'rotate(-3deg)', display: 'inline-block', lineHeight: 1 }}>
+                      {selected.requested_by_name}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{selected.requested_by_name} — Pharmacy Manager</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     <DecisionCard
                       decision={selected.ceo_decision || 'PENDING'}
                       ceoNotes={selected.ceo_notes}

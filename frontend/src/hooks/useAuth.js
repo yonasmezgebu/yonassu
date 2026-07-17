@@ -22,12 +22,20 @@ export const useAuth = () => {
     setUser(null);
     setIsAuthenticated(false);
   };
+  const updateUser = (partialData) => {
+    const current = authService.getCurrentUser() || {};
+    const updated = { ...current, ...partialData };
+    localStorage.setItem('user', JSON.stringify(updated));
+    setUser(updated);
+  };
   return {
     user,
     isAuthenticated,
     login,
     logout,
+    updateUser,
     hasRole: authService.hasRole,
     hasPermission: authService.hasPermission
   };
 };
+

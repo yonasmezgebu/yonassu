@@ -103,7 +103,7 @@ const FinanceSuppliers = () => {
                   <div style={{ fontSize: 12, color: '#94a3b8' }}>{s.contactPerson}</div>
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', color: '#64748b' }}>
-                  {s.creditLimit ? `$${s.creditLimit.toLocaleString()}` : 'N/A'}
+                  {s.creditLimit ? `ETB ${s.creditLimit.toLocaleString()}` : 'N/A'}
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: s.outstandingBalance > 0 ? '#dc2626' : '#16a34a' }}>
                   ${s.outstandingBalance.toLocaleString()}

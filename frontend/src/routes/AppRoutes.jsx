@@ -29,7 +29,7 @@ const PurchaseDashboard = lazy(() => import('../pages/purchase/PurchaseDashboard
 const StoreDashboard    = lazy(() => import('../pages/store/StoreDashboard'));
 const StoreManagementDashboard = lazy(() => import('../pages/store/StoreManagementDashboard'));
 const PrintingManagerDashboard = lazy(() => import('../pages/printing/PrintingDashboard'));
-const CustomerDashboard = lazy(() => import('../pages/customer/CustomerPortal'));
+const CustomerDashboard = lazy(() => import('../pages/customer/CustomerPortal.jsx'));
 const PharmacyDashboard = lazy(() => import('../pages/pharmacy/PharmacyDashboard'));
 const PharmacyWorkerDashboard = lazy(() => import('../pages/pharmacy/PharmacyWorkerDashboard'));
 const CarRentingDashboard = lazy(() => import('../pages/car-renting/CarRentingDashboard'));
@@ -40,6 +40,8 @@ const NotificationsPage = lazy(() => import('../pages/employee/NotificationsPage
 const EmployeeDashboard = lazy(() => import('../pages/employee/EmployeePortalDashboard'));
 const PrescriptionViewer = lazy(() => import('../pages/shared/PrescriptionViewer'));
 const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicTendersPage'));
+const PublicSmartTendersPage = lazy(() => import('../pages/LandingPage/PublicSmartTendersPage'));
+const PublicBuyTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
 const TenderDetailPage = lazy(() => import('../pages/LandingPage/TenderDetailPage'));
 const TenderManagePage = lazy(() => import('../pages/admin/TenderManagePage'));
 const SearchResultsPage = lazy(() => import('../pages/LandingPage/SearchResultsPage'));
@@ -47,6 +49,10 @@ const RegularMarketPage = lazy(() => import('../pages/LandingPage/RegularMarketP
 const SalesDashboard = lazy(() => import('../pages/sales/SalesDashboard'));
 const UnauthorizedPage  = lazy(() => import('../pages/auth/Unauthorized'));
 const NotFoundPage = lazy(() => import('../pages/shared/NotFoundPage'));
+
+// Flow 2 New Roles
+// const MarketDashboard = lazy(() => import('../pages/market/MarketDashboard'));
+// const SupplierDashboard = lazy(() => import('../pages/supplier/SupplierDashboard'));
 const Loader = () => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -62,23 +68,23 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <Routes>
         {/* Public / Landing Pages — redirect to dashboard if logged in */}
-        <Route path="/"         element={<PublicRoute><LandingPage /></PublicRoute>} />
+        <Route path="/"         element={<LandingPage />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/printing" element={<PrintingServicePage />} />
         <Route path="/services/pharmacy" element={<PharmacyHealthPage />} />
         <Route path="/services/farming" element={<FarmingServicePage />} />
         <Route path="/services/retail" element={<RetailStorePage />} />
         <Route path="/fleet-gallery" element={<FleetGalleryPage />} />
-        <Route path="/about"    element={<PublicRoute><AboutPage /></PublicRoute>} />
+        <Route path="/about"    element={<AboutPage />} />
 
         <Route path="/track-order" element={<TrackOrderPage />} />
-        <Route path="/search" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/gallery/workers" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/gallery/cars" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/gallery/other" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/news/notice" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/news/video" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
-        <Route path="/news/gallery" element={<PublicRoute><PlaceholderPage /></PublicRoute>} />
+        <Route path="/search" element={<PlaceholderPage />} />
+        <Route path="/gallery/workers" element={<PlaceholderPage />} />
+        <Route path="/gallery/cars" element={<PlaceholderPage />} />
+        <Route path="/gallery/other" element={<PlaceholderPage />} />
+        <Route path="/news/notice" element={<PlaceholderPage />} />
+        <Route path="/news/video" element={<PlaceholderPage />} />
+        <Route path="/news/gallery" element={<PlaceholderPage />} />
 
         <Route path="/marketplace/regular" element={<RegularMarketPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
@@ -86,6 +92,8 @@ const AppRoutes = () => {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/news/:type" element={<NewsPage />} />
         <Route path="/tenders" element={<PublicTendersPage />} />
+        <Route path="/tenders/smart-bids" element={<PublicSmartTendersPage />} />
+        <Route path="/tenders/buy" element={<PublicBuyTendersPage />} />
         <Route path="/tenders/:id" element={<TenderDetailPage />} />
         <Route path="/prescription-viewer" element={<PrescriptionViewer />} />
 
@@ -151,7 +159,7 @@ const AppRoutes = () => {
           </RoleBasedRoute>
         } />
         <Route path="/pharmacy-worker/*" element={
-          <RoleBasedRoute role={['Pharmacy Worker', 'Admin', 'CEO']}>
+          <RoleBasedRoute role={['Pharmacy Worker', 'Sales/Cashier', 'Admin', 'CEO']}>
             <PharmacyWorkerDashboard />
           </RoleBasedRoute>
         } />
@@ -184,7 +192,7 @@ const AppRoutes = () => {
           </PrivateRoute>
         } />
         <Route path="/sales/*" element={
-          <RoleBasedRoute role={['Sales/Cashier', 'Admin', 'CEO', 'Sales Manager']}>
+          <RoleBasedRoute role={['Admin', 'CEO', 'Sales Manager']}>
             <SalesDashboard />
           </RoleBasedRoute>
         } />
@@ -193,6 +201,18 @@ const AppRoutes = () => {
             <TenderManagePage />
           </RoleBasedRoute>
         } />
+
+        {/* Flow 2 New Roles */}
+        {/* <Route path="/market/*" element={
+          <RoleBasedRoute role={['Market Team', 'Admin', 'CEO']}>
+            <MarketDashboard />
+          </RoleBasedRoute>
+        } />
+        <Route path="/supplier/*" element={
+          <RoleBasedRoute role={['Supplier', 'Admin']}>
+            <SupplierDashboard />
+          </RoleBasedRoute>
+        } /> */}
         {}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

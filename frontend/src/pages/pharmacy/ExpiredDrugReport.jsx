@@ -1,263 +1,225 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
-import {
-  AlertTriangle, Pill, Calendar, MapPin, FileText, List, RefreshCw,
-  CheckCircle, XCircle, Clock, Trash2, RotateCcw, Upload
-} from 'lucide-react';
+import { AlertTriangle, Search, RefreshCw, Download, Printer, Bell, Package, Calendar, Trash2 } from 'lucide-react';
+import { receiveNotification } from '../../utils/pharmacyNotifications';
 
-const LOCATIONS = [
-  { value: 'Pharmacy', label: 'Pharmacy' },
-  { value: 'Store', label: 'Store' },
-];
-
-const ACTIONS = [
-  { value: 'Dispose', label: 'Dispose', icon: <Trash2 size={14} /> },
-  { value: 'Return', label: 'Return', icon: <RotateCcw size={14} /> },
-  { value: 'Write-off', label: 'Write-off', icon: <FileText size={14} /> },
-];
-
-export default function ExpiredDrugReport() {
+export default function ExpiredDrugReport({ hideHeader = false }) {
   const { showToast, ToastContainer } = useToast();
-  const [tab, setTab] = useState('report');
-  const [loading, setLoading] = useState(false);
-  const [reports, setReports] = useState([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
+  const [stock, setStock] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  const [drugName, setDrugName] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [location, setLocation] = useState('Pharmacy');
-  const [actionRequired, setActionRequired] = useState('Dispose');
-
-  useEffect(() => {
-    if (tab === 'list') fetchReports();
-  }, [tab]);
-
-  const fetchReports = async () => {
-    setReportsLoading(true);
-    try {
-      const res = await apiClient.get('/pharmacy/expired-drugs');
-      setReports(res.data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setReportsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!drugName.trim()) { showToast('Drug name is required', 'warning'); return; }
-    if (!quantity) { showToast('Quantity is required', 'warning'); return; }
-    if (!expiryDate) { showToast('Expiry date is required', 'warning'); return; }
-
+  const fetchStock = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = {
-        drug_name: drugName,
-        quantity: parseInt(quantity),
-        expiry_date: expiryDate,
-        location,
-        action_required: actionRequired,
-      };
-      const res = await apiClient.post('/pharmacy/expired-drugs', payload);
-      if (res.status === 'success') {
-        showToast('Expired drug report submitted to CEO', 'success');
-        playSound('success');
-        setDrugName('');
-        setQuantity('');
-        setExpiryDate('');
-        setLocation('Pharmacy');
-        setActionRequired('Dispose');
+      const res = await apiClient.get('/pharmacy/products/all');
+      
+      const now = new Date();
+      now.setHours(0,0,0,0);
+
+      const expiredItems = (res?.data || res || []).map(item => {
+        const qty = parseInt(item.stock_quantity) || 0;
+        let daysExpired = null;
+        let isExpired = false;
+
+        if (item.expiry_date) {
+          const expDate = new Date(item.expiry_date);
+          if (expDate <= now) {
+            isExpired = true;
+            daysExpired = Math.ceil((now - expDate) / (1000 * 60 * 60 * 24));
+          }
+        }
+        
+        return {
+          ...item,
+          qty,
+          daysExpired,
+          isExpired
+        };
+      }).filter(item => item.isExpired && item.qty > 0)
+        .sort((a, b) => b.daysExpired - a.daysExpired);
+      
+      setStock(expiredItems);
+      
+      if (expiredItems.length > 0) {
+        receiveNotification('🚨 Expired Drugs Alert', 'Immediate action required for expired inventory.');
       }
     } catch (e) {
-      showToast(e.response?.data?.message || e.message || 'Failed to submit report', 'error');
+      showToast('Failed to load expired medicines', 'error');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => { fetchStock(); }, [fetchStock]);
+
+  const filtered = stock.filter(item => {
+    return !search
+      || (item.name || '').toLowerCase().includes(search.toLowerCase())
+      || (item.generic_name || '').toLowerCase().includes(search.toLowerCase())
+      || (item.category_name || '').toLowerCase().includes(search.toLowerCase());
+  });
+
+  const handleNotifyManager = (item) => {
+    showToast(`Manager Notified: ${item.name} is expired.`, 'success');
+  };
+
+  const handleMoveToQuarantine = (item) => {
+    showToast(`${item.name} moved to quarantine log.`, 'info');
   };
 
   return (
-    <div style={{ padding: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
+    <div style={hideHeader ? {} : { padding: '1.5rem', fontFamily: "'Inter', 'Segoe UI', sans-serif", minHeight: '100vh', background: '#f8fafc' }}>
       <ToastContainer />
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <AlertTriangle size={22} color="#EF4444" /> Expired Drug Report (B4)
-        </h1>
-        <p style={{ margin: 0, fontSize: 12, color: '#64748B' }}>Report and manage expired drugs in pharmacy/store</p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button onClick={() => setTab('report')} style={tabBtn(tab === 'report')}>
-          <Upload size={15} /> Submit Report
-        </button>
-        <button onClick={() => { setTab('list'); fetchReports(); }} style={tabBtn(tab === 'list')}>
-          <List size={15} /> Reports ({reports.length})
-        </button>
-      </div>
-
-      {tab === 'report' && (
-        <form onSubmit={handleSubmit}>
-          <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-            <div style={{ background: '#224f94', color: 'white', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ zIndex: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 40, height: 40, background: 'white', borderRadius: '50% 50% 50% 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#224f94', fontWeight: 800, fontSize: 8 }}>SUTANA</div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: 1.5, textTransform: 'uppercase' }}>Expired Drug Report</h2>
-                  <p style={{ margin: 0, fontSize: 10, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 1 }}>Flow 4 — Expired Drug Handling (B4)</p>
-                </div>
-              </div>
-              <div style={{ position: 'absolute', top: -30, right: -20, width: 150, height: 150, background: '#4585c5', borderRadius: '40% 60% 70% 30%', opacity: 0.6 }}></div>
-              <div style={{ position: 'absolute', bottom: -8, right: 80, width: 50, height: 50, background: '#1c3d70', borderRadius: '12px' }}></div>
+      {/* Header */}
+      {!hideHeader && (
+        <div style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #e11d48, #be123c)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(225,29,72,0.3)' }}>
+              <AlertTriangle size={20} color="white" />
             </div>
-
-            <div style={{ padding: '24px 28px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                <div>
-                  <label style={labelStyle}><Pill size={13} /> Drug Name *</label>
-                  <input type="text" value={drugName} onChange={e => setDrugName(e.target.value)}
-                    placeholder="e.g. Amoxicillin 500mg" style={inputStyle()} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Quantity *</label>
-                  <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)}
-                    placeholder="e.g. 100" style={inputStyle()} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}><Calendar size={13} /> Expiry Date *</label>
-                <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)}
-                  style={inputStyle()} />
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}><MapPin size={13} /> Location *</label>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {LOCATIONS.map(loc => (
-                    <label key={loc.value} style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', flex: 1,
-                      border: `2px solid ${location === loc.value ? '#059669' : '#E2E8F0'}`,
-                      borderRadius: 8, cursor: 'pointer', background: location === loc.value ? '#ECFDF5' : 'white',
-                      fontWeight: 600, fontSize: 13, color: location === loc.value ? '#065F46' : '#475569',
-                    }}>
-                      <input type="radio" name="location" value={loc.value} checked={location === loc.value}
-                        onChange={() => setLocation(loc.value)} style={{ display: 'none' }} />
-                      {loc.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}>Action Required *</label>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {ACTIONS.map(act => (
-                    <label key={act.value} style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', flex: 1,
-                      border: `2px solid ${actionRequired === act.value ? '#059669' : '#E2E8F0'}`,
-                      borderRadius: 8, cursor: 'pointer', background: actionRequired === act.value ? '#ECFDF5' : 'white',
-                      fontWeight: 600, fontSize: 13, color: actionRequired === act.value ? '#065F46' : '#475569',
-                    }}>
-                      <input type="radio" name="action" value={act.value} checked={actionRequired === act.value}
-                        onChange={() => setActionRequired(act.value)} style={{ display: 'none' }} />
-                      {act.icon} {act.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <button type="submit" disabled={loading}
-                style={{
-                  width: '100%', padding: '14px 24px', background: '#059669', color: 'white', border: 'none',
-                  borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  boxShadow: '0 4px 12px rgba(5,150,105,0.3)',
-                }}>
-                <AlertTriangle size={18} /> {loading ? 'Submitting...' : 'SUBMIT REQUEST TO CEO'}
-              </button>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                Expired Medicines
+              </h1>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Medications past their expiration date (Requires Disposal)
+              </p>
             </div>
           </div>
-        </form>
-      )}
-
-      {tab === 'list' && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <List size={16} color="#EF4444" /> Past Reports
-            </h3>
-            <button onClick={fetchReports} style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#475569' }}>
-              <RefreshCw size={12} /> Refresh
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button style={topBtnStyle}>
+              <Download size={13} /> Export PDF
+            </button>
+            <button style={topBtnStyle} onClick={() => window.print()}>
+              <Printer size={13} /> Print List
+            </button>
+            <button onClick={fetchStock} style={topBtnStyle}>
+              <RefreshCw size={13} /> Refresh
             </button>
           </div>
-          {reportsLoading ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Loading...</div>
-          ) : reports.length === 0 ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>No expired drug reports found.</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={thStyle}>Drug</th>
-                  <th style={thStyle}>Qty</th>
-                  <th style={thStyle}>Expiry Date</th>
-                  <th style={thStyle}>Location</th>
-                  <th style={thStyle}>Action</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{r.drug_name}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{r.quantity}</td>
-                    <td style={tdStyle}>
-                      <span style={{ fontSize: 12, color: '#EF4444' }}>
-                        {r.expiry_date ? new Date(r.expiry_date).toLocaleDateString() : '—'}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>{r.location || '—'}</td>
-                    <td style={tdStyle}>
-                      <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: 4, fontSize: 11 }}>
-                        {r.action_required || '—'}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        background: r.status === 'PENDING' ? '#FEF3C7' : r.status === 'APPROVED' ? '#D1FAE5' : r.status === 'REJECTED' ? '#FEE2E2' : '#F1F5F9',
-                        color: r.status === 'PENDING' ? '#92400E' : r.status === 'APPROVED' ? '#065F46' : r.status === 'REJECTED' ? '#991B1B' : '#475569',
-                        padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                      }}>
-                        {r.status || '—'}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 11, color: '#64748B' }}>
-                      {r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       )}
+
+      {/* Summary Banner */}
+      <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', padding: '16px 20px', borderRadius: 12, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ background: '#ffe4e6', padding: 10, borderRadius: '50%' }}>
+          <AlertTriangle color="#e11d48" size={24} />
+        </div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#9f1239' }}>{stock.length} Expired Items Found</div>
+          <div style={{ color: '#be123c', fontSize: 13, marginTop: 2 }}>These items must not be sold. Quarantine them immediately and notify your manager for disposal.</div>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', padding: '16px 20px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+        <label style={labelStyle}>Search Expired Items</label>
+        <div style={{ position: 'relative' }}>
+          <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, generic name, or category..."
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', borderBottom: '2px solid #e2e8f0' }}>
+                <th style={th}>Medication</th>
+                <th style={th}>Category</th>
+                <th style={th}>Stock Qty</th>
+                <th style={th}>Expired On</th>
+                <th style={th}>Days Past</th>
+                <th style={th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                    {loading ? 'Loading...' : 'No expired items found.'}
+                  </td>
+                </tr>
+              ) : filtered.map((item, idx) => (
+                <tr
+                  key={item.id}
+                  style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#fafbfc', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fff1f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'white' : '#fafbfc'}
+                >
+                  <td style={td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {item.image ? (
+                          <>
+                            <img src={`http://localhost:5000${item.image}`} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                            <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><Package size={16} color="#94a3b8" /></div>
+                          </>
+                        ) : (
+                          <Package size={16} color="#94a3b8" />
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{item.generic_name || 'No generic name'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ ...td, color: '#475569' }}>
+                    <span style={{ padding: '3px 8px', background: '#f1f5f9', borderRadius: 4, fontSize: 11 }}>
+                      {item.category_name || 'Uncategorized'}
+                    </span>
+                  </td>
+                  <td style={{ ...td, fontWeight: 800, color: '#e11d48' }}>
+                    {item.qty}
+                  </td>
+                  <td style={{ ...td, color: '#64748b', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Calendar size={13} color="#94a3b8" />
+                      {new Date(item.expiry_date).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td style={td}>
+                    <span style={{
+                      background: '#fee2e2',
+                      color: '#991b1b',
+                      border: '1px solid #fca5a5',
+                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, display: 'inline-block'
+                    }}>
+                      {item.daysExpired} Days
+                    </span>
+                  </td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleNotifyManager(item)} style={{ padding: '6px 12px', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <Bell size={12} /> Notify
+                      </button>
+                      <button onClick={() => handleMoveToQuarantine(item)} style={{ padding: '6px 12px', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 4px rgba(225,29,72,0.1)' }}>
+                        <Trash2 size={12} /> Quarantine
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
 
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-const inputStyle = () => ({ width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' });
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const tdStyle = { padding: '12px 14px', color: '#1E293B' };
-const tabBtn = (active) => ({
-  background: active ? '#059669' : 'white',
-  color: active ? 'white' : '#475569',
-  border: active ? 'none' : '1px solid #E2E8F0',
-  borderRadius: 8, padding: '8px 14px', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 600 : 400,
-});
+const topBtnStyle = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#475569', fontSize: 12, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
+const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 };
+const inputStyle = { width: '100%', padding: '9px 12px 9px 32px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
+const th = { padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
+const td = { padding: '14px 16px', color: '#1e293b', verticalAlign: 'middle' };

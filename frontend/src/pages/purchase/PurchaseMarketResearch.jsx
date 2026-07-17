@@ -95,8 +95,8 @@ const PurchaseMarketResearch = () => {
                     <div>{r.productName}</div>
                     <div style={{ fontSize: 12, color: '#94a3b8' }}>{r.spec}</div>
                   </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>${r.marketPrice}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>${r.offeredPrice}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>ETB {r.marketPrice}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>ETB {r.offeredPrice}</td>
                   <td style={{ padding: '12px 14px', textAlign: 'right', color: diff >= 0 ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
                     {diff > 0 ? `-$${Math.abs(diff)}` : `+$${Math.abs(diff)}`}
                   </td>

@@ -56,7 +56,7 @@ export default function PharmacyRequests() {
 
   // Real-time socket connection
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000', { transports: ['websocket'] });
+    socketRef.current = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), { transports: ['websocket', 'polling'], withCredentials: true });
 
     socketRef.current.on('new-prescription-request', (data) => {
       setNewCount(c => c + 1);

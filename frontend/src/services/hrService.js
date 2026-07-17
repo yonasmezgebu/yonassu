@@ -123,12 +123,14 @@ const hrService = {
   publishPolicy: async (id) => apiClient.put(`/hr/policies/${id}/publish`),
   archivePolicy: async (id) => apiClient.put(`/hr/policies/${id}/archive`),
   sendPolicyToAll: async (id) => apiClient.post(`/hr/policies/${id}/send-to-all`),
+  acknowledgePolicy: async (id) => apiClient.post(`/hr/policies/${id}/acknowledge`),
 
   // Announcements
   getAnnouncements: async (params) => apiClient.get('/hr/announcements', { params }),
   createAnnouncement: async (data) => apiClient.post('/hr/announcements', data),
   updateAnnouncement: async (id, data) => apiClient.put(`/hr/announcements/${id}`, data),
   deleteAnnouncement: async (id) => apiClient.delete(`/hr/announcements/${id}`),
+  retractAnnouncement: async (id) => apiClient.put(`/hr/announcements/${id}/retract`),
   readAnnouncement: async (id) => apiClient.post(`/hr/announcements/${id}/read`),
 
   // Internal Notices

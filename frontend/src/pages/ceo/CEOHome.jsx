@@ -14,10 +14,10 @@ const CEOHome = () => {
   }, []);
 
   const summaryMetrics = [
-    { label: 'Total Revenue Today', value: '$4,250', icon: <DollarSign size={20} color="#10b981" />, bg: '#dcfce7' },
-    { label: 'Total Revenue This Month', value: '$124,500', icon: <TrendingUp size={20} color="#3b82f6" />, bg: '#dbeafe' },
-    { label: 'Total Revenue This Year', value: '$1,450,000', icon: <TrendingUp size={20} color="#6366f1" />, bg: '#e0e7ff' },
-    { label: 'Total Stock Value', value: '$850,000', icon: <Package size={20} color="#f59e0b" />, bg: '#fef3c7' },
+    { label: 'Total Revenue Today', value: 'ETB 4,250', icon: <DollarSign size={20} color="#10b981" />, bg: '#dcfce7' },
+    { label: 'Total Revenue This Month', value: 'ETB 124,500', icon: <TrendingUp size={20} color="#3b82f6" />, bg: '#dbeafe' },
+    { label: 'Total Revenue This Year', value: 'ETB 1,450,000', icon: <TrendingUp size={20} color="#6366f1" />, bg: '#e0e7ff' },
+    { label: 'Total Stock Value', value: 'ETB 850,000', icon: <Package size={20} color="#f59e0b" />, bg: '#fef3c7' },
     { label: 'Pending Approvals', value: '12', icon: <Clock size={20} color="#ef4444" />, bg: '#fee2e2' },
     { label: 'Low Stock Alerts', value: '8', icon: <AlertTriangle size={20} color="#f97316" />, bg: '#ffedd5' },
     { label: 'Expiry Alerts', value: '3', icon: <AlertTriangle size={20} color="#ec4899" />, bg: '#fce7f3' },
@@ -27,7 +27,6 @@ const CEOHome = () => {
 
   const notificationBadges = [
     { label: '🔴 Pending CEO Approvals', count: 5, path: '/ceo/manager-requests' },
-    { label: '🟡 New Pharmacy Requests', count: 3, path: '/ceo/pharmacy' },
     { label: '🟢 Tender Bids Ready for Review', count: 2, path: '/ceo/tender-bids' },
     { label: '🔵 Fund Requests Awaiting Decision', count: 1, path: '/ceo/fund-approvals' },
     { label: '🟣 Direct Delivery Confirmations', count: 1, path: '/ceo/direct-delivery' },
@@ -39,7 +38,6 @@ const CEOHome = () => {
     { id: 3, name: 'Inventory', type: 'View', model: 'M19 + M22', path: '/ceo/inventory' },
     { id: 4, name: 'Finance', type: 'Management', model: 'CRV + PV + PCV', path: '/ceo/finance' },
     { id: 5, name: 'HR', type: 'Management', model: 'Employee Records', path: '/ceo/hr' },
-    { id: 6, name: 'Pharmacy (M20–M22)', type: 'Management', model: 'M20 + M21 + M22', path: '/ceo/pharmacy' },
     { id: 7, name: 'Drug Procurement (PR)', type: 'Management', model: 'M20 + Tender', path: '/ceo/procurement' },
     { id: 8, name: 'New Drug Requests', type: 'Management', model: 'M20', path: '/ceo/new-drugs' },
     { id: 9, name: 'Confirm Direct Delivery', type: 'Management', model: 'M19', path: '/ceo/direct-delivery' },

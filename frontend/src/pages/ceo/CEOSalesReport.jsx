@@ -106,7 +106,7 @@ const CEOSalesReport = () => {
               <div key={i.n}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 14, fontWeight: 'bold' }}>
                   <span>#{idx+1} {i.n}</span>
-                  <span>${i.v.toLocaleString()} ({i.p}%)</span>
+                  <span>ETB {i.v.toLocaleString()} ({i.p}%)</span>
                 </div>
                 <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 4, height: 8 }}>
                   <div style={{ width: `${i.p}%`, background: '#3b82f6', height: '100%', borderRadius: 4 }}></div>
@@ -128,7 +128,7 @@ const CEOSalesReport = () => {
               <div key={i.n}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 14, fontWeight: 'bold' }}>
                   <span>{i.n}</span>
-                  <span>${i.v.toLocaleString()} ({i.p}%)</span>
+                  <span>ETB {i.v.toLocaleString()} ({i.p}%)</span>
                 </div>
                 <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 4, height: 8 }}>
                   <div style={{ width: `${i.p}%`, background: '#f59e0b', height: '100%', borderRadius: 4 }}></div>
@@ -150,7 +150,7 @@ const CEOSalesReport = () => {
               <div key={i.n}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 14, fontWeight: 'bold' }}>
                   <span>{i.n}</span>
-                  <span>${i.v.toLocaleString()} ({i.p}%)</span>
+                  <span>ETB {i.v.toLocaleString()} ({i.p}%)</span>
                 </div>
                 <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 4, height: 8 }}>
                   <div style={{ width: `${i.p}%`, background: '#8b5cf6', height: '100%', borderRadius: 4 }}></div>
@@ -192,7 +192,7 @@ const CEOSalesReport = () => {
                 <td style={{ padding: 12, fontWeight: 'bold' }}>{p.name}</td>
                 <td style={{ padding: 12 }}>{p.dept}</td>
                 <td style={{ padding: 12 }}>{p.qty.toLocaleString()}</td>
-                <td style={{ padding: 12, color: '#3b82f6', fontWeight: 'bold' }}>${p.rev.toLocaleString()}</td>
+                <td style={{ padding: 12, color: '#3b82f6', fontWeight: 'bold' }}>ETB {p.rev.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

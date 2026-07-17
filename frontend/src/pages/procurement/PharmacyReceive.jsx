@@ -3,7 +3,6 @@ import apiClient from '../../services/apiClient';
 import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import { CheckCircle, Package, RefreshCw, ClipboardCheck } from 'lucide-react';
-
 export default function PharmacyReceive() {
   const { showToast, ToastContainer } = useToast();
   const [requests, setRequests] = useState([]);

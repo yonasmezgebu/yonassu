@@ -111,8 +111,8 @@ const PurchaseSupplierQuotations = () => {
                   <td style={{ padding: '12px 14px', color: '#22c55e', fontWeight: 500 }}>{q.referenceId}</td>
                   <td style={{ padding: '12px 14px', color: '#0f172a' }}>{q.supplierName}</td>
                   <td style={{ padding: '12px 14px', color: '#475569' }}>{q.item} <br/><span style={{fontSize:11}}>({q.qty} qty)</span></td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>${q.unitPrice}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: isLowest ? '#ca8a04' : '#0f172a' }}>${totalCost.toLocaleString()}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>ETB {q.unitPrice}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: isLowest ? '#ca8a04' : '#0f172a' }}>ETB {totalCost.toLocaleString()}</td>
                   <td style={{ padding: '12px 14px', color: '#64748b' }}>{q.deliveryTerms}</td>
                   <td style={{ padding: '12px 14px', color: '#64748b' }}>{q.dateSubmitted}</td>
                   <td style={{ padding: '12px 14px' }}>

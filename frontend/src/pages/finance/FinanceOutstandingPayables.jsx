@@ -1,122 +1,175 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Download, CalendarClock, CreditCard } from 'lucide-react';
-import { financeState } from '../../utils/financeTransactionService';
-import { submitNotification } from '../../utils/pharmacyNotifications';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AlertCircle, Download, CheckCircle2, TrendingDown, RefreshCw } from 'lucide-react';
+import api from '../../services/apiClient';
 
 const FinanceOutstandingPayables = () => {
-  const navigate = useNavigate();
+  const [payables, setPayables]       = useState([]);
+  const [loading, setLoading]         = useState(true);
   const [supplierFilter, setSupplierFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [agingFilter, setAgingFilter] = useState('All');
 
-  useEffect(() => {
-    submitNotification('📊 Outstanding Payables Report', '📊 A/P Report - Click to View', 'info.mp3');
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/finance-payables');
+      setPayables(res.data?.data || []);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const today = new Date();
 
-  const unpaidBills = financeState.supplierBills.filter(bill => bill.status === 'Unpaid' || bill.status === 'Overdue').map(bill => {
-    const dueDate = new Date(bill.dueDate);
-    const diffTime = today - dueDate;
-    const daysOverdue = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
-    return { ...bill, daysOverdue, outstandingBalance: bill.totalAmount - bill.amountPaid };
+  const processed = payables.map(p => {
+    const dueDate = new Date(p.due_date || p.date);
+    const diff = today - dueDate;
+    const daysOverdue = diff > 0 ? Math.floor(diff / 86400000) : 0;
+    return { ...p, daysOverdue };
   });
 
-  const filtered = unpaidBills.filter(bill => {
-    const matchSupp = supplierFilter === 'All' || bill.supplierName === supplierFilter;
-    let matchAging = true;
-    if (agingFilter === '0-30') matchAging = bill.daysOverdue >= 0 && bill.daysOverdue <= 30;
-    if (agingFilter === '31-60') matchAging = bill.daysOverdue > 30 && bill.daysOverdue <= 60;
-    if (agingFilter === '61-90') matchAging = bill.daysOverdue > 60 && bill.daysOverdue <= 90;
-    if (agingFilter === '>90') matchAging = bill.daysOverdue > 90;
-    
-    return matchSupp && matchAging;
+  const uniqueSuppliers = [...new Set(processed.map(p => p.paid_to))].sort();
+  const uniqueCategories = [...new Set(processed.map(p => p.category))].sort();
+
+  const filtered = processed.filter(p => {
+    const matchS = supplierFilter === 'All' || p.paid_to === supplierFilter;
+    const matchC = categoryFilter === 'All' || p.category === categoryFilter;
+    let matchA = true;
+    if (agingFilter === '0-30') matchA = p.daysOverdue >= 0 && p.daysOverdue <= 30;
+    if (agingFilter === '31-60') matchA = p.daysOverdue > 30 && p.daysOverdue <= 60;
+    if (agingFilter === '61-90') matchA = p.daysOverdue > 60 && p.daysOverdue <= 90;
+    if (agingFilter === '>90') matchA = p.daysOverdue > 90;
+    return matchS && matchC && matchA;
   });
 
-  const handleSchedulePayment = (bill) => {
-    navigate(`/finance/supplier-payments?billRef=${bill.id}&supplier=${encodeURIComponent(bill.supplierName)}`);
-  };
+  const fmt  = n => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+  const fmtD = d => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+
+  const totalPaid       = filtered.reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
+  const totalOutstanding = filtered.reduce((s, p) => s + parseFloat(p.outstanding_balance || 0), 0);
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+    <div style={{ padding: '0 0 24px 0', background: 'transparent', minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#c2410c' }}>
-            <AlertCircle color="#c2410c" size={28} /> OUTSTANDING PAYABLES
+          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: 12, color: '#0f172a', letterSpacing: '-0.5px' }}>
+            <div style={{ background: '#fff7ed', color: '#ea580c', padding: 8, borderRadius: 10 }}>
+              <TrendingDown size={24} />
+            </div>
+            Payables Book
           </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Accounts Payable (A/P) Aging Report.</p>
+          <p style={{ color: '#64748b', margin: '8px 0 0 0', fontSize: 14 }}>
+            Master ledger of all approved payments disbursed by Finance.
+          </p>
         </div>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontSize: 13, fontWeight: 600 }}>
-          <Download size={16} /> Export A/P Report
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', color: '#475569', fontSize: 13, fontWeight: 700, boxShadow: '0 1px 2px rgba(0,0,0,.05)' }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', color: '#475569', fontSize: 13, fontWeight: 700, boxShadow: '0 1px 2px rgba(0,0,0,.05)' }}>
+            <Download size={14} /> Export
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, marginBottom: 24 }}>
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Disbursed (Filtered)</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#0284c7' }}>
+            <span style={{ fontSize: 18, color: '#94a3b8', marginRight: 6 }}>ETB</span>{fmt(totalPaid)}
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Outstanding Balance</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: totalOutstanding > 0 ? '#dc2626' : '#94a3b8' }}>
+            <span style={{ fontSize: 18, color: '#94a3b8', marginRight: 6 }}>ETB</span>{fmt(totalOutstanding)}
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Total Records</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a' }}>{filtered.length}</div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 16, marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'end' }}>
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', padding: 20, marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16, alignItems: 'end' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Supplier</label>
-            <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-              <option value="All">All Suppliers</option>
-              {financeState.suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Paid To</label>
+            <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, outline: 'none' }}>
+              <option value="All">All Payees</option>
+              {uniqueSuppliers.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Days Overdue (Aging)</label>
-            <select value={agingFilter} onChange={e => setAgingFilter(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-              <option value="All">All Unpaid</option>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Category</label>
+            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, outline: 'none' }}>
+              <option value="All">All Categories</option>
+              {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Aging</label>
+            <select value={agingFilter} onChange={e => setAgingFilter(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, outline: 'none' }}>
+              <option value="All">All Records</option>
               <option value="0-30">0 - 30 Days</option>
               <option value="31-60">31 - 60 Days</option>
               <option value="61-90">61 - 90 Days</option>
               <option value=">90">Over 90 Days</option>
             </select>
           </div>
-          <button onClick={() => { setSupplierFilter('All'); setAgingFilter('All'); }} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 13, height: 35 }}>
+          <button onClick={() => { setSupplierFilter('All'); setCategoryFilter('All'); setAgingFilter('All'); }} style={{ padding: '10px 20px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, height: 42 }}>
             Reset
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['Supplier Name', 'Bill #', 'Bill Date', 'Due Date', 'Total Amount', 'Amount Paid', 'Outstanding', 'Aging', 'Actions'].map(col => (
-                <th key={col} style={{ padding: '12px 16px', textAlign: col === 'Actions' || col.includes('Amount') || col === 'Outstanding' ? 'right' : 'left', color: '#475569', fontWeight: 600, fontSize: 13 }}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr><td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>No outstanding payables found.</td></tr>
-            ) : filtered.map(bill => (
-              <tr key={bill.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>{bill.supplierName}</td>
-                <td style={{ padding: '12px 16px', color: '#ea580c', fontFamily: 'monospace' }}>{bill.id}</td>
-                <td style={{ padding: '12px 16px', color: '#64748b' }}>{bill.dateReceived}</td>
-                <td style={{ padding: '12px 16px', color: '#64748b' }}>{bill.dueDate}</td>
-                <td style={{ padding: '12px 16px', textAlign: 'right', color: '#64748b' }}>${bill.totalAmount.toLocaleString()}</td>
-                <td style={{ padding: '12px 16px', textAlign: 'right', color: '#64748b' }}>${bill.amountPaid.toLocaleString()}</td>
-                <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#dc2626' }}>${bill.outstandingBalance.toLocaleString()}</td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{ 
-                    padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                    background: bill.daysOverdue > 60 ? '#fee2e2' : bill.daysOverdue > 0 ? '#ffedd5' : '#f1f5f9',
-                    color: bill.daysOverdue > 60 ? '#dc2626' : bill.daysOverdue > 0 ? '#ea580c' : '#64748b'
-                  }}>
-                    {bill.daysOverdue > 0 ? `${bill.daysOverdue} Days` : 'Not Due'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button onClick={() => handleSchedulePayment(bill)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, cursor: 'pointer', fontSize: 12, color: '#d97706', fontWeight: 600 }} title="Schedule Payment (Route to PV)">
-                    <CreditCard size={14} /> Pay Bill
-                  </button>
-                </td>
+      <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+        {loading ? (
+          <div style={{ padding: 64, textAlign: 'center', color: '#64748b', fontSize: 14 }}>Loading payables ledger...</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                {['PV Number', 'Date', 'Paid To', 'Category', 'Method', 'Description', 'Total', 'Paid', 'Outstanding', 'Status'].map(col => (
+                  <th key={col} style={{ padding: '16px 18px', fontWeight: 700, textTransform: 'uppercase', fontSize: 11, letterSpacing: 0.5, textAlign: ['Total', 'Paid', 'Outstanding'].includes(col) ? 'right' : 'left' }}>{col}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={10} style={{ padding: '64px', textAlign: 'center', color: '#94a3b8' }}>
+                  No records match the current filters.
+                </td></tr>
+              ) : filtered.map(p => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '14px 18px', fontFamily: 'monospace', color: '#0284c7', fontWeight: 700 }}>{p.pv_number}</td>
+                  <td style={{ padding: '14px 18px', color: '#475569', fontSize: 12 }}>{fmtD(p.date)}</td>
+                  <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a' }}>{p.paid_to}</td>
+                  <td style={{ padding: '14px 18px' }}>
+                    <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>{p.category}</span>
+                  </td>
+                  <td style={{ padding: '14px 18px', color: '#64748b' }}>{p.payment_method}</td>
+                  <td style={{ padding: '14px 18px', color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description || '—'}</td>
+                  <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{fmt(p.total_amount)}</td>
+                  <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>{fmt(p.amount_paid)}</td>
+                  <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 800, color: parseFloat(p.outstanding_balance) > 0 ? '#dc2626' : '#94a3b8' }}>{fmt(p.outstanding_balance)}</td>
+                  <td style={{ padding: '14px 18px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: p.status === 'Paid' ? '#f0fdf4' : p.status === 'Overdue' ? '#fef2f2' : '#fffbeb', color: p.status === 'Paid' ? '#16a34a' : p.status === 'Overdue' ? '#dc2626' : '#d97706', padding: '5px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700, border: `1px solid ${p.status === 'Paid' ? '#bbf7d0' : p.status === 'Overdue' ? '#fecaca' : '#fde68a'}` }}>
+                      {p.status === 'Paid' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
+                      {p.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

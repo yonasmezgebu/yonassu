@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
   Home, Users, ClipboardList, Settings, BarChart2, ShoppingCart, FileText, Wallet,
@@ -9,12 +9,13 @@ import {
   Key, Sprout, Pill, CirclePlus, MessageCircle, ChevronRight, Clock, Book, AlertCircle,
   Sliders, RotateCcw, UserPlus, Upload, Droplet, CheckCircle2, AlertCircle as AlertCircle2, Info, X as XIcon, EyeOff,
   Folder, Image, Wrench, Inbox, UploadCloud, Eye, GitCommit, Cpu, Activity, Scissors, Archive, Star, RotateCcw as RepeatCcw,
-  PenTool, PieChart, DollarSign, FolderOpen
+  PenTool, PieChart, DollarSign, FolderOpen, Award, Check, RefreshCw, Camera
 } from 'lucide-react';
 import notificationService from '../../services/notificationService';
 import apiClient from '../../services/apiClient';
 import { playSound, sendPushNotification, requestPermission } from '../../services/notificationManager';
 import { io } from 'socket.io-client';
+import UserProfile from '../../pages/shared/UserProfile';
 import './DashboardLayout.css';
 
 const ICONS = {
@@ -93,7 +94,7 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -109,6 +110,24 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
     }
   };
 
+  const handleQuickAction = async (e, actionType, reqId) => {
+    e.stopPropagation();
+    try {
+      await apiClient.patch(`/procurement/requests/${reqId}/decision`, { 
+        decision: actionType, 
+        ceoNotes: actionType === 'CEO_REJECTED' ? 'Rejected from quick actions' : '' 
+      });
+      // Trigger a refresh of the pending counts
+      if (refreshTrigger !== undefined) {
+        // If DashboardLayout provides a way to refresh, or we just call the fetch again.
+        // The load is dependent on refreshTrigger. But let's just trigger a full reload.
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const markAllRead = async () => {
     try {
       await notificationService.markAllAsReadV2();
@@ -118,20 +137,93 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
 
   const markRead = async (id) => {
     try {
+      setItems(prev => prev.map(i => i.id === id ? { ...i, isRead: true } : i));
       await notificationService.markAsReadV2(id);
       load();
     } catch (e) { console.error(e); }
   };
 
+  // Maps known broken/non-existent notification links to real working routes
+  const resolveLink = (link, isCeo) => {
+    if (!link) return isCeo ? '/ceo/overview' : '/';
+    
+    // 2. Finance Route Check
+    const financeMap = {
+      '/finance/crv': '/finance/crv',
+      '/finance/pv': '/finance/pv',
+      '/finance/pcv': '/finance/pcv',
+      '/finance/pending-pcvs': '/finance/pcv', // Fallback for old notifications
+      '/finance/cash-book': '/finance/cash-book',
+    };
+
+    // Exact or prefix matches → map to working route
+    const ceoMap = {
+      '/ceo/pharmacy-approvals': '/ceo/pharmacy',
+      '/ceo/pharmacy-transfers': '/ceo/flow1-transfers',
+      '/ceo/pharmacy-reports': '/ceo/pharmacy',
+      '/ceo/expired-drugs': '/ceo/pharmacy',
+      '/ceo/tender-decisions': '/ceo/tender-full',
+      '/ceo/purchase-flow': '/ceo/flow2-purchase',
+      '/ceo/fund-requests': '/ceo/fund-approvals',
+      '/ceo/deliveries': '/ceo/direct-delivery',
+      '/ceo/manager-requests': '/ceo/manager-requests',
+      '/ceo/tenders': '/ceo/tenders',
+      '/ceo/finance-approvals': '/ceo/finance-approvals',
+    };
+    // Check prefix matches for finance map
+    for (const [prefix, target] of Object.entries(financeMap)) {
+      if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
+    }
+    
+    // Check prefix matches for ceo map
+    for (const [prefix, target] of Object.entries(ceoMap)) {
+      if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
+    }
+    // If CEO is browsing, trust any /ceo/ route
+    if (isCeo && link.startsWith('/ceo/')) return link;
+    
+    // If a non-CEO (like Purchase Manager) clicks a generic broadcast link meant for CEO:
+    if (!isCeo && link.startsWith('/ceo/tenders')) return '/purchase/smart-tenders';
+    
+    return link;
+  };
+
   const handleClick = (item) => {
     setOpen(false);
     if (item.id) markRead(item.id);
-    if (item.link) navigate(item.link);
+    const resolved = resolveLink(item.link, isCeoRoute);
+    if (resolved) {
+      // Pass a state timestamp so same-route pages can detect and re-fetch
+      navigate(resolved, { state: { bellTs: Date.now() } });
+    }
   };
 
   const handleCeoClick = (item) => {
     setOpen(false);
-    if (item.link) navigate(item.link);
+
+    // Determine navigation target - use item.link directly, fallback to /ceo/tenders
+    const link = item.link || '/ceo/tenders';
+
+    // Optimistically remove clicked item from ceoPending so it vanishes from the bell
+    if (setCeoPending) {
+      setCeoPending(prev => {
+        return prev
+          .map(g => ({
+            ...g,
+            details: g.details ? g.details.filter(d => d.id !== item.id) : []
+          }))
+          .map(g => ({ ...g, count: g.details ? g.details.length : 0 }))
+          .filter(g => g.count > 0);
+      });
+    }
+
+    // Tell the server we read this so it doesn't show up again
+    if (item.type && item.id) {
+      apiClient.post('/erp/mark-ceo-read', { type: item.type, id: item.id }).catch(() => {});
+    }
+
+    // Navigate — use window.location.href to guarantee navigation even on same-route
+    window.location.href = link;
   };
 
   useEffect(() => { load(); }, [refreshTrigger]);
@@ -139,7 +231,19 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
   const ceoTotal = (ceoPending || []).reduce((s, i) => s + i.count, 0);
   const ceoNew = Math.max(0, ceoTotal - (ceoPendingSnapshot || 0));
   const notifCount = items.filter(i => !i.isRead).length;
-  const totalCount = ceoNew + notifCount;
+  const pcvUnread = (pcvNotifications || []).filter(n => !n.read).length;
+  const totalBadge = (
+    (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
+    (ceoFundRequestsPending || 0) +
+    pharmacyPending +
+    (pharmacyOnlinePending || 0) +
+    purchasePending +
+    (purchaseApprovedTenders?.length || 0) +
+    procurementMessages +
+    purchaseNewBids +
+    notifCount +
+    pcvUnread
+  );
 
   useEffect(() => {
     if (open && ceoTotal > 0) setCeoPendingSnapshot(ceoTotal);
@@ -165,15 +269,15 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
         onClick={() => setOpen(o => !o)}
         style={{ position: 'relative' }}
       >
-        <Bell size={18} />
-        {totalCount > 0 && (
+        <Bell size={18} color="#eab308" style={{ filter: 'drop-shadow(0 2px 4px rgba(234,179,8,0.3))' }} />
+        {totalBadge > 0 && (
           <span style={{
             position: 'absolute', top: '-6px', right: '-6px',
             backgroundColor: '#EF4444', color: 'white',
             borderRadius: '9999px', fontSize: '10px', fontWeight: '700',
             minWidth: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 4px', lineHeight: 1
-          }}>{totalCount > 9 ? '9+' : totalCount}</span>
+          }}>{totalBadge > 9 ? '9+' : totalBadge}</span>
         )}
       </button>
 
@@ -186,32 +290,277 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
         }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: '700', fontSize: '15px', color: '#111827' }}>Notifications</span>
-            {totalCount > 0 && <span style={{ fontSize: '12px', color: '#6B7280' }}>{totalCount} unread</span>}
+            {totalBadge > 0 && <span style={{ fontSize: '12px', color: '#6B7280' }}>{totalBadge} unread</span>}
           </div>
           <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
             {ceoPending.length > 0 && ceoPending.map((item, idx) => (
+              <div key={'ceo-' + idx}>
+                <div
+                  onClick={() => handleCeoClick(item)}
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#FEF3C7', transition: 'background 0.15s'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FDE68A' }}>
+                    <AlertTriangle size={16} color="#D97706" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#92400E' }}>Pending CEO Action</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#A16207', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</p>
+                  </div>
+                </div>
+                {item.details && item.details.map(detail => (
+                  <div key={detail.id} style={{ padding: '10px 18px 10px 48px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#FFFBEB' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => handleCeoClick(detail)}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>{detail.title}</p>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>{detail.subtitle}</p>
+                      </div>
+                      {detail.type === 'procurement' && (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={(e) => handleQuickAction(e, 'APPROVED', detail.id)} style={{ background: '#10B981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>APPROVE</button>
+                          <button onClick={(e) => handleQuickAction(e, 'CEO_REJECTED', detail.id)} style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>REJECT</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            {isCeoRoute && ceoFundRequestsPending > 0 && (
               <div
-                key={'ceo-' + idx}
-                onClick={() => handleCeoClick(item)}
+                onClick={() => { setOpen(false); window.location.href = '/ceo/tenders?tab=Fund+Requests'; }}
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
                   cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
-                  backgroundColor: '#FEF3C7', transition: 'background 0.15s'
+                  backgroundColor: '#FDF2F8', transition: 'background 0.15s'
                 }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FCE7F3'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FDF2F8'}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FDE68A' }}>
-                  <AlertTriangle size={16} color="#D97706" />
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FBCFE8' }}>
+                  <span style={{ fontSize: '18px' }}>💰</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#92400E' }}>Pending CEO Action</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#A16207', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</p>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#9D174D' }}>Fund Request Awaiting Approval</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#BE185D' }}>{ceoFundRequestsPending} request{ceoFundRequestsPending > 1 ? 's' : ''} need your decision</p>
+                </div>
+              </div>
+            )}
+
+            {purchasePending > 0 && (
+              <div
+                onClick={() => { setOpen(false); navigate('/purchase/tenders'); }}
+                style={{
+                  padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                  cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  backgroundColor: '#ECFDF5', transition: 'background 0.15s'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#BBF7D0' }}>
+                  <CheckCircle size={16} color="#059669" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#065F46' }}>Tender Creation Required</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#059669' }}>{purchasePending} CEO-approved request{purchasePending > 1 ? 's' : ''} awaiting tender</p>
+                </div>
+              </div>
+            )}
+            
+            {purchaseApprovedTenders && purchaseApprovedTenders.length > 0 && (
+              <div key="purchase-approved-tenders">
+                <div
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#ECFDF5'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#D1FAE5' }}>
+                    <Award size={16} color="#059669" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#065F46' }}>Tender Approved &amp; Awarded</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#059669' }}>{purchaseApprovedTenders.length} tender(s) approved by CEO</p>
+                  </div>
+                </div>
+                {purchaseApprovedTenders.map(t => (
+                  <div
+                    key={`appr-${t.id}`}
+                    onClick={() => { setOpen(false); window.location.href = `/purchase/smart-tenders?viewTender=${t.id}`; }}
+                    style={{ padding: '10px 18px 10px 16px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#F0FDF4', cursor: 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DCFCE7'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F0FDF4'}
+                  >
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#065F46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title} ({t.tender_number})</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#059669' }}>Click to view → Mark as Read on page</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+
+            {pharmacyOnlinePending > 0 && (
+              <Link
+                to="/pharmacy-worker/sales"
+                state={{ bellTs: Date.now(), tab: 'online' }}
+                onClick={() => {
+                  setOpen(false);
+                  if (setPharmacyOnlinePending) setPharmacyOnlinePending(0);
+                }}
+                style={{ textDecoration: 'none', display: 'block' }}
+              >
+                <div
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#FEF2F2', transition: 'background 0.15s'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FEE2E2' }}>
+                    <ShoppingCart size={16} color="#B91C1C" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '700', fontSize: '13px', color: '#B91C1C' }}>🔴 New Online Orders</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#DC2626', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pharmacyOnlinePending} online order{pharmacyOnlinePending > 1 ? 's' : ''} awaiting processing</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+            
+            {pharmacyPending > 0 && (
+              <Link
+                to="/pharmacy/store-inventory"
+                state={{ tab: 'my_requests', bellTs: Date.now() }}
+                onClick={() => setOpen(false)}
+                style={{ textDecoration: 'none', display: 'block' }}
+              >
+                <div
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#BAE6FD'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E0F2FE'}
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#E0F2FE', transition: 'background 0.15s'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#BAE6FD' }}>
+                    <Truck size={16} color="#0369A1" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#0369A1' }}>Action Required</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#0284C7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pharmacyPending} Shipment{pharmacyPending > 1 ? 's' : ''} Awaiting Receipt</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+            {purchaseNewBids > 0 && (
+              <div key="purchase-bids">
+                <div
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#FEF3C7'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FDE68A' }}>
+                    <AlertTriangle size={16} color="#D97706" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#92400E' }}>New Bid(s) Submitted</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#A16207' }}>{purchaseNewBids} bids require evaluation</p>
+                  </div>
+                </div>
+                {purchaseBidsList && purchaseBidsList.slice(0, 5).map(b => (
+                  <div key={b.id} style={{ padding: '10px 18px 10px 48px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#FFFBEB' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { 
+                        setOpen(false);
+                        if (setPurchaseBidsList) setPurchaseBidsList(prev => prev.filter(x => x.id !== b.id));
+                        if (setPurchaseNewBids) setPurchaseNewBids(prev => Math.max(0, prev - 1));
+                        window.location.href = `/purchase/smart-tenders?viewTender=${b.public_tender_id}`;
+                      }}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>Bid from {b.competitor_name}</p>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>Pending Evaluation</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {procurementMessages > 0 && (
+              <Link
+                to="/purchase/smart-tenders"
+                state={{ tab: 'contact', bellTs: Date.now() }}
+                onClick={() => { setOpen(false); if (onOpenProcurementInbox) onOpenProcurementInbox(); }}
+                style={{ textDecoration: 'none', display: 'block' }}
+              >
+                <div
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F3E8FF'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FDF4FF'}
+                  style={{
+                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                    cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    backgroundColor: '#FDF4FF', transition: 'background 0.15s'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#F3E8FF' }}>
+                    <MessageCircle size={16} color="#9333ea" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#6b21a8' }}>New Customer Messages</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#9333ea' }}>{procurementMessages} unread message{procurementMessages > 1 ? 's' : ''} from public tender inquiries</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+            {((ceoPending && ceoPending.length > 0) || pharmacyPending > 0) && items.filter(i => !i.isRead).length > 0 && <div style={{ borderTop: '1px solid #E5E7EB' }} />}
+            {/* PCV Notifications */}
+            {pcvNotifications.filter(n => !n.read).map(n => (
+              <div
+                key={n.id}
+                onClick={() => {
+                  setOpen(false);
+                  if (setPcvNotifications) {
+                    setPcvNotifications(prev => prev.map(p => p.id === n.id ? { ...p, read: true } : p));
+                  }
+                  // Permanently mark read on server if it's a finance db notification
+                  if (n.dbId) {
+                    apiClient.put(`/finance-cash/pcv/${n.dbId}/finance-read`).catch(()=>{});
+                  }
+                  if (n.link) navigate(n.link, { state: { bellTs: Date.now() } });
+                }}
+                style={{
+                  padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                  cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  backgroundColor: '#F0FDF4',
+                  transition: 'background 0.15s'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#DCFCE7' }}>
+                  <Bell size={16} color="#16A34A" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#111827' }}>
+                    {n.title}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {n.message}
+                  </p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#9CA3AF' }}>
+                    Just now
+                  </p>
                 </div>
               </div>
             ))}
-            {ceoPending.length > 0 && items.length > 0 && <div style={{ borderTop: '1px solid #E5E7EB' }} />}
-            {items.length > 0 ? items.map(item => (
+            {items.filter(i => !i.isRead).length > 0 ? items.filter(i => !i.isRead).map((item, idx) => (
               <div
-                key={item.id}
+                key={item.id ? `notif-${item.id}` : `notif-idx-${idx}`}
                 onClick={() => handleClick(item)}
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
@@ -235,7 +584,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
                   </p>
                 </div>
               </div>
-            )) : items.length === 0 && ceoPending.length === 0 ? (
+            )) : items.filter(i => !i.isRead).length === 0 && ceoPending.length === 0 && pharmacyPending === 0 && pharmacyOnlinePending === 0 && purchasePending === 0 && purchaseNewBids === 0 && procurementMessages === 0 ? (
               <div style={{ padding: '32px', textAlign: 'center', color: '#9CA3AF' }}>
                 <CheckCircle size={32} style={{ marginBottom: '8px', color: '#10B981' }} />
                 <p style={{ margin: 0 }}>All caught up!</p>
@@ -245,7 +594,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, isCeoRoute, ce
           {notifCount > 0 && (
             <div style={{ padding: '10px 18px', borderTop: '1px solid #F3F4F6', textAlign: 'center' }}>
               <button
-                onClick={() => { navigate('/notifications'); setOpen(false); }}
+                onClick={() => { navigate(isCeoRoute ? '/ceo/flow1-transfers' : '/notifications'); setOpen(false); }}
                   style={{ fontSize: '13px', color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
                 >View All Notifications →</button>
             </div>
@@ -269,8 +618,8 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
-  const { user, logout } = useAuth();
+const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) => {
+  const { user, logout, updateUser } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
@@ -278,11 +627,57 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
   const [notifRefresh, setNotifRefresh] = useState(0);
   const [ceoPending, setCeoPending] = useState([]);
   const [ceoPendingSnapshot, setCeoPendingSnapshot] = useState(0);
+  const [pharmacyPending, setPharmacyPending] = useState(0);
+  const [pharmacyOnlinePending, setPharmacyOnlinePending] = useState(0);
+  const [purchasePending, setPurchasePending] = useState(0);
+  const [procurementMessages, setProcurementMessages] = useState(0);
+  const [purchaseNewBids, setPurchaseNewBids] = useState(0);
+  const [purchaseBidsList, setPurchaseBidsList] = useState([]);
+  const [purchaseApprovedTenders, setPurchaseApprovedTenders] = useState([]);
+  const [ceoFundRequestsPending, setCeoFundRequestsPending] = useState(0);
+  const [pageNotifs, setPageNotifs] = useState([]); // unread notifs for current page
+  const [pcvNotifications, setPcvNotifications] = useState([]); // PCV approval notifications
+  const [photoUploading, setPhotoUploading] = useState(false);
   const profileRef = useRef(null);
+  const photoInputRef = useRef(null);
   const socketRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Determine resolved backend URL for profile photos
+  const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+  const resolvePhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${BACKEND_URL}${cleanUrl}`;
+};
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('photo', file);
+    setPhotoUploading(true);
+    try {
+      const res = await apiClient.post('/users/profile-photo', formData);
+      if (res?.data?.profilePhoto) {
+        updateUser({ profilePhoto: res.data.profilePhoto });
+        showToast('Profile photo updated!', 'success');
+      }
+    } catch (err) {
+      showToast('Failed to upload photo', 'error');
+    } finally {
+      setPhotoUploading(false);
+      // reset input so same file can be re-selected
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const isCeoRoute = location.pathname.startsWith('/ceo');
+  const isPharmacyRoute = location.pathname.startsWith('/pharmacy') && !location.pathname.startsWith('/pharmacy-worker');
+  const isPurchaseRoute = location.pathname.startsWith('/purchase');
+  const isFinanceRoute = location.pathname.startsWith('/finance');
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -293,22 +688,77 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
   };
 
   useEffect(() => {
+    setExpandedMenus(prev => {
+      const next = { ...prev };
+      menuItems.forEach(item => {
+        if (item.children) {
+          const hasActive = item.children.some(child =>
+            isActive(child.path, child) || (child.altActiveOn && child.altActiveOn.some(ap => isActive(ap)))
+          );
+          if (hasActive) next[item.label] = true;
+        }
+      });
+      return next;
+    });
+  }, [location.pathname, menuItems]);
+
+  useEffect(() => {
     requestPermission();
   }, []);
 
   useEffect(() => {
-    const socket = io('http://localhost:5000', { transports: ['websocket'] });
-    socketRef.current = socket;
-    socket.on('pharmacy-transfer', (data) => {
-      const { title, message, type, link } = data || {};
-      const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', sale_created: 'info', sales_report: 'info', report_rejected: 'info', expired_drug: 'info', prescription: 'info' };
-      const soundName = soundMap[type] || 'info';
-      playSound(soundName);
-      sendPushNotification(title || 'Pharmacy Transfer', message || '', link || '');
-      if (title) showToast(`${title}: ${message}`, type);
-      setNotifRefresh(n => n + 1);
-    });
-    return () => { socket.disconnect(); socketRef.current = null; };
+    let socket = null;
+    let connectTimer = null;
+    // Delay connection slightly to avoid premature close
+    connectTimer = setTimeout(() => {
+      socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), {
+        transports: ['polling', 'websocket'],  // polling first, then upgrade
+        withCredentials: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        timeout: 10000,
+      });
+      socketRef.current = socket;
+      socket.on('pharmacy-transfer', (data) => {
+        const { title, message, type, link } = data || {};
+        const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', sale_created: 'info', sales_report: 'info', report_rejected: 'info', expired_drug: 'info', prescription: 'info' };
+        const soundName = soundMap[type] || 'info';
+        playSound(soundName);
+        sendPushNotification(title || 'Pharmacy Transfer', message || '', link || '');
+        if (title) showToast(`${title}: ${message}`, type);
+        setNotifRefresh(n => n + 1);
+      });
+      // Online Prescription Requests
+      socket.on('new-prescription-request', (data) => {
+        const { request_number, medication_name, quantity, customer_name } = data || {};
+        playSound('info');
+        sendPushNotification('New Online Order', `${customer_name} ordered ${medication_name} x${quantity}`, '/pharmacy-worker/sales');
+        showToast(`New Online Order #${request_number}: ${customer_name} ordered ${medication_name}`, 'info');
+        setNotifRefresh(n => n + 1);
+        // Dispatch event for PharmacySalesForm to update cart if open
+        window.dispatchEvent(new CustomEvent('dashboardRefresh'));
+      });
+      // PCV Approval Notifications
+      socket.on('finance-cash', (data) => {
+        const { title, message, type, link } = data || {};
+        const isCeo = location.pathname.startsWith('/ceo');
+        const isFinance = location.pathname.startsWith('/finance');
+        
+        // Target notifications correctly
+        const meantForCeo = link?.startsWith('/ceo');
+        const meantForFinance = link?.startsWith('/finance');
+
+        if ((isCeo && meantForCeo) || (isFinance && meantForFinance)) {
+          if (title) showToast(`${title}: ${message}`, type || 'info');
+          setPcvNotifications(prev => [{ id: Date.now(), title, message, link, type, read: false }, ...prev].slice(0, 10));
+          setNotifRefresh(n => n + 1);
+        }
+      });
+    }, 500);
+    return () => {
+      clearTimeout(connectTimer);
+      if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; }
+    };
   }, [showToast]);
 
   useEffect(() => {
@@ -317,11 +767,107 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
         if (res?.status === 'success') setCeoPending(res.data || []);
       }).catch(() => {});
       setCeoPendingSnapshot(0);
+      // Fetch fund requests pending CEO approval
+      apiClient.get('/public-procurement/fund-requests').then(res => {
+        const requests = res?.data?.data || res?.data || [];
+        setCeoFundRequestsPending(Array.isArray(requests) ? requests.filter(r => r.status === 'PENDING_CEO').length : 0);
+      }).catch(() => {});
     } else {
       setCeoPending([]);
       setCeoPendingSnapshot(0);
+      setCeoFundRequestsPending(0);
     }
-  }, [location.pathname, isCeoRoute]);
+    
+    if (isFinanceRoute) {
+      apiClient.get('/finance-cash/pcv/finance-notifications').then(res => {
+        const pcvs = res?.data || [];
+        setPcvNotifications(prev => {
+          // Merge with existing socket notifications to avoid duplicates
+          const existingIds = prev.map(p => p.dbId).filter(Boolean);
+          const newNotifs = pcvs.filter(p => !existingIds.includes(p.id)).map(p => ({
+            id: Date.now() + p.id,
+            dbId: p.id,
+            title: p.status === 'approved_finance' ? '✅ PCV Approved' : '❌ PCV Rejected',
+            message: `PCV ${p.pcv_number} ${p.status === 'approved_finance' ? 'approved' : 'rejected'} by CEO.`,
+            link: '/finance/pcv',
+            type: p.status === 'approved_finance' ? 'success' : 'error',
+            read: false
+          }));
+          return [...newNotifs, ...prev].slice(0, 10);
+        });
+      }).catch(() => {});
+    }
+    
+    if (isPharmacyRoute || location.pathname.startsWith('/pharmacy-worker')) {
+      apiClient.get('/transfer-requests').then(res => {
+        const reqs = Array.isArray(res) ? res : (res?.data || []);
+        setPharmacyPending(reqs.filter(r => r.status === 'SHIPPED').length);
+      }).catch(() => {});
+      apiClient.get('/pharmacy/requests/pending').then(res => {
+        const reqs = Array.isArray(res?.data?.data) ? res.data.data : (res?.data || []);
+        setPharmacyOnlinePending(reqs.length);
+      }).catch(() => {});
+    } else {
+      setPharmacyPending(0);
+      setPharmacyOnlinePending(0);
+    }
+
+    if (isPurchaseRoute) {
+      apiClient.get('/procurement/approved-for-purchase').then(res => {
+        const items = Array.isArray(res?.data) ? res.data : (res?.data?.data || []);
+        setPurchasePending(items.filter(r => r.status === 'APPROVED_FOR_PURCHASE' || r.status === 'IN_MARKET').length);
+      }).catch(() => {});
+      // Fetch unread procurement message count for notification bell
+      apiClient.get('/procurement-settings/messages/unread-count').then(res => {
+        setProcurementMessages(res?.count || 0);
+      }).catch(() => {});
+      apiClient.get('/public-tenders/internal/recent-bids').then(res => {
+        if (res?.data?.data) {
+          setPurchaseNewBids(res.data.data.length);
+          setPurchaseBidsList(res.data.data);
+        }
+      }).catch(() => {});
+      apiClient.get('/erp/purchase-pending-tenders').then(res => {
+        if (res?.status === 'success') setPurchaseApprovedTenders(res.data || []);
+      }).catch(() => {});
+    } else {
+      setPurchasePending(0);
+      setProcurementMessages(0);
+      setPurchaseNewBids(0);
+      setPurchaseBidsList([]);
+      setPurchaseApprovedTenders([]);
+    }
+  }, [location.pathname, isCeoRoute, isPharmacyRoute, isPurchaseRoute, isFinanceRoute, notifRefresh]);
+
+  // Load page-level unread notifications matching current URL
+  useEffect(() => {
+    notificationService.getMyNotificationsV2().then(all => {
+      const unread = (all || []).filter(n => {
+        if (n.isRead) return false;
+        if (!n.link) return false;
+        const link = n.link.split('?')[0];
+        return location.pathname === link || location.pathname.startsWith(link + '/');
+      });
+      setPageNotifs(unread);
+    }).catch(() => {});
+  }, [location.pathname, notifRefresh]);
+
+  const markPageNotifsRead = async () => {
+    try {
+      await Promise.all(pageNotifs.map(n => notificationService.markAsReadV2(n.id)));
+      setPageNotifs([]);
+      setNotifRefresh(p => p + 1);
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    const handleRefreshEvent = () => {
+      // Trigger a re-fetch of notification counts
+      setNotifRefresh(prev => prev + 1);
+    };
+    window.addEventListener('refreshNotifications', handleRefreshEvent);
+    return () => window.removeEventListener('refreshNotifications', handleRefreshEvent);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -347,18 +893,22 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
       setIsSidebarOpen(false);
     }
   };
-  const isActive = (path) => {
+  const isActive = (path, item) => {
     if (!path) return false;
     if (path === '/') return location.pathname === '/';
     const [p, qs] = path.split('?');
     if (qs !== undefined) {
       return (location.pathname + location.search) === path;
     }
-    return location.pathname.startsWith(p + '/') || location.pathname === p;
+    if (location.pathname.startsWith(p + '/') || location.pathname === p) return true;
+    if (item?.altActiveOn) {
+      return item.altActiveOn.some(ap => location.pathname.startsWith(ap + '/') || location.pathname === ap);
+    }
+    return false;
   };
   const isParentActive = (item) => {
     if (!item.children) return false;
-    return item.children.some(child => isActive(child.path));
+    return item.children.some(child => isActive(child.path, child));
   };
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -402,8 +952,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
               return (
                 <div key={item.label || index} className="dash-nav-group">
                   <button
-                    className={`dash-nav-item ${isParentActive(item) || isActive(item.path) ? 'active' : ''}`}
-                    onClick={() => toggleSubmenu(item.label)}
+                    className={`dash-nav-item ${isParentActive(item) || isActive(item.path, item) ? 'active' : ''}`}
+                    onClick={() => { toggleSubmenu(item.label); if (item.path) navigate(item.path); }}
                     title={!isSidebarOpen ? item.label : ''}
                   >
                     <span className="nav-icon">{ICONS[item.icon] || ICONS.default}</span>
@@ -415,7 +965,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
                       {item.children.map(child => (
                         <button
                           key={child.label || child.path}
-                          className={`dash-nav-subitem ${isActive(child.path) ? 'active' : ''}`}
+                          className={`dash-nav-subitem ${child.className || ''} ${isActive(child.path, child) ? 'active' : ''}`}
                           onClick={() => handleNav(child)}
                         >
                           {child.icon && <span className="nav-icon sub-icon" style={child.color ? { color: child.color } : undefined}>{ICONS[child.icon] || ICONS.default}</span>}
@@ -430,7 +980,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
             return (
               <button
                 key={item.path || index}
-                className={`dash-nav-item ${item.className || ''} ${isActive(item.path) ? 'active' : ''}`}
+                className={`dash-nav-item ${item.className || ''} ${isActive(item.path, item) ? 'active' : ''}`}
                 onClick={() => handleNav(item)}
                 title={!isSidebarOpen ? item.label : ''}
               >
@@ -470,15 +1020,65 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
             )}
           </div>
           
-          <div className="dash-topbar-center">
-            <div className="dash-search">
-              <span className="dash-search-icon"><Search size={16} /></span>
-              <input type="text" placeholder="Search medicines, orders, or customers..." />
+          <div className="dash-topbar-center" style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
+            <div className="dash-search" style={{ flex: 1, position: 'relative' }}>
+              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}><Search size={18} /></span>
+              <input 
+                type="text" 
+                placeholder="Search sales, medicines, orders..." 
+                onChange={(e) => window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px 12px 46px',
+                  borderRadius: '30px',
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  fontSize: '0.95rem',
+                  color: '#1e293b',
+                  outline: 'none',
+                  transition: 'all 0.25s ease',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}
+                onFocus={(e) => {
+                  e.target.style.background = '#ffffff';
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.background = '#f8fafc';
+                  e.target.style.borderColor = '#e2e8f0';
+                  e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)';
+                }}
+              />
             </div>
           </div>
 
           <div className="dash-topbar-right">
-            <NotificationBell navigate={navigate} refreshTrigger={notifRefresh} ceoPending={ceoPending} isCeoRoute={isCeoRoute} ceoPendingSnapshot={ceoPendingSnapshot} setCeoPendingSnapshot={setCeoPendingSnapshot} />
+            <NotificationBell 
+              navigate={navigate}
+              refreshTrigger={notifRefresh}
+              ceoPending={ceoPending}
+              setCeoPending={setCeoPending}
+              isCeoRoute={isCeoRoute}
+              ceoPendingSnapshot={ceoPendingSnapshot}
+              setCeoPendingSnapshot={setCeoPendingSnapshot}
+              pharmacyPending={pharmacyPending}
+              pharmacyOnlinePending={pharmacyOnlinePending}
+              setPharmacyOnlinePending={setPharmacyOnlinePending}
+              purchasePending={purchasePending}
+              purchaseApprovedTenders={purchaseApprovedTenders}
+              setPurchaseApprovedTenders={setPurchaseApprovedTenders}
+              procurementMessages={procurementMessages}
+              purchaseNewBids={purchaseNewBids}
+              purchaseBidsList={purchaseBidsList}
+              setPurchaseBidsList={setPurchaseBidsList}
+              setPurchaseNewBids={setPurchaseNewBids}
+              ceoFundRequestsPending={ceoFundRequestsPending}
+              onOpenProcurementInbox={() => navigate('/purchase/smart-tenders?tab=contact')}
+              pcvNotifications={pcvNotifications}
+              setPcvNotifications={setPcvNotifications}
+              isFinanceRoute={location.pathname.startsWith('/finance')}
+            />
             <div className="dash-profile-dropdown" ref={profileRef}>
               <button 
                 className={`dash-user-chip ${profileOpen ? 'open' : ''}`} 
@@ -486,7 +1086,20 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
                 title={user?.roles?.[0]}
               >
                 <div className="dash-avatar">
-                  {user?.fullName?.charAt(0)?.toUpperCase() || <User size={14} />}
+                  {resolvePhoto(user?.profilePhoto) ? (
+                    <img
+                      src={resolvePhoto(user.profilePhoto)}
+                      alt={user.fullName || 'User'}
+                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    user?.fullName?.charAt(0)?.toUpperCase() || <User size={14} />
+                  )}
+                  {photoUploading && (
+                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 12, height: 12, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    </div>
+                  )}
                 </div>
                 <div className="dash-user-info">
                   <div className="dash-user-name">{user?.fullName || 'User'}</div>
@@ -497,16 +1110,66 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
               
               {profileOpen && (
                 <div className="dash-dropdown-menu">
-                  <div className="dropdown-header">
+                  {/* Hidden file input for photo upload */}
+                  <input
+                    type="file"
+                    ref={photoInputRef}
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoUpload}
+                  />
+                  <div className="dropdown-header" style={{ textAlign: 'center', paddingBottom: '12px' }}>
+                    {/* Clickable avatar in dropdown */}
+                    <div
+                      style={{
+                        width: 64, height: 64, borderRadius: '50%', margin: '0 auto 8px',
+                        background: resolvePhoto(user?.profilePhoto) ? 'transparent' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '24px', fontWeight: 700, color: 'white',
+                        cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                        boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                        border: '3px solid #e2e8f0'
+                      }}
+                      title="Click to change photo"
+                      onClick={() => photoInputRef.current?.click()}
+                    >
+                      {resolvePhoto(user?.profilePhoto) ? (
+                        <img
+                          src={resolvePhoto(user.profilePhoto)}
+                          alt={user?.fullName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                        />
+                      ) : (
+                        user?.fullName?.charAt(0)?.toUpperCase() || <User size={28} />
+                      )}
+                      {/* Camera overlay on hover */}
+                      <div style={{
+                        position: 'absolute', inset: 0, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', transition: 'background 0.2s'
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.45)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0)'}
+                      >
+                        <Camera size={20} color="white" style={{ opacity: 0 }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                        />
+                      </div>
+                    </div>
                     <p className="dropdown-name">{user?.fullName || 'User'}</p>
                     <p className="dropdown-email">{user?.email || 'user@sutana.com'}</p>
                   </div>
                   <div className="dropdown-divider"></div>
-                  <button className="dropdown-item" onClick={() => navigate(user?.roles?.includes('Admin') ? '/admin/settings' : '/customer/profile')}>
+                  <button className="dropdown-item" onClick={() => {
+                    setProfileOpen(false);
+                    // Base path like /admin, /ceo, /pharmacy
+                    const basePath = location.pathname.split('/').slice(0, 2).join('/');
+                    navigate(user?.roles?.includes('Customer') ? '/customer/profile' : `${basePath}/profile`);
+                  }}>
                     <User size={16} />
                     My Profile
                   </button>
-                  <button className="dropdown-item text-danger" onClick={handleLogout}>
+                  <button className="dropdown-item" onClick={handleLogout} style={{ color: '#ef4444' }}>
                     <LogOut size={16} />
                     Logout
                   </button>
@@ -516,8 +1179,45 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar }) => {
           </div>
         </header>
         )}
-        <div className="dash-content">
-          {children}
+        <div className="dash-content" style={noPadding ? { padding: 0, background: '#ffffff', display: 'flex', flexDirection: 'column' } : {}}>
+          {pageNotifs.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              border: '1px solid #bfdbfe', borderRadius: '10px',
+              padding: '12px 18px', marginBottom: '16px',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.1)'
+            }}>
+              <Bell size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: '#1e3a8a' }}>
+                  {pageNotifs.length === 1 ? pageNotifs[0].title : `${pageNotifs.length} unread notifications for this page`}
+                </span>
+                {pageNotifs.length === 1 && pageNotifs[0].message && (
+                  <span style={{ fontSize: '12px', color: '#3b82f6', marginLeft: '8px' }}>{pageNotifs[0].message}</span>
+                )}
+              </div>
+              <button
+                onClick={markPageNotifsRead}
+                style={{
+                  padding: '6px 16px', background: '#2563eb', color: 'white',
+                  border: 'none', borderRadius: '6px', fontWeight: 700,
+                  fontSize: '12px', cursor: 'pointer', flexShrink: 0,
+                  boxShadow: '0 2px 6px rgba(37,99,235,0.3)'
+                }}
+              >
+                Mark as Read
+              </button>
+              <button
+                onClick={() => setPageNotifs([])}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd', flexShrink: 0, padding: '2px' }}
+                title="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {location.pathname.endsWith('/profile') ? <UserProfile /> : children}
         </div>
       </main>
     </div>

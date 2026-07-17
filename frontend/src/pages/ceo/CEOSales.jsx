@@ -140,7 +140,7 @@ const CEOSales = () => {
                 <td style={{ padding: 12, fontWeight: 'bold' }}>{r.id}</td>
                 <td style={{ padding: 12 }}>{r.department}</td>
                 <td style={{ padding: 12 }}>{r.date}</td>
-                <td style={{ padding: 12, fontWeight: 'bold' }}>${r.total}</td>
+                <td style={{ padding: 12, fontWeight: 'bold' }}>ETB {r.total}</td>
                 <td style={{ padding: 12 }}>
                   <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 'bold', background: r.status === 'APPROVED' ? '#dcfce7' : r.status === 'REJECTED' ? '#fee2e2' : '#fef3c7', color: r.status === 'APPROVED' ? '#166534' : r.status === 'REJECTED' ? '#991b1b' : '#b45309' }}>
                     {r.status}
@@ -199,7 +199,7 @@ const CEOSales = () => {
                 <td style={{ padding: 12 }}>{t.department}</td>
                 <td style={{ padding: 12 }}>{t.branch}</td>
                 <td style={{ padding: 12 }}>{t.date}</td>
-                <td style={{ padding: 12, fontWeight: 'bold' }}>${t.amount}</td>
+                <td style={{ padding: 12, fontWeight: 'bold' }}>ETB {t.amount}</td>
               </tr>
             ))}
           </tbody>

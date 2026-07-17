@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowUpRight, Plus, Trash2, Printer, CheckCircle } from 'lucide-react';
-import { createIssueNote } from '../../utils/storeTransactionService';
+import React, { useState, useEffect } from 'react';
+import { ArrowUpRight, Plus, Trash2, Printer, CheckCircle, Search } from 'lucide-react';
+import { createIssue, getInventory } from '../../utils/storeApi';
 
-// ── Configurable destination list ─────────────────────────────────────────────
-// To add a new destination department, simply add it to this array.
-const DEPARTMENT_LIST = [
+const DESTINATION_LIST = [
   'Pharmacy',
   'Sales',
   'Printing',
@@ -17,7 +15,7 @@ const DEPARTMENT_LIST = [
   'Other Department',
 ];
 
-const emptyLine = () => ({ id: Date.now(), itemName: '', qtyToIssue: '', batchNumber: '' });
+const emptyLine = () => ({ id: Date.now(), drug_id: '', drug_name: '', qtyToIssue: '', batchNumber: '' });
 
 const StoreGoodsIssue = () => {
   const [destination, setDestination] = useState('Pharmacy');
@@ -26,29 +24,82 @@ const StoreGoodsIssue = () => {
   const [lines, setLines] = useState([emptyLine()]);
   const [submitted, setSubmitted] = useState(null);
   const [errors, setErrors] = useState({});
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setLoading(true);
+        const res = await getInventory();
+        setInventory(res.data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const addLine = () => setLines(l => [...l, emptyLine()]);
   const removeLine = (id) => setLines(l => l.filter(x => x.id !== id));
   const updateLine = (id, field, value) => setLines(l => l.map(x => x.id === id ? { ...x, [field]: value } : x));
+
+  const handleDrugSelect = (id, drugId) => {
+    const item = inventory.find(i => i.drug_id === Number(drugId));
+    if (item) {
+      updateLine(id, 'drug_id', drugId);
+      updateLine(id, 'drug_name', item.drug_name);
+      updateLine(id, 'batchNumber', item.batch_no || '');
+    }
+  };
 
   const validate = () => {
     const e = {};
     if (!requisitionRef.trim()) e.requisitionRef = 'Requisition # (M20) is required';
     if (!approvalRef.trim()) e.approvalRef = 'Approval # (M21) is required';
     lines.forEach((line, i) => {
-      if (!line.itemName.trim()) e[`item_${i}`] = 'Item name required';
+      if (!line.drug_id) e[`item_${i}`] = 'Item required';
       if (!line.qtyToIssue || isNaN(line.qtyToIssue) || +line.qtyToIssue <= 0) e[`qty_${i}`] = 'Valid quantity required';
     });
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     try {
-      const m22Record = createIssueNote(destination, requisitionRef, approvalRef, lines);
-      setSubmitted({ ...m22Record, date: m22Record.timestamp, m22Number: m22Record.id });
+      const issue_no = 'M22-' + Date.now().toString().slice(-6);
+      const payload = {
+        issue_no,
+        department: destination,
+        issued_to: destination,
+        requisition_ref: requisitionRef,
+        approval_ref: approvalRef,
+        items: lines.map(line => ({
+          drug_id: Number(line.drug_id),
+          quantity: Number(line.qtyToIssue),
+          batch_no: line.batchNumber,
+        }))
+      };
+      const res = await createIssue(payload);
+      if (!res.success) throw new Error(res.message);
+      const responseData = res.data || res;
+      setSubmitted({
+        m22Number: responseData.issue_no || responseData.id,
+        date: responseData.created_at || new Date().toISOString(),
+        destination: responseData.department || responseData.issued_to || destination,
+        requisitionRef: responseData.requisition_ref || requisitionRef,
+        approvalRef: responseData.approval_ref || approvalRef,
+        lines: (responseData.items || lines).map((item, idx) => ({
+          itemName: item.drug_name || (lines[idx] ? lines[idx].drug_name : ''),
+          qtyToIssue: item.quantity || item.qtyToIssue,
+          batchNumber: item.batch_no || item.batchNumber || '',
+        }))
+      });
     } catch (err) {
       setErrors({ requisitionRef: err.message });
     }
@@ -101,6 +152,22 @@ const StoreGoodsIssue = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: 16 }}>Loading inventory...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <p style={{ color: '#ef4444', fontSize: 16 }}>Error: {error}</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ marginBottom: 24 }}>
@@ -117,7 +184,7 @@ const StoreGoodsIssue = () => {
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Destination *</label>
               <select value={destination} onChange={e => setDestination(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-                {DEPARTMENT_LIST.map(dept => (
+                {DESTINATION_LIST.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
@@ -146,7 +213,12 @@ const StoreGoodsIssue = () => {
             <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr auto', gap: 10, marginBottom: 12, alignItems: 'flex-start' }}>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ITEM NAME *</label>}
-                <input value={line.itemName} onChange={e => updateLine(line.id, 'itemName', e.target.value)} placeholder="Item name" style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`item_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
+                <select value={line.drug_id} onChange={e => handleDrugSelect(line.id, e.target.value)} style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`item_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}>
+                  <option value="">Select item...</option>
+                  {inventory.map(item => (
+                    <option key={item.drug_id} value={item.drug_id}>{item.drug_name} {item.strength} (Stock: {item.quantity})</option>
+                  ))}
+                </select>
               </div>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>QTY TO ISSUE *</label>}

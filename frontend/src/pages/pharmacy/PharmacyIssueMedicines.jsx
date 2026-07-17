@@ -1,213 +1,373 @@
-import React, { useState } from 'react';
-import { Printer, ShoppingCart, Globe, CheckCircle } from 'lucide-react';
-
-const DRUGS_LIST = [
-  { id:1, name:'Amoxicillin 500mg', price:250, stock:120 },
-  { id:2, name:'Paracetamol 500mg', price:50,  stock:80 },
-  { id:3, name:'Ibuprofen 400mg',   price:80,  stock:150 },
-  { id:4, name:'Metformin 500mg',   price:150, stock:45 },
-  { id:5, name:'Omeprazole 20mg',   price:200, stock:60 },
-  { id:6, name:'Atorvastatin 10mg', price:350, stock:70 },
-  { id:7, name:'Salbutamol Inhaler',price:650, stock:12 },
-];
-
-const BRANCHES = ['Branch A','Branch B','Branch C','Main Pharmacy'];
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowRight, ShoppingCart, Loader2, RefreshCw, CheckCircle, XCircle, Search, Package, User, FileText, Pill, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import pharmacyService from '../../services/pharmacyService';
+import apiClient from '../../services/apiClient';
+import infoSound from '../../assets/notification/info.mp3';
 
 const PharmacyIssueMedicines = () => {
-  const [issueType, setIssueType] = useState('walk-in'); // 'walk-in' | 'online'
-  const [customerName, setCustomerName] = useState('');
-  const [orderRef, setOrderRef] = useState('');
-  const [branch, setBranch] = useState('Branch A');
-  const [issuedBy, setIssuedBy] = useState('Pharmacy Manager');
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedDrug, setSelectedDrug] = useState('');
-  const [qty, setQty] = useState(1);
-  const [cart, setCart] = useState([]);
-  const [submitted, setSubmitted] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [workerPermDenied] = useState(false); // Manager always has access
+
+  const [customerName, setCustomerName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState([]);
+
+  const [msg, setMsg] = useState({ type: '', text: '' });
+  const [successModal, setSuccessModal] = useState(null);
+  const [recentIssues, setRecentIssues] = useState([]);
+  const [search, setSearch] = useState('');
+  const audioRef = useRef(null);
+
+  const showMsg = (type, text) => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg({ type: '', text: '' }), 4000);
+  };
+
+  const playSound = () => {
+    try { if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); } } catch {}
+  };
+
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const raw = await pharmacyService.getProducts();
+      const list = Array.isArray(raw) ? raw : raw?.data || [];
+      setProducts(list);
+    } catch (e) {
+      setError(e?.response?.data?.message || e.message || 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadRecentIssues = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/pharmacy/dispenses?limit=10');
+      setRecentIssues(Array.isArray(res) ? res : res?.data || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+    loadRecentIssues();
+  }, [loadProducts, loadRecentIssues]);
+
+  const filtered = products.filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.category_name?.toLowerCase().includes(search.toLowerCase()));
+
+  const selectedProduct = products.find(p => p.id === parseInt(selectedProductId));
 
   const addToCart = () => {
-    const drug = DRUGS_LIST.find(d => d.id === parseInt(selectedDrug));
-    if (!drug || qty < 1) return;
+    if (!selectedProduct || quantity < 1) return;
+    const img = selectedProduct.drug_image || selectedProduct.cover_image || null;
     setCart(prev => {
-      const existing = prev.find(i => i.id === drug.id);
-      if (existing) return prev.map(i => i.id === drug.id ? {...i, qty: i.qty + qty} : i);
-      return [...prev, {...drug, qty}];
+      const existing = prev.find(i => i.id === selectedProduct.id);
+      if (existing) {
+        return prev.map(i => i.id === selectedProduct.id ? { ...i, qty: i.qty + quantity } : i);
+      }
+      return [...prev, { id: selectedProduct.id, name: selectedProduct.name, image: img, price: selectedProduct.price || selectedProduct.unit_price || 0, stock: selectedProduct.stock_quantity || 0, qty: quantity }];
     });
-    setSelectedDrug(''); setQty(1);
+    setSelectedProductId('');
+    setQuantity(1);
   };
 
   const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id));
-  const total = cart.reduce((s,i) => s + i.price*i.qty, 0);
 
-  const canSubmit = cart.length > 0 && customerName.trim() && (issueType==='walk-in' || orderRef.trim());
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  const handleSubmit = () => {
+  const canSubmit = cart.length > 0 && customerName.trim();
+
+  const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1200);
+    try {
+      const payload = {
+        customer_name: customerName,
+        notes: notes,
+        items: cart.map(i => ({ medication_id: i.id, quantity: i.qty }))
+      };
+      await apiClient.post('/pharmacy/dispense', payload);
+      setSuccessModal({
+        customer: customerName,
+        items: [...cart],
+        total
+      });
+      playSound();
+      setCart([]);
+      setCustomerName('');
+      setNotes('');
+      loadRecentIssues();
+    } catch (e) {
+      showMsg('error', e?.response?.data?.message || e.message || 'Failed to issue medicines');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handlePrint = () => {
-    const w = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Issue Note</title>
-    <style>body{font-family:Arial,sans-serif;padding:30px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #000;padding:10px;}th{background:#e2e8f0;}.stamp{margin-top:60px;border-top:2px solid #000;padding-top:10px;width:200px;text-align:center;}</style>
-    </head><body>
-    <h1>💊 ISSUE NOTE — Model 22</h1>
-    <p><strong>Customer:</strong> ${customerName} &nbsp;&nbsp; <strong>Type:</strong> ${issueType==='walk-in'?'Walk-In':'Online Order'} ${orderRef?`(Ref: ${orderRef})`:''}</p>
-    <p><strong>Branch:</strong> ${branch} &nbsp;&nbsp; <strong>Issued By:</strong> ${issuedBy} &nbsp;&nbsp; <strong>Date:</strong> ${issueDate}</p>
-    <table><thead><tr><th>Drug Name</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
-    <tbody>${cart.map(i=>`<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.price.toFixed(2)} ETB</td><td>${(i.price*i.qty).toFixed(2)} ETB</td></tr>`).join('')}</tbody></table>
-    <p><strong>Grand Total: ${total.toFixed(2)} ETB</strong></p>
-    <div class="stamp"><p>Manager Digital Stamp</p><p style="margin-top:40px;">______________________</p></div>
-    </body></html>`);
-    w.document.close(); w.print();
-  };
+  return (
+    <div style={{ padding: 28, fontFamily: "'Inter',sans-serif", color: '#1e293b', minHeight: '100vh', background: 'linear-gradient(135deg,#f0fdf4 0%,#f8fafc 50%,#ecfeff 100%)' }}>
+      <style>{`@keyframes spin{100%{transform:rotate(360deg);}}@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes scaleIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}`}</style>
 
-  if (workerPermDenied) {
-    return (
-      <div style={{ padding:48, textAlign:'center', fontFamily:"'Inter',sans-serif" }}>
-        <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
-        <h2 style={{ color:'#ef4444' }}>Access Denied</h2>
-        <p style={{ color:'#64748b' }}>You do not have permission to issue medicines. Contact the Pharmacy Manager to enable this access.</p>
-      </div>
-    );
-  }
+      <audio ref={audioRef} src={infoSound} preload="auto" />
 
-  if (submitted) {
-    return (
-      <div style={{ padding:24, fontFamily:"'Inter',sans-serif", background:'#f8fafc', minHeight:'100vh' }}>
-        <div style={{ background:'white', borderRadius:14, padding:48, textAlign:'center', border:'1px solid #e2e8f0', maxWidth:600, margin:'0 auto' }}>
-          <CheckCircle size={64} color="#10b981" style={{ marginBottom:16 }}/>
-          <h2 style={{ color:'#059669', margin:'0 0 8px 0' }}>Medicines Issued Successfully!</h2>
-          <p style={{ color:'#64748b', marginBottom:8 }}>Customer: <strong>{customerName}</strong></p>
-          <p style={{ color:'#64748b', marginBottom:24 }}>Pharmacy stock has been automatically reduced. An Issue Note is ready.</p>
-          <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
-            <button onClick={handlePrint} style={{ padding:'10px 24px', background:'#224f94', color:'white', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-              <Printer size={16}/> Print Issue Note (M22)
-            </button>
-            <button onClick={()=>{setSubmitted(false);setCart([]);setCustomerName('');setOrderRef('');}} style={{ padding:'10px 24px', background:'#f1f5f9', color:'#64748b', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer' }}>
-              New Issue
+      {msg.text && (
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', borderRadius: 12, background: msg.type === 'success' ? '#d1fae5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#6ee7b7' : '#fecaca'}`, color: msg.type === 'success' ? '#065f46' : '#991b1b', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', animation: 'fadeSlide 0.3s ease-out' }}>
+          {msg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
+          {msg.text}
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeSlide 0.2s ease-out' }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: 36, width: 440, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', textAlign: 'center', animation: 'scaleIn 0.3s ease-out' }}>
+            <div style={{ width: 72, height: 72, borderRadius: 36, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle size={40} color="#059669" />
+            </div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#059669' }}>Medicines Issued!</h2>
+            <p style={{ color: '#64748b', margin: '0 0 20px', fontSize: 14 }}>Successfully issued to <strong>{successModal.customer}</strong></p>
+            <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, marginBottom: 20, textAlign: 'left' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#065f46', marginBottom: 10 }}>Issued Items ({successModal.items.length})</div>
+              {successModal.items.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #d1fae5' }}>
+                  {item.image ? (
+                    <img src={`http://localhost:5000${item.image}`} alt={item.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: 32, height: 32, borderRadius: 6, background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Pill size={14} color="#059669" />
+                    </div>
+                  )}
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{item.name}</span>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>x{item.qty}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#065f46' }}>ETB {(item.price * item.qty).toFixed(2)}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, fontWeight: 800, fontSize: 15, color: '#065f46' }}>
+                <span>Total</span>
+                <span>ETB {successModal.total.toFixed(2)}</span>
+              </div>
+            </div>
+            <button onClick={() => setSuccessModal(null)}
+              style={{ padding: '12px 32px', background: 'linear-gradient(135deg,#059669,#10b981)', color: 'white', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
+              Done
             </button>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div style={{ padding:24, fontFamily:"'Inter',sans-serif", background:'#f8fafc', minHeight:'100vh' }}>
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:26, fontWeight:800, margin:'0 0 4px 0' }}>💊 ISSUE MEDICINES</h1>
-        <p style={{ color:'#64748b', margin:0, fontSize:14 }}>🔗 Issue to Customers (Model 22) — Walk-In &amp; Online Orders</p>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:20, maxWidth:1100 }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {/* Issue Type */}
-          <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', padding:20 }}>
-            <h3 style={{ margin:'0 0 14px 0', fontSize:15, fontWeight:700 }}>Step 1: Issue Type</h3>
-            <div style={{ display:'flex', gap:12 }}>
-              {[{v:'walk-in',icon:<ShoppingCart size={18}/>,label:'Walk-In Customer'},{v:'online',icon:<Globe size={18}/>,label:'Online Order'}].map(opt => (
-                <button key={opt.v} onClick={()=>setIssueType(opt.v)}
-                  style={{ flex:1, padding:'14px', border:`2px solid ${issueType===opt.v?'#224f94':'#e2e8f0'}`, borderRadius:10, background:issueType===opt.v?'#eff6ff':'white', color:issueType===opt.v?'#224f94':'#64748b', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.2s' }}>
-                  {opt.icon} {opt.label}
-                </button>
-              ))}
-            </div>
+      {/* Header */}
+      <div style={{ marginBottom: 28, animation: 'fadeSlide 0.4s ease-out' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
+            <ArrowRight size={24} color="white" />
           </div>
+          <div>
+            <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>Issue Medicines</h1>
+            <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: 14 }}>Issue medicines to customers — recent issues: {recentIssues.length}</p>
+          </div>
+        </div>
+      </div>
 
+      {error && (
+        <div style={{ background: '#fef2f2', borderRadius: 12, padding: '20px 24px', marginBottom: 20, border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: 12, animation: 'fadeSlide 0.3s ease-out' }}>
+          <XCircle size={20} color="#dc2626" />
+          <span style={{ color: '#991b1b', fontWeight: 600, fontSize: 14, flex: 1 }}>{error}</span>
+          <button onClick={loadProducts} style={{ padding: '8px 16px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Retry</button>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Customer Details */}
-          <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', padding:20 }}>
-            <h3 style={{ margin:'0 0 14px 0', fontSize:15, fontWeight:700 }}>Step 2: Customer Details</h3>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-              <div>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Customer Name *</label>
-                <input type="text" value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Enter customer name"
-                  style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
-              </div>
-              {issueType==='online' && (
-                <div>
-                  <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Online Order Reference *</label>
-                  <input type="text" value={orderRef} onChange={e=>setOrderRef(e.target.value)} placeholder="e.g. ORD-2026-1234"
-                    style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
-                </div>
-              )}
-              <div>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Branch</label>
-                <select value={branch} onChange={e=>setBranch(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none' }}>
-                  {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Issue Date</label>
-                <input type="date" value={issueDate} onChange={e=>setIssueDate(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none' }}/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Issued By</label>
-                <input type="text" value={issuedBy} onChange={e=>setIssuedBy(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
-              </div>
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 16px rgba(0,0,0,0.06)', animation: 'fadeSlide 0.4s ease-out' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <User size={18} color="#059669" /> Customer Details
+            </h3>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Customer Name *</label>
+              <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter customer name"
+                style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'all 0.2s' }}
+                onFocus={e => e.target.style.borderColor = '#059669'}
+                onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
             </div>
           </div>
 
           {/* Add Drugs */}
-          <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', padding:20 }}>
-            <h3 style={{ margin:'0 0 14px 0', fontSize:15, fontWeight:700 }}>Step 3: Add Drugs</h3>
-            <div style={{ display:'flex', gap:10, alignItems:'flex-end' }}>
-              <div style={{ flex:1 }}>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Select Drug</label>
-                <select value={selectedDrug} onChange={e=>setSelectedDrug(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none' }}>
-                  <option value="">— Choose Drug —</option>
-                  {DRUGS_LIST.map(d => <option key={d.id} value={d.id}>{d.name} (Stock: {d.stock})</option>)}
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 16px rgba(0,0,0,0.06)', animation: 'fadeSlide 0.45s ease-out' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Pill size={18} color="#059669" /> Add Medicines
+            </h3>
+
+            {/* Search */}
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 10, pointerEvents: 'none' }} />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search medicines..."
+                style={{ width: '100%', padding: '8px 12px 8px 36px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc' }} />
+            </div>
+
+            {/* Selected Drug Preview */}
+            {selectedProduct && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, marginBottom: 12, border: '1px solid #bbf7d0' }}>
+                {selectedProduct.drug_image || selectedProduct.cover_image ? (
+                  <img src={`http://localhost:5000${selectedProduct.drug_image || selectedProduct.cover_image}`} alt={selectedProduct.name}
+                    style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                    onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  />
+                ) : null}
+                <div style={{ display: selectedProduct.drug_image || selectedProduct.cover_image ? 'none' : 'flex', width: 48, height: 48, borderRadius: 10, background: '#d1fae5', alignItems: 'center', justifyContent: 'center' }}>
+                  <ImageIcon size={20} color="#059669" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#065f46' }}>{selectedProduct.name}</div>
+                  <div style={{ fontSize: 12, color: '#047857' }}>Stock: {selectedProduct.stock_quantity || 0} | Price: ETB {Number(selectedProduct.price || selectedProduct.unit_price || 0).toFixed(2)}</div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Select Medicine</label>
+                <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', background: 'white' }}>
+                  <option value="">Choose a medicine...</option>
+                  {filtered.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.stock_quantity !== undefined ? `(Stock: ${p.stock_quantity})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div style={{ width:100 }}>
-                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Qty</label>
-                <input type="number" min={1} value={qty} onChange={e=>setQty(parseInt(e.target.value)||1)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none', textAlign:'center' }}/>
+              <div style={{ width: 100 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Qty</label>
+                <input type="number" min={1} value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', textAlign: 'center' }} />
               </div>
-              <button onClick={addToCart} disabled={!selectedDrug}
-                style={{ padding:'10px 20px', background:selectedDrug?'#224f94':'#e2e8f0', color:selectedDrug?'white':'#94a3b8', border:'none', borderRadius:8, fontWeight:700, cursor:selectedDrug?'pointer':'not-allowed', whiteSpace:'nowrap' }}>
-                + Add
+              <button onClick={addToCart} disabled={!selectedProductId}
+                style={{ padding: '10px 20px', background: selectedProductId ? 'linear-gradient(135deg,#059669,#10b981)' : '#e2e8f0', color: selectedProductId ? 'white' : '#94a3b8', border: 'none', borderRadius: 10, fontWeight: 700, cursor: selectedProductId ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={16} /> Add
               </button>
             </div>
           </div>
+
+          {/* Notes */}
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, boxShadow: '0 4px 16px rgba(0,0,0,0.06)', animation: 'fadeSlide 0.5s ease-out' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={18} color="#059669" /> Notes
+            </h3>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes, instructions, or reference..."
+              style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 13, resize: 'vertical', minHeight: 70, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              onFocus={e => e.target.style.borderColor = '#059669'}
+              onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+          </div>
         </div>
 
-        {/* Cart / Issue Summary */}
-        <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', overflow:'hidden', alignSelf:'start' }}>
-          <div style={{ padding:'14px 18px', borderBottom:'1px solid #e2e8f0', background:'#f8fafc' }}>
-            <h3 style={{ margin:0, fontSize:15, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}><ShoppingCart size={16} color="#224f94"/> Issue Cart ({cart.length})</h3>
+        {/* Cart / Submit */}
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', animation: 'fadeSlide 0.45s ease-out', position: 'sticky', top: 28 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', background: '#fafbfc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShoppingCart size={17} color="#059669" /> Cart ({cart.length})
+            </span>
           </div>
           {cart.length === 0 ? (
-            <div style={{ padding:32, textAlign:'center', color:'#94a3b8' }}>No drugs added yet.</div>
+            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+              <Package size={40} style={{ color: '#cbd5e1', marginBottom: 12 }} />
+              <p style={{ fontSize: 14, fontWeight: 700, margin: '0 0 4px', color: '#64748b' }}>Cart is empty</p>
+              <p style={{ fontSize: 13, margin: 0 }}>Add medicines from the form to start.</p>
+            </div>
           ) : (
             <>
-              <div style={{ maxHeight:300, overflowY:'auto' }}>
-                {cart.map(item => (
-                  <div key={item.id} style={{ padding:'12px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <div style={{ fontWeight:600, fontSize:14 }}>{item.name}</div>
-                      <div style={{ fontSize:12, color:'#64748b' }}>Qty: {item.qty} × ETB {item.price.toFixed(2)}</div>
+              <div style={{ maxHeight: 340, overflowY: 'auto' }}>
+                {cart.map((item, idx) => (
+                  <div key={item.id} style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, alignItems: 'center', animation: `fadeSlide 0.2s ease-out ${idx * 0.03}s both` }}>
+                    {item.image ? (
+                      <img src={`http://localhost:5000${item.image}`} alt={item.name} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                    ) : (
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Pill size={16} color="#94a3b8" />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>Qty: {item.qty} &times; ETB {Number(item.price).toFixed(2)}</div>
                     </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontWeight:700, color:'#1e293b' }}>ETB {(item.price*item.qty).toFixed(2)}</span>
-                      <button onClick={()=>removeFromCart(item.id)} style={{ background:'#fee2e2', color:'#dc2626', border:'none', borderRadius:6, padding:'4px 8px', cursor:'pointer', fontWeight:700, fontSize:13 }}>×</button>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: '#1e293b' }}>ETB {(item.price * item.qty).toFixed(2)}</div>
+                      <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <Trash2 size={12} /> Remove
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ padding:'14px 18px', borderTop:'2px solid #e2e8f0' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:16 }}>
-                  <span style={{ fontWeight:700, fontSize:16 }}>Total</span>
-                  <span style={{ fontWeight:800, fontSize:18, color:'#1e293b' }}>ETB {total.toFixed(2)}</span>
+              <div style={{ padding: '14px 20px', borderTop: '2px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: '#1e293b' }}>Total</span>
+                  <span style={{ fontWeight: 900, fontSize: 18, color: '#059669' }}>ETB {total.toFixed(2)}</span>
                 </div>
-                <button onClick={handleSubmit} disabled={!canSubmit||submitting}
-                  style={{ width:'100%', padding:'13px', background:canSubmit?'#059669':'#e2e8f0', color:canSubmit?'white':'#94a3b8', border:'none', borderRadius:9, fontWeight:700, fontSize:15, cursor:canSubmit?'pointer':'not-allowed', transition:'all 0.2s' }}>
-                  {submitting ? '⏳ Processing...' : '✅ Issue Medicines'}
+                <button onClick={handleSubmit} disabled={!canSubmit || submitting}
+                  style={{ width: '100%', padding: '13px', background: canSubmit && !submitting ? 'linear-gradient(135deg,#059669,#10b981)' : '#e2e8f0', color: canSubmit && !submitting ? 'white' : '#94a3b8', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: canSubmit && !submitting ? '0 4px 12px rgba(5,150,105,0.3)' : 'none' }}>
+                  {submitting && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                  {submitting ? 'Processing...' : 'Issue Medicines'}
                 </button>
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Recent Issues */}
+      <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', animation: 'fadeSlide 0.6s ease-out', marginTop: 24 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
+          <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ArrowRight size={17} color="#059669" /> Recent Issues
+          </span>
+          <button onClick={() => { loadProducts(); loadRecentIssues(); }} disabled={loading}
+            style={{ padding: '6px 12px', background: 'transparent', color: '#059669', border: '1px solid #059669', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <RefreshCw size={12} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>Date</th>
+                <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>Customer</th>
+                <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>Items</th>
+                <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center' }}>
+                  <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#059669' }} />
+                </td></tr>
+              ) : recentIssues.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                  <Package size={32} style={{ color: '#cbd5e1', marginBottom: 8 }} />
+                  <p style={{ fontWeight: 700, margin: 0 }}>No recent issues</p>
+                </td></tr>
+              ) : recentIssues.map((issue, idx) => {
+                const issItems = Array.isArray(issue.items) ? issue.items : (typeof issue.items === 'string' ? JSON.parse(issue.items) : []);
+                return (
+                <tr key={issue.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? 'white' : '#fafbfc', animation: `fadeSlide 0.3s ease-out ${idx * 0.03}s both` }}>
+                  <td style={{ padding: '10px 14px', color: '#64748b', fontSize: 13, whiteSpace: 'nowrap' }}>
+                    {issue.created_at ? new Date(issue.created_at).toLocaleString() : '-'}
+                  </td>
+                  <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>{issue.customer_name || 'Unknown'}</td>
+                  <td style={{ padding: '10px 14px', color: '#64748b', fontSize: 13 }}>{issItems.map(it => it.medication_name).join(', ') || '-'}</td>
+                  <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#d1fae5', color: '#065f46', textTransform: 'capitalize' }}>
+                      Issued
+                    </span>
+                  </td>
+                </tr>);
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -20,17 +20,22 @@ import CEOSales from './CEOSales';
 import CEOPurchase from './CEOPurchase';
 import CEOInventory from './CEOInventory';
 import CEOFinance from './CEOFinance';
+import CEOFinanceApprovals from './CEOFinanceApprovals';
 import CEOHR from './CEOHR';
+import HRPolicies from '../hr/HRPolicies';
+import HRAnnouncements from '../hr/HRAnnouncements';
 import CEOPharmacyM20M22 from './CEOPharmacyM20M22';
-import CEODrugProcurement from './CEODrugProcurement';
-import CEONewDrugRequests from './CEONewDrugRequests';
+import CEOStoreRequisitions from './CEOStoreRequisitions';
+import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
+import PharmacyFinanceControls from '../pharmacy/PharmacyFinanceControls';
 import CEODirectDelivery from './CEODirectDelivery';
-import CEOPharmacyManagerRequests from './CEOPharmacyManagerRequests';
-import CEOTenderBids from './CEOTenderBids';
+import CEORequestApprovals from '../pharmacy/CEORequestApprovals';
+import CEOTenderManager from './CEOTenderManager';
 import CEOFundApprovalsM9 from './CEOFundApprovalsM9';
 import CEOPrinting from './CEOPrinting';
 import CEOCarRental from './CEOCarRental';
-import CEOTenderFull from './CEOTenderFull';
+import StoreAdjustmentApprovals from './StoreAdjustmentApprovals';
+import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 
 // 9 Additional Approval & Report Modules
 import CEOPendingApprovals from './CEOPendingApprovals';
@@ -42,6 +47,10 @@ import CEOSalesReport from './CEOSalesReport';
 import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
 import CEOAuditReport from './CEOAuditReport';
+
+// Flow 1 & 2
+import TransferDashboard from '../CEO/TransferDashboard';
+import PurchaseFlowDashboard from './PurchaseFlowDashboard';
 
 import styles from './CEODashboard.module.css';
 
@@ -57,27 +66,22 @@ const CEODashboard = () => {
         { label: '4. Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
         { label: '5. HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
         { type: 'divider' },
-        { label: '6. Pharmacy (M20-M22)', path: '/ceo/pharmacy', icon: 'pill', color: '#ef4444' },
-        { label: '7. Drug Procurement', path: '/ceo/procurement', icon: 'clipboard', color: '#06b6d4' },
-        { label: '8. New Drug Requests', path: '/ceo/new-drugs', icon: 'alert-triangle', color: '#f97316' },
+        { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
+        { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
+        { type: 'divider' },
+        { label: '6b. Pharmacy Sales/Finance', path: '/ceo/pharmacy-finance', icon: 'dollar-sign', color: '#ef4444' },
+        { label: '7. Procurement & New Drugs', path: '/ceo/procurement-decisions', icon: 'clipboard', color: '#06b6d4' },
         { label: '9. Direct Delivery', path: '/ceo/direct-delivery', icon: 'truck', color: '#14b8a6' },
         { label: '10. Manager Requests', path: '/ceo/manager-requests', icon: 'file-text', color: '#6366f1' },
+        { label: '10b. Store Requisitions', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
         { type: 'divider' },
-        { label: '11. Tender Bids (M7)', path: '/ceo/tender-bids', icon: 'award', color: '#84cc16' },
-        { label: '12. Fund Approvals (M9)', path: '/ceo/fund-approvals', icon: 'check-circle', color: '#eab308' },
+        { label: '11. Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
+        { label: '12. Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
         { type: 'divider' },
         { label: '13. Printing', path: '/ceo/printing', icon: 'printer', color: '#a855f7' },
         { label: '14. Car Rental', path: '/ceo/car-rental', icon: 'car', color: '#0ea5e9' },
-        { label: '15. Tender Full', path: '/ceo/tender-full', icon: 'briefcase', color: '#f43f5e' },
       ]
     },
-    { type: 'divider' },
-    { label: 'Approvals', icon: 'check-circle',
-      children: [
-        { label: 'Pending',  path: '/ceo/approvals/pending',  icon: 'clock' },
-        { label: 'Approved', path: '/ceo/approvals/approved', icon: 'check-circle', color: '#22c55e' },
-        { label: 'Rejected', path: '/ceo/approvals/rejected', icon: 'x' },
-      ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'file-text',
       children: [
@@ -103,22 +107,26 @@ const CEODashboard = () => {
             <Route path="inventory" element={<CEOInventory />} />
             <Route path="finance" element={<CEOFinance />} />
             <Route path="hr" element={<CEOHR />} />
+            <Route path="policies" element={<HRPolicies />} />
+            <Route path="announcements" element={<HRAnnouncements />} />
             
+            {/* Pharmacy M20-M22 Module Disabled */}
             <Route path="pharmacy" element={<CEOPharmacyM20M22 />} />
-            <Route path="procurement" element={<CEODrugProcurement />} />
-            <Route path="new-drugs" element={<CEONewDrugRequests />} />
+            <Route path="pharmacy-finance" element={<PharmacyFinanceControls />} />
+            <Route path="procurement-decisions" element={<CEOProcurementDecisions />} />
             <Route path="direct-delivery" element={<CEODirectDelivery />} />
-            <Route path="manager-requests" element={<CEOPharmacyManagerRequests />} />
+            <Route path="manager-requests" element={<CEORequestApprovals />} />
+            <Route path="store-requisitions" element={<CEOStoreRequisitions />} />
             
-            <Route path="tender-bids" element={<CEOTenderBids />} />
+            <Route path="tenders" element={<CEOTenderManager />} />
             <Route path="fund-approvals" element={<CEOFundApprovalsM9 />} />
             
             <Route path="printing" element={<CEOPrinting />} />
             <Route path="car-rental" element={<CEOCarRental />} />
-            <Route path="tender-full" element={<CEOTenderFull />} />
 
             {/* 9 Additional Approval & Report Modules */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />
+            <Route path="store-adjustments" element={<StoreAdjustmentApprovals />} />
             <Route path="approvals/approved" element={<CEOApprovedApprovals />} />
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
             <Route path="reports/executive" element={<CEOExecutiveReport />} />
@@ -137,6 +145,12 @@ const CEODashboard = () => {
             <Route path="report-approvals" element={<ReportApprovals />} />
             <Route path="risk"      element={<CEORisk />} />
             <Route path="budget-workflow" element={<CEOPurchaseWorkflow />} />
+
+            {/* Flow 1 & 2 */}
+            <Route path="flow1-transfers" element={<TransferDashboard user={{ role: 'CEO' }} />} />
+            <Route path="flow2-purchase" element={<PurchaseFlowDashboard user={{ role: 'CEO' }} />} />
+            
+            <Route path="branch-transfers" element={<PharmacyStockTransfer />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>

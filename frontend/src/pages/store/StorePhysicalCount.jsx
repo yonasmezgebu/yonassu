@@ -1,23 +1,41 @@
-import React, { useState } from 'react';
-import { ClipboardCheck, Printer, CheckCircle, AlertTriangle } from 'lucide-react';
-import { notifyPhysicalCount } from '../../utils/storeNotifications';
+import React, { useState, useEffect } from 'react';
+import { ClipboardCheck, Printer, CheckCircle, AlertTriangle, Search } from 'lucide-react';
+import { createCount, getInventory } from '../../utils/storeApi';
 
 const REASON_CODES = ['Counting Error', 'Damage/Breakage', 'Theft/Loss', 'Supplier Short-Shipment', 'Misidentification', 'System Data Entry Error', 'Other'];
 
-const mockItems = [
-  { name: 'Amoxicillin 500mg', systemQty: 1200 },
-  { name: 'Surgical Gloves (L)', systemQty: 80 },
-  { name: 'A4 Paper Reams', systemQty: 55 },
-  { name: 'Paracetamol 500mg', systemQty: 3500 },
-  { name: 'IV Fluid (500ml)', systemQty: 15 },
-  { name: 'Hand Sanitizer 500ml', systemQty: 200 },
-];
-
 const StorePhysicalCount = () => {
   const [countType, setCountType] = useState('Full Store Count');
-  const [counts, setCounts] = useState(mockItems.map(i => ({ ...i, physicalQty: '', reasonCode: '' })));
+  const [counts, setCounts] = useState([]);
   const [submitted, setSubmitted] = useState(null);
   const [errors, setErrors] = useState({});
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setLoading(true);
+        const res = await getInventory();
+        const inventoryData = res.data || [];
+        setInventory(inventoryData);
+        const mappedItems = (inventoryData || []).map(item => ({
+          drug_id: item.drug_id,
+          name: item.drug_name + (item.strength ? ' ' + item.strength : ''),
+          systemQty: Number(item.quantity),
+          physicalQty: '',
+          reasonCode: ''
+        }));
+        setCounts(mappedItems);
+      } catch (err) {
+        setError(err.message || 'Failed to load inventory');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const updateCount = (idx, field, value) => {
     setCounts(c => c.map((item, i) => i === idx ? { ...item, [field]: value } : item));
@@ -43,7 +61,7 @@ const StorePhysicalCount = () => {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -53,10 +71,64 @@ const StorePhysicalCount = () => {
       return s + (v !== null ? Math.abs(v) : 0);
     }, 0);
 
-    const reportNumber = `CNT-${Date.now().toString().slice(-6)}`;
-    setSubmitted({ reportNumber, countType, counts, totalVariance, date: new Date().toISOString() });
-    notifyPhysicalCount(totalVariance);
+    try {
+      const count_no = 'CNT-' + Date.now().toString().slice(-6);
+      const payload = {
+        count_no,
+        count_type: countType,
+        count_date: new Date().toISOString().split('T')[0],
+        items: counts
+          .filter(item => item.physicalQty !== '' && !isNaN(item.physicalQty))
+          .map(item => ({
+            drug_id: Number(item.drug_id || item.id),
+            physical_quantity: Number(item.physicalQty),
+            reason_code: item.reasonCode || null,
+          }))
+      };
+      const res = await createCount(payload);
+      if (!res.success) throw new Error(res.message);
+      setSubmitted({
+        reportNumber: count_no,
+        countType,
+        counts,
+        totalVariance,
+        date: new Date().toISOString()
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to submit count');
+    }
   };
+
+  const resetCounts = () => {
+    setCounts(inventory.map(item => ({
+      drug_id: item.drug_id,
+      name: item.drug_name + (item.strength ? ' ' + item.strength : ''),
+      systemQty: Number(item.quantity),
+      physicalQty: '',
+      reasonCode: ''
+    })));
+    setErrors({});
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: 16 }}>Loading inventory...</p>
+      </div>
+    );
+  }
+
+  if (error && !submitted) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: 20, textAlign: 'center' }}>
+          <AlertTriangle color="#b91c1c" size={24} />
+          <p style={{ color: '#b91c1c', fontWeight: 600, marginTop: 8 }}>{error}</p>
+          <button onClick={() => window.location.reload()} style={{ marginTop: 12, padding: '8px 20px', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -100,7 +172,7 @@ const StorePhysicalCount = () => {
             <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
               <Printer size={15} /> Print Report
             </button>
-            <button onClick={() => { setSubmitted(null); setCounts(mockItems.map(i => ({ ...i, physicalQty: '', reasonCode: '' }))); setErrors({}); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+            <button onClick={() => { setSubmitted(null); resetCounts(); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
               + New Count
             </button>
           </div>
@@ -122,6 +194,12 @@ const StorePhysicalCount = () => {
         <AlertTriangle color="#0284c7" size={18} />
         <span><strong>Validation Rule:</strong> Any item with a non-zero variance MUST have a Reason Code before the count can be submitted.</span>
       </div>
+
+      {error && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 14, fontWeight: 600 }}>
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
@@ -180,7 +258,7 @@ const StorePhysicalCount = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={() => { setCounts(mockItems.map(i => ({ ...i, physicalQty: '', reasonCode: '' }))); setErrors({}); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
+          <button type="button" onClick={resetCounts} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
           <button type="submit" style={{ padding: '10px 28px', background: '#164e63', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Submit Count & Generate Report</button>
         </div>
       </form>

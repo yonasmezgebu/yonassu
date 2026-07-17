@@ -53,11 +53,11 @@ const StoreInventoryValuation = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#f0fdf4', padding: 20, borderRadius: 10, border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 8 }}>TOTAL INVENTORY VALUE</div>
-          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#15803d' }}>${totalValue.toFixed(2)}</div>
+          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#15803d' }}>ETB {totalValue.toFixed(2)}</div>
         </div>
         <div style={{ background: 'white', padding: 20, borderRadius: 10, border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8 }}>COST OF GOODS SOLD (COGS)</div>
-          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#0f172a' }}>${cogs.toFixed(2)}</div>
+          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#0f172a' }}>ETB {cogs.toFixed(2)}</div>
         </div>
         <div style={{ background: 'white', padding: 20, borderRadius: 10, border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8 }}>INVENTORY TURNOVER RATIO</div>
@@ -87,7 +87,7 @@ const StoreInventoryValuation = () => {
             <div key={c.cat} style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.cat}</span>
-                <span style={{ fontFamily: 'monospace', color: '#475569' }}>${c.val.toFixed(2)} ({c.percent}%)</span>
+                <span style={{ fontFamily: 'monospace', color: '#475569' }}>ETB {c.val.toFixed(2)} ({c.percent}%)</span>
               </div>
               <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${c.percent}%`, background: '#10b981' }} />
@@ -102,7 +102,7 @@ const StoreInventoryValuation = () => {
           {locValue.map((l, i) => (
             <div key={l.loc} style={{ padding: '10px 0', borderBottom: i === locValue.length -1 ? 'none' : '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 500, color: '#334155' }}>{l.loc}</span>
-              <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>${l.val.toFixed(2)}</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>ETB {l.val.toFixed(2)}</span>
             </div>
           ))}
         </div>
@@ -126,7 +126,7 @@ const StoreInventoryValuation = () => {
                 <td style={{ padding: '10px 14px', fontWeight: 700, color: '#94a3b8' }}>#{i + 1}</td>
                 <td style={{ padding: '10px 14px', fontWeight: 600 }}>{item.name}</td>
                 <td style={{ padding: '10px 14px', color: '#64748b' }}>{item.cat}</td>
-                <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: '#15803d' }}>${item.val.toFixed(2)}</td>
+                <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: '#15803d' }}>ETB {item.val.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

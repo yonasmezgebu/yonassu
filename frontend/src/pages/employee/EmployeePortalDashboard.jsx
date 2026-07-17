@@ -7,6 +7,7 @@ import { SubmitWork, DailyReport, WorkHistory } from './work/WorkPages';
 import { AttendancePage } from './attendance/AttendancePage';
 import { AssignedMaterials, RequestMaterials, ReturnItems } from './resources/ResourcePages';
 import { Messages, SupervisorNotes, Announcements, NotificationsInbox } from './communication/CommunicationPages';
+import EmployeePayslips from './EmployeePayslips';
 
 const EmployeePortalDashboard = () => {
   const menuItems = [
@@ -32,6 +33,7 @@ const EmployeePortalDashboard = () => {
         { label: 'Daily Report', path: '/employee/work/daily-report', icon: 'file-text' },
         { label: 'Attendance',   path: '/employee/attendance',        icon: 'clock' },
         { label: 'Work History', path: '/employee/work/history',      icon: 'archive' },
+        { label: 'My Payslips',  path: '/employee/payslips',          icon: 'banknote', color: '#059669' },
       ]
     },
     { type: 'divider' },
@@ -70,6 +72,7 @@ const EmployeePortalDashboard = () => {
         <Route path="work/daily-report"   element={<DailyReport />} />
         <Route path="work/history"        element={<WorkHistory />} />
         <Route path="attendance"          element={<AttendancePage />} />
+        <Route path="payslips"            element={<EmployeePayslips />} />
 
         {/* Resources */}
         <Route path="materials/assigned"  element={<AssignedMaterials />} />

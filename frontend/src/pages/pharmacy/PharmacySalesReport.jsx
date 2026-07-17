@@ -66,7 +66,7 @@ const PharmacySalesReport = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#eff6ff', padding: 24, borderRadius: 8, border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#dbeafe', color: '#1d4ed8', padding: 12, borderRadius: 8 }}><DollarSign size={24} /></div>
-          <div><div style={{ color: '#1d4ed8', fontWeight: 'bold' }}>Total Sales Amount</div><div style={{ fontSize: 24, fontWeight: 'bold', color: '#1e3a8a' }}>$1,170.00</div></div>
+          <div><div style={{ color: '#1d4ed8', fontWeight: 'bold' }}>Total Sales Amount</div><div style={{ fontSize: 24, fontWeight: 'bold', color: '#1e3a8a' }}>ETB 1,170.00</div></div>
         </div>
         <div style={{ background: '#ecfccb', padding: 24, borderRadius: 8, border: '1px solid #d9f99d', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#d9f99d', color: '#4d7c0f', padding: 12, borderRadius: 8 }}><Activity size={24} /></div>
@@ -74,7 +74,7 @@ const PharmacySalesReport = () => {
         </div>
         <div style={{ background: '#f3e8ff', padding: 24, borderRadius: 8, border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: '#e9d5ff', color: '#7e22ce', padding: 12, borderRadius: 8 }}><TrendingUp size={24} /></div>
-          <div><div style={{ color: '#7e22ce', fontWeight: 'bold' }}>Avg Transaction Value</div><div style={{ fontSize: 24, fontWeight: 'bold', color: '#581c87' }}>$390.00</div></div>
+          <div><div style={{ color: '#7e22ce', fontWeight: 'bold' }}>Avg Transaction Value</div><div style={{ fontSize: 24, fontWeight: 'bold', color: '#581c87' }}>ETB 390.00</div></div>
         </div>
       </div>
 
@@ -84,9 +84,9 @@ const PharmacySalesReport = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}><tr><th style={{ padding: 8 }}>Drug Name</th><th style={{ padding: 8, textAlign: 'right' }}>Qty Sold</th><th style={{ padding: 8, textAlign: 'right' }}>Revenue</th></tr></thead>
             <tbody>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Paracetamol 500mg</td><td style={{ padding: 8, textAlign: 'right' }}>20</td><td style={{ padding: 8, textAlign: 'right' }}>$1,000</td></tr>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Vitamin C</td><td style={{ padding: 8, textAlign: 'right' }}>15</td><td style={{ padding: 8, textAlign: 'right' }}>$450</td></tr>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Amoxicillin 250mg</td><td style={{ padding: 8, textAlign: 'right' }}>5</td><td style={{ padding: 8, textAlign: 'right' }}>$1,750</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Paracetamol 500mg</td><td style={{ padding: 8, textAlign: 'right' }}>20</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 1,000</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Vitamin C</td><td style={{ padding: 8, textAlign: 'right' }}>15</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 450</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Amoxicillin 250mg</td><td style={{ padding: 8, textAlign: 'right' }}>5</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 1,750</td></tr>
             </tbody>
           </table>
         </div>
@@ -96,9 +96,9 @@ const PharmacySalesReport = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}><tr><th style={{ padding: 8 }}>Method</th><th style={{ padding: 8, textAlign: 'right' }}>Count</th><th style={{ padding: 8, textAlign: 'right' }}>Amount</th></tr></thead>
             <tbody>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Cash</td><td style={{ padding: 8, textAlign: 'right' }}>2</td><td style={{ padding: 8, textAlign: 'right' }}>$450.00</td></tr>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Bank Transfer</td><td style={{ padding: 8, textAlign: 'right' }}>1</td><td style={{ padding: 8, textAlign: 'right' }}>$120.00</td></tr>
-              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Telbir</td><td style={{ padding: 8, textAlign: 'right' }}>0</td><td style={{ padding: 8, textAlign: 'right' }}>$0.00</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Cash</td><td style={{ padding: 8, textAlign: 'right' }}>2</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 450.00</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Bank Transfer</td><td style={{ padding: 8, textAlign: 'right' }}>1</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 120.00</td></tr>
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}><td style={{ padding: 8 }}>Telbir</td><td style={{ padding: 8, textAlign: 'right' }}>0</td><td style={{ padding: 8, textAlign: 'right' }}>ETB 0.00</td></tr>
             </tbody>
           </table>
         </div>

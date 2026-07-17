@@ -31,8 +31,13 @@ const pharmacyService = {
   },
 
   // Products
-  getProducts: async () => {
-    return await apiClient.get('/pharmacy/products');
+  getProducts: async (includeHidden = false) => {
+    const params = includeHidden ? '?include_hidden=true' : '';
+    return await apiClient.get(`/pharmacy/products${params}`);
+  },
+
+  getAllProducts: async () => {
+    return await apiClient.get('/pharmacy/products/all');
   },
 
   searchProducts: async (query) => {
@@ -57,6 +62,18 @@ const pharmacyService = {
 
   deleteProduct: async (id) => {
     return await apiClient.delete(`/pharmacy/products/${id}`);
+  },
+
+  deleteAllProducts: async () => {
+    return await apiClient.delete('/pharmacy/products/all');
+  },
+
+  hideProduct: async (id, data) => {
+    return await apiClient.post(`/pharmacy/products/${id}/hide`, data);
+  },
+
+  restoreProduct: async (id) => {
+    return await apiClient.patch(`/pharmacy/products/${id}/restore`);
   },
 
   updateStock: async (id, data) => {
@@ -105,6 +122,15 @@ const pharmacyService = {
     return await apiClient.patch(`/pharmacy/workers/${id}/permission`);
   },
 
+  // Worker can add products setting
+  getWorkerAddProductSetting: async () => {
+    return await apiClient.get('/pharmacy/admin/worker-can-add-products');
+  },
+
+  updateWorkerAddProductSetting: async (enabled) => {
+    return await apiClient.patch('/pharmacy/admin/worker-can-add-products', { enabled });
+  },
+
   // Branches toggle
   toggleBranchStatus: async (id) => {
     return await apiClient.patch(`/pharmacy/branches/${id}/toggle`);
@@ -139,6 +165,98 @@ const pharmacyService = {
   ceoDecision: async (id, data) => {
     return await apiClient.patch(`/pharmacy/manager-requests/${id}/ceo-number`, data);
   },
+
+  // Product Posts
+  getProductPosts: async () => {
+    return await apiClient.get('/pharmacy/product-posts');
+  },
+
+  getPublicProductPosts: async () => {
+    return await apiClient.get('/pharmacy/product-posts/public');
+  },
+
+  getProductPostById: async (id) => {
+    return await apiClient.get(`/pharmacy/product-posts/${id}`);
+  },
+
+  createProductPost: async (formData) => {
+    return await apiClient.post('/pharmacy/product-posts', formData);
+  },
+
+  updateProductPost: async (id, formData) => {
+    return await apiClient.put(`/pharmacy/product-posts/${id}`, formData);
+  },
+
+  deleteProductPost: async (id) => {
+    return await apiClient.delete(`/pharmacy/product-posts/${id}`);
+  },
+
+  // ── Pharmacy & Health Content Posts ──
+  getPublicHealthPosts: async () => {
+    return await apiClient.get('/pharmacy/health-posts/public');
+  },
+
+  getHealthPosts: async (params) => {
+    return await apiClient.get('/pharmacy/health-posts', { params });
+  },
+
+  getHealthPostById: async (id) => {
+    return await apiClient.get(`/pharmacy/health-posts/${id}`);
+  },
+
+  scrapeHealthData: async () => {
+    return await apiClient.get('/pharmacy/health-posts/scrape');
+  },
+
+  createHealthPost: async (formData) => {
+    return await apiClient.post('/pharmacy/health-posts', formData);
+  },
+
+  updateHealthPost: async (id, formData) => {
+    return await apiClient.put(`/pharmacy/health-posts/${id}`, formData);
+  },
+
+  deleteHealthPost: async (id) => {
+    return await apiClient.delete(`/pharmacy/health-posts/${id}`);
+  },
+
+  getStockMovements: async (params) => {
+    return await apiClient.get('/pharmacy/stock-movements', { params });
+  },
+
+  publishHealthPost: async (id) => {
+    return await apiClient.patch(`/pharmacy/health-posts/${id}/publish`);
+  },
+
+  getWorkerAdjustStockSetting: async () => {
+    const res = await apiClient.get('/pharmacy/admin/worker-can-adjust-stock');
+    return res.data;
+  },
+
+  updateWorkerAdjustStockSetting: async (enabled) => {
+    const res = await apiClient.patch('/pharmacy/admin/worker-can-adjust-stock', { enabled });
+    return res.data;
+  },
+
+  getWorkerHealthPostSetting: async () => {
+    const res = await apiClient.get('/pharmacy/admin/worker-can-manage-health-posts');
+    return res.data;
+  },
+
+  updateWorkerHealthPostSetting: async (enabled) => {
+    const res = await apiClient.patch('/pharmacy/admin/worker-can-manage-health-posts', { enabled });
+    return res.data;
+  },
+
+  getWorkerHideDrugSetting: async () => {
+    const res = await apiClient.get('/pharmacy/admin/worker-can-hide-drugs');
+    return res.data;
+  },
+
+  updateWorkerHideDrugSetting: async (enabled) => {
+    const res = await apiClient.patch('/pharmacy/admin/worker-can-hide-drugs', { enabled });
+    return res.data;
+  }
 };
 
 export default pharmacyService;

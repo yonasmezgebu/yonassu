@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Users, UserPlus, IdCard, Calendar, Banknote } from 'lucide-react';
+import { Users, UserPlus, IdCard, Calendar } from 'lucide-react';
 import HREmployees from './HREmployees';
 import HRAddEmployee from './HRAddEmployee';
 import HREmployeeStatus from './HREmployeeStatus';
 import HRAttendanceSimple from './HRAttendanceSimple';
 import HREditEmployee from './HREditEmployee';
-import HRPayrollDashboard from './HRPayrollDashboard';
 
 const TABS = [
   { key: 'list',       label: 'EMPLOYEE LIST',   Icon: Users },
   { key: 'add',        label: 'ADD EMPLOYEE',     Icon: UserPlus },
-  { key: 'status',     label: 'EMPLOYEE INFO',    Icon: IdCard },
   { key: 'attendance', label: 'ATTENDANCE',        Icon: Calendar },
-  { key: 'payroll',    label: 'PAYROLL',          Icon: Banknote },
 ];
 
 const HREmployeesWrapper = () => {
@@ -29,7 +26,12 @@ const HREmployeesWrapper = () => {
 
   useEffect(() => {
     setActiveTab(getTabFromSearch());
-  }, [location.search]);
+    if (location.state?.prefillData) {
+      setPrefillData(location.state.prefillData);
+      // Optional: clean up the state so it doesn't persist on refresh if not desired, 
+      // but React Router handles state well enough.
+    }
+  }, [location.search, location.state]);
 
   const handleRegisterExisting = (employeeData) => {
     setPrefillData(employeeData);
@@ -69,40 +71,45 @@ const HREmployeesWrapper = () => {
               onClick={() => setActiveTab(tab.key)}
               style={{
                 flex: 1,
-                padding: '18px 20px',
+                padding: '16px 20px',
+                margin: '8px',
                 border: 'none',
-                borderRight: idx < TABS.length - 1 ? '1px solid #cbc6bb' : 'none',
+                borderRadius: '12px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
+                gap: 10,
                 position: 'relative',
-                transition: 'all 0.2s',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 background: active
-                  ? 'linear-gradient(180deg, rgba(253,230,138,0.35) 0%, rgba(255,255,255,0.5) 100%)'
+                  ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' // Rich gold gradient
                   : 'transparent',
-                color: active ? '#92400e' : '#78716c',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                letterSpacing: '0.06em',
+                color: active ? '#ffffff' : '#b45309', // White text when active, dark gold when inactive
+                fontWeight: active ? 900 : 700,
+                fontSize: '0.85rem',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                boxShadow: active 
+                  ? '0 8px 20px rgba(217, 119, 6, 0.3), inset 0 2px 4px rgba(255,255,255,0.4)' 
+                  : 'none',
+                transform: active ? 'translateY(-2px)' : 'translateY(0)',
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = 'rgba(217, 119, 6, 0.08)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
               }}
             >
-              {/* Gold glowing top-bar for active */}
-              {active && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: '15%',
-                  right: '15%',
-                  height: 4,
-                  background: 'linear-gradient(90deg, transparent, #d97706, transparent)',
-                  boxShadow: '0 2px 10px rgba(217,119,6,0.7)',
-                  borderRadius: '0 0 4px 4px',
-                }} />
-              )}
-              <TabIcon size={17} color={active ? '#b45309' : '#a8a29e'} strokeWidth={2} />
-              <span>{tab.label}</span>
+              <TabIcon size={18} color={active ? '#ffffff' : '#d97706'} strokeWidth={active ? 2.5 : 2} style={{ filter: active ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' : 'none' }} />
+              <span style={{ textShadow: active ? '0 2px 4px rgba(0,0,0,0.15)' : 'none' }}>{tab.label}</span>
             </button>
           );
         })}
@@ -112,10 +119,8 @@ const HREmployeesWrapper = () => {
       <div style={{ flex: 1, overflow: 'auto', background: '#ffffff' }}>
         {activeTab === 'list'       && <HREmployees onRegister={handleRegisterExisting} onEdit={handleEditEmployee} />}
         {activeTab === 'add'        && <HRAddEmployee />}
-        {activeTab === 'status'     && <HREmployeeStatus onEdit={(emp) => { setPrefillData(emp); setActiveTab('edit'); }} />}
         {activeTab === 'edit'       && <HREditEmployee prefillData={prefillData} onCancel={() => { setActiveTab('list'); }} />}
         {activeTab === 'attendance' && <HRAttendanceSimple />}
-        {activeTab === 'payroll'    && <HRPayrollDashboard />}
       </div>
     </div>
   );

@@ -76,7 +76,7 @@ const PurchaseSupplierPerformance = () => {
             <MetricBadge label="On-Time Delivery Rate" value={`${metrics.onTimeRate}%`} color="#0369a1" bg="#e0f2fe" />
             <MetricBadge label="Quality Score" value={`${metrics.qualityScore}%`} color="#7c3aed" bg="#ede9fe" />
             <MetricBadge label="Total Orders" value={metrics.totalOrders} color="#0f172a" bg="#f1f5f9" />
-            <MetricBadge label="Total Spend" value={`$${metrics.totalSpend.toLocaleString()}`} color="#dc2626" bg="#fef2f2" />
+            <MetricBadge label="Total Spend" value={`ETB ${metrics.totalSpend.toLocaleString()}`} color="#dc2626" bg="#fef2f2" />
             <MetricBadge label="Avg Lead Time" value={`${metrics.avgLeadTime} Days`} color="#d97706" bg="#fef3c7" />
             <MetricBadge label="Response Time" value={metrics.responseTime} color="#475569" bg="#f8fafc" />
             <MetricBadge label="Price Competitiveness" value={metrics.priceRank} color="#059669" bg="#dcfce7" />
@@ -118,7 +118,7 @@ const PurchaseSupplierPerformance = () => {
                   { m: 'Price Competitiveness', v: metrics.priceRank, grade: metrics.priceRank === 'Competitive' ? 'A' : 'N/A' },
                   { m: 'Response Time', v: metrics.responseTime, grade: 'B' },
                   { m: 'Total Orders Placed', v: metrics.totalOrders, grade: '—' },
-                  { m: 'Total Spend', v: `$${metrics.totalSpend.toLocaleString()}`, grade: '—' },
+                  { m: 'Total Spend', v: `ETB ${metrics.totalSpend.toLocaleString()}`, grade: '—' },
                   { m: 'Average Lead Time', v: `${metrics.avgLeadTime} Days`, grade: '—' },
                   { m: 'Overall Rating', v: `${metrics.overallRating}%`, grade: metrics.overallRating >= 75 ? 'A' : 'B' },
                 ].map(row => (

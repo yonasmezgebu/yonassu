@@ -1,25 +1,21 @@
-import React, { useEffect } from 'react';
-import { AlertTriangle, Download, Printer, Filter, Send } from 'lucide-react';
-import { storeInfo, storeSuccess } from '../../utils/storeNotifications';
-
-const mockLowStock = [
-  { id: 'ITM-005', name: 'Syringes 5ml', qty: 0, reorder: 500, price: 0.10, loc: 'Main Store - Rack B', cat: 'Medical Supplies' },
-  { id: 'ITM-003', name: 'A4 Paper', qty: 5, reorder: 10, price: 4.50, loc: 'Office Supply Rm', cat: 'Office Supplies' },
-];
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Download, Printer, Filter, Send, Info } from 'lucide-react';
+import { getInventory } from '../../utils/storeApi';
+import { storeInfo } from '../../utils/storeNotifications';
 
 const StoreLowStockReport = () => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    storeInfo('⚠️ Low Stock Alert - Syringes 5ml', '⚠️ Reorder Required', 'Some items have fallen below their reorder levels.');
+    getInventory({ low_stock: 'true' }).then(r => { setItems(r.data || []); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
-  const handleCreateRequisition = (item) => {
-    const shortage = item.reorder - item.qty;
-    storeSuccess(`Requisition Created for ${item.name}`, '📋 New Requisition Generated', `Pre-filled Model 20 requisition created for ${shortage} units.`);
+  const handleNotifyPurchase = (item) => {
+    storeInfo('Alert sent to Purchase for ' + item.drug_name, 'Purchase Notified', 'The Purchase department has been notified of the shortage. To create a formal requisition, please contact your department manager.');
   };
 
-  const handleNotifyPurchase = (item) => {
-    storeInfo(`Alert sent to Purchase for ${item.name}`, '✉️ Purchase Notified', 'The Purchase department has been notified of the shortage.');
-  };
+  if (loading) return <div style={{ padding: 24, fontFamily: "'Inter', sans-serif" }}>Loading...</div>;
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
@@ -39,58 +35,50 @@ const StoreLowStockReport = () => {
           </button>
         </div>
       </div>
-
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', alignItems: 'center' }}>
         <Filter size={15} color="#64748b" />
         <select style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
           <option>All Categories</option>
-          <option>Medical Supplies</option>
-          <option>Office Supplies</option>
-        </select>
-        <select style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-          <option>All Locations</option>
-          <option>Main Store</option>
-          <option>Office Supply Rm</option>
         </select>
       </div>
-
       <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#fef3c7' }}>
-              {['Item Name', 'Current Qty', 'Reorder Lvl', 'Shortage', 'Unit Price', 'Value at Risk', 'Actions'].map(h => (
+              {['Item Name', 'Current Qty', 'Reorder Lvl', 'Shortage', 'Unit Price', 'Value at Risk', 'Notify'].map(h => (
                 <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#92400e', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {mockLowStock.map((item, i) => {
-              const shortage = item.reorder - item.qty;
-              const valueRisk = shortage * item.price;
+            {items.map(i => {
+              const q = Number(i.quantity);
+              const reorder = Number(i.min_level || 0);
+              const shortage = Math.max(reorder - q, 0);
+              const valueRisk = shortage * Number(i.unit_price);
               return (
-                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <tr key={i.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '12px 14px' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{item.name}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>{item.loc}</div>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{i.drug_name}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{i.storage_location || '—'}</div>
                   </td>
-                  <td style={{ padding: '12px 14px', fontWeight: 700, color: item.qty === 0 ? '#b91c1c' : '#b45309' }}>{item.qty}</td>
-                  <td style={{ padding: '12px 14px', color: '#64748b' }}>{item.reorder}</td>
+                  <td style={{ padding: '12px 14px', fontWeight: 700, color: q === 0 ? '#b91c1c' : '#b45309' }}>{q}</td>
+                  <td style={{ padding: '12px 14px', color: '#64748b' }}>{reorder}</td>
                   <td style={{ padding: '12px 14px', fontWeight: 700, color: '#b91c1c' }}>{shortage}</td>
-                  <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#475569' }}>${item.price.toFixed(2)}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 600, fontFamily: 'monospace', color: '#b91c1c' }}>${valueRisk.toFixed(2)}</td>
+                  <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#475569' }}>ETB {Number(i.unit_price).toFixed(2)}</td>
+                  <td style={{ padding: '12px 14px', fontWeight: 600, fontFamily: 'monospace', color: '#b91c1c' }}>ETB {valueRisk.toFixed(2)}</td>
                   <td style={{ padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleCreateRequisition(item)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                        Create Requisition
-                      </button>
-                      <button onClick={() => handleNotifyPurchase(item)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={() => handleNotifyPurchase(i)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
                         <Send size={13} /> Notify Purchase
                       </button>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Requests must be created by your department manager</span>
                     </div>
                   </td>
                 </tr>
-              )
+              );
             })}
+            {items.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>No low stock items — all inventory levels are healthy</td></tr>}
           </tbody>
         </table>
       </div>

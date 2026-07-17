@@ -923,7 +923,6 @@ body.dark-theme {
   .cnx-why-grid { grid-template-columns: 1fr; }
 }
 
-/* ── Contact Page Enhancements & FAQ Styles ── */
 .contact-info-val {
   font-size: 15px;
   font-weight: 600;
@@ -996,9 +995,7 @@ body.dark-theme {
   margin: 0;
 }
 
-/* ══════════════════════════════════════════════
    Toggle Section Component
-   ══════════════════════════════════════════════ */
 .cnx-toggle-section {
   border-radius: 20px;
   overflow: hidden;
@@ -1088,9 +1085,6 @@ body.dark-theme {
 
 
 
-/* ══════════════════════════════════════════════
-   Visibility Fixes — Force high-contrast text
-   ══════════════════════════════════════════════ */
 .pub-section-header h2,
 .cnx-toggle-bar-text h2,
 .cnx-why-card h3,
@@ -1112,11 +1106,7 @@ body.dark-theme {
   color: var(--pub-primary) !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   NAVBAR — Fully Responsive (Desktop + Mobile)
-   ══════════════════════════════════════════════════════════════ */
 
-/* ── Shell ── */
 .pub-nav-modern {
   position: sticky;
   top: 0;
@@ -1133,7 +1123,6 @@ body.dark-theme .pub-nav-modern {
   box-shadow: 0 2px 24px rgba(0,0,0,0.4);
 }
 
-/* ── Inner row ── */
 .pub-nav-inner-modern {
   display: flex;
   align-items: center;
@@ -1147,7 +1136,6 @@ body.dark-theme .pub-nav-modern {
   justify-content: space-between;
 }
 
-/* ── Logo ── */
 .pub-logo-modern {
   display: flex;
   align-items: center;
@@ -1174,7 +1162,6 @@ body.dark-theme .pub-logo-modern span {
 }
 .brand-icon { flex-shrink: 0; }
 
-/* ── Search wrap — grows to fill center ── */
 .pub-nav-search-wrap {
   /* flex: 1 removed */
   display: flex;
@@ -1182,7 +1169,6 @@ body.dark-theme .pub-logo-modern span {
   padding: 0 16px;
 }
 
-/* ── Desktop links (hidden on mobile) ── */
 .pub-nav-links-desktop {
   display: flex;
   align-items: center;
@@ -1192,7 +1178,6 @@ body.dark-theme .pub-logo-modern span {
   min-width: 0;
 }
 
-/* ── Individual nav link ── */
 .pub-link-modern {
   position: relative;
   font-size: 0.875rem;
@@ -1252,7 +1237,6 @@ body.dark-theme .pub-link-modern {
 }
 .pub-chevron--open { transform: rotate(180deg); opacity: 0.9; }
 
-/* ── Dropdown wrapper ── */
 .pub-dropdown-wrapper {
   position: relative;
   /* extend hover area downward so menu doesn't flicker */
@@ -1260,7 +1244,6 @@ body.dark-theme .pub-link-modern {
   margin-bottom: -16px;
 }
 
-/* ── Dropdown grid (desktop) ── */
 .pub-dropdown-desktop {
   position: absolute;
   top: calc(100% - 14px);
@@ -1304,7 +1287,6 @@ body.dark-theme .pub-dropdown-desktop::before {
 /* Mobile accordion (always rendered, toggled by height) */
 .pub-mobile-accordion { display: none; }
 
-/* ── Dropdown items ── */
 .pub-dropdown-item {
   display: flex;
   align-items: center;
@@ -1334,7 +1316,23 @@ body.dark-theme .pub-dropdown-item--active {
   background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(96,165,250,0.1)) !important;
   color: #34d399 !important;
 }
+
+/* Active sublink underline for Marketplace dropdown */
+.active-sublink {
+  color: #059669 !important;
+  text-decoration: underline !important;
+  text-decoration-color: #059669 !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 2px !important;
+  font-weight: 800 !important;
+}
+body.dark-theme .active-sublink {
+  color: #34d399 !important;
+  text-decoration-color: #34d399 !important;
+}
+
 .pub-dropdown-icon {
+
   flex-shrink: 0;
   width: 24px;
   display: flex;
@@ -1344,7 +1342,6 @@ body.dark-theme .pub-dropdown-item--active {
 }
 body.dark-theme .pub-dropdown-icon { color: #34d399; }
 
-/* ── Right section ── */
 .pub-nav-right-modern {
   display: flex;
   align-items: center;
@@ -1352,7 +1349,6 @@ body.dark-theme .pub-dropdown-icon { color: #34d399; }
   flex-shrink: 0;
 }
 
-/* ── Login button ── */
 .pub-btn-solid-modern {
   display: flex;
   align-items: center;
@@ -1390,7 +1386,6 @@ body.dark-theme .pub-btn-solid-modern {
   box-shadow: 0 4px 20px rgba(52,211,153,0.3);
 }
 
-/* ── Hamburger (hidden on desktop) ── */
 .pub-mobile-toggle,
 .pub-mobile-toggle-left {
   display: none;
@@ -1423,9 +1418,6 @@ body.dark-theme .pub-mobile-toggle-left {
   border-color: rgba(52,211,153,0.3);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MOBILE PANEL — Slides down from nav
-   ══════════════════════════════════════════════════════════════ */
 .pub-mobile-panel {
   position: absolute;
   top: 64px;
@@ -1454,7 +1446,6 @@ body.dark-theme .pub-mobile-panel {
   gap: 4px;
 }
 
-/* ── Mobile top-level links ── */
 .pub-mobile-top-link {
   display: flex;
   align-items: center;
@@ -1473,7 +1464,6 @@ body.dark-theme .pub-mobile-top-link { color: #e2e8f0; }
   color: #059669;
 }
 
-/* ── Mobile accordion group ── */
 .pub-mobile-group { border-radius: 10px; overflow: hidden; }
 .pub-mobile-group-trigger {
   width: 100%;
@@ -1511,7 +1501,6 @@ body.dark-theme .pub-mobile-group-icon { color: #34d399; }
 }
 .pub-mobile-group-body--open { max-height: 600px; }
 
-/* ── Mobile sub-links ── */
 .pub-mobile-link {
   display: flex;
   align-items: center;
@@ -1532,9 +1521,7 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   padding-left: 18px;
 }
 
-/* ══════════════════════════════════════════════════════════════
    RESPONSIVE BREAKPOINTS
-   ══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1100px) {
   .pub-nav-links-desktop { gap: 0; }
@@ -1558,9 +1545,7 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   .pub-nav-search-wrap { padding: 0 8px; }
 }
 
-/* ─────────────────────────────────────────────────────────────
    Existing styles preserved below  (search bar, button etc.)
-   ───────────────────────────────────────────────────────────── */
 
 /* Search Results Page */
 .pub-search-results-page { min-height: 60vh; background: var(--pub-bg); }
@@ -1607,7 +1592,6 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
 .pub-btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--pub-border); background: white; color: var(--pub-text-2); cursor: pointer; transition: all 0.15s; }
 .pub-btn-outline:hover { border-color: var(--pub-primary); color: var(--pub-primary); }
 
-/* ── About Leaders ────────────────────────────────────────────── */
 .about-leaders {
   display: flex;
   flex-wrap: wrap;
@@ -1684,7 +1668,6 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   padding: 3px 10px;
 }
 
-/* ── About Responsive Leaders ─────────────────────────────────── */
 @media (max-width: 768px) {
   .about-leader-item { flex: 0 0 50%; }
 }
@@ -1692,7 +1675,6 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   .about-leader-item { flex: 0 0 100%; }
 }
 
-/* ── Rotating Gradient Border Cards ────────────────────────────── */
 .rotate-card {
   position: relative;
   border-radius: 18px;
@@ -1731,7 +1713,6 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   width: 100%;
 }
 
-/* ── Gallery typing animation ── */
 .gallery-type-wrap {
   display: flex;
   align-items: center;
@@ -1773,7 +1754,6 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   min-height: 100vh;
 }
 
-/* ── Service card rotating border ── */
 @property --border-angle {
   syntax: '<angle>';
   initial-value: 0deg;
@@ -1814,5 +1794,3 @@ body.dark-theme .pub-mobile-link { color: #94a3b8; }
   opacity: 1;
   animation: spin-border 2s linear infinite;
 }
-
-@media (max-width: 900px) { .pub-logo-modern { flex: 1; } }

@@ -145,7 +145,7 @@ const PrintingNewJob = () => {
             <div style={{ marginBottom: 16 }}><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Deposit Paid ($)</label><input type="number" value={form.depositPaid} onChange={set('depositPaid')} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
             <div style={{ background: balanceDue > 0 ? '#fef2f2' : '#f0fdf4', border: `1px solid ${balanceDue > 0 ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: balanceDue > 0 ? '#991b1b' : '#166534' }}>Balance Due:</span>
-              <span style={{ fontSize: 24, fontWeight: 'bold', color: balanceDue > 0 ? '#dc2626' : '#16a34a' }}>${Math.max(0, balanceDue).toLocaleString()}</span>
+              <span style={{ fontSize: 24, fontWeight: 'bold', color: balanceDue > 0 ? '#dc2626' : '#16a34a' }}>ETB {Math.max(0, balanceDue).toLocaleString()}</span>
             </div>
           </div>
         </div>

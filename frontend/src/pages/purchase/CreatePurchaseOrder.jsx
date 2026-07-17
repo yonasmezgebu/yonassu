@@ -230,15 +230,15 @@ const CreatePurchaseOrder = () => {
           <div className={styles.totalsContainer}>
             <div className={styles.totalsRow}>
               <span>Subtotal:</span>
-              <span>${calculateSubtotal().toFixed(2)}</span>
+              <span>ETB {calculateSubtotal().toFixed(2)}</span>
             </div>
             <div className={styles.totalsRow}>
               <span>VAT (15%):</span>
-              <span>${(calculateSubtotal() * 0.15).toFixed(2)} ETB</span>
+              <span>ETB {(calculateSubtotal() * 0.15).toFixed(2)} ETB</span>
             </div>
             <div className={`${styles.totalsRow} ${styles.grandTotal}`}>
               <span>Total Amount:</span>
-              <span>${(calculateSubtotal() * 1.15).toFixed(2)} ETB</span>
+              <span>ETB {(calculateSubtotal() * 1.15).toFixed(2)} ETB</span>
             </div>
           </div>
         </div>

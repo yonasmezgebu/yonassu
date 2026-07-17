@@ -60,7 +60,7 @@ const CEOExecutiveReport = () => {
         </div>
         <div style={{ background: '#dcfce7', padding: 20, borderRadius: 8, border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 13, color: '#166534', fontWeight: 'bold' }}>Net Profit / Loss</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#15803d', marginTop: 8 }}>+$354,500 🟢</div>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#15803d', marginTop: 8 }}>+ETB 354,500 🟢</div>
         </div>
         <div style={{ background: 'white', padding: 20, borderRadius: 8, border: '1px solid #e2e8f0' }}>
           <div style={{ fontSize: 13, color: '#64748b', fontWeight: 'bold' }}>Total Inventory Value</div>
@@ -82,7 +82,7 @@ const CEOExecutiveReport = () => {
                 <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '12px 0', fontWeight: 'bold' }}>{dept}</td>
                   <td style={{ padding: '12px 0', color: idx < 5 ? '#166534' : '#64748b' }}>{idx < 5 ? 'Overperforming ↑' : 'On Target -'}</td>
-                  <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 'bold' }}>${(Math.random() * 100000 + 50000).toFixed(0).toLocaleString()}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 'bold' }}>ETB {(Math.random() * 100000 + 50000).toFixed(0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -148,7 +148,7 @@ const CEOExecutiveReport = () => {
                 <td style={{ padding: 12, fontWeight: 'bold' }}>{p.name}</td>
                 <td style={{ padding: 12 }}>{p.dept}</td>
                 <td style={{ padding: 12 }}>{p.qty.toLocaleString()}</td>
-                <td style={{ padding: 12, color: '#166534', fontWeight: 'bold' }}>${p.rev.toLocaleString()}</td>
+                <td style={{ padding: 12, color: '#166534', fontWeight: 'bold' }}>ETB {p.rev.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

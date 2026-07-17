@@ -42,7 +42,7 @@ const MOCK_SPENDING_TREND = [
 ];
 
 const MOCK_DELEGATIONS = [
-  { id: 1, delegateName: 'Alice Johnson', role: 'VP Finance', startDate: '2025-06-01', endDate: '2025-06-30', active: true, scope: 'Up to $50,000' },
+  { id: 1, delegateName: 'Alice Johnson', role: 'VP Finance', startDate: '2025-06-01', endDate: '2025-06-30', active: true, scope: 'Up to ETB 50,000' },
   { id: 2, delegateName: 'Bob Chen', role: 'Director Procurement', startDate: '2025-05-15', endDate: '2025-07-15', active: true, scope: 'All POs' },
   { id: 3, delegateName: 'Carol Davis', role: 'CFO', startDate: '2025-04-01', endDate: '2025-04-15', active: false, scope: 'Emergency only' },
 ];

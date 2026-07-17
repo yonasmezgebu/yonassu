@@ -31,7 +31,7 @@ const CustomerPortalHome = ({ onPlaceOrder }) => {
         const printing = printRes.status === 'success' ? (printRes.data?.orders || []).slice(0, 3) : [];
         const retail = retailRes.status === 'success' ? (retailRes.data || []).slice(0, 3) : [];
         const rentals = rentalRes.status === 'success' ? (rentalRes.data || []).slice(0, 3) : [];
-        const all = [...farming.map(o => ({ ...o, type: 'Farming', id: `farm-${o.id}` })),
+        const all = [...farming.map(o => ({ ...o, type: 'AgriRent', id: `farm-${o.id}` })),
                      ...printing.map(o => ({ ...o, type: 'Printing', id: `prt-${o.id}`, invoice_number: o.order_number })),
                      ...retail.map(o => ({ ...o, type: 'Retail', id: `ret-${o.id}`, invoice_number: o.invoice_number, total_amount: o.total_amount })),
                      ...rentals.map(o => ({ ...o, type: 'Car Rental', id: `rent-${o.id}`, invoice_number: o.orderNumber, total_amount: o.totalAmount }))];
@@ -90,7 +90,7 @@ const CustomerPortalHome = ({ onPlaceOrder }) => {
             {recentOrders.map(order => (
               <div key={order.id} className={styles.dashOrderCard}>
                 <div className={styles.dashOrderTop}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: order.type === 'Farming' ? '#059669' : order.type === 'Retail' ? '#d97706' : '#3b82f6', background: order.type === 'Farming' ? '#ecfdf5' : order.type === 'Retail' ? '#fffbeb' : '#eff6ff', padding: '2px 8px', borderRadius: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: order.type === 'AgriRent' ? '#059669' : order.type === 'Retail' ? '#d97706' : '#3b82f6', background: order.type === 'AgriRent' ? '#ecfdf5' : order.type === 'Retail' ? '#fffbeb' : '#eff6ff', padding: '2px 8px', borderRadius: 4 }}>
                     {order.type}
                   </span>
                   <span className={styles.dashOrderStatus}>{statusIcons[order.status] || statusIcons.default}</span>

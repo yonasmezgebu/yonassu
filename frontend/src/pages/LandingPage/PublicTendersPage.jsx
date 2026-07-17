@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import { Calendar, Clock, Tag, Search, Filter, ArrowRight, Flame, Award, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
-import tenderHero from '../../assets/hero-section/tender.jpg';
+import tenderHero from '../../assets/hero-section/tender2.jpg';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 

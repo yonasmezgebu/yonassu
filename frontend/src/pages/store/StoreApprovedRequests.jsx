@@ -1,35 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Filter, Download, Eye } from 'lucide-react';
-import { notifyApprovedRequests } from '../../utils/storeNotifications';
-
-const mockApproved = [
-  { id: 'M20-002', dept: 'Sales', items: 'A4 Paper Reams', qtyApproved: 10, approvedBy: 'Store Manager', approvalDate: '2026-06-30', stampId: 'STM-99001', status: 'Issued', m21: 'M21-0089' },
-  { id: 'M20-008', dept: 'Pharmacy', items: 'Paracetamol 500mg', qtyApproved: 300, approvedBy: 'Store Manager', approvalDate: '2026-07-01', stampId: 'STM-99002', status: 'Completed', m21: 'M21-0090' },
-  { id: 'M20-009', dept: 'Other', items: 'Hand Sanitizer 500ml', qtyApproved: 20, approvedBy: 'Store Manager', approvalDate: '2026-07-01', stampId: 'STM-99003', status: 'Issued', m21: 'M21-0091' },
-];
+import { getApprovedRequests } from '../../utils/storeApi';
 
 const StoreApprovedRequests = () => {
   const [filterDept, setFilterDept] = useState('All');
   const [filterDate, setFilterDate] = useState('');
   const [viewDoc, setViewDoc] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getApprovedRequests();
+      setRequests(res.data.map(item => ({
+        id: item.requisition_id || item.id,
+        m21: item.approval_no,
+        dept: item.department,
+        items: item.items?.[0]?.item_name || '-',
+        qtyApproved: item.items?.[0]?.quantity_approved || 0,
+        approvedBy: item.approved_by,
+        approvalDate: item.approval_date,
+        stampId: item.stamp_id || '—',
+        status: item.status,
+      })));
+    } catch (e) {
+      setError(e.message || 'Failed to load approved requests');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const today = mockApproved.filter(r => r.approvalDate === '2026-07-01');
-    notifyApprovedRequests(today.length || mockApproved.length);
+    fetchRequests();
   }, []);
 
-  const filtered = mockApproved
+  const filtered = requests
     .filter(r => filterDept === 'All' || r.dept === filterDept)
     .filter(r => !filterDate || r.approvalDate === filterDate);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: 16 }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <p style={{ color: '#991b1b', fontSize: 16 }}>Error: {error}</p>
+        <button onClick={fetchRequests} style={{ padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircle color="#22c55e" size={28} /> APPROVED REQUESTS
+            <CheckCircle color="#22c55e" size={28} /> FULFILLED / ISSUED REQUESTS
           </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Document Model: M21 — Approved Request Register</p>
+          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Requests that have been issued stock by the Store</p>
         </div>
         <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
           <Download size={15} /> Export List

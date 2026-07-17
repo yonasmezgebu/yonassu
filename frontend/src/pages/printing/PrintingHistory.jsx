@@ -70,7 +70,7 @@ const PrintingHistory = () => {
                   <td style={{ padding: '12px 14px', color: '#0f172a' }}>{j.customerName}</td>
                   <td style={{ padding: '12px 14px', color: '#475569' }}>{j.jobType}</td>
                   <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{j.quantity.toLocaleString()}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600 }}>${(j.totalCost || 0).toLocaleString()}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600 }}>ETB {(j.totalCost || 0).toLocaleString()}</td>
                   <td style={{ padding: '12px 14px', color: '#475569' }}>{j.completedDate || '-'}</td>
                   <td style={{ padding: '12px 14px' }}>
                     <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: j.status === 'Completed' ? '#dcfce7' : j.status === 'Cancelled' ? '#fee2e2' : '#f1f5f9', color: j.status === 'Completed' ? '#16a34a' : j.status === 'Cancelled' ? '#dc2626' : '#64748b' }}>
@@ -117,9 +117,9 @@ const PrintingHistory = () => {
               <div>
                 <h3 style={{ margin: '0 0 16px', color: '#0f172a', fontSize: 16 }}>Financials</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, fontSize: 14 }}>
-                  <div style={{ color: '#64748b', fontWeight: 600 }}>Total Cost:</div><div style={{ color: '#0f172a', fontWeight: 'bold' }}>${(modalJob.totalCost || 0).toLocaleString()}</div>
-                  <div style={{ color: '#64748b', fontWeight: 600 }}>Deposit:</div><div style={{ color: '#16a34a' }}>${(modalJob.depositPaid || 0).toLocaleString()}</div>
-                  <div style={{ color: '#64748b', fontWeight: 600 }}>Balance Due:</div><div style={{ color: modalJob.balanceDue > 0 ? '#dc2626' : '#64748b', fontWeight: 'bold' }}>${(modalJob.balanceDue || 0).toLocaleString()}</div>
+                  <div style={{ color: '#64748b', fontWeight: 600 }}>Total Cost:</div><div style={{ color: '#0f172a', fontWeight: 'bold' }}>ETB {(modalJob.totalCost || 0).toLocaleString()}</div>
+                  <div style={{ color: '#64748b', fontWeight: 600 }}>Deposit:</div><div style={{ color: '#16a34a' }}>ETB {(modalJob.depositPaid || 0).toLocaleString()}</div>
+                  <div style={{ color: '#64748b', fontWeight: 600 }}>Balance Due:</div><div style={{ color: modalJob.balanceDue > 0 ? '#dc2626' : '#64748b', fontWeight: 'bold' }}>ETB {(modalJob.balanceDue || 0).toLocaleString()}</div>
                 </div>
               </div>
             </div>

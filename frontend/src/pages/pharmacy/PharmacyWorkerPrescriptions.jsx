@@ -1,274 +1,398 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
 import { playSound } from '../../services/notificationManager';
 import {
-  ClipboardList, Clock, CheckCircle, XCircle, Package, RefreshCw,
-  Eye, User, Phone, Pill, Building2, AlertCircle, MapPin
+  ClipboardList, Clock, Package, CheckCircle, XCircle, RefreshCw,
+  Pill, User, Phone, Building2, AlertCircle, ChevronRight, Bell, Loader
 } from 'lucide-react';
 
-const STATUS_TABS = [
-  { key: 'PENDING', label: 'Pending', icon: <Clock size={16} />, color: '#f59e0b' },
-  { key: 'PREPARED', label: 'Prepared', icon: <Package size={16} />, color: '#3b82f6' },
-  { key: 'PICKED_UP', label: 'Picked Up', icon: <CheckCircle size={16} />, color: '#10b981' },
+const KANBAN_COLS = [
+  {
+    key: 'PENDING',
+    label: 'Pending',
+    subtitle: 'Awaiting preparation',
+    icon: <Clock size={16} />,
+    gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
+    bg: '#fffbeb',
+    border: '#fde68a',
+    badge: '#f59e0b',
+    badgeText: 'white',
+  },
+  {
+    key: 'PREPARED',
+    label: 'Ready for Pickup',
+    subtitle: 'Notified, waiting customer',
+    icon: <Package size={16} />,
+    gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
+    badge: '#3b82f6',
+    badgeText: 'white',
+  },
 ];
 
 export default function PharmacyWorkerPrescriptions() {
   const { showToast, ToastContainer } = useToast();
-  const [prescriptions, setPrescriptions] = useState([]);
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [columns, setColumns] = useState({ PENDING: [], PREPARED: [] });
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-
+  const [actionLoading, setActionLoading] = useState(null);
   const [branchModal, setBranchModal] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null);
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const prevCounts = useRef({ PENDING: 0, PREPARED: 0 });
 
-  const fetchPrescriptions = useCallback(async (status) => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get(`/pharmacy/prescriptions?status=${status}`);
-      setPrescriptions(res.data || []);
+      const [pendingRes, preparedRes] = await Promise.all([
+        apiClient.get('/pharmacy/prescriptions?status=PENDING'),
+        apiClient.get('/pharmacy/prescriptions?status=PREPARED'),
+      ]);
+      const pending = pendingRes?.data || [];
+      const prepared = preparedRes?.data || [];
+
+      // New prescription arrived notification
+      if (!loading && pending.length > prevCounts.current.PENDING) {
+        playSound('notification');
+      }
+      prevCounts.current = { PENDING: pending.length, PREPARED: prepared.length };
+
+      setColumns({ PENDING: pending, PREPARED: prepared });
     } catch (e) {
-      console.error(e);
+      showToast('Failed to load prescriptions', 'error');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchPrescriptions(activeTab);
-  }, [activeTab, fetchPrescriptions]);
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000); // auto-refresh every 30s
+    return () => clearInterval(interval);
+  }, [fetchAll]);
 
-  const openBranchModal = async (prescription) => {
+  const openPrepareModal = async (rx) => {
     setSelectedBranch('');
+    setBranchModal(rx);
     try {
       const res = await apiClient.get('/pharmacy/branches');
       setBranches(res.data || []);
     } catch (e) {
-      console.error(e);
+      setBranches([]);
     }
-    setBranchModal(prescription);
   };
 
   const handlePrepare = async () => {
-    if (!branchModal || !selectedBranch) { showToast('Please select a pickup branch', 'warning'); return; }
-    setActionLoading(true);
+    if (!selectedBranch) { showToast('Please select a pickup branch', 'warning'); return; }
+    setActionLoading(branchModal.id + '-prepare');
     try {
       await apiClient.patch(`/pharmacy/prescriptions/${branchModal.id}/status`, {
         status: 'PREPARED',
         pickup_branch_id: selectedBranch,
       });
-      showToast('Prescription marked as PREPARED', 'success');
+      showToast('✅ Prescription marked as Ready for Pickup', 'success');
       playSound('success');
       setBranchModal(null);
-      fetchPrescriptions(activeTab);
+      fetchAll();
     } catch (e) {
-      showToast(e.response?.data?.message || e.message || 'Failed to update', 'error');
+      showToast(e.response?.data?.message || 'Failed to update', 'error');
     } finally {
-      setActionLoading(false);
+      setActionLoading(null);
     }
   };
 
-  const handlePickUp = async (prescription) => {
-    setActionLoading(true);
+  const handlePickUp = async (rx) => {
+    setActionLoading(rx.id + '-pickup');
     try {
-      await apiClient.patch(`/pharmacy/prescriptions/${prescription.id}/status`, {
-        status: 'PICKED_UP',
-      });
-      showToast('Prescription marked as PICKED_UP', 'success');
+      await apiClient.patch(`/pharmacy/prescriptions/${rx.id}/status`, { status: 'PICKED_UP' });
+      showToast('✅ Prescription marked as Picked Up — moved to history', 'success');
       playSound('success');
-      fetchPrescriptions(activeTab);
+      fetchAll();
     } catch (e) {
-      showToast(e.response?.data?.message || e.message || 'Failed to update', 'error');
+      showToast(e.response?.data?.message || 'Failed to update', 'error');
     } finally {
-      setActionLoading(false);
+      setActionLoading(null);
     }
   };
+
+  const handleCancel = async () => {
+    if (!cancelReason.trim()) { showToast('Please provide a cancellation reason', 'warning'); return; }
+    setActionLoading(cancelModal.id + '-cancel');
+    try {
+      await apiClient.patch(`/pharmacy/prescriptions/${cancelModal.id}/status`, { status: 'CANCELLED' });
+      showToast('Prescription cancelled', 'info');
+      setCancelModal(null);
+      setCancelReason('');
+      fetchAll();
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Failed to cancel', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const totalActive = columns.PENDING.length + columns.PREPARED.length;
 
   return (
-    <div style={{ padding: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ padding: '1.5rem', fontFamily: "'Inter', 'Segoe UI', sans-serif", minHeight: '100vh', background: '#f8fafc' }}>
       <ToastContainer />
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ClipboardList size={22} color="#059669" /> Incoming Prescriptions (B9)
-        </h1>
-        <p style={{ margin: 0, fontSize: 12, color: '#64748B' }}>View and manage incoming prescription requests</p>
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        {STATUS_TABS.map(tab => (
-          <button key={tab.key}
-            style={{
-              ...tabBtn(activeTab === tab.key),
-              borderBottom: activeTab === tab.key ? `3px solid ${tab.color}` : '3px solid transparent',
-              color: activeTab === tab.key ? tab.color : '#475569',
-            }}
-            onClick={() => setActiveTab(tab.key)}>
-            {tab.icon} {tab.label}
-          </button>
-        ))}
-        <button onClick={() => fetchPrescriptions(activeTab)}
-          style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', marginLeft: 'auto' }}>
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
-
-      {loading ? (
-        <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>Loading...</div>
-      ) : prescriptions.length === 0 ? (
-        <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
-          <ClipboardList size={48} color="#d1d5db" style={{ marginBottom: 8 }} />
-          <p style={{ margin: 0 }}>No {activeTab.toLowerCase()} prescriptions</p>
-        </div>
-      ) : (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <th style={thStyle}>Reference #</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Drug</th>
-                <th style={thStyle}>Qty</th>
-                <th style={thStyle}>Source</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Date</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {prescriptions.map(p => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={tdStyle}>
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>#{p.reference_number || p.id}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.customer_name}</div>
-                    {p.customer_phone && <div style={{ fontSize: 11, color: '#64748B' }}>{p.customer_phone}</div>}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Pill size={13} color="#64748B" /> {p.drug_name}
-                    </div>
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{p.quantity}</td>
-                  <td style={tdStyle}>
-                    <span style={{ fontSize: 11, color: '#475569' }}>{p.source || '—'}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={statusBadge(p.status)}>{p.status}</span>
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 11, color: '#64748B' }}>
-                    {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {p.status === 'PENDING' && (
-                        <button onClick={() => openBranchModal(p)}
-                          style={{ padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer', background: '#DBEAFE', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Package size={12} /> Prepare
-                        </button>
-                      )}
-                      {p.status === 'PREPARED' && (
-                        <button onClick={() => handlePickUp(p)} disabled={actionLoading}
-                          style={{ padding: '6px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', background: '#D1FAE5', color: '#065F46', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle size={12} /> Pick Up
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {branchModal && (
-        <div style={overlayStyle} onClick={() => setBranchModal(null)}>
-          <div style={modalStyle} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building2 size={18} color="#059669" /> Branch Availability
-              </h3>
-              <button onClick={() => setBranchModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 18 }}>✕</button>
+      {/* Header */}
+      <div style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #059669, #047857)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
+              <ClipboardList size={20} color="white" />
             </div>
-
-            <div style={{ marginBottom: 16, background: '#F8FAFC', borderRadius: 8, padding: 12, border: '1px solid #E2E8F0' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{branchModal.drug_name}</div>
-              <div style={{ fontSize: 12, color: '#64748B' }}>Customer: {branchModal.customer_name}</div>
-              <div style={{ fontSize: 12, color: '#64748B' }}>Quantity: {branchModal.quantity}</div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Select Pickup Branch *</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {branches.length === 0 ? (
-                  <div style={{ padding: '12px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>No branches available</div>
-                ) : (
-                  branches.map(b => {
-                    const stock = b.stock_quantity != null ? parseInt(b.stock_quantity) : null;
-                    const isAvailable = stock !== null && stock > 0;
-                    return (
-                      <label key={b.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                        border: `2px solid ${selectedBranch === String(b.id) ? '#059669' : '#E2E8F0'}`,
-                        borderRadius: 8, cursor: 'pointer', background: selectedBranch === String(b.id) ? '#ECFDF5' : 'white',
-                      }}>
-                        <input type="radio" name="branch" value={b.id}
-                          checked={selectedBranch === String(b.id)}
-                          onChange={() => setSelectedBranch(String(b.id))}
-                          style={{ display: 'none' }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: '#1E293B' }}>{b.name || b.branch_name}</div>
-                          <div style={{ fontSize: 12, color: isAvailable ? '#065F46' : '#EF4444', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            {isAvailable ? '✅ AVAILABLE' : '❌ OUT OF STOCK'}
-                            {isAvailable && <span style={{ color: '#64748B' }}>({stock} units)</span>}
-                          </div>
-                        </div>
-                        {selectedBranch === String(b.id) && <CheckCircle size={18} color="#059669" />}
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setBranchModal(null)}
-                style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button onClick={handlePrepare} disabled={actionLoading || !selectedBranch}
-                style={{
-                  padding: '10px 20px', borderRadius: 8, border: 'none', background: !selectedBranch ? '#94A3B8' : '#059669',
-                  color: 'white', fontSize: 13, fontWeight: 600, cursor: actionLoading || !selectedBranch ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                {actionLoading ? 'Processing...' : 'Confirm Prepare'}
-              </button>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                Prescription Queue
+              </h1>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                Live incoming prescriptions from customers
+              </p>
             </div>
           </div>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {totalActive > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fee2e2', color: '#991b1b', padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, border: '1px solid #fca5a5' }}>
+              <Bell size={13} fill="#991b1b" /> {totalActive} Active
+            </div>
+          )}
+          <button
+            onClick={fetchAll}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#475569', fontSize: 12, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.2s' }}
+          >
+            <RefreshCw size={13} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', flexDirection: 'column', gap: 14 }}>
+          <Loader size={32} color="#059669" style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Loading prescriptions...</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {KANBAN_COLS.map(col => (
+            <div key={col.key}>
+              {/* Column Header */}
+              <div style={{ background: col.gradient, borderRadius: '12px 12px 0 0', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'white' }}>
+                  {col.icon}
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{col.label}</span>
+                  <span style={{ fontSize: 11, opacity: 0.85 }}>— {col.subtitle}</span>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.25)', color: 'white', padding: '2px 10px', borderRadius: 12, fontSize: 13, fontWeight: 800 }}>
+                  {columns[col.key].length}
+                </div>
+              </div>
+
+              {/* Cards */}
+              <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderTop: 'none', borderRadius: '0 0 12px 12px', minHeight: 200, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {columns[col.key].length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                    <ClipboardList size={36} color="#d1d5db" />
+                    <p style={{ margin: '8px 0 0', fontSize: 12 }}>No {col.label.toLowerCase()} prescriptions</p>
+                  </div>
+                ) : (
+                  columns[col.key].map(rx => (
+                    <PrescriptionCard
+                      key={rx.id}
+                      rx={rx}
+                      colKey={col.key}
+                      actionLoading={actionLoading}
+                      onPrepare={() => openPrepareModal(rx)}
+                      onPickUp={() => handlePickUp(rx)}
+                      onCancel={() => { setCancelModal(rx); setCancelReason(''); }}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Prepare / Branch Modal */}
+      {branchModal && (
+        <Modal onClose={() => setBranchModal(null)} title="Select Pickup Branch">
+          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', marginBottom: 16, border: '1px solid #e2e8f0' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 4 }}>{branchModal.drug_name}</div>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Customer: <b>{branchModal.customer_name}</b></div>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Qty: <b>{branchModal.quantity}</b></div>
+            {branchModal.special_instructions && (
+              <div style={{ marginTop: 8, fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '6px 10px', borderRadius: 6, border: '1px solid #fde68a' }}>
+                📝 {branchModal.special_instructions}
+              </div>
+            )}
+          </div>
+          <label style={labelStyle}>Select Pickup Branch *</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+            {branches.length === 0 ? (
+              <div style={{ padding: 16, textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>No branches available</div>
+            ) : branches.map(b => {
+              const stock = b.stock_quantity != null ? parseInt(b.stock_quantity) : null;
+              const isAvailable = stock !== null && stock > 0;
+              const sel = selectedBranch === String(b.id);
+              return (
+                <label key={b.id} onClick={() => setSelectedBranch(String(b.id))} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: `2px solid ${sel ? '#059669' : '#e2e8f0'}`, borderRadius: 8, cursor: 'pointer', background: sel ? '#ecfdf5' : 'white', transition: 'all 0.15s' }}>
+                  <input type="radio" hidden name="branch" value={b.id} checked={sel} onChange={() => setSelectedBranch(String(b.id))} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{b.name || b.branch_name}</div>
+                    <div style={{ fontSize: 11, color: isAvailable ? '#065f46' : '#ef4444', marginTop: 2 }}>
+                      {isAvailable ? `✅ ${stock} units in stock` : '❌ Out of stock'}
+                    </div>
+                  </div>
+                  {sel && <CheckCircle size={18} color="#059669" />}
+                </label>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
+            <button onClick={() => setBranchModal(null)} style={cancelBtnStyle}>Cancel</button>
+            <button
+              onClick={handlePrepare}
+              disabled={!selectedBranch || actionLoading}
+              style={{ ...confirmBtnStyle, opacity: !selectedBranch ? 0.5 : 1 }}
+            >
+              {actionLoading ? <Loader size={14} /> : <Package size={14} />}
+              {actionLoading ? 'Processing...' : 'Confirm Prepare'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelModal && (
+        <Modal onClose={() => setCancelModal(null)} title="Cancel Prescription">
+          <div style={{ background: '#fff1f2', borderRadius: 8, padding: '12px 14px', marginBottom: 16, border: '1px solid #fecdd3' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{cancelModal.drug_name}</div>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Customer: <b>{cancelModal.customer_name}</b></div>
+          </div>
+          <label style={labelStyle}>Reason for Cancellation *</label>
+          <textarea
+            value={cancelReason}
+            onChange={e => setCancelReason(e.target.value)}
+            placeholder="E.g. Drug not available, prescription invalid..."
+            rows={3}
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
+          />
+          <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+            <button onClick={() => setCancelModal(null)} style={cancelBtnStyle}>Back</button>
+            <button
+              onClick={handleCancel}
+              disabled={!cancelReason.trim() || actionLoading}
+              style={{ ...confirmBtnStyle, background: 'linear-gradient(135deg, #e11d48, #be123c)', boxShadow: '0 4px 12px rgba(225,29,72,0.3)', opacity: !cancelReason.trim() ? 0.5 : 1 }}
+            >
+              {actionLoading ? <Loader size={14} /> : <XCircle size={14} />}
+              {actionLoading ? 'Cancelling...' : 'Confirm Cancel'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const tdStyle = { padding: '12px 14px', color: '#1E293B' };
-const tabBtn = (active) => ({
-  background: active ? '#F1F5F9' : 'transparent',
-  border: 'none',
-  borderRadius: 8, padding: '8px 14px', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 600 : 400,
-});
-const overlayStyle = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 };
-const modalStyle = { background: 'white', borderRadius: 12, padding: 24, maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', fontFamily: 'Inter, sans-serif' };
-const statusBadge = (status) => ({
-  background: status === 'PENDING' ? '#FEF3C7' : status === 'PREPARED' ? '#DBEAFE' : status === 'PICKED_UP' ? '#D1FAE5' : '#F1F5F9',
-  color: status === 'PENDING' ? '#92400E' : status === 'PREPARED' ? '#1E40AF' : status === 'PICKED_UP' ? '#065F46' : '#475569',
-  padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-});
+function PrescriptionCard({ rx, colKey, actionLoading, onPrepare, onPickUp, onCancel }) {
+  const isPrepareLoading = actionLoading === rx.id + '-prepare';
+  const isPickupLoading = actionLoading === rx.id + '-pickup';
+  const isCancelLoading = actionLoading === rx.id + '-cancel';
+
+  return (
+    <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden', transition: 'transform 0.15s, box-shadow 0.15s' }}>
+      {/* Card top color strip */}
+      <div style={{ height: 3, background: colKey === 'PENDING' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #3b82f6, #60a5fa)' }} />
+
+      <div style={{ padding: '12px 14px' }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', letterSpacing: 1 }}>
+              #{rx.reference_no || String(rx.id).padStart(5, '0')}
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Pill size={13} color="#059669" /> {rx.drug_name}
+            </div>
+          </div>
+          <div style={{ background: colKey === 'PENDING' ? '#fef3c7' : '#dbeafe', color: colKey === 'PENDING' ? '#92400e' : '#1e40af', padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+            Qty: {rx.quantity}
+          </div>
+        </div>
+
+        {/* Info rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569' }}>
+            <User size={12} color="#94a3b8" /> {rx.customer_name}
+          </div>
+          {rx.customer_phone && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569' }}>
+              <Phone size={12} color="#94a3b8" /> {rx.customer_phone}
+            </div>
+          )}
+          {rx.branch_pickup && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#059669', fontWeight: 600 }}>
+              <Building2 size={12} /> {rx.branch_pickup}
+            </div>
+          )}
+          {rx.special_instructions && (
+            <div style={{ fontSize: 11, color: '#92400e', background: '#fffbeb', padding: '4px 8px', borderRadius: 5, border: '1px solid #fde68a', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+              <AlertCircle size={11} style={{ marginTop: 1, flexShrink: 0 }} /> {rx.special_instructions}
+            </div>
+          )}
+        </div>
+
+        {/* Timestamp */}
+        <div style={{ fontSize: 10, color: '#cbd5e1', marginBottom: 10 }}>
+          {rx.created_at ? new Date(rx.created_at).toLocaleString() : '—'}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {colKey === 'PENDING' && (
+            <button onClick={onPrepare} disabled={isPrepareLoading} style={{ flex: 1, padding: '8px 0', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, boxShadow: '0 3px 8px rgba(59,130,246,0.3)' }}>
+              {isPrepareLoading ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Package size={12} />}
+              Prepare
+            </button>
+          )}
+          {colKey === 'PREPARED' && (
+            <button onClick={onPickUp} disabled={isPickupLoading} style={{ flex: 1, padding: '8px 0', background: 'linear-gradient(135deg, #059669, #047857)', color: 'white', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, boxShadow: '0 3px 8px rgba(5,150,105,0.3)' }}>
+              {isPickupLoading ? <Loader size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={12} />}
+              Mark Picked Up
+            </button>
+          )}
+          <button onClick={onCancel} disabled={isCancelLoading} style={{ padding: '8px 12px', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <XCircle size={12} /> Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Modal({ onClose, title, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, maxWidth: 500, width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', fontFamily: "'Inter', sans-serif" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 20, lineHeight: 1 }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 };
+const cancelBtnStyle = { padding: '10px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
+const confirmBtnStyle = { padding: '10px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #059669, #047857)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(5,150,105,0.3)' };

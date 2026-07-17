@@ -90,8 +90,8 @@ const PurchaseOrders = () => {
                 <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 500 }}>{o.supplierName}</td>
                 <td style={{ padding: '12px 14px', color: '#475569' }}>{o.item}</td>
                 <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{o.qty}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>${o.unitPrice}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>${(o.qty * o.unitPrice).toLocaleString()}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>ETB {o.unitPrice}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>ETB {(o.qty * o.unitPrice).toLocaleString()}</td>
                 <td style={{ padding: '12px 14px' }}>
                   <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: o.status === 'Sent' ? '#eff6ff' : o.status === 'Received' ? '#dcfce7' : '#f1f5f9', color: o.status === 'Sent' ? '#2563eb' : o.status === 'Received' ? '#16a34a' : '#475569' }}>
                     {o.status}

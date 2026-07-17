@@ -41,7 +41,7 @@ const SERVICES = [
   },
   {
     id: 'farming',
-    label: 'Farming / Agri Order',
+    label: 'AgriRent Order',
     tagline: 'Seeds, Fertilizers, Tools & Pesticides',
     description: 'Order agricultural inputs and equipment. Bulk orders available. Talk to our agronomist for recommendations.',
     icon: Sprout,

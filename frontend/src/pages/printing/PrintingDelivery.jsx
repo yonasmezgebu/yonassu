@@ -71,7 +71,7 @@ const PrintingDelivery = () => {
                 <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 500 }}>{j.customerName}</td>
                 <td style={{ padding: '12px 14px', color: '#475569' }}>{j.customerPhone}</td>
                 <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{j.quantity.toLocaleString()}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600 }}>${(j.totalCost || 0).toLocaleString()}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600 }}>ETB {(j.totalCost || 0).toLocaleString()}</td>
                 <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: j.balanceDue > 0 ? '#dc2626' : '#16a34a' }}>
                   ${(j.balanceDue || 0).toLocaleString()}
                 </td>

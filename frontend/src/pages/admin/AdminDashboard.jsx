@@ -6,7 +6,6 @@ import UserManagement from './UserManagement';
 import SystemSettings from './SystemSettings';
 import AuditLogs from './AuditLogs';
 import BackupManagement from './BackupManagement';
-import RoleDesigner from './RoleDesigner';
 import TenantManagement from './TenantManagement';
 import DisasterRecovery from './DisasterRecovery';
 import ApiKeyManagement from './ApiKeyManagement';
@@ -21,7 +20,6 @@ const AdminDashboard = () => {
     { label: 'Overview',       path: '/admin/overview',       icon: 'home' },
     { type: 'divider' },
     { label: 'Users',          path: '/admin/users',          icon: 'users' },
-    { label: 'Role Designer',  path: '/admin/role-designer',  icon: 'settings' },
     { label: 'API Keys',       path: '/admin/api-keys',       icon: 'key' },
     { type: 'divider' },
     { label: 'Tenants',        path: '/admin/tenants',        icon: 'database' },
@@ -43,7 +41,6 @@ const AdminDashboard = () => {
           <Routes>
             <Route path="overview" element={<AdminHome />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="role-designer" element={<RoleDesigner />} />
             <Route path="tenants" element={<TenantManagement />} />
             <Route path="dr" element={<DisasterRecovery />} />
             <Route path="api-keys" element={<ApiKeyManagement />} />

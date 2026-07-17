@@ -26,10 +26,10 @@ const MOCK_ACTUALS = {
 };
 
 const MOCK_VERSION_HISTORY = [
-  { id: 1, dateChanged: '2025-06-15T10:30:00Z', fieldChanged: 'Daily Sales Target', oldValue: '$4,000', newValue: '$5,000', changedBy: 'John Smith' },
+  { id: 1, dateChanged: '2025-06-15T10:30:00Z', fieldChanged: 'Daily Sales Target', oldValue: 'ETB 4,000', newValue: 'ETB 5,000', changedBy: 'John Smith' },
   { id: 2, dateChanged: '2025-05-20T14:00:00Z', fieldChanged: 'Profit Margin Target', oldValue: '20%', newValue: '25%', changedBy: 'John Smith' },
   { id: 3, dateChanged: '2025-04-10T09:15:00Z', fieldChanged: 'Customer Satisfaction Target', oldValue: '90%', newValue: '95%', changedBy: 'Sarah Lee' },
-  { id: 4, dateChanged: '2025-03-05T11:45:00Z', fieldChanged: 'Monthly Sales Target', oldValue: '$120,000', newValue: '$150,000', changedBy: 'John Smith' },
+  { id: 4, dateChanged: '2025-03-05T11:45:00Z', fieldChanged: 'Monthly Sales Target', oldValue: 'ETB 120,000', newValue: 'ETB 150,000', changedBy: 'John Smith' },
 ];
 
 const MOCK_DEPARTMENTS = [
@@ -161,7 +161,7 @@ const TargetSettings = () => {
     const f = TARGET_FIELDS.find(t => t.key === key);
     if (!f) return val || '—';
     if (!val) return '—';
-    if (f.type === 'currency') return `$${parseFloat(val).toLocaleString()}`;
+    if (f.type === 'currency') return `ETB ${parseFloat(val).toLocaleString()}`;
     if (f.type === 'percent') return `${val}%`;
     return val;
   };
@@ -206,7 +206,7 @@ const TargetSettings = () => {
               <div key={f.key} className={styles.formGroup}>
                 <label htmlFor={f.key}>{f.label}</label>
                 <div className={styles.inputWrapper}>
-                  {f.type === 'currency' && <span className={styles.currencySymbol}>$</span>}
+                  {f.type === 'currency' && <span className={styles.currencySymbol}>ETB </span>}
                   <input
                     type="number"
                     id={f.key}
@@ -242,7 +242,7 @@ const TargetSettings = () => {
               <div key={f.key} className={styles.formGroup}>
                 <label htmlFor={f.key}>{f.label}</label>
                 <div className={styles.inputWrapper}>
-                  {f.type === 'currency' && <span className={styles.currencySymbol}>$</span>}
+                  {f.type === 'currency' && <span className={styles.currencySymbol}>ETB </span>}
                   <input
                     type="number"
                     id={f.key}

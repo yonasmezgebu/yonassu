@@ -50,7 +50,7 @@ const PurchaseApprovalsPending = () => {
               <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{a.id}</td>
                 <td style={{ padding: '12px 14px', color: '#475569' }}>{a.type}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>${a.amount.toLocaleString()}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>ETB {a.amount.toLocaleString()}</td>
                 <td style={{ padding: '12px 14px', color: '#475569' }}>{a.requestedBy}</td>
                 <td style={{ padding: '12px 14px', color: '#d97706', fontWeight: 600 }}>{a.daysPending} days</td>
                 <td style={{ padding: '12px 14px' }}>

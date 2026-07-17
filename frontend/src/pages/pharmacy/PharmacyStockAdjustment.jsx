@@ -1,199 +1,380 @@
-import React, { useState } from 'react';
-import { Printer, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sliders, RefreshCw, Loader2, Search, Save, CheckCircle, XCircle, AlertTriangle, Package, ClipboardList } from 'lucide-react';
+import pharmacyService from '../../services/pharmacyService';
+import { useToast } from '../../components/Toast';
 
-const DRUGS = [
-  { id:1, name:'Amoxicillin 500mg', batch:'BATCH-A001', stock:5, cost:200 },
-  { id:2, name:'Paracetamol 500mg', batch:'BATCH-A002', stock:80, cost:40 },
-  { id:3, name:'Metformin 500mg',   batch:'BATCH-A003', stock:0, cost:120 },
-  { id:4, name:'Atorvastatin 10mg', batch:'BATCH-A004', stock:70, cost:300 },
-  { id:5, name:'Ciprofloxacin 500mg',batch:'BATCH-A006',stock:8, cost:250 },
-];
-
-const ADJUSTMENT_TYPES = [
-  { value:'damage',    label:'Damage Write-Off',    desc:'Drugs physically damaged and removed from usable stock' },
-  { value:'expiry',    label:'Expiry Write-Off',     desc:'Drugs expired and removed from usable stock' },
-  { value:'correction',label:'Counting Correction',  desc:'Physical count differs from system count — system updated to match' },
-];
-
-const THRESHOLD = 50; // Large adjustment threshold (configurable)
-
-const AUDIT_LOG_INIT = [
-  { id:'ADJ-001', drug:'Metformin 500mg', type:'Expiry Write-Off', qty:20, reason:'Found expired in storage', status:'Applied', by:'Yonas M.', date:'2026-06-28' },
-  { id:'ADJ-002', drug:'Atorvastatin 10mg', type:'Damage Write-Off', qty:100, reason:'Flood damage', status:'Pending CEO Approval', by:'Yonas M.', date:'2026-06-30' },
-];
+const OLIVE = '#B7C786';
+const YELLOW = '#FEF3A5';
+const DARK = '#2A3F08';
+const MID = '#50760F';
+const GOLD = '#D4A843';
+const GOLD2 = '#9A701E';
 
 const PharmacyStockAdjustment = () => {
-  const [drugId, setDrugId] = useState('');
-  const [adjType, setAdjType] = useState('');
-  const [adjQty, setAdjQty] = useState(1);
-  const [reason, setReason] = useState('');
-  const [approvedBy, setApprovedBy] = useState('Pharmacy Manager');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [auditLog, setAuditLog] = useState(AUDIT_LOG_INIT);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [lastAdj, setLastAdj] = useState(null);
-  const [ceoRequired, setCeoRequired] = useState(false);
+  const { showToast, ToastContainer } = useToast();
+  const [drugs, setDrugs] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [adjQty, setAdjQty] = useState('');
+  const [adjType, setAdjType] = useState('add');
+  const [adjReason, setAdjReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ type: '', text: '' });
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [spinning, setSpinning] = useState(false);
 
-  const selectedDrug = DRUGS.find(d => d.id === parseInt(drugId));
-  const isLarge = adjQty >= THRESHOLD;
-  const canSubmit = drugId && adjType && adjQty > 0 && reason.trim();
-
-  const handleSubmit = () => {
-    setSubmitting(true);
-    setTimeout(() => {
-      const entry = {
-        id: `ADJ-${String(auditLog.length+3).padStart(3,'0')}`,
-        drug: selectedDrug?.name,
-        type: ADJUSTMENT_TYPES.find(a=>a.value===adjType)?.label,
-        qty: adjQty,
-        reason,
-        status: isLarge ? 'Pending CEO Approval' : 'Applied',
-        by: approvedBy,
-        date,
-      };
-      setAuditLog(prev => [entry, ...prev]);
-      setLastAdj(entry);
-      setCeoRequired(isLarge);
-      setSubmitting(false); setSubmitted(true);
-    }, 1200);
+  const loadData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [prodRaw, movRaw] = await Promise.all([
+        pharmacyService.getAllProducts(),
+        pharmacyService.getStockMovements()
+      ]);
+      setDrugs(Array.isArray(prodRaw) ? prodRaw : prodRaw?.data || []);
+      setMovements(Array.isArray(movRaw) ? movRaw : movRaw?.data || []);
+    } catch (e) {
+      setError(e?.response?.data?.message || 'Failed to load data');
+    } finally { setLoading(false); setSpinning(false); }
   };
 
-  const handlePrint = () => {
-    const w = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Adjustment Note</title>
-    <style>body{font-family:Arial,sans-serif;padding:30px;}table{width:100%;border-collapse:collapse;margin-top:20px;}th,td{border:1px solid #000;padding:10px;}th{background:#e2e8f0;}.stamp{margin-top:60px;border-top:2px solid #000;padding-top:10px;width:200px;text-align:center;}</style>
-    </head><body>
-    <h1>⚙️ STOCK ADJUSTMENT NOTE</h1>
-    <p><strong>Adjustment #:</strong> ${lastAdj?.id} &nbsp;&nbsp; <strong>Date:</strong> ${lastAdj?.date}</p>
-    <p><strong>Drug:</strong> ${lastAdj?.drug} &nbsp;&nbsp; <strong>Batch:</strong> ${selectedDrug?.batch}</p>
-    <p><strong>Type:</strong> ${lastAdj?.type} &nbsp;&nbsp; <strong>Quantity Adjusted:</strong> ${lastAdj?.qty}</p>
-    <p><strong>Reason:</strong> ${lastAdj?.reason}</p>
-    <p><strong>Manager:</strong> ${lastAdj?.by} &nbsp;&nbsp; <strong>Status:</strong> ${lastAdj?.status}</p>
-    ${isLarge ? '<p style="color:red;font-weight:bold;">⚠️ LARGE ADJUSTMENT — CEO Approval Required before inventory is updated.</p>' : ''}
-    <div class="stamp"><p>Manager Digital Stamp</p><p style="margin-top:40px;">______________________</p>
-    ${isLarge ? '<p style="margin-top:40px;">CEO Approval: ______________________</p>' : ''}
-    </div></body></html>`);
-    w.document.close(); w.print();
+  useEffect(() => { loadData(); }, []);
+
+  const handleRefresh = () => {
+    setSpinning(true);
+    loadData();
   };
 
-  const STATUS_COLORS = { Applied:{ bg:'#dcfce7',color:'#166534' }, 'Pending CEO Approval':{ bg:'#fef3c7',color:'#92400e' }, Rejected:{ bg:'#fee2e2',color:'#991b1b' } };
+  const selectedDrug = drugs.find(d => d.id === parseInt(selectedId));
+
+  const doSubmit = async () => {
+    if (!selectedId || !adjQty || !adjReason.trim()) return;
+    setSaving(true);
+    try {
+      const qty = adjType === 'remove' ? -Math.abs(parseInt(adjQty)) : Math.abs(parseInt(adjQty));
+      const requestedVal = (selectedDrug.stock_quantity || 0) + qty;
+      
+      if (requestedVal < 0) {
+        setMsg({ type: 'error', text: 'Stock cannot go below 0' });
+        setSaving(false);
+        return;
+      }
+      
+      await pharmacyService.createManagerRequest({
+        drug_id: selectedDrug.id,
+        drug_name: selectedDrug.name,
+        drug_image: selectedDrug.drug_image,
+        request_type: 'QUANTITY',
+        current_value: selectedDrug.stock_quantity || 0,
+        requested_value: requestedVal,
+        reason: adjReason
+      });
+      setMsg({ type: 'success', text: `Adjustment requested for ${selectedDrug?.name} ${qty >= 0 ? '+' : ''}${qty}. Pending CEO approval.` });
+      setAdjQty('');
+      setAdjReason('');
+      loadData();
+    } catch (e) {
+      setMsg({ type: 'error', text: e?.response?.data?.message || 'Adjustment failed' });
+    } finally { setSaving(false); setTimeout(() => setMsg({ type: '', text: '' }), 5000); }
+  };
+
+  const filteredMovements = movements.filter(m => {
+    const qtyChange = parseInt(m.quantity_change || m.quantity || 0);
+    const mType = (m.type || (qtyChange >= 0 ? 'add' : 'remove')).toLowerCase();
+    
+    if (typeFilter && mType !== typeFilter.toLowerCase()) return false;
+    const q = search.toLowerCase();
+    return (m.drug_name || '').toLowerCase().includes(q) || 
+           (m.reason || m.notes || '').toLowerCase().includes(q) || 
+           mType.includes(q) || 
+           (m.reference || m.reference_no || '').toLowerCase().includes(q);
+  });
 
   return (
-    <div style={{ padding:24, fontFamily:"'Inter',sans-serif", background:'#f8fafc', minHeight:'100vh' }}>
-      <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:26, fontWeight:800, margin:'0 0 4px 0' }}>⚙️ STOCK ADJUSTMENT</h1>
-        <p style={{ color:'#64748b', margin:0, fontSize:14 }}>🔗 Adjust Pharmacy Stock — Damage, Expiry Write-Offs &amp; Counting Corrections</p>
-      </div>
+    <div style={{ padding: 0, margin: 0, minHeight: '100vh', width: '100%', background: OLIVE, fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
+      <style>{`
+        @keyframes spin { 100%{transform:rotate(360deg)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes fadeSlide { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        
+        /* 3D Animations */
+        @keyframes blink3D {
+          0%, 100% { opacity: 1; transform: perspective(400px) rotateY(0deg) scale(1); }
+          50% { opacity: 0.4; transform: perspective(400px) rotateY(180deg) scale(1.1); }
+        }
+        @keyframes spin3D {
+          100% { transform: perspective(400px) rotateX(360deg) rotateY(180deg); }
+        }
+        @keyframes rowIn3D {
+          from { opacity: 0; transform: perspective(800px) rotateX(-60deg) translateY(-20px); }
+          to { opacity: 1; transform: perspective(800px) rotateX(0deg) translateY(0); }
+        }
 
-      <div style={{ background:'#fffbeb', border:'1px solid #fbbf24', borderRadius:10, padding:'12px 18px', marginBottom:20, display:'flex', alignItems:'center', gap:10 }}>
-        <AlertTriangle size={18} color="#b45309"/>
-        <span style={{ fontSize:13, color:'#92400e' }}><strong>Large Adjustment Threshold: {THRESHOLD} units.</strong> Adjustments at or above this quantity require CEO approval before inventory is updated. Below this threshold, adjustments are applied immediately.</span>
-      </div>
+        .action-btn-3d { 
+          transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-style: preserve-3d;
+        }
+        .action-btn-3d:hover { 
+          transform: perspective(600px) translateZ(10px) translateY(-3px) rotateX(5deg) !important;
+          box-shadow: 0 8px 0 #9A701E, 0 12px 15px rgba(0,0,0,0.2) !important;
+        }
+        .action-btn-3d:active { 
+          transform: perspective(600px) translateZ(0) translateY(5px) rotateX(0deg) !important; 
+          box-shadow: 0 0 0 #9A701E !important; 
+        }
 
-      {submitted && lastAdj ? (
-        <div style={{ background:'white', borderRadius:14, padding:40, textAlign:'center', border:'1px solid #e2e8f0', maxWidth:560, marginBottom:24 }}>
-          {ceoRequired ? <Clock size={56} color="#f59e0b" style={{ marginBottom:12 }}/> : <CheckCircle size={56} color="#10b981" style={{ marginBottom:12 }}/>}
-          <h2 style={{ color:ceoRequired?'#b45309':'#059669', margin:'0 0 8px 0' }}>
-            {ceoRequired ? 'Sent to CEO for Approval' : 'Adjustment Applied!'}
-          </h2>
-          <p style={{ color:'#64748b', marginBottom:8 }}>{lastAdj.drug} — {lastAdj.qty} units {lastAdj.type}</p>
-          {ceoRequired && <p style={{ color:'#92400e', fontWeight:600, marginBottom:16 }}>⚠️ Inventory will only be updated after CEO approves this adjustment.</p>}
-          <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
-            <button onClick={handlePrint} style={{ padding:'10px 22px', background:'#224f94', color:'white', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Printer size={15}/> Print Adjustment Note</button>
-            <button onClick={()=>{ setSubmitted(false); setDrugId(''); setAdjType(''); setAdjQty(1); setReason(''); }} style={{ padding:'10px 22px', background:'#f1f5f9', color:'#64748b', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer' }}>New Adjustment</button>
+        .inv-row-3d {
+          transition: transform 0.25s, background 0.25s, box-shadow 0.25s;
+          transform-style: preserve-3d;
+        }
+        .inv-row-3d:hover {
+          transform: perspective(800px) scale(1.005) translateZ(5px);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+          z-index: 10;
+          position: relative;
+          background: #fff !important;
+        }
+
+        .icon-3d {
+          animation: blink3D 3s ease-in-out infinite;
+        }
+      `}</style>
+      <ToastContainer />
+
+      {msg.text && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 24px', borderRadius: 0,
+          background: msg.type === 'success' ? OLIVE : '#fef2f2',
+          border: `3px solid ${msg.type === 'success' ? DARK : '#991b1b'}`,
+          color: msg.type === 'success' ? DARK : '#991b1b',
+          fontWeight: 800, fontSize: 13,
+          display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: `4px 4px 0 ${msg.type === 'success' ? DARK : '#991b1b'}`,
+          animation: 'fadeSlide 0.3s ease-out'
+        }}>
+          <span className="icon-3d" style={{ display: 'inline-block' }}>
+            {msg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
+          </span>
+          {msg.text}
+        </div>
+      )}
+
+      {/* ══ TOP HEADER BAR ══════════════════════════════════ */}
+      <div style={{
+        background: DARK, borderBottom: `4px solid ${GOLD}`,
+        padding: '0 24px', animation: 'fadeUp .3s ease'
+      }}>
+        <div style={{ height: 3, background: `linear-gradient(90deg,${GOLD},${YELLOW},${OLIVE},${GOLD})`,
+          backgroundSize: '400% 100%', animation: 'shimmer 2.5s linear infinite' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0' }}>
+          {/* Left – title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, perspective: 600 }}>
+            <div
+              className="icon-3d"
+              style={{
+                width: 46, height: 46, background: GOLD, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                border: `3px solid ${GOLD2}`, boxShadow: `4px 4px 0 ${GOLD2}`
+              }}
+            >
+              <Sliders size={24} color={DARK} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: YELLOW, margin: 0, lineHeight: 1.1 }}>
+                Stock Adjustment
+              </h1>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '3px',
+                textTransform: 'uppercase', color: GOLD }}>
+                Audit • Reconcile • Track
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {/* Right – single Refresh button */}
+            <button
+              onClick={handleRefresh}
+              className="action-btn-3d"
+              style={{
+                background: YELLOW, color: DARK, border: `3px solid ${GOLD2}`,
+                padding: '10px 22px', fontWeight: 900, fontSize: 13, cursor: 'pointer',
+                boxShadow: `4px 4px 0 ${GOLD2}`, display: 'inline-flex',
+                alignItems: 'center', gap: 8, textTransform: 'uppercase',
+                letterSpacing: '1.5px'
+              }}
+            >
+              <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+              Refresh
+            </button>
           </div>
         </div>
-      ) : (
-        <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', padding:24, maxWidth:800, marginBottom:24 }}>
-          <h3 style={{ margin:'0 0 18px 0', fontSize:16, fontWeight:700 }}>New Stock Adjustment</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-            <div>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Drug *</label>
-              <select value={drugId} onChange={e=>setDrugId(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none' }}>
-                <option value="">— Select Drug —</option>
-                {DRUGS.map(d => <option key={d.id} value={d.id}>{d.name} (Batch: {d.batch}, Stock: {d.stock})</option>)}
+      </div>
+
+      {/* ══ CONTENT AREA ════════════════════════════════════ */}
+      <div style={{ padding: '24px', animation: 'fadeUp .4s ease' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+          
+          {/* Adjustment Form */}
+          <div style={{ background: YELLOW, border: `3px solid ${DARK}`, padding: 24, boxShadow: `6px 6px 0 ${DARK}` }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 900, color: DARK, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span className="icon-3d"><Sliders size={18} color={DARK} /></span> New Adjustment
+            </h3>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Select Drug</label>
+              <select value={selectedId} onChange={e => setSelectedId(e.target.value)} style={inputStyle()}>
+                <option value="">Choose a drug...</option>
+                {drugs.map(d => <option key={d.id} value={d.id}>{d.name} (Stock: {d.stock_quantity || 0})</option>)}
               </select>
             </div>
-            <div>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Quantity to Adjust *</label>
-              <input type="number" min={1} value={adjQty} onChange={e=>setAdjQty(parseInt(e.target.value)||1)}
-                style={{ width:'100%', padding:'10px 12px', border:`1px solid ${adjQty>=THRESHOLD?'#f59e0b':'#e2e8f0'}`, borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
-              {adjQty >= THRESHOLD && <p style={{ color:'#b45309', fontSize:12, margin:'4px 0 0 0' }}>⚠️ Large adjustment — CEO approval required</p>}
-            </div>
-            <div style={{ gridColumn:'1/-1' }}>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:10 }}>Adjustment Type *</label>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
-                {ADJUSTMENT_TYPES.map(at => (
-                  <label key={at.value} style={{ display:'block', padding:'12px 14px', border:`2px solid ${adjType===at.value?'#f97316':'#e2e8f0'}`, borderRadius:8, cursor:'pointer', background:adjType===at.value?'#fff7ed':'white', transition:'all 0.2s' }}>
-                    <input type="radio" value={at.value} checked={adjType===at.value} onChange={()=>setAdjType(at.value)} style={{display:'none'}}/>
-                    <div style={{ fontWeight:700, fontSize:13, color:adjType===at.value?'#ea580c':'#1e293b', marginBottom:4 }}>{at.label}</div>
-                    <div style={{ fontSize:12, color:'#64748b' }}>{at.desc}</div>
+            {selectedDrug && (
+              <div style={{ padding: '12px 16px', background: OLIVE, border: `3px solid ${DARK}`, marginBottom: 16, fontSize: 13, color: DARK, fontWeight: 700, boxShadow: `3px 3px 0 ${DARK}` }}>
+                CURRENT STOCK: <strong style={{ fontWeight: 900, fontSize: 15 }}>{selectedDrug.stock_quantity || 0}</strong> | REORDER LEVEL: {selectedDrug.reorder_level || 10}
+              </div>
+            )}
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Adjustment Type</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                {['add', 'remove'].map(t => (
+                  <label key={t} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', cursor: 'pointer', background: adjType === t ? DARK : 'white', border: `3px solid ${DARK}`, transition: 'all 0.2s', boxShadow: adjType === t ? `3px 3px 0 ${GOLD}` : 'none' }}>
+                    <input type="radio" value={t} checked={adjType === t} onChange={() => setAdjType(t)} style={{ accentColor: t === 'add' ? OLIVE : '#dc2626' }} />
+                    <span style={{ fontWeight: 900, fontSize: 13, textTransform: 'uppercase', color: adjType === t ? (t === 'add' ? OLIVE : '#fca5a5') : DARK }}>
+                      {t === 'add' ? '+ Add Stock' : '- Remove Stock'}
+                    </span>
                   </label>
                 ))}
               </div>
             </div>
-            <div style={{ gridColumn:'1/-1' }}>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Reason * <span style={{ fontSize:12, fontWeight:400, color:'#94a3b8' }}>(Required — stored permanently in audit log)</span></label>
-              <textarea value={reason} onChange={e=>setReason(e.target.value)} rows={3} placeholder="Describe the reason for this adjustment in detail..."
-                style={{ width:'100%', padding:'10px 12px', border:`1px solid ${reason.trim()?'#10b981':'#e2e8f0'}`, borderRadius:8, fontSize:14, outline:'none', resize:'vertical', boxSizing:'border-box' }}/>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Quantity</label>
+              <input type="number" min={1} value={adjQty} onChange={e => setAdjQty(e.target.value)} style={inputStyle()} placeholder="0" />
             </div>
-            <div>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Adjustment Date</label>
-              <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none' }}/>
+            <div style={{ marginBottom: 24 }}>
+              <label style={labelStyle}>Reason</label>
+              <textarea value={adjReason} onChange={e => setAdjReason(e.target.value)} placeholder="Why is this adjustment needed?"
+                style={{ ...inputStyle(), resize: 'vertical', minHeight: 80 }} />
             </div>
-            <div>
-              <label style={{ display:'block', fontSize:13, fontWeight:600, color:'#374151', marginBottom:6 }}>Manager Name</label>
-              <input type="text" value={approvedBy} onChange={e=>setApprovedBy(e.target.value)} style={{ width:'100%', padding:'10px 12px', border:'1px solid #e2e8f0', borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' }}/>
-            </div>
-          </div>
-          <div style={{ marginTop:20, display:'flex', alignItems:'center', gap:16 }}>
-            <button onClick={handleSubmit} disabled={!canSubmit||submitting}
-              style={{ padding:'12px 32px', background:canSubmit?'#f97316':'#e2e8f0', color:canSubmit?'white':'#94a3b8', border:'none', borderRadius:9, fontWeight:700, fontSize:15, cursor:canSubmit?'pointer':'not-allowed' }}>
-              {submitting ? '⏳ Processing...' : isLarge ? '📤 Submit for CEO Approval' : '✅ Apply Adjustment'}
+            <button disabled={!selectedId || !adjQty || !adjReason.trim() || saving} onClick={doSubmit} className={(!selectedId || !adjQty || !adjReason.trim() || saving) ? '' : 'action-btn-3d'}
+              style={{ width: '100%', padding: '16px', background: selectedId && adjQty && adjReason.trim() && !saving ? GOLD : '#e2e8f0', color: selectedId && adjQty && adjReason.trim() && !saving ? DARK : '#94a3b8', border: selectedId && adjQty && adjReason.trim() && !saving ? `3px solid ${GOLD2}` : '3px solid transparent', fontWeight: 900, cursor: selectedId && adjQty && adjReason.trim() && !saving ? 'pointer' : 'not-allowed', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1.2px', boxShadow: selectedId && adjQty && adjReason.trim() && !saving ? `5px 5px 0 ${GOLD2}` : 'none' }}>
+              {saving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+              {saving ? 'Requesting...' : <><span className="icon-3d"><Save size={18} /></span> Request Adjustment</>}
             </button>
-            {isLarge && canSubmit && <span style={{ fontSize:13, color:'#b45309', fontWeight:600 }}>⚠️ Will be sent to CEO for approval first</span>}
+          </div>
+
+          {/* Quick Stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeSlide 0.5s ease-out' }}>
+            <div style={{ background: YELLOW, border: `3px solid ${DARK}`, padding: 24, boxShadow: `6px 6px 0 ${DARK}` }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 900, color: DARK, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Stats</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {[
+                  { label: 'Total Drugs', value: drugs.length, color: DARK, bg: OLIVE },
+                  { label: 'Recent Adjustments', value: movements.slice(0, 50).length, color: '#92400e', bg: '#fef3c7' },
+                ].map(c => (
+                  <div key={c.label} style={{ background: c.bg, padding: '16px', border: `3px solid ${DARK}`, boxShadow: `3px 3px 0 ${DARK}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: c.color, marginBottom: 6, textTransform: 'uppercase' }}>{c.label}</div>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: c.color }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ background: DARK, border: `3px solid ${GOLD}`, padding: 24, color: YELLOW, boxShadow: `6px 6px 0 ${GOLD}` }}>
+              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="icon-3d"><AlertTriangle size={16} /></span> Reminder
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, fontWeight: 700 }}>
+                All stock adjustments require Manager/CEO approval before stock is actually modified. Always provide a clear reason for audit compliance.
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Audit Log */}
-      <div style={{ background:'white', borderRadius:12, border:'1px solid #e2e8f0', overflow:'hidden' }}>
-        <div style={{ padding:'14px 20px', borderBottom:'1px solid #e2e8f0', background:'#f8fafc' }}>
-          <h3 style={{ margin:0, fontSize:15, fontWeight:700 }}>Audit Log — Immutable Adjustment History</h3>
-          <p style={{ margin:'4px 0 0 0', fontSize:12, color:'#94a3b8' }}>Every adjustment is permanently recorded and cannot be edited or deleted.</p>
-        </div>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:14 }}>
-            <thead>
-              <tr style={{ background:'#f8fafc', borderBottom:'2px solid #e2e8f0' }}>
-                {['Adj #','Drug','Type','Qty','Reason','Status','By','Date'].map(h => (
-                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontWeight:700, color:'#475569', fontSize:12, textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {auditLog.map(row => {
-                const sc = STATUS_COLORS[row.status] || { bg:'#f1f5f9', color:'#475569' };
-                return (
-                  <tr key={row.id} style={{ borderBottom:'1px solid #f1f5f9' }}>
-                    <td style={{ padding:'11px 14px', fontFamily:'monospace', color:'#224f94', fontWeight:600 }}>{row.id}</td>
-                    <td style={{ padding:'11px 14px', fontWeight:600 }}>{row.drug}</td>
-                    <td style={{ padding:'11px 14px', color:'#64748b' }}>{row.type}</td>
-                    <td style={{ padding:'11px 14px', fontWeight:700 }}>{row.qty}</td>
-                    <td style={{ padding:'11px 14px', color:'#64748b', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.reason}</td>
-                    <td style={{ padding:'11px 14px' }}><span style={{ padding:'3px 10px', borderRadius:12, fontSize:12, fontWeight:700, background:sc.bg, color:sc.color }}>{row.status}</span></td>
-                    <td style={{ padding:'11px 14px', color:'#64748b' }}>{row.by}</td>
-                    <td style={{ padding:'11px 14px', color:'#64748b', whiteSpace:'nowrap' }}>{row.date}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Audit Log */}
+        <div style={{ background: YELLOW, border: `3px solid ${DARK}`, overflow: 'hidden', boxShadow: `6px 6px 0 ${DARK}`, animation: 'fadeSlide 0.6s ease-out' }}>
+          <div style={{ padding: '20px 24px', borderBottom: `3px solid ${DARK}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: DARK }}>
+            <span style={{ fontWeight: 900, color: YELLOW, fontSize: 15, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span className="icon-3d"><ClipboardList size={18} color={YELLOW} /></span> Adjustment & Movement Audit Log
+            </span>
+            <span style={{ fontSize: 12, color: DARK, background: OLIVE, padding: '4px 10px', fontWeight: 900 }}>
+              {loading ? <><Loader2 size={14} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 6 }} />LOADING...</> : `${filteredMovements.length} RECORDS`}
+            </span>
+          </div>
+          
+          <div style={{ padding: '16px 24px', borderBottom: `3px solid ${DARK}`, display: 'flex', gap: 12, background: OLIVE }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={16} color={DARK} style={{ position: 'absolute', left: 14, top: 12, pointerEvents: 'none', fontWeight: 900 }} />
+              <input type="text" placeholder="Search audit log..." value={search} onChange={e => setSearch(e.target.value)}
+                style={{ width: '100%', padding: '10px 14px 10px 40px', border: `3px solid ${DARK}`, borderRadius: 0, fontSize: 13, outline: 'none', boxSizing: 'border-box', fontWeight: 700, color: DARK }} />
+            </div>
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+              style={{ padding: '10px 14px', border: `3px solid ${DARK}`, borderRadius: 0, fontSize: 13, outline: 'none', fontWeight: 700, color: DARK, background: 'white' }}>
+              <option value="">All Types</option>
+              <option value="add">Add (+)</option>
+              <option value="remove">Remove (-)</option>
+            </select>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Date</th>
+                  <th style={thStyle}>Drug</th>
+                  <th style={thStyle}>Type</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Qty</th>
+                  <th style={thStyle}>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={5} style={{ padding: '60px 24px', textAlign: 'center' }}>
+                    <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+                  </td></tr>
+                ) : filteredMovements.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: '60px 24px', textAlign: 'center', color: DARK }}>
+                    <span className="icon-3d" style={{ display: 'inline-block', fontSize: 40, marginBottom: 12 }}>📦</span>
+                    <p style={{ fontWeight: 900, margin: 0, textTransform: 'uppercase' }}>No adjustments recorded yet</p>
+                  </td></tr>
+                ) : filteredMovements.map((m, idx) => {
+                  const qtyChange = parseInt(m.quantity_change || m.quantity || 0);
+                  const isAdd = (m.type || '').toLowerCase() === 'add' || (m.type || '').toLowerCase() === 'in' || qtyChange >= 0;
+                  return (
+                    <tr key={m.id || idx} className="inv-row-3d" style={{ borderBottom: `2px solid ${DARK}`, background: idx % 2 === 0 ? YELLOW : OLIVE, animation: `rowIn3D 0.3s ease-out ${idx * 0.03}s both` }}>
+                      <td style={{ padding: '14px 16px', color: DARK, fontSize: 12, whiteSpace: 'nowrap', fontWeight: 800 }}>{m.created_at ? new Date(m.created_at).toLocaleString() : '-'}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: 900, color: DARK, fontSize: 14 }}>{m.drug_name || 'Unknown'}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ padding: '4px 10px', fontSize: 11, fontWeight: 900, border: `2px solid ${isAdd ? '#065f46' : '#991b1b'}`, background: isAdd ? '#d1fae5' : '#fee2e2', color: isAdd ? '#065f46' : '#991b1b', textTransform: 'uppercase' }}>
+                          <span className="icon-3d" style={{ display: 'inline-block' }}>{isAdd ? 'ADD' : 'REMOVE'}</span>
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, color: isAdd ? '#059669' : '#dc2626', fontSize: 15 }}>
+                        {isAdd ? '+' : ''}{qtyChange}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: DARK, fontSize: 13, fontWeight: 700 }}>{m.reason || m.notes || '-'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+const labelStyle = { display: 'block', fontSize: 12, fontWeight: 900, color: DARK, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
+const inputStyle = () => ({ 
+  width: '100%', padding: '12px 16px', borderRadius: 0, 
+  border: `3px solid ${DARK}`, fontSize: 13, fontWeight: 700,
+  background: 'white', color: DARK, outline: 'none', 
+  transition: 'all 0.2s', boxSizing: 'border-box',
+  boxShadow: `3px 3px 0 ${DARK}`
+});
+const thStyle = { padding: '14px 16px', textAlign: 'left', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: OLIVE, borderBottom: `3px solid ${DARK}`, background: DARK };
 
 export default PharmacyStockAdjustment;

@@ -64,7 +64,7 @@ const PurchaseHistory = () => {
         </div>
         <div>
           <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Total Spend</div>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#dc2626' }}>${totalSpend.toLocaleString()}</div>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#dc2626' }}>ETB {totalSpend.toLocaleString()}</div>
         </div>
         <div>
           <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Total Suppliers</div>
@@ -111,7 +111,7 @@ const PurchaseHistory = () => {
                 <td style={{ padding: '12px 14px', color: '#64748b' }}>{h.date}</td>
                 <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 500 }}>{h.supplier}</td>
                 <td style={{ padding: '12px 14px', color: '#475569' }}>{h.item}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>${h.totalAmount.toLocaleString()}</td>
+                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>ETB {h.totalAmount.toLocaleString()}</td>
                 <td style={{ padding: '12px 14px' }}>
                   <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: h.status === 'Received' ? '#dcfce7' : '#f1f5f9', color: h.status === 'Received' ? '#16a34a' : '#475569' }}>
                     {h.status === 'Received' ? 'Completed' : h.status}

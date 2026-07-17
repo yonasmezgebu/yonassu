@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Printer, Pill, Car, Wheat, Store, Video, Users, PartyPopper,
-  Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2
+  Package, FileText, ShoppingCart, Menu, X, ChevronDown, LogIn, Home, Truck, Building2, Award
 } from 'lucide-react';
 import SearchDropdown from '../../components/SearchDropdown';
 import './PublicLayout.css';
@@ -116,8 +116,8 @@ export const PublicNav = () => {
             onClose={() => setMarketOpen(false)}
             isActive={isActiveAt('/tenders') || isActiveAt('/marketplace')}
           >
-            <Link to="/tenders"              className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><FileText size={17}/></span><span>Tenders</span></Link>
-            <Link to="/marketplace/regular"  className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Regular Market</span></Link>
+            <Link to="/tenders/smart-bids" className={`pub-dropdown-item ${location.pathname === '/tenders/smart-bids' ? 'active-sublink' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
+            <Link to="/tenders/buy"        className={`pub-dropdown-item ${location.pathname === '/tenders/buy' ? 'active-sublink' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
           </NavDropdown>
 
           <NavDropdown
@@ -178,8 +178,8 @@ export const PublicNav = () => {
 
           {/* Marketplace */}
           <MobileGroup label="Marketplace" icon={<ShoppingCart size={16}/>}>
-            <Link to="/tenders"             onClick={closeAll} className="pub-mobile-link"><FileText size={14}/> Tenders</Link>
-            <Link to="/marketplace/regular" onClick={closeAll} className="pub-mobile-link"><ShoppingCart size={14}/> Regular Market</Link>
+            <Link to="/tenders/smart-bids" onClick={closeAll} className={`pub-mobile-link ${location.pathname === '/tenders/smart-bids' ? 'active-sublink' : ''}`}><Award size={14}/> Compete &amp; Sell</Link>
+            <Link to="/tenders/buy"        onClick={closeAll} className={`pub-mobile-link ${location.pathname === '/tenders/buy' ? 'active-sublink' : ''}`}><ShoppingCart size={14}/> Compete &amp; Buy</Link>
           </MobileGroup>
 
           {/* Gallery */}

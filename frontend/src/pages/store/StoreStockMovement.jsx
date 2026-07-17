@@ -1,34 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Filter, Download, Printer } from 'lucide-react';
-import { notifyMovementReport } from '../../utils/storeNotifications';
+import { getMovements } from '../../utils/storeApi';
 
-const mockMovements = [
-  { id: 1, datetime: '2026-06-30 09:15', item: 'Amoxicillin 500mg', qty: 200, type: 'In', ref: 'M19-001122', by: 'Store Manager' },
-  { id: 2, datetime: '2026-06-30 10:45', item: 'Surgical Gloves (L)', qty: -50, type: 'Out', ref: 'M22-001130', by: 'Store Worker A' },
-  { id: 3, datetime: '2026-06-30 11:20', item: 'Paracetamol 500mg', qty: 500, type: 'In', ref: 'M19-001133', by: 'Store Manager' },
-  { id: 4, datetime: '2026-06-30 14:00', item: 'IV Fluid (500ml)', qty: -15, type: 'Transfer', ref: 'TRF-009901', by: 'Store Manager' },
-  { id: 5, datetime: '2026-06-30 15:30', item: 'Hand Sanitizer 500ml', qty: -10, type: 'Out', ref: 'M22-001145', by: 'Store Worker B' },
-  { id: 6, datetime: '2026-07-01 08:00', item: 'A4 Paper Reams', qty: -5, type: 'Adjustment', ref: 'ADJ-004412', by: 'Store Manager' },
-  { id: 7, datetime: '2026-07-01 09:00', item: 'Metformin 500mg', qty: 300, type: 'In', ref: 'M19-001150', by: 'Store Manager' },
-];
+const typeColors = {
+  Receipt: { bg: '#dcfce7', color: '#166534' },
+  Issue: { bg: '#fee2e2', color: '#991b1b' },
+  Transfer: { bg: '#ede9fe', color: '#5b21b6' },
+  Adjustment: { bg: '#fff7ed', color: '#9a3412' },
+};
 
-const typeColors = { In: { bg: '#dcfce7', color: '#166534' }, Out: { bg: '#fee2e2', color: '#991b1b' }, Transfer: { bg: '#ede9fe', color: '#5b21b6' }, Adjustment: { bg: '#fff7ed', color: '#9a3412' } };
+const fallbackColor = { bg: '#f1f5f9', color: '#475569' };
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const StoreStockMovement = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [filterItem, setFilterItem] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getMovements();
+      setData(res.data || []);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch movements');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    notifyMovementReport();
+    fetchData();
   }, []);
 
-  const filtered = mockMovements.filter(m => {
-    const matchType = filterType === 'All' || m.type === filterType;
-    const matchItem = !filterItem || m.item.toLowerCase().includes(filterItem.toLowerCase());
-    return matchType && matchItem;
+  const filtered = data.filter(m => {
+    if (filterType !== 'All' && m.movement_type !== filterType) return false;
+    if (filterItem && !(m.item_name || '').toLowerCase().includes(filterItem.toLowerCase())) return false;
+    if (dateFrom && m.created_at && m.created_at.slice(0, 10) < dateFrom) return false;
+    if (dateTo && m.created_at && m.created_at.slice(0, 10) > dateTo) return false;
+    return true;
   });
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f8fafc' }}>
+        <p style={{ fontSize: 18, color: '#64748b' }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f8fafc', gap: 16 }}>
+        <p style={{ fontSize: 16, color: '#b91c1c' }}>{error}</p>
+        <button onClick={fetchData} style={{ padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
@@ -55,8 +95,8 @@ const StoreStockMovement = () => {
         <input value={filterItem} onChange={e => setFilterItem(e.target.value)} placeholder="Filter by item name..." style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14, width: 200 }} />
         <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
           <option value="All">All Types</option>
-          <option>In</option>
-          <option>Out</option>
+          <option>Receipt</option>
+          <option>Issue</option>
           <option>Transfer</option>
           <option>Adjustment</option>
         </select>
@@ -76,24 +116,31 @@ const StoreStockMovement = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f1f5f9' }}>
-              {['Date & Time', 'Item Name', 'Qty Moved', 'Movement Type', 'Reference Document', 'Performed By'].map(h => (
+              {['Date & Time', 'Item Name', 'Strength', 'Qty Moved', 'Unit', 'Movement Type', 'Reference Document', 'Performed By'].map(h => (
                 <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map(m => (
-              <tr key={m.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>{m.datetime}</td>
-                <td style={{ padding: '12px 14px', fontWeight: 600 }}>{m.item}</td>
-                <td style={{ padding: '12px 14px', fontWeight: 700, color: m.qty > 0 ? '#166534' : '#b91c1c' }}>{m.qty > 0 ? `+${m.qty}` : m.qty}</td>
+            {filtered.map((m, i) => (
+              <tr key={m.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{formatDate(m.created_at)}</td>
+                <td style={{ padding: '12px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{m.item_name || '-'}</td>
+                <td style={{ padding: '12px 14px', color: '#64748b' }}>{m.strength || '-'}</td>
+                <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{m.qty_moved != null ? m.qty_moved : '-'}</td>
+                <td style={{ padding: '12px 14px', color: '#64748b' }}>{m.unit || '-'}</td>
                 <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, ...typeColors[m.type] }}>{m.type}</span>
+                  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, ...(typeColors[m.movement_type] || fallbackColor) }}>{m.movement_type}</span>
                 </td>
-                <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#3b82f6', fontSize: 12 }}>{m.ref}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{m.by}</td>
+                <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#3b82f6', fontSize: 12, whiteSpace: 'nowrap' }}>{m.ref_no}</td>
+                <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 12 }}>{m.performed_by || '-'}</td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>No movements found</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

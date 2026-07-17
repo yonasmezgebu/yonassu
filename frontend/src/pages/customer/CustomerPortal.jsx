@@ -2,92 +2,79 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
-// New portal pages
-import CustomerDashboardHome  from './portal/CustomerDashboardHome';
-import PlaceNewOrder          from './portal/PlaceNewOrder';
-import OrderHistory           from './portal/OrderHistory';
-import TrackOrders            from './portal/TrackOrders';
-import CustomerInvoicesPage   from './portal/CustomerInvoicesPage';
-import CustomerReceiptsPage   from './portal/CustomerReceiptsPage';
-import PayInvoice             from './portal/PayInvoice';
-import PaymentHistory         from './portal/PaymentHistory';
-import ContactUs              from './portal/ContactUs';
-import SupportHistory         from './portal/SupportHistory';
-
-// Keep legacy profile page
+// Actual fully-featured customer service pages
+import CustomerAllOrders      from './CustomerAllOrders';
+import CustomerFarmingOrders  from './CustomerFarmingOrders';
+import CustomerPrintingOrders from './CustomerPrintingOrders';
+import CustomerRetailOrders   from './CustomerRetailOrders';
+import CustomerRentals        from './CustomerRentals';
+import CustomerPrescriptions  from './CustomerPrescriptions';
+import CustomerBids           from './CustomerBids';
+import CustomerInvoices       from './CustomerInvoices';
+import CustomerReceipts       from './CustomerReceipts';
+import SupportTickets         from './SupportTickets';
 import CustomerProfile        from './CustomerProfile';
 
 const CustomerPortal = () => {
   const menuItems = [
-    { label: 'Dashboard',   path: '/customer/dashboard', icon: 'home', color: '#3b82f6' },
+    { label: 'Overview',   path: '/customer/dashboard', icon: 'home', color: '#3b82f6' },
     { type: 'divider' },
 
     {
-      label: 'Orders', icon: 'shopping-cart',
+      label: 'My Services', icon: 'shopping-cart',
       children: [
-        { label: 'Place New Order', path: '/customer/orders/new',     icon: 'plus-circle',  color: '#10b981' },
-        { label: 'Order History',   path: '/customer/orders/history', icon: 'clock',        color: '#64748b' },
-        { label: 'Track Orders',    path: '/customer/orders/track',   icon: 'map-pin',      color: '#8b5cf6' },
+        { label: 'Printing Orders',  path: '/customer/printing-orders', icon: 'printer',       color: '#3b82f6' },
+        { label: 'AgriRent Orders',   path: '/customer/farming-orders',  icon: 'leaf',          color: '#059669' },
+        { label: 'Retail Orders',    path: '/customer/retail-orders',   icon: 'package',       color: '#d97706' },
+        { label: 'Car Rentals',      path: '/customer/rentals',         icon: 'car',           color: '#8b5cf6' },
+        { label: 'Pharmacy',         path: '/customer/prescriptions',   icon: 'pill',          color: '#ec4899' },
+        { label: 'Tender Bids',      path: '/customer/bids',            icon: 'award',         color: '#eab308' },
       ],
     },
     { type: 'divider' },
 
     {
-      label: 'Documents', icon: 'file-text',
+      label: 'Financials', icon: 'credit-card',
       children: [
-        { label: 'Invoices', path: '/customer/documents/invoices', icon: 'file-minus', color: '#ef4444' },
-        { label: 'Receipts', path: '/customer/documents/receipts', icon: 'receipt',    color: '#0ea5e9' },
+        { label: 'Invoices', path: '/customer/invoices', icon: 'file-text', color: '#ef4444' },
+        { label: 'Receipts', path: '/customer/receipts', icon: 'receipt',   color: '#0ea5e9' },
       ],
     },
     { type: 'divider' },
 
     {
-      label: 'Payments', icon: 'credit-card',
+      label: 'Settings & Support', icon: 'settings',
       children: [
-        { label: 'Pay Invoice',     path: '/customer/payments/pay',     icon: 'credit-card', color: '#f59e0b' },
-        { label: 'Payment History', path: '/customer/payments/history', icon: 'dollar-sign', color: '#64748b' },
+        { label: 'Support Tickets', path: '/customer/support', icon: 'message-circle', color: '#64748b' },
+        { label: 'My Profile',      path: '/customer/profile', icon: 'user',           color: '#0f172a' },
       ],
     },
-    { type: 'divider' },
-
-    {
-      label: 'Support', icon: 'message-circle',
-      children: [
-        { label: 'Contact Us',      path: '/customer/support/contact', icon: 'send',          color: '#3b82f6' },
-        { label: 'Support History', path: '/customer/support/history', icon: 'message-square', color: '#64748b' },
-      ],
-    },
-
   ];
 
   return (
     <DashboardLayout menuItems={menuItems} title="Customer Portal">
       <Routes>
-        {/* 1 – Dashboard Overview */}
-        <Route path="dashboard"              element={<CustomerDashboardHome />} />
+        {/* Overview Dashboard */}
+        <Route path="dashboard"       element={<CustomerAllOrders />} />
 
-        {/* 2–4 – Orders */}
-        <Route path="orders/new"             element={<PlaceNewOrder />} />
-        <Route path="orders/history"         element={<OrderHistory />} />
-        <Route path="orders/track"           element={<TrackOrders />} />
+        {/* My Services */}
+        <Route path="printing-orders" element={<CustomerPrintingOrders />} />
+        <Route path="farming-orders"  element={<CustomerFarmingOrders />} />
+        <Route path="retail-orders"   element={<CustomerRetailOrders />} />
+        <Route path="rentals"         element={<CustomerRentals />} />
+        <Route path="prescriptions"   element={<CustomerPrescriptions />} />
+        <Route path="bids"            element={<CustomerBids />} />
 
-        {/* 5–6 – Documents */}
-        <Route path="documents/invoices"     element={<CustomerInvoicesPage />} />
-        <Route path="documents/receipts"     element={<CustomerReceiptsPage />} />
+        {/* Financials */}
+        <Route path="invoices"        element={<CustomerInvoices />} />
+        <Route path="receipts"        element={<CustomerReceipts />} />
 
-        {/* 7–8 – Payments */}
-        <Route path="payments/pay"           element={<PayInvoice />} />
-        <Route path="payments/history"       element={<PaymentHistory />} />
+        {/* Support & Profile */}
+        <Route path="support"         element={<SupportTickets />} />
+        <Route path="profile"         element={<CustomerProfile />} />
 
-        {/* 9–10 – Support */}
-        <Route path="support/contact"        element={<ContactUs />} />
-        <Route path="support/history"        element={<SupportHistory />} />
-
-        {/* Legacy */}
-        <Route path="profile"               element={<CustomerProfile />} />
-
-        {/* Catch-all → dashboard */}
-        <Route path="*"                     element={<Navigate to="dashboard" replace />} />
+        {/* Catch-all */}
+        <Route path="*"               element={<Navigate to="dashboard" replace />} />
       </Routes>
     </DashboardLayout>
   );

@@ -66,14 +66,14 @@ const CustomerFarmingOrders = () => {
   return (
     <div className={styles.pageContainer}>
       <div className={styles.pageHeader}>
-        <h1>My Farming Orders</h1>
+        <h1>My AgriRent Orders</h1>
         <p>Track your agricultural supplies and deliveries.</p>
       </div>
 
       {orders.length === 0 ? (
         <div className={styles.emptyState}>
           <Package size={48} className={styles.emptyIcon} />
-          <p>You have no farming orders yet.</p>
+          <p>You have no AgriRent orders yet.</p>
         </div>
       ) : (
         <div className={styles.ordersList}>

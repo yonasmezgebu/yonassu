@@ -157,7 +157,7 @@ const HRJobPosts = () => {
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label>Salary Range</label>
-                    <input type="text" placeholder="e.g. $50k - $70k" className={styles.input} value={formData.salaryRange} onChange={e => setFormData({...formData, salaryRange: e.target.value})} />
+                    <input type="text" placeholder="e.g. ETB 50k - ETB 70k" className={styles.input} value={formData.salaryRange} onChange={e => setFormData({...formData, salaryRange: e.target.value})} />
                   </div>
                   <div className={styles.formGroup}>
                     <label>Application Deadline</label>

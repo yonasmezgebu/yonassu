@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import authService from '../../services/authService';
 import styles from './RegisterPage.module.css';
 const RegisterPage = () => {
@@ -7,6 +8,7 @@ const RegisterPage = () => {
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', password: '', role: 'Customer' });
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const handleChange = (e) => {
@@ -18,9 +20,12 @@ const RegisterPage = () => {
     setLoading(true);
     setError('');
     try {
-      await authService.register(formData);
-      const redirect = searchParams.get('redirect');
-      navigate(redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login');
+      const response = await authService.register(formData);
+      setSuccessMsg(response?.message || 'Registration successful! Redirecting to login...');
+      setTimeout(() => {
+        const redirect = searchParams.get('redirect');
+        navigate(redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login');
+      }, 3000);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Registration failed. Please check your details.');
     } finally {
@@ -92,30 +97,36 @@ const RegisterPage = () => {
           </div>
           <div className={styles.formGroup}>
             <label>Password</label>
-            <div className={styles.passwordInputWrapper}>
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Minimum 8 characters"
+              required
+              minLength={8}
+              className={styles.input}
+            />
+            <label className={styles.showPasswordLabel}>
               <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Minimum 8 characters"
-                required
-                minLength={8}
-                className={styles.input}
+                type="checkbox"
+                checked={showPassword}
+                onChange={() => setShowPassword(!showPassword)}
+                className={styles.showPasswordCheck}
               />
-              <button
-                type="button"
-                className={styles.passwordToggle}
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </button>
-            </div>
+              Show password
+            </label>
           </div>
-          <button type="submit" className={styles.btnPrimary} disabled={loading}>
-            {loading ? 'Creating Account...' : 'Create My Account'}
-          </button>
+          {successMsg && (
+            <div style={{ backgroundColor: '#ecfdf5', color: '#065f46', padding: '12px', borderRadius: '6px', marginTop: '8px', marginBottom: '16px', fontSize: '14px', border: '1px solid #a7f3d0', textAlign: 'center', fontWeight: '500' }}>
+              ✅ {successMsg}
+            </div>
+          )}
+          {!successMsg && (
+            <button type="submit" className={styles.btnPrimary} disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create My Account'}
+            </button>
+          )}
         </form>
         
         <div className={styles.registerSection}>
@@ -123,9 +134,6 @@ const RegisterPage = () => {
           <Link to="/login" className={styles.registerBtn}>
             Sign In
           </Link>
-          <p className={styles.adminNote}>
-            Are you staff? Your account is created by an administrator — <Link to="/login" className={styles.loginLink}>Sign in here</Link>.
-          </p>
         </div>
 
         <button

@@ -2,11 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, UserPlus, Clock, CheckCircle, AlertTriangle, 
   Calendar, FileText, Download, TrendingUp, DollarSign,
-  Monitor, Shield, Mail, Bell
+  Monitor, Shield, Mail, Bell, LayoutDashboard, Target, Banknote
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
+import CEOHRReport from './CEOHRReport';
+import CEOPayrollDashboard from './CEOPayrollDashboard';
 import styles from './CEOHRDashboard.module.css';
+
+const TABS = [
+  { key: 'overview',     label: 'Overview',      Icon: LayoutDashboard },
+  { key: 'attendance',   label: 'Attendance',    Icon: Clock },
+  { key: 'performance',  label: 'Performance',   Icon: Target },
+  { key: 'payroll',      label: 'Payroll',       Icon: Banknote },
+  { key: 'reports',      label: 'Reports',       Icon: FileText },
+];
 
 const CEOHRDashboard = () => {
   const [activeTab, setActiveTab] = useState('attendance');
@@ -243,7 +253,7 @@ const CEOHRDashboard = () => {
         <Users size={18} /> Directory
       </button>
       <button className={`${styles.tab} ${activeTab === 'payroll' ? styles.activeTab : ''}`} onClick={() => setActiveTab('payroll')}>
-        <DollarSign size={18} /> Payroll
+        <Banknote size={18} /> Payroll Approvals
       </button>
       <button className={`${styles.tab} ${activeTab === 'notifications' ? styles.activeTab : ''}`} onClick={() => setActiveTab('notifications')}>
         <Bell size={18} /> Alerts
@@ -533,7 +543,7 @@ const CEOHRDashboard = () => {
           <>
             {activeTab === 'employees' && renderEmployees()}
             {activeTab === 'attendance' && renderAttendance()}
-            {activeTab === 'payroll' && renderPayroll()}
+            {activeTab === 'payroll' && <CEOPayrollDashboard />}
             {activeTab === 'notifications' && renderNotifications()}
           </>
         )}

@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import { FilePlus, CheckCircle, Upload } from 'lucide-react';
-import { submitNotification } from '../../utils/pharmacyNotifications';
-
-const MOCK_INVENTORY = {
-  'Amoxicillin': 500,
-  'Paracetamol': 1200,
-  'Ibuprofen': 0 // simulate out of stock
-};
+import axios from 'axios';
 
 const PharmacyWorkerNewPrescription = () => {
   const [source, setSource] = useState('Physical Prescription');
@@ -23,29 +17,37 @@ const PharmacyWorkerNewPrescription = () => {
   
   const [submitted, setSubmitted] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Check availability
-    const stockQty = MOCK_INVENTORY[medicineName];
-    const isAvailable = stockQty !== undefined && stockQty >= parseInt(quantity);
-
-    const prescriptionNumber = `RX-${Date.now().toString().slice(-6)}`;
-    const status = isAvailable ? 'PENDING' : 'ON HOLD - OUT OF STOCK';
-
-    setSubmitted({
-      prescriptionNumber,
-      status,
-      patientName,
-      medicineName,
-      isAvailable
-    });
-
-    // Notify Manager (in-app + browser + sound)
-    submitNotification('📝 New Prescription', 'New Prescription Logged - Click to View');
-    
-    // Notify Customer (simulated, no sound)
-    console.log(`[Customer SMS] Prescription Received: RX number ${prescriptionNumber}`);
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        patient_name: patientName,
+        patient_phone: patientPhone,
+        patient_age: parseInt(patientAge),
+        medicine_name: medicineName,
+        strength,
+        quantity: parseInt(quantity),
+        dosage_instructions: dosage,
+        prescriber_name: doctorName,
+        prescriber_hospital: hospital,
+        prescription_date: prescriptionDate,
+        source
+      };
+      const res = await axios.post('/api/pharmacy-sales/prescriptions', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const rx = res.data.data;
+      setSubmitted({
+        prescriptionNumber: rx.prescription_code,
+        status: rx.status,
+        patientName: rx.patient_name,
+        medicineName: rx.medicine_name,
+        isAvailable: rx.status !== 'ON_HOLD'
+      });
+    } catch (err) {
+      alert(`Failed to submit: ${err.response?.data?.message || err.message}`);
+    }
   };
 
   if (submitted) {

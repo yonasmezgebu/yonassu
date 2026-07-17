@@ -22,8 +22,9 @@ export default function CustomerPrescription() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
 
-  const [customerName, setCustomerName] = useState(user?.name || user?.full_name || '');
+  const [customerName, setCustomerName] = useState(user?.fullName || user?.name || user?.full_name || '');
   const [customerPhone, setCustomerPhone] = useState(user?.phone || '');
+  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
   const [drugName, setDrugName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [source, setSource] = useState('From Hospital');
@@ -32,6 +33,14 @@ export default function CustomerPrescription() {
   const [fileName, setFileName] = useState('');
 
   const [submitted, setSubmitted] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      setCustomerName(user.fullName || user.name || user.full_name || '');
+      setCustomerPhone(user.phone || '');
+      setCustomerEmail(user.email || '');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (tab === 'list') fetchPrescriptions();
@@ -63,14 +72,14 @@ export default function CustomerPrescription() {
     if (!customerPhone.trim()) { showToast('Phone is required', 'warning'); return; }
     if (!drugName.trim()) { showToast('Drug name is required', 'warning'); return; }
     if (!quantity) { showToast('Quantity is required', 'warning'); return; }
-    if (!prescriptionFile) { showToast('Please upload a prescription', 'warning'); return; }
 
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('customer_name', customerName);
       formData.append('customer_phone', customerPhone);
-      formData.append('prescription_file', prescriptionFile);
+      formData.append('customer_email', customerEmail);
+      if (prescriptionFile) formData.append('prescription_file', prescriptionFile);
       formData.append('drug_name', drugName);
       formData.append('quantity', quantity);
       formData.append('source', source);
@@ -78,18 +87,19 @@ export default function CustomerPrescription() {
       formData.append('special_instructions', specialInstructions);
 
       const res = await apiClient.post('/pharmacy/prescriptions', formData);
-      if (res.status === 'success') {
+      // res.status is the HTTP status code (200/201), not the JSON body status string
+      if (res.status === 200 || res.status === 201) {
         showToast('Prescription submitted successfully', 'success');
         playSound('success');
-        setSubmitted(res.data || { reference: res.reference || res.data?.reference });
-        setCustomerName(user?.name || user?.full_name || '');
-        setCustomerPhone(user?.phone || '');
+        setSubmitted(res.data?.data || res.data || {});
         setDrugName('');
         setQuantity('');
         setSource('From Hospital');
         setSpecialInstructions('');
         setPrescriptionFile(null);
         setFileName('');
+      } else {
+        showToast(res.data?.message || 'Unexpected response from server', 'error');
       }
     } catch (e) {
       showToast(e.response?.data?.message || e.message || 'Failed to submit', 'error');
@@ -100,8 +110,6 @@ export default function CustomerPrescription() {
 
   const resetForm = () => {
     setSubmitted(null);
-    setCustomerName(user?.name || user?.full_name || '');
-    setCustomerPhone(user?.phone || '');
     setDrugName('');
     setQuantity('');
     setSource('From Hospital');
@@ -160,65 +168,64 @@ export default function CustomerPrescription() {
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#92400E' }}>15–20 minutes</div>
                   </div>
                 </div>
-                <button onClick={resetForm}
-                  style={{ marginTop: 24, padding: '10px 24px', background: '#059669', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <Upload size={14} /> Submit Another
-                </button>
+                <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'center', gap: 12 }}>
+                  <button onClick={resetForm} style={{ padding: '12px 24px', background: 'white', border: '1px solid #CBD5E1', borderRadius: '10px', color: '#475569', fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    Submit Another
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ background: '#224f94', color: 'white', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ zIndex: 10, display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{ width: 40, height: 40, background: 'white', borderRadius: '50% 50% 50% 0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#224f94', fontWeight: 800, fontSize: 8 }}>SUTANA</div>
-                    <div>
-                      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: 1.5, textTransform: 'uppercase' }}>Prescription Form</h2>
-                      <p style={{ margin: 0, fontSize: 10, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: 1 }}>Flow 4 — Customer Prescription (B7/B9)</p>
-                    </div>
-                  </div>
-                  <div style={{ position: 'absolute', top: -30, right: -20, width: 150, height: 150, background: '#4585c5', borderRadius: '40% 60% 70% 30%', opacity: 0.6 }}></div>
-                  <div style={{ position: 'absolute', bottom: -8, right: 80, width: 50, height: 50, background: '#1c3d70', borderRadius: '12px' }}></div>
+              <div style={{ background: 'white', borderRadius: 16, border: '1px solid rgba(226,232,240,0.8)', overflow: 'hidden', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)' }}>
+                <div style={{ 
+                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', 
+                  color: 'white', padding: '32px', position: 'relative', overflow: 'hidden' 
+                }}>
+                  <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, fontFamily: "'Playfair Display', serif", letterSpacing: '0.5px' }}>Prescription Request</h2>
+                  <p style={{ margin: '8px 0 0', fontSize: 13, color: '#94a3b8', fontFamily: "'Inter', sans-serif" }}>Securely submit your prescription for fulfillment</p>
+                  <div style={{ position: 'absolute', top: -40, right: -20, width: 200, height: 200, background: 'radial-gradient(circle, rgba(56,189,248,0.15) 0%, rgba(15,23,42,0) 70%)', borderRadius: '50%' }}></div>
                 </div>
 
                 <div style={{ padding: '24px 28px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
                     <div>
-                      <label style={labelStyle}><User size={13} /> Full Name *</label>
-                      <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                        placeholder="Your full name" style={inputStyle()} />
+                      <label style={labelStyle}><User size={13} /> Full Name</label>
+                      <input type="text" value={customerName} readOnly style={{ ...inputStyle(), background: '#f1f5f9', cursor: 'not-allowed' }} />
                     </div>
                     <div>
-                      <label style={labelStyle}><Phone size={13} /> Phone *</label>
-                      <input type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-                        placeholder="+251..." style={inputStyle()} />
+                      <label style={labelStyle}><Phone size={13} /> Phone</label>
+                      <input type="text" value={customerPhone} readOnly style={{ ...inputStyle(), background: '#f1f5f9', cursor: 'not-allowed' }} />
                     </div>
-                  </div>
-
-                  <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}><FileText size={13} /> Upload Prescription *</label>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <label style={{
-                        padding: '10px 18px', background: '#EFF6FF', color: '#1D4ED8', border: '1px dashed #93C5FD',
-                        borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6
-                      }}>
-                        <Upload size={14} /> {fileName || 'Choose File'}
-                        <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ display: 'none' }} />
-                      </label>
-                      {fileName && <span style={{ fontSize: 12, color: '#64748B' }}>{fileName}</span>}
+                    <div>
+                      <label style={labelStyle}>📧 Email</label>
+                      <input type="email" value={customerEmail} readOnly style={{ ...inputStyle(), background: '#f1f5f9', cursor: 'not-allowed' }} />
                     </div>
                   </div>
 
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={labelStyle}><FileText size={13} /> Upload Prescription (Optional)</label>
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+                      padding: '40px 24px', background: fileName ? '#F0FDF4' : '#F8FAFC', border: `2px dashed ${fileName ? '#059669' : '#CBD5E1'}`,
+                      borderRadius: 12, cursor: 'pointer', transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E2E8F0' }}>
+                        <Upload size={24} color={fileName ? '#059669' : '#94A3B8'} />
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{fileName || 'Browse or drag prescription file'}</span>
+                      <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ display: 'none' }} />
+                    </label>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                     <div>
-                      <label style={labelStyle}><Pill size={13} /> Drug Required *</label>
-                      <input type="text" value={drugName} onChange={e => setDrugName(e.target.value)}
-                        placeholder="e.g. Amoxicillin 500mg" style={inputStyle()} />
+                      <label style={labelStyle}><Pill size={13} /> Drug Name *</label>
+                      <input type="text" value={drugName} onChange={e => setDrugName(e.target.value)} placeholder="e.g. Amoxicillin" style={inputStyle()} />
                     </div>
                     <div>
                       <label style={labelStyle}><Package size={13} /> Quantity *</label>
-                      <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)}
-                        placeholder="e.g. 30" style={inputStyle()} />
+                      <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" style={inputStyle()} />
                     </div>
                   </div>
 
@@ -228,12 +235,11 @@ export default function CustomerPrescription() {
                       {SOURCES.map(s => (
                         <label key={s.value} style={{
                           display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
-                          border: `2px solid ${source === s.value ? '#059669' : '#E2E8F0'}`,
+                          border: `1px solid ${source === s.value ? '#059669' : '#E2E8F0'}`,
                           borderRadius: 8, cursor: 'pointer', background: source === s.value ? '#ECFDF5' : 'white',
                           fontWeight: 600, fontSize: 13, color: source === s.value ? '#065F46' : '#475569',
                         }}>
-                          <input type="radio" name="source" value={s.value} checked={source === s.value}
-                            onChange={() => setSource(s.value)} style={{ display: 'none' }} />
+                          <input type="radio" name="source" value={s.value} checked={source === s.value} onChange={() => setSource(s.value)} style={{ display: 'none' }} />
                           {s.label}
                         </label>
                       ))}
@@ -242,19 +248,15 @@ export default function CustomerPrescription() {
 
                   <div style={{ marginBottom: 20 }}>
                     <label style={labelStyle}><MessageSquare size={13} /> Special Instructions</label>
-                    <textarea value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)}
-                      placeholder="Any special instructions or notes..."
-                      rows={3} style={{ ...inputStyle(), resize: 'vertical', fontFamily: 'Inter, sans-serif' }} />
+                    <textarea value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} placeholder="Any specific requirements?" rows={3} style={{ ...inputStyle(), resize: 'vertical' }} />
                   </div>
 
-                  <button type="submit" disabled={loading}
-                    style={{
-                      width: '100%', padding: '14px 24px', background: '#059669', color: 'white', border: 'none',
-                      borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 4px 12px rgba(5,150,105,0.3)',
-                    }}>
-                    <Upload size={18} /> {loading ? 'Submitting...' : 'SUBMIT FORM'}
+                  <button type="submit" disabled={loading} style={{
+                    width: '100%', padding: '16px', background: loading ? '#94A3B8' : 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+                    color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,23,42,0.2)'
+                  }}>
+                    {loading ? 'Submitting...' : 'SUBMIT REQUEST'}
                   </button>
                 </div>
               </div>
@@ -326,8 +328,32 @@ export default function CustomerPrescription() {
   );
 }
 
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-const inputStyle = () => ({ width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' });
+const inputStyle = () => ({
+  width: '100%',
+  padding: '12px 16px',
+  border: '1px solid #E2E8F0',
+  borderRadius: '10px',
+  fontSize: 14,
+  fontFamily: "'Inter', sans-serif",
+  outline: 'none',
+  boxSizing: 'border-box',
+  transition: 'all 0.2s ease',
+  backgroundColor: '#F8FAFC',
+  color: '#1E293B'
+});
+
+const labelStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 12,
+  fontWeight: 700,
+  color: '#475569',
+  marginBottom: 8,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em'
+};
+
 const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' };
 const tdStyle = { padding: '12px 14px', color: '#1E293B' };
 const tabBtn = (active) => ({

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import authService from '../../services/authService';
 import styles from './LoginPage.module.css';
 const LoginPage = () => {
@@ -36,10 +37,9 @@ const LoginPage = () => {
       if (user.roles?.includes('Admin')) navigate('/admin');
       else if (user.roles?.includes('CEO')) navigate('/ceo');
       else if (user.roles?.includes('Finance Manager')) navigate('/finance');
-      else if (user.roles?.includes('Finance')) navigate('/finance');
       else if (user.roles?.includes('Purchase')) navigate('/purchase');
       else if (user.roles?.includes('Store Manager')) navigate('/store');
-      else if (user.roles?.includes('Sales/Cashier')) navigate('/sales');
+      else if (user.roles?.includes('Sales/Cashier')) navigate('/pharmacy-worker');
       else if (user.roles?.includes('Printing Supervisor')) navigate('/printing-manager');
       else if (user.roles?.includes('Market Team')) navigate('/purchase');
       else if (user.roles?.includes('Pharmacy Manager')) navigate('/pharmacy');
@@ -49,7 +49,7 @@ const LoginPage = () => {
       else if (user.roles?.includes('HR Manager')) navigate('/hr');
       else if (user.roles?.includes('Employee')) navigate('/employee');
       else if (user.roles?.includes('Board Member')) navigate('/board');
-      else navigate('/customer');
+      else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
     } finally {
@@ -125,7 +125,7 @@ const LoginPage = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
@@ -154,13 +154,9 @@ const LoginPage = () => {
           <p className={styles.adminNote}>Admin &amp; staff accounts are created by an administrator.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className={styles.backHome}
-        >
+        <Link to="/" className={styles.backHome}>
           ← Back to Home
-        </button>
+        </Link>
       </div>
 
       {/* ── Wave bottom layers ── */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { submitNotification, receiveNotification, triggerNotification } from '../../utils/ceoNotifications';
 import { Users, User, Download, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import HRDepartments from '../hr/HRDepartments';
 
 const CEOHR = () => {
   const [activeTab, setActiveTab] = useState('Employees');
@@ -62,7 +63,7 @@ const CEOHR = () => {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {['Employees', 'Leave Requests', 'Payroll', 'Attendance'].map(tab => (
+        {['Employees', 'Departments', 'Leave Requests', 'Payroll', 'Attendance'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: activeTab === tab ? '#0f172a' : 'white', color: activeTab === tab ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 'bold', border: activeTab === tab ? 'none' : '1px solid #e2e8f0' }}>
             {tab}
           </button>
@@ -106,6 +107,15 @@ const CEOHR = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {activeTab === 'Departments' && (
+        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', minHeight: '600px' }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Departments Management</h3>
+          <div style={{ height: 'calc(100% - 40px)', overflow: 'auto' }}>
+            <HRDepartments />
+          </div>
         </div>
       )}
 

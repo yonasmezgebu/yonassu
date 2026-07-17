@@ -188,33 +188,24 @@
   display: none !important;
 }
 
-/* ── Password wrapper ── */
-.passwordInputWrapper {
-  position: relative;
+/* ── Show password checkbox ── */
+.showPasswordLabel {
   display: flex;
   align-items: center;
-}
-
-.passwordInputWrapper .input {
-  padding-right: 2.5rem;
-}
-
-.passwordToggle {
-  position: absolute;
-  right: 0;
-  background: none;
-  border: none;
+  gap: 8px;
+  margin-top: 10px;
   cursor: pointer;
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.35);
-  display: flex;
-  align-items: center;
-  padding: 4px;
-  transition: color 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  user-select: none;
 }
 
-.passwordToggle:hover {
-  color: rgba(255, 255, 255, 0.75);
+.showPasswordCheck {
+  width: 16px;
+  height: 16px;
+  accent-color: #5b5de8;
+  cursor: pointer;
 }
 
 /* ─────────────────────────────────────────────────────

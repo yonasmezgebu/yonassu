@@ -83,10 +83,10 @@ const ExecutiveReports = () => {
       <h1>Executive Summary Report</h1>
       <div class="meta">Period: ${reportData?.period?.start || 'N/A'} — ${reportData?.period?.end || 'N/A'} | Generated: ${new Date().toLocaleString()}</div>
       <div class="summary-grid">
-        <div class="summary-card"><h3>Total Revenue</h3><div class="summary-value">${fmt(summary.totalRevenue || 0)}</div></div>
-        <div class="summary-card"><h3>Net Profit</h3><div class="summary-value ${profitClass}">${fmt(summary.netProfit || 0)}</div></div>
-        <div class="summary-card"><h3>Total Expenses</h3><div class="summary-value">${fmt(summary.totalExpenses || 0)}</div></div>
-        <div class="summary-card"><h3>New Customers</h3><div class="summary-value">${formatNumber(summary.newCustomers || 0)}</div></div>
+        <div class="summary-card"><h3>Total Revenue</h3><div class="summary-value">ETB {fmt(summary.totalRevenue || 0)}</div></div>
+        <div class="summary-card"><h3>Net Profit</h3><div class="summary-value ${profitClass}">ETB {fmt(summary.netProfit || 0)}</div></div>
+        <div class="summary-card"><h3>Total Expenses</h3><div class="summary-value">ETB {fmt(summary.totalExpenses || 0)}</div></div>
+        <div class="summary-card"><h3>New Customers</h3><div class="summary-value">ETB {formatNumber(summary.newCustomers || 0)}</div></div>
       </div>
       <div class="section"><h2>Departmental Performance</h2>
       <table><thead><tr><th>Department</th><th>Revenue</th><th>Expenses</th><th>Net Contribution</th><th>Status</th></tr></thead><tbody>
@@ -98,14 +98,14 @@ const ExecutiveReports = () => {
         ].map(d => {
           const net = d.rev - d.exp;
           const status = d.rev > 0 ? (net > 0 ? 'Exceeding' : 'On Target') : 'Upcoming';
-          return `<tr><td>${d.name}</td><td class="value">${fmt(d.rev)}</td><td>${fmt(d.exp)}</td>
-            <td class="value ${net >= 0 ? 'profit-positive' : 'profit-negative'}">${fmt(net)}</td>
-            <td><span class="badge-${status.toLowerCase()}">${status}</span></td></tr>`;
+          return `<tr><td>ETB {d.name}</td><td class="value">ETB {fmt(d.rev)}</td><td>ETB {fmt(d.exp)}</td>
+            <td class="value ${net >= 0 ? 'profit-positive' : 'profit-negative'}">ETB {fmt(net)}</td>
+            <td><span class="badge-${status.toLowerCase()}">ETB {status}</span></td></tr>`;
         }).join('')}
       </tbody></table></div>
       <div class="section"><h2>Top Products</h2>
       <table><thead><tr><th>Product</th><th>Quantity</th><th>Revenue</th></tr></thead><tbody>
-        ${(reportData?.topProducts || []).map(p => `<tr><td>${p.name}</td><td>${p.quantity}</td><td class="value">${fmt(p.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" style="color:#6B7280">No product data available</td></tr>'}
+        ${(reportData?.topProducts || []).map(p => `<tr><td>ETB {p.name}</td><td>ETB {p.quantity}</td><td class="value">ETB {fmt(p.revenue)}</td></tr>`).join('') || '<tr><td colspan="3" style="color:#6B7280">No product data available</td></tr>'}
       </tbody></table></div>
       <div class="section"><p style="color:#6B7280;font-size:12px;text-align:center;margin-top:40px;">
         This report is confidential and intended for the CEO and Board of Directors.</p></div>
@@ -237,7 +237,7 @@ const ExecutiveReports = () => {
                 <BarChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" fontSize={12} tickMargin={8} />
-                  <YAxis fontSize={12} tickFormatter={(v) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : `$${(v/1000).toFixed(0)}k`} />
+                  <YAxis fontSize={12} tickFormatter={(v) => v >= 1000000 ? `ETB ${(v/1000000).toFixed(1)}M` : `ETB ${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(value) => formatCurrency(value)} />
                   <Bar dataKey="revenue" fill="#3B82F6" radius={[4,4,0,0]} barSize={30} />
                 </BarChart>

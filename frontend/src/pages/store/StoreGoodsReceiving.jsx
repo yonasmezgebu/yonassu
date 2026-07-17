@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
-import { Truck, Plus, Trash2, Printer, CheckCircle } from 'lucide-react';
-import { notifyLowStock } from '../../utils/storeNotifications';
-import { createGoodsReceivingNote } from '../../utils/storeTransactionService';
+import React, { useState, useEffect } from 'react';
+import { Truck, Plus, Trash2, Printer, CheckCircle, Search } from 'lucide-react';
+import { createReceipt, getAllDrugs } from '../../utils/storeApi';
 
-const LOW_STOCK_THRESHOLD = 50;
-
-const REORDER_LEVELS = { 'Amoxicillin 500mg': 200, 'Surgical Gloves (L)': 100, 'Paracetamol 500mg': 500 };
-
-const emptyLine = () => ({ id: Date.now(), itemName: '', qtyReceived: '', unitPrice: '', batchNumber: '', expiryDate: '', location: '' });
+const emptyLine = () => ({ id: Date.now(), drug_id: '', drug_name: '', qtyReceived: '', unitPrice: '', batchNumber: '', expiryDate: '', location: '' });
 
 const StoreGoodsReceiving = () => {
   const [source, setSource] = useState('Supplier');
@@ -17,17 +12,45 @@ const StoreGoodsReceiving = () => {
   const [lines, setLines] = useState([emptyLine()]);
   const [submitted, setSubmitted] = useState(null);
   const [errors, setErrors] = useState({});
+  const [drugs, setDrugs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [drugSearch, setDrugSearch] = useState({});
+
+  useEffect(() => {
+    const fetchDrugs = async () => {
+      try {
+        setLoading(true);
+        const res = await getAllDrugs();
+        setDrugs(res.data || []);
+        setError(null);
+      } catch (err) {
+        setError(err.message || 'Failed to load drugs');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDrugs();
+  }, []);
 
   const addLine = () => setLines(l => [...l, emptyLine()]);
-  const removeLine = (id) => setLines(l => l.filter(x => x.id !== id));
+  const removeLine = (id) => {
+    setLines(l => l.filter(x => x.id !== id));
+    setDrugSearch(s => { const n = { ...s }; delete n[id]; return n; });
+  };
   const updateLine = (id, field, value) => setLines(l => l.map(x => x.id === id ? { ...x, [field]: value } : x));
+
+  const handleDrugSelect = (lineId, drugId) => {
+    const drug = drugs.find(d => d.id === Number(drugId));
+    setLines(l => l.map(x => x.id === lineId ? { ...x, drug_id: drugId, drug_name: drug ? drug.name : '' } : x));
+  };
 
   const validate = () => {
     const e = {};
     if (!supplierName.trim()) e.supplierName = 'Source name is required';
     if (!poNumber.trim()) e.poNumber = 'PO/Reference # is required';
     lines.forEach((line, i) => {
-      if (!line.itemName.trim()) e[`item_${i}`] = 'Item name required';
+      if (!line.drug_id) e[`item_${i}`] = 'Item name required';
       if (!line.qtyReceived || isNaN(line.qtyReceived) || +line.qtyReceived <= 0) e[`qty_${i}`] = 'Valid quantity required';
       if (!line.unitPrice || isNaN(line.unitPrice) || +line.unitPrice <= 0) e[`price_${i}`] = 'Valid unit price required';
       if (!line.batchNumber.trim()) e[`batch_${i}`] = 'Batch number required';
@@ -36,26 +59,65 @@ const StoreGoodsReceiving = () => {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
     try {
-      const m19Record = createGoodsReceivingNote(source, poNumber, new Date().toISOString(), lines);
-      setSubmitted({ ...m19Record, date: m19Record.timestamp, m19Number: m19Record.id, supplierName, deliveryNote });
+      const receipt_no = 'M19-' + Date.now().toString().slice(-6);
+      const payload = {
+        receipt_no,
+        supplier_name: supplierName,
+        purchase_order_ref: poNumber,
+        delivery_note_ref: deliveryNote,
+        items: lines.map(line => ({
+          drug_id: Number(line.drug_id),
+          quantity: Number(line.qtyReceived),
+          unit_cost: Number(line.unitPrice),
+          batch_no: line.batchNumber,
+          expiry_date: line.expiryDate || null,
+          storage_location: line.location,
+        }))
+      };
+      const res = await createReceipt(payload);
+      if (res.error) throw new Error(res.error);
+      setSubmitted({
+        m19Number: receipt_no,
+        source,
+        supplierName,
+        poNumber,
+        deliveryNote,
+        date: new Date().toISOString(),
+        lines: lines.map(l => ({
+          itemName: l.drug_name,
+          qtyReceived: l.qtyReceived,
+          unitPrice: l.unitPrice,
+          batchNumber: l.batchNumber,
+          expiryDate: l.expiryDate,
+          location: l.location,
+        })),
+      });
     } catch (err) {
-      setErrors({ supplierName: err.message });
-      return;
+      setErrors({ supplierName: err.message || 'Failed to create receipt' });
     }
-
-    // Check low stock thresholds (simulate auto-evaluation)
-    lines.forEach(line => {
-      const reorder = REORDER_LEVELS[line.itemName];
-      if (reorder && +line.qtyReceived < LOW_STOCK_THRESHOLD) {
-        notifyLowStock(line.itemName, line.qtyReceived);
-      }
-    });
   };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b' }}>Loading drugs...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#ef4444' }}>Error: {error}</p>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -84,7 +146,7 @@ const StoreGoodsReceiving = () => {
                 <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '8px 10px', fontWeight: 600 }}>{l.itemName}</td>
                   <td style={{ padding: '8px 10px' }}>{l.qtyReceived}</td>
-                  <td style={{ padding: '8px 10px' }}>${l.unitPrice}</td>
+                  <td style={{ padding: '8px 10px' }}>ETB {l.unitPrice}</td>
                   <td style={{ padding: '8px 10px', fontFamily: 'monospace' }}>{l.batchNumber}</td>
                   <td style={{ padding: '8px 10px' }}>{l.expiryDate || 'N/A'}</td>
                   <td style={{ padding: '8px 10px' }}>{l.location}</td>
@@ -99,7 +161,7 @@ const StoreGoodsReceiving = () => {
             <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
               <Printer size={15} /> Print M19
             </button>
-            <button onClick={() => { setSubmitted(null); setLines([emptyLine()]); setErrors({}); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+            <button onClick={() => { setSubmitted(null); setLines([emptyLine()]); setErrors({}); setDrugSearch({}); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
               + New Receiving Note
             </button>
           </div>
@@ -159,7 +221,36 @@ const StoreGoodsReceiving = () => {
             <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 12, alignItems: 'flex-start' }}>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ITEM NAME *</label>}
-                <input value={line.itemName} onChange={e => updateLine(line.id, 'itemName', e.target.value)} placeholder="Item name" style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`item_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
+                <div style={{ position: 'relative', marginBottom: 4 }}>
+                  <Search size={13} style={{ position: 'absolute', left: 8, top: 9, color: '#94a3b8' }} />
+                  <input
+                    placeholder="Search drug..."
+                    value={drugSearch[line.id] || ''}
+                    onChange={e => setDrugSearch(s => ({ ...s, [line.id]: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 10px 8px 26px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                </div>
+                <select
+                  value={line.drug_id}
+                  onChange={e => handleDrugSelect(line.id, e.target.value)}
+                  style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`item_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                >
+                  <option value="">-- Select Drug --</option>
+                  {drugs
+                    .filter(d => {
+                      const q = (drugSearch[line.id] || '').toLowerCase();
+                      if (!q) return true;
+                      return (d.name || '').toLowerCase().includes(q) ||
+                             (d.strength || '').toLowerCase().includes(q);
+                    })
+                    .map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}{d.strength ? ' ' + d.strength : ''} - {d.unit || ''}
+                      </option>
+                    ))
+                  }
+                </select>
+                {errors[`item_${i}`] && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors[`item_${i}`]}</span>}
               </div>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>QTY *</label>}
@@ -167,7 +258,7 @@ const StoreGoodsReceiving = () => {
               </div>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>UNIT PRICE *</label>}
-                <input type="number" value={line.unitPrice} onChange={e => updateLine(line.id, 'unitPrice', e.target.value)} placeholder="$0.00" style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`price_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
+                <input type="number" value={line.unitPrice} onChange={e => updateLine(line.id, 'unitPrice', e.target.value)} placeholder="ETB 0.00" style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`price_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
               </div>
               <div>
                 {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>BATCH # *</label>}
@@ -193,7 +284,7 @@ const StoreGoodsReceiving = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={() => { setLines([emptyLine()]); setErrors({}); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
+          <button type="button" onClick={() => { setLines([emptyLine()]); setErrors({}); setDrugSearch({}); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
             Reset Form
           </button>
           <button type="submit" style={{ padding: '10px 28px', background: '#166534', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>

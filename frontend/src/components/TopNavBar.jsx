@@ -65,7 +65,7 @@ export default function TopNavBar() {
   /* ── Socket.io for real-time pharmacy notifications (Admin/CEO only) ── */
   useEffect(() => {
     if (!isAuthenticated || !isAdminCEO) return;
-    const socket = io('http://localhost:5000', { transports: ['websocket'] });
+    const socket = io((import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''), { transports: ['websocket', 'polling'], withCredentials: true });
     socketRef.current = socket;
 
     socket.on('new-prescription-request', (data) => {

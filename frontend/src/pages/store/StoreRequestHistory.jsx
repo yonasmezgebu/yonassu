@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Filter, Download, Printer } from 'lucide-react';
-import { notifyRequestHistory } from '../../utils/storeNotifications';
-
-const mockHistory = [
-  { id: 'M20-001', dept: 'Pharmacy', items: 'Amoxicillin 500mg', qty: 200, status: 'Issued', date: '2026-06-30', processedBy: 'Store Manager' },
-  { id: 'M20-002', dept: 'Sales', items: 'A4 Paper Reams', qty: 10, status: 'Issued', date: '2026-06-30', processedBy: 'Store Manager' },
-  { id: 'M20-003', dept: 'Pharmacy', items: 'IV Fluid (500ml)', qty: 30, status: 'Pending', date: '2026-07-01', processedBy: '—' },
-  { id: 'M20-004', dept: 'Other', items: 'Hand Sanitizer 500ml', qty: 20, status: 'Issued', date: '2026-07-01', processedBy: 'Store Manager' },
-  { id: 'M20-005', dept: 'Pharmacy', items: 'Surgical Gloves (L)', qty: 50, status: 'Rejected', date: '2026-07-01', processedBy: 'Store Manager' },
-  { id: 'M20-006', dept: 'Other', items: 'Office Chairs', qty: 5, status: 'Pending', date: '2026-07-01', processedBy: '—' },
-  { id: 'M20-007', dept: 'Sales', items: 'Printer Paper', qty: 20, status: 'Approved', date: '2026-07-01', processedBy: 'Store Manager' },
-];
+import { getRequisitions } from '../../utils/storeApi';
 
 const statusColors = { Pending: { bg: '#fef3c7', c: '#92400e' }, Approved: { bg: '#dcfce7', c: '#166534' }, Issued: { bg: '#eff6ff', c: '#1d4ed8' }, Rejected: { bg: '#fee2e2', c: '#991b1b' } };
 
@@ -19,14 +9,55 @@ const StoreRequestHistory = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getRequisitions();
+      setRequests(res.data.map(item => ({
+        id: item.requisition_no,
+        dept: item.department,
+        items: item.items?.[0]?.item_name || '-',
+        qty: item.items?.[0]?.quantity || 0,
+        status: item.status,
+        date: item.created_at ? item.created_at.split('T')[0] : '-',
+        processedBy: '—',
+      })));
+    } catch (e) {
+      setError(e.message || 'Failed to load request history');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    notifyRequestHistory();
+    fetchRequests();
   }, []);
 
-  const filtered = mockHistory
+  const filtered = requests
     .filter(r => filterDept === 'All' || r.dept === filterDept)
     .filter(r => filterStatus === 'All' || r.status === filterStatus);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: 16 }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <p style={{ color: '#991b1b', fontSize: 16 }}>Error: {error}</p>
+        <button onClick={fetchRequests} style={{ padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
@@ -50,10 +81,10 @@ const StoreRequestHistory = () => {
       {/* SUMMARY CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Requests', val: mockHistory.length, bg: 'white' },
-          { label: 'Pending', val: mockHistory.filter(r => r.status === 'Pending').length, bg: '#fef3c7' },
-          { label: 'Approved/Issued', val: mockHistory.filter(r => ['Approved', 'Issued'].includes(r.status)).length, bg: '#dcfce7' },
-          { label: 'Rejected', val: mockHistory.filter(r => r.status === 'Rejected').length, bg: '#fee2e2' },
+          { label: 'Total Requests', val: requests.length, bg: 'white' },
+          { label: 'Pending', val: requests.filter(r => r.status === 'Pending').length, bg: '#fef3c7' },
+          { label: 'Approved/Issued', val: requests.filter(r => ['Approved', 'Issued'].includes(r.status)).length, bg: '#dcfce7' },
+          { label: 'Rejected', val: requests.filter(r => r.status === 'Rejected').length, bg: '#fee2e2' },
         ].map(c => (
           <div key={c.label} style={{ background: c.bg, padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{c.label}</div>

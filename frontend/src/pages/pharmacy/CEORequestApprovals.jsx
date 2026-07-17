@@ -4,7 +4,7 @@ import { useToast } from '../../components/Toast';
 import { playSound } from '../../services/notificationManager';
 import {
   ClipboardCheck, Clock, CheckCircle, XCircle, RefreshCw, FileText,
-  User, Pill, DollarSign, Hash, AlertCircle, Eye, List, Package
+  User, Pill, DollarSign, Hash, AlertCircle, Eye, List, Package, Image as ImageIcon
 } from 'lucide-react';
 
 const STATUS_TABS = [
@@ -129,6 +129,7 @@ export default function CEORequestApprovals() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                <th style={thStyle}>Image</th>
                 <th style={thStyle}>Drug Name</th>
                 <th style={thStyle}>Request Type</th>
                 <th style={thStyle}>Current Value</th>
@@ -142,6 +143,17 @@ export default function CEORequestApprovals() {
               {requests.map(req => (
                 <tr key={req.id} style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
                   onClick={() => openDetail(req)}>
+                  <td style={tdStyle}>
+                    {req.drug_image ? (
+                      <img src={`http://localhost:5000${req.drug_image}`} alt={req.drug_name}
+                        style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0', display: 'block' }}
+                        onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      />
+                    ) : null}
+                    <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9', display: req.drug_image ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ImageIcon size={16} color="#94a3b8" />
+                    </div>
+                  </td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Pill size={14} color="#64748B" /> {req.drug_name}
@@ -209,10 +221,29 @@ export default function CEORequestApprovals() {
             ) : (
               <>
                 <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 16, border: '1px solid #E2E8F0' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: 14, color: '#1E293B', fontWeight: 600 }}>
-                    <Pill size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                    Manager requested to update: {selectedRequest.drug_name}
-                  </p>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                    {selectedRequest.drug_image ? (
+                      <img src={`http://localhost:5000${selectedRequest.drug_image}`} alt={selectedRequest.drug_name}
+                        style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                        onError={e => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div style={{ width: 60, height: 60, borderRadius: 10, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ImageIcon size={24} color="#94a3b8" />
+                      </div>
+                    )}
+                    <div>
+                      <p style={{ margin: '0 0 4px', fontSize: 14, color: '#1E293B', fontWeight: 600 }}>
+                        <Pill size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                        {selectedRequest.drug_name}
+                      </p>
+                      {selectedRequest.request_type === 'QUANTITY' && (
+                        <p style={{ margin: 0, fontSize: 12, color: '#64748B' }}>
+                          On approve, stock will auto-adjust to match approved quantity
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
                     <div>
                       <span style={{ color: '#64748B', fontSize: 11 }}>Request Type</span>

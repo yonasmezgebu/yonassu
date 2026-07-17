@@ -4,7 +4,6 @@ import adminService from '../../services/adminService';
 import { formatNumber, formatDate } from '../../utils/formatters';
 
 const DIMENSIONS = [
-  { key: 'roleDesigner', label: 'Role Designer', color: '#16a34a', path: '/admin/role-designer' },
   { key: 'tenants', label: 'Tenant Management', color: '#65a30d', path: '/admin/tenants' },
   { key: 'dr', label: 'Disaster Recovery', color: '#57534e', path: '/admin/dr' },
   { key: 'apiKeys', label: 'API Access Keys', color: '#6366f1', path: '/admin/api-keys' },
@@ -46,7 +45,6 @@ const AdminHome = () => {
   const dimStatuses = useMemo(() => {
     const d = dashboardData;
     return {
-      roleDesigner: { status: 'ok', count: 0 },
       tenants: { status: 'ok', count: 0 },
       dr: { status: d.dr?.lastTest?.status === 'passed' ? 'ok' : 'warning', count: d.dr?.lastTest ? 1 : 0 },
       apiKeys: { status: d.apiKeys?.length > 0 ? 'ok' : 'info', count: d.apiKeys?.length || 0 },

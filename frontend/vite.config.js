@@ -7,9 +7,15 @@ export default defineConfig({
   server: {
     open: true,
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
   },
   optimizeDeps: {
-    include: ['recharts', 'lodash']
+    include: ['recharts', 'lodash', 'socket.io-client']
   }
 })
 

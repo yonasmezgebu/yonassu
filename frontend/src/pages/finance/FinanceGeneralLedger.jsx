@@ -156,10 +156,10 @@ const FinanceGeneralLedger = () => {
                 <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 12 }}>{entry.category}</td>
                 <td style={{ padding: '12px 16px', color: '#475569' }}>{entry.description}</td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', color: '#475569' }}>
-                  {entry.debit > 0 ? `$${entry.debit.toFixed(2)}` : '-'}
+                  {entry.debit > 0 ? `ETB ${entry.debit.toFixed(2)}` : '-'}
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', color: '#475569' }}>
-                  {entry.credit > 0 ? `$${entry.credit.toFixed(2)}` : '-'}
+                  {entry.credit > 0 ? `ETB ${entry.credit.toFixed(2)}` : '-'}
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>
                   ${entry.balance.toFixed(2)}

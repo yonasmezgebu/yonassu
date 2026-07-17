@@ -103,7 +103,7 @@ const CEOInventoryReportFull = () => {
               <div key={i.n}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 14, fontWeight: 'bold' }}>
                   <span>{i.n}</span>
-                  <span>${i.v.toLocaleString()} ({i.p}%)</span>
+                  <span>ETB {i.v.toLocaleString()} ({i.p}%)</span>
                 </div>
                 <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 4, height: 8 }}>
                   <div style={{ width: `${i.p}%`, background: '#f59e0b', height: '100%', borderRadius: 4 }}></div>
@@ -128,12 +128,12 @@ const CEOInventoryReportFull = () => {
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Incoming (M19 GRN)</td>
                 <td style={{ padding: 12 }}>4,520 Units</td>
-                <td style={{ padding: 12, color: '#166534', fontWeight: 'bold' }}>+$185,000</td>
+                <td style={{ padding: 12, color: '#166534', fontWeight: 'bold' }}>+ETB 185,000</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Outgoing (M22 Issue)</td>
                 <td style={{ padding: 12 }}>3,890 Units</td>
-                <td style={{ padding: 12, color: '#991b1b', fontWeight: 'bold' }}>-$142,500</td>
+                <td style={{ padding: 12, color: '#991b1b', fontWeight: 'bold' }}>-ETB 142,500</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Transfers (M21)</td>
@@ -143,7 +143,7 @@ const CEOInventoryReportFull = () => {
               <tr>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Expired / Damaged</td>
                 <td style={{ padding: 12 }}>12 Units</td>
-                <td style={{ padding: 12, color: '#991b1b', fontWeight: 'bold' }}>-$1,200</td>
+                <td style={{ padding: 12, color: '#991b1b', fontWeight: 'bold' }}>-ETB 1,200</td>
               </tr>
             </tbody>
           </table>
@@ -182,8 +182,8 @@ const CEOInventoryReportFull = () => {
                 <td style={{ padding: 12, fontWeight: 'bold' }}>{p.name}</td>
                 <td style={{ padding: 12 }}>{p.dept}</td>
                 <td style={{ padding: 12 }}>{p.qty.toLocaleString()}</td>
-                <td style={{ padding: 12 }}>${p.unit.toLocaleString()}</td>
-                <td style={{ padding: 12, color: '#b45309', fontWeight: 'bold' }}>${p.val.toLocaleString()}</td>
+                <td style={{ padding: 12 }}>ETB {p.unit.toLocaleString()}</td>
+                <td style={{ padding: 12, color: '#b45309', fontWeight: 'bold' }}>ETB {p.val.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

@@ -80,7 +80,7 @@ const CEOAuditReport = () => {
           <div style={{ fontSize: 13, color: '#991b1b', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShieldAlert size={16}/> Total Financial Variance
           </div>
-          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#b91c1c', marginTop: 8 }}>-$4,200.00</div>
+          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#b91c1c', marginTop: 8 }}>-ETB 4,200.00</div>
           <div style={{ fontSize: 12, color: '#991b1b', marginTop: 8 }}>Unexplained stock loss or cash discrepancies found across audited departments.</div>
         </div>
       </div>
@@ -101,12 +101,12 @@ const CEOAuditReport = () => {
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Pharmacy</td>
                 <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>Variance Found</td>
-                <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>-$3,500.00</td>
+                <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>-ETB 3,500.00</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Store</td>
                 <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>Variance Found</td>
-                <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>-$700.00</td>
+                <td style={{ padding: 12, color: '#b91c1c', fontWeight: 'bold' }}>-ETB 700.00</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                 <td style={{ padding: 12, fontWeight: 'bold' }}>Car Rental</td>

@@ -1,6 +1,6 @@
 // frontend/src/utils/pharmacyNotifications.js
 import infoAudio from '../assets/notification/info.mp3';
-import successAudio from '../assets/notification/sucsesse.mp3';
+import successAudio from "../assets/notification/success.mp3";
 
 // Only called directly for cross-dashboard RECEIVE events (info.mp3)
 // or from submitNotification (sucsesse.mp3)

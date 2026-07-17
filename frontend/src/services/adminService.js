@@ -26,6 +26,24 @@ const adminService = {
     if (data.status === 'active') return await apiClient.post(`/users/${id}/restore`);
     return await apiClient.patch(`/users/${id}/status`, data);
   },
+  promoteToEmployee: async (userId) => {
+    return await apiClient.post(`/users/${userId}/promote-employee`);
+  },
+  assignRole: async (userId, roleId, branchId, subRole) => {
+    return await apiClient.post(`/users/${userId}/roles`, { roleId, branchId: branchId || null, subRole: subRole || null });
+  },
+  revokeRole: async (userId, roleId) => {
+    return await apiClient.delete(`/users/${userId}/roles/${roleId}`);
+  },
+  createCustomRole: async (data) => {
+    return await apiClient.post('/users/custom-roles', data);
+  },
+  getRoleHierarchy: async () => {
+    return await apiClient.get('/users/role-hierarchy');
+  },
+  getBranches: async () => {
+    return await apiClient.get('/pharmacy/branches');
+  },
   getAuditLogs: async (params) => {
     return await apiClient.get('/admin/audit-logs', { params });
   },

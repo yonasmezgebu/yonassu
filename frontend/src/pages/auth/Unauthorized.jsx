@@ -9,15 +9,18 @@ const Unauthorized = () => {
     if (user.roles.includes('Admin')) return '/admin';
     if (user.roles.includes('CEO')) return '/ceo';
     if (user.roles.includes('Finance Manager')) return '/finance';
-    if (user.roles.includes('Finance')) return '/finance';
     if (user.roles.includes('Purchase')) return '/purchase';
-    if (user.roles.includes('Market Team')) return '/purchase';
     if (user.roles.includes('Store Manager')) return '/store';
+    if (user.roles.includes('Sales/Cashier')) return '/pharmacy-worker';
     if (user.roles.includes('Printing Supervisor')) return '/printing-manager';
     if (user.roles.includes('Pharmacy Manager')) return '/pharmacy';
+    if (user.roles.includes('Pharmacy Worker')) return '/pharmacy-worker';
     if (user.roles.includes('Car Renting Manager')) return '/car-renting';
     if (user.roles.includes('HR Manager')) return '/hr';
-    return '/customer';
+    if (user.roles.includes('Board Member')) return '/board';
+    if (user.roles.includes('Employee')) return '/employee';
+    if (user.roles.includes('Customer')) return '/customer';
+    return '/';
   };
   return (
     <div style={{

@@ -22,7 +22,7 @@ const PurchaseReportPurchase = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total POs', value: '1,245' },
-          { label: 'Total Spend', value: '$2,450,000' },
+          { label: 'Total Spend', value: 'ETB 2,450,000' },
           { label: 'Top Supplier', value: 'Global Pharma' },
           { label: 'Top Category', value: 'Pharmaceuticals' }
         ].map(k => (

@@ -1,53 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, Plus, Image as ImageIcon, Trash2, Globe, ExternalLink, Search, Package, Pill, DollarSign, CheckCircle, XCircle, Building2, Layers, X, Edit3, MapPin, Phone, Clock, User, Hash, Save } from 'lucide-react';
+import { Loader2, Plus, Image as ImageIcon, Trash2, Globe, ExternalLink, Search, Package, Pill, DollarSign, CheckCircle, XCircle, Building2, Layers, X, Edit3, MapPin, Phone, Clock, User, Hash, Save, Shield, ShieldCheck, RefreshCw } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
+import { useAuth } from '../../hooks/useAuth';
 import successSound from '../../assets/notification/info.mp3';
 
-const cardStyle = {
-  background: 'white',
-  borderRadius: 12,
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-  overflow: 'hidden',
-};
-
-const cardHeaderStyle = {
-  padding: '16px 24px',
-  borderBottom: '1px solid #e2e8f0',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  background: 'white',
-};
-
-const cardTitleStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  fontSize: '1rem',
-  fontWeight: 700,
-  color: '#224f94',
-};
-
-const cardBodyStyle = {
-  padding: 24,
-};
-
-const btnPrimaryStyle = {
-  padding: '10px 24px',
-  background: '#224f94',
-  color: 'white',
-  border: 'none',
-  borderRadius: 8,
-  fontWeight: 700,
-  fontSize: '0.9rem',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-};
+/* ── Palette ─────────────────────────────────────────── */
+const LAVENDER = '#E3E7FE';
+const ICE      = '#EAFBFD';
+const DARK     = '#171B36';
+const MID      = '#313C7A';
+const ACCENT   = '#4A5CD0';
+const GOLD     = '#D4A843';
+const GOLD2    = '#9A701E';
 
 const PharmacyHealthPublisher = () => {
+  const { user } = useAuth();
+  const isManager = user?.roles?.some(r => ['Pharmacy Manager', 'Admin', 'CEO'].includes(r));
+
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -56,6 +25,12 @@ const PharmacyHealthPublisher = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showCatManager, setShowCatManager] = useState(false);
   const [showBranchManager, setShowBranchManager] = useState(false);
+
+  const [workerCanPost, setWorkerCanPost] = useState(false);
+  const [togglingPost, setTogglingPost] = useState(false);
+  const [settingMsg, setSettingMsg] = useState({ type: '', text: '' });
+  const [spinning, setSpinning] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // For child components
 
   const [form, setForm] = useState({
     title: '', subtitle: '', content: '', source_url: '',
@@ -77,9 +52,38 @@ const PharmacyHealthPublisher = () => {
 
   useEffect(() => {
     loadPosts();
+    pharmacyService.getWorkerHealthPostSetting()
+      .then(res => setWorkerCanPost(res?.data?.enabled ?? false))
+      .catch(() => {});
   }, []);
 
+  const handleRefresh = async () => {
+    setSpinning(true);
+    await loadPosts();
+    setRefreshTrigger(prev => prev + 1);
+    setSpinning(false);
+  };
+
+  const handleToggleWorkerPost = async () => {
+    setTogglingPost(true);
+    try {
+      const newVal = !workerCanPost;
+      await pharmacyService.updateWorkerHealthPostSetting(newVal);
+      setWorkerCanPost(newVal);
+      setSettingMsg({ type: 'success', text: `Workers can now ${newVal ? 'POST / EDIT / DELETE' : 'NO LONGER manage'} health posts.` });
+    } catch (err) {
+      setSettingMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update setting' });
+    } finally {
+      setTogglingPost(false);
+      setTimeout(() => setSettingMsg({ type: '', text: '' }), 4000);
+    }
+  };
+
+  // canAct: true if user is manager OR worker with permission granted
+  const canAct = isManager || workerCanPost;
+
   const loadPosts = async () => {
+    setLoading(true);
     try {
       const res = await pharmacyService.getHealthPosts();
       setPosts(res?.data || []);
@@ -233,63 +237,224 @@ const PharmacyHealthPublisher = () => {
     }
   };
 
-  return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+  const inputStyle = {
+    width: '100%', padding: '12px 16px', border: `3px solid ${DARK}`,
+    borderRadius: 0, fontSize: 13, fontWeight: 700, color: DARK,
+    background: 'white', outline: 'none', boxSizing: 'border-box',
+    boxShadow: `3px 3px 0 ${DARK}`
+  };
 
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: '0 0 8px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Globe size={24} color="#224f94" /> Pharmacy & Health Publisher
-          </h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Import and publish health content from pharmacy data</p>
+  const labelStyle = {
+    display: 'block', fontSize: 12, fontWeight: 900, color: DARK, 
+    marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em'
+  };
+
+  return (
+    <div style={{ padding: 0, margin: 0, minHeight: '100vh', width: '100%', background: LAVENDER, fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
+      
+      {/* ── Global keyframes ── */}
+      <style>{`
+        @keyframes spin     { 100%{transform:rotate(360deg)} }
+        @keyframes fadeUp   { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeSlide{ from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes shimmer  { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+
+        @keyframes blink3D {
+          0%,100%{ opacity:1;  transform:perspective(400px) rotateY(0deg)   scale(1); }
+          50%    { opacity:0.5; transform:perspective(400px) rotateY(180deg) scale(1.15); }
+        }
+        @keyframes rowIn3D {
+          from{ opacity:0; transform:perspective(900px) rotateX(-55deg) translateY(-18px); }
+          to  { opacity:1; transform:perspective(900px) rotateX(0deg)   translateY(0);     }
+        }
+        @keyframes iconPop {
+          0%,100%{ transform:scale(1)    rotateZ(0deg); }
+          50%    { transform:scale(1.28) rotateZ(14deg); }
+        }
+        @keyframes badgePop {
+          0%,100%{ transform:perspective(300px) rotateX(0deg) scale(1); }
+          50%    { transform:perspective(300px) rotateX(20deg) scale(1.08); }
+        }
+
+        /* Button 3-D lift */
+        .btn3d {
+          transition: transform .15s cubic-bezier(.4,0,.2,1), box-shadow .15s cubic-bezier(.4,0,.2,1);
+          transform-style: preserve-3d;
+        }
+        .btn3d:hover:not(:disabled) {
+          transform: perspective(500px) translateZ(12px) translateY(-4px) rotateX(6deg) !important;
+          box-shadow: 0 10px 0 ${MID}, 0 14px 20px rgba(0,0,0,.25) !important;
+        }
+        .btn3d-alt:hover:not(:disabled) {
+          transform: perspective(500px) translateZ(12px) translateY(-4px) rotateX(6deg) !important;
+          box-shadow: 0 10px 0 ${GOLD2}, 0 14px 20px rgba(0,0,0,.25) !important;
+        }
+        .btn3d:active:not(:disabled), .btn3d-alt:active:not(:disabled) {
+          transform: perspective(500px) translateZ(0) translateY(5px) rotateX(0deg) !important;
+          box-shadow: 0 0 0 ${DARK} !important;
+        }
+
+        /* Row / Card 3-D hover */
+        .card3d {
+          transition: transform .22s ease, box-shadow .22s ease, background .22s ease;
+          transform-style: preserve-3d;
+        }
+        .card3d:hover {
+          transform: perspective(900px) scale(1.01) translateZ(10px);
+          box-shadow: 0 12px 24px rgba(0,0,0,.15), 6px 6px 0 ${DARK};
+          z-index: 5;
+          position: relative;
+        }
+
+        .icon3d  { animation: blink3D 3.2s ease-in-out infinite; display:inline-block; }
+        .iconPop { animation: iconPop  2.5s ease-in-out infinite; display:inline-block; }
+        .badge3d { animation: badgePop 2.8s ease-in-out infinite; display:inline-block; }
+      `}</style>
+
+      {settingMsg.text && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          padding: '12px 24px', borderRadius: 0,
+          background: settingMsg.type === 'success' ? ICE : '#fef2f2',
+          border: `3px solid ${settingMsg.type === 'success' ? DARK : '#991b1b'}`,
+          color: settingMsg.type === 'success' ? DARK : '#991b1b',
+          fontWeight: 800, fontSize: 13,
+          display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: `4px 4px 0 ${settingMsg.type === 'success' ? DARK : '#991b1b'}`,
+          animation: 'fadeSlide .3s ease-out',
+        }}>
+          <span className="icon3d">
+            {settingMsg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
+          </span>
+          {settingMsg.text}
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => { setShowCatManager(s => !s); setShowBranchManager(false); }}
-            style={{ ...btnPrimaryStyle, background: showCatManager ? '#ef4444' : '#8b5cf6' }}>
-            <Layers size={18} /> {showCatManager ? 'Close Categories' : 'Manage Categories'}
-          </button>
-          <button onClick={() => { setShowBranchManager(s => !s); setShowCatManager(false); }}
-            style={{ ...btnPrimaryStyle, background: showBranchManager ? '#ef4444' : '#0891b2' }}>
-            <Building2 size={18} /> {showBranchManager ? 'Close Branches' : 'Manage Branches'}
-          </button>
-          <button onClick={handleScrape} disabled={scraping}
-            style={{ ...btnPrimaryStyle, background: '#059669' }}>
-            {scraping ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={18} />}
-            {scraping ? 'Scraping...' : 'Scrape & Import'}
-          </button>
-          <button onClick={() => { setShowForm(!showForm); setEditingId(null); resetForm(); }}
-            style={{ ...btnPrimaryStyle, background: showForm ? '#ef4444' : '#224f94' }}>
-            {showForm ? 'Cancel' : <><Plus size={18} /> New Post</>}
-          </button>
+      )}
+
+      {/* ══ HEADER BAR ══════════════════════════════════════════ */}
+      <div style={{ background: DARK, borderBottom: `4px solid ${ACCENT}`, padding: '0 24px', animation: 'fadeUp .3s ease' }}>
+        <div style={{ height: 3, background: `linear-gradient(90deg,${ACCENT},${ICE},${LAVENDER},${ACCENT})`, backgroundSize: '400% 100%', animation: 'shimmer 2.5s linear infinite' }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', flexWrap: 'wrap', gap: 16 }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="icon3d" style={{
+              width: 48, height: 48, background: ACCENT,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `3px solid ${ICE}`, boxShadow: `4px 4px 0 ${ICE}`,
+            }}>
+              <Globe size={24} color={ICE} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: ICE, margin: 0, lineHeight: 1.1 }}>
+                Health Publisher
+              </h1>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: ACCENT }}>
+                Import • Educate • Publish
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              className="btn3d"
+              style={{
+                background: ICE, color: DARK, border: `3px solid ${DARK}`,
+                padding: '10px 18px', fontWeight: 900, fontSize: 12, cursor: 'pointer',
+                boxShadow: `4px 4px 0 ${DARK}`, display: 'inline-flex',
+                alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px',
+              }}
+            >
+              <RefreshCw size={16} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+              Refresh
+            </button>
+
+            {isManager && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: workerCanPost ? ACCENT : '#fef2f2', border: `3px solid ${DARK}`, boxShadow: `3px 3px 0 ${DARK}`, transition: 'all 0.3s' }}>
+                <div className={workerCanPost ? 'iconPop' : ''}>
+                  {workerCanPost ? <ShieldCheck size={16} color={ICE} /> : <Shield size={16} color="#dc2626" />}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: workerCanPost ? ICE : '#991b1b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Worker Access</span>
+                </div>
+                <button onClick={handleToggleWorkerPost} disabled={togglingPost}
+                  style={{ width: 44, height: 24, borderRadius: 0, border: `2px solid ${DARK}`, cursor: togglingPost ? 'not-allowed' : 'pointer', background: workerCanPost ? ICE : '#d1d5db', position: 'relative', transition: 'background 0.3s ease', padding: 0, outline: 'none' }}>
+                  <span style={{ display: 'block', width: 16, height: 16, background: DARK, position: 'absolute', top: 2, left: workerCanPost ? 22 : 2, transition: 'left 0.3s ease' }} />
+                  {togglingPost && <Loader2 size={12} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'spin 1s linear infinite', color: 'white' }} />}
+                </button>
+              </div>
+            )}
+
+            {isManager && (
+              <>
+                <button onClick={() => { setShowCatManager(s => !s); setShowBranchManager(false); }}
+                  className="btn3d"
+                  style={{ background: showCatManager ? '#ef4444' : ICE, color: DARK, border: `3px solid ${DARK}`, padding: '10px 16px', fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
+                  <Layers size={16} /> {showCatManager ? 'Close Cats' : 'Manage Cats'}
+                </button>
+                <button onClick={() => { setShowBranchManager(s => !s); setShowCatManager(false); }}
+                  className="btn3d"
+                  style={{ background: showBranchManager ? '#ef4444' : ICE, color: DARK, border: `3px solid ${DARK}`, padding: '10px 16px', fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
+                  <Building2 size={16} /> {showBranchManager ? 'Close Branches' : 'Manage Branches'}
+                </button>
+                <button onClick={handleScrape} disabled={scraping}
+                  className="btn3d-alt"
+                  style={{ background: GOLD, color: DARK, border: `3px solid ${GOLD2}`, padding: '10px 16px', fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${GOLD2}` }}>
+                  {scraping ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><Search size={16} /></span>}
+                  {scraping ? 'Scraping...' : 'Scrape & Import'}
+                </button>
+              </>
+            )}
+
+            {canAct && (
+              <button onClick={() => { setShowForm(!showForm); setEditingId(null); resetForm(); }}
+                className="btn3d"
+                style={{ background: showForm ? '#ef4444' : ACCENT, color: showForm ? 'white' : ICE, border: `3px solid ${DARK}`, padding: '10px 16px', fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
+                {showForm ? 'Cancel' : <><span className="icon3d"><Plus size={16} /></span> New Post</>}
+              </button>
+            )}
+
+            {!canAct && !isManager && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'rgba(255,255,255,0.15)', border: `2px dashed ${ACCENT}` }}>
+                <Shield size={15} color={ICE} />
+                <span style={{ fontSize: 12, color: ICE, fontWeight: 900, textTransform: 'uppercase' }}>View only — manager controls</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {showForm && (
-        <div style={{ ...cardStyle, marginBottom: 24 }}>
-          <div style={cardHeaderStyle}>
-            <div style={cardTitleStyle}><ImageIcon size={20} /> {editingId ? 'Edit' : 'Create'} Health Post</div>
-          </div>
-          <div style={cardBodyStyle}>
+      <div style={{ padding: '24px', animation: 'fadeUp .4s ease' }}>
+
+        {showForm && (
+          <div style={{ background: ICE, border: `3px solid ${DARK}`, padding: 24, boxShadow: `6px 6px 0 ${DARK}`, marginBottom: 24, animation: 'fadeSlide 0.3s ease-out' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 900, color: DARK, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span className="icon3d"><ImageIcon size={18} color={DARK} /></span> {editingId ? 'Edit' : 'Create'} Health Post
+            </h3>
+            
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Scraped Data Selectors */}
               {!editingId && scrapedCategories.length > 0 && (
-                <div style={{ padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#166534' }}>Scraped Categories — click to fill form</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ padding: 16, background: LAVENDER, border: `3px solid ${DARK}`, boxShadow: `3px 3px 0 ${DARK}` }}>
+                  <div style={{ fontWeight: 900, marginBottom: 12, color: DARK, textTransform: 'uppercase', fontSize: 12 }}>Scraped Categories — click to fill form</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                     {scrapedCategories.map(cat => (
                       <button key={cat.id} type="button" onClick={() => fillFromCategory(cat)}
-                        style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #86efac', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
+                        className="btn3d"
+                        style={{ padding: '8px 14px', border: `2px solid ${DARK}`, background: 'white', cursor: 'pointer', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', boxShadow: `2px 2px 0 ${DARK}` }}>
                         {cat.name}
                       </button>
                     ))}
                   </div>
-                  <div style={{ fontWeight: 600, margin: '12px 0 8px', color: '#166534' }}>Scraped Products — click to fill form</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxHeight: 120, overflowY: 'auto' }}>
+                  <div style={{ fontWeight: 900, marginBottom: 12, color: DARK, textTransform: 'uppercase', fontSize: 12 }}>Scraped Products — click to fill form</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 120, overflowY: 'auto' }}>
                     {scrapedProducts.map(prod => (
                       <button key={prod.id} type="button" onClick={() => fillFromProduct(prod)}
-                        style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #86efac', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
+                        className="btn3d"
+                        style={{ padding: '8px 14px', border: `2px solid ${DARK}`, background: 'white', cursor: 'pointer', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', boxShadow: `2px 2px 0 ${DARK}` }}>
                         {prod.name}
                       </button>
                     ))}
@@ -297,197 +462,198 @@ const PharmacyHealthPublisher = () => {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 300 }}>
                   <input placeholder="Title *" required value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '1rem', fontWeight: 600 }} />
+                    style={inputStyle} />
                   <input placeholder="Subtitle" value={form.subtitle}
                     onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                    style={inputStyle} />
                   <textarea placeholder="Content / Description" rows={5} value={form.content}
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: '0.9rem', resize: 'vertical' }} />
+                    style={{ ...inputStyle, resize: 'vertical' }} />
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 200 }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Drug Image</label>
+                    <label style={labelStyle}>Drug Image</label>
                     <input type="file" accept="image/*" ref={drugFileRef}
                       onChange={e => { const f = e.target.files[0]; if (f) { setDrugImage(f); setDrugPreview(URL.createObjectURL(f)); } }}
-                      style={{ width: '100%', padding: '6px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.8rem' }} />
-                    {drugPreview && <img src={drugPreview} alt="" style={{ marginTop: 6, maxHeight: 80, borderRadius: 6, objectFit: 'cover' }} />}
+                      style={{ ...inputStyle, padding: '8px' }} />
+                    {drugPreview && <img src={drugPreview} alt="" style={{ marginTop: 8, maxHeight: 100, border: `3px solid ${DARK}`, objectFit: 'cover' }} />}
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Cover Image</label>
+                    <label style={labelStyle}>Cover Image</label>
                     <input type="file" accept="image/*" ref={coverFileRef}
                       onChange={e => { const f = e.target.files[0]; if (f) { setCoverImage(f); setCoverPreview(URL.createObjectURL(f)); } }}
-                      style={{ width: '100%', padding: '6px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.8rem' }} />
-                    {coverPreview && <img src={coverPreview} alt="" style={{ marginTop: 6, maxHeight: 80, borderRadius: 6, objectFit: 'cover' }} />}
+                      style={{ ...inputStyle, padding: '8px' }} />
+                    {coverPreview && <img src={coverPreview} alt="" style={{ marginTop: 8, maxHeight: 100, border: `3px solid ${DARK}`, objectFit: 'cover' }} />}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Price</label>
-                  <input placeholder="0.00" value={form.price}
-                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Price</label>
+                  <input placeholder="0.00" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1, minWidth: 100 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Price Unit</label>
-                  <input placeholder="ETB" value={form.price_unit}
-                    onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Price Unit</label>
+                  <input placeholder="ETB" value={form.price_unit} onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Manufacturer</label>
-                  <input placeholder="Manufacturer" value={form.manufacturer}
-                    onChange={e => setForm(f => ({ ...f, manufacturer: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Manufacturer</label>
+                  <input placeholder="Manufacturer" value={form.manufacturer} onChange={e => setForm(f => ({ ...f, manufacturer: e.target.value }))} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1, minWidth: 100 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Stock Qty</label>
-                  <input type="number" placeholder="0" value={form.stock_quantity}
-                    onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Stock Qty</label>
+                  <input type="number" placeholder="0" value={form.stock_quantity} onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value }))} style={inputStyle} />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Source URL</label>
-                  <input placeholder="https://..." value={form.source_url}
-                    onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Source URL</label>
+                  <input placeholder="https://..." value={form.source_url} onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Category</label>
-                  <input placeholder="Category name" value={form.category_name}
-                    onChange={e => setForm(f => ({ ...f, category_name: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
+                  <label style={labelStyle}>Category</label>
+                  <input placeholder="Category name" value={form.category_name} onChange={e => setForm(f => ({ ...f, category_name: e.target.value }))} style={inputStyle} />
                 </div>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>Status</label>
-                  <select value={form.status}
-                    onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }}>
+                  <label style={labelStyle}>Status</label>
+                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={inputStyle}>
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
                   </select>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
                 <input type="checkbox" id="prescription" checked={form.is_prescription_required}
-                  onChange={e => setForm(f => ({ ...f, is_prescription_required: e.target.checked }))} />
-                <label htmlFor="prescription" style={{ fontSize: '0.85rem', fontWeight: 500 }}>Prescription Required</label>
+                  onChange={e => setForm(f => ({ ...f, is_prescription_required: e.target.checked }))} style={{ width: 18, height: 18, accentColor: DARK }} />
+                <label htmlFor="prescription" style={{ fontSize: 13, fontWeight: 900, color: DARK, textTransform: 'uppercase' }}>Prescription Required</label>
               </div>
 
-              <div style={{ display: 'flex', gap: 12 }}>
-                <input placeholder="Meta Title" value={form.meta_title}
-                  onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.85rem' }} />
-                <input placeholder="Meta Description" value={form.meta_description}
-                  onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))}
-                  style={{ flex: 2, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.85rem' }} />
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={labelStyle}>Meta Title</label>
+                  <input placeholder="Meta Title" value={form.meta_title} onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))} style={inputStyle} />
+                </div>
+                <div style={{ flex: 2, minWidth: 300 }}>
+                  <label style={labelStyle}>Meta Description</label>
+                  <input placeholder="Meta Description" value={form.meta_description} onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))} style={inputStyle} />
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+              <div style={{ display: 'flex', gap: 10, paddingTop: 16 }}>
                 <button type="submit" disabled={submitting}
-                  style={{ ...btnPrimaryStyle, opacity: submitting ? 0.6 : 1 }}>
-                  {submitting ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <ExternalLink size={18} />}
-                  {submitting ? 'Saving...' : (editingId ? 'Update & Redirect' : 'Publish & Redirect')}
+                  className="btn3d"
+                  style={{ background: ACCENT, color: ICE, border: `3px solid ${DARK}`, padding: '14px 24px', fontWeight: 900, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', boxShadow: `5px 5px 0 ${DARK}` }}>
+                  {submitting ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><ExternalLink size={18} /></span>}
+                  {submitting ? 'Saving...' : (editingId ? 'Update Post' : 'Publish Post')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Category Manager ── */}
-      {showCatManager && <CategoryManager pharmacyService={pharmacyService} />}
+        {/* ── Category Manager ── */}
+        {showCatManager && <CategoryManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
 
-      {/* ── Branch Manager ── */}
-      {showBranchManager && <BranchManager pharmacyService={pharmacyService} />}
+        {/* ── Branch Manager ── */}
+        {showBranchManager && <BranchManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
-          <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 16 }} />
-          <p>Loading posts...</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-          {posts.map(post => (
-            <div key={post.id} style={{
-              background: 'white', borderRadius: 12, border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden'
-            }}>
-              {(post.drug_image || post.cover_image) && (
-                <div style={{ width: '100%', height: 180, overflow: 'hidden', background: '#f1f5f9' }}>
-                  <img src={`http://localhost:5000${post.drug_image || post.cover_image}`} alt={post.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={e => { e.target.style.display = 'none'; }} />
-                </div>
-              )}
-              <div style={{ padding: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{post.title}</h3>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
-                    background: post.status === 'published' ? '#dcfce7' : '#fffbeb',
-                    color: post.status === 'published' ? '#166534' : '#b45309'
-                  }}>{post.status}</span>
-                </div>
-                {post.subtitle && <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: '#64748b' }}>{post.subtitle}</p>}
-                {post.price && <p style={{ margin: '0 0 8px', fontSize: '0.9rem', fontWeight: 700, color: '#059669' }}><DollarSign size={14} /> {post.price} {post.price_unit}</p>}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, fontSize: '0.75rem', color: '#94a3b8' }}>
-                  {post.category_name && <span style={{ padding: '2px 8px', borderRadius: 999, background: '#f0fdf4', color: '#166534', fontWeight: 600 }}>{post.category_name}</span>}
-                  {post.branch_name && <span style={{ padding: '2px 8px', borderRadius: 999, background: '#e0f2fe', color: '#0369a1', fontWeight: 600 }}>{post.branch_name}</span>}
-                  {post.manufacturer && <span style={{ padding: '2px 8px', borderRadius: 999, background: '#f8fafc', color: '#64748b' }}>{post.manufacturer}</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => startEdit(post)}
-                    style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
-                    Edit
-                  </button>
-                  {post.status !== 'published' && (
-                    <button onClick={() => handlePublish(post.id)}
-                      style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#059669', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
-                      Publish
-                    </button>
-                  )}
-                  <button onClick={() => handleDelete(post.id)}
-                    style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: 'white', color: '#dc2626', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}>
-                    Delete
-                  </button>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: DARK }}>
+            <Loader2 size={40} style={{ animation: 'spin 1s linear infinite', marginBottom: 16, color: DARK }} />
+            <p style={{ fontWeight: 900, textTransform: 'uppercase' }}>Loading posts...</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
+            {posts.map((post, idx) => (
+              <div key={post.id} className="card3d" style={{
+                background: ICE, border: `3px solid ${DARK}`, boxShadow: `6px 6px 0 ${DARK}`,
+                animation: `rowIn3D 0.35s ease-out ${idx * 0.04}s both`, display: 'flex', flexDirection: 'column'
+              }}>
+                {(post.drug_image || post.cover_image) && (
+                  <div style={{ width: '100%', height: 180, overflow: 'hidden', borderBottom: `3px solid ${DARK}`, background: LAVENDER }}>
+                    <img src={`http://localhost:5000${post.drug_image || post.cover_image}`} alt={post.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={e => { e.target.style.display = 'none'; }} />
+                  </div>
+                )}
+                <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: DARK }}>{post.title}</h3>
+                    <span className="badge3d" style={{
+                      padding: '4px 10px', fontSize: 10, fontWeight: 900, textTransform: 'uppercase',
+                      border: `2px solid ${post.status === 'published' ? '#166534' : '#b45309'}`,
+                      background: post.status === 'published' ? '#dcfce7' : '#fef3c7',
+                      color: post.status === 'published' ? '#166534' : '#b45309'
+                    }}>{post.status}</span>
+                  </div>
+                  {post.subtitle && <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: MID }}>{post.subtitle}</p>}
+                  {post.price && <p style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 900, color: DARK }}><DollarSign size={14} /> {post.price} {post.price_unit}</p>}
+                  
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, fontSize: 11, fontWeight: 900, textTransform: 'uppercase' }}>
+                    {post.category_name && <span style={{ padding: '4px 10px', border: `2px solid ${DARK}`, background: LAVENDER, color: DARK }}>{post.category_name}</span>}
+                    {post.branch_name && <span style={{ padding: '4px 10px', border: `2px solid ${DARK}`, background: 'white', color: DARK }}>{post.branch_name}</span>}
+                    {post.manufacturer && <span style={{ padding: '4px 10px', border: `2px solid ${DARK}`, background: '#f1f5f9', color: DARK }}>{post.manufacturer}</span>}
+                  </div>
+                  
+                  <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
+                    {canAct && (
+                      <>
+                        <button onClick={() => startEdit(post)}
+                          className="btn3d"
+                          style={{ flex: 1, padding: '10px', border: `3px solid ${DARK}`, background: LAVENDER, color: DARK, cursor: 'pointer', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', boxShadow: `3px 3px 0 ${DARK}` }}>
+                          Edit
+                        </button>
+                        {post.status !== 'published' && (
+                          <button onClick={() => handlePublish(post.id)}
+                            className="btn3d"
+                            style={{ flex: 1, padding: '10px', border: `3px solid ${DARK}`, background: ACCENT, color: ICE, cursor: 'pointer', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', boxShadow: `3px 3px 0 ${DARK}` }}>
+                            Publish
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(post.id)}
+                          className="btn3d"
+                          style={{ padding: '10px 14px', border: `3px solid #991b1b`, background: '#fef2f2', color: '#991b1b', cursor: 'pointer', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', boxShadow: `3px 3px 0 #991b1b` }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {posts.length === 0 && !showForm && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 24px', background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', color: '#94a3b8' }}>
-              <Globe size={48} style={{ color: '#cbd5e1', marginBottom: 12 }} />
-              <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 4 }}>No health posts yet</p>
-              <p style={{ fontSize: '0.85rem' }}>Click "Scrape & Import" to pull data from the pharmacy, or create a new post manually.</p>
-            </div>
-          )}
-        </div>
-      )}
+            ))}
+            {posts.length === 0 && !showForm && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 24px', background: ICE, border: `3px solid ${DARK}`, boxShadow: `6px 6px 0 ${DARK}` }}>
+                <span className="iconPop" style={{ display: 'block', fontSize: 48, marginBottom: 16 }}>🌍</span>
+                <p style={{ fontSize: 18, fontWeight: 900, color: DARK, textTransform: 'uppercase', margin: '0 0 8px' }}>No health posts yet</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: MID, margin: 0 }}>Click "Scrape & Import" to pull data, or create a new post manually.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 /* ── Inline Category Manager ── */
-const CategoryManager = ({ pharmacyService: svc }) => {
+const CategoryManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [editId, setEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const load = async () => { try { const r = await svc.getCategories(); if (r?.status === 'success') setItems(r.data); } catch {} finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  
+  const load = async () => { setLoading(true); try { const r = await svc.getCategories(); if (r?.status === 'success') setItems(r.data); } catch {} finally { setLoading(false); } };
+  useEffect(() => { load(); }, [refreshTrigger]);
+  
   const handleSave = async () => {
     if (!name.trim()) return alert('Name required');
     setSubmitting(true);
@@ -499,47 +665,49 @@ const CategoryManager = ({ pharmacyService: svc }) => {
   };
   const handleEdit = (item) => { setName(item.name); setDesc(item.description || ''); setEditId(item.id); };
   const handleDelete = async (id) => { if (!window.confirm('Delete category?')) return; try { await svc.deleteCategory(id); await load(); } catch (e) { alert('Failed'); } };
-  const btn = { padding: '8px 16px', borderRadius: 6, border: 'none', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', color: 'white' };
+  
   return (
-    <div style={{ ...cardStyle, marginBottom: 24 }}>
-      <div style={cardHeaderStyle}><div style={cardTitleStyle}><Layers size={20} /> Category Management</div></div>
-      <div style={cardBodyStyle}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <input placeholder="Category name" value={name} onChange={e => setName(e.target.value)} style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
-          <input placeholder="Description" value={desc} onChange={e => setDesc(e.target.value)} style={{ flex: 2, padding: '8px 12px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.9rem' }} />
-          <button onClick={handleSave} disabled={submitting} style={{ ...btn, background: '#8b5cf6', opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : editId ? 'Update' : 'Add'}</button>
-          {editId && <button onClick={() => { setName(''); setDesc(''); setEditId(null); }} style={{ ...btn, background: '#64748b' }}>Cancel</button>}
-        </div>
-        {loading ? <p style={{ color: '#94a3b8' }}>Loading...</p> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead><tr style={{ background: '#f8fafc' }}>
-              <th style={{ padding: 10, textAlign: 'left', color: '#475569' }}>ID</th>
-              <th style={{ padding: 10, textAlign: 'left', color: '#475569' }}>Name</th>
-              <th style={{ padding: 10, textAlign: 'left', color: '#475569' }}>Active</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#475569' }}>Actions</th>
-            </tr></thead>
-            <tbody>
-              {items.map(item => (
-                <tr key={item.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: 10 }}>{item.id}</td>
-                  <td style={{ padding: 10, fontWeight: 600 }}>{item.name}</td>
-                  <td style={{ padding: 10 }}><span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: item.is_active ? '#dcfce7' : '#fffbeb', color: item.is_active ? '#166534' : '#b45309' }}>{item.is_active ? 'Yes' : 'No'}</span></td>
-                  <td style={{ padding: 10, textAlign: 'right' }}>
-                    <button onClick={() => handleEdit(item)} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', marginRight: 4 }}>Edit</button>
-                    <button onClick={() => handleDelete(item.id)} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid #fca5a5', background: 'white', color: '#dc2626', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem' }}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+    <div style={{ background: ICE, border: `3px solid ${DARK}`, padding: 24, boxShadow: `6px 6px 0 ${DARK}`, marginBottom: 24, animation: 'fadeSlide 0.3s ease-out' }}>
+      <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 900, color: DARK, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase' }}>
+        <span className="icon3d"><Layers size={18} /></span> Category Management
+      </h3>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <input placeholder="Category name" value={name} onChange={e => setName(e.target.value)} style={{ flex: 1, minWidth: 200, padding: '12px 16px', border: `3px solid ${DARK}`, fontSize: 13, fontWeight: 700, outline: 'none' }} />
+        <input placeholder="Description" value={desc} onChange={e => setDesc(e.target.value)} style={{ flex: 2, minWidth: 300, padding: '12px 16px', border: `3px solid ${DARK}`, fontSize: 13, fontWeight: 700, outline: 'none' }} />
+        <button onClick={handleSave} disabled={submitting} className="btn3d" style={{ padding: '12px 24px', background: ACCENT, color: ICE, border: `3px solid ${DARK}`, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
+          {submitting ? 'Saving...' : editId ? 'Update' : 'Add'}
+        </button>
+        {editId && <button onClick={() => { setName(''); setDesc(''); setEditId(null); }} className="btn3d" style={{ padding: '12px 24px', background: LAVENDER, color: DARK, border: `3px solid ${DARK}`, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>Cancel</button>}
       </div>
+      {loading ? <p style={{ color: DARK, fontWeight: 900, textTransform: 'uppercase' }}>Loading categories...</p> : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead><tr style={{ background: DARK }}>
+            <th style={{ padding: '12px 16px', textAlign: 'left', color: ICE, fontWeight: 900, textTransform: 'uppercase' }}>ID</th>
+            <th style={{ padding: '12px 16px', textAlign: 'left', color: ICE, fontWeight: 900, textTransform: 'uppercase' }}>Name</th>
+            <th style={{ padding: '12px 16px', textAlign: 'left', color: ICE, fontWeight: 900, textTransform: 'uppercase' }}>Active</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right', color: ICE, fontWeight: 900, textTransform: 'uppercase' }}>Actions</th>
+          </tr></thead>
+          <tbody>
+            {items.map((item, idx) => (
+              <tr key={item.id} className="row3d" style={{ borderBottom: `2px solid ${DARK}`, background: idx % 2 === 0 ? 'white' : LAVENDER }}>
+                <td style={{ padding: '12px 16px', fontWeight: 900, color: DARK }}>{item.id}</td>
+                <td style={{ padding: '12px 16px', fontWeight: 900, color: DARK }}>{item.name}</td>
+                <td style={{ padding: '12px 16px' }}><span className="badge3d" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 900, border: `2px solid ${item.is_active ? '#166534' : '#b45309'}`, background: item.is_active ? '#dcfce7' : '#fffbeb', color: item.is_active ? '#166534' : '#b45309', textTransform: 'uppercase' }}>{item.is_active ? 'Yes' : 'No'}</span></td>
+                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <button onClick={() => handleEdit(item)} className="btn3d" style={{ padding: '6px 12px', border: `2px solid ${DARK}`, background: ICE, cursor: 'pointer', fontWeight: 900, fontSize: 11, marginRight: 8, boxShadow: `2px 2px 0 ${DARK}` }}>EDIT</button>
+                  <button onClick={() => handleDelete(item.id)} className="btn3d" style={{ padding: '6px 12px', border: `2px solid #991b1b`, background: '#fef2f2', color: '#991b1b', cursor: 'pointer', fontWeight: 900, fontSize: 11, boxShadow: `2px 2px 0 #991b1b` }}>DELETE</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };
 
 /* ── Inline Branch Manager ── */
-const BranchManager = ({ pharmacyService: svc }) => {
+const BranchManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -550,8 +718,8 @@ const BranchManager = ({ pharmacyService: svc }) => {
 
   const showMsg = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type: '', text: '' }), 4000); };
 
-  const load = async () => { try { const r = await svc.getBranches(); if (r?.status === 'success') setItems(r.data); } catch {} finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  const load = async () => { setLoading(true); try { const r = await svc.getBranches(); if (r?.status === 'success') setItems(r.data); } catch {} finally { setLoading(false); } };
+  useEffect(() => { load(); }, [refreshTrigger]);
 
   const resetForm = () => { setForm({ name: '', code: '', address: '', phone: '', working_hours: '', manager_name: '', is_active: true }); setEditId(null); setShowForm(false); };
 
@@ -579,116 +747,120 @@ const BranchManager = ({ pharmacyService: svc }) => {
 
   const fldIcon = (icon, label, key, ph) => (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 900, color: DARK, marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
       <div style={{ position: 'relative' }}>
-        {React.cloneElement(icon, { size: 16, style: { position: 'absolute', left: 12, top: 13, color: '#94a3b8' } })}
+        {React.cloneElement(icon, { size: 16, style: { position: 'absolute', left: 14, top: 14, color: DARK } })}
         <input placeholder={ph} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-          style={{ width: '100%', padding: '12px 12px 12px 36px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+          style={{ width: '100%', padding: '12px 12px 12px 42px', border: `3px solid ${DARK}`, borderRadius: 0, fontSize: 13, fontWeight: 700, outline: 'none', boxSizing: 'border-box', boxShadow: `3px 3px 0 ${DARK}` }} />
       </div>
     </div>
   );
 
   return (
-    <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 24, boxShadow: '0 4px 16px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+    <div style={{ background: ICE, border: `3px solid ${DARK}`, marginBottom: 24, boxShadow: `6px 6px 0 ${DARK}`, overflow: 'hidden', animation: 'fadeSlide 0.3s ease-out' }}>
       {msg.text && (
-        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', borderRadius: 12, background: msg.type === 'success' ? '#d1fae5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#6ee7b7' : '#fecaca'}`, color: msg.type === 'success' ? '#065f46' : '#991b1b', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', background: msg.type === 'success' ? ICE : '#fef2f2', border: `3px solid ${msg.type === 'success' ? DARK : '#991b1b'}`, color: msg.type === 'success' ? DARK : '#991b1b', fontWeight: 900, fontSize: 13, display: 'flex', alignItems: 'center', gap: 10, boxShadow: `4px 4px 0 ${msg.type === 'success' ? DARK : '#991b1b'}` }}>
           {msg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
           {msg.text}
         </div>
       )}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fffbeb' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '1rem', fontWeight: 700, color: '#224f94' }}>
-          <Building2 size={20} color="#f59e0b" /> Branch Management
+      <div style={{ padding: '18px 24px', borderBottom: `3px solid ${DARK}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: DARK }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, fontWeight: 900, color: ICE, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span className="icon3d"><Building2 size={20} color={ICE} /></span> Branch Management
         </div>
         <button onClick={() => { if (showForm) resetForm(); else openForm(); }}
-          style={{ padding: '8px 16px', background: showForm ? '#475569' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          className="btn3d"
+          style={{ padding: '10px 16px', background: showForm ? '#ef4444' : ACCENT, color: showForm ? 'white' : ICE, border: `3px solid ${showForm ? '#991b1b' : DARK}`, fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `3px 3px 0 ${showForm ? '#991b1b' : DARK}` }}>
           {showForm ? <X size={16} /> : <Plus size={16} />}
           {showForm ? 'Cancel' : 'Add Branch'}
         </button>
       </div>
       <div style={{ padding: 24 }}>
         {showForm && (
-          <div style={{ background: '#fffbeb', borderRadius: 12, border: '2px solid #fde68a', padding: 20, marginBottom: 20 }}>
-            <h4 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
-              {editId ? <Edit3 size={16} color="#f59e0b" /> : <Plus size={16} color="#f59e0b" />}
+          <div style={{ background: LAVENDER, border: `3px solid ${DARK}`, padding: 24, marginBottom: 24, boxShadow: `4px 4px 0 ${DARK}` }}>
+            <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 900, color: DARK, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase' }}>
+              <span className="iconPop">{editId ? <Edit3 size={18} color={DARK} /> : <Plus size={18} color={DARK} />}</span>
               {editId ? 'Edit Branch' : 'New Branch'}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {fldIcon(<Building2 />, 'Branch Name *', 'name', 'e.g. Downtown Pharmacy')}
               {fldIcon(<Hash />, 'Code', 'code', 'e.g. DTP')}
               {fldIcon(<Phone />, 'Phone', 'phone', '+251-XXX-XXXX')}
               {fldIcon(<User />, 'Manager Name', 'manager_name', 'Manager name')}
               {fldIcon(<Clock />, 'Working Hours', 'working_hours', 'Mon-Sat 8AM-6PM')}
               <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '10px 0' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 18, height: 18, cursor: 'pointer' }} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#475569' }}>Active</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '12px 0' }}>
+                  <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 20, height: 20, accentColor: DARK, cursor: 'pointer' }} />
+                  <span style={{ fontSize: 14, fontWeight: 900, color: DARK, textTransform: 'uppercase' }}>Active Branch</span>
                 </label>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Address</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 900, color: DARK, marginBottom: 4, textTransform: 'uppercase' }}>Address</label>
                 <div style={{ position: 'relative' }}>
-                  <MapPin size={16} style={{ position: 'absolute', left: 12, top: 13, color: '#94a3b8' }} />
+                  <MapPin size={16} style={{ position: 'absolute', left: 14, top: 14, color: DARK }} />
                   <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} rows={2}
-                    style={{ width: '100%', padding: '12px 12px 12px 36px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 14, outline: 'none', minHeight: 55, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '12px 12px 12px 42px', border: `3px solid ${DARK}`, borderRadius: 0, fontSize: 14, fontWeight: 700, outline: 'none', minHeight: 60, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', boxShadow: `3px 3px 0 ${DARK}` }}
                     placeholder="Full address" />
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button onClick={handleSave} disabled={submitting}
-                style={{ padding: '10px 20px', background: submitting ? '#94a3b8' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {submitting ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={15} />}
+                className="btn3d"
+                style={{ padding: '12px 24px', background: submitting ? '#94a3b8' : ACCENT, color: ICE, border: `3px solid ${DARK}`, fontWeight: 900, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
+                {submitting ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><Save size={16} /></span>}
                 {submitting ? 'Saving...' : editId ? 'Update' : 'Create'}
               </button>
-              <button onClick={resetForm} style={{ padding: '10px 20px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={resetForm} className="btn3d" style={{ padding: '12px 24px', background: 'white', color: DARK, border: `3px solid ${DARK}`, fontWeight: 900, fontSize: 13, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>Cancel</button>
             </div>
           </div>
         )}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
-            <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#f59e0b' }} />
+            <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
           </div>
         ) : items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 24px', color: '#94a3b8' }}>
-            <Building2 size={40} style={{ color: '#fde68a', marginBottom: 10 }} />
-            <p style={{ fontWeight: 700, margin: '0 0 4px' }}>No branches yet</p>
-            <p style={{ margin: 0, fontSize: 13 }}>Click "Add Branch" to create one</p>
+          <div style={{ textAlign: 'center', padding: '40px 24px', color: DARK }}>
+            <span className="iconPop" style={{ display: 'inline-block', fontSize: 40, marginBottom: 12 }}>🏬</span>
+            <p style={{ fontWeight: 900, margin: '0 0 6px', fontSize: 16, textTransform: 'uppercase' }}>No branches yet</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>Click "Add Branch" to create one</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-            {items.map(item => (
-              <div key={item.id} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: 16, transition: 'transform 0.15s, box-shadow 0.15s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={18} color="#f59e0b" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+            {items.map((item, idx) => (
+              <div key={item.id} className="card3d" style={{ background: LAVENDER, border: `3px solid ${DARK}`, padding: 20, animation: `rowIn3D 0.3s ease-out ${idx*0.05}s both` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="iconPop" style={{ width: 44, height: 44, background: ICE, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${DARK}`, boxShadow: `3px 3px 0 ${DARK}` }}>
+                      <Building2 size={20} color={DARK} />
                     </div>
                     <div>
-                      <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: '#0f172a' }}>{item.name}</h4>
-                      {item.code && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, fontFamily: 'monospace' }}>#{item.code}</span>}
+                      <h4 style={{ fontSize: 16, fontWeight: 900, margin: 0, color: DARK, textTransform: 'uppercase' }}>{item.name}</h4>
+                      {item.code && <span style={{ fontSize: 12, color: ACCENT, fontWeight: 900, fontFamily: 'monospace' }}>#{item.code}</span>}
                     </div>
                   </div>
-                  <span style={{ padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: item.is_active ? '#dcfce7' : '#f1f5f9', color: item.is_active ? '#166534' : '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span className="badge3d" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 900, border: `2px solid ${item.is_active ? '#166534' : '#b45309'}`, background: item.is_active ? '#dcfce7' : '#fffbeb', color: item.is_active ? '#166534' : '#b45309', display: 'flex', alignItems: 'center', gap: 4, textTransform: 'uppercase' }}>
                     {item.is_active ? <CheckCircle size={10} /> : <XCircle size={10} />}
                     {item.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#64748b' }}>
-                  {item.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Phone size={13} style={{ color: '#94a3b8' }} /> {item.phone}</div>}
-                  {item.manager_name && <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><User size={13} style={{ color: '#94a3b8' }} /> {item.manager_name}</div>}
-                  {item.working_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Clock size={13} style={{ color: '#94a3b8' }} /> {item.working_hours}</div>}
-                  {item.address && <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}><MapPin size={13} style={{ color: '#94a3b8', marginTop: 1 }} /> {item.address}</div>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: DARK, fontWeight: 700 }}>
+                  {item.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={14} color={MID} /> {item.phone}</div>}
+                  {item.manager_name && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><User size={14} color={MID} /> {item.manager_name}</div>}
+                  {item.working_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Clock size={14} color={MID} /> {item.working_hours}</div>}
+                  {item.address && <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}><MapPin size={14} color={MID} style={{ marginTop: 2 }} /> {item.address}</div>}
                 </div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: 10, marginTop: 16, paddingTop: 16, borderTop: `2px solid ${DARK}` }}>
                   <button onClick={() => openForm(item)}
-                    style={{ flex: 1, padding: '6px 10px', background: '#fffbeb', color: '#d97706', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <Edit3 size={13} /> Edit
+                    className="btn3d"
+                    style={{ flex: 1, padding: '10px', background: ICE, color: DARK, border: `3px solid ${DARK}`, cursor: 'pointer', fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `3px 3px 0 ${DARK}` }}>
+                    <Edit3 size={14} /> Edit
                   </button>
                   <button onClick={() => handleDelete(item.id)}
-                    style={{ flex: 1, padding: '6px 10px', background: '#fef2f2', color: '#e11d48', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <Trash2 size={13} /> Delete
+                    className="btn3d"
+                    style={{ flex: 1, padding: '10px', background: '#fef2f2', color: '#991b1b', border: `3px solid #991b1b`, cursor: 'pointer', fontWeight: 900, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `3px 3px 0 #991b1b` }}>
+                    <Trash2 size={14} /> Delete
                   </button>
                 </div>
               </div>

@@ -145,10 +145,10 @@ const FinanceTrialBalance = () => {
                 <td style={{ padding: '12px 16px', fontWeight: 500, color: '#0f172a' }}>{acc.name}</td>
                 <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 12 }}>{acc.type}</td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', color: acc.debitBalance > 0 ? '#0f172a' : '#94a3b8', fontWeight: acc.debitBalance > 0 ? 600 : 400 }}>
-                  {acc.debitBalance > 0 ? `$${acc.debitBalance.toFixed(2)}` : '-'}
+                  {acc.debitBalance > 0 ? `ETB ${acc.debitBalance.toFixed(2)}` : '-'}
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right', color: acc.creditBalance > 0 ? '#0f172a' : '#94a3b8', fontWeight: acc.creditBalance > 0 ? 600 : 400 }}>
-                  {acc.creditBalance > 0 ? `$${acc.creditBalance.toFixed(2)}` : '-'}
+                  {acc.creditBalance > 0 ? `ETB ${acc.creditBalance.toFixed(2)}` : '-'}
                 </td>
               </tr>
             ))}
@@ -156,8 +156,8 @@ const FinanceTrialBalance = () => {
           <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
             <tr>
               <td colSpan={3} style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: '#334155' }}>TOTALS</td>
-              <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', fontSize: 16, color: isBalanced ? '#059669' : '#dc2626' }}>${totalDebits.toFixed(2)}</td>
-              <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', fontSize: 16, color: isBalanced ? '#059669' : '#dc2626' }}>${totalCredits.toFixed(2)}</td>
+              <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', fontSize: 16, color: isBalanced ? '#059669' : '#dc2626' }}>ETB {totalDebits.toFixed(2)}</td>
+              <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', fontSize: 16, color: isBalanced ? '#059669' : '#dc2626' }}>ETB {totalCredits.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>

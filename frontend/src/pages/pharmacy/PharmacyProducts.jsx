@@ -46,7 +46,7 @@ const PharmacyProducts = () => {
     try {
       setLoading(true);
       const [prodRes, catRes, permRes] = await Promise.all([
-        pharmacyService.getProducts(),
+        pharmacyService.getAllProducts(),
         pharmacyService.getCategories(),
         axios.get('/pharmacy/admin/worker-can-add-products').catch(() => ({ data: { enabled: true } }))
       ]);
@@ -77,7 +77,7 @@ const PharmacyProducts = () => {
     try {
       setLoading(true);
       if (searchQuery.trim() === '') {
-        const res = await pharmacyService.getProducts();
+        const res = await pharmacyService.getAllProducts();
         setProducts(res.data);
       } else {
         const res = await pharmacyService.searchProducts(searchQuery);
@@ -245,7 +245,8 @@ const PharmacyProducts = () => {
                 <th>Product Details</th>
                 <th>Category</th>
                 <th>Price</th>
-                <th>Stock</th>
+                <th>Status</th>
+                <th>Availability</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -271,10 +272,18 @@ const PharmacyProducts = () => {
                   </td>
                   <td>
                     <div className={`${styles.stockBadge} ${
+                      prod.is_active ? styles.inStock : styles.outOfStock
+                    }`}>
+                      {prod.is_active ? 'Published' : 'Draft'}
+                    </div>
+                  </td>
+                  <td>
+                    <div className={`${styles.stockBadge} ${
                       prod.stock_quantity === 0 ? styles.outOfStock : 
                       prod.stock_quantity <= prod.reorder_level ? styles.lowStock : styles.inStock
                     }`}>
-                      {prod.stock_quantity} in stock
+                      {prod.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'} <br/>
+                      <small style={{fontSize: '0.75rem', opacity: 0.8}}>{prod.stock_quantity} left</small>
                     </div>
                   </td>
                   <td>
@@ -297,7 +306,7 @@ const PharmacyProducts = () => {
               ))}
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                     No products found.
                   </td>
                 </tr>

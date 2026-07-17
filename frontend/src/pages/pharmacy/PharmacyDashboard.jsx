@@ -1,13 +1,13 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import BackButton from '../../components/pharmacy/BackButton';
 
 import PharmacyOverview from './PharmacyOverview';
 import PharmacyProducts from './PharmacyProducts';
 import PharmacyCategories from './PharmacyCategories';
 import PharmacyBranches from './PharmacyBranches';
 import PharmacyRequests from './PharmacyRequests';
-import PharmacyPOS from './PharmacyPOS';
 import RequisitionForm from './RequisitionForm';
 import GRNForm from './GRNForm';
 import ProcurementRequests from '../procurement/ProcurementRequests';
@@ -16,111 +16,109 @@ import DirectDelivery from '../procurement/DirectDelivery';
 import CashierAuditLog from '../sales/CashierAuditLog';
 import SalesReports from '../sales/SalesReports';
 import ReturnsPage from '../sales/ReturnsPage';
-import PharmacySalesForm from './PharmacySalesForm';
-import PharmacyManagerDashboard from './PharmacyManagerDashboard';
+import PharmacyManagerControls from './PharmacyManagerControls';
 import PharmacyFinanceReview from './PharmacyFinanceReview';
-import CustomerPrescription from './CustomerPrescription';
-import PharmacyWorkerPrescriptions from './PharmacyWorkerPrescriptions';
-import CustomerQueryForm from './CustomerQueryForm';
+import CEOReport from './CEOReport';
+
 import ExpiredDrugReport from './ExpiredDrugReport';
 import DrugHideForm from './DrugHideForm';
 import PharmacyPendingShipments from './PharmacyPendingShipments';
 
 // New Imports
 import PharmacyMedicines from './PharmacyMedicines';
+import PharmacyStockOperations from './PharmacyStockOperations';
 import PharmacyInventoryView from './PharmacyInventoryView';
+import StoreInventoryView from './StoreInventoryView';
+import StoreRequisitionForm from './StoreRequisitionForm';
+import ReceivingHub from './ReceivingHub';
 import PharmacyGoodsReceiving from './PharmacyGoodsReceiving';
-import PharmacyIssueMedicines from './PharmacyIssueMedicines';
 import PharmacyStockTransfer from './PharmacyStockTransfer';
 import PharmacyStockAdjustment from './PharmacyStockAdjustment';
 import PharmacyExpiryManagement from './PharmacyExpiryManagement';
 import PharmacyBatches from './PharmacyBatches';
-import PharmacySalesHistory from './PharmacySalesHistory';
 import PharmacyTasks from './PharmacyTasks';
-import PharmacyInventoryReport from './PharmacyInventoryReport';
-import PharmacyStockMovement from './PharmacyStockMovement';
+// Product Posts
+// import PharmacyWorkerProductPosts from './PharmacyWorkerProductPosts';
 
-// New Sales & Ops Imports
-import PharmacySalesList from './PharmacySalesList';
-import PharmacySalesReturn from './PharmacySalesReturn';
+// SRS Alignment
+import WarehouseManagement from './WarehouseManagement';
+import BranchDrugs from './BranchDrugs';
+import CEOPendingApprovals from './CEOPendingApprovals';
+
+// Health Publisher
+import PharmacyHealthPublisher from './PharmacyHealthPublisher';
+
+// Sales & Ops Imports
 import PharmacyStaff from './PharmacyStaff';
-import PharmacyStaffList from './PharmacyStaffList';
-import PharmacyAssignTasks from './PharmacyAssignTasks';
+
 import PharmacyAttendance from './PharmacyAttendance';
-import PharmacyReportsHub from './PharmacyReportsHub';
-import PharmacySalesReport from './PharmacySalesReport';
-import PharmacyExpiryReport from './PharmacyExpiryReport';
 import PharmacyDailySummary from './PharmacyDailySummary';
 
 const PharmacyDashboard = () => {
+  const location = useLocation();
+  const FULL_BLEED = [
+    '/pharmacy/staff', '/pharmacy/attendance', '/pharmacy/branches', 
+    '/pharmacy/daily-summary', '/pharmacy/finance-review', '/pharmacy/ceo-report', 
+    '/pharmacy/store-inventory', '/pharmacy/stock-operations', 
+    '/pharmacy/procurement-requests', '/pharmacy/stock-adjustment', 
+    '/pharmacy/expiry-management', '/pharmacy/batches', '/pharmacy/health-publisher',
+    '/pharmacy/medicines'
+  ];
+  const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
+  const hideBackButton = ['/pharmacy/overview', '/pharmacy'].includes(location.pathname) || isFullBleed;
+
   const menuItems = [
     { label: 'Dashboard', path: '/pharmacy/overview', icon: 'home' },
     { type: 'divider' },
     { label: 'Pharmacy', icon: 'pill',
       children: [
-        { label: 'Medicines',        path: '/pharmacy/medicines',    icon: 'package',     color: '#22c55e' },
-        { label: 'Inventory',        path: '/pharmacy/inventory',    icon: 'layers',      color: '#3b82f6' },
-        { label: 'Goods Receiving',  path: '/pharmacy/goods-receiving',icon: 'truck',       color: '#f59e0b' },
-        { label: 'Issue Medicines',  path: '/pharmacy/issue-medicines',icon: 'arrow-right', color: '#8b5cf6' },
-        { label: 'Stock Transfer',   path: '/pharmacy/stock-transfer', icon: 'git-branch',  color: '#06b6d4' },
-        { label: '🚚 Pending Shipments', path: '/pharmacy/pending-shipments', icon: 'truck', color: '#f59e0b' },
-        { label: 'Store Requisition (M20)', path: '/pharmacy/requisitions', icon: 'file-text', color: '#8B5CF6' },
-        { label: 'Drug Procurement', path: '/pharmacy/procurement-requests', icon: 'shopping-cart', color: '#059669' },
-        { label: 'Receive Drug Shipment', path: '/pharmacy/receive-shipment', icon: 'truck', color: '#059669' },
-        { label: '🆕 Direct Delivery', path: '/pharmacy/direct-delivery', icon: 'truck', color: '#059669' },
-        { label: 'Stock Movement',   path: '/pharmacy/stock-movement', icon: 'activity',  color: '#06b6d4' },
-        { label: 'Stock Adjustment', path: '/pharmacy/stock-adjustment', icon: 'sliders',     color: '#f97316' },
-        { label: 'Expiry Management',path: '/pharmacy/expiry-management', icon: 'alert-triangle', color: '#ef4444' },
-        { label: 'Batch Management', path: '/pharmacy/batches',     icon: 'layers',      color: '#14b8a6' },
+        { label: 'Store Inventory',  path: '/pharmacy/store-inventory',  icon: 'database',  color: '#0891b2' },
+        { label: 'Stock Operations', path: '/pharmacy/stock-operations', icon: 'package',   color: '#3b82f6' },
+        { label: 'Drug Procurement', path: '/pharmacy/procurement-requests',  icon: 'shopping-cart', color: '#059669' },
+        { label: 'Stock Adjustment', path: '/pharmacy/stock-adjustment',      icon: 'sliders',       color: '#f97316' },
+        { label: 'Expiry Management',path: '/pharmacy/expiry-management',     icon: 'alert-triangle',color: '#ef4444' },
+        { label: 'Batch Management', path: '/pharmacy/batches',               icon: 'layers',        color: '#14b8a6' },
+        { label: 'Health Publisher', path: '/pharmacy/health-publisher',      icon: 'globe',         color: '#059669' },
       ] },
-    { type: 'divider' },
-    { label: 'Flow 4 — Sales', icon: 'trending-up',
-      children: [
-        { label: '🛒 New Sale',        path: '/pharmacy/sales',         icon: 'shopping-cart', color: '#059669' },
-        { label: '📊 Manager Dashboard', path: '/pharmacy/manager',     icon: 'bar-chart-2',   color: '#224f94' },
-        { label: '💰 Finance Review',  path: '/pharmacy/finance-review', icon: 'dollar-sign', color: '#D97706' },
-        { label: '🚫 Expired Drugs',   path: '/pharmacy/expired-drugs',  icon: 'alert-triangle', color: '#ef4444' },
-        { label: '🔒 Hide Drug',       path: '/pharmacy/drug-hide',     icon: 'eye-off',      color: '#8B5CF6' },
-      ] },
-    { type: 'divider' },
-    { label: 'Prescriptions', icon: 'file-text',
-      children: [
-        { label: 'New Prescription',    path: '/pharmacy/customer-prescription',  icon: 'file-plus' },
-        { label: 'Worker Prescriptions', path: '/pharmacy/worker-prescriptions',  icon: 'clipboard' },
-        { label: 'Drug Query',          path: '/pharmacy/drug-query',            icon: 'search' },
-      ] },
-    { type: 'divider' },
-    { label: 'Sales', icon: 'trending-up',
-      children: [
-        { label: 'POS',          path: '/pharmacy/pos', icon: 'shopping-cart' },
-        { label: 'Sales List',   path: '/pharmacy/sales-list', icon: 'list' },
-        { label: 'Sales History', path: '/pharmacy/sales-history', icon: 'clock' },
-        { label: 'Sales Return',  path: '/pharmacy/sales-return',     icon: 'rotate-ccw' },
-      ] },
-    { type: 'divider' },
+
     { label: 'Staff', icon: 'users',
       children: [
-        { label: 'Staff Mgmt',   path: '/pharmacy/staff',  icon: 'settings' },
-        { label: 'Staff List',   path: '/pharmacy/staff-list',  icon: 'users' },
-        { label: 'Assign Tasks', path: '/pharmacy/assign-tasks',     icon: 'check-circle' },
-        { label: 'Attendance',   path: '/pharmacy/attendance',     icon: 'clock' },
+        { label: 'Staff Mgmt',      path: '/pharmacy/staff',          icon: 'settings' },
+        { label: 'Attendance',      path: '/pharmacy/attendance',     icon: 'clock' },
+        { label: 'Branches',        path: '/pharmacy/branches',       icon: 'building',  color: '#f59e0b' },
       ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
       children: [
-        { label: 'Reports Hub',      path: '/pharmacy/reports-hub', icon: 'bar-chart-2' },
-        { label: 'Inventory Report', path: '/pharmacy/inventory-report', icon: 'package' },
-        { label: 'Sales Report',     path: '/pharmacy/sales-report',     icon: 'trending-up' },
-        { label: 'Expiry Report',    path: '/pharmacy/expiry-report', icon: 'alert-triangle' },
-        { label: 'Stock Movement',   path: '/pharmacy/stock-movement', icon: 'activity' },
-        { label: 'Daily Summary',    path: '/pharmacy/daily-summary', icon: 'file-text' },
+        { label: 'CEO Report', path: '/pharmacy/ceo-report', icon: 'bar-chart-2',  color: '#064e3b' },
+        { label: 'Finance Review', path: '/pharmacy/finance-review', icon: 'dollar-sign',  color: '#D97706' },
+        { label: 'Daily Summary',    path: '/pharmacy/daily-summary',     icon: 'file-text' },
       ] },
   ];
 
   return (
     <div>
       <DashboardLayout menuItems={menuItems} title="Pharmacy Manager">
-        <div>
+        <div style={isFullBleed ? {
+          margin: '-32px -32px -32px -32px',
+          padding: 0,
+          background:
+            location.pathname.includes('/pharmacy/ceo-report')     ? '#F1BE91' :
+            location.pathname.includes('/pharmacy/finance-review') ? '#46D17A' :
+            (
+              location.pathname.includes('/pharmacy/store-inventory') ||
+              location.pathname.includes('/pharmacy/stock-operations') ||
+              location.pathname.includes('/pharmacy/procurement-requests') ||
+              location.pathname.includes('/pharmacy/stock-adjustment') ||
+              location.pathname.includes('/pharmacy/expiry-management') ||
+              location.pathname.includes('/pharmacy/batches') ||
+              location.pathname.includes('/pharmacy/health-publisher')
+            ) ? '#50760F' :
+            '#D5DCF0',
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+        } : {}}>
+          {!hideBackButton && <BackButton />}
           <Routes>
             <Route path="overview"   element={<PharmacyOverview />} />
             <Route path="products"   element={<PharmacyProducts />} />
@@ -128,7 +126,6 @@ const PharmacyDashboard = () => {
             <Route path="branches"   element={<PharmacyBranches />} />
             <Route path="requests"   element={<PharmacyRequests />} />
             <Route path="pending-shipments" element={<PharmacyPendingShipments />} />
-            <Route path="pos"        element={<PharmacyPOS />} />
             <Route path="requisitions" element={<RequisitionForm />} />
             <Route path="requisitions/:id" element={<RequisitionForm />} />
             <Route path="grn" element={<GRNForm />} />
@@ -137,45 +134,40 @@ const PharmacyDashboard = () => {
             <Route path="procurement-requests/:id" element={<ProcurementRequests />} />
             <Route path="receive-shipment" element={<PharmacyReceive />} />
             <Route path="direct-delivery" element={<DirectDelivery />} />
-            <Route path="sales" element={<PharmacySalesForm />} />
-            <Route path="sales/:id" element={<PharmacySalesForm />} />
-            <Route path="manager" element={<PharmacyManagerDashboard />} />
+            {/* <Route path="product-posts" element={<PharmacyWorkerProductPosts />} /> */}
+            <Route path="health-publisher" element={<PharmacyHealthPublisher />} />
             <Route path="finance-review" element={<PharmacyFinanceReview />} />
             <Route path="finance-review/:id" element={<PharmacyFinanceReview />} />
-            <Route path="customer-prescription" element={<CustomerPrescription />} />
-            <Route path="worker-prescriptions" element={<PharmacyWorkerPrescriptions />} />
-            <Route path="drug-query" element={<CustomerQueryForm />} />
+
             <Route path="expired-drugs" element={<ExpiredDrugReport />} />
             <Route path="drug-hide" element={<DrugHideForm />} />
-            <Route path="audit"      element={<CashierAuditLog source="pharmacy" />} />
+            <Route path="audit" element={<CashierAuditLog source="pharmacy" />} />
 
-            {/* New Routes */}
-            <Route path="medicines" element={<PharmacyMedicines />} />
-            <Route path="inventory" element={<PharmacyInventoryView />} />
-            <Route path="goods-receiving" element={<PharmacyGoodsReceiving />} />
-            <Route path="issue-medicines" element={<PharmacyIssueMedicines />} />
-            <Route path="stock-transfer" element={<PharmacyStockTransfer />} />
+            {/* Inventory & Stock Routes */}
+            <Route path="medicines"        element={<PharmacyMedicines />} />
+            <Route path="store-inventory"  element={<StoreInventoryView />} />
+            <Route path="store-requisition" element={<StoreRequisitionForm />} />
+            <Route path="pharmacy-stock"   element={<PharmacyInventoryView />} />
+            <Route path="stock-operations" element={<PharmacyStockOperations />} />
+            <Route path="receiving"        element={<ReceivingHub />} />
+            <Route path="goods-receiving"  element={<PharmacyGoodsReceiving />} />
+            <Route path="stock-transfer"   element={<PharmacyStockTransfer />} />
             <Route path="stock-adjustment" element={<PharmacyStockAdjustment />} />
             <Route path="expiry-management" element={<PharmacyExpiryManagement />} />
-            <Route path="batches" element={<PharmacyBatches />} />
-            <Route path="tasks" element={<PharmacyTasks />} />
-            
-            {/* Sales & Ops Routes */}
-            <Route path="sales-list" element={<PharmacySalesList />} />
-            <Route path="sales-return" element={<PharmacySalesReturn />} />
-            <Route path="sales-history" element={<PharmacySalesHistory />} />
-            <Route path="staff" element={<PharmacyStaff />} />
-            <Route path="staff-list" element={<PharmacyStaffList />} />
-            <Route path="assign-tasks" element={<PharmacyAssignTasks />} />
-            <Route path="attendance" element={<PharmacyAttendance />} />
-            <Route path="reports-hub" element={<PharmacyReportsHub />} />
-            <Route path="inventory-report" element={<PharmacyInventoryReport />} />
-            <Route path="sales-report" element={<PharmacySalesReport />} />
-            <Route path="expiry-report" element={<PharmacyExpiryReport />} />
-            <Route path="stock-movement" element={<PharmacyStockMovement />} />
-            <Route path="daily-summary" element={<PharmacyDailySummary />} />
+            <Route path="batches"          element={<PharmacyBatches />} />
+            <Route path="tasks"            element={<PharmacyTasks />} />
 
-            <Route path="/"          element={<Navigate to="overview" replace />} />
+            {/* Sales & Ops Routes */}
+            <Route path="staff"         element={<PharmacyStaff />} />
+            <Route path="attendance"    element={<PharmacyAttendance />} />
+            <Route path="ceo-report"    element={<CEOReport />} />
+            <Route path="finance-review" element={<PharmacyFinanceReview />} />
+            <Route path="daily-summary" element={<PharmacyDailySummary />} />
+            <Route path="warehouses"    element={<WarehouseManagement />} />
+            <Route path="branch-drugs"  element={<BranchDrugs />} />
+            <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
+
+            <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
       </DashboardLayout>

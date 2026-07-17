@@ -83,7 +83,7 @@ const CEOHRReport = () => {
         </div>
         <div style={{ background: '#f0fdf4', padding: 20, borderRadius: 8, border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 13, color: '#166534', fontWeight: 'bold' }}>Total Payroll ({dateRange})</div>
-          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#15803d', marginTop: 8 }}>$220,000</div>
+          <div style={{ fontSize: 32, fontWeight: 'bold', color: '#15803d', marginTop: 8 }}>ETB 220,000</div>
         </div>
       </div>
 
