@@ -8,6 +8,9 @@ const InventoryModel = require('./Inventory.model');
 const PurchaseOrderModel = require('./PurchaseOrder.model');
 const PosSaleModel = require('./PosSale.model');
 const ExpenseModel = require('./Expense.model');
+const TenderModel = require('./Tender.model');
+const BidModel = require('./Bid.model');
+
 module.exports = {
   UserModel,
   RoleModel,
@@ -18,5 +21,7 @@ module.exports = {
   InventoryModel,
   PurchaseOrderModel,
   PosSaleModel,
-  ExpenseModel
+  ExpenseModel,
+  TenderModel,
+  BidModel
 };

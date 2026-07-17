@@ -4,13 +4,15 @@ const ctrl = require('../controllers/pharmacy.sales.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 router.use(authenticate);
 
 // ── Sales (A2/A3) ──
 const saleValidation = [
   body('branch_id').isInt().withMessage('branch_id is required'),
-  body('worker_id').isInt().withMessage('worker_id is required'),
+  body('worker_id').optional({ nullable: true }).isInt().withMessage('worker_id must be an integer'),
   body('items').isArray({ min: 1 }).withMessage('At least one item required'),
   body('items.*.drug_name').notEmpty().withMessage('drug_name required'),
   body('items.*.quantity').isInt({ min: 1 }).withMessage('quantity must be >= 1'),
@@ -20,11 +22,12 @@ const saleValidation = [
   body('payment.status').optional().isIn(['PAID', 'CASHOUT'])
 ];
 router.post('/sales', saleValidation, validate, ctrl.createSale);
+router.post('/sales/submit-daily', ctrl.submitDaily);
 router.get('/sales', ctrl.listSales);
 router.get('/sales/:id', ctrl.getSale);
+router.post('/sales/:id/return', ctrl.processReturn);
 
 // ── Branches (A1) ──
-router.get('/branches', ctrl.listBranches);
 router.patch('/branches/:id/toggle', authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO']), ctrl.toggleBranch);
 
 // ── Workers (B1) ──
@@ -75,11 +78,11 @@ router.post('/queries', [
 router.get('/queries', ctrl.listCustomerQueries);
 
 // ── Prescriptions (B7/B9) ──
-router.post('/prescriptions', [
+router.post('/prescriptions', upload.single('prescription_file'), [
   body('customer_name').notEmpty().withMessage('customer_name required'),
   body('drug_name').notEmpty().withMessage('drug_name required'),
   body('quantity').isInt({ min: 1 }).withMessage('quantity required'),
-  body('source').isIn(['ONLINE', 'PHYSICAL']).withMessage('source must be ONLINE or PHYSICAL')
+  body('source').notEmpty().withMessage('source required')
 ], validate, ctrl.createPrescription);
 router.get('/prescriptions', ctrl.listPrescriptions);
 router.patch('/prescriptions/:id/status', [

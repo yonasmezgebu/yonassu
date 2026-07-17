@@ -23,6 +23,7 @@ router.post('/register', limiters.auth, registerValidation, validate, AuthContro
 router.post('/logout', authenticate, AuthController.logout);
 router.post('/refresh', AuthController.refreshToken);
 router.post('/change-password', authenticate, changePasswordValidation, validate, AuthController.changePassword);
+router.post('/verify-password', authenticate, body('password').notEmpty(), validate, AuthController.verifyPassword);
 router.post('/reset-password/request', limiters.auth, body('email').isEmail(), validate, AuthController.requestPasswordReset);
 router.post('/reset-password/confirm', limiters.auth, [
   body('token').notEmpty(),

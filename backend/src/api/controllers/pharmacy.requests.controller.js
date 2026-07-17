@@ -9,7 +9,7 @@ const requestsController = {
   // CUSTOMER: Submit a new request
   // ==============================
   createRequest: catchAsync(async (req, res) => {
-    const { medication_id, quantity, delivery_option, delivery_address } = req.body;
+    const { medication_id, quantity, delivery_option, delivery_address, customer_name, customer_email, customer_phone } = req.body;
     const user = req.user;
 
     if (!medication_id) throw new AppError('Medication ID is required', 400);
@@ -32,12 +32,16 @@ const requestsController = {
       prescription_image = getFileInfo(req.file).url;
     }
 
+    const final_customer_name = customer_name || user.fullName || user.full_name;
+    const final_customer_email = customer_email || user.email;
+    const final_customer_phone = customer_phone || user.phone || null;
+
     const [id] = await db('prescription_requests').insert({
       request_number,
       customer_id: user.id,
-      customer_name: user.fullName || user.full_name,
-      customer_email: user.email,
-      customer_phone: user.phone || null,
+      customer_name: final_customer_name,
+      customer_email: final_customer_email,
+      customer_phone: final_customer_phone,
       medication_id: parseInt(medication_id),
       medication_name: medication.name,
       quantity: parseInt(quantity),
@@ -75,7 +79,7 @@ const requestsController = {
       const adminUsers = await db('users')
         .join('user_roles', 'users.id', 'user_roles.user_id')
         .join('roles', 'user_roles.role_id', 'roles.id')
-        .whereIn('roles.name', ['Admin', 'CEO'])
+        .whereIn('roles.name', ['Admin', 'CEO', 'Pharmacy Worker', 'Sales/Cashier', 'Pharmacy Manager'])
         .select('users.id');
       const userIds = [...new Set(adminUsers.map(u => u.id))];
       for (const uid of userIds) {
@@ -84,6 +88,7 @@ const requestsController = {
           title: `New Prescription Request: ${request_number}`,
           message: `${customerName} ordered ${request.medication_name} x${request.quantity}`,
           type: 'pharmacy',
+          link: '/pharmacy-worker/sales',
           is_read: 0,
           created_at: db.fn.now()
         });
@@ -97,11 +102,34 @@ const requestsController = {
   // CUSTOMER: Get own requests
   // ==============================
   getMyRequests: catchAsync(async (req, res) => {
-    const requests = await db('prescription_requests')
-      .where({ customer_id: req.user.id })
-      .orderBy('requested_at', 'desc');
+    const requests = await db('prescription_requests as pr')
+      .leftJoin('pharmacy_medications as pm', 'pr.medication_id', 'pm.id')
+      .select('pr.*', 'pm.drug_image as medication_image')
+      .where({ 'pr.customer_id': req.user.id })
+      .orderBy('pr.requested_at', 'desc');
 
     res.json({ status: 'success', data: requests });
+  }),
+
+  // ==============================
+  // CUSTOMER: Upload Image to existing request
+  // ==============================
+  uploadPrescriptionImage: catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const request = await db('prescription_requests').where({ id, customer_id: req.user.id }).first();
+
+    if (!request) throw new AppError('Request not found', 404);
+    if (!req.file) throw new AppError('No image provided', 400);
+
+    const fileInfo = getFileInfo(req.file);
+    const imageUrl = fileInfo.url;
+
+    await db('prescription_requests')
+      .where({ id })
+      .update({ prescription_image: imageUrl });
+
+    const updated = await db('prescription_requests').where({ id }).first();
+    res.json({ status: 'success', message: 'Image uploaded successfully', imageUrl, data: updated });
   }),
 
   // ==============================

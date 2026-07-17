@@ -185,7 +185,7 @@ exports.trackOrder = catchAsync(async (req, res) => {
 
     const sm = STAGE_MAPS.PHARMACY;
     const idx = sm.map(row.status);
-    const branch = await db('pharmacy_branches').select('name', 'address', 'working_hours').first();
+    const branch = await db('branches').select('name', 'address', 'working_hours_monday_saturday as working_hours').first();
 
     return res.json({
       status: 'success',

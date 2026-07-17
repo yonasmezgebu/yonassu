@@ -5,6 +5,13 @@ const { sendEmail } = require('../../services/email.service');
 const { sendSMS } = require('../../services/sms.service');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
+const {
+  ROLE_HIERARCHY,
+  CUSTOM_ROLE_ASSIGNERS,
+  canAssignRole,
+  requiresEmployeePrecondition,
+  isBranchScoped
+} = require('../../config/roleHierarchy');
 exports.getAllUsers = catchAsync(async (req, res) => {
   const {
     page = 1,
@@ -30,7 +37,8 @@ exports.getAllUsers = catchAsync(async (req, res) => {
       'users.last_login',
       'users.created_at',
       'users.must_change_password',
-      'users.two_factor_enabled'
+      'users.two_factor_enabled',
+      'users.is_employee'
     )
     .whereNull('users.deleted_at');
   if (search) {
@@ -108,10 +116,9 @@ exports.createUser = catchAsync(async (req, res) => {
   const ip = req.ip;
   const existingUser = await db('users')
     .where('email', email.toLowerCase())
-    .orWhere('phone', phone)
     .first();
   if (existingUser) {
-    throw new AppError('User with this email or phone already exists', 400);
+    throw new AppError('User with this email already exists', 400);
   }
   if (!password) {
     throw new AppError('Password is required', 400);
@@ -170,7 +177,7 @@ exports.createUser = catchAsync(async (req, res) => {
 });
 exports.updateUser = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const { fullName, email, phone, departmentId, roleIds, statusId } = req.body;
+  const { fullName, email, phone, departmentId, roleIds, statusId, password, is_employee } = req.body;
   const adminId = req.user.id;
   const ip = req.ip;
   if (id == adminId) {
@@ -186,21 +193,14 @@ exports.updateUser = catchAsync(async (req, res) => {
   if (!user) {
     throw new AppError('User not found', 404);
   }
-  if (email || phone) {
-    const duplicateQuery = db('users')
+  if (email) {
+    const duplicate = await db('users')
       .where('id', '!=', id)
-      .whereNull('deleted_at');
-    if (email) {
-      duplicateQuery.andWhere(function() {
-        this.where('email', email.toLowerCase());
-      });
-    }
-    if (phone) {
-      duplicateQuery.orWhere('phone', phone);
-    }
-    const duplicate = await duplicateQuery.first();
+      .whereNull('deleted_at')
+      .where('email', email.toLowerCase())
+      .first();
     if (duplicate) {
-      throw new AppError('Another user with this email or phone already exists', 400);
+      throw new AppError('Another user with this email already exists', 400);
     }
   }
   const updateData = {};
@@ -209,17 +209,23 @@ exports.updateUser = catchAsync(async (req, res) => {
   if (phone) updateData.phone = phone;
   if (departmentId) updateData.department_id = departmentId;
   if (statusId) updateData.status_id = statusId;
+  if (password) updateData.password = await hashPassword(password);
+  if (is_employee !== undefined) updateData.is_employee = is_employee;
   updateData.updated_at = db.fn.now();
   await transaction(async (trx) => {
     if (Object.keys(updateData).length > 0) {
       await trx('users').where('id', id).update(updateData);
     }
     if (roleIds && roleIds.length > 0) {
+      const existingRoles = await trx('user_roles').where('user_id', id);
       await trx('user_roles').where('user_id', id).delete();
       for (const roleId of roleIds) {
+        const existing = existingRoles.find(r => r.role_id === parseInt(roleId));
         await trx('user_roles').insert({
           user_id: id,
           role_id: roleId,
+          branch_id: existing ? existing.branch_id : null,
+          sub_role: existing ? existing.sub_role : null,
           assigned_by: adminId,
           assigned_at: db.fn.now()
         });
@@ -351,28 +357,91 @@ exports.getUserPermissions = catchAsync(async (req, res) => {
 });
 exports.assignRoles = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const { roleIds } = req.body;
+  const { roleId, branchId, subRole } = req.body;
   const adminId = req.user.id;
+  const assignerRoles = req.user.roles;
   const ip = req.ip;
+
+  // 1. Find target user
   const user = await db('users').where('id', id).whereNull('deleted_at').first();
-  if (!user) {
-    throw new AppError('User not found', 404);
+  if (!user) throw new AppError('User not found', 404);
+
+  // 2. Find the target role record
+  const roleRecord = await db('roles').where('id', roleId).first();
+  if (!roleRecord) throw new AppError('Role not found', 404);
+
+  // 3. Authority check — does the logged-in user have permission to assign this role?
+  const authorityCheck = canAssignRole(assignerRoles, roleRecord.name);
+  if (!authorityCheck.allowed) {
+    throw new AppError(authorityCheck.reason || 'You do not have authority to assign this role.', 403);
   }
-  await transaction(async (trx) => {
-    await trx('user_roles').where('user_id', id).delete();
-    for (const roleId of roleIds) {
-      await trx('user_roles').insert({
-        user_id: id,
-        role_id: roleId,
+
+  // 4. Employee precondition gate
+  if (requiresEmployeePrecondition(roleRecord.name) && !user.is_employee) {
+    throw new AppError(
+      `Cannot assign "${roleRecord.name}" — this user must first be onboarded as an Employee by HR Manager.`,
+      422
+    );
+  }
+
+  // 5. Branch requirement gate
+  if (isBranchScoped(roleRecord.name) && !branchId) {
+    throw new AppError(
+      `The "${roleRecord.name}" role requires a branch to be selected.`,
+      422
+    );
+  }
+
+  // 6. Pharmacy Manager branch-scope enforcement (REMOVED as per user request to allow managers to assign to any branch)
+  // The restriction was previously blocking assignments if the manager wasn't strictly scoped to the same branch.
+
+  // 7. Prevent self-assignment of elevating roles (cannot grant yourself a higher role)
+  if (parseInt(id) === adminId && !assignerRoles.includes('Admin')) {
+    throw new AppError('You cannot assign roles to yourself.', 403);
+  }
+
+  // 8. Prevent duplicate role assignment - NO, we want to allow UPDATING the branch/sub-role
+  const existingAssignment = await db('user_roles')
+    .where({ user_id: id, role_id: roleId })
+    .first();
+  if (existingAssignment) {
+    // Update existing assignment
+    await db('user_roles')
+      .where({ user_id: id, role_id: roleId })
+      .update({
+        branch_id: branchId || null,
+        sub_role: subRole || null,
         assigned_by: adminId,
         assigned_at: db.fn.now()
       });
+  } else {
+    // Insert the new role assignment
+    await db('user_roles').insert({
+      user_id: id,
+      role_id: roleId,
+      branch_id: branchId || null,
+      sub_role: subRole || null,
+      assigned_by: adminId,
+      assigned_at: db.fn.now()
+    });
+  }
+
+  // 10. Audit trail
+  await audit('ROLE_ASSIGNED', id, {
+    ip,
+    details: {
+      roleName: roleRecord.name,
+      roleId,
+      branchId: branchId || null,
+      subRole: subRole || null,
+      assignedBy: adminId,
+      assignerRoles
     }
   });
-  await audit('ROLES_ASSIGNED', id, { ip, details: { roleIds, assignedBy: adminId } });
+
   res.json({
     status: 'success',
-    message: 'Roles assigned successfully'
+    message: `Role "${roleRecord.name}" assigned successfully.`
   });
 });
 exports.removeRole = catchAsync(async (req, res) => {
@@ -464,10 +533,220 @@ exports.getDepartments = catchAsync(async (req, res) => {
 });
 exports.getRoles = catchAsync(async (req, res) => {
   const roles = await db('roles')
-    .select('id', 'name', 'description')
+    .select('id', 'name', 'description', 'is_custom', 'branch_scoped')
     .orderBy('name');
+  // Attach hierarchy metadata from the config
+  const enriched = roles.map(r => {
+    const config = ROLE_HIERARCHY.find(h => h.name === r.name);
+    return {
+      ...r,
+      requiresEmployee: config ? config.requiresEmployee : true,
+      branchScoped: config ? config.branchScoped : false,
+      isPreExisting: config ? config.isPreExisting : false,
+      subRoles: config ? config.subRoles : []
+    };
+  });
   res.json({
     status: 'success',
-    data: { roles }
+    data: { roles: enriched }
   });
 });
+
+/**
+ * POST /users/:id/promote-employee
+ * Promote a user to Employee status. Only HR Manager or CEO (or Admin).
+ */
+exports.promoteToEmployee = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const adminId = req.user.id;
+  const assignerRoles = req.user.roles;
+  const ip = req.ip;
+
+  // Only HR Manager, CEO, Admin can promote to Employee
+  const canPromote = assignerRoles.some(r => ['HR Manager', 'CEO', 'Admin'].includes(r));
+  if (!canPromote) {
+    throw new AppError('Only HR Manager or CEO can onboard users as Employees.', 403);
+  }
+
+  const user = await db('users').where('id', id).whereNull('deleted_at').first();
+  if (!user) throw new AppError('User not found', 404);
+
+  if (user.is_employee) {
+    return res.json({ status: 'success', message: 'User is already an Employee.' });
+  }
+
+  // Find the Employee role in DB
+  const employeeRole = await db('roles').where('name', 'Employee').first();
+  if (!employeeRole) throw new AppError('Employee role not found in database. Please run migrations.', 500);
+
+  await transaction(async (trx) => {
+    // Mark the user as employee
+    await trx('users').where('id', id).update({ is_employee: true, updated_at: db.fn.now() });
+    // Ensure Employee role is assigned
+    const already = await trx('user_roles').where({ user_id: id, role_id: employeeRole.id }).first();
+    if (!already) {
+      await trx('user_roles').insert({
+        user_id: id,
+        role_id: employeeRole.id,
+        assigned_by: adminId,
+        assigned_at: db.fn.now()
+      });
+    }
+  });
+
+  await audit('USER_PROMOTED_TO_EMPLOYEE', id, {
+    ip,
+    details: { promotedBy: adminId, promoterRoles: assignerRoles }
+  });
+
+  res.json({
+    status: 'success',
+    message: 'User successfully onboarded as Employee.'
+  });
+});
+
+/**
+ * DELETE /users/:id/roles/:roleId
+ * Remove a specific role from a user.
+ */
+exports.revokeRole = catchAsync(async (req, res) => {
+  const { id, roleId } = req.params;
+  const adminId = req.user.id;
+  const assignerRoles = req.user.roles;
+  const ip = req.ip;
+
+  const roleRecord = await db('roles').where('id', roleId).first();
+  if (!roleRecord) throw new AppError('Role not found', 404);
+
+  // Cannot remove Admin role if it is the last one
+  if (roleRecord.name === 'Admin') {
+    const adminCount = await db('user_roles').where('role_id', roleId).count('user_id as count').first();
+    if (parseInt(adminCount.count) <= 1) {
+      throw new AppError('Cannot remove the last Admin role from the system.', 400);
+    }
+  }
+
+  const user = await db('users').where('id', id).whereNull('deleted_at').first();
+  if (!user) throw new AppError('User not found', 404);
+
+  await db('user_roles').where({ user_id: id, role_id: roleId }).delete();
+
+  await audit('ROLE_REVOKED', id, {
+    ip,
+    details: { roleName: roleRecord.name, roleId, revokedBy: adminId }
+  });
+
+  res.json({ status: 'success', message: `Role "${roleRecord.name}" removed.` });
+});
+
+/**
+ * POST /users/custom-roles
+ * CEO (or Admin) can create a brand-new custom role and immediately assign it.
+ */
+exports.createCustomRole = catchAsync(async (req, res) => {
+  const { name, description, branchScoped, assignToUserId, branchId } = req.body;
+  const adminId = req.user.id;
+  const assignerRoles = req.user.roles;
+  const ip = req.ip;
+
+  // Only CEO or Admin can create custom roles
+  if (!assignerRoles.some(r => CUSTOM_ROLE_ASSIGNERS.includes(r))) {
+    throw new AppError('Only CEO or Admin can create custom roles.', 403);
+  }
+  if (!name || name.trim().length < 2) {
+    throw new AppError('Role name must be at least 2 characters.', 400);
+  }
+
+  // Check for duplicate role name
+  const existing = await db('roles').where('name', name.trim()).first();
+  if (existing) throw new AppError(`A role named "${name.trim()}" already exists.`, 409);
+
+  // Create the custom role
+  const [newRoleId] = await db('roles').insert({
+    name: name.trim(),
+    description: description || '',
+    permissions: JSON.stringify({}),
+    is_custom: true,
+    branch_scoped: !!branchScoped,
+    created_by: adminId,
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+
+  await audit('CUSTOM_ROLE_CREATED', null, {
+    ip,
+    details: { roleName: name, newRoleId, branchScoped, createdBy: adminId }
+  });
+
+  // Optionally assign to a user immediately
+  if (assignToUserId) {
+    const targetUser = await db('users').where('id', assignToUserId).whereNull('deleted_at').first();
+    if (!targetUser) throw new AppError('Target user for assignment not found', 404);
+    if (!targetUser.is_employee) {
+      throw new AppError('Cannot assign custom role — target user must first be onboarded as an Employee.', 422);
+    }
+    await db('user_roles').insert({
+      user_id: assignToUserId,
+      role_id: newRoleId,
+      branch_id: branchId || null,
+      assigned_by: adminId,
+      assigned_at: db.fn.now()
+    });
+    await audit('CUSTOM_ROLE_ASSIGNED', assignToUserId, {
+      ip,
+      details: { roleName: name, newRoleId, branchId: branchId || null, assignedBy: adminId }
+    });
+  }
+
+  res.status(201).json({
+    status: 'success',
+    message: `Custom role "${name.trim()}" created successfully.`,
+    data: { roleId: newRoleId }
+  });
+});
+
+/**
+ * GET /users/role-hierarchy
+ * Returns the full role hierarchy config (for the UI to use).
+ */
+exports.getRoleHierarchy = catchAsync(async (req, res) => {
+  res.json({
+    status: 'success',
+    data: { hierarchy: ROLE_HIERARCHY }
+  });
+});
+
+/**
+ * POST /users/profile-photo         (logged-in user updates own photo)
+ * POST /users/:id/profile-photo     (admin updates any user's photo)
+ */
+exports.uploadProfilePhoto = catchAsync(async (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  // Determine target user id
+  const targetId = req.params.id ? parseInt(req.params.id) : req.user.id;
+  if (!req.file) {
+    throw new AppError('No file uploaded', 400);
+  }
+  // Build public URL (relative to /uploads/)
+  let filePath = req.file.path.replace(/\\/g, '/');
+  if (!filePath.startsWith('/')) filePath = '/' + filePath;
+  const publicUrl = filePath.replace(/^.*\/uploads\//, '/uploads/');
+  // Delete old photo if it exists
+  const existing = await db('users').where('id', targetId).select('profile_photo').first();
+  if (existing && existing.profile_photo) {
+    const oldPath = path.join(process.cwd(), existing.profile_photo);
+    if (fs.existsSync(oldPath)) {
+      try { fs.unlinkSync(oldPath); } catch (_) {}
+    }
+  }
+  await db('users').where('id', targetId).update({
+    profile_photo: publicUrl,
+    updated_at: db.fn.now()
+  });
+  res.json({
+    status: 'success',
+    data: { profilePhoto: publicUrl }
+  });
+});
+

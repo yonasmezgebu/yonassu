@@ -4,10 +4,12 @@ const { logger } = require('../../config/logger');
 
 exports.getAllCarsPublic = async (req, res) => {
   try {
-    const cars = await carRepository.findAll({ filters: { deleted_at: null } });
+    const { db } = require('../../config/database');
+    const cars = await db('cars').whereNull('deleted_at').orderBy('created_at', 'desc');
+    const CarModel = require('../../models/Car.model');
     res.status(200).json({
       status: 'success',
-      data: cars.map(car => car.toJSON())
+      data: cars.map(car => CarModel.fromDatabase(car).toJSON())
     });
   } catch (error) {
     logger.error('Error fetching public cars:', error);

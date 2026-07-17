@@ -27,6 +27,7 @@ exports.login = catchAsync(async (req, res) => {
     .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
     .select(
       'users.*',
+      'users.profile_photo',
       'departments.name as department_name',
       'user_statuses.status_code',
       db.raw('GROUP_CONCAT(DISTINCT roles.name) as role_names'),
@@ -149,11 +150,30 @@ exports.login = catchAsync(async (req, res) => {
         roles: roleNames,
         permissions: allPermissions,
         lastLogin: user.last_login,
+        profilePhoto: user.profile_photo,
         mustChangePassword: !!user.must_change_password
       }
     }
   });
 });
+
+exports.verifyPassword = catchAsync(async (req, res) => {
+  const { password } = req.body;
+  const userId = req.user.id;
+  if (!password) {
+    throw new AppError('Password is required', 400);
+  }
+  const user = await db('users').where('id', userId).select('password').first();
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+  const isPasswordValid = await comparePassword(password, user.password);
+  if (!isPasswordValid) {
+    throw new AppError('Incorrect password', 401);
+  }
+  res.status(200).json({ status: 'success', message: 'Password verified' });
+});
+
 exports.register = catchAsync(async (req, res) => {
   const { fullName, email, phone, password, role: selectedRole } = req.body;
   const ip = req.ip;
@@ -161,11 +181,10 @@ exports.register = catchAsync(async (req, res) => {
     throw new AppError('Password is required', 400);
   }
   const existingUser = await db('users')
-    .where('email', email)
-    .orWhere('phone', phone)
+    .where('email', email.toLowerCase())
     .first();
   if (existingUser) {
-    throw new AppError('User with this email or phone already exists', 400);
+    throw new AppError('User with this email already exists', 400);
   }
   const hashedPassword = await hashPassword(password);
   const activeStatus = await db('user_statuses').where('status_code', 'active').first();
@@ -333,6 +352,7 @@ exports.getCurrentUser = catchAsync(async (req, res) => {
       'users.full_name',
       'users.email',
       'users.phone',
+      'users.profile_photo',
       'departments.name as department',
       'users.last_login',
       'users.must_change_password',

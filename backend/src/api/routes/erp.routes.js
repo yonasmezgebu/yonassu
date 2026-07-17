@@ -59,6 +59,11 @@ router.patch('/grn/:id/receive', [
 
 // ── CEO Pending Items ──
 router.get('/ceo-pending', erpController.getCEOPending);
+router.post('/ceo-mark-read', erpController.markCEORead);
+
+// ── Purchase Manager Pending Items ──
+router.get('/purchase-pending-tenders', erpController.getPurchasePendingTenders);
+router.post('/purchase-mark-read', erpController.markPurchaseRead);
 
 // ── Pending Shipments (for Store Dashboard) ──
 router.get('/pending-shipments', erpController.getPendingShipments);

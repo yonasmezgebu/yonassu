@@ -113,10 +113,9 @@ const procController = {
     res.status(HTTP_STATUS.CREATED).json({ status: 'success', data: { seeds } });
   },
 
-  // ── M2/Flow3: Procurement Requests ──
   createProcurementRequest: async (req, res) => {
     const { drugName, quantityRequested, unitOfMeasure, estimatedUnitPrice, justification, urgency, notes,
-            requestType, drugCategory, drugClassification, therapeuticUse, requestReason } = req.body;
+            requestType, drugCategory, drugClassification, therapeuticUse, requestReason, managerSignature } = req.body;
     const userId = req.user.id;
     const userName = req.user.full_name || 'Unknown';
     const last = await db('procurement_requests').orderBy('id', 'desc').first();
@@ -135,7 +134,8 @@ const procController = {
       justification, urgency: urgency || 'MEDIUM',
       status: 'PENDING_CEO_REVIEW', ceo_decision: 'PENDING',
       new_drug_flag: isNew ? 'YES' : 'NO',
-      requested_by: userId, requested_by_name: userName, notes
+      requested_by: userId, requested_by_name: userName, notes,
+      manager_signature: managerSignature || null
     });
 
     const newTag = isNew ? ' 🆕 NEW DRUG' : '';
@@ -148,6 +148,7 @@ const procController = {
     } catch (e) {}
     res.status(HTTP_STATUS.CREATED).json({ status: 'success', data: { pr_no: prNo, request_type: requestType || 'EXISTING_DRUG' } });
   },
+
 
   listProcurementRequests: async (req, res) => {
     const rows = await db('procurement_requests')
@@ -201,16 +202,16 @@ const procController = {
 
     const updates = {
       ceo_decision: decision, ceo_notes: ceoNotes, ceo_decided_by: userId, ceo_decided_at: db.fn.now(),
-      status: decision === 'APPROVED' ? 'IN_MARKET' : 'CEO_REJECTED'
+      status: decision === 'APPROVED' ? 'APPROVED_FOR_PURCHASE' : 'CEO_REJECTED'
     };
     await db('procurement_requests').where({ id: row.id }).update(updates);
 
     if (decision === 'APPROVED') {
       try {
         await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: `✅ ${prefix}Request ${row.pr_no} Approved${newTag}`,
-          message: `${isNew ? 'New Drug ' : ''}${row.drug_name} - Start tender process`,
-          type: 'success', link: `/purchase/drug-tenders`
+          roleTarget: 'Purchase Manager', title: `✅ ${prefix}Request ${row.pr_no} Accepted — Create Tender${newTag}`,
+          message: `${isNew ? '🆕 New Drug ' : ''}${row.drug_name} — CEO accepted. Create a tender now.`,
+          type: 'success', link: `/purchase/tenders`
         });
       } catch (e) {}
     } else {
@@ -232,7 +233,7 @@ const procController = {
   },
 
   getApprovedPRsForMarket: async (req, res) => {
-    const rows = await db('procurement_requests').where({ status: 'IN_MARKET' }).orderBy('created_at', 'desc');
+    const rows = await db('procurement_requests').whereIn('status', ['APPROVED_FOR_PURCHASE', 'IN_MARKET']).orderBy('created_at', 'desc');
     res.json({ status: 'success', data: rows });
   },
 
@@ -297,6 +298,17 @@ const procController = {
       new_drug_flag: isNew ? 'YES' : 'NO'
     });
     await db('procurement_requests').where({ id: pr.id }).update({ status: 'TENDER_CREATED' });
+    
+    // Mark specific notification for this PR as read
+    try {
+      await db('notifications')
+        .where('title', 'like', `%${pr.pr_no}%`)
+        .andWhere('role_target', 'Purchase Manager')
+        .update({ is_read: true });
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+    }
+
     const newTag = isNew ? ' 🆕 NEW DRUG' : '';
     try {
       await notificationRepository.create({

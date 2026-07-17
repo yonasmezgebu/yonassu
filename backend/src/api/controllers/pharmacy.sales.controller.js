@@ -4,8 +4,13 @@ const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
 
 function generateReceiptNo(last) {
-  const num = last ? parseInt(last.receipt_no.split('-')[2]) + 1 : 1;
-  return `REC-${new Date().getFullYear()}-${String(num).padStart(3, '0')}`;
+  try {
+    const num = last && last.receipt_no ? parseInt(last.receipt_no.split('-')[2]) + 1 : 1;
+    const safeNum = isNaN(num) ? 1 : num;
+    return `REC-${new Date().getFullYear()}-${String(safeNum).padStart(3, '0')}`;
+  } catch {
+    return `REC-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+  }
 }
 
 function generateRefNo(last) {
@@ -17,16 +22,45 @@ const salesController = {
 
   // ── Sales (A2/A3) ──
   createSale: async (req, res) => {
-    const { branch_id, worker_id, sale_type, items, payment } = req.body;
+    const { branch_id, worker_id, sale_type, items, payment, skip_stock_deduction } = req.body;
     if (!items || items.length === 0) throw new AppError('At least one item required', HTTP_STATUS.BAD_REQUEST);
     if (!payment) throw new AppError('Payment details required', HTTP_STATUS.BAD_REQUEST);
 
-    const worker = await db('pharmacy_workers').where({ id: worker_id, branch_id }).first();
-    if (!worker) throw new AppError('Worker not found in this branch', HTTP_STATUS.NOT_FOUND);
-    if (!worker.post_permission) throw new AppError('Worker does not have post permission', HTTP_STATUS.FORBIDDEN);
+    // Worker is optional — try to find it if provided, but don't fail if absent
+    let worker = null;
+    if (worker_id) {
+      worker = await db('pharmacy_workers').where({ id: worker_id }).first();
+    }
+    // If no worker found by id, try to pick the first available worker in the branch
+    if (!worker && branch_id) {
+      worker = await db('pharmacy_workers').where({ branch_id, post_permission: true }).first();
+    }
+    // Final fallback: any worker at all
+    if (!worker) {
+      worker = await db('pharmacy_workers').first();
+    }
 
-    const branch = await db('pharmacy_branches').where({ id: branch_id, status: 'ACTIVE' }).first();
-    if (!branch) throw new AppError('Branch not active', HTTP_STATUS.BAD_REQUEST);
+    // Branch lookup — try pharmacy_branches first, then fallback to main branches table
+    let branch = null;
+    if (branch_id) {
+      branch = await db('pharmacy_branches').where({ id: branch_id }).first();
+      if (!branch) {
+        // Might be an ERP branch id — get name from branches table and map to pharmacy_branches
+        const erpBranch = await db('branches').where({ id: branch_id }).first();
+        if (erpBranch) {
+          branch = await db('pharmacy_branches').where({ name: erpBranch.name }).first();
+          if (!branch) {
+            // Use the ERP branch data directly as a duck-typed branch
+            branch = { id: branch_id, name: erpBranch.name };
+          }
+        }
+      }
+    }
+    // Final fallback: first available pharmacy branch
+    if (!branch) {
+      branch = await db('pharmacy_branches').first();
+    }
+    if (!branch) throw new AppError('No pharmacy branch available', HTTP_STATUS.BAD_REQUEST);
 
     const lastReceipt = await db('pharmacy_sales').orderBy('id', 'desc').first();
     const receiptNo = generateReceiptNo(lastReceipt);
@@ -34,9 +68,11 @@ const salesController = {
     const totalProducts = items.reduce((s, i) => s + i.quantity, 0);
     const totalAmount = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
 
+    const effectiveWorkerId = worker ? worker.id : null;
+
     const result = await db.transaction(async (trx) => {
       const [saleId] = await trx('pharmacy_sales').insert({
-        branch_id, worker_id, sale_type: sale_type || 'WALK-IN',
+        branch_id, worker_id: effectiveWorkerId, sale_type: sale_type || 'WALK-IN',
         recipient_name: payment.recipient_name || null,
         recipient_phone: payment.recipient_phone || null,
         total_products: totalProducts, total_amount: totalAmount, receipt_no: receiptNo
@@ -58,22 +94,36 @@ const salesController = {
         account_holder: payment.account_holder || null,
         account_number: payment.account_number || null,
         telbir_number: payment.telbir_number || null,
-        branch_name: branch.name, worker_name: worker.name,
+        branch_name: payment.branch_name || branch.name,
+        worker_name: payment.worker_name || (worker ? worker.name : 'N/A'),
         status: payment.status || 'PAID', receipt_no: receiptNo
       });
 
+      // Always deduct stock on every completed sale (online or walk-in)
       for (const item of items) {
-        const drug = await trx('pharmacy_medications').where({ name: item.drug_name }).first();
+        // Try to find drug by id first, then by exact name, then case-insensitive
+        let drug = null;
+        if (item.drug_id) {
+          drug = await trx('pharmacy_medications').where({ id: item.drug_id }).first();
+        }
+        if (!drug) {
+          drug = await trx('pharmacy_medications').where({ name: item.drug_name }).first();
+        }
+        if (!drug) {
+          drug = await trx('pharmacy_medications').whereRaw('LOWER(name) = LOWER(?)', [item.drug_name]).first();
+        }
         if (drug) {
-          const newStock = drug.stock_quantity - item.quantity;
-          await trx('pharmacy_medications').where({ id: drug.id }).update({ stock_quantity: Math.max(0, newStock) });
+          const newStock = Math.max(0, (parseInt(drug.stock_quantity) || 0) - (parseInt(item.quantity) || 0));
+          await trx('pharmacy_medications').where({ id: drug.id }).update({ stock_quantity: newStock });
         }
       }
 
-      await trx('pharmacy_audit_trail').insert({
-        branch_id, worker_id, action: payment.status || 'PAID',
-        recipient: payment.recipient_name || 'N/A', amount: payment.amount || totalAmount
-      });
+      if (effectiveWorkerId) {
+        await trx('pharmacy_audit_trail').insert({
+          branch_id, worker_id: effectiveWorkerId, action: payment.status || 'PAID',
+          recipient: payment.recipient_name || 'N/A', amount: payment.amount || totalAmount
+        });
+      }
 
       return saleId;
     });
@@ -81,7 +131,7 @@ const salesController = {
     try {
       await notificationRepository.create({
         roleTarget: 'Pharmacy Manager', title: 'New Sale Created',
-        message: `New sale of $${totalAmount.toFixed(2)} by ${worker.name} at ${branch.name}`,
+        message: `New sale of ${totalAmount.toFixed(2)} ETB by ${worker ? worker.name : 'Staff'} at ${branch.name}`,
         type: 'sale_created', link: `/pharmacy/sales`
       });
     } catch (e) {}
@@ -91,38 +141,204 @@ const salesController = {
 
   listSales: async (req, res) => {
     const { branch_id, worker_id, start_date, end_date } = req.query;
-    let query = db('pharmacy_sales').orderBy('created_at', 'desc');
+    let query = db('pharmacy_sales')
+      .leftJoin('pharmacy_branches', 'pharmacy_sales.branch_id', 'pharmacy_branches.id')
+      .leftJoin('pharmacy_workers', 'pharmacy_sales.worker_id', 'pharmacy_workers.id')
+      .leftJoin('pharmacy_payments', 'pharmacy_sales.id', 'pharmacy_payments.sale_id')
+      .select(
+        'pharmacy_sales.*',
+        'pharmacy_branches.name as branch_name',
+        'pharmacy_workers.name as worker_name',
+        'pharmacy_payments.payment_method'
+      )
+      .orderBy('pharmacy_sales.created_at', 'desc');
+
+    query = query.where(function() {
+      this.where('pharmacy_sales.is_submitted', false).orWhereNull('pharmacy_sales.is_submitted');
+    });
+
     if (branch_id) query = query.where('pharmacy_sales.branch_id', branch_id);
     if (worker_id) query = query.where('pharmacy_sales.worker_id', worker_id);
     if (start_date) query = query.where('pharmacy_sales.created_at', '>=', new Date(start_date));
     if (end_date) query = query.where('pharmacy_sales.created_at', '<=', new Date(end_date));
+    
     const rows = await query;
     res.json({ status: 'success', data: rows });
   },
 
+  submitDaily: async (req, res) => {
+    const unsubmitted = await db('pharmacy_sales')
+      .where('is_submitted', false)
+      .orWhereNull('is_submitted');
+
+    if (unsubmitted.length === 0) {
+      throw new AppError('No pending sales to submit', HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const totalTransactions = unsubmitted.length;
+    const totalAmount = unsubmitted.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
+
+    let workerId = unsubmitted[0].worker_id;
+    let branchId = unsubmitted[0].branch_id || 1;
+    
+    // Ensure workerId is valid
+    let validWorker = await db('pharmacy_workers').where({ id: workerId || 0 }).first();
+    if (!validWorker) {
+      validWorker = await db('pharmacy_workers').first();
+      if (validWorker) {
+        workerId = validWorker.id;
+        branchId = validWorker.branch_id || branchId;
+      } else {
+        workerId = null;
+      }
+    }
+    
+    await db.transaction(async (trx) => {
+      // Create audit trail
+      await trx('pharmacy_audit_trail').insert({
+        branch_id: branchId,
+        worker_id: workerId,
+        action: 'DAILY_SUBMIT',
+        recipient: `Submitted ${totalTransactions} transactions`,
+        amount: totalAmount
+      });
+
+      // Mark sales as submitted
+      await trx('pharmacy_sales')
+        .where('is_submitted', false)
+        .orWhereNull('is_submitted')
+        .update({ is_submitted: true });
+    });
+
+    res.json({
+      status: 'success',
+      data: { message: 'Daily sales submitted successfully', totalTransactions, totalAmount }
+    });
+  },
+
   getSale: async (req, res) => {
-    const sale = await db('pharmacy_sales').where({ id: req.params.id }).first();
+    const sale = await db('pharmacy_sales')
+      .where('id', req.params.id)
+      .orWhere('receipt_no', req.params.id)
+      .first();
     if (!sale) throw new AppError('Sale not found', HTTP_STATUS.NOT_FOUND);
     const items = await db('pharmacy_sale_items').where({ sale_id: sale.id });
     const payment = await db('pharmacy_payments').where({ sale_id: sale.id }).first();
     res.json({ status: 'success', data: { ...sale, items, payment } });
   },
 
+  processReturn: async (req, res) => {
+    const { id } = req.params;
+    const { items, reason, refundMethod } = req.body;
+    
+    if (!items || !items.length) throw new AppError('No items provided for return', HTTP_STATUS.BAD_REQUEST);
+    
+    const sale = await db('pharmacy_sales').where({ id }).first();
+    if (!sale) throw new AppError('Sale not found', HTTP_STATUS.NOT_FOUND);
+    if (sale.sale_type === 'CANCELED' || sale.sale_type === 'RETURNED') {
+      throw new AppError('Sale is already canceled or returned', HTTP_STATUS.BAD_REQUEST);
+    }
+    
+    let totalRefund = 0;
+    
+    await db.transaction(async (trx) => {
+      // 1. Process items
+      for (const reqItem of items) {
+        if (!reqItem.returnQty || reqItem.returnQty <= 0) continue;
+        
+        const saleItem = await trx('pharmacy_sale_items').where({ id: reqItem.id, sale_id: sale.id }).first();
+        if (!saleItem) continue;
+        if (reqItem.returnQty > saleItem.quantity) throw new AppError(`Cannot return more than purchased for ${saleItem.drug_name}`, HTTP_STATUS.BAD_REQUEST);
+        
+        const itemRefund = reqItem.returnQty * saleItem.unit_price;
+        totalRefund += itemRefund;
+        
+        // Update stock only if condition is GOOD
+        if (reqItem.condition === 'GOOD') {
+          // Find drug
+          let drug = await trx('pharmacy_medications').where({ name: saleItem.drug_name }).first();
+          if (!drug) drug = await trx('pharmacy_medications').whereRaw('LOWER(name) = LOWER(?)', [saleItem.drug_name]).first();
+          
+          if (drug) {
+            const newStock = (parseInt(drug.stock_quantity) || 0) + parseInt(reqItem.returnQty);
+            await trx('pharmacy_medications').where({ id: drug.id }).update({ stock_quantity: newStock });
+          }
+        }
+        
+        // Deduct from the sale_item quantity
+        const newQty = saleItem.quantity - reqItem.returnQty;
+        await trx('pharmacy_sale_items').where({ id: saleItem.id }).update({
+          quantity: newQty,
+          total_price: newQty * saleItem.unit_price
+        });
+      }
+      
+      if (totalRefund <= 0) {
+        throw new AppError('No valid return quantities provided', HTTP_STATUS.BAD_REQUEST);
+      }
+      
+      // 2. Update Sale totals
+      const newTotalProducts = sale.total_products - items.reduce((s, i) => s + (parseInt(i.returnQty) || 0), 0);
+      const newTotalAmount = parseFloat(sale.total_amount) - totalRefund;
+      const newStatus = newTotalProducts <= 0 ? 'RETURNED' : sale.sale_type;
+      
+      await trx('pharmacy_sales').where({ id: sale.id }).update({
+        total_products: Math.max(0, newTotalProducts),
+        total_amount: Math.max(0, newTotalAmount),
+        sale_type: newStatus
+      });
+      
+      // Update Payment totals
+      const payment = await trx('pharmacy_payments').where({ sale_id: sale.id }).first();
+      if (payment) {
+        await trx('pharmacy_payments').where({ id: payment.id }).update({
+          amount: Math.max(0, parseFloat(payment.amount) - totalRefund)
+        });
+      }
+      
+      // 3. Create Audit Trail
+      let workerId = sale.worker_id;
+      let branchId = sale.branch_id;
+      
+      // Ensure workerId is a valid pharmacy worker
+      let validWorker = await trx('pharmacy_workers').where({ id: workerId || 0 }).first();
+      if (!validWorker) {
+        validWorker = await trx('pharmacy_workers').first();
+        if (validWorker) {
+          workerId = validWorker.id;
+          branchId = validWorker.branch_id || branchId;
+        } else {
+          workerId = null;
+        }
+      }
+      
+      await trx('pharmacy_audit_trail').insert({
+        branch_id: branchId,
+        worker_id: workerId,
+        action: 'RETURN',
+        recipient: `Refund: ${refundMethod} | Reason: ${reason} | Receipt: ${sale.receipt_no}`,
+        amount: -totalRefund
+      });
+    });
+
+    res.json({
+      status: 'success',
+      data: { message: 'Return processed successfully', totalRefund }
+    });
+  },
+
   // ── Branches (A1) ──
   listBranches: async (req, res) => {
-    const rows = await db('pharmacy_branches').orderBy('name', 'asc');
+    const rows = await db('branches').orderBy('name', 'asc');
     res.json({ status: 'success', data: rows });
   },
 
   toggleBranch: async (req, res) => {
-    const branch = await db('pharmacy_branches').where({ id: req.params.id }).first();
+    const branch = await db('branches').where({ id: req.params.id }).first();
     if (!branch) throw new AppError('Branch not found', HTTP_STATUS.NOT_FOUND);
-    const newStatus = branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await db('pharmacy_branches').where({ id: branch.id }).update({ status: newStatus });
-    await db('pharmacy_branch_toggle_log').insert({
-      branch_id: branch.id, action: newStatus, toggled_by: req.user.id
-    });
-    res.json({ status: 'success', data: { id: branch.id, status: newStatus } });
+    const newStatus = !branch.is_active;
+    await db('branches').where({ id: branch.id }).update({ is_active: newStatus });
+    res.json({ status: 'success', data: { id: branch.id, is_active: newStatus } });
   },
 
   // ── Workers (B1) ──
@@ -302,8 +518,9 @@ const salesController = {
     const { drug_name, quantity, expiry_date, location, action_required } = req.body;
     if (!drug_name || !quantity || !expiry_date) throw new AppError('drug_name, quantity, expiry_date required', HTTP_STATUS.BAD_REQUEST);
 
+    const safeDate = expiry_date ? expiry_date.split('T')[0] : expiry_date;
     await db('pharmacy_expired_drugs').insert({
-      drug_name, quantity, expiry_date, location: location || null,
+      drug_name, quantity, expiry_date: safeDate, location: location || null,
       action_required: action_required || 'DISPOSE',
       status: 'PENDING', requested_by: req.user.id
     });
@@ -421,31 +638,43 @@ const salesController = {
   },
 
   listPrescriptions: async (req, res) => {
-    const rows = await db('pharmacy_prescriptions').orderBy('created_at', 'desc');
+    const { status } = req.query;
+    let query = db('pharmacy_prescriptions').orderBy('created_at', 'desc');
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim().toUpperCase());
+      query = query.whereIn('status', statuses);
+    }
+    const rows = await query;
     res.json({ status: 'success', data: rows });
   },
 
   updatePrescriptionStatus: async (req, res) => {
-    const { status } = req.body;
-    if (!['PREPARED', 'PICKED_UP'].includes(status)) throw new AppError('Status must be PREPARED or PICKED_UP', HTTP_STATUS.BAD_REQUEST);
+    const { status, pickup_branch_id } = req.body;
+    const VALID_STATUSES = ['PREPARED', 'PICKED_UP', 'CANCELLED'];
+    if (!VALID_STATUSES.includes(status)) {
+      throw new AppError('Status must be PREPARED, PICKED_UP or CANCELLED', HTTP_STATUS.BAD_REQUEST);
+    }
 
     const rx = await db('pharmacy_prescriptions').where({ id: req.params.id }).first();
     if (!rx) throw new AppError('Prescription not found', HTTP_STATUS.NOT_FOUND);
 
-    await db('pharmacy_prescriptions').where({ id: rx.id }).update({ status });
+    const updatePayload = { status };
+    if (pickup_branch_id) updatePayload.branch_pickup = pickup_branch_id;
+    await db('pharmacy_prescriptions').where({ id: rx.id }).update(updatePayload);
 
     res.json({ status: 'success', data: { id: rx.id, reference_no: rx.reference_no, status } });
   },
 
   // ── Manager Requests (B2) ──
   createManagerRequest: async (req, res) => {
-    const { drug_name, request_type, current_value, requested_value, reason } = req.body;
+    const { drug_name, drug_id, drug_image, request_type, current_value, requested_value, reason } = req.body;
     if (!drug_name || !request_type || requested_value === undefined) {
       throw new AppError('drug_name, request_type, requested_value required', HTTP_STATUS.BAD_REQUEST);
     }
 
     await db('pharmacy_manager_requests').insert({
-      drug_name, request_type: request_type || 'QUANTITY',
+      drug_name, drug_id, drug_image,
+      request_type: request_type || 'QUANTITY',
       current_value: current_value || 0, requested_value,
       status: 'PENDING', reason: reason || null, requested_by: req.user.id
     });
@@ -462,8 +691,23 @@ const salesController = {
   },
 
   listManagerRequests: async (req, res) => {
-    const rows = await db('pharmacy_manager_requests').orderBy('created_at', 'desc');
-    res.json({ status: 'success', data: rows });
+    const { status } = req.query;
+    let query = db('pharmacy_manager_requests').orderBy('created_at', 'desc');
+    if (status) {
+      query = query.where('status', status);
+    }
+    const rows = await query;
+    // Attach drug_image from pharmacy_medications if drug_id exists
+    const withImages = await Promise.all(rows.map(async (r) => {
+      if (r.drug_id) {
+        try {
+          const drug = await db('pharmacy_medications').where({ id: r.drug_id }).select('drug_image').first();
+          if (drug && drug.drug_image) r.drug_image = r.drug_image || drug.drug_image;
+        } catch {}
+      }
+      return r;
+    }));
+    res.json({ status: 'success', data: withImages });
   },
 
   ceoDecideManagerRequest: async (req, res) => {
@@ -481,6 +725,27 @@ const salesController = {
     await db('pharmacy_manager_requests').where({ id: reqRec.id }).update({
       ceo_value: parsedCeo, status: newStatus
     });
+
+    // Auto-apply stock adjustment when CEO approves a QUANTITY request
+    if (newStatus === 'APPROVED' && reqRec.request_type === 'QUANTITY' && reqRec.drug_id) {
+      const qtyChange = Math.round(parsedCeo - parseFloat(reqRec.current_value || 0));
+      if (qtyChange !== 0) {
+        const product = await db('pharmacy_medications').where({ id: reqRec.drug_id }).first();
+        if (product) {
+          const newStock = (product.stock_quantity || 0) + qtyChange;
+          if (newStock >= 0) {
+            await db('pharmacy_medications').where({ id: reqRec.drug_id }).update({ stock_quantity: newStock });
+            await db('pharmacy_stock_movements').insert({
+              medication_id: reqRec.drug_id,
+              quantity_change: qtyChange,
+              reason: `CEO approved adjustment: ${reqRec.reason || 'Manager request'}`,
+              reference_no: `CEO-REQ-${reqRec.id}`,
+              created_by: req.user ? req.user.id : null
+            });
+          }
+        }
+      }
+    }
 
     res.json({ status: 'success', data: { id: reqRec.id, status: newStatus } });
   },

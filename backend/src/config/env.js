@@ -20,20 +20,20 @@ const environment = {
   jwt: {
     secret: process.env.JWT_SECRET || 'fallback-secret-for-development-only',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-for-development-only',
-    expiresIn: process.env.JWT_EXPIRES_IN || '1h',
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    expiresIn: process.env.JWT_EXPIRES_IN || '8h',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
     algorithm: process.env.JWT_ALGORITHM || 'HS256',
-    expiryMinutes: parseInt(process.env.JWT_EXPIRY_MINUTES || '60', 10),
-    refreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || '7', 10),
+    expiryMinutes: parseInt(process.env.JWT_EXPIRY_MINUTES || '480', 10),
+    refreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || '30', 10),
   },
   encryption: {
     key: process.env.ENCRYPTION_KEY,
   },
   cors: {
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
     allowedOrigins: process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['http://localhost:3000', 'http://localhost:3001'],
+      : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174'],
   },
   fileUpload: {
     maxFileSizeMB: parseInt(process.env.MAX_FILE_SIZE_MB || '50', 10),
@@ -102,7 +102,7 @@ const environment = {
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000', 10),
   },
   session: {
-    timeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES || '30', 10),
+    timeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES || '480', 10),
     maxConcurrentSessions: parseInt(process.env.MAX_CONCURRENT_SESSIONS || '3', 10),
     maxFailedAttempts: parseInt(process.env.MAX_FAILED_ATTEMPTS || '5', 10),
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES || '15', 10),
@@ -122,8 +122,6 @@ const environment = {
 };
 const validateConfig = () => {
   if (environment.isDevelopment) {
-    console.log('🔧 Running in DEVELOPMENT mode');
-    console.log('⚠️  Using development keys - DO NOT use in production');
     if (environment.jwt.secret === 'dev_jwt_secret_key_do_not_use_in_production_12345') {
       console.warn('⚠️  Using default development JWT secret');
     }

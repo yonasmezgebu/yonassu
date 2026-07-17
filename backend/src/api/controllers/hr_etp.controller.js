@@ -6,7 +6,7 @@ const AppError = require('../../utils/AppError');
 // DEPARTMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getDepartments = catchAsync(async (req, res) => {
-  const depts = await db('hr_departments').orderBy('dept_name');
+  const depts = await db('departments').select('id as dept_id', 'name as dept_name').orderBy('name');
   res.json({ status: 'success', data: depts });
 });
 
@@ -37,7 +37,7 @@ exports.createUnit = catchAsync(async (req, res) => {
 // POSITIONS
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getPositions = catchAsync(async (req, res) => {
-  const positions = await db('hr_positions').orderBy('position_title');
+  const positions = await db('roles').select('id as position_id', 'name as position_title').orderBy('name');
   res.json({ status: 'success', data: positions });
 });
 
@@ -50,32 +50,37 @@ exports.createPosition = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getETPEmployees = catchAsync(async (req, res) => {
   const { dept_id, status, search } = req.query;
+
+  // ── 1. Fetch dedicated HR employee records ──────────────────────────────
   let q = db('hr_employees as e')
-    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
-    .leftJoin('hr_positions as p', 'e.position_id', 'p.position_id');
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .leftJoin('roles as p', 'e.position_id', 'p.id')
+    .leftJoin('users as u', 'e.personal_email', 'u.email');
 
   if (dept_id) q = q.where('e.dept_id', dept_id);
-  if (status) q = q.where('e.employment_status', status);
-  if (search) q = q.where(function() {
+  if (status)  q = q.where('e.employment_status', status);
+  if (search)  q = q.where(function() {
     this.where('e.full_name', 'like', `%${search}%`)
-      .orWhere('e.employee_id', 'like', `%${search}%`);
+        .orWhere('e.employee_id', 'like', `%${search}%`);
   });
 
-  const employees = await q.select(
-    'e.*',
-    'd.dept_name',
-    'p.position_title'
-  ).orderBy('e.full_name');
+  const hrEmployees = await q.select('e.*', 'd.name as dept_name', 'p.name as position_title', 'u.profile_photo as user_photo').orderBy('e.full_name');
+  const hrIds = new Set(hrEmployees.map(e => e.employee_id));
 
-  res.json({ status: 'success', data: employees });
+  // Prevent browser caching — force fresh response every time
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
+  res.json({ status: 'success', data: hrEmployees, total: hrEmployees.length });
 });
 
 exports.getETPEmployee = catchAsync(async (req, res) => {
   const emp = await db('hr_employees as e')
-    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
-    .leftJoin('hr_positions as p', 'e.position_id', 'p.position_id')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .leftJoin('roles as p', 'e.position_id', 'p.id')
     .where('e.employee_id', req.params.id)
-    .select('e.*', 'd.dept_name', 'p.position_title')
+    .select('e.*', 'd.name as dept_name', 'p.name as position_title')
     .first();
   if (!emp) throw new AppError('Employee not found', 404);
 
@@ -83,7 +88,16 @@ exports.getETPEmployee = catchAsync(async (req, res) => {
 });
 
 exports.createETPEmployee = catchAsync(async (req, res) => {
-  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone } = req.body;
+  const rawBank = (req.body.bank_account_number || '').toString().trim();
+  const bank_account_number = rawBank || null;
+  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone, bank_name, emergency_contact_name, emergency_contact_phone, marital_status, document_path } = req.body;
+  const date_of_birth = (req.body.date_of_birth || '').trim() || null;
+
+  if (bank_account_number) {
+    const existingBank = await db('hr_employees').where('bank_account_number', bank_account_number).first();
+    if (existingBank) throw new AppError('Bank account number is already registered to another employee', 400);
+  }
+
   const count = await db('hr_employees').count('employee_id as c').first();
   const employee_id = `EMP-2026-${String(parseInt(count.c || 0) + 1).padStart(3, '0')}`;
 
@@ -93,14 +107,22 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     base_salary: base_salary || 0,
     housing_allowance: housing_allowance || 0,
     transport_allowance: transport_allowance || 0,
+    bank_name: bank_name || null,
+    bank_account_number: bank_account_number || null,
+    emergency_contact_name: emergency_contact_name || null,
+    emergency_contact_phone: emergency_contact_phone || null,
     has_pc_access: has_pc_access || 'No',
     shift_start_time: shift_start_time || '09:00',
     shift_end_time: shift_end_time || '18:00',
     weekly_off_days: 'Friday,Saturday',
-    personal_phone: phone,
+    personal_phone: phone || req.body.personal_phone,
+    physical_address: req.body.physical_address || null,
     personal_email: `${employee_id}@sutana.com`,
     employment_status: 'Active',
     employment_type: 'Permanent',
+    date_of_birth: date_of_birth || null,
+    marital_status: marital_status || 'Single',
+    document_path: document_path || null,
     hire_date: new Date(),
     overtime_rate: 1.5
   });
@@ -111,14 +133,35 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
 exports.updateETPEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
   const updates = {};
+  const nullableFields = ['date_of_birth', 'bank_account_number', 'bank_name', 'national_id',
+    'physical_address', 'personal_email', 'emergency_contact_name', 'emergency_contact_phone',
+    'document_path', 'housing_allowance', 'transport_allowance', 'overtime_rate'];
   const fields = ['full_name', 'national_id', 'gender', 'dept_id', 'position_id',
     'base_salary', 'housing_allowance', 'transport_allowance', 'has_pc_access',
     'shift_start_time', 'shift_end_time', 'employment_status', 'employment_type',
-    'personal_phone', 'personal_email', 'overtime_rate'];
+    'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number',
+    'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path'];
   for (const f of fields) {
-    if (req.body[f] !== undefined) updates[f] = req.body[f];
+    if (req.body[f] !== undefined) {
+      const val = typeof req.body[f] === 'string' ? req.body[f].trim() : req.body[f];
+      if (val === '' && nullableFields.includes(f)) {
+        updates[f] = null;
+      } else {
+        updates[f] = val;
+      }
+    }
   }
   if (req.body.phone) updates.personal_phone = req.body.phone;
+
+  // Only check bank duplicate if a non-empty bank account is being set
+  if (updates.bank_account_number) {
+    const existingBank = await db('hr_employees')
+      .where('bank_account_number', updates.bank_account_number)
+      .andWhereNot('employee_id', id)
+      .first();
+    if (existingBank) throw new AppError('Bank account number is already registered to another employee', 400);
+  }
+
   if (Object.keys(updates).length === 0)
     return res.status(400).json({ status: 'fail', message: 'No fields to update' });
   await db('hr_employees').where('employee_id', id).update(updates);
@@ -174,9 +217,9 @@ exports.getDailyAttendance = catchAsync(async (req, res) => {
 
   // Get all active employees
   let empQuery = db('hr_employees as e')
-    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
-    .leftJoin('hr_positions as p', 'e.position_id', 'p.position_id')
-    .select('e.*', 'd.dept_name', 'p.position_title')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .leftJoin('roles as p', 'e.position_id', 'p.id')
+    .select('e.*', 'd.name as dept_name', 'p.name as position_title')
     .where('e.employment_status', 'Active');
   if (dept_id) empQuery = empQuery.where('e.dept_id', dept_id);
   const employees = await empQuery;
@@ -351,6 +394,15 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
 
   const deptMap = {};
 
+  const activeDeductions = await db('hr_deductions').where('status', 'Active');
+  const deductionMap = {};
+  for (const d of activeDeductions) {
+    if (!deductionMap[d.employee_id]) deductionMap[d.employee_id] = { tax: 0, pension: 0, loan: 0 };
+    if (d.type === 'Tax/PAYE') deductionMap[d.employee_id].tax += parseFloat(d.amount || 0);
+    else if (d.type === 'Pension') deductionMap[d.employee_id].pension += parseFloat(d.amount || 0);
+    else deductionMap[d.employee_id].loan += parseFloat(d.amount || 0);
+  }
+
   for (const emp of employees) {
     const summary = await db('etp_monthly_summary')
       .where({ employee_id: emp.employee_id, month_number: m, year_number: y })
@@ -367,13 +419,16 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
     const overtimePay = overtimeHrs * hourlyRate * parseFloat(emp.overtime_rate || 1.5);
     const absentDed   = absentDays * dailyRate;
     const lateDed     = (lateMinutes / 60) * hourlyRate;
-    const pensionDed  = parseFloat(emp.base_salary) * 0.07;
-    const taxDed      = calculateTax(parseFloat(emp.base_salary));
+    
+    const empDeds = deductionMap[emp.employee_id] || { tax: 0, pension: 0, loan: 0 };
+    const taxDed      = empDeds.tax;
+    const pensionDed  = empDeds.pension;
+    const manualDeductions = empDeds.loan;
 
     const gross = parseFloat(emp.base_salary) + parseFloat(emp.housing_allowance || 0)
                 + parseFloat(emp.transport_allowance || 0) + parseFloat(emp.communication_allowance || 0)
                 + overtimePay;
-    const deductions = absentDed + lateDed + pensionDed + taxDed;
+    const deductions = absentDed + lateDed + pensionDed + taxDed + manualDeductions;
     const net = Math.max(0, gross - deductions);
 
     // Upsert salary component
@@ -385,7 +440,7 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
       base_salary: emp.base_salary, housing_allowance: emp.housing_allowance || 0,
       transport_allowance: emp.transport_allowance || 0, communication_allowance: emp.communication_allowance || 0,
       overtime_pay: overtimePay, deduction_absent: absentDed, deduction_pension: pensionDed,
-      deduction_tax: taxDed, gross_pay: gross, net_pay: net, status: 'Draft',
+      deduction_tax: taxDed, deduction_loan: manualDeductions, gross_pay: gross, net_pay: net, status: 'Draft',
       calculated_date: db.fn.now(),
     };
     if (existing) await db('payroll_salary_components').where('component_id', existing.component_id).update(payrollData);
@@ -437,20 +492,54 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
 
 exports.getPayrollSummary = catchAsync(async (req, res) => {
   const { month, year } = req.params;
+  const m = parseInt(month);
+  const y = parseInt(year);
+
   const company = await db('payroll_company_aggregation')
-    .where({ month_number: parseInt(month), year_number: parseInt(year) }).first();
+    .where({ month_number: m, year_number: y }).first();
   const depts = await db('payroll_department_aggregation as da')
-    .leftJoin('hr_departments as d', 'da.dept_id', 'd.dept_id')
-    .where({ 'da.month_number': parseInt(month), 'da.year_number': parseInt(year) })
-    .select('da.*', 'd.dept_name').orderBy('da.total_gross_pay', 'desc');
-  res.json({ status: 'success', data: { company, departments: depts } });
+    .leftJoin('departments as d', 'da.dept_id', 'd.id')
+    .where({ 'da.month_number': m, 'da.year_number': y })
+    .select('da.*', 'd.name as dept_name').orderBy('da.total_gross_pay', 'desc');
+  // Employee-level breakdown for HR payroll editor
+  const employees = await db('payroll_salary_components as ps')
+    .leftJoin('hr_employees as e', 'ps.employee_id', 'e.employee_id')
+    .where({ 'ps.month_number': m, 'ps.year_number': y })
+    .select('ps.*', 'e.full_name', 'e.dept_id')
+    .orderBy('e.full_name');
+  res.json({ status: 'success', data: { payrollSummary: company, company, departments: depts, employees } });
 });
 
 exports.getApprovedPayrolls = catchAsync(async (req, res) => {
+  // Return all non-Draft payrolls for CEO view and Finance payment queue
   const payrolls = await db('payroll_company_aggregation')
-    .where('approval_status', 'Approved')
+    .whereNot('approval_status', 'Draft')
     .orderBy('year_number', 'desc').orderBy('month_number', 'desc');
   res.json({ status: 'success', data: payrolls });
+});
+
+exports.submitPayroll = catchAsync(async (req, res) => {
+  const { month, year } = req.body;
+  const m = parseInt(month);
+  const y = parseInt(year);
+
+  const existing = await db('payroll_company_aggregation').where({ month_number: m, year_number: y }).first();
+  if (!existing) return res.status(404).json({ status: 'fail', message: 'No payroll found for this period' });
+  if (existing.approval_status !== 'Draft' && existing.approval_status !== 'Rejected') {
+    return res.status(400).json({ status: 'fail', message: 'Payroll must be in Draft or Rejected status to submit' });
+  }
+
+  await db('payroll_company_aggregation')
+    .where({ month_number: m, year_number: y })
+    .update({ approval_status: 'Pending CEO Approval' });
+
+  await db('hr_notifications_log').insert({
+    rule_id: 'R-004',
+    notification_message: `Payroll for ${m}/${y} has been submitted for approval. Total: ${existing.company_net_pay} ETB.`,
+    priority: 'HIGH', status: 'Pending', recipient_user: 'CEO', sent_date: db.fn.now(),
+  });
+
+  res.json({ status: 'success', message: 'Payroll submitted for CEO approval' });
 });
 
 exports.approvePayroll = catchAsync(async (req, res) => {
@@ -489,9 +578,17 @@ exports.markPayrollPaid = catchAsync(async (req, res) => {
   if (existing.approval_status !== 'Approved') return res.status(400).json({ status: 'fail', message: 'Payroll must be approved before marking as paid' });
   if (existing.approval_status === 'Paid') return res.status(400).json({ status: 'fail', message: 'Payroll is already marked as paid' });
 
+  const paymentInfo = req.file ? `${payment_method || 'Bank Transfer'} | Proof: ${req.file.path}` : (payment_method || 'Bank Transfer');
+
   await db('payroll_company_aggregation')
     .where({ month_number: m, year_number: y })
-    .update({ approval_status: 'Paid' });
+    .update({ 
+      approval_status: 'Paid',
+      payment_status: 'Paid',
+      payment_method: paymentInfo,
+      paid_by: req.user?.email || 'Finance',
+      paid_date: db.fn.now()
+    });
 
   await db('payroll_salary_components')
     .where({ month_number: m, year_number: y })
@@ -665,6 +762,15 @@ exports.getEmployeeDocuments = catchAsync(async (req, res) => {
     .where('employee_id', req.params.id)
     .orderBy('upload_date', 'desc');
   res.json({ status: 'success', data: docs });
+});
+
+exports.getMyPayslips = catchAsync(async (req, res) => {
+  const empId = req.user.employee_id || req.user.id;
+  const payslips = await db('payroll_salary_components')
+    .where('employee_id', empId)
+    .where('status', 'Paid')
+    .orderBy([{ column: 'year_number', order: 'desc' }, { column: 'month_number', order: 'desc' }]);
+  res.json({ status: 'success', data: payslips });
 });
 
 exports.uploadEmployeeDocument = catchAsync(async (req, res) => {
@@ -1031,13 +1137,22 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
 });
 
 exports.getMyDocuments = catchAsync(async (req, res) => {
-  const emp = await db('employees').where('user_id', req.user?.id).first();
-  if (!emp) return res.status(404).json({ status: 'fail', message: 'Employee not found' });
+  const empId = req.user.employee_id || req.user.id;
   const docs = await db('hr_employee_documents')
-    .where('employee_id', emp.employee_id)
-    .orderBy('upload_date', 'desc').catch(() => []); // Ignore if table doesn't exist
-  res.json({ status: 'success', data: { documents: docs || [] } });
+    .where('employee_id', empId)
+    .orderBy('upload_date', 'desc');
+  res.json({ status: 'success', data: docs });
 });
+
+exports.getMyPayslips = catchAsync(async (req, res) => {
+  const empId = req.user.employee_id || req.user.id;
+  const payslips = await db('payroll_salary_components')
+    .where('employee_id', empId)
+    .where('status', 'Paid')
+    .orderBy([{ column: 'year_number', order: 'desc' }, { column: 'month_number', order: 'desc' }]);
+  res.json({ status: 'success', data: payslips });
+});
+
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 function getWeekNumber(d) {

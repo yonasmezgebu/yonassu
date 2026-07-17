@@ -27,14 +27,16 @@ const pharmacyController = {
     expiringDate.setDate(expiringDate.getDate() + 30);
     const expiringDateStr = expiringDate.toISOString().split('T')[0];
 
-    // 4. Expired/Expiring Products
+    // 4. Expired/Expiring Products (Only count if we actually have stock)
     const expiredProducts = await db('pharmacy_medications')
       .where('expiry_date', '<', today)
+      .andWhere('stock_quantity', '>', 0)
       .select('id', 'name', 'expiry_date as date');
       
     const expiringProducts = await db('pharmacy_medications')
       .where('expiry_date', '>=', today)
       .andWhere('expiry_date', '<=', expiringDateStr)
+      .andWhere('stock_quantity', '>', 0)
       .select('id', 'name', 'expiry_date as date');
       
     const expiredList = [
@@ -42,7 +44,75 @@ const pharmacyController = {
       ...expiringProducts.map(p => ({ ...p, status: 'expiring' }))
     ];
 
-    // 5. Prescription Refill Requests (Mocked since no table exists yet)
+    // 5. Extra dashboard stats
+    const totalMedicationsQuery = await db('pharmacy_medications')
+      .where('is_active', true).count('id as count').first();
+    const totalMedications = Number(totalMedicationsQuery?.count || 0);
+
+    const totalStockQuery = await db('pharmacy_medications')
+      .sum('stock_quantity as qty').first();
+    const totalStockQuantity = Number(totalStockQuery?.qty || 0);
+
+    const pendingTransfersQuery = await db('pharmacy_transfer_requests')
+      .where('status', 'PENDING').count('id as count').first();
+    const pendingTransfers = Number(pendingTransfersQuery?.count || 0);
+
+    const pendingReceiptsQuery = await db('procurement_requests')
+      .where('status', 'SHIPPED').count('id as count').first();
+    const pendingReceipts = Number(pendingReceiptsQuery?.count || 0);
+
+    const pendingExpiredReportsQuery = await db('pharmacy_expired_drugs')
+      .where('status', 'PENDING').count('id as count').first();
+    const pendingExpiredReports = Number(pendingExpiredReportsQuery?.count || 0);
+
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todaySalesQuery = await db('pos_sales')
+      .where('sale_date', '>=', todayStart)
+      .sum('total_amount as total').first();
+    const todaySales = Number(todaySalesQuery?.total || 0);
+
+    const todaySalesCountQuery = await db('pos_sales')
+      .where('sale_date', '>=', todayStart)
+      .count('id as count').first();
+    const todaySalesCount = Number(todaySalesCountQuery?.count || 0);
+
+    // 7. Category breakdown
+    let categoryBreakdown = [];
+    let grandTotal = { sku_count: 0, total_quantity: 0, total_value: 0 };
+    try {
+      categoryBreakdown = await db('pharmacy_medications as m')
+        .leftJoin('pharmacy_categories as c', 'm.category_id', 'c.id')
+        .select(
+          db.raw("COALESCE(c.name, 'Uncategorized') as category"),
+          db.raw('COUNT(m.id) as sku_count'),
+          db.raw('SUM(m.stock_quantity) as total_quantity'),
+          db.raw('SUM(m.stock_quantity * m.price) as total_value')
+        )
+        .where('m.is_active', true)
+        .groupByRaw("COALESCE(c.name, 'Uncategorized')")
+        .orderBy('total_value', 'desc');
+
+      grandTotal = {
+        sku_count: categoryBreakdown.reduce((s, r) => s + Number(r.sku_count || 0), 0),
+        total_quantity: categoryBreakdown.reduce((s, r) => s + Number(r.total_quantity || 0), 0),
+        total_value: categoryBreakdown.reduce((s, r) => s + Number(r.total_value || 0), 0),
+      };
+    } catch(e) { /* ignore if table join fails */ }
+
+    // 8. Top selling products today
+    let topSelling = [];
+    try {
+      topSelling = await db('pos_items as si')
+        .join('pos_sales as s', 'si.sale_id', 's.id')
+        .join('pharmacy_medications as m', 'si.product_id', 'm.id')
+        .where('s.sale_date', '>=', todayStart)
+        .select('m.name', db.raw('SUM(si.quantity) as units_sold'), db.raw('SUM(si.total_price) as revenue'))
+        .groupBy('m.id', 'm.name')
+        .orderBy('units_sold', 'desc')
+        .limit(5);
+    } catch(e) { /* ignore */ }
+
+    // 6. Prescription Refill Requests (Mocked since no table exists yet)
     const refillRequests = [
       { 
         id: 'RX-001', customer: 'Alemitu T.', medicine: 'Amoxicillin 500mg', 
@@ -61,7 +131,17 @@ const pharmacyController = {
         customersServed,
         lowStockAlerts,
         expiredList,
-        refillRequests
+        refillRequests,
+        totalMedications,
+        totalStockQuantity,
+        pendingTransfers,
+        pendingReceipts,
+        todaySales,
+        todaySalesCount,
+        pendingExpiredReports,
+        categoryBreakdown,
+        grandTotal,
+        topSelling
       }
     });
   },
@@ -192,16 +272,56 @@ const pharmacyController = {
   },
 
   // ==============================
+  // STORE INVENTORY (read-only for pharmacy)
+  // ==============================
+  getStoreInventory: async (req, res) => {
+    const items = await db('store_inventory as si')
+      .join('drugs as d', 'si.drug_id', 'd.id')
+      .leftJoin('drug_categories as dc', 'd.category_id', 'dc.id')
+      .select(
+        'si.id',
+        'si.drug_id',
+        'd.name',
+        db.raw('COALESCE(dc.name, d.category) as category'),
+        'd.unit',
+        'si.quantity as stock_quantity',
+        'si.min_level'
+      )
+      .orderBy('d.name', 'asc');
+
+    res.json({ status: 'success', data: items });
+  },
+
   // MEDICATIONS / PRODUCTS
   // ==============================
   getProducts: async (req, res) => {
+    const { include_hidden } = req.query;
+    let query = db('pharmacy_medications as pm')
+      .leftJoin('pharmacy_categories as pc', 'pm.category_id', 'pc.id')
+      .select(
+        'pm.*',
+        'pc.name as category_name'
+      )
+      .where('pm.is_active', true);
+
+    if (include_hidden !== 'true') {
+      query = query.where(function () {
+        this.where('pm.is_hidden', false).orWhereNull('pm.is_hidden');
+      });
+    }
+
+    const products = await query.orderBy('pm.created_at', 'desc');
+
+    res.json({ status: 'success', data: products });
+  },
+
+  getAllProducts: async (req, res) => {
     const products = await db('pharmacy_medications as pm')
       .leftJoin('pharmacy_categories as pc', 'pm.category_id', 'pc.id')
       .select(
         'pm.*',
         'pc.name as category_name'
       )
-      .where('pm.is_active', true)
       .orderBy('pm.created_at', 'desc');
 
     res.json({ status: 'success', data: products });
@@ -253,6 +373,40 @@ const pharmacyController = {
       .orderBy('pm.name', 'asc');
 
     res.json({ status: 'success', data: products });
+  },
+
+  getStockMovements: async (req, res) => {
+    const { medication_id, type, startDate, endDate } = req.query;
+    let query = db('pharmacy_stock_movements as psm')
+      .leftJoin('pharmacy_medications as pm', 'psm.medication_id', 'pm.id')
+      .select('psm.*', 'pm.name as drug_name', 'pm.category_id')
+      .orderBy('psm.created_at', 'desc');
+
+    if (medication_id) query = query.where('psm.medication_id', medication_id);
+    if (type) query = query.where('psm.type', type);
+    if (startDate) query = query.where('psm.created_at', '>=', new Date(startDate));
+    if (endDate) query = query.where('psm.created_at', '<=', new Date(endDate));
+
+    const movements = await query;
+    res.json({ status: 'success', data: movements });
+  },
+
+  hideProduct: async (req, res) => {
+    const { id } = req.params;
+    const product = await db('pharmacy_medications').where('id', id).first();
+    if (!product) throw new AppError('Product not found', 404);
+
+    await db('pharmacy_medications').where('id', id).update({ is_hidden: true, updated_at: db.fn.now() });
+    res.json({ status: 'success', message: 'Product hidden from public view' });
+  },
+
+  restoreProduct: async (req, res) => {
+    const { id } = req.params;
+    const product = await db('pharmacy_medications').where('id', id).first();
+    if (!product) throw new AppError('Product not found', 404);
+
+    await db('pharmacy_medications').where('id', id).update({ is_hidden: false, updated_at: db.fn.now() });
+    res.json({ status: 'success', message: 'Product restored to public view' });
   },
 
   createProduct: async (req, res) => {
@@ -321,6 +475,20 @@ const pharmacyController = {
     res.json({ status: 'success', data: product });
   },
 
+  deleteAllProducts: async (req, res) => {
+    await db('pharmacy_stock_movements').del();
+    const products = await db('pharmacy_medications').select('id', 'drug_image', 'cover_image');
+    for (const p of products) {
+      if (p.drug_image) deleteFile(p.drug_image.replace('/uploads/', 'uploads/'));
+      if (p.cover_image) deleteFile(p.cover_image.replace('/uploads/', 'uploads/'));
+    }
+    await db('pharmacy_medications').del();
+    if (req.user) {
+      await audit('DELETE_ALL_PHARMACY_PRODUCTS', req.user.id, {});
+    }
+    res.json({ status: 'success', message: 'All products deleted' });
+  },
+
   deleteProduct: async (req, res) => {
     const { id } = req.params;
     
@@ -380,56 +548,108 @@ const pharmacyController = {
   // BRANCHES
   // ==============================
   getBranches: async (req, res) => {
-    const branches = await db('pharmacy_branches').orderBy('display_order', 'asc');
-    res.json({ status: 'success', data: branches });
+    try {
+      const managerRoles = req.user ? (req.user.roles || []) : [];
+      
+      // If Admin/CEO, return all branches
+      if (managerRoles.includes('Admin') || managerRoles.includes('CEO')) {
+        const branches = await db('branches').orderBy('name', 'asc');
+        return res.json({ status: 'success', data: branches });
+      }
+
+      // If Pharmacy Manager, restrict to their branches
+      if (managerRoles.includes('Pharmacy Manager')) {
+        const pmRole = await db('roles').where('name', 'Pharmacy Manager').first();
+        if (pmRole) {
+          const branchIds = await db('user_roles')
+            .where('user_id', req.user.id)
+            .where('role_id', pmRole.id)
+            .whereNotNull('branch_id')
+            .pluck('branch_id');
+            
+          if (branchIds.length > 0) {
+            const branches = await db('branches').whereIn('id', branchIds).orderBy('name', 'asc');
+            return res.json({ status: 'success', data: branches });
+          }
+        }
+      }
+      
+      // Fallback: if not assigned any specific branch yet, return all active
+      const branches = await db('branches').orderBy('name', 'asc');
+      res.json({ status: 'success', data: branches });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
   },
 
   createBranch: async (req, res) => {
-    const data = { ...req.body };
-    if (data.latitude) data.latitude = parseFloat(data.latitude);
-    if (data.longitude) data.longitude = parseFloat(data.longitude);
-    if (data.display_order) data.display_order = parseInt(data.display_order);
+    try {
+      const allowed = ['name', 'code', 'address', 'phone', 'working_hours', 'manager_name', 'is_active', 'status'];
+      const data = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) data[key] = req.body[key];
+      }
+      if (req.body.branch_name) data.name = req.body.branch_name;
+      if (!data.code && data.name) data.code = data.name.substring(0, 3).toUpperCase();
+      if (req.body.latitude) data.latitude = parseFloat(req.body.latitude);
+      if (req.body.longitude) data.longitude = parseFloat(req.body.longitude);
+      if (req.body.display_order) data.display_order = parseInt(req.body.display_order);
 
-    if (req.file) {
-      data.cover_image = getFileInfo(req.file).url;
+      if (req.file) {
+        data.cover_image = getFileInfo(req.file).url;
+      }
+
+      const [id] = await db('branches').insert(data);
+      const branch = await db('branches').where({ id }).first();
+      res.status(201).json({ status: 'success', data: branch });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
     }
-
-    const [id] = await db('pharmacy_branches').insert(data);
-    const branch = await db('pharmacy_branches').where({ id }).first();
-    res.status(201).json({ status: 'success', data: branch });
   },
 
   updateBranch: async (req, res) => {
-    const { id } = req.params;
-    const data = { ...req.body };
-    
-    if (data.latitude) data.latitude = parseFloat(data.latitude);
-    if (data.longitude) data.longitude = parseFloat(data.longitude);
-    if (data.display_order) data.display_order = parseInt(data.display_order);
+    try {
+      const { id } = req.params;
+      const allowed = ['name', 'code', 'address', 'phone', 'working_hours', 'manager_name', 'is_active', 'status'];
+      const data = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) data[key] = req.body[key];
+      }
+      if (req.body.branch_name) data.name = req.body.branch_name;
+      if (req.body.latitude) data.latitude = parseFloat(req.body.latitude);
+      if (req.body.longitude) data.longitude = parseFloat(req.body.longitude);
+      if (req.body.display_order) data.display_order = parseInt(req.body.display_order);
 
-    const existing = await db('pharmacy_branches').where({ id }).first();
-    if (!existing) throw new AppError('Branch not found', 404);
+      const existing = await db('branches').where({ id }).first();
+      if (!existing) return res.status(404).json({ status: 'error', message: 'Branch not found' });
 
-    if (req.file) {
-      data.cover_image = getFileInfo(req.file).url;
-      if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
+      if (req.file) {
+        data.cover_image = getFileInfo(req.file).url;
+        if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
+      }
+
+      await db('branches').where({ id }).update(data);
+      const branch = await db('branches').where({ id }).first();
+      res.json({ status: 'success', data: branch });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
     }
-
-    await db('pharmacy_branches').where({ id }).update(data);
-    const branch = await db('pharmacy_branches').where({ id }).first();
-    res.json({ status: 'success', data: branch });
   },
 
   deleteBranch: async (req, res) => {
-    const { id } = req.params;
-    
-    const existing = await db('pharmacy_branches').where({ id }).first();
-    if (!existing) throw new AppError('Branch not found', 404);
+    try {
+      const { id } = req.params;
 
-    if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
+      const existing = await db('branches').where({ id }).first();
+      if (!existing) return res.status(404).json({ status: 'error', message: 'Branch not found' });
 
-    await db('pharmacy_branches').where({ id }).del();
-    res.status(204).send();
+      if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
+
+      await db('branches').where({ id }).del();
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
   },
 
   // POS Walk-in Checkout for Pharmacists
@@ -512,6 +732,138 @@ const pharmacyController = {
       if (!isManager) throw new AppError('Only managers can change this setting', 403);
       await settingsRepository.setValue('pharmacy_worker_can_add_products', enabled, 'Pharmacy', 'Allow workers to manage products and categories', req.user.id);
       res.json({ status: 'success', data: { enabled } });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  getWorkerAdjustStockSetting: async (req, res) => {
+    try {
+      const val = await settingsRepository.getValue('pharmacy_worker_can_adjust_stock', true);
+      res.json({ status: 'success', data: { enabled: val } });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  updateWorkerAdjustStockSetting: async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') throw new AppError('enabled must be boolean', 400);
+      const isManager = req.user.roles.some(r => ['Pharmacy Manager', 'Admin', 'CEO'].includes(r));
+      if (!isManager) throw new AppError('Only managers can change this setting', 403);
+      await settingsRepository.setValue('pharmacy_worker_can_adjust_stock', enabled, 'Pharmacy', 'Allow workers to adjust and assign stock', req.user.id);
+      res.json({ status: 'success', data: { enabled } });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  getWorkerHealthPostSetting: async (req, res) => {
+    try {
+      const val = await settingsRepository.getValue('pharmacy_worker_can_manage_health_posts', false);
+      res.json({ status: 'success', data: { enabled: val } });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  updateWorkerHealthPostSetting: async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') throw new AppError('enabled must be boolean', 400);
+      const isManager = req.user.roles.some(r => ['Pharmacy Manager', 'Admin', 'CEO'].includes(r));
+      if (!isManager) throw new AppError('Only managers can change this setting', 403);
+      await settingsRepository.setValue('pharmacy_worker_can_manage_health_posts', enabled, 'Pharmacy', 'Allow workers to post, edit and delete health posts', req.user.id);
+      res.json({ status: 'success', data: { enabled } });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  getWorkerHideDrugSetting: async (req, res) => {
+    try {
+      const val = await settingsRepository.getValue('pharmacy_worker_can_hide_drugs', false);
+      res.json({ status: 'success', data: { enabled: val } });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  updateWorkerHideDrugSetting: async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') throw new AppError('enabled must be boolean', 400);
+      const isManager = req.user.roles.some(r => ['Pharmacy Manager', 'Admin', 'CEO'].includes(r));
+      if (!isManager) throw new AppError('Only managers can change this setting', 403);
+      await settingsRepository.setValue('pharmacy_worker_can_hide_drugs', enabled, 'Pharmacy', 'Allow workers to hide and restore drugs', req.user.id);
+      res.json({ status: 'success', data: { enabled } });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  // ==============================
+  // PHARMACY TASKS
+  // ==============================
+  getPharmacyTasks: async (req, res) => {
+    try {
+      // For manager, fetch all tasks. 
+      // If we want to restrict to specific branches, we can.
+      const tasks = await db('pharmacy_tasks as pt')
+        .leftJoin('users as u', 'pt.assigned_to', 'u.id')
+        .leftJoin('branches as b', 'pt.branch_id', 'b.id')
+        .select(
+          'pt.*',
+          'u.full_name as staff_name',
+          'b.name as branch_name'
+        )
+        .orderBy('pt.created_at', 'desc');
+      res.json({ status: 'success', data: tasks });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  createPharmacyTask: async (req, res) => {
+    try {
+      const { assigned_to, branch_id, task_type, priority, deadline, instructions } = req.body;
+      if (!assigned_to || !task_type || !deadline) {
+        throw new AppError('Missing required fields', 400);
+      }
+      
+      const [id] = await db('pharmacy_tasks').insert({
+        assigned_to,
+        branch_id,
+        task_type,
+        priority: priority || 'Medium',
+        deadline,
+        instructions,
+        status: 'Pending',
+        created_by: req.user ? req.user.id : null
+      });
+
+      const task = await db('pharmacy_tasks').where({ id }).first();
+      res.status(201).json({ status: 'success', data: task });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  updatePharmacyTaskStatus: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status) throw new AppError('Status is required', 400);
+
+      const existing = await db('pharmacy_tasks').where({ id }).first();
+      if (!existing) throw new AppError('Task not found', 404);
+
+      await db('pharmacy_tasks').where({ id }).update({ status, updated_at: db.fn.now() });
+      const task = await db('pharmacy_tasks').where({ id }).first();
+      
+      res.json({ status: 'success', data: task });
     } catch (err) {
       res.status(err.statusCode || 500).json({ status: 'error', message: err.message });
     }

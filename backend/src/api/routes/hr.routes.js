@@ -29,12 +29,28 @@ router.post('/leaves', authenticate, body('leaveTypeId').isInt(), body('startDat
 router.get('/leaves', authenticate, HRController.getLeaveRequests);
 router.post('/leaves/:id/review', authenticate, authorize(['hr:write']), body('approved').isBoolean(), validate, HRController.approveLeave);
 
+// EXTENDED HR DASHBOARD ROUTES (Payroll)
+router.get('/payroll/salaries', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getSalaries);
+router.put('/payroll/salaries/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateSalary);
+router.get('/payroll/periods', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getPayrollPeriods);
+router.post('/payroll/process', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.processPayroll);
+router.put('/payroll/:id/approve', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.approvePayroll);
+router.put('/payroll/:id/finalize', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.finalizePayroll);
+router.get('/payroll/deductions', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getDeductions);
+router.post('/payroll/deductions', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.createDeduction);
+router.put('/payroll/deductions/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateDeduction);
+router.delete('/payroll/deductions/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.deleteDeduction);
+router.get('/payroll/payslips', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO', 'Employee']), HRController.getPayslips);
+router.post('/payroll/payslips/generate', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.generatePayslips);
+router.get('/payroll/payslips/:id/pdf', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Employee']), HRController.getPayslipPdf);
+router.post('/payroll/payslips/:id/email', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.emailPayslip);
+
+// Finance Integration & Legacy Payroll Routes
 router.post('/payroll/calculate', authenticate, authorizeRoles(['HR Manager', 'Admin']), body('month').notEmpty(), validate, HRController.calculatePayroll);
 router.get('/payroll/:month', authenticate, authorizeRoles(['HR Manager', 'Finance Manager', 'CEO', 'Admin']), HRController.getPayroll);
 router.post('/payroll/:month/send', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.sendPayrollToFinance);
 router.post('/payroll/:month/approve', authenticate, authorize(['finance:approve']), HRController.approvePayrollFinance);
 router.post('/payroll/:month/pay', authenticate, authorize(['finance:write']), body('paymentMethod').notEmpty(), validate, HRController.markPayrollPaid);
-
 router.get('/manager-accuracy', authenticate, authorizeRoles(['CEO', 'HR Manager', 'Admin']), HRController.getManagerAccuracyReport);
 
 
@@ -52,21 +68,7 @@ router.get('/reports', authenticate, HRController.getReports);
 router.get('/export/:module', authenticate, HRController.exportModule);
 
 // ---- EXTENDED HR DASHBOARD ROUTES (Menus 12-22) ----
-// Payroll
-router.get('/payroll/salaries', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getSalaries);
-router.put('/payroll/salaries/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateSalary);
-router.get('/payroll/periods', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getPayrollPeriods);
-router.post('/payroll/process', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.processPayroll);
-router.put('/payroll/:id/approve', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.approvePayroll);
-router.put('/payroll/:id/finalize', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.finalizePayroll);
-router.get('/payroll/deductions', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getDeductions);
-router.post('/payroll/deductions', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.createDeduction);
-router.put('/payroll/deductions/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateDeduction);
-router.delete('/payroll/deductions/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.deleteDeduction);
-router.get('/payroll/payslips', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO', 'Employee']), HRController.getPayslips);
-router.post('/payroll/payslips/generate', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.generatePayslips);
-router.get('/payroll/payslips/:id/pdf', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Employee']), HRController.getPayslipPdf);
-router.post('/payroll/payslips/:id/email', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.emailPayslip);
+
 
 // Recruitment
 router.get('/recruitment/jobs', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO', 'Employee']), HRController.getJobPosts);
@@ -112,12 +114,14 @@ router.put('/policies/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']
 router.put('/policies/:id/publish', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.publishPolicy);
 router.put('/policies/:id/archive', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.archivePolicy);
 router.post('/policies/:id/send-to-all', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.sendPolicyToAll);
+router.post('/policies/:id/acknowledge', authenticate, HRController.acknowledgePolicy);
 
 // Announcements
 router.get('/announcements', authenticate, HRController.getAnnouncements);
-router.post('/announcements', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.createAnnouncement);
-router.put('/announcements/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateAnnouncement);
-router.delete('/announcements/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.deleteAnnouncement);
+router.post('/announcements', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Manager']), HRController.createAnnouncement);
+router.put('/announcements/:id', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Manager']), HRController.updateAnnouncement);
+router.delete('/announcements/:id', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Manager']), HRController.deleteAnnouncement);
+router.put('/announcements/:id/retract', authenticate, authorizeRoles(['HR Manager', 'Admin', 'Manager']), HRController.retractAnnouncement);
 router.post('/announcements/:id/read', authenticate, HRController.readAnnouncement);
 
 // Internal Notices

@@ -106,10 +106,9 @@ const createUser = async (userData, createdBy, ip) => {
   const { fullName, email, phone, departmentId, roleIds, statusId } = userData;
   const existingUser = await db('users')
     .where('email', email.toLowerCase())
-    .orWhere('phone', phone)
     .first();
   if (existingUser) {
-    throw new AppError('User with this email or phone already exists', 400);
+    throw new AppError('User with this email already exists', 400);
   }
   const tempPassword = generateTemporaryPassword();
   const hashedPassword = await hashPassword(tempPassword);
@@ -175,21 +174,14 @@ const updateUser = async (userId, updateData, updatedBy, ip) => {
       throw new AppError('Cannot remove your own Admin role. This would lock you out.', 400);
     }
   }
-  if (email || phone) {
-    const duplicateQuery = db('users')
+  if (email) {
+    const duplicate = await db('users')
       .where('id', '!=', userId)
-      .whereNull('deleted_at');
-    if (email) {
-      duplicateQuery.andWhere(function() {
-        this.where('email', email.toLowerCase());
-      });
-    }
-    if (phone) {
-      duplicateQuery.orWhere('phone', phone);
-    }
-    const duplicate = await duplicateQuery.first();
+      .whereNull('deleted_at')
+      .where('email', email.toLowerCase())
+      .first();
     if (duplicate) {
-      throw new AppError('Another user with this email or phone already exists', 400);
+      throw new AppError('Another user with this email already exists', 400);
     }
   }
   const updateFields = {};

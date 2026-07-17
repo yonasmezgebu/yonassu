@@ -478,14 +478,134 @@ const erpController = {
 
   // ── CEO Pending Items ──
   getCEOPending: async (req, res) => {
-    const pendingRequisitions = await db('requisitions').where('status', 'PENDING').count('* as cnt').first();
-    const pendingManager = await db('pharmacy_manager_requests').where('status', 'PENDING').count('* as cnt').first();
+    // Pharmacy Requisitions (M20-M22) are disabled for CEO per user request.
+    const pendingManager = await db('pharmacy_manager_requests').where('status', 'PENDING');
+    const pendingTransfers = await db('transfer_requests').where('status', 'PENDING_APPROVAL');
+    const pendingProcurements = await db('procurement_requests').where('status', 'PENDING_CEO_REVIEW');
+    // Only show tenders and bids the CEO hasn't read yet
+    const pendingTenders = await db('public_tenders').where('status', 'awaiting_ceo_approval').where('ceo_read', false);
+    const recentBids = await db('public_bids').where('bid_status', 'pending').where('ceo_read', false);
+    const pendingPCVs = await db('finance_pcvs').where('status', 'pending_ceo').where('ceo_read', false);
+    
     const items = [];
-    const reqCount = pendingRequisitions?.cnt || 0;
-    const mgrCount = pendingManager?.cnt || 0;
-    if (reqCount > 0) items.push({ type: 'requisition', count: reqCount, label: `${reqCount} Pharmacy Requisition(s) Pending`, link: '/ceo/pharmacy-approvals' });
-    if (mgrCount > 0) items.push({ type: 'manager_request', count: mgrCount, label: `${mgrCount} Manager Request(s) Pending`, link: '/ceo/manager-requests' });
+    
+    if (pendingTenders.length > 0) {
+      items.push({ 
+        type: 'tender_approval', 
+        count: pendingTenders.length, 
+        label: `${pendingTenders.length} Tender(s) Awaiting Bid Award`, 
+        link: '/ceo/tenders',
+        details: pendingTenders.map(t => ({ id: t.id, title: `Tender ${t.tender_number}`, subtitle: 'Pending CEO Award', link: `/ceo/tenders?viewTender=${t.id}` }))
+      });
+    }
+
+    if (recentBids.length > 0) {
+      items.push({
+        type: 'new_bid',
+        count: recentBids.length,
+        label: `${recentBids.length} New Bid(s) Submitted`,
+        link: '/ceo/tenders?tab=Open',
+        details: recentBids.slice(0, 5).map(b => ({ id: b.id, title: `Bid from ${b.competitor_name}`, subtitle: 'Pending Evaluation', link: `/ceo/tenders?viewTender=${b.public_tender_id}` }))
+      });
+    }
+    
+    if (pendingTransfers.length > 0) {
+      items.push({ 
+        type: 'transfer_request', 
+        count: pendingTransfers.length, 
+        label: `${pendingTransfers.length} Pharmacy Transfer Request(s) Pending`, 
+        link: '/ceo/flow1-transfers',
+        details: pendingTransfers.map(t => ({ id: t.id, title: `Transfer ${t.tr_no}`, subtitle: 'Pending CEO Approval' }))
+      });
+    }
+    if (pendingManager.length > 0) {
+      items.push({ 
+        type: 'manager_request', 
+        count: pendingManager.length, 
+        label: `${pendingManager.length} Manager Request(s) Pending`, 
+        link: '/ceo/manager-requests',
+        details: pendingManager.map(m => ({ id: m.id, title: m.drug_name || 'Manager Request', subtitle: 'Pending Approval' }))
+      });
+    }
+    if (pendingProcurements.length > 0) {
+      items.push({ 
+        type: 'procurement_request', 
+        count: pendingProcurements.length, 
+        label: `${pendingProcurements.length} Procurement Request(s) Pending`, 
+        link: '/ceo/procurement-decisions',
+        details: pendingProcurements.map(p => ({ 
+          id: p.id, 
+          title: `PR ${p.pr_no}: ${p.drug_name}`, 
+          subtitle: `${p.quantity_requested} ${p.unit_of_measure} - ${p.urgency}`,
+          type: 'procurement'
+        }))
+      });
+    }
+    if (pendingPCVs.length > 0) {
+      items.push({ 
+        type: 'pcv_approval', 
+        count: pendingPCVs.length, 
+        label: `${pendingPCVs.length} Petty Cash Voucher(s) Pending`, 
+        link: '/ceo/finance',
+        details: pendingPCVs.map(p => ({ 
+          id: p.id, 
+          title: `PCV ${p.pcv_number}`, 
+          subtitle: `ETB ${parseFloat(p.amount).toLocaleString()} to ${p.paid_to}`,
+          type: 'pcv',
+          link: '/ceo/finance'
+        }))
+      });
+    }
     res.json({ status: 'success', data: items });
+  },
+
+  markCEORead: async (req, res) => {
+    const { type, id } = req.body;
+    try {
+      if (type === 'tender') {
+        await db('public_tenders').where('id', id).update({ ceo_read: true });
+      } else if (type === 'bid') {
+        await db('public_bids').where('id', id).update({ ceo_read: true });
+      } else if (type === 'pcv') {
+        await db('finance_pcvs').where('id', id).update({ ceo_read: true });
+      } else if (type === 'tender_all') {
+        // Mark all pending tenders as read
+        await db('public_tenders').where('status', 'awaiting_ceo_approval').update({ ceo_read: true });
+      } else if (type === 'bid_all') {
+        // Mark all pending bids as read
+        await db('public_bids').where('bid_status', 'pending').update({ ceo_read: true });
+      }
+      res.json({ status: 'success' });
+    } catch (err) {
+      console.error('markCEORead error', err);
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  getPurchasePendingTenders: async (req, res) => {
+    try {
+      const awardedTenders = await db('public_tenders')
+        .where('status', 'awarded')
+        .andWhere('purchase_read', false)
+        .orderBy('updated_at', 'desc');
+      res.json({ status: 'success', data: awardedTenders });
+    } catch (err) {
+      console.error('getPurchasePendingTenders error', err);
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  markPurchaseRead: async (req, res) => {
+    const { id } = req.body;
+    try {
+      if (id) {
+        await db('public_tenders').where('id', id).update({ purchase_read: true });
+      }
+      res.json({ status: 'success' });
+    } catch (err) {
+      console.error('markPurchaseRead error', err);
+      res.status(500).json({ status: 'error', message: err.message });
+    }
   },
 
   // ── Pending Shipments (approved approvals needing issue vouchers) ──

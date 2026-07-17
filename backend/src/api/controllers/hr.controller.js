@@ -319,7 +319,45 @@ exports.deleteDeduction = catchAsync(async (req, res) => {
 });
 
 exports.getPayslips = catchAsync(async (req, res) => {
-  const payslips = await hrService.getPayslips(req.query);
+  const { db } = require('../../config/database');
+  const { month } = req.query;
+
+  let query = db('payroll_salary_components as psc')
+    .leftJoin('hr_employees as e', 'psc.employee_id', 'e.employee_id')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .select(
+      'psc.*',
+      'e.full_name',
+      'd.name as department'
+    ).orderBy('psc.calculated_date', 'desc');
+
+  if (month) {
+    const [y, m] = month.split('-');
+    if (y && m) {
+      query = query.where({ 'psc.month_number': parseInt(m, 10), 'psc.year_number': parseInt(y, 10) });
+    }
+  }
+
+  const data = await query;
+
+  const payslips = data.map(ps => ({
+    id: ps.component_id,
+    employee_id: ps.employee_id,
+    full_name: ps.full_name,
+    department: ps.department,
+    payroll_month: `${ps.month_number}/${ps.year_number}`,
+    base_salary: ps.base_salary,
+    performance_bonus: ps.bonus_pay,
+    overtime_pay: ps.overtime_pay,
+    absence_deduction: ps.deduction_absent,
+    tax_deduction: ps.deduction_tax,
+    pension_deduction: ps.deduction_pension,
+    loan_deduction: ps.deduction_loan,
+    net_salary: ps.net_pay,
+    payroll_status: ps.status,
+    days_present: 26,
+  }));
+
   res.json({ status: 'success', data: { payslips } });
 });
 
@@ -497,28 +535,33 @@ exports.getPolicies = catchAsync(async (req, res) => {
 });
 
 exports.createPolicy = catchAsync(async (req, res) => {
-  const id = await hrService.createPolicy(req.body);
+  const id = await hrService.createPolicy(req.body, req.user.id);
   res.status(201).json({ status: 'success', data: { id } });
 });
 
 exports.updatePolicy = catchAsync(async (req, res) => {
-  await hrService.updatePolicy(req.params.id, req.body);
+  await hrService.updatePolicy(req.params.id, req.body, req.user.id);
   res.json({ status: 'success', message: 'Policy updated' });
 });
 
 exports.publishPolicy = catchAsync(async (req, res) => {
-  await hrService.publishPolicy(req.params.id);
+  await hrService.publishPolicy(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Policy published' });
 });
 
 exports.archivePolicy = catchAsync(async (req, res) => {
-  await hrService.archivePolicy(req.params.id);
+  await hrService.archivePolicy(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Policy archived' });
 });
 
 exports.sendPolicyToAll = catchAsync(async (req, res) => {
   await hrService.sendPolicyToAll(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Policy broadcasted to all employees' });
+});
+
+exports.acknowledgePolicy = catchAsync(async (req, res) => {
+  await hrService.acknowledgePolicy(req.params.id, req.user.id, req.ip);
+  res.json({ status: 'success', message: 'Policy acknowledged' });
 });
 
 // Announcements
@@ -533,13 +576,18 @@ exports.createAnnouncement = catchAsync(async (req, res) => {
 });
 
 exports.updateAnnouncement = catchAsync(async (req, res) => {
-  await hrService.updateAnnouncement(req.params.id, req.body);
+  await hrService.updateAnnouncement(req.params.id, req.body, req.user.id);
   res.json({ status: 'success', message: 'Announcement updated' });
 });
 
 exports.deleteAnnouncement = catchAsync(async (req, res) => {
-  await hrService.deleteAnnouncement(req.params.id);
+  await hrService.deleteAnnouncement(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Announcement deleted' });
+});
+
+exports.retractAnnouncement = catchAsync(async (req, res) => {
+  await hrService.retractAnnouncement(req.params.id, req.user.id);
+  res.json({ status: 'success', message: 'Announcement retracted' });
 });
 
 exports.readAnnouncement = catchAsync(async (req, res) => {

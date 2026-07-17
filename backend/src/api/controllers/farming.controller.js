@@ -136,9 +136,8 @@ exports.getCustomerOrders = catchAsync(async (req, res) => {
   const orders = await db('farming_orders').where({ customer_id }).orderBy('created_at', 'desc');
   for (let order of orders) {
     order.items = await db('farming_order_items')
-      .select('farming_order_items.*', db.raw('COALESCE(fp.name, p.name) as product_name'), db.raw('COALESCE(fp.product_image, p.product_image) as product_image'))
+      .select('farming_order_items.*', 'fp.name as product_name', 'fp.product_image as product_image')
       .leftJoin('farming_products as fp', 'farming_order_items.product_id', 'fp.id')
-      .leftJoin('products as p', 'farming_order_items.product_id', 'p.id')
       .where('order_id', order.id);
   }
   res.json({ status: 'success', data: orders });
@@ -378,9 +377,8 @@ exports.getAllOrders = catchAsync(async (req, res) => {
 
   for (let order of orders) {
     order.items = await db('farming_order_items')
-      .select('farming_order_items.*', db.raw('COALESCE(fp.name, p.name) as product_name'))
+      .select('farming_order_items.*', 'fp.name as product_name')
       .leftJoin('farming_products as fp', 'farming_order_items.product_id', 'fp.id')
-      .leftJoin('products as p', 'farming_order_items.product_id', 'p.id')
       .where('order_id', order.id);
   }
 

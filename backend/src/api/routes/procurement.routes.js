@@ -18,7 +18,10 @@ router.get('/requests/:id', procController.getProcurementRequest);
 // M3: CEO Decision
 router.patch('/requests/:id/ceo-decision', procController.ceoDecide);
 
-// M4: Market Tasks
+// Purchase Manager: list all CEO-approved requests ready for tender
+router.get('/approved-for-purchase', procController.getApprovedPRsForMarket);
+
+// M4: Market Tasks (manual off-system, kept for reference only)
 router.get('/market/approved-prs', procController.getApprovedPRsForMarket);
 router.get('/market/tasks', procController.listMarketTasks);
 router.post('/market/tasks', procController.createMarketTask);

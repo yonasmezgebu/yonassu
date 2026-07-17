@@ -617,144 +617,184 @@ const createDepartment = async (data) => {
 const updateDepartment = async (id, data) => {
   await db('hr_departments').where('dept_id', id).update(data);
 };
-
-const updateEmployeeStatus = async (id, data) => {
-  await db('hr_employees').where('employee_id', id).update({ employment_status: data.status });
+const getSalaries = async (params) => {
+  let q = db('hr_employees as e')
+    .leftJoin('departments as d', db.raw('CAST(e.dept_id AS UNSIGNED)'), 'd.id')
+    .leftJoin('roles as r', db.raw('CAST(e.position_id AS UNSIGNED)'), 'r.id')
+    .select(
+      'e.employee_id as id',
+      'e.full_name as name',
+      'd.name as department',
+      'r.name as role',
+      'e.base_salary as baseSalary',
+      'e.housing_allowance as allowances',
+      'e.bank_account_number as bankAccount',
+      'e.bank_name'
+    )
+    .where('e.employment_status', 'Active');
+  if (params && params.department) q = q.where('e.dept_id', params.department);
+  const emps = await q.orderBy('e.full_name');
+  return emps.map(e => {
+    const allowances = parseFloat(e.allowances || 0);
+    const baseSalary = parseFloat(e.baseSalary || 0);
+    return {
+      id: e.id,
+      name: e.name,
+      department: e.department || '—',
+      role: e.role || '—',
+      baseSalary,
+      allowances,
+      deductions: 0,
+      netSalary: baseSalary + allowances,
+      paymentMethod: 'Bank Transfer',
+      bankAccount: e.bankAccount || 'N/A',
+      bank_name: e.bank_name || ''
+    };
+  });
 };
 
-const getAttendanceHistory = async (params) => {
-  let query = db('attendance_records as ar')
-    .leftJoin('hr_employees as e', 'ar.employee_id', 'e.employee_id')
-    .select('ar.*', 'e.full_name as employeeName', 'e.dept_id');
-  return query.orderBy('ar.timestamp', 'desc').limit(100);
+const updateSalary = async (id, data) => {
+  const updates = {};
+  if (data.baseSalary  !== undefined) updates.base_salary          = data.baseSalary;
+  if (data.allowances  !== undefined) updates.housing_allowance     = data.allowances;
+  if (data.bank_name   !== undefined) updates.bank_name             = data.bank_name || null;
+  if (data.bank_account_number !== undefined) {
+    // Check uniqueness (skip own record)
+    if (data.bank_account_number) {
+      const existing = await db('hr_employees')
+        .where('bank_account_number', data.bank_account_number)
+        .andWhereNot('employee_id', id)
+        .first();
+      if (existing) throw new Error('Bank account number is already registered to another employee');
+    }
+    updates.bank_account_number = data.bank_account_number || null;
+  }
+  if (Object.keys(updates).length > 0) {
+    await db('hr_employees').where('employee_id', id).update(updates);
+  }
 };
 
-const getAbsences = async (params) => {
-  let query = db('leave_requests as lr')
-    .leftJoin('hr_employees as e', 'lr.employee_id', 'e.employee_id')
-    .select('lr.*', 'e.full_name as employeeName', 'e.dept_id')
-    .where('lr.leave_type', 'Unpaid');
-  return query.orderBy('lr.created_at', 'desc');
+const getPayrollPeriods = async () => {
+  // Return existing payroll records as periods
+  const records = await db('payroll').select('id', 'month', 'status').orderBy('month', 'desc').limit(12);
+  if (records.length === 0) {
+    // Generate last 3 months as available periods
+    const now = new Date();
+    const periods = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      periods.push({ id: `${y}-${m}`, month: m, year: String(y), status: i === 0 ? 'Draft' : 'Finalized' });
+    }
+    return periods;
+  }
+  return records.map(r => {
+    const parts = r.month.split('-');
+    return { id: r.id, month: parts[1], year: parts[0], status: r.status };
+  });
 };
 
-const createAbsence = async (data) => {
-  const [id] = await db('leave_requests').insert({
+const processPayroll = async (data) => {
+  const month = `${data.year}-${data.month}`;
+  // Use existing calculatePayroll which writes to payroll + payroll_items tables
+  const result = await calculatePayroll(month);
+  // Return a summary shape that the frontend expects
+  const payrollRow = await db('payroll').where('month', month).first();
+  return {
+    id: payrollRow ? payrollRow.id : result.payrollId,
+    month: data.month,
+    year: data.year,
+    summary: {
+      totalEmployees: result.employeeCount || 0,
+      gross: parseFloat(payrollRow?.total_base_salary || 0),
+      deductions: parseFloat(payrollRow?.total_deduction || 0),
+      net: parseFloat(payrollRow?.total_net || result.totalNet || 0),
+      tax: 0
+    },
+    status: 'Calculated'
+  };
+};
+
+const approvePayrollProcess = async (id) => {
+  // id could be a payroll table numeric id
+  await db('payroll').where('id', id).update({ status: 'Approved', approved_at: db.fn.now() });
+};
+
+const finalizePayrollProcess = async (id) => {
+  await db('payroll').where('id', id).update({ status: 'Finalized', updated_at: db.fn.now() });
+};
+
+// --- Deductions: Real DB ---
+const getDeductions = async (params) => {
+  let q = db('hr_deductions as hd')
+    .leftJoin('hr_employees as e', 'hd.employee_id', 'e.employee_id')
+    .select('hd.*', 'e.full_name as employeeName');
+  if (params && params.employeeId) q = q.where('hd.employee_id', params.employeeId);
+  if (params && params.status) q = q.where('hd.status', params.status);
+  return q.orderBy('hd.created_at', 'desc');
+};
+
+const createDeduction = async (data) => {
+  const [id] = await db('hr_deductions').insert({
     employee_id: data.employeeId,
-    start_date: data.date,
-    end_date: data.date,
-    reason: data.reason,
-    status: 'Approved',
-    leave_type: 'Unpaid',
-    total_days: 1
+    type: data.type || 'Tax/PAYE',
+    amount: parseFloat(data.amount),
+    frequency: data.frequency || 'Monthly',
+    start_date: data.startDate,
+    end_date: data.endDate || null,
+    description: data.description || null,
+    status: 'Active',
   });
   return id;
 };
 
-const getReports = async (params) => {
-  return {
-    metrics: {
-      totalWorkDays: 22,
-      totalPresent: 180,
-      totalAbsent: 10,
-      totalLate: 5,
-      attendanceRate: 95,
-      leaveUsage: 15
-    },
-    monthlyTrends: [
-      { month: 'Jan', present: 200, absent: 10 },
-      { month: 'Feb', present: 195, absent: 15 },
-      { month: 'Mar', present: 210, absent: 5 }
-    ]
-  };
-};
-
-module.exports.getTodayActivities = getTodayActivities;
-module.exports.getDepartments = getDepartments;
-module.exports.createDepartment = createDepartment;
-module.exports.updateDepartment = updateDepartment;
-module.exports.updateEmployeeStatus = updateEmployeeStatus;
-module.exports.getAttendanceHistory = getAttendanceHistory;
-module.exports.getAbsences = getAbsences;
-module.exports.createAbsence = createAbsence;
-module.exports.getReports = getReports;
-
-// ---- EXTENDED HR DASHBOARD SERVICES (Menus 12-22) ----
-
-// Payroll Mocks
-let mockDeductions = [];
-let mockPayslips = [];
-let mockJobs = [];
-let mockApplications = [];
-let mockInterviews = [];
-let mockEvaluations = [];
-let mockReviews = [];
-let mockFeedback = [];
-
-const getSalaries = async (params) => {
-  let query = db('hr_employees').select('employee_id', 'full_name', 'dept_id', 'position_id', 'base_salary', 'allowance', 'standing_deduction', 'payment_method', 'bank_account_number');
-  if (params.department) query = query.where('dept_id', params.department);
-  const emps = await query;
-  return emps.map(e => ({
-    id: e.employee_id,
-    name: e.full_name,
-    department: e.dept_id,
-    role: e.position_id,
-    baseSalary: parseFloat(e.base_salary || 0),
-    allowances: parseFloat(e.allowance || 0),
-    deductions: parseFloat(e.standing_deduction || 0),
-    netSalary: parseFloat(e.base_salary || 0) + parseFloat(e.allowance || 0) - parseFloat(e.standing_deduction || 0),
-    paymentMethod: e.payment_method || 'Bank Transfer',
-    bankAccount: e.bank_account_number || 'N/A'
-  }));
-};
-
-const updateSalary = async (id, data) => {
-  await db('hr_employees').where('employee_id', id).update({
-    base_salary: data.baseSalary,
-    allowance: data.allowances,
-    standing_deduction: data.deductions
-  });
-};
-
-const getPayrollPeriods = async () => {
-  return [
-    { id: 1, month: '06', year: '2026', status: 'Finalized' },
-    { id: 2, month: '07', year: '2026', status: 'Draft' }
-  ];
-};
-
-const processPayroll = async (data) => {
-  return {
-    id: Date.now().toString(),
-    month: data.month,
-    year: data.year,
-    summary: { totalEmployees: 145, gross: 450000, deductions: 50000, net: 400000, tax: 25000 },
-    status: 'Processed'
-  };
-};
-
-const approvePayrollProcess = async (id) => { return true; };
-const finalizePayrollProcess = async (id) => { return true; };
-
-const getDeductions = async (params) => { return mockDeductions; };
-const createDeduction = async (data) => {
-  const newDed = { id: Date.now().toString(), ...data, status: 'Active' };
-  mockDeductions.push(newDed);
-  return newDed.id;
-};
 const updateDeduction = async (id, data) => {
-  mockDeductions = mockDeductions.map(d => d.id === id ? { ...d, ...data } : d);
-};
-const deleteDeduction = async (id) => {
-  mockDeductions = mockDeductions.filter(d => d.id !== id);
+  await db('hr_deductions').where('id', id).update(data);
 };
 
-const getPayslips = async (params) => { return mockPayslips; };
+const deleteDeduction = async (id) => {
+  await db('hr_deductions').where('id', id).update({ status: 'Cancelled' });
+};
+
+// --- Payslips: Real DB ---
+const getPayslips = async (params) => {
+  let q = db('payroll_items as pi')
+    .join('payroll as p', 'pi.payroll_id', 'p.id')
+    .leftJoin('hr_employees as e', 'pi.employee_id', 'e.employee_id')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .select(
+      'pi.*',
+      'p.month as payroll_month', 'p.status as payroll_status',
+      'e.full_name', 'e.bank_account_number', 'e.bank_name',
+      'd.name as department'
+    );
+  if (params && params.month) q = q.where('p.month', params.month);
+  if (params && params.payrollId) q = q.where('pi.payroll_id', params.payrollId);
+  return q.orderBy('e.full_name');
+};
+
 const generatePayslips = async (data) => {
-  mockPayslips.push({ id: Date.now().toString(), period: data.periodId, count: data.employeeIds?.length || 145, status: 'Draft' });
+  // data.month should be 'YYYY-MM'
+  if (!data.month) {
+    // If periodId is numeric (payroll.id), look it up
+    if (data.periodId) {
+      const rec = await db('payroll').where('id', data.periodId).first();
+      if (rec) data.month = rec.month;
+    }
+  }
+  if (!data.month) throw new Error('Month required to generate payslips');
+  const result = await calculatePayroll(data.month);
+  // Mark payroll as 'Payslips Generated'
+  await db('payroll').where('month', data.month).update({ status: 'Payslips Generated', updated_at: db.fn.now() });
+  return result;
+};
+
+const emailPayslip = async (id) => {
+  // Mark as emailed - no email infrastructure, so just update status
+  await db('payroll_items').where('id', id).update({ updated_at: db.fn.now() });
   return true;
 };
-const emailPayslip = async (id) => { return true; };
 
 const getJobPosts = async (params) => { return mockJobs; };
 const createJobPost = async (data) => {
@@ -914,67 +954,195 @@ const archiveEmployeeFile = async (id) => {
 
 // Policies
 const getPolicies = async (params) => {
-  return mockPolicies;
+  let query = db('hr_policies as p')
+    .leftJoin('users as pu', 'p.published_by', 'pu.id')
+    .leftJoin('users as au', 'p.approved_by', 'au.id')
+    .select('p.*', 'pu.full_name as publisher_name', 'au.full_name as approver_name');
+  if (params.status) query = query.where('p.status', params.status);
+  return query.orderBy('p.created_at', 'desc');
 };
 
-const createPolicy = async (data) => {
-  const pId = Date.now().toString();
-  mockPolicies.push({ id: pId, ...data, version: 1, status: 'Draft', created_at: new Date().toISOString() });
-  return pId;
+const createPolicy = async (data, userId) => {
+  const [id] = await db('hr_policies').insert({
+    title: data.title,
+    category: data.category,
+    file_ref: data.file_ref,
+    status: 'Draft',
+    version_number: 1,
+    acknowledgment_required: data.acknowledgment_required ? 1 : 0,
+    send_to_all: data.send_to_all ? 1 : 0,
+    description: data.description
+  });
+  
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'CREATE_POLICY',
+    target_module: 'policies',
+    target_id: String(id),
+    after_state: JSON.stringify(data)
+  });
+  
+  return id;
 };
 
-const updatePolicy = async (id, data) => {
-  mockPolicies = mockPolicies.map(p => p.id === id ? { ...p, ...data, version: p.version + 1, lastUpdated: new Date().toISOString() } : p);
+const updatePolicy = async (id, data, userId) => {
+  const oldPolicy = await db('hr_policies').where('id', id).first();
+  await db('hr_policies').where('id', id).update({
+    ...data,
+    updated_at: db.fn.now()
+  });
+
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'UPDATE_POLICY',
+    target_module: 'policies',
+    target_id: String(id),
+    before_state: JSON.stringify(oldPolicy),
+    after_state: JSON.stringify(data)
+  });
 };
 
-const publishPolicy = async (id) => {
-  mockPolicies = mockPolicies.map(p => p.id === id ? { ...p, status: 'Active', effectiveDate: new Date().toISOString() } : p);
+const publishPolicy = async (id, userId) => {
+  await db('hr_policies').where('id', id).update({ 
+    status: 'Published', 
+    published_by: userId,
+    effective_date: db.fn.now(),
+    updated_at: db.fn.now() 
+  });
+  
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'PUBLISH_POLICY',
+    target_module: 'policies',
+    target_id: String(id)
+  });
 };
 
-const archivePolicy = async (id) => {
-  mockPolicies = mockPolicies.map(p => p.id === id ? { ...p, status: 'Archived' } : p);
+const archivePolicy = async (id, userId) => {
+  await db('hr_policies').where('id', id).update({ 
+    status: 'Archived',
+    updated_at: db.fn.now()
+  });
+
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'ARCHIVE_POLICY',
+    target_module: 'policies',
+    target_id: String(id)
+  });
 };
 
 const sendPolicyToAll = async (id, userId) => {
-  const p = mockPolicies.find(x => x.id === id);
+  const p = await db('hr_policies').where('id', id).first();
   if (p) {
-    // Cross-module integration: create an announcement
-    mockAnnouncements.push({
-      id: Date.now().toString(),
-      title: `New Policy Published: ${p.policyName}`,
-      content: `A new company policy has been published in the ${p.category} category. Please review it in the HR Policies section.`,
-      importance: 'Important',
-      targetAudience: 'All Employees',
-      postedBy: userId,
-      postedDate: new Date().toISOString(),
-      status: 'Active',
-      readCount: 0
+    await createAnnouncement({
+      title: `New Policy Published: ${p.title}`,
+      body: `A new company policy has been published in the ${p.category} category. Please review it in the HR Policies section.`,
+      priority: 'Important',
+      audience_scope: JSON.stringify({ type: 'all' }),
+      linked_policy_id: id,
+      status: 'Published'
+    }, userId);
+  }
+};
+
+const acknowledgePolicy = async (id, userId, ipAddress) => {
+  const existing = await db('hr_policy_acknowledgments')
+    .where({ policy_id: id, user_id: userId }).first();
+  if (!existing) {
+    await db('hr_policy_acknowledgments').insert({
+      policy_id: id,
+      user_id: userId,
+      ip_address: ipAddress
     });
   }
 };
 
 // Announcements
 const getAnnouncements = async (params) => {
-  return mockAnnouncements;
+  let query = db('hr_announcements as a')
+    .leftJoin('users as au', 'a.author_id', 'au.id')
+    .select('a.*', 'au.full_name as author_name')
+    .orderBy('a.created_at', 'desc');
+  return query;
 };
 
 const createAnnouncement = async (data, userId) => {
-  const id = Date.now().toString();
-  mockAnnouncements.push({ id, ...data, postedBy: userId, postedDate: new Date().toISOString(), status: 'Active', readCount: 0 });
+  const [id] = await db('hr_announcements').insert({
+    title: data.title,
+    body: data.body,
+    author_id: userId,
+    audience_scope: typeof data.audience_scope === 'string' ? data.audience_scope : JSON.stringify(data.audience_scope),
+    priority: data.priority || 'Info',
+    status: data.status || 'Published',
+    linked_policy_id: data.linked_policy_id || null
+  });
+
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'CREATE_ANNOUNCEMENT',
+    target_module: 'announcements',
+    target_id: String(id),
+    after_state: JSON.stringify(data)
+  });
+
   return id;
 };
 
-const updateAnnouncement = async (id, data) => {
-  mockAnnouncements = mockAnnouncements.map(a => a.id === id ? { ...a, ...data } : a);
+const updateAnnouncement = async (id, data, userId) => {
+  const oldAnnounce = await db('hr_announcements').where('id', id).first();
+  if(data.audience_scope && typeof data.audience_scope !== 'string') {
+    data.audience_scope = JSON.stringify(data.audience_scope);
+  }
+  await db('hr_announcements').where('id', id).update({
+    ...data,
+    updated_at: db.fn.now()
+  });
+
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'UPDATE_ANNOUNCEMENT',
+    target_module: 'announcements',
+    target_id: String(id),
+    before_state: JSON.stringify(oldAnnounce),
+    after_state: JSON.stringify(data)
+  });
 };
 
-const deleteAnnouncement = async (id) => {
-  mockAnnouncements = mockAnnouncements.filter(a => a.id !== id);
+const deleteAnnouncement = async (id, userId) => {
+  await db('hr_announcements').where('id', id).delete();
+  
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'DELETE_ANNOUNCEMENT',
+    target_module: 'announcements',
+    target_id: String(id)
+  });
+};
+
+const retractAnnouncement = async (id, userId) => {
+  await db('hr_announcements').where('id', id).update({
+    status: 'Retracted',
+    updated_at: db.fn.now()
+  });
+
+  await db('hr_audit_logs').insert({
+    actor_id: userId,
+    action: 'RETRACT_ANNOUNCEMENT',
+    target_module: 'announcements',
+    target_id: String(id)
+  });
 };
 
 const readAnnouncement = async (id, userId) => {
-  // Mock tracking
-  mockAnnouncements = mockAnnouncements.map(a => a.id === id ? { ...a, readCount: (a.readCount || 0) + 1 } : a);
+  const existing = await db('hr_announcement_receipts')
+    .where({ announcement_id: id, user_id: userId }).first();
+  if (!existing) {
+    await db('hr_announcement_receipts').insert({
+      announcement_id: id,
+      user_id: userId
+    });
+  }
 };
 
 // Notices

@@ -386,10 +386,9 @@ const register = async (userData, ip) => {
   const { fullName, email, phone } = userData;
   const existingUser = await db('users')
     .where('email', email.toLowerCase())
-    .orWhere('phone', phone)
     .first();
   if (existingUser) {
-    throw new AppError('User with this email or phone already exists', 400);
+    throw new AppError('User with this email already exists', 400);
   }
   const tempPassword = generateTemporaryPassword();
   const hashedPassword = await hashPassword(tempPassword);

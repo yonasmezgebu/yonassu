@@ -56,10 +56,19 @@ router.get('/etp/attendance/weekly', authenticate, authorizeRoles([...ceoBoard, 
 
 router.post('/etp/manual-entry', authenticate, authorizeRoles([...hrCeo, 'HR Manager']), C.submitManualEntry);
 
+const FINANCE_PAYROLL_DIR = './uploads/finance/payroll';
+if (!fs.existsSync(FINANCE_PAYROLL_DIR)) fs.mkdirSync(FINANCE_PAYROLL_DIR, { recursive: true });
+const financePayrollStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, FINANCE_PAYROLL_DIR),
+  filename: (req, file, cb) => cb(null, 'payroll-proof-' + Date.now() + path.extname(file.originalname)),
+});
+const financeUpload = multer({ storage: financePayrollStorage });
+
 router.post('/etp/payroll/calculate',          authenticate, authorizeRoles(hrCeo),     C.calculatePayroll);
+router.post('/etp/payroll/submit',             authenticate, authorizeRoles(hrCeo),     C.submitPayroll);
 router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getPayrollSummary);
 router.post('/etp/payroll/approve',            authenticate, authorizeRoles(ceoBoard),                     C.approvePayroll);
-router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.markPayrollPaid);
+router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markPayrollPaid);
 router.get('/etp/payroll/approved-list',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getApprovedPayrolls);
 
 router.get('/etp/employees/:id/documents',             authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getEmployeeDocuments);
@@ -86,5 +95,6 @@ router.get('/etp/my-profile', authenticate, C.getMyProfile);
 router.get('/etp/my-attendance', authenticate, C.getMyAttendancePortal);
 router.get('/etp/my-leaves', authenticate, C.getMyLeaves);
 router.get('/etp/my-documents', authenticate, C.getMyDocuments);
+router.get('/etp/my-payslips', authenticate, C.getMyPayslips);
 
 module.exports = router;

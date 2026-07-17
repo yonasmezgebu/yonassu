@@ -31,8 +31,8 @@ exports.up = async function (knex) {
       t.integer('received_by');
       t.string('shipment_number', 30);
       t.integer('quantity_shipped');
-      t.timestamp('shipped_at');
-      t.timestamp('received_at');
+      t.datetime('shipped_at').nullable();
+      t.datetime('received_at').nullable();
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
     });

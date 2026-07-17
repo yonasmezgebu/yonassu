@@ -22,6 +22,8 @@ const UPLOAD_DIRS = {
   pharmacyCovers: 'uploads/pharmacy/covers',
   pharmacyCategories: 'uploads/pharmacy/categories',
   pharmacyBranches: 'uploads/pharmacy/branches',
+  pharmacyHealth: 'uploads/pharmacy/health',
+  pharmacyProductPosts: 'uploads/pharmacy/product-posts',
   research: 'uploads/research'
 };
 Object.values(UPLOAD_DIRS).forEach(dir => {
@@ -123,6 +125,8 @@ const uploads = {
   pharmacyCoverImage: createUploader('pharmacyCovers'),
   pharmacyCategoryImage: createUploader('pharmacyCategories'),
   pharmacyBranchImage: createUploader('pharmacyBranches'),
+  pharmacyProductPostImage: createUploader('pharmacyProductPosts'),
+  pharmacyHealthUpload: createMultipleUploader('pharmacyHealth', 2),
   multipleOrderAttachments: createMultipleUploader('orders', 10),
   multipleProductImages: createMultipleUploader('products', 5),
   multipleExpenseReceipts: createMultipleUploader('expenses', 3),

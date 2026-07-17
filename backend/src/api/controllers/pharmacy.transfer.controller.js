@@ -233,4 +233,424 @@ const pharmacyTransferController = {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// Branch-to-Branch Transfer
+// ═══════════════════════════════════════════════════════════════
+pharmacyTransferController.branchToBranch = async (req, res) => {
+  const { from_branch_id, to_branch_id, drug_id, quantity } = req.body;
+  const userId = req.user.id;
+  if (!from_branch_id || !to_branch_id || !drug_id || !quantity) {
+    return res.status(400).json({ status: 'error', message: 'from_branch_id, to_branch_id, drug_id, and quantity are required' });
+  }
+  if (from_branch_id === to_branch_id) {
+    return res.status(400).json({ status: 'error', message: 'Source and destination branches must be different' });
+  }
+  if (quantity <= 0) {
+    return res.status(400).json({ status: 'error', message: 'Quantity must be positive' });
+  }
+
+  try {
+    // Check stock before creating request
+    const sourceItem = await db('pharmacy_inventory')
+      .where({ branch_id: from_branch_id, drug_id })
+      .first();
+    if (!sourceItem || sourceItem.quantity < quantity) {
+      const available = sourceItem ? sourceItem.quantity : 0;
+      return res.status(400).json({ status: 'error', message: `Insufficient stock in source branch. Available: ${available}, Requested: ${quantity}` });
+    }
+
+    const drug = await db('pharmacy_medications').where('id', drug_id).first();
+    const [requestId] = await db('transfer_requests').insert({
+      request_code: `BB-${String(Date.now()).slice(-8)}`,
+      drug_id,
+      requested_qty: quantity,
+      pharmacy_qty_at_request: sourceItem.quantity,
+      store_qty_at_request: 0,
+      status: 'PENDING_APPROVAL',
+      created_by: userId,
+      transfer_no: `BB-${Date.now()}`,
+      from_branch_id,
+      to_branch_id,
+      requested_by: userId,
+      requested_date: new Date(),
+    });
+
+    await audit('BRANCH_TRANSFER_REQUEST', userId, {
+      resource: 'transfer_requests',
+      resourceId: requestId,
+      beforeState: null,
+      afterState: { from_branch_id, to_branch_id, drug_id, quantity, status: 'PENDING_APPROVAL' }
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: `${quantity} units of ${drug ? drug.name : 'drug'} transfer request created. Awaiting CEO approval.`,
+      data: { id: requestId, from_branch_id, to_branch_id, drug_id, quantity, status: 'PENDING_APPROVAL' }
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// CEO approve a branch transfer
+pharmacyTransferController.ceoApproveTransfer = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  try {
+    const request = await db('transfer_requests').where('id', id).where('status', 'PENDING_APPROVAL').first();
+    if (!request) return res.status(404).json({ status: 'error', message: 'Pending transfer request not found' });
+
+    const { from_branch_id, to_branch_id, drug_id, requested_qty } = request;
+
+    await db.transaction(async (trx) => {
+      const sourceItem = await trx('pharmacy_inventory')
+        .where({ branch_id: from_branch_id, drug_id })
+        .first();
+      if (!sourceItem || sourceItem.quantity < requested_qty) {
+        throw new AppError('Insufficient stock in source branch at time of approval', 400);
+      }
+
+      await trx('pharmacy_inventory')
+        .where({ branch_id: from_branch_id, drug_id })
+        .decrement('quantity', requested_qty);
+
+      const destItem = await trx('pharmacy_inventory')
+        .where({ branch_id: to_branch_id, drug_id })
+        .first();
+      if (destItem) {
+        await trx('pharmacy_inventory')
+          .where({ branch_id: to_branch_id, drug_id })
+          .increment('quantity', requested_qty);
+      } else {
+        await trx('pharmacy_inventory').insert({
+          branch_id: to_branch_id,
+          drug_id,
+          quantity: requested_qty,
+          reorder_level: sourceItem.reorder_level || 0,
+        });
+      }
+
+      await trx('transfer_requests').where('id', id).update({
+        status: 'COMPLETED',
+        ceo_approved_by: userId,
+        approved_by: userId,
+        decision_date: new Date(),
+        received_date: new Date(),
+      });
+    });
+
+    await audit('BRANCH_TRANSFER_APPROVED', userId, {
+      resource: 'transfer_requests',
+      resourceId: id,
+      beforeState: { status: 'PENDING_APPROVAL' },
+      afterState: { status: 'COMPLETED', approved_by: userId }
+    });
+
+    res.json({ status: 'success', message: 'Transfer approved and executed' });
+  } catch (error) {
+    if (error instanceof AppError) return res.status(error.statusCode).json({ status: 'error', message: error.message });
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// CEO reject a branch transfer
+pharmacyTransferController.ceoRejectTransfer = async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const userId = req.user.id;
+  try {
+    const request = await db('transfer_requests').where('id', id).where('status', 'PENDING_APPROVAL').first();
+    if (!request) return res.status(404).json({ status: 'error', message: 'Pending transfer request not found' });
+
+    await db('transfer_requests').where('id', id).update({
+      status: 'REJECTED',
+      ceo_approved_by: userId,
+      decision_reason: reason || 'Rejected by CEO',
+      decision_date: new Date(),
+    });
+
+    await audit('BRANCH_TRANSFER_REJECTED', userId, {
+      resource: 'transfer_requests',
+      resourceId: id,
+      beforeState: { status: 'PENDING_APPROVAL' },
+      afterState: { status: 'REJECTED', reason }
+    });
+
+    res.json({ status: 'success', message: 'Transfer rejected' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// List pending branch transfers (for CEO approval dashboard)
+pharmacyTransferController.listPendingApprovals = async (req, res) => {
+  try {
+    const rows = await db('transfer_requests as tr')
+      .join('drugs as d', 'tr.drug_id', 'd.id')
+      .leftJoin('branches as fb', 'tr.from_branch_id', 'fb.id')
+      .leftJoin('branches as tb', 'tr.to_branch_id', 'tb.id')
+      .leftJoin('users as u', 'tr.requested_by', 'u.id')
+      .select(
+        'tr.id', 'tr.transfer_no', 'tr.requested_qty', 'tr.status',
+        'tr.requested_date', 'tr.decision_date', 'tr.decision_reason',
+        'd.name as drug_name', 'd.drug_code',
+        'fb.name as from_branch', 'tb.name as to_branch',
+        'u.full_name as requested_by_name'
+      )
+      .whereIn('tr.status', ['PENDING_APPROVAL'])
+      .orderBy('tr.requested_date', 'asc');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Get stock summary — all drugs with total stock across all branches
+pharmacyTransferController.getStockSummary = async (req, res) => {
+  try {
+    const rows = await db('pharmacy_medications as pm')
+      .select(
+        'pm.id', 'pm.name', 'pm.generic_name', 'pm.price as unit_price',
+        'pm.stock_quantity as total_stock',
+        'pm.reorder_level'
+      )
+      .orderBy('pm.name');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Get inventory by branch
+pharmacyTransferController.getBranchInventory = async (req, res) => {
+  const { branch_id } = req.params;
+  try {
+    const rows = await db('pharmacy_inventory as pi')
+      .join('pharmacy_medications as pm', 'pi.drug_id', 'pm.id')
+      .leftJoin('branches as b', 'pi.branch_id', 'b.id')
+      .select(
+        'pi.id', 'pi.drug_id', 'pi.quantity', 'pi.batch_no',
+        'pi.expiry_date', 'pi.reorder_level', 'pi.stock_status',
+        'pm.name', 'pm.price as unit_price',
+        'pm.generic_name',
+        'b.name as branch_name'
+      )
+      .where('pi.branch_id', branch_id)
+      .orderBy('pm.name');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// List branch transfers
+pharmacyTransferController.listBranchTransfers = async (req, res) => {
+  try {
+    const rows = await db('transfer_requests as tr')
+      .join('pharmacy_medications as pm', 'tr.drug_id', 'pm.id')
+      .leftJoin('branches as fb', 'tr.from_branch_id', 'fb.id')
+      .leftJoin('branches as tb', 'tr.to_branch_id', 'tb.id')
+      .leftJoin('users as u', 'tr.requested_by', 'u.id')
+      .select(
+        'tr.id', 'tr.transfer_no', 'tr.requested_qty', 'tr.status',
+        'tr.requested_date', 'tr.received_date',
+        'pm.name as drug_name',
+        'fb.name as from_branch', 'tb.name as to_branch',
+        'u.full_name as requested_by_name'
+      )
+      .whereNotNull('tr.from_branch_id')
+      .orWhereNotNull('tr.to_branch_id')
+      .orderBy('tr.requested_date', 'desc');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Branch Drug Assignment CRUD
+// ═══════════════════════════════════════════════════════════════
+
+// Get all drugs from drugs table
+pharmacyTransferController.getAllDrugs = async (req, res) => {
+  try {
+    const rows = await db('pharmacy_medications').orderBy('name');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Get all drugs available for assignment (not yet in a given branch)
+pharmacyTransferController.getAvailableDrugs = async (req, res) => {
+  const { branch_id } = req.params;
+  try {
+    const assigned = await db('pharmacy_inventory').where('branch_id', branch_id).select('drug_id');
+    const assignedIds = assigned.map(a => a.drug_id);
+    const rows = assignedIds.length > 0
+      ? await db('pharmacy_medications').whereNotIn('id', assignedIds).orderBy('name')
+      : await db('pharmacy_medications').orderBy('name');
+    res.json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Assign a drug to a branch
+pharmacyTransferController.assignDrugToBranch = async (req, res) => {
+  const { branch_id, drug_id, quantity, reorder_level, batch_no, expiry_date } = req.body;
+  if (!branch_id || !drug_id) return res.status(400).json({ status: 'error', message: 'branch_id and drug_id required' });
+  try {
+    const existing = await db('pharmacy_inventory').where({ branch_id, drug_id }).first();
+    if (existing) return res.status(400).json({ status: 'error', message: 'Drug already assigned to this branch' });
+    const [id] = await db('pharmacy_inventory').insert({
+      branch_id, drug_id,
+      quantity: quantity || 0,
+      reorder_level: reorder_level || 0,
+      batch_no: batch_no || null,
+      expiry_date: expiry_date || null,
+      last_updated_at: new Date()
+    });
+    const row = await db('pharmacy_inventory').where('id', id).first();
+    res.status(201).json({ status: 'success', data: row });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Update pharmacy_inventory record
+const ALLOWED_UPDATE_FIELDS = ['quantity', 'reorder_level', 'batch_no', 'expiry_date', 'stock_status', 'branch_id'];
+pharmacyTransferController.updateBranchDrug = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const updateData = {};
+    for (const field of ALLOWED_UPDATE_FIELDS) {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    }
+    updateData.last_updated_at = new Date();
+    await db('pharmacy_inventory').where('id', id).update(updateData);
+    const row = await db('pharmacy_inventory').where('id', id).first();
+    res.json({ status: 'success', data: row });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Remove drug from branch
+pharmacyTransferController.removeBranchDrug = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db('pharmacy_inventory').where('id', id).del();
+    res.json({ status: 'success', message: 'Drug removed from branch' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Upsert: set quantity for a drug+branch (create or update)
+pharmacyTransferController.setBranchDrugQuantity = async (req, res) => {
+  const { branch_id, drug_id, quantity, transfer_from_branch_id } = req.body;
+  if (!branch_id || !drug_id) return res.status(400).json({ status: 'error', message: 'branch_id and drug_id required' });
+  try {
+    const qtyToAssign = parseInt(quantity) || 0;
+    
+    // Get total stock from medications
+    const medication = await db('pharmacy_medications').where('id', drug_id).first();
+    if (!medication) return res.status(404).json({ status: 'error', message: 'Drug not found' });
+    const totalStock = medication.stock_quantity || 0;
+
+    // Get current inventory across all branches
+    const allStock = await db('pharmacy_inventory').where({ drug_id });
+    const currentBranchStock = allStock.find(s => s.branch_id === parseInt(branch_id));
+    
+    // Explicit branch-to-branch direct transfer (no CEO approval required for manager direct assignment)
+    if (transfer_from_branch_id) {
+      const srcBranchId = parseInt(transfer_from_branch_id);
+      const srcStock = allStock.find(s => s.branch_id === srcBranchId);
+      if (!srcStock || srcStock.quantity < qtyToAssign) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Insufficient stock in source branch. Available: ${srcStock ? srcStock.quantity : 0}`
+        });
+      }
+      
+      await db.transaction(async (trx) => {
+        await trx('pharmacy_inventory').where('id', srcStock.id).decrement('quantity', qtyToAssign);
+        if (currentBranchStock) {
+          await trx('pharmacy_inventory').where('id', currentBranchStock.id).increment('quantity', qtyToAssign);
+        } else {
+          await trx('pharmacy_inventory').insert({
+            branch_id, drug_id,
+            quantity: qtyToAssign,
+            reorder_level: 0,
+            batch_no: null,
+            last_updated_at: new Date()
+          });
+        }
+      });
+      const row = await db('pharmacy_inventory').where({ branch_id, drug_id }).first();
+      return res.status(201).json({ status: 'success', message: 'Transferred drug directly', data: row });
+    }
+
+    // Assigning from the Unassigned Pool (or updating qty directly)
+    const otherBranchesStock = allStock.filter(s => s.branch_id !== parseInt(branch_id));
+    const totalOtherBranches = otherBranchesStock.reduce((s, r) => s + r.quantity, 0);
+    const newTotalAssigned = totalOtherBranches + qtyToAssign;
+    
+    if (newTotalAssigned > totalStock) {
+      const availableUnassigned = totalStock - totalOtherBranches;
+      return res.status(400).json({ 
+        status: 'error', 
+        message: `Cannot assign ${qtyToAssign}. Unassigned stock available: ${availableUnassigned > 0 ? availableUnassigned : 0} (Total: ${totalStock}, Used: ${totalOtherBranches})` 
+      });
+    }
+
+    if (currentBranchStock) {
+      await db('pharmacy_inventory').where('id', currentBranchStock.id).update({ quantity: qtyToAssign, last_updated_at: new Date() });
+    } else {
+      await db('pharmacy_inventory').insert({
+        branch_id, drug_id,
+        quantity: qtyToAssign,
+        reorder_level: 0,
+        batch_no: null,
+        last_updated_at: new Date()
+      });
+    }
+    const row = await db('pharmacy_inventory').where({ branch_id, drug_id }).first();
+    return res.status(201).json({ status: 'success', message: 'Quantity assigned successfully', data: row });
+
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Bulk assign all drugs to a branch
+pharmacyTransferController.bulkAssignDrugs = async (req, res) => {
+  const { branch_id, quantity } = req.body;
+  if (!branch_id) return res.status(400).json({ status: 'error', message: 'branch_id required' });
+  try {
+    const drugs = await db('pharmacy_medications').select('id');
+    if (drugs.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No drugs found in system. First add drugs via Products page, then try again.' });
+    }
+    const existing = await db('pharmacy_inventory').where('branch_id', branch_id).select('drug_id');
+    const existingIds = new Set(existing.map(e => e.drug_id));
+    const toInsert = drugs
+      .filter(d => !existingIds.has(d.id))
+      .map(d => ({
+        branch_id,
+        drug_id: d.id,
+        quantity: quantity || 100,
+        reorder_level: 5,
+        batch_no: 'BULK-' + Date.now(),
+        last_updated_at: new Date()
+      }));
+    if (toInsert.length === 0) return res.json({ status: 'success', message: 'All drugs already assigned to this branch', count: 0 });
+    await db('pharmacy_inventory').insert(toInsert);
+    res.status(201).json({ status: 'success', message: `${toInsert.length} drugs assigned to branch`, count: toInsert.length });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 module.exports = pharmacyTransferController;
