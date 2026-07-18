@@ -121,7 +121,7 @@ const pharmacyTransferController = {
     });
     await audit('PHARMACY_TRANSFER_APPROVED', userId, { details: { requestNumber: transfer.request_number, id } });
     emitNotification(req.app?.get('io'), {
-      roleTarget: 'Store Manager',
+      roleTarget: 'Pharmacy Store Keeper',
       title: 'Pharmacy Transfer Approved',
       message: `${transfer.drug_name} — Ship ${transfer.quantity_requested} units to Pharmacy`,
       type: 'pharmacy_transfer',
@@ -223,7 +223,7 @@ const pharmacyTransferController = {
       link: `/ceo/pharmacy-transfers/${id}`
     });
     emitNotification(req.app?.get('io'), {
-      roleTarget: 'Store Manager',
+      roleTarget: 'Pharmacy Store Keeper',
       title: 'Pharmacy Transfer Completed',
       message: `${transfer.drug_name} — Pharmacy confirmed receipt of ${transfer.quantity_shipped} units`,
       type: 'pharmacy_transfer',

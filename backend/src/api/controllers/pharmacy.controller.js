@@ -9,12 +9,12 @@ const pharmacyController = {
   // DASHBOARD
   // ==============================
   getDashboardStats: async (req, res) => {
-    // 1. Total Sales from pos_sales
-    const totalSalesQuery = await db('pos_sales').sum('total_amount as total').first();
+    // 1. Total Sales from pharmacy_sales (actual worker sales table)
+    const totalSalesQuery = await db('pharmacy_sales').sum('total_amount as total').first();
     const totalSales = totalSalesQuery.total || 0;
 
-    // 2. Customers Served
-    const customersServedQuery = await db('pos_sales').countDistinct('customer_id as count').first();
+    // 2. Customers Served (distinct recipient phones)
+    const customersServedQuery = await db('pharmacy_sales').countDistinct('recipient_phone as count').first();
     const customersServed = customersServedQuery.count || 0;
 
     // 3. Low Stock Alerts
@@ -65,14 +65,18 @@ const pharmacyController = {
       .where('status', 'PENDING').count('id as count').first();
     const pendingExpiredReports = Number(pendingExpiredReportsQuery?.count || 0);
 
-    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    const todaySalesQuery = await db('pos_sales')
-      .where('sale_date', '>=', todayStart)
+    // Live Revenue — read from unsubmitted pharmacy_sales (the actual worker sales table)
+    const todaySalesQuery = await db('pharmacy_sales')
+      .where(function() {
+        this.where('is_submitted', false).orWhereNull('is_submitted');
+      })
       .sum('total_amount as total').first();
     const todaySales = Number(todaySalesQuery?.total || 0);
 
-    const todaySalesCountQuery = await db('pos_sales')
-      .where('sale_date', '>=', todayStart)
+    const todaySalesCountQuery = await db('pharmacy_sales')
+      .where(function() {
+        this.where('is_submitted', false).orWhereNull('is_submitted');
+      })
       .count('id as count').first();
     const todaySalesCount = Number(todaySalesCountQuery?.count || 0);
 
@@ -99,15 +103,20 @@ const pharmacyController = {
       };
     } catch(e) { /* ignore if table join fails */ }
 
-    // 8. Top selling products today
+    // 8. Top selling products today — read from pharmacy_sale_items joined with unsubmitted pharmacy_sales
     let topSelling = [];
     try {
-      topSelling = await db('pos_items as si')
-        .join('pos_sales as s', 'si.sale_id', 's.id')
-        .join('pharmacy_medications as m', 'si.product_id', 'm.id')
-        .where('s.sale_date', '>=', todayStart)
-        .select('m.name', db.raw('SUM(si.quantity) as units_sold'), db.raw('SUM(si.total_price) as revenue'))
-        .groupBy('m.id', 'm.name')
+      topSelling = await db('pharmacy_sale_items as si')
+        .join('pharmacy_sales as s', 'si.sale_id', 's.id')
+        .where(function() {
+          this.where('s.is_submitted', false).orWhereNull('s.is_submitted');
+        })
+        .select(
+          'si.drug_name as name',
+          db.raw('SUM(si.quantity) as units_sold'),
+          db.raw('SUM(si.total_price) as revenue')
+        )
+        .groupBy('si.drug_name')
         .orderBy('units_sold', 'desc')
         .limit(5);
     } catch(e) { /* ignore */ }

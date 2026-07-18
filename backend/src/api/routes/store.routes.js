@@ -10,7 +10,7 @@ const StorePRController = require('../controllers/storePurchaseResearch.controll
 
 router.use(authenticate);
 
-const storeRoles = ['Store Manager', 'Sales/Cashier', 'CEO', 'Admin'];
+const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'Sales/Cashier', 'CEO', 'Admin'];
 const ceoRoles = ['CEO', 'Admin'];
 const purchaseRoles = ['Purchase', 'CEO', 'Admin'];
 const marketRoles = ['CEO', 'Admin'];

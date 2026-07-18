@@ -21,8 +21,8 @@ exports.getMyNotifications = async (req, res) => {
     if (lowerRoles.some(r => ['admin', 'ceo'].includes(r))) {
       roleTarget = 'CEO';
       allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('store manager'))) {
-      roleTarget = 'Store Manager';
+    } else if (lowerRoles.some(r => r.includes('pharmacy store keeper') || r.includes('general store keeper'))) {
+      roleTarget = 'Pharmacy Store Keeper';
       allowedTypes = null;
     } else if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
       roleTarget = 'Pharmacy Manager';
@@ -69,8 +69,8 @@ exports.markAllAsRead = async (req, res) => {
     if (lowerRoles.some(r => ['admin', 'ceo'].includes(r))) {
       roleTarget = 'CEO';
       allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('store manager'))) {
-      roleTarget = 'Store Manager';
+    } else if (lowerRoles.some(r => r.includes('pharmacy store keeper') || r.includes('general store keeper'))) {
+      roleTarget = 'Pharmacy Store Keeper';
       allowedTypes = null;
     } else if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
       roleTarget = 'Pharmacy Manager';

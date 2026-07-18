@@ -295,7 +295,7 @@ router.get('/contracts', authenticate, authorize(['purchase_orders:read']), Purc
 // ── Fraud Detection ──
 router.get('/fraud/alerts', authenticate, authorize(['purchase_orders:read']), PurchaseController.getFraudAlerts);
 const wfAuth = (roles) => [authenticate, authorizeRoles(roles)];
-const storeRoles = ['Store Manager', 'Sales/Cashier', 'CEO', 'Admin'];
+const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'Sales/Cashier', 'CEO', 'Admin'];
 const poRoles = ['Purchase', 'Admin', 'CEO'];
 const finRoles = ['Finance', 'Admin', 'CEO'];
 const ceoRoles = ['CEO', 'Admin'];

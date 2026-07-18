@@ -10,7 +10,8 @@ const generateStampId = () => `STAMP-${Date.now()}-${Math.random().toString(36).
 
 const STAMP_PERMISSIONS = {
   CEO: ['APPROVAL'],
-  'Store Manager': ['ISSUE'],
+  'Pharmacy Store Keeper': ['ISSUE'],
+  'General Store Keeper': ['ISSUE'],
   'Pharmacy Manager': ['GRN', 'REQUISITION'],
   Admin: ['APPROVAL', 'ISSUE', 'GRN', 'REQUISITION'],
 };
@@ -280,7 +281,7 @@ const erpController = {
 
     if (decision === 'APPROVED') {
       emitNotification(req.app?.get('io'), {
-        roleTarget: 'Store Manager', title: '✅ Requisition Approved',
+        roleTarget: 'Pharmacy Store Keeper', title: '✅ Requisition Approved',
         message: `${allItems.length} item(s) from Pharmacy — Req ${requisition.req_no}`,
         type: 'approved', link: `/store/issue-notes/create/${firstAprId}`
       });
@@ -316,7 +317,7 @@ const erpController = {
   createIssueVoucher: async (req, res) => {
     const { approvalId } = req.params;
     const userId = req.user.id;
-    const userName = req.user.fullName || req.user.username || 'Store Manager';
+    const userName = req.user.fullName || req.user.username || 'Pharmacy Store Keeper';
 
     const approval = await db('approvals').where('id', approvalId).first();
     if (!approval) throw new AppError('Approval not found', 404);
@@ -349,7 +350,7 @@ const erpController = {
     const { id } = req.params;
     const { quantityIssued, batchNumber, expiryDate } = req.body;
     const userId = req.user.id;
-    const userName = req.user.fullName || req.user.username || 'Store Manager';
+    const userName = req.user.fullName || req.user.username || 'Pharmacy Store Keeper';
     const userRoles = req.user.roles || [];
 
     const voucher = await db('issue_vouchers').where('id', id).first();
@@ -366,7 +367,7 @@ const erpController = {
     const storeStockAfter = storeStockBefore - quantityIssued;
 
     if (!canStamp(userRoles, 'ISSUE')) throw new AppError('You do not have stamp permission for issue notes', 403);
-    const stampData = await generateStamp(id, 'ISSUE', userId, userName, userRoles.find(r => STAMP_PERMISSIONS[r]?.includes('ISSUE')) || 'Store Manager');
+    const stampData = await generateStamp(id, 'ISSUE', userId, userName, userRoles.find(r => STAMP_PERMISSIONS[r]?.includes('ISSUE')) || 'Pharmacy Store Keeper');
 
     await db('products').where('id', storeDrug.id).update({ stock_quantity: storeStockAfter, updated_at: db.fn.now() });
     await db('issue_vouchers').where('id', id).update({
@@ -467,7 +468,7 @@ const erpController = {
       type: 'completed', link: `/ceo/pharmacy-approvals/${grn.requisition_id}`
     });
     emitNotification(req.app?.get('io'), {
-      roleTarget: 'Store Manager', title: '✅ Request Completed',
+      roleTarget: 'Pharmacy Store Keeper', title: '✅ Request Completed',
       message: `${grn.drug_name} — Pharmacy confirmed receipt of ${qtyReceived} units`,
       type: 'completed', link: `/store/issue-notes/${grn.issue_voucher_id}`
     });

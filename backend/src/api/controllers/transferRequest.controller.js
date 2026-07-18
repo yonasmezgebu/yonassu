@@ -111,8 +111,8 @@ exports.getRequests = async (req, res) => {
     if (status) query = query.where('transfer_requests.status', status);
     if (drug_id) query = query.where('transfer_requests.drug_id', drug_id);
 
-    // Store Manager only sees requests that concern them
-    if (userRoles.includes('Store Manager') && !userRoles.includes('Admin') && !userRoles.includes('CEO')) {
+    // Pharmacy Store Keeper only sees requests that concern them
+    if ((userRoles.includes('Pharmacy Store Keeper') || userRoles.includes('General Store Keeper')) && !userRoles.includes('Admin') && !userRoles.includes('CEO')) {
       query = query.whereIn('transfer_requests.status', ['APPROVED', 'SHIPPED', 'COMPLETED', 'DISCREPANCY']);
     }
 
@@ -190,7 +190,7 @@ exports.decideRequest = async (req, res) => {
 
       try {
         if (decision === 'APPROVED') {
-          await notificationService.sendNotification('Store Manager', null, {
+          await notificationService.sendNotification('Pharmacy Store Keeper', null, {
             type: 'REQUEST_APPROVED',
             title: 'Transfer Approved',
             message: `Request ${request.request_code} approved. Ready to ship.`,
@@ -222,8 +222,8 @@ exports.shipRequest = async (req, res) => {
   const { shipped_qty } = req.body;
   const userId = req.user.id;
 
-  if (!hasRole(req, 'Store Manager', 'Admin')) {
-    return res.status(403).json({ error: 'Only Store Manager can ship requests' });
+  if (!hasRole(req, 'Pharmacy Store Keeper', 'General Store Keeper', 'Admin')) {
+    return res.status(403).json({ error: 'Only Store Keepers can ship requests' });
   }
 
   if (!shipped_qty || shipped_qty <= 0) {
@@ -358,7 +358,7 @@ exports.receiveRequest = async (req, res) => {
             related_entity_id: id,
             link: `/ceo/flow1-transfers`
           });
-          await notificationService.sendNotification('Store Manager', request.shipped_by, {
+          await notificationService.sendNotification('Pharmacy Store Keeper', request.shipped_by, {
             type: 'REQUEST_COMPLETED',
             title: 'Transfer Confirmed',
             message: `Pharmacy confirmed receipt of ${received_qty} units from ${request.request_code}.`,

@@ -148,13 +148,22 @@ const ROLE_HIERARCHY = [
     description: 'Manages procurement and supplier relationships.'
   },
   {
-    roleName: 'Store Manager',
+    roleName: 'Pharmacy Store Keeper',
     assignedBy: ['CEO', 'Admin'],
     requiresEmployee: true,
-    branchScoped: false, // branch scoped only for Pharmacy Store sub-role
-    subRoles: ['Pharmacy Store', 'General Store'],
+    branchScoped: true,
+    subRoles: [],
     isPreExisting: false,
-    description: 'Manages store operations. Pharmacy Store sub-type is branch-scoped.'
+    description: 'Manages pharmacy store operations. Branch-scoped.'
+  },
+  {
+    roleName: 'General Store Keeper',
+    assignedBy: ['CEO', 'Admin'],
+    requiresEmployee: true,
+    branchScoped: false,
+    subRoles: [],
+    isPreExisting: false,
+    description: 'Manages general store operations.'
   }
 ];
 

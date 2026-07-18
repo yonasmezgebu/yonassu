@@ -46,7 +46,7 @@ const procController = {
       { full_name: 'Purchase Mgr', email: 'purchase@demo.com', phone: '0911111114', role_type: 'Purchase Manager', dept_id: 5 },
       { full_name: 'Supplier Co', email: 'supplier@demo.com', phone: '0911111115', role_type: 'Supplier', dept_id: 5 },
       { full_name: 'Finance Mgr', email: 'finance@demo.com', phone: '0911111116', role_type: 'Finance Manager', dept_id: 3 },
-      { full_name: 'Store Mgr', email: 'store@demo.com', phone: '0911111117', role_type: 'Store Manager', dept_id: 7 },
+      { full_name: 'Store Mgr', email: 'store@demo.com', phone: '0911111117', role_type: 'General Store Keeper', dept_id: 7 },
       { full_name: 'Finance User', email: 'financeuser@demo.com', phone: '0911111118', role_type: 'Finance', dept_id: 3 },
     ];
 
@@ -556,7 +556,7 @@ const procController = {
 
     try {
       await notificationRepository.create({
-        roleTarget: 'Store Manager', title: `Payment Made${newTag}`,
+        roleTarget: 'General Store Keeper', title: `Payment Made${newTag}`,
         message: `Payment ${paymentNo} for PR ${fr.pr_no}`, type: 'success', link: `/store/shipments`
       });
       if (paidBid) {
@@ -683,7 +683,7 @@ const procController = {
         type: 'success', link: `/pharmacy`
       });
       await notificationRepository.create({
-        roleTarget: 'Store Manager', title: 'Shipment Received',
+        roleTarget: 'General Store Keeper', title: 'Shipment Received',
         message: `PR ${pr.pr_no}: ${pr.drug_name} confirmed received by pharmacy.`,
         type: 'success', link: `/store/shipments`
       });

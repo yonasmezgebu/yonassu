@@ -28,7 +28,7 @@ const initWebSocket = (io) => {
 
 /**
  * Sends a notification via WebSocket (if online) and Web Push (if offline/background).
- * recipientRole is used for broadcasting (e.g., 'CEO', 'Store Manager')
+ * recipientRole is used for broadcasting (e.g., 'CEO', 'Pharmacy Store Keeper')
  * recipientId is used for targeting a specific user
  */
 const sendNotification = async (recipientRole, recipientId, notificationData) => {

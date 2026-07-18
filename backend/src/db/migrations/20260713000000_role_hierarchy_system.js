@@ -38,7 +38,8 @@ exports.up = async function (knex) {
     { name: 'Employee',             description: 'Base employee onboarding role.' },
     { name: 'Sales Manager',        description: 'Manages sales operations.' },
     { name: 'Purchase Manager',     description: 'Manages procurement and supplier relationships.' },
-    { name: 'Store Manager',        description: 'Manages store operations.' },
+    { name: 'Pharmacy Store Keeper', description: 'Manages pharmacy store operations. Branch-scoped.' },
+    { name: 'General Store Keeper',  description: 'Manages general store operations.' },
   ];
 
   for (const role of standardRoles) {

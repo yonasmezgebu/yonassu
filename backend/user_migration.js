@@ -70,7 +70,7 @@ async function createAllUsers() {
             full_name: 'Shibabaw Alemu', 
             phone: '0912345675', 
             department: 'Inventory',
-            role: 'Store Manager'
+            role: 'General Store Keeper'
         },
         { 
             email: 'sales@sutana.com', 
@@ -150,7 +150,7 @@ async function createAllUsers() {
         
         if (roles.length === 0) {
             console.error(`❌ Role not found: ${user.role} for user ${user.email}`);
-            console.log(`   Available roles: Admin, CEO, Finance, Printing Supervisor, Purchase, Store Manager, Sales/Cashier, Customer, Employee, Car Renting Manager, HR Manager`);
+            console.log(`   Available roles: Admin, CEO, Finance, Printing Supervisor, Purchase, Pharmacy Store Keeper, General Store Keeper, Sales/Cashier, Customer, Employee, Car Renting Manager, HR Manager`);
             continue;
         }
         

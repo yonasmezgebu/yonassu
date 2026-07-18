@@ -13,7 +13,7 @@ router.put('/fund-requests/:id/verify', authorizeRoles(['Finance', 'Finance Mana
 
 // ── Deliveries ──
 router.get('/deliveries', flowController.getDeliveries);
-router.put('/deliveries/:tenderId/receive', authorizeRoles(['Store Manager', 'Store Keeper', 'Pharmacy Manager', 'Admin']), flowController.receiveDelivery);
+router.put('/deliveries/:tenderId/receive', authorizeRoles(['Pharmacy Store Keeper', 'General Store Keeper', 'Store Keeper', 'Pharmacy Manager', 'Admin']), flowController.receiveDelivery);
 
 // ── Payments ──
 router.get('/payments', flowController.getPayments);

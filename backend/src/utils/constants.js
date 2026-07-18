@@ -44,7 +44,8 @@ const USER_ROLES = {
   PHARMACY_MANAGER: 'Pharmacy Manager',
   PURCHASE: 'Purchase',
   PURCHASE_MANAGER: 'Purchase Manager',
-  STORE_MANAGER: 'Store Manager',
+  PHARMACY_STORE_KEEPER: 'Pharmacy Store Keeper',
+  GENERAL_STORE_KEEPER:  'General Store Keeper',
   MARKET_TEAM: 'Market Team',
   SUPPLIER: 'Supplier',
   SALES_CASHIER: 'Sales/Cashier',
@@ -69,6 +70,7 @@ const DEPARTMENTS = {
   PRINTING: 'Printing',
   PURCHASE: 'Purchase',
   SALES: 'Sales',
+  STORE: 'Store',
   INVENTORY: 'Inventory'
 };
 const ORDER_STATUS = {

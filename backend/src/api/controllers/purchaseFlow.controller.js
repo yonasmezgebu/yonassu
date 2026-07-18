@@ -907,8 +907,8 @@ exports.receiveDelivery = async (req, res) => {
       const tender = await trx('tenders').where({ id: delivery.tender_id }).first();
 
       // Enforce who can receive based on delivery_type
-      if (delivery.delivery_type === 'VIA_STORE' && role !== 'Store Manager') {
-        throw new Error('Only Store Manager can receive VIA_STORE deliveries');
+      if (delivery.delivery_type === 'VIA_STORE' && role !== 'Pharmacy Store Keeper' && role !== 'General Store Keeper') {
+        throw new Error('Only Store Keepers can receive VIA_STORE deliveries');
       }
       if (delivery.delivery_type === 'DIRECT_TO_PHARMACY' && role !== 'CEO') {
         throw new Error('CEO must confirm DIRECT_TO_PHARMACY deliveries');

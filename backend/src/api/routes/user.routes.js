@@ -136,7 +136,7 @@ router.get(
       .whereIn('name', [
         'Admin', 'CEO', 'Board', 'HR Manager', 'Finance Manager',
         'Accountant', 'Cashier', 'Pharmacy Manager', 'Sales Manager',
-        'Purchase Manager', 'Store Manager', 'Car Rental Manager',
+        'Purchase Manager', 'Pharmacy Store Keeper', 'General Store Keeper', 'Car Rental Manager',
         'Printing Supervisor', 'Farming Manager', 'Market Manager'
       ])
       .pluck('id');

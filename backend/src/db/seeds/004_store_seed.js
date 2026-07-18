@@ -93,7 +93,7 @@ exports.seed = async function (knex) {
   // ============================================================
   await knex('stock_transfers').insert({
     id: 301, transfer_no: 'M23-001', from_location: 'Main Store', to_location: 'Pharmacy Store',
-    transfer_type: 'Re-stock', authorized_by: 'Store Manager', created_by: null,
+    transfer_type: 'Re-stock', authorized_by: 'General Store Keeper', created_by: null,
     transfer_date: yesterday, status: 'Received', remarks: 'Pharmacist requested urgent restock'
   });
   await knex('stock_transfer_items').insert([
@@ -238,7 +238,7 @@ exports.seed = async function (knex) {
   // STAFF
   // ============================================================
   await knex('store_staff').insert([
-    { staff_no: 'STF-001', full_name: 'Abebe Kebede', role: 'Store Manager', phone: '+251911234567', hire_date: '2020-01-15', performance: 'Excellent', assigned_tasks: 2, status: 'Active' },
+    { staff_no: 'STF-001', full_name: 'Abebe Kebede', role: 'General Store Keeper', phone: '+251911234567', hire_date: '2020-01-15', performance: 'Excellent', assigned_tasks: 2, status: 'Active' },
     { staff_no: 'STF-002', full_name: 'Selamawit Tadesse', role: 'Store Worker', phone: '+251922345678', hire_date: '2023-05-10', performance: 'Good', assigned_tasks: 5, status: 'Active' },
     { staff_no: 'STF-003', full_name: 'Dawit Mekonnen', role: 'Store Worker', phone: '+251933456789', hire_date: '2024-02-01', performance: 'Needs Improvement', assigned_tasks: 0, status: 'Inactive' },
   ]);
