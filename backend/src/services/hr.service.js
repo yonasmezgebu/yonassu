@@ -806,9 +806,52 @@ const updateJobPost = async (id, data) => {
   mockJobs = mockJobs.map(j => j.id === id ? { ...j, ...data } : j);
 };
 
-const getApplications = async (params) => { return mockApplications; };
+const getApplications = async (params) => {
+  let query = db('job_applications as ja')
+    .leftJoin('news_posts as np', 'ja.post_id', 'np.id')
+    .select(
+      'ja.id',
+      'ja.full_name as applicantName',
+      'ja.email',
+      'np.title as jobTitle',
+      'ja.created_at as dateApplied',
+      'ja.status',
+      'ja.reject_reason as rejectReason'
+    );
+    
+  if (params.status) {
+    query = query.where('ja.status', params.status);
+  }
+  
+  return query.orderBy('ja.created_at', 'desc');
+};
+
 const updateApplicationStatus = async (id, status, reason) => {
-  mockApplications = mockApplications.map(a => a.id === id ? { ...a, status, rejectReason: reason } : a);
+  const updates = { status, updated_at: db.fn.now() };
+  if (reason) updates.reject_reason = reason;
+  
+  await db('job_applications').where({ id }).update(updates);
+
+  // If forwarded to CEO, send a notification to the CEO
+  if (status === 'SUBMITTED_TO_CEO') {
+    const appInfo = await db('job_applications')
+      .join('news_posts', 'job_applications.post_id', 'news_posts.id')
+      .where('job_applications.id', id)
+      .select('job_applications.full_name', 'news_posts.hiring_position', 'news_posts.title')
+      .first();
+
+    if (appInfo) {
+      const positionName = appInfo.hiring_position || appInfo.title || 'Open Position';
+      const { sendNotification } = require('./notification.service');
+      sendNotification('CEO', null, {
+        title: 'Candidate Shortlisted',
+        message: `HR forwarded applicant ${appInfo.full_name} for ${positionName}`,
+        type: 'job_application_forwarded',
+        link: '/ceo/applicants',
+        related_entity_id: id
+      }).catch(err => console.error('[Notification] Failed to notify CEO:', err.message));
+    }
+  }
 };
 
 const getInterviews = async (params) => { return mockInterviews; };

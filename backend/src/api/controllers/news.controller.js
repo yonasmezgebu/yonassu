@@ -37,12 +37,13 @@ exports.createPost = catchAsync(async (req, res) => {
   if (type === 'hiring') {
     if (!hiring_position) throw new AppError('Position is required for hiring posts', 400);
     if (!hiring_deadline) throw new AppError('Deadline is required for hiring posts', 400);
-    if (new Date(hiring_deadline) <= new Date()) throw new AppError('Deadline must be a future date', 400);
     if (hiring_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hiring_email)) throw new AppError('Invalid apply email format', 400);
   }
 
   let parsedImages = null;
-  if (images) {
+  if (req.files && req.files.length > 0) {
+    parsedImages = req.files.map(f => `/uploads/news/${f.filename}`);
+  } else if (images) {
     if (typeof images === 'string') {
       try { parsedImages = JSON.parse(images); } catch (_) { parsedImages = null; }
     } else {
@@ -61,7 +62,7 @@ exports.createPost = catchAsync(async (req, res) => {
     hiring_location: hiring_location || null,
     status: status || 'draft',
     posted_by: req.user && req.user.id ? req.user.id : null,
-    send_notification: send_notification !== false,
+    send_notification: send_notification === 'false' ? 0 : send_notification === 'true' ? 1 : (send_notification ? 1 : 0),
   });
 
   const post = await db('news_posts').where('id', id).first();
@@ -81,11 +82,12 @@ exports.updatePost = catchAsync(async (req, res) => {
     if (!validateYoutubeUrl(youtube_url)) throw new AppError('Invalid YouTube URL format', 400);
   }
 
-  if (type === 'hiring' && hiring_deadline) {
-    if (new Date(hiring_deadline) <= new Date()) throw new AppError('Deadline must be a future date', 400);
+  let parsedImages = existing.images;
+  if (req.files && req.files.length > 0) {
+    parsedImages = req.files.map(f => `/uploads/news/${f.filename}`);
+  } else if (images !== undefined) {
+    parsedImages = typeof images === 'string' ? (() => { try { return JSON.parse(images); } catch (_) { return null; } })() : images;
   }
-
-  let parsedImages = images !== undefined ? (typeof images === 'string' ? (() => { try { return JSON.parse(images); } catch (_) { return null; } })() : images) : existing.images;
 
   const updates = {};
   if (type !== undefined) updates.type = type;
@@ -93,13 +95,19 @@ exports.updatePost = catchAsync(async (req, res) => {
   if (content !== undefined) updates.content = content;
   if (visibility !== undefined) updates.visibility = visibility;
   if (youtube_url !== undefined) updates.youtube_url = youtube_url;
-  if (images !== undefined) updates.images = parsedImages ? JSON.stringify(parsedImages) : null;
+  
+  if (req.files && req.files.length > 0) {
+    updates.images = parsedImages ? JSON.stringify(parsedImages) : null;
+  } else if (images !== undefined) {
+    updates.images = parsedImages ? JSON.stringify(parsedImages) : null;
+  }
+
   if (hiring_position !== undefined) updates.hiring_position = hiring_position;
   if (hiring_deadline !== undefined) updates.hiring_deadline = hiring_deadline;
   if (hiring_email !== undefined) updates.hiring_email = hiring_email;
   if (hiring_location !== undefined) updates.hiring_location = hiring_location;
   if (status !== undefined) updates.status = status;
-  if (send_notification !== undefined) updates.send_notification = send_notification;
+  if (send_notification !== undefined) updates.send_notification = send_notification === 'false' ? 0 : send_notification === 'true' ? 1 : (send_notification ? 1 : 0);
   updates.updated_at = db.fn.now();
 
   await db('news_posts').where('id', req.params.id).update(updates);

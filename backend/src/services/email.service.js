@@ -453,6 +453,90 @@ if (typeof setInterval !== 'undefined') {
     processEmailRetryQueue().catch(err => logger.error('Email retry processor error:', err.message));
   }, 60000);
 }
+/**
+ * ─────────────────────────────────────────────────
+ * Gmail-based Application Confirmation Email
+ * Uses GMAIL_USER + GMAIL_APP_PASSWORD from .env
+ * ─────────────────────────────────────────────────
+ */
+const nodemailer = require('nodemailer');
+
+const COMPANY_NAME    = process.env.COMPANY_NAME    || 'Sutana Trading PLC';
+const COMPANY_PHONE   = process.env.COMPANY_PHONE   || '+251 911 000 000';
+const COMPANY_ADDRESS = process.env.COMPANY_ADDRESS || 'Addis Ababa, Ethiopia';
+const DAYS_TO_VISIT   = process.env.DAYS_TO_VISIT   || '5';
+
+const sendApplicationEmail = async ({ applicantName, applicantEmail, position, location }) => {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    logger.warn('[Email] GMAIL_USER or GMAIL_APP_PASSWORD not set — skipping application email.');
+    return;
+  }
+
+  const companyEmail = process.env.COMPANY_EMAIL || process.env.GMAIL_USER;
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  });
+
+  const subject = `Interview Invitation — ${COMPANY_NAME}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/>
+<style>
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f4f4;margin:0;padding:0}
+  .wrap{max-width:620px;margin:40px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+  .hdr{background:linear-gradient(135deg,#059669,#10b981);padding:36px 40px;text-align:center}
+  .hdr h1{color:#fff;margin:0;font-size:24px} .hdr p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+  .bdy{padding:36px 40px} .bdy p{color:#334155;font-size:15px;line-height:1.7;margin:0 0 16px}
+  .box{background:#f0fdf4;border-left:4px solid #059669;border-radius:6px;padding:18px 24px;margin:24px 0}
+  .box p{margin:0;color:#065f46;font-weight:600;font-size:15px}
+  ul{color:#334155;font-size:15px;line-height:1.9;padding-left:20px;margin:12px 0 20px}
+  .ftr{background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center}
+  .ftr p{color:#94a3b8;font-size:13px;margin:4px 0}
+  .badge{display:inline-block;background:#dcfce7;color:#065f46;border-radius:99px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr"><h1>${COMPANY_NAME}</h1><p>Human Resources Department</p></div>
+  <div class="bdy">
+    <span class="badge">✅ Interview Invitation</span>
+    <p>Dear <strong>${applicantName}</strong>,</p>
+    <p>Thank you for applying to <strong>${COMPANY_NAME}</strong> for the position of <strong>${position}</strong>${location ? ` in <strong>${location}</strong>` : ''}. We have reviewed your application and would like to invite you to visit our office.</p>
+    <div class="box"><p>📅 Please visit our office within <strong>${DAYS_TO_VISIT} working days</strong> from the date of this email.</p></div>
+    <p>📍 <strong>Office Address:</strong> ${COMPANY_ADDRESS}</p>
+    <p>Please bring the following <strong>original documents</strong>:</p>
+    <ul>
+      <li>Education certificate(s) — all levels</li>
+      <li>National ID card</li>
+    </ul>
+    <p>For any questions before your visit, please contact us:</p>
+    <ul>
+      <li>📞 Phone: <strong>${COMPANY_PHONE}</strong></li>
+      <li>📧 Email: <strong>${companyEmail}</strong></li>
+    </ul>
+    <p>We look forward to meeting you.</p>
+    <p>Best regards,<br/><strong>${COMPANY_NAME} — HR Team</strong></p>
+  </div>
+  <div class="ftr">
+    <p><strong>${COMPANY_NAME}</strong></p>
+    <p>${COMPANY_ADDRESS} &nbsp;|&nbsp; ${COMPANY_PHONE}</p>
+  </div>
+</div>
+</body></html>`;
+
+  await transporter.sendMail({
+    from: `"${COMPANY_NAME} HR" <${process.env.GMAIL_USER}>`,
+    to: applicantEmail,
+    subject,
+    html,
+  });
+
+  logger.info(`[Email] Interview invitation sent to ${applicantEmail}`);
+};
+
 module.exports = {
   initEmailService,
   sendEmail,
@@ -465,5 +549,6 @@ module.exports = {
   sendDailySalesReport,
   testEmailConfig,
   getEmailStats,
-  processEmailRetryQueue
+  processEmailRetryQueue,
+  sendApplicationEmail,
 };

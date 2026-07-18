@@ -36,9 +36,9 @@ const upload = multer({
 router.get('/public', galleryController.getPublicImages);
 router.get('/public/:id', galleryController.getPublicImageById);
 
-// ── Admin (login + Admin role) ────────────────────────────────
+// ── Admin + HR (login + role) ─────────────────────────────────
 router.use(authenticate);
-router.use(authorizeRoles(['Admin', 'CEO']));
+router.use(authorizeRoles(['Admin', 'CEO', 'HR Manager']));
 
 router.get('/', galleryController.getAllImages);
 router.post('/', upload.single('image'), (err, req, res, next) => {

@@ -12,10 +12,10 @@ const newsStorage = multer.diskStorage({
 
 const newsUpload = multer({
   storage: newsStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
-      return cb(new Error('Only JPG/PNG allowed (max 5MB)'), false);
+      return cb(new Error('Only JPG/PNG allowed (max 25MB)'), false);
     }
     cb(null, true);
   },
@@ -30,8 +30,8 @@ router.get('/notifications/unread-count', authenticate, newsController.unreadCou
 router.put('/notifications/:id/read', authenticate, newsController.markRead);
 router.put('/notifications/read-all', authenticate, newsController.markAllRead);
 
-// Admin
-router.use(authenticate, authorizeRoles(['Admin', 'CEO']));
+// Admin + HR Manager
+router.use(authenticate, authorizeRoles(['Admin', 'CEO', 'HR Manager']));
 router.get('/', newsController.listPosts);
 router.get('/:id', newsController.getPost);
 router.post('/', newsUpload.array('images', 10), newsController.createPost);

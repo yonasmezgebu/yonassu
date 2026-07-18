@@ -30,6 +30,7 @@ const storeRoutes = require('./store.routes');
 const boardRoutes = require('./board.routes');
 const erpRoutes = require('./erp.routes');
 const procurementRoutes = require('./procurement.routes');
+const applicationsRoutes = require('./applications.routes');
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
@@ -70,5 +71,6 @@ router.use('/finance-bank', require('./financeBank.routes'));
 router.use('/finance-receivables', require('./financeReceivables.routes'));
 router.use('/finance-payables', require('./financePayables.routes'));
 router.use('/transfer-requests', require('./transferRequest.routes'));
+router.use('/applications', applicationsRoutes);
 
 module.exports = router;
