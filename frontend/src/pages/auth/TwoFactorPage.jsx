@@ -52,12 +52,13 @@ const TwoFactorPage = () => {
       else if (user.roles?.includes('CEO')) navigate('/ceo');
       else if (user.roles?.includes('Finance Manager')) navigate('/finance');
       else if (user.roles?.includes('Purchase')) navigate('/purchase');
-      else if (user.roles?.includes('Store Manager')) navigate('/store');
+      else if (user.roles?.includes('Pharmacy Store Keeper')) navigate('/pharmacy-store');
+      else if (user.roles?.includes('General Store Keeper')) navigate('/general-store');
       else if (user.roles?.includes('Sales/Cashier')) navigate('/pharmacy-worker');
       else if (user.roles?.includes('Printing Supervisor')) navigate('/printing-manager');
       else if (user.roles?.includes('HR Manager')) navigate('/hr');
-      else if (user.roles?.includes('Employee')) navigate('/employee');
       else if (user.roles?.includes('Board Member')) navigate('/board');
+      else if (user.roles?.includes('Employee')) navigate('/employee');
       else if (user.roles?.includes('Pharmacy Manager')) navigate('/pharmacy');
       else if (user.roles?.includes('Pharmacy Worker')) navigate('/pharmacy-worker');
       else if (user.roles?.includes('Car Renting Manager')) navigate('/car-renting');

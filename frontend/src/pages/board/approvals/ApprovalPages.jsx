@@ -22,25 +22,6 @@ export const BudgetApproval = () => {
   );
 };
 
-export const CEODecisions = () => {
-  const [items, setItems] = useState([]);
-
-  useEffect(() => {
-    const fetch = () => setItems(boardAggregationService.getApprovalItems().filter(i => i.type === 'ceo_decision'));
-    fetch();
-    return boardAggregationService.subscribe(fetch);
-  }, []);
-
-  return (
-    <ApprovalQueue 
-      items={items} 
-      title="CEO Decisions Approval" 
-      description="Governance oversight on major strategic and operational decisions submitted by the CEO." 
-      allowAmend={false} 
-      allowHold={false} 
-    />
-  );
-};
 
 export const MajorInvestments = () => {
   const [items, setItems] = useState([]);

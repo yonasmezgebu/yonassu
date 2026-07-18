@@ -9,11 +9,11 @@ import apiClient from '../../services/apiClient';
 import SignatureCanvas from 'react-signature-canvas';
 
 // ── Colors ──────────────────────────────────────────────────────────────────
-const CYAN   = '#CDF7FD';
-const PURPLE = '#C2B6CA';
-const DARK   = '#000000';
-const MID    = '#000000';
-const ACCENT = '#000000';
+const CYAN   = '#d1fae5'; // emerald-100
+const PURPLE = '#a7f3d0'; // emerald-200
+const DARK   = '#064e3b'; // emerald-900
+const MID    = '#047857'; // emerald-600
+const ACCENT = '#10b981'; // emerald-500
 
 const preloadedAudio = {
   notification: new Audio('/sounds/notification.mp3'),
@@ -55,8 +55,8 @@ function StepTracker({ status }) {
               <div className={active ? "icon3d" : ""} style={{
                 width:36, height:36, background:bg,
                 display:'flex', alignItems:'center', justifyContent:'center',
-                color:col, border: active || done ? `3px solid ${DARK}` : `3px solid #cbd5e1`,
-                boxShadow: active || done ? `3px 3px 0 ${DARK}` : 'none',
+                color:col, border: active || done ? `2px solid ${DARK}` : `2px solid #cbd5e1`,
+                boxShadow: active || done ? `0 4px 6px rgba(0,0,0,0.05)` : 'none',
               }}>
                 {done ? <Check size={16}/> : step.icon}
               </div>
@@ -103,7 +103,7 @@ function InfoBox({ label, value, color, highlight }) {
       background: highlight ? CYAN : 'white',
       padding:'12px 14px', textAlign:'center',
       border: `3px solid ${DARK}`,
-      boxShadow: `3px 3px 0 ${DARK}`,
+      boxShadow: `4px 4px 0 ${DARK}`,
       display: 'flex', flexDirection: 'column', justifyContent: 'center'
     }}>
       <div style={{ fontSize:22, fontWeight:900, color:DARK }}>{value??'—'}</div>
@@ -115,7 +115,7 @@ function InfoBox({ label, value, color, highlight }) {
 // ── Row detail ────────────────────────────────────────────────────────────────
 function DetailRow({ label, value }) {
   return (
-    <div style={{ display:'flex', justifyContent:'space-between', paddingBottom:8, marginBottom:8, borderBottom:`2px solid ${DARK}` }}>
+    <div style={{ display:'flex', justifyContent:'space-between', paddingBottom:8, marginBottom:8, borderBottom:`3px solid ${DARK}` }}>
       <span style={{ color:DARK, fontWeight:800, fontSize:12, textTransform:'uppercase' }}>{label}</span>
       <span style={{ fontWeight:900, fontSize:13, color:DARK }}>{value}</span>
     </div>
@@ -131,7 +131,7 @@ function RequestCard({ r, onReceive }) {
       background: isShipped ? CYAN : 'white',
       border: `3px solid ${DARK}`,
       marginBottom:20,
-      boxShadow: `6px 6px 0 ${DARK}`,
+      boxShadow: `4px 4px 0 ${DARK}`,
       animation:'rowIn3D .4s ease-out both',
     }}>
       {/* Shipped Banner */}
@@ -161,12 +161,12 @@ function RequestCard({ r, onReceive }) {
         </div>
         <button onClick={() => setExpanded(e => !e)}
           className="btn3d"
-          style={{ marginTop:16, background:PURPLE, border:`3px solid ${DARK}`, color:DARK, fontSize:11, fontWeight:900, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', textTransform:'uppercase', boxShadow:`3px 3px 0 ${DARK}` }}>
+          style={{ marginTop:16, background:PURPLE, border:`3px solid ${DARK}`, color:DARK, fontSize:11, fontWeight:900, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>
           {expanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
           {expanded ? 'HIDE DETAILS' : 'SHOW DETAILS'}
         </button>
         {expanded && (
-          <div style={{ marginTop:16, background:PURPLE, padding:'16px', border:`3px solid ${DARK}`, boxShadow:`3px 3px 0 ${DARK}` }}>
+          <div style={{ marginTop:16, background:PURPLE, padding:'16px', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}` }}>
             <DetailRow label="Urgency"      value={r.urgency}/>
             <DetailRow label="Requested At" value={r.created_at ? new Date(r.created_at).toLocaleString() : '—'}/>
             {r.approved_at && <DetailRow label="Approved At" value={new Date(r.approved_at).toLocaleString()}/>}
@@ -183,7 +183,7 @@ function RequestCard({ r, onReceive }) {
             marginTop:20, width:'100%', padding:'14px',
             background:PURPLE, color:DARK, border:`3px solid ${DARK}`,
             cursor:'pointer', fontWeight:900, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-            boxShadow:`5px 5px 0 ${DARK}`, textTransform:'uppercase'
+            boxShadow:`4px 4px 0 ${DARK}`, textTransform:'uppercase'
           }}>
             <span className="icon3d"><Inbox size={18}/></span> Confirm Receipt &amp; Update Stock
           </button>
@@ -329,7 +329,7 @@ export default function StoreInventoryView() {
         }
         .btn3d:active:not(:disabled) {
           filter: brightness(0.9);
-          box-shadow: 1px 1px 0 var(--dk) !important;
+          box-shadow: 1px 1px 0 ${DARK} !important;
         }
 
         /* Row / Card 3-D hover */
@@ -361,11 +361,11 @@ export default function StoreInventoryView() {
           position:'fixed', top:20, right:20, zIndex:9999999,
           padding:'12px 24px', display:'flex', alignItems:'center', gap:10,
           background: msg.type==='success' ? CYAN : '#fef2f2',
-          border:`3px solid ${msg.type==='success' ? DARK : '#991b1b'}`,
+          border:`3px solid ${DARK}`,
           color: msg.type==='success' ? DARK : '#991b1b',
           fontWeight:900, fontSize:13, textTransform:'uppercase',
           animation:'fadeSlide .3s ease',
-          boxShadow:`4px 4px 0 ${msg.type==='success' ? DARK : '#991b1b'}`,
+          boxShadow:`4px 4px 0 ${DARK}`,
         }}>
           <span className="icon3d">
             {msg.type==='success' ? <CheckCircle size={18}/> : <XCircle size={18}/>}
@@ -383,7 +383,7 @@ export default function StoreInventoryView() {
             <div className="icon3d" style={{
               width: 48, height: 48, background: PURPLE,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `3px solid ${CYAN}`, boxShadow: `4px 4px 0 ${CYAN}`,
+              border: `3px solid ${DARK}`, boxShadow: `4px 4px 0 ${DARK}`,
             }}>
               <Database size={24} color={DARK} />
             </div>
@@ -430,11 +430,11 @@ export default function StoreInventoryView() {
             { label:'Shipped',        value:shippedRequests.length,                     icon:Truck,    color:PURPLE },
             { label:'Completed',      value:myRequests.filter(r=>r.status==='COMPLETED').length, icon:CheckCircle, color:CYAN },
           ].map((kpi,i) => (
-            <div key={i} className="card3d" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`6px 6px 0 ${DARK}`, display:'flex', flexDirection:'column' }}>
+            <div key={i} className="card3d" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, display:'flex', flexDirection:'column' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                 <span style={{ fontSize:12, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>{kpi.label}</span>
-                <div className="iconPop" style={{ background:DARK, padding:8, border:`2px solid ${DARK}` }}>
-                  <kpi.icon size={18} color={kpi.color}/>
+                <div className="iconPop" style={{ background:DARK, padding:8, border:`3px solid ${DARK}` }}>
+                  <kpi.icon size={18} color={'white'}/>
                 </div>
               </div>
               <div style={{ fontSize:'2.5rem', fontWeight:900, color:DARK, marginTop:16 }}>
@@ -484,16 +484,16 @@ export default function StoreInventoryView() {
               </div>
             </div>
 
-            <div style={{ background:'white', border:`3px solid ${DARK}`, boxShadow:`6px 6px 0 ${DARK}`, overflow:'hidden' }}>
+            <div style={{ background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, overflow:'hidden' }}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr>
-                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:CYAN, background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Drug Name</th>
-                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:CYAN, background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Category</th>
-                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:CYAN, background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Amount</th>
-                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:CYAN, background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Unit</th>
-                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:CYAN, background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Action</th>
+                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Drug Name</th>
+                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Category</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Amount</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Unit</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -517,12 +517,9 @@ export default function StoreInventoryView() {
                       const dUnit = item.unit || item.drug_unit || 'pcs';
                       const dCat  = item.category || item.drug_category || '—';
                       return (
-                        <tr key={`row-${item.id||idx}`} className="row3d" style={{ borderBottom:`2px solid ${DARK}`, background: idx % 2 === 0 ? 'white' : PURPLE, animation: `rowIn3D .3s ease-out ${idx*0.03}s both` }}>
+                        <tr key={`row-${item.id||idx}`} className="row3d" style={{ borderBottom:`3px solid ${DARK}`, background: idx % 2 === 0 ? 'white' : PURPLE, animation: `rowIn3D .3s ease-out ${idx*0.03}s both` }}>
                           <td style={{ padding:'14px 18px', fontWeight:900, color:DARK }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                              <span className="iconPop" style={{ width:12, height:12, background:DARK, display:'inline-block' }}/>
-                              {dName}
-                            </div>
+                            {dName}
                           </td>
                           <td style={{ padding:'14px 18px' }}>
                             <span className="badge3d" style={{ display:'inline-block', background:CYAN, color:DARK, padding:'4px 12px', fontSize:11, fontWeight:900, border:`2px solid ${DARK}`, textTransform:'uppercase' }}>
@@ -539,12 +536,12 @@ export default function StoreInventoryView() {
                           </td>
                           <td style={{ padding:'14px 18px', textAlign:'center' }}>
                             {hasOpen
-                              ? <span className="badge3d" style={{ display:'inline-block', background:'#fef3c7', color:'#92400e', padding:'8px 16px', fontSize:11, fontWeight:900, border:'2px solid #92400e', textTransform:'uppercase' }}>
+                              ? <span className="badge3d" style={{ display:'inline-block', background:'#fef3c7', color:'#92400e', padding:'8px 16px', fontSize:11, fontWeight:900, border:'1px solid #fcd34d', textTransform:'uppercase' }}>
                                   ⏳ Pending CEO
                                 </span>
                               : <button type="button" onClick={(e) => { e.preventDefault(); setReqModal({ open:true, item, qty:'', urgency:'MEDIUM' }); }}
                                   className="btn3d"
-                                  style={{ background:CYAN, color:DARK, border:`3px solid ${DARK}`, padding:'8px 16px', fontWeight:900, fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, textTransform:'uppercase', boxShadow:`3px 3px 0 ${DARK}` }}>
+                                  style={{ background:CYAN, color:DARK, border:`3px solid ${DARK}`, padding:'8px 16px', fontWeight:900, fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>
                                   <Send size={14}/> Request
                                 </button>
                             }
@@ -582,7 +579,7 @@ export default function StoreInventoryView() {
                 <Loader2 size={40} color={DARK} style={{ animation:'spin 1s linear infinite' }}/>
               </div>
             ) : myRequests.length === 0 ? (
-              <div className="card3d" style={{ textAlign:'center', padding:60, background:'white', border:`3px solid ${DARK}`, boxShadow:`6px 6px 0 ${DARK}` }}>
+              <div className="card3d" style={{ textAlign:'center', padding:60, background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}` }}>
                 <span className="iconPop" style={{ display:'block', fontSize:60, marginBottom:20 }}>🚚</span>
                 <div style={{ fontWeight:900, fontSize:22, color:DARK, marginBottom:10, textTransform:'uppercase' }}>No Transfer Requests Yet</div>
                 <div style={{ fontSize:14, color:DARK, fontWeight:700 }}>Go to the "Store Stock" tab to request drugs from the store.</div>
@@ -618,7 +615,7 @@ export default function StoreInventoryView() {
           onMouseDown={e => { if (e.target === e.currentTarget) { setReqModal({open:false,item:null,qty:'',urgency:'MEDIUM'}); setSavedSig(null); sigCanvas.current?.clear(); } }}
           style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.75)', zIndex:99999, overflowY:'auto', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px' }}>
           <div style={{ margin:'auto', flexShrink:0, background:CYAN, width:500, maxWidth:'100%', border:`4px solid ${DARK}`, boxShadow:`8px 8px 0 ${DARK}` }}>
-            <div style={{ padding:'20px 24px', background:DARK, borderBottom:`4px solid ${DARK}` }}>
+            <div style={{ padding:'20px 24px', background:DARK, borderBottom:`3px solid ${DARK}` }}>
               <h3 style={{ margin:0, fontSize:20, color:CYAN, fontWeight:900, textTransform:'uppercase' }}>Request Transfer from Store</h3>
               <p style={{ margin:'6px 0 0', fontSize:14, color:'white', fontWeight:800 }}>{reqModal.item?.name}</p>
             </div>
@@ -626,12 +623,12 @@ export default function StoreInventoryView() {
               <div>
                 <label style={{ display:'block', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>Quantity to Request</label>
                 <input type="number" min="1" value={reqModal.qty} onChange={e => setReqModal({...reqModal, qty:e.target.value})}
-                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', boxSizing:'border-box', fontWeight:900, fontSize:18, fontFamily:'Inter', boxShadow:`3px 3px 0 ${DARK}` }} autoFocus/>
+                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', boxSizing:'border-box', fontWeight:900, fontSize:18, fontFamily:'Inter', boxShadow:`4px 4px 0 ${DARK}` }} autoFocus/>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>Urgency</label>
                 <select value={reqModal.urgency} onChange={e => setReqModal({...reqModal, urgency:e.target.value})}
-                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', fontWeight:900, fontSize:14, fontFamily:'Inter', boxShadow:`3px 3px 0 ${DARK}` }}>
+                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', fontWeight:900, fontSize:14, fontFamily:'Inter', boxShadow:`4px 4px 0 ${DARK}` }}>
                   <option value="LOW">LOW</option>
                   <option value="MEDIUM">MEDIUM</option>
                   <option value="HIGH">HIGH</option>
@@ -641,9 +638,9 @@ export default function StoreInventoryView() {
                 <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>
                   <span>Digital Signature {savedSig && <span style={{ color:'#166534', fontSize:10, marginLeft:6, background:'#dcfce7', padding:'2px 8px', border:'2px solid #166534' }}>✓ SAVED</span>}</span>
                   <button type="button" onClick={() => { sigCanvas.current?.clear(); setSavedSig(null); }}
-                    style={{ fontSize:10, color:'white', background:'#ef4444', border:`2px solid ${DARK}`, cursor:'pointer', fontWeight:900, padding:'4px 10px', textTransform:'uppercase', boxShadow:`2px 2px 0 ${DARK}` }}>Clear</button>
+                    style={{ fontSize:10, color:'white', background:'#ef4444', border:`3px solid ${DARK}`, cursor:'pointer', fontWeight:900, padding:'4px 10px', textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>Clear</button>
                 </label>
-                <div style={{ border:`3px solid ${DARK}`, background:'white', boxShadow:`3px 3px 0 ${DARK}` }}>
+                <div style={{ border:`3px solid ${DARK}`, background:'white', boxShadow:`4px 4px 0 ${DARK}` }}>
                   <SignatureCanvas ref={sigCanvas} penColor={DARK} canvasProps={{ width:452, height:120 }}/>
                 </div>
                 <button type="button"
@@ -652,7 +649,7 @@ export default function StoreInventoryView() {
                     setSavedSig(sigCanvas.current.toDataURL());
                     showMsg('✅ Signature saved!','success');
                   }}
-                  style={{ marginTop:10, width:'100%', padding:'10px', background:'#166534', color:'white', border:`3px solid ${DARK}`, fontWeight:900, fontSize:12, textTransform:'uppercase', cursor:'pointer', boxShadow:`3px 3px 0 ${DARK}`, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  style={{ marginTop:10, width:'100%', padding:'10px', background:'#166534', color:'white', border:`3px solid ${DARK}`, fontWeight:900, fontSize:12, textTransform:'uppercase', cursor:'pointer', boxShadow:`4px 4px 0 ${DARK}`, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                   💾 Save Signature
                 </button>
                 {savedSig && (
@@ -682,9 +679,9 @@ export default function StoreInventoryView() {
       {/* ── RECEIVE MODAL ── */}
       {receiveModal.open && receiveModal.req && (
         <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,28,41,.8)', zIndex:99999, overflowY:'auto', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px', backdropFilter:'blur(4px)' }}>
-          <div className="card3d" style={{ margin:'auto', flexShrink:0, background:CYAN, width:540, maxWidth:'100%', border:`4px solid ${DARK}`, boxShadow:`8px 8px 0 ${DARK}`, animation:'fadeUp .25s ease' }}>
-            <div style={{ background:DARK, padding:'24px', display:'flex', alignItems:'center', gap:16, borderBottom:`4px solid ${DARK}` }}>
-              <div className="iconPop" style={{ background:CYAN, padding:12, border:`2px solid ${CYAN}` }}>
+          <div className="card3d" style={{ margin:'auto', flexShrink:0, background:CYAN, width:540, maxWidth:'100%', border:`3px solid ${DARK}`, boxShadow:`6px 6px 0 ${DARK}`, animation:'fadeUp .25s ease' }}>
+            <div style={{ background:DARK, padding:'24px', display:'flex', alignItems:'center', gap:16, borderBottom:`3px solid ${DARK}` }}>
+              <div className="iconPop" style={{ background:CYAN, padding:12, border:`3px solid ${DARK}` }}>
                 <Inbox size={28} color={DARK}/>
               </div>
               <div>
@@ -709,22 +706,22 @@ export default function StoreInventoryView() {
               </label>
               <input type="number" min="0" value={receiveModal.qty}
                 onChange={e => setReceiveModal({...receiveModal, qty:e.target.value})}
-                style={{ width:'100%', padding:'16px 20px', border:`3px solid ${DARK}`, outline:'none', fontSize:22, fontWeight:900, boxSizing:'border-box', fontFamily:'Inter', boxShadow:`4px 4px 0 ${DARK}` }}
+                style={{ width:'100%', padding:'16px 20px', border:`3px solid ${DARK}`, outline:'none', fontSize:22, fontWeight:900, boxSizing:'border-box', boxShadow:`4px 4px 0 ${DARK}` }}
                 autoFocus placeholder="Enter count received..."/>
               {receiveModal.qty !== '' && (
                 parseInt(receiveModal.qty) === Number(receiveModal.req.shipped_qty) ? (
-                  <div className="badge3d" style={{ marginTop:12, background:'#dcfce7', border:`2px solid #166534`, padding:'10px 14px', color:'#166534', fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase' }}>
+                  <div className="badge3d" style={{ marginTop:12, background:'#d1fae5', border:`3px solid ${DARK}`, padding:'10px 14px', color:DARK, fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase', boxShadow:`3px 3px 0 ${DARK}` }}>
                     <Check size={18}/> Quantities match — Add to stock
                   </div>
                 ) : (
-                  <div className="badge3d" style={{ marginTop:12, background:'#fef2f2', border:`2px solid #991b1b`, padding:'10px 14px', color:'#991b1b', fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase' }}>
+                  <div className="badge3d" style={{ marginTop:12, background:'#fee2e2', border:`3px solid #991b1b`, padding:'10px 14px', color:'#991b1b', fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase', boxShadow:`3px 3px 0 #991b1b` }}>
                     <AlertTriangle size={18}/> Mismatch! Triggers discrepancy report
                   </div>
                 )
               )}
               <div style={{ display:'flex', gap:16, marginTop:28 }}>
-                <button type="button" onClick={(e) => { e.preventDefault(); setReceiveModal({open:false,req:null,qty:''}); }} className="btn3d" style={{ flex:1, padding:'16px', background:'white', color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:14, textTransform:'uppercase', boxShadow:`5px 5px 0 ${DARK}` }}>Cancel</button>
-                <button type="button" onClick={(e) => { e.preventDefault(); submitReceive(); }} disabled={submittingReceive||receiveModal.qty===''} className="btn3d" style={{ flex:2, padding:'16px', background:PURPLE, color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:14, textTransform:'uppercase', boxShadow:`5px 5px 0 ${DARK}` }}>
+                <button type="button" onClick={(e) => { e.preventDefault(); setReceiveModal({open:false,req:null,qty:''}); }} className="btn3d" style={{ flex:1, padding:'16px', background:'white', color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:14, textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>Cancel</button>
+                <button type="button" onClick={(e) => { e.preventDefault(); submitReceive(); }} disabled={submittingReceive||receiveModal.qty===''} className="btn3d" style={{ flex:2, padding:'16px', background:PURPLE, color:DARK, border:`3px solid ${DARK}`, cursor: submittingReceive||receiveModal.qty===''?'not-allowed':'pointer', fontWeight:900, fontSize:14, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:`4px 4px 0 ${DARK}`, opacity: submittingReceive||receiveModal.qty===''?0.6:1 }}>
                   {submittingReceive ? 'Processing...' : 'Confirm & Update Stock'}
                 </button>
               </div>

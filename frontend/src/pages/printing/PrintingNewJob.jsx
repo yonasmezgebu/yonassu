@@ -3,9 +3,16 @@ import { PlusCircle, Save, Printer, Upload } from 'lucide-react';
 import { createJob } from '../../utils/printingTransactionService';
 import { playSound } from '../../utils/printingSound';
 import { useNavigate } from 'react-router-dom';
+import PrintingQueue from './PrintingQueue';
+import PrintingDesign from './PrintingDesign';
+import PrintingPrepress from './PrintingPrepress';
+import PrintingInPrint from './PrintingInPrint';
+import PrintingFinishing from './PrintingFinishing';
+import PrintingDelivery from './PrintingDelivery';
 
 const PrintingNewJob = () => {
   const navigate = useNavigate();
+  const [activeProcessTab, setActiveProcessTab] = useState('new');
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     customerName: '', customerPhone: '',
@@ -49,8 +56,46 @@ const PrintingNewJob = () => {
 
   const balanceDue = (parseFloat(form.totalCost) || 0) - (parseFloat(form.depositPaid) || 0);
 
+  const processTabs = [
+    { id: 'new', label: 'New Job' },
+    { id: 'queue', label: 'Job Queue' },
+    { id: 'design', label: 'In Design' },
+    { id: 'prepress', label: 'File Check' },
+    { id: 'printing', label: 'In Printing' },
+    { id: 'finishing', label: 'Finishing' },
+    { id: 'delivery', label: 'Ready for Delivery' }
+  ];
+
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Top navigation buttons for Job Process */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap', borderBottom: '2px solid #e2e8f0', paddingBottom: 16 }}>
+        {processTabs.map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveProcessTab(tab.id)}
+            style={{
+              padding: '12px 20px',
+              background: activeProcessTab === tab.id ? '#0f172a' : 'white',
+              color: activeProcessTab === tab.id ? 'white' : '#475569',
+              border: activeProcessTab === tab.id ? '2px solid #0f172a' : '2px solid #cbd5e1',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              fontSize: 13,
+              transition: 'all 0.2s',
+              boxShadow: activeProcessTab === tab.id ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeProcessTab === 'new' && (
+        <>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a' }}>
           <PlusCircle color="#22c55e" size={28} /> NEW JOB ORDER
@@ -156,6 +201,16 @@ const PrintingNewJob = () => {
           <button type="submit" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#22c55e', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}><Save size={18} /> Save Job Order</button>
         </div>
       </form>
+      </>
+      )}
+
+      {/* Render sub-components based on active tab */}
+      {activeProcessTab === 'queue' && <PrintingQueue />}
+      {activeProcessTab === 'design' && <PrintingDesign />}
+      {activeProcessTab === 'prepress' && <PrintingPrepress />}
+      {activeProcessTab === 'printing' && <PrintingInPrint />}
+      {activeProcessTab === 'finishing' && <PrintingFinishing />}
+      {activeProcessTab === 'delivery' && <PrintingDelivery />}
     </div>
   );
 };

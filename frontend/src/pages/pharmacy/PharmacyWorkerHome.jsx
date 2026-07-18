@@ -246,24 +246,26 @@ const PharmacyWorkerHome = () => {
             <Star size={18} color="#D4A843" />
             <span style={{ fontSize: 15, fontWeight: 800, color: '#0d3349' }}>Top Sales Today</span>
           </div>
-          {topSelling.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: '#9DBDCE', fontSize: 13, fontWeight: 600 }}>
-              <BarChart2 size={32} style={{ marginBottom: 8, opacity: 0.4 }} /><br />No sales yet today
-            </div>
-          ) : topSelling.map((item, i) => (
-            <div key={item.name} className="top-sell-row" onClick={() => navigate('/pharmacy-worker/medicines?search=' + encodeURIComponent(item.name))}>
-              <div style={{ width: 30, height: 30, borderRadius: 0, background: `${COLORS[i % COLORS.length]}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: COLORS[i % COLORS.length] }}>#{i + 1}</span>
+          <div style={{ maxHeight: '250px', overflowY: 'auto', paddingRight: 4 }}>
+            {topSelling.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0', color: '#9DBDCE', fontSize: 13, fontWeight: 600 }}>
+                <BarChart2 size={32} style={{ marginBottom: 8, opacity: 0.4 }} /><br />No sales yet today
               </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e4d6b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-                <div style={{ fontSize: 11, color: '#9DBDCE', fontWeight: 600 }}>{fmtInt(item.units_sold)} units sold</div>
+            ) : topSelling.map((item, i) => (
+              <div key={item.name} className="top-sell-row" onClick={() => navigate('/pharmacy-worker/medicines?search=' + encodeURIComponent(item.name))}>
+                <div style={{ width: 30, height: 30, borderRadius: 0, background: `${COLORS[i % COLORS.length]}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: COLORS[i % COLORS.length] }}>#{i + 1}</span>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1e4d6b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: '#9DBDCE', fontWeight: 600 }}>{fmtInt(item.units_sold)} units sold</div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#5BAD8A', whiteSpace: 'nowrap' }}>
+                  ETB {fmt(item.revenue)}
+                </div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#5BAD8A', whiteSpace: 'nowrap' }}>
-                ETB {fmt(item.revenue)}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

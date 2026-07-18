@@ -169,7 +169,7 @@ const UserManagement = () => {
         <span className={styles.hierarchyArrow}>→</span>
         <div className={styles.hierarchyItem}>
           <span className={styles.hierarchyBadge} style={{ background: '#fef9c3', color: '#854d0e' }}>Branch</span>
-          <span>Pharmacy Worker & Store Manager require a <strong>branch selection</strong></span>
+          <span>Pharmacy Worker & Store Keepers require a <strong>branch selection</strong></span>
         </div>
       </div>
 
@@ -193,7 +193,8 @@ const UserManagement = () => {
           <option value="">Pharmacy Manager</option>
           <option value="">Pharmacy Worker</option>
           <option value="">Sales Manager</option>
-          <option value="">Store Manager</option>
+          <option value="">Pharmacy Store Keeper</option>
+          <option value="">General Store Keeper</option>
           <option value="">Customer</option>
         </select>
         <select className={styles.filterInput} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>

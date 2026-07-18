@@ -24,16 +24,17 @@ import CEOFinanceApprovals from './CEOFinanceApprovals';
 import CEOHR from './CEOHR';
 import HRPolicies from '../hr/HRPolicies';
 import HRAnnouncements from '../hr/HRAnnouncements';
+import CEOPharmacyHub from './CEOPharmacyHub';
 import CEOPharmacyM20M22 from './CEOPharmacyM20M22';
 import CEOStoreRequisitions from './CEOStoreRequisitions';
 import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
 import PharmacyFinanceControls from '../pharmacy/PharmacyFinanceControls';
 import CEODirectDelivery from './CEODirectDelivery';
-import CEORequestApprovals from '../pharmacy/CEORequestApprovals';
 import CEOTenderManager from './CEOTenderManager';
 import CEOFundApprovalsM9 from './CEOFundApprovalsM9';
 import CEOPrinting from './CEOPrinting';
 import CEOCarRental from './CEOCarRental';
+import CEOAgrirent from './CEOAgrirent';
 import StoreAdjustmentApprovals from './StoreAdjustmentApprovals';
 import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 import CEOApplicants from './CEOApplicants';
@@ -66,22 +67,21 @@ const CEODashboard = () => {
         { label: 'Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b' },
         { label: 'Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
         { label: 'HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
-        { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { type: 'divider' },
-        { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
-        { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
-        { type: 'divider' },
-        { label: 'Pharmacy Sales/Finance', path: '/ceo/pharmacy-finance', icon: 'dollar-sign', color: '#ef4444' },
-        { label: 'Procurement & New Drugs', path: '/ceo/procurement-decisions', icon: 'clipboard', color: '#06b6d4' },
-        { label: 'Direct Delivery', path: '/ceo/direct-delivery', icon: 'truck', color: '#14b8a6' },
-        { label: 'Manager Requests', path: '/ceo/manager-requests', icon: 'file-text', color: '#6366f1' },
-        { label: 'Store Requisitions', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
-        { type: 'divider' },
+        { label: 'Pharmacy', path: '/ceo/pharmacy-hub', icon: 'plus-circle', color: '#ef4444' },
+        { label: 'Store', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
+        { label: 'Agrirent', path: '/ceo/agrirent', icon: 'home', color: '#65a30d' },
         { label: 'Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
-        { label: 'Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
-        { type: 'divider' },
         { label: 'Printing', path: '/ceo/printing', icon: 'printer', color: '#a855f7' },
         { label: 'Car Rental', path: '/ceo/car-rental', icon: 'car', color: '#0ea5e9' },
+      ]
+    },
+    { type: 'divider' },
+    { label: 'Administration', icon: 'shield',
+      children: [
+        { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
+        { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
+        { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
+        { label: 'Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
       ]
     },
     { type: 'divider' },
@@ -113,12 +113,12 @@ const CEODashboard = () => {
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
             
-            {/* Pharmacy M20-M22 Module Disabled */}
+            {/* Pharmacy Hub */}
+            <Route path="pharmacy-hub" element={<CEOPharmacyHub />} />
             <Route path="pharmacy" element={<CEOPharmacyM20M22 />} />
             <Route path="pharmacy-finance" element={<PharmacyFinanceControls />} />
             <Route path="procurement-decisions" element={<CEOProcurementDecisions />} />
             <Route path="direct-delivery" element={<CEODirectDelivery />} />
-            <Route path="manager-requests" element={<CEORequestApprovals />} />
             <Route path="store-requisitions" element={<CEOStoreRequisitions />} />
             
             <Route path="tenders" element={<CEOTenderManager />} />
@@ -126,6 +126,7 @@ const CEODashboard = () => {
             
             <Route path="printing" element={<CEOPrinting />} />
             <Route path="car-rental" element={<CEOCarRental />} />
+            <Route path="agrirent" element={<CEOAgrirent />} />
 
             {/* 9 Additional Approval & Report Modules */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />

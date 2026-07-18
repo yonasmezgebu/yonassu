@@ -27,22 +27,40 @@ const Card = ({ children, title, icon }) => (
   </div>
 );
 
-// 5.1 Company Overview
-export const CompanyOverview = () => {
+// 5.1 Executive Overview (Combined)
+export const ExecutiveOverview = () => {
   const [data, setData] = useState(null);
+  const [kpis, setKpis] = useState(null);
+  const [depts, setDepts] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
-    const fetch = () => setData(boardAggregationService.getCompanyFinancials());
+    const fetch = () => {
+      setData(boardAggregationService.getCompanyFinancials());
+      setKpis(boardAggregationService.getKPIs());
+      const raw = boardAggregationService.getDepartmentBreakdown();
+      raw.sort((a, b) => b.profit - a.profit);
+      setDepts(raw);
+      setAlerts(boardAggregationService.getAlerts().filter(a => a.status === 'active'));
+    };
     fetch();
     return boardAggregationService.subscribe(fetch);
   }, []);
 
-  if (!data) return null;
+  if (!data || !kpis) return null;
+
+  const getSeverityStyle = (sev) => {
+    if (sev === 'critical') return { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', icon: <XCircle size={20} color="#b91c1c" /> };
+    if (sev === 'warning') return { bg: '#fffbeb', border: '#fcd34d', text: '#d97706', icon: <AlertTriangle size={20} color="#d97706" /> };
+    return { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', icon: <ShieldAlert size={20} color="#1d4ed8" /> };
+  };
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="Company Overview" description="High-level financial and operational summary." />
+      <PageHeader title="Executive Overview" description="Combined high-level financial, operational summary, and key alerts." />
       
+      {/* --- Section: Financial & Operational --- */}
+      <h2 style={{ fontSize: '18px', color: '#0f172a', marginBottom: '16px' }}>Financial & Operational Status</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '24px' }}>
         <Card title="Total Revenue" icon={<TrendingUp size={16} color="#10b981" />}>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>
@@ -61,28 +79,7 @@ export const CompanyOverview = () => {
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '24px' }}>
-        <Card title="Total Assets">
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#94a3b8' }}>
-            {data.assets !== null ? <CurrencyDisplay amountCents={data.assets} /> : 'Data Unavailable'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '4px' }}>Finance module not fully integrated</div>
-        </Card>
-        <Card title="Total Liabilities">
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#94a3b8' }}>
-            {data.liabilities !== null ? <CurrencyDisplay amountCents={data.liabilities} /> : 'Data Unavailable'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '4px' }}>Finance module not fully integrated</div>
-        </Card>
-        <Card title="Total Equity">
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#94a3b8' }}>
-            {data.equity !== null ? <CurrencyDisplay amountCents={data.equity} /> : 'Data Unavailable'}
-          </div>
-          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '4px' }}>Finance module not fully integrated</div>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
         <Card title="Total Employees" icon={<Users size={16} />}>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>{data.employeeCount}</div>
         </Card>
@@ -93,33 +90,9 @@ export const CompanyOverview = () => {
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>{data.branchCount}</div>
         </Card>
       </div>
-    </div>
-  );
-};
 
-// 5.2 Performance Summary
-export const PerformanceSummary = () => {
-  const [kpis, setKpis] = useState(null);
-  const [depts, setDepts] = useState([]);
-
-  useEffect(() => {
-    const fetch = () => {
-      setKpis(boardAggregationService.getKPIs());
-      const raw = boardAggregationService.getDepartmentBreakdown();
-      // Sort by profit margin approx
-      raw.sort((a, b) => b.profit - a.profit);
-      setDepts(raw);
-    };
-    fetch();
-    return boardAggregationService.subscribe(fetch);
-  }, []);
-
-  if (!kpis) return null;
-
-  return (
-    <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="Performance Summary" description="Key performance indicators and department rankings." />
-      
+      {/* --- Section: Performance --- */}
+      <h2 style={{ fontSize: '18px', color: '#0f172a', marginBottom: '16px' }}>Performance Indicators</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
         <Card title="Revenue Growth">
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#10b981' }}>+{kpis.revenueGrowthPct}%</div>
@@ -143,56 +116,8 @@ export const PerformanceSummary = () => {
         </Card>
       </div>
 
-      <Card title="Department Rankings (by Profit)">
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '13px' }}>
-              <th style={{ padding: '12px 0' }}>Rank</th>
-              <th>Department</th>
-              <th>Revenue</th>
-              <th>Profit</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {depts.map((d, idx) => (
-              <tr key={d.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '16px 0', fontWeight: '700', color: '#0f172a' }}>#{idx + 1}</td>
-                <td style={{ fontWeight: '600', color: '#3b82f6' }}>{d.dept}</td>
-                <td><CurrencyDisplay amountCents={d.revenue} /></td>
-                <td style={{ fontWeight: '700', color: d.profit >= 0 ? '#10b981' : '#ef4444' }}>
-                  <CurrencyDisplay amountCents={d.profit} />
-                </td>
-                <td>{d.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </div>
-  );
-};
-
-// 5.3 Key Alerts
-export const KeyAlerts = () => {
-  const [alerts, setAlerts] = useState([]);
-
-  useEffect(() => {
-    const fetch = () => setAlerts(boardAggregationService.getAlerts().filter(a => a.status === 'active'));
-    fetch();
-    return boardAggregationService.subscribe(fetch);
-  }, []);
-
-  const getSeverityStyle = (sev) => {
-    if (sev === 'critical') return { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', icon: <XCircle size={20} color="#b91c1c" /> };
-    if (sev === 'warning') return { bg: '#fffbeb', border: '#fcd34d', text: '#d97706', icon: <AlertTriangle size={20} color="#d97706" /> };
-    return { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', icon: <ShieldAlert size={20} color="#1d4ed8" /> };
-  };
-
-  return (
-    <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="Key Alerts" description="Automated system alerts requiring executive attention." />
-      
+      {/* --- Section: Key Alerts --- */}
+      <h2 style={{ fontSize: '18px', color: '#0f172a', marginBottom: '16px' }}>Key Alerts</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {alerts.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
@@ -224,65 +149,7 @@ export const KeyAlerts = () => {
   );
 };
 
-// 5.4 CEO Performance
-export const CEOPerformance = () => {
-  const [review, setReview] = useState(null);
 
-  useEffect(() => {
-    const fetch = () => setReview(boardAggregationService.getCEOReview());
-    fetch();
-    return boardAggregationService.subscribe(fetch);
-  }, []);
-
-  if (!review) return null;
-
-  return (
-    <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="CEO Performance" description={`Review period: ${review.review_period}`} />
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '24px' }}>
-        <Card title="Current CEO">
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', marginBottom: '16px' }}>{review.ceo_name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ fontSize: '48px', fontWeight: '800', color: '#10b981', lineHeight: 1 }}>{review.performance_score}</div>
-            <div style={{ fontSize: '14px', color: '#64748b' }}>Overall Score<br/>(out of 5.0)</div>
-          </div>
-        </Card>
-        
-        <Card title="Quarterly Actuals vs Target">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            {Object.entries(review.quarterly_actuals).map(([q, data]) => (
-              <div key={q} style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px' }}>{q}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ color: '#475569' }}>Actual:</span>
-                  <span style={{ fontWeight: '700', color: data.actual >= data.target ? '#10b981' : '#ef4444' }}>{data.actual}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#475569' }}>Target:</span>
-                  <span style={{ fontWeight: '600', color: '#0f172a' }}>{data.target}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        <Card title="Key Achievements" icon={<CheckCircle size={16} color="#10b981" />}>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#334155', lineHeight: 1.6 }}>
-            {review.achievements.map((a, i) => <li key={i} style={{ marginBottom: '8px' }}>{a}</li>)}
-          </ul>
-        </Card>
-        <Card title="Areas for Improvement" icon={<AlertTriangle size={16} color="#f59e0b" />}>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#334155', lineHeight: 1.6 }}>
-            {review.improvement_areas.map((a, i) => <li key={i} style={{ marginBottom: '8px' }}>{a}</li>)}
-          </ul>
-        </Card>
-      </div>
-    </div>
-  );
-};
 
 // 5.5 Department Summary
 export const DepartmentSummary = () => {

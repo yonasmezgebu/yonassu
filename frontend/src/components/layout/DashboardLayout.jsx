@@ -236,7 +236,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
     (ceoFundRequestsPending || 0) +
     pharmacyPending +
-    (pharmacyOnlinePending || 0) +
+    (window.location.pathname.startsWith('/pharmacy-worker') ? (pharmacyOnlinePending || 0) : 0) +
     purchasePending +
     (purchaseApprovedTenders?.length || 0) +
     procurementMessages +
@@ -403,7 +403,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
             )}
 
 
-            {pharmacyOnlinePending > 0 && (
+            {window.location.pathname.startsWith('/pharmacy-worker') && pharmacyOnlinePending > 0 && (
               <Link
                 to="/pharmacy-worker/sales"
                 state={{ bellTs: Date.now(), tab: 'online' }}

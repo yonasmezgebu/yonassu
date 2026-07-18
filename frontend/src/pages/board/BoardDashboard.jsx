@@ -5,10 +5,7 @@ import styles from './BoardDashboard.module.css';
 
 // Overview & Performance
 import {
-  CompanyOverview,
-  PerformanceSummary,
-  KeyAlerts,
-  CEOPerformance,
+  ExecutiveOverview,
   DepartmentSummary,
 } from './overview/OverviewPages';
 
@@ -26,20 +23,13 @@ import {
 // Approvals
 import {
   BudgetApproval,
-  CEODecisions,
   MajorInvestments,
   PolicyChanges,
 } from './approvals/ApprovalPages';
 
-// Operations & Compliance
+// Audit Reports for the Reports section
 import {
-  BranchOverview,
-  DepartmentOverview,
-  StructureReview,
-  AuditLogsReadOnly,
   AuditReports,
-  ComplianceStatus,
-  LegalReports,
 } from './operations/OperationsPages';
 
 /* ── Main Dashboard ── */
@@ -48,18 +38,13 @@ const BoardDashboard = () => {
   const menuItems = [
     { 
       label: 'Executive', 
+      path: '/board/executive',
       icon: 'dashboard',
-      children: [
-        { label: 'Company Overview',    path: '/board/company-overview',       icon: 'home' },
-        { label: 'Performance Summary', path: '/board/performance-summary',    icon: 'bar-chart' },
-        { label: 'Key Alerts',          path: '/board/key-alerts',             icon: 'alert-triangle' },
-      ]
     },
     { 
       label: 'Leadership', 
       icon: 'users',
       children: [
-        { label: 'CEO Performance',     path: '/board/ceo-performance',        icon: 'user-check' },
         { label: 'Department Summary',  path: '/board/department-summary',     icon: 'users' },
         { label: 'Strategy Progress',   path: '/board/strategy-progress',      icon: 'target' },
         { label: 'Risk Overview',       path: '/board/risk-overview',          icon: 'shield' },
@@ -88,28 +73,9 @@ const BoardDashboard = () => {
       label: 'Approvals', 
       icon: 'clipboard',
       children: [
-        { label: 'CEO Decisions',       path: '/board/ceo-decisions',          icon: 'user-check' },
         { label: 'Budget Approval',     path: '/board/budget-approval',        icon: 'check-circle' },
         { label: 'Major Investments',   path: '/board/major-investments',      icon: 'trending-up' },
         { label: 'Policy Changes',      path: '/board/policy-changes',         icon: 'settings' },
-      ]
-    },
-    { 
-      label: 'Operations', 
-      icon: 'layers',
-      children: [
-        { label: 'Branch Overview',     path: '/board/branch-overview',        icon: 'building' },
-        { label: 'Department Overview', path: '/board/department-overview',    icon: 'layers' },
-        { label: 'Structure Review',    path: '/board/structure-review',       icon: 'git-branch' },
-      ]
-    },
-    { 
-      label: 'Governance', 
-      icon: 'settings',
-      children: [
-        { label: 'Audit Logs',          path: '/board/audit-logs',             icon: 'lock' },
-        { label: 'Compliance Status',   path: '/board/compliance-status',      icon: 'shield' },
-        { label: 'Legal Reports',       path: '/board/legal-reports',          icon: 'scale' },
       ]
     }
   ];
@@ -120,10 +86,7 @@ const BoardDashboard = () => {
         <div className={styles.dashboardContent}>
           <Routes>
             {/* Overview & Performance */}
-            <Route path="company-overview"    element={<CompanyOverview />} />
-            <Route path="performance-summary" element={<PerformanceSummary />} />
-            <Route path="key-alerts"          element={<KeyAlerts />} />
-            <Route path="ceo-performance"     element={<CEOPerformance />} />
+            <Route path="executive"           element={<ExecutiveOverview />} />
             <Route path="department-summary"  element={<DepartmentSummary />} />
 
             {/* Strategy & Risk */}
@@ -142,24 +105,13 @@ const BoardDashboard = () => {
             <Route path="audit-reports"       element={<AuditReports />} />
 
             {/* Approvals */}
-            <Route path="ceo-decisions"       element={<CEODecisions />} />
             <Route path="budget-approval"     element={<BudgetApproval />} />
             <Route path="major-investments"   element={<MajorInvestments />} />
             <Route path="policy-changes"      element={<PolicyChanges />} />
 
-            {/* Operations */}
-            <Route path="branch-overview"     element={<BranchOverview />} />
-            <Route path="department-overview" element={<DepartmentOverview />} />
-            <Route path="structure-review"    element={<StructureReview />} />
-
-            {/* Governance — Audit Logs is provably read-only, no write routes */}
-            <Route path="audit-logs"          element={<AuditLogsReadOnly />} />
-            <Route path="compliance-status"   element={<ComplianceStatus />} />
-            <Route path="legal-reports"       element={<LegalReports />} />
-
             {/* Redirects */}
-            <Route path="overview"            element={<Navigate to="company-overview" replace />} />
-            <Route path="/"                   element={<Navigate to="company-overview" replace />} />
+            <Route path="overview"            element={<Navigate to="executive" replace />} />
+            <Route path="/"                   element={<Navigate to="executive" replace />} />
           </Routes>
         </div>
       </DashboardLayout>

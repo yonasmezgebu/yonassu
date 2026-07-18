@@ -12,7 +12,8 @@ const PublicRoute = ({ children }) => {
       'Finance': '/finance',
       'Purchase': '/purchase',
       'Market Team': '/purchase',
-      'Store Manager': '/store',
+      'Pharmacy Store Keeper': '/pharmacy-store',
+      'General Store Keeper': '/general-store',
       'Sales/Cashier': '/pharmacy-worker',
       'Printing Supervisor': '/printing-manager',
       'Pharmacy Worker': '/pharmacy-worker',
@@ -23,8 +24,8 @@ const PublicRoute = ({ children }) => {
       'Customer': '/customer'
     };
     const rolePriority = [
-      'Admin', 'CEO', 'Finance', 'Finance Manager', 'Purchase', 'Store Manager',
-      'Printing Supervisor', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
+      'Admin', 'CEO', 'Finance', 'Finance Manager', 'Purchase', 'Pharmacy Store Keeper',
+      'General Store Keeper', 'Printing Supervisor', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
       'Sales/Cashier', 'Car Renting Manager', 'HR Manager', 'Employee', 'Customer'
     ];
     if (user?.roles) {

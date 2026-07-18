@@ -23,7 +23,7 @@ const SALE_TYPES = [
   { value: 'ONLINE', label: 'Online', icon: <Smartphone size={16} /> },
 ];
 
-const EMPTY_ITEM = { drug_name: '', quantity: '', unit_price: '' };
+const EMPTY_ITEM = { drug_id: null, drug_name: '', quantity: '', unit_price: '' };
 
 export default function PharmacySalesForm() {
   const { user } = useAuth();
@@ -499,8 +499,11 @@ export default function PharmacySalesForm() {
     return products.filter(p => p.name?.toLowerCase().includes(q)).slice(0, 8);
   };
 
-  const selectDrug = (idx, name) => {
-    updateItem(idx, 'drug_name', name);
+  const selectDrug = (idx, product) => {
+    // Accept either a product object or a plain name string
+    const name = typeof product === 'string' ? product : (product?.name || product);
+    const drugId = typeof product === 'object' && product !== null ? (product.id || null) : null;
+    setItems(prev => prev.map((row, i) => i !== idx ? row : { ...row, drug_id: drugId, drug_name: name, unit_price: row.unit_price || (drugId && typeof product === 'object' ? String(product.price || '') : row.unit_price) }));
     setShowDrugDropdown(null);
   };
 
@@ -516,6 +519,7 @@ export default function PharmacySalesForm() {
       worker_id: workers[0]?.id || null,
       sale_type: saleType,
       items: validItems.map(row => ({
+        drug_id: row.drug_id || undefined,
         drug_name: row.drug_name,
         quantity: parseFloat(row.quantity),
         unit_price: parseFloat(row.unit_price),

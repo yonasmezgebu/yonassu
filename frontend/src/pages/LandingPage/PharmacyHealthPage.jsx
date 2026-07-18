@@ -952,7 +952,7 @@ const PharmacyHealthPage = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '0', border: '1px solid #e2e8f0' }}>
                       <div className="php-form-group" style={{ gridColumn: '1 / -1' }}>
                         <label>Customer Name</label>
-                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().full_name || authService.getCurrentUser().name || `${authService.getCurrentUser().first_name || ''} ${authService.getCurrentUser().last_name || ''}`.trim() || 'Guest'} disabled />
+                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().fullName || authService.getCurrentUser().full_name || authService.getCurrentUser().name || `${authService.getCurrentUser().first_name || ''} ${authService.getCurrentUser().last_name || ''}`.trim() || 'Guest'} disabled />
                       </div>
                       <div className="php-form-group">
                         <label>Email</label>

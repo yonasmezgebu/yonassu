@@ -10,7 +10,8 @@ const Unauthorized = () => {
     if (user.roles.includes('CEO')) return '/ceo';
     if (user.roles.includes('Finance Manager')) return '/finance';
     if (user.roles.includes('Purchase')) return '/purchase';
-    if (user.roles.includes('Store Manager')) return '/store';
+    if (user.roles.includes('Pharmacy Store Keeper')) return '/pharmacy-store';
+    if (user.roles.includes('General Store Keeper')) return '/general-store';
     if (user.roles.includes('Sales/Cashier')) return '/pharmacy-worker';
     if (user.roles.includes('Printing Supervisor')) return '/printing-manager';
     if (user.roles.includes('Pharmacy Manager')) return '/pharmacy';

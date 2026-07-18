@@ -11,45 +11,22 @@ import EmployeePayslips from './EmployeePayslips';
 
 const EmployeePortalDashboard = () => {
   const menuItems = [
-    { label: 'Dashboard', icon: 'home',
-      children: [
-        { label: 'Overview',       path: '/employee/overview',      icon: 'home' },
-        { label: "Today's Tasks",  path: '/employee/tasks/today',   icon: 'clipboard' },
-        { label: 'Notifications',  path: '/employee/notifications', icon: 'bell' },
-      ]
-    },
+    { label: 'Dashboard', path: '/employee/overview', icon: 'home' },
     { type: 'divider' },
-    { label: 'Tasks', icon: 'clipboard',
+    { label: 'My Work', icon: 'briefcase',
       children: [
-        { label: 'My Tasks',    path: '/employee/tasks/mine',        icon: 'list' },
-        { label: 'In Progress', path: '/employee/tasks/in-progress', icon: 'trending-up' },
-        { label: 'Completed',   path: '/employee/tasks/completed',   icon: 'check-circle' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Work', icon: 'file-text',
-      children: [
-        { label: 'Submit Work',  path: '/employee/work/submit',       icon: 'upload' },
-        { label: 'Daily Report', path: '/employee/work/daily-report', icon: 'file-text' },
-        { label: 'Attendance',   path: '/employee/attendance',        icon: 'clock' },
-        { label: 'Work History', path: '/employee/work/history',      icon: 'archive' },
-        { label: 'My Payslips',  path: '/employee/payslips',          icon: 'banknote', color: '#059669' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Resources', icon: 'package',
-      children: [
-        { label: 'Assigned Materials', path: '/employee/materials/assigned', icon: 'package' },
-        { label: 'Request Materials',  path: '/employee/materials/request',  icon: 'file-plus' },
-        { label: 'Return Items',       path: '/employee/materials/return',   icon: 'rotate-ccw' },
+        { label: 'My Tasks',     path: '/employee/tasks/mine',          icon: 'list' },
+        { label: 'Daily Report', path: '/employee/work/daily-report',   icon: 'file-text' },
+        { label: 'Work History', path: '/employee/work/history',        icon: 'archive' },
+        { label: 'My Payslips',  path: '/employee/payslips',            icon: 'banknote', color: '#059669' },
+        { label: 'Material',     path: '/employee/materials/assigned',  icon: 'package' },
       ]
     },
     { type: 'divider' },
     { label: 'Communication', icon: 'message-circle',
       children: [
-        { label: 'Messages',          path: '/employee/comm/messages',      icon: 'message-circle' },
-        { label: 'Supervisor Notes',  path: '/employee/comm/notes',         icon: 'file-text' },
-        { label: 'Announcements',     path: '/employee/comm/announcements', icon: 'bell' },
+        { label: 'Messages',      path: '/employee/comm/messages',      icon: 'message-circle' },
+        { label: 'Announcements', path: '/employee/comm/announcements', icon: 'bell' },
       ]
     },
   ];

@@ -83,7 +83,7 @@ const AssignRolePanel = ({ user, createCustomRole, currentUserRoles, onClose, on
     if (isAdmin) return allRoles;
     return allRoles.filter(role => {
       if (role.isPreExisting) return false;
-      if (isCEO && ['HR Manager', 'Store Manager'].includes(role.name)) return true;
+      if (isCEO && ['HR Manager', 'Pharmacy Store Keeper', 'General Store Keeper'].includes(role.name)) return true;
       if (isHRManager && [
         'Employee', 'Finance Manager', 'Accountant', 'Cashier', 'Admin',
         'Pharmacy Manager', 'Car Rental Manager', 'Printing Supervisor',
@@ -329,20 +329,7 @@ const AssignRolePanel = ({ user, createCustomRole, currentUserRoles, onClose, on
                 </FormGroup>
               )}
 
-              {/* Store Manager sub-role branch logic */}
-              {selectedRole?.name === 'Store Manager' && selectedSubRole === 'Pharmacy Store' && (
-                <FormGroup label="Pharmacy Branch *">
-                  <select
-                    value={selectedBranchId}
-                    onChange={e => setSelectedBranchId(e.target.value)}
-                    required
-                    style={inputStyle}
-                  >
-                    <option value="">— Select pharmacy branch —</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </FormGroup>
-              )}
+
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button type="button" onClick={onClose} style={cancelBtnStyle} disabled={submitting}>Cancel</button>
