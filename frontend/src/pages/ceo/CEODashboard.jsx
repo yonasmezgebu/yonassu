@@ -36,6 +36,7 @@ import CEOPrinting from './CEOPrinting';
 import CEOCarRental from './CEOCarRental';
 import StoreAdjustmentApprovals from './StoreAdjustmentApprovals';
 import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
+import CEOApplicants from './CEOApplicants';
 
 // 9 Additional Approval & Report Modules
 import CEOPendingApprovals from './CEOPendingApprovals';
@@ -60,26 +61,27 @@ const CEODashboard = () => {
     { type: 'divider' },
     { label: 'Business', icon: 'bar-chart-2',
       children: [
-        { label: '1. Sales', path: '/ceo/sales', icon: 'trending-up', color: '#10b981' },
-        { label: '2. Purchase', path: '/ceo/purchase', icon: 'shopping-cart', color: '#3b82f6' },
-        { label: '3. Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b' },
-        { label: '4. Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
-        { label: '5. HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
+        { label: 'Sales', path: '/ceo/sales', icon: 'trending-up', color: '#10b981' },
+        { label: 'Purchase', path: '/ceo/purchase', icon: 'shopping-cart', color: '#3b82f6' },
+        { label: 'Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b' },
+        { label: 'Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
+        { label: 'HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
+        { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
         { type: 'divider' },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
         { type: 'divider' },
-        { label: '6b. Pharmacy Sales/Finance', path: '/ceo/pharmacy-finance', icon: 'dollar-sign', color: '#ef4444' },
-        { label: '7. Procurement & New Drugs', path: '/ceo/procurement-decisions', icon: 'clipboard', color: '#06b6d4' },
-        { label: '9. Direct Delivery', path: '/ceo/direct-delivery', icon: 'truck', color: '#14b8a6' },
-        { label: '10. Manager Requests', path: '/ceo/manager-requests', icon: 'file-text', color: '#6366f1' },
-        { label: '10b. Store Requisitions', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
+        { label: 'Pharmacy Sales/Finance', path: '/ceo/pharmacy-finance', icon: 'dollar-sign', color: '#ef4444' },
+        { label: 'Procurement & New Drugs', path: '/ceo/procurement-decisions', icon: 'clipboard', color: '#06b6d4' },
+        { label: 'Direct Delivery', path: '/ceo/direct-delivery', icon: 'truck', color: '#14b8a6' },
+        { label: 'Manager Requests', path: '/ceo/manager-requests', icon: 'file-text', color: '#6366f1' },
+        { label: 'Store Requisitions', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
         { type: 'divider' },
-        { label: '11. Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
-        { label: '12. Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
+        { label: 'Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
+        { label: 'Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
         { type: 'divider' },
-        { label: '13. Printing', path: '/ceo/printing', icon: 'printer', color: '#a855f7' },
-        { label: '14. Car Rental', path: '/ceo/car-rental', icon: 'car', color: '#0ea5e9' },
+        { label: 'Printing', path: '/ceo/printing', icon: 'printer', color: '#a855f7' },
+        { label: 'Car Rental', path: '/ceo/car-rental', icon: 'car', color: '#0ea5e9' },
       ]
     },
     { type: 'divider' },
@@ -107,6 +109,7 @@ const CEODashboard = () => {
             <Route path="inventory" element={<CEOInventory />} />
             <Route path="finance" element={<CEOFinance />} />
             <Route path="hr" element={<CEOHR />} />
+            <Route path="applicants" element={<CEOApplicants />} />
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
             

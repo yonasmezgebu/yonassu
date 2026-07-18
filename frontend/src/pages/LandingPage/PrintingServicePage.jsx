@@ -6,7 +6,8 @@ import printingHero from '../../assets/hero-section/printing.jpg';
 import {
   BookOpen, Notebook, FileText, Image, Printer, Clock,
   Package, Percent, Calculator, ShoppingCart, ChevronDown,
-  ChevronUp, X, CheckCircle
+  ChevronUp, X, CheckCircle, UploadCloud, CreditCard, Truck, 
+  Phone, Mail, Shield, Info, CheckCircle2
 } from 'lucide-react';
 import bookImg from '../../assets/printing/book.jpg';
 import moduleImg from '../../assets/printing/module.jpg';
@@ -63,6 +64,27 @@ function PrintingServicePage() {
   const navigate = useNavigate();
   const [calc, setCalc] = useState({ showCalc: false, paperType: 'A4', pagesPerCopy: 100, quantity: 50, colorPrinting: false, bindingType: 'None' });
   const [pricing, setPricing] = useState(null);
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const HOW_TO_ORDER = [
+    { n: '1', title: 'Upload File', desc: 'Securely upload your document in PDF, DOCX, or image format.', icon: UploadCloud },
+    { n: '2', title: 'Configure', desc: 'Select paper size, binding, color options, and quantity.', icon: FileText },
+    { n: '3', title: 'Pay Online', desc: 'Complete your secure payment via mobile money or card.', icon: CreditCard },
+    { n: '4', title: 'Pickup/Delivery', desc: 'Collect from our branch or get it delivered to your door.', icon: Truck },
+  ];
+
+  const FAQS = [
+    { q: 'What file formats do you accept?', a: 'We accept PDF, DOCX, JPG, and PNG. PDF is highly recommended to ensure formatting remains intact across different devices and printers.' },
+    { q: 'Is there a minimum order requirement?', a: 'No, you can print as little as a single page.' },
+    { q: 'Can I make revisions after ordering?', a: 'Once an order enters the printing queue, it cannot be revised. Please double-check your preview and document contents before submitting.' },
+  ];
+
+  const TURNAROUND = [
+    { item: 'Standard Documents (A4/A5)', time: 'Ready in 2–4 hours' },
+    { item: 'Bound Modules / Books', time: 'Ready in 24 hours' },
+    { item: 'Bulk Orders (500+ pages)', time: 'Ready in 48 hours' },
+    { item: 'Large Format / Banners', time: 'Ready in 2–3 business days' },
+  ];
 
   useEffect(() => {
     const basePrice = PAPER_TYPES.find(p => p.code === calc.paperType)?.price || 0.50;
@@ -268,6 +290,71 @@ function PrintingServicePage() {
         </div>
       </section>
 
+      {/* ── Section: How to Order ── */}
+      <section style={{ ...s.section, background: '#F9FAFB' }}>
+        <div style={s.container}>
+          <h2 style={s.heading}>How to Order</h2>
+          <p style={s.sub}>Get your prints ready in 4 simple steps.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+            {HOW_TO_ORDER.map(step => (
+              <div key={step.n} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '24px', textAlign: 'center' }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#1a2b4b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', margin: '0 auto 16px', fontSize: '1.1rem' }}>{step.n}</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1a2b4b', marginBottom: 8 }}>{step.title}</h3>
+                <p style={{ fontSize: '0.9rem', color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: Turnaround Time & Sample Work ── */}
+      <section style={s.section}>
+        <div style={{ ...s.container, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 40 }}>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a2b4b', margin: '0 0 8px' }}>Turnaround Time</h2>
+            <p style={{ fontSize: '0.95rem', color: '#6B7280', marginBottom: 24 }}>Estimated completion times based on print type.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {TURNAROUND.map((t, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8 }}>
+                  <span style={{ fontWeight: 600, color: '#1a2b4b', fontSize: '0.95rem' }}>{t.item}</span>
+                  <span style={{ color: '#0D7C66', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={14} /> {t.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a2b4b', margin: '0 0 8px' }}>Sample Gallery</h2>
+            <p style={{ fontSize: '0.95rem', color: '#6B7280', marginBottom: 24 }}>A quick look at our high-quality output.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[bookImg, moduleImg, examImg, brochureImg].map((img, i) => (
+                <div key={i} style={{ height: 120, borderRadius: 8, backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #E5E7EB' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: FAQs ── */}
+      <section style={{ ...s.section, background: '#F9FAFB' }}>
+        <div style={{ ...s.container, maxWidth: 800 }}>
+          <h2 style={s.heading}>Frequently Asked Questions</h2>
+          <div style={{ marginTop: 32 }}>
+            {FAQS.map((f, i) => (
+              <div key={i} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                <button 
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: '#1a2b4b', fontSize: '1rem', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  {f.q}
+                  {openFaq === i ? <ChevronUp size={18} color="#0D7C66" /> : <ChevronDown size={18} color="#6B7280" />}
+                </button>
+                {openFaq === i && <div style={{ padding: '0 0 20px', color: '#6B7280', fontSize: '0.95rem', lineHeight: 1.6 }}>{f.a}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Section 5: CTA ── */}
       <section style={{ background: 'linear-gradient(135deg, #1a2b4b 0%, #0D7C66 100%)', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
@@ -283,6 +370,35 @@ function PrintingServicePage() {
           </button>
         </div>
       </section>
+
+      {/* ── Trust, Legal & Contact ── */}
+      <section style={{ background: '#0f172a', color: '#fff', padding: '60px 24px' }}>
+        <div style={{ ...s.container, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 32 }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Legal & Policies</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: '0.85rem', color: '#94a3b8' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><Shield size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Terms of Service:</strong> By placing an order, you agree to our cancellation policy. Orders in production cannot be cancelled.</div></div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><FileText size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Privacy Policy:</strong> Uploaded files are strictly confidential and automatically deleted 30 days after pickup.</div></div>
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, color: '#fbbf24' }}>Quality Disclaimer</h3>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.85rem', color: '#94a3b8' }}>
+              <Info size={16} color="#fbbf24" style={{flexShrink:0, marginTop:2}} />
+              <p style={{ margin: 0, lineHeight: 1.5 }}>Color output and print accuracy may vary slightly from screen preview due to differences in monitor calibration and paper absorption properties.</p>
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Printing Support</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: '0.9rem', color: '#94a3b8' }}>
+              <a href="tel:+251911000000" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={16} color="#34d399" /> +251 911 000 000</a>
+              <a href="mailto:print@sutana.com" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={16} color="#34d399" /> print@sutana.com</a>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: '0.85rem' }}><Clock size={16} color="#34d399" /> Mon-Sat, 8AM - 6PM</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

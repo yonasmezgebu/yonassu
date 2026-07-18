@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { submitNotification, receiveNotification, triggerNotification } from '../../utils/ceoNotifications';
-import { Users, User, Download, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { Users, User, Download, CheckCircle, XCircle, Calendar, Briefcase } from 'lucide-react';
 import HRDepartments from '../hr/HRDepartments';
 
 const CEOHR = () => {
@@ -62,7 +62,7 @@ const CEOHR = () => {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
         {['Employees', 'Departments', 'Leave Requests', 'Payroll', 'Attendance'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: activeTab === tab ? '#0f172a' : 'white', color: activeTab === tab ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 'bold', border: activeTab === tab ? 'none' : '1px solid #e2e8f0' }}>
             {tab}

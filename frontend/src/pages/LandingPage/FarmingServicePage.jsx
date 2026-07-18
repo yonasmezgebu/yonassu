@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
-import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Star, Shield, Truck, Droplets, Wrench } from 'lucide-react';
+import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Star, Shield, Truck, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, FileBadge, Wallet } from 'lucide-react';
 import RentalAgreementModal from './RentalAgreementModal';
 import carService from '../../services/carService';
 import PrescriptionViewer from '../shared/PrescriptionViewer';
@@ -18,6 +18,20 @@ const TYPE_CONFIG = {
   animal_feed: { icon: <Leaf size={16} />, label: 'Feed', color: '#7c3aed', bg: '#f5f3ff' },
   general: { icon: <Package size={16} />, label: 'General', color: '#64748b', bg: '#f1f5f9' },
 };
+
+const HOW_TO_HIRE = [
+  { n: '1', title: 'Choose Machine', desc: 'Select from our fleet of well-maintained tractors and farm equipment above.', icon: Tractor },
+  { n: '2', title: 'Call Sutana', desc: 'Dial our direct line to check availability for your required dates.', icon: PhoneCall },
+  { n: '3', title: 'Confirm Details', desc: 'Provide your location, field size, and specific farming needs.', icon: MapPin },
+  { n: '4', title: 'Driver Arrives', desc: 'Our experienced driver arrives with the equipment ready to work.', icon: Clock },
+];
+
+const AGRIRENT_FAQS = [
+  { q: "How far in advance should I book?", a: "We recommend booking at least 3-5 days in advance during peak planting or harvesting seasons to ensure availability." },
+  { q: "Is fuel included in the price?", a: "Fuel is typically not included in the rate. The machine arrives full, and you are responsible for fuel used during operation, or we can include it for an additional calculated fee." },
+  { q: "Do I need to provide a driver?", a: "No. All our tractors and heavy machinery come with a trained, professional Sutana driver/operator. Self-drive is not permitted." },
+  { q: "When do I pay for the service?", a: "A deposit is required to secure the booking. The remaining balance is paid upon completion of the work." },
+];
 
 function resolveImg(url) {
   if (!url) return null;
@@ -41,6 +55,7 @@ const FarmingServicePage = () => {
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: '', title: '', message: '' });
   const [viewImage, setViewImage] = useState(null);
+  const [openFaq, setOpenFaq] = useState(null);
 
   useEffect(() => {
     const fetchPublicData = async () => {
@@ -144,22 +159,27 @@ const FarmingServicePage = () => {
       <PublicNav />
 
       {/* Hero Section */}
-      <section className={styles.heroSection} style={{ background: `linear-gradient(rgba(26,43,75,0.75), rgba(13,124,102,0.7)), url(${farmingHero}) center/cover` }}>
+      <section className={styles.heroSection}>
+        <div 
+          className={styles.heroBgZoom} 
+          style={{ backgroundImage: `url(${farmingHero})` }}
+        />
         <div className={styles.heroContent}>
-          <div className={styles.heroBadge}><Sprout size={18} /> SUTANA Farming</div>
           <h1>SUTANA Agri<span className={styles.goldText}>Rent</span></h1>
-          <p>Tractors, Dozers, and Machineries for Modern Farming</p>
+          
           <div className={styles.searchContainer}>
             <div className={styles.searchWrapper}>
               <Search className={styles.searchIcon} size={20} />
-              <input type="text" placeholder="Search products by name or category..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} className={styles.searchInput} />
+              <input 
+                type="text" 
+                placeholder="Search products by name or category..." 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+                onKeyDown={e => e.key === 'Enter' && handleSearch()} 
+                className={styles.searchInput} 
+              />
               <button className={styles.searchBtn} onClick={handleSearch}>Search</button>
             </div>
-          </div>
-          <div className={styles.heroStats}>
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>{categories.length}</span><span className={styles.heroStatLabel}>Categories</span></div>
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>{allProducts.length}</span><span className={styles.heroStatLabel}>Products</span></div>
-            <div className={styles.heroStat}><span className={styles.heroStatNum}>100%</span><span className={styles.heroStatLabel}>Quality</span></div>
           </div>
         </div>
       </section>
@@ -230,7 +250,7 @@ const FarmingServicePage = () => {
         {/* Products */}
         <div className={styles.productsSection}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
+            <h2 className={styles.sectionTitle} style={{ display: 'none' }}>
               {selectedCategory ? categories.find(c => c.id === selectedCategory)?.name || 'Products' : 'All Products'}
             </h2>
             <span className={styles.productCount} style={{ display: 'none' }}>{searchResults.length} product{searchResults.length !== 1 ? 's' : ''}</span>
@@ -296,9 +316,9 @@ const FarmingServicePage = () => {
                         </div>
                       )}
 
-                      <button className={styles.orderBtn} onClick={() => handleReserve(product)} disabled={product.stock_quantity <= 0}>
-                        <ShoppingCart size={16} /> {product.stock_quantity > 0 ? 'Reserve Machine' : 'Unavailable'}
-                      </button>
+                      <a href="tel:+251911000000" className={styles.orderBtn} style={{ textDecoration: 'none' }}>
+                        <PhoneCall size={16} /> {product.stock_quantity > 0 ? 'Call to Hire' : 'Unavailable'}
+                      </a>
                     </div>
                   </div>
                 );
@@ -307,58 +327,182 @@ const FarmingServicePage = () => {
           )}
         </div>
 
-        {/* Info Sections */}
-        <div className={styles.infoGrid} style={{display: 'none'}}>
-          <div className={styles.infoCardLarge}>
-            <div className={styles.infoCardHeader}>
-              <Calendar size={24} /> <h3>Seasonal Calendar — Meher</h3>
-            </div>
-            <div className={styles.calendarTable}>
-              <table>
-                <thead><tr><th>Crop</th><th>Planting</th><th>Harvest</th><th>Status</th><th>Best Seed</th></tr></thead>
-                <tbody>
-                  {[
-                    { crop: 'Teff', plant: 'Jul–Aug', harvest: 'Nov–Dec', status: 'Planting', seed: 'Dukem, Magna', sClass: styles.statusPlanting },
-                    { crop: 'Wheat', plant: 'Jun–Jul', harvest: 'Oct–Nov', status: 'Growing', seed: 'Hidase, Kakaba', sClass: styles.statusGrowing },
-                    { crop: 'Maize', plant: 'Mar–Apr', harvest: 'Aug–Sep', status: 'Harvesting', seed: 'BH-540, BH-660', sClass: styles.statusHarvesting },
-                    { crop: 'Barley', plant: 'May–Jun', harvest: 'Oct–Nov', status: 'Planting', seed: 'EH-1493, HB-42', sClass: styles.statusPlanting },
-                  ].map((r, i) => (
-                    <tr key={i}><td className={styles.cropName}>{r.crop}</td><td>{r.plant}</td><td>{r.harvest}</td><td><span className={`${styles.statusBadge} ${r.sClass}`}>{r.status}</span></td><td className={styles.seedText}>{r.seed}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* ══════════════════════════════════════════════
+              STATIC INFO SECTIONS — AgriRent Page
+            ══════════════════════════════════════════════ */}
 
-          <div className={styles.infoCardLarge}>
-            <div className={styles.infoCardHeader}>
-              <Truck size={24} /> <h3>Delivery Areas</h3>
+        {/* ── How to Hire ── */}
+        <section style={{ background: 'linear-gradient(135deg,#f0fdf4 0%,#eff6ff 100%)', padding: '72px 24px' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 56 }}>
+              <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>Simple Process</span>
+              <h2 style={{ fontSize: 'clamp(26px,4vw,38px)', fontWeight: 900, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.02em' }}>How to Hire a Machine</h2>
+              <p style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>Four easy steps to get your field work done. Fast, reliable, and professional.</p>
             </div>
-            <div className={styles.deliveryGrid}>
-              <div className={styles.deliveryCard} style={{ '--d-bg': '#f0fdf4', '--d-color': '#166534' }}><div className={styles.delivTitle}>Addis Ababa</div><div className={styles.delivSub}>All sub-cities</div><div className={styles.delivFee}>Free above 5,000 ETB</div></div>
-              <div className={styles.deliveryCard} style={{ '--d-bg': '#eff6ff', '--d-color': '#1e40af' }}><div className={styles.delivTitle}>Oromia Zone</div><div className={styles.delivSub}>Surrounding districts</div><div className={styles.delivFee}>500 ETB fee</div></div>
-              <div className={styles.deliveryCard} style={{ '--d-bg': '#f5f3ff', '--d-color': '#6d28d9' }}><div className={styles.delivTitle}>100 km Radius</div><div className={styles.delivSub}>Up to 100 km</div><div className={styles.delivFee}>1,000 ETB fee</div></div>
-              <div className={styles.deliveryCard} style={{ '--d-bg': '#fef2f2', '--d-color': '#991b1b' }}><div className={styles.delivTitle}>Delivery Time</div><div className={styles.delivSub}>After confirmation</div><div className={styles.delivFee}>2–5 business days</div></div>
-            </div>
-          </div>
-
-          <div className={styles.infoCardLarge}>
-            <div className={styles.infoCardHeader}>
-              <Star size={24} /> <h3>Farming Tips</h3>
-            </div>
-            <div className={styles.tipsList}>
-              {[
-                { tip: 'Best time to plant Teff', detail: 'Plant when rain is consistent — July to August. Use Dukem or Magna varieties for best yield.' },
-                { tip: 'Urea fertilizer application', detail: 'Apply 100–150 kg per hectare during early growth stage for maximum nitrogen absorption.' },
-                { tip: 'Seed storage', detail: 'Store in a cool, dry place away from sunlight. Use airtight containers to prevent moisture damage.' },
-                { tip: 'Wheat planting depth', detail: 'Plant seeds 2–4 cm deep. Shallower in heavy soils, deeper in sandy soils.' },
-                { tip: 'Pest control', detail: 'Inspect crops weekly during growing season. Early detection reduces crop loss by up to 40%.' },
-              ].map((item, i) => (
-                <div key={i} className={styles.tipCard}><div className={styles.tipIcon}>{i + 1}</div><div><div className={styles.tipTitle}>{item.tip}</div><div className={styles.tipDetail}>{item.detail}</div></div></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 20, position: 'relative' }}>
+              {HOW_TO_HIRE.map((step, i) => (
+                <div key={step.n} style={{ background: '#fff', borderRadius: 20, padding: '32px 24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', position: 'relative', transition: 'transform 0.25s', cursor: 'default' }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-6px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', boxShadow: '0 8px 20px rgba(5,150,105,0.3)' }}>
+                    <step.icon size={26} color="#fff" />
+                  </div>
+                  <div style={{ position: 'absolute', top: 16, right: 16, width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{step.n}</div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{step.title}</h3>
+                  <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+                </div>
               ))}
             </div>
           </div>
-        </div>
+        </section>
+
+        {/* ── Requirements & Pricing ── */}
+        <section style={{ background: '#fff', padding: '72px 24px' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 32 }}>
+            {/* Service Coverage */}
+            <div style={{ background: 'linear-gradient(135deg,#fef3c7,#fef9c3)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(245,158,11,0.3)' }}>
+                <MapPin size={28} color="#fff" />
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Coverage & Details</h3>
+              <p style={{ fontSize: 14, color: '#78716c', marginBottom: 24 }}>Important information about our service areas.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  { label: 'Coverage Area', value: 'Addis Ababa & surrounding farming zones' },
+                  { label: 'Booking Method', value: 'Phone booking only. No online self-booking.' },
+                  { label: 'Included Staff', value: 'Professional driver/operator always included' },
+                ].map(r => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, backdropFilter: 'blur(4px)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>{r.label}</span>
+                    <span style={{ fontSize: 13, color: '#78716c', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div style={{ background: 'linear-gradient(135deg,#eff6ff,#e0f2fe)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(59,130,246,0.2)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(59,130,246,0.3)' }}>
+                <Wallet size={28} color="#fff" />
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Pricing Structure</h3>
+              <p style={{ fontSize: 14, color: '#475569', marginBottom: 24 }}>Flexible rates based on your specific farm needs.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  { label: 'Per Hour Rate', value: 'Available for short-term minor field work' },
+                  { label: 'Daily Rate', value: 'Standard flat rate for full-day tractor usage' },
+                  { label: 'Per Hectare', value: 'Priced by land size for plowing/harvesting' },
+                  { label: 'Fuel Costs', value: 'Fuel is billed separately or supplied by client' },
+                ].map(r => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>{r.label}</span>
+                    <span style={{ fontSize: 13, color: '#475569', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQs ── */}
+        <section style={{ background: '#f8fafc', padding: '72px 24px' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>FAQs</span>
+              <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Common Questions</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {AGRIRENT_FAQS.map((f, i) => (
+                <div key={i} style={{ background: openFaq === i ? 'linear-gradient(135deg,#f0fdf4,#eff6ff)' : '#fff', borderRadius: 16, border: `1px solid ${openFaq === i ? 'rgba(5,150,105,0.25)' : '#e2e8f0'}`, overflow: 'hidden', transition: 'all 0.25s ease' }}>
+                  <button
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    style={{ width: '100%', background: 'none', border: 'none', padding: '22px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: '#0f172a', fontSize: 15, cursor: 'pointer', textAlign: 'left', gap: 16 }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ width: 30, height: 30, borderRadius: '50%', background: openFaq === i ? 'linear-gradient(135deg,#059669,#10b981)' : '#f1f5f9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.25s' }}>
+                        <HelpCircle size={14} color={openFaq === i ? '#fff' : '#64748b'} />
+                      </span>
+                      {f.q}
+                    </span>
+                    {openFaq === i
+                      ? <ChevronUp size={18} color="#059669" style={{ flexShrink: 0 }} />
+                      : <ChevronDown size={18} color="#94a3b8" style={{ flexShrink: 0 }} />}
+                  </button>
+                  {openFaq === i && (
+                    <div style={{ padding: '0 24px 22px 68px', color: '#475569', fontSize: 14, lineHeight: 1.7 }}>{f.a}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Trust, Legal & Contact ── */}
+        <section style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)', padding: '72px 24px', position: 'relative', overflow: 'hidden' }}>
+          {/* decorative glow */}
+          <div style={{ position: 'absolute', top: -120, right: -120, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(5,150,105,0.18) 0%,transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -80, left: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 70%)', pointerEvents: 'none' }} />
+
+          <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            <div style={{ textAlign: 'center', marginBottom: 56 }}>
+              <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Trust, Legal & Support</h2>
+              <p style={{ fontSize: 15, color: '#94a3b8', margin: 0 }}>Transparent policies. Secure service. We are here to help your farm grow.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
+              {/* Terms */}
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(5,150,105,0.35)' }}>
+                  <Shield size={22} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Terms of Service</h3>
+                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
+                  Hiring agreements are subject to equipment availability. Cancellations must be made at least 48 hours prior to the scheduled date to receive a full refund of the deposit. Drivers are responsible for machine operation; clients must ensure safe access to fields.
+                </p>
+              </div>
+
+              {/* Privacy */}
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(59,130,246,0.35)' }}>
+                  <FileText size={22} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Privacy Policy</h3>
+                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
+                  We collect your farm location and contact details strictly to fulfill service requests. Your data is never sold to third parties. We use industry-standard security to ensure your personal information is protected.
+                </p>
+              </div>
+
+              {/* Disclaimer */}
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(245,158,11,0.35)' }}>
+                  <Info size={22} color="#fff" />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Disclaimer</h3>
+                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
+                  Heavy machinery operation is subject to weather conditions. If severe rain or muddy fields make work unsafe or impossible, Sutana reserves the right to reschedule the service without penalty.
+                </p>
+              </div>
+            </div>
+
+            {/* Contact Strip - Primary Call to Action */}
+            <div style={{ marginTop: 40, background: 'rgba(5,150,105,0.12)', borderRadius: 20, padding: '32px 36px', border: '1px solid rgba(5,150,105,0.3)', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#34d399', marginBottom: 6 }}>Ready to Hire?</div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#fff', margin: 0 }}>Call us directly to book a machine & driver.</h3>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                <a href="tel:+251911000000" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', background: 'linear-gradient(135deg,#059669,#10b981)', borderRadius: 12, border: 'none', color: '#fff', textDecoration: 'none', fontSize: 16, fontWeight: 800, boxShadow: '0 4px 14px rgba(5,150,105,0.35)', transition: 'transform 0.2s' }}>
+                  <Phone size={20} color="#fff" /> +251 911 000 000
+                </a>
+                <a href="mailto:agrirent@sutana.com" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', background: 'rgba(255,255,255,0.08)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
+                  <Mail size={18} color="#34d399" /> agrirent@sutana.com
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* ── STATIC SECTIONS END ── */}
       </section>
 
       {/* Order Modal */}

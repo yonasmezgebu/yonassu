@@ -9,8 +9,6 @@ import BackupManagement from './BackupManagement';
 import TenantManagement from './TenantManagement';
 import DisasterRecovery from './DisasterRecovery';
 import ApiKeyManagement from './ApiKeyManagement';
-import GalleryManager from './GalleryManager';
-import NewsManager from './NewsManager';
 import ContactMessagesManager from './ContactMessagesManager';
 import AlertCenter from './AlertCenter';
 import styles from './AdminDashboard.module.css';
@@ -29,8 +27,6 @@ const AdminDashboard = () => {
     { label: 'Disaster Recovery', path: '/admin/dr',          icon: 'shield' },
     { label: 'Settings',       path: '/admin/settings',       icon: 'sliders' },
     { type: 'divider' },
-    { label: 'Gallery',        path: '/admin/gallery',        icon: 'image' },
-    { label: 'News & Notices', path: '/admin/news',           icon: 'file-text' },
     { label: 'Contact Messages', path: '/admin/contact-messages', icon: 'message-circle' },
   ];
 
@@ -46,8 +42,6 @@ const AdminDashboard = () => {
             <Route path="api-keys" element={<ApiKeyManagement />} />
             <Route path="alerts" element={<AlertCenter />} />
             <Route path="audit" element={<AuditLogs />} />
-            <Route path="gallery" element={<GalleryManager />} />
-            <Route path="news" element={<NewsManager />} />
             <Route path="contact-messages" element={<ContactMessagesManager />} />
             <Route path="backups" element={<BackupManagement />} />
             <Route path="settings" element={<SystemSettings />} />

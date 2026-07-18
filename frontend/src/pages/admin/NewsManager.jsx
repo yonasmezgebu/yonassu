@@ -1,17 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../services/apiClient';
-import { Plus, Edit3, Trash2, X, Save, Send, Eye, EyeOff, FileText, Video, Image, Briefcase, Bell } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Save, Send, Eye, EyeOff, FileText, Video, Image, Briefcase, Bell, CheckCircle } from 'lucide-react';
+
+// ── Toast notification ─────────────────────────────────────────
+const Toast = ({ message, type = 'success', onClose }) => (
+  <div style={{
+    position: 'fixed', top: 24, right: 24, zIndex: 99999,
+    display: 'flex', alignItems: 'center', gap: 12,
+    background: type === 'success' ? '#059669' : '#dc2626',
+    color: 'white', padding: '14px 20px', borderRadius: 12,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+    animation: 'slideIn 0.3s ease',
+    minWidth: 280, maxWidth: 400,
+  }}>
+    <style>{`@keyframes slideIn { from { transform: translateX(120%); opacity:0; } to { transform: translateX(0); opacity:1; } }`}</style>
+    <CheckCircle size={22} style={{ flexShrink: 0 }} />
+    <span style={{ fontWeight: 600, fontSize: 15, flex: 1 }}>{message}</span>
+    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 0 }}>
+      <X size={18} />
+    </button>
+  </div>
+);
 
 const POST_TYPES = [
   { key: 'news', label: 'News', icon: <FileText size={16} /> },
   { key: 'hiring', label: 'Hiring', icon: <Briefcase size={16} /> },
   { key: 'notice', label: 'Notice', icon: <Bell size={16} /> },
   { key: 'video', label: 'Video', icon: <Video size={16} /> },
-  { key: 'photo_gallery', label: 'Photo Gallery', icon: <Image size={16} /> },
 ];
 
-const TYPE_ICONS = { news: '\uD83D\uDCF0', hiring: '\uD83D\uDCBC', notice: '\uD83D\uDD14', video: '\uD83C\uDFAC', photo_gallery: '\uD83D\uDDBC\uFE0F' };
-const TYPE_LABELS = { news: 'News', hiring: 'Hiring', notice: 'Notice', video: 'Video', photo_gallery: 'Photo Gallery' };
+const TYPE_ICONS = { news: '📰', hiring: '💼', notice: '🔔', video: '🎬' };
+const TYPE_LABELS = { news: 'News', hiring: 'Hiring', notice: 'Notice', video: 'Video' };
 
 const INITIAL_FORM = {
   type: 'news', title: '', content: '', visibility: 'public',
@@ -28,8 +47,14 @@ export default () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [toast, setToast] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => { fetchPosts(); }, []);
 
@@ -37,7 +62,11 @@ export default () => {
     try {
       setLoading(true);
       const res = await axios.get('/news');
-      if (res.status === 'success') setPosts(res.data);
+      // res.data is the full API response body
+      const data = res.data;
+      if (Array.isArray(data)) setPosts(data);
+      else if (data?.data) setPosts(data.data);
+      else if (data?.status === 'success') setPosts(data.data ?? []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -55,14 +84,25 @@ export default () => {
   const openEdit = (p) => {
     setForm({
       type: p.type, title: p.title, content: p.content || '',
-      visibility: p.visibility, youtube_url: p.youtube_url || '',
-      hiring_position: p.hiring_position || '', hiring_deadline: p.hiring_deadline ? p.hiring_deadline.split('T')[0] : '',
-      hiring_email: p.hiring_email || '', hiring_location: p.hiring_location || '',
-      status: p.status, send_notification: p.send_notification !== false,
+      visibility: p.visibility || 'public',
+      youtube_url: p.youtube_url || '',
+      hiring_position: p.hiring_position || '',
+      hiring_deadline: p.hiring_deadline ? p.hiring_deadline.split('T')[0] : '',
+      hiring_email: p.hiring_email || '',
+      hiring_location: p.hiring_location || '',
+      status: p.status || 'draft',
+      send_notification: !!p.send_notification,
     });
     setEditing(p.id);
     setImageFiles([]);
-    setImagePreview(null);
+    // Show existing image if available
+    const existingImages = p.images ? (typeof p.images === 'string' ? JSON.parse(p.images) : p.images) : [];
+    if (existingImages.length > 0) {
+      const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+      setImagePreview(`${base}${existingImages[0]}`);
+    } else {
+      setImagePreview(null);
+    }
     setShowForm(true);
     setError('');
     setSuccess('');
@@ -79,7 +119,6 @@ export default () => {
       if (!form.hiring_position.trim()) { setError('Position is required'); return false; }
       if (!form.hiring_deadline) { setError('Deadline is required'); return false; }
       if (new Date(form.hiring_deadline) <= new Date()) { setError('Deadline must be a future date'); return false; }
-      if (form.hiring_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.hiring_email)) { setError('Invalid email format'); return false; }
     }
     return true;
   };
@@ -99,15 +138,27 @@ export default () => {
         delete payload.hiring_email; delete payload.hiring_location;
       }
 
-      if (editing) {
-        const res = await axios.put(`/news/${editing}`, payload);
-        if (res.data?.status === 'success') setSuccess('Post updated!');
-      } else {
-        const res = await axios.post('/news', payload);
-        if (res.data?.status === 'success') setSuccess('Post created!');
+      let finalPayload = payload;
+      let headers = {};
+      
+      if (imageFiles.length > 0) {
+        finalPayload = new FormData();
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) finalPayload.append(k, v);
+        });
+        imageFiles.forEach(f => finalPayload.append('images', f));
+        headers = { 'Content-Type': 'multipart/form-data' };
       }
-      setShowForm(false);
+
+      if (editing) {
+        const res = await axios.put(`/news/${editing}`, finalPayload, { headers });
+        showToast('✅ Post updated successfully!');
+      } else {
+        const res = await axios.post('/news', finalPayload, { headers });
+        showToast('🎉 Post published successfully!');
+      }
       fetchPosts();
+      setTimeout(() => setShowForm(false), 400);
     } catch (err) {
       setError(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
@@ -116,8 +167,9 @@ export default () => {
   const handleDelete = async (p) => {
     if (!confirm('Delete this post permanently?')) return;
     try {
-      const res = await axios.delete(`/news/${p.id}`);
-      if (res.status === 'success') { setSuccess('Post deleted'); fetchPosts(); }
+      await axios.delete(`/news/${p.id}`);
+      showToast('🗑️ Post deleted successfully!');
+      fetchPosts();
     } catch (err) { alert(err.response?.data?.message || 'Delete failed'); }
   };
 
@@ -129,6 +181,7 @@ export default () => {
 
   return (
     <div>
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>News & Notices Manager</h2>
         <button onClick={openAdd} style={{
@@ -235,12 +288,14 @@ export default () => {
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
               </div>
 
-              {form.type !== 'photo_gallery' && (
+              {form.type !== 'video' && (
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Content {form.type !== 'hiring' && form.type !== 'video' ? '*' : ''}</label>
-                  <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={4}
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                    {form.type === 'hiring' ? 'Job Description & Guidelines *' : 'Content *'}
+                  </label>
+                  <textarea value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={form.type === 'hiring' ? 6 : 4}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
-                    placeholder="Write your post content here..." />
+                    placeholder={form.type === 'hiring' ? "Write detailed guidelines, requirements, and job description here..." : "Write your post content here..."} />
                 </div>
               )}
 
@@ -274,23 +329,25 @@ export default () => {
                     <input type="date" value={form.hiring_deadline} onChange={e => setForm(f => ({ ...f, hiring_deadline: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Apply Email</label>
-                    <input type="email" value={form.hiring_email} onChange={e => setForm(f => ({ ...f, hiring_email: e.target.value }))} placeholder="hr@sutana.com" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Company Stamp / Photo (Optional)</label>
+                    <input type="file" accept="image/png, image/jpeg" onChange={e => {
+                      if (e.target.files?.length > 0) {
+                        setImageFiles(Array.from(e.target.files));
+                        const url = URL.createObjectURL(e.target.files[0]);
+                        setImagePreview(url);
+                      }
+                    }} style={{ width: '100%', padding: '5px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', background: '#fff' }} />
                   </div>
                 </div>
               )}
 
-              {form.type === 'photo_gallery' && (
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Images (JPG/PNG, max 5MB each)</label>
-                  <input type="file" accept="image/jpeg,image/png" multiple
-                    onChange={e => setImageFiles([...e.target.files])}
-                    style={{ width: '100%', fontSize: 13 }} />
-                  {imageFiles.length > 0 && <p style={{ fontSize: 12, color: '#059669', margin: '4px 0 0' }}>{imageFiles.length} image(s) selected</p>}
-                </div>
-              )}
 
               <div style={{ display: 'flex', gap: 24, marginBottom: 12, alignItems: 'center' }}>
+                {imagePreview && (
+                  <div style={{ marginBottom: 12 }}>
+                    <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'contain' }} />
+                  </div>
+                )}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Visibility *</label>
                   <div style={{ display: 'flex', gap: 12 }}>

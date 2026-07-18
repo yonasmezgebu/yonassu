@@ -51,6 +51,7 @@ export default function TopNavBar() {
         isRead: n.isRead || n.is_read,
         _type: n.type || 'system',
         _refId: n.id,
+        _link: n.link,
       }));
       const merged = [...news, ...sys].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setNotifications(merged);
@@ -198,11 +199,13 @@ export default function TopNavBar() {
                           // Mark as read (system) or remove from local state (real-time/socket)
                           if (n.id && n.id.startsWith('sys-') && n._refId) {
                             try { await notificationService.markSystemAsRead(n._refId); } catch (_) {}
-                            setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+                            // Remove from local state immediately to make it "lost"
+                            setNotifications(prev => prev.filter(x => x.id !== n.id));
                           } else {
                             setNotifications(prev => prev.filter(x => x.id !== n.id));
                           }
-                          if (isPharmacy) navigate('/ceo/pharmacy-requests');
+                          if (n._link) navigate(n._link);
+                          else if (isPharmacy) navigate('/ceo/pharmacy-requests');
                         }}>
                         <p className="tnb-notif-title">{n.title}</p>
                         <p className="tnb-notif-msg">{n.message}</p>

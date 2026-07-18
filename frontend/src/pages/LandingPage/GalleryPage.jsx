@@ -95,37 +95,279 @@ export default () => {
   return (
     <><PublicNav />
     <div className="gallery-page-bg">
-    <div style={{ maxWidth: '95vw', margin: '0 auto', padding: '40px 20px' }}>
-      <div className="tip-wrap" style={{ marginBottom: 16 }}>
-        <span className="tip tip-right">Go back</span>
-        <button onClick={() => navigate(-1)} style={{
-          background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
-          alignItems: 'center', gap: 4, color: '#10b981', fontWeight: 600, fontSize: 13,
-          padding: 0
-        }}>
-          <ArrowLeft size={16} /> Back
-        </button>
-      </div>
-      <div className="gallery-type-wrap">
-        <span className="gallery-type-text">SUTANA &mdash; Explore our fleet, workplace, events, and products</span>
+    <div style={{ maxWidth: '95vw', margin: '0 auto', padding: '16px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px' }}>
+        <div className="tip-wrap" style={{ flexShrink: 0 }}>
+          <button className="gallery-back-btn" onClick={() => navigate(-1)}>
+            <div className="back-icon-wrap">
+              <ArrowLeft size={16} strokeWidth={2.5} />
+            </div>
+            <span>Back</span>
+          </button>
+        </div>
+
+        <div style={{ flexGrow: 1, overflow: 'hidden', paddingLeft: '10px' }}>
+          <marquee behavior="scroll" direction="left" scrollamount="5" style={{ display: 'block', padding: '4px 0' }}>
+            <span style={{
+              fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 900, letterSpacing: '-0.02em',
+              background: 'linear-gradient(90deg, #b91c1c, #ef4444, #f59e0b, #10b981, #b91c1c)',
+              backgroundSize: '300% 100%',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              animation: 'galleryTitleShimmer 4s linear infinite',
+              paddingRight: 60,
+              textShadow: '0 4px 20px rgba(239,68,68,0.25), 0 8px 40px rgba(245,158,11,0.15)',
+            }}>
+              📸 Sutana Gallery &nbsp;·&nbsp; Explore our amazing fleet and memories &nbsp;·&nbsp;
+            </span>
+          </marquee>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 32, flexWrap: 'wrap' }}>
-        {[{ key: 'all', label: 'All' }, ...CATEGORIES].map(c => (
-          <button key={c.key} onClick={() => setFilter(c.key)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
-              borderRadius: 10, border: `2px solid ${filter === c.key ? '#059669' : '#e2e8f0'}`,
-              background: filter === c.key ? '#f0fdf4' : 'white',
-              color: filter === c.key ? '#059669' : '#475569',
-              cursor: 'pointer', fontWeight: 600, fontSize: 13,
-              transition: 'all 0.15s'
-            }}>
-            {c.icon}{c.label}
+      {/* Filter Bar — Premium 3D */}
+      <style>{`
+        @keyframes galleryTitleShimmer {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+        marquee {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        marquee::-webkit-scrollbar { display: none; }
+        .gallery-back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 24px 11px 10px;
+          border: none;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #0ea5e9 100%);
+          color: #fff;
+          font-weight: 900;
+          font-size: 13px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          cursor: pointer;
+          position: relative;
+          transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.4),
+            0 4px 0 #1a3070,
+            0 5px 0 #152860,
+            0 6px 0 #102050,
+            0 8px 24px rgba(14,165,233,0.4),
+            0 0 40px rgba(37,99,235,0.2);
+          transform: translateY(0);
+          text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+        }
+        .gallery-back-btn:hover {
+          transform: translateY(-3px) scale(1.05);
+          background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #8b5cf6 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.5),
+            0 7px 0 #4f46e5,
+            0 8px 0 #4338ca,
+            0 9px 0 #3730a3,
+            0 14px 30px rgba(99,102,241,0.5),
+            0 0 50px rgba(139,92,246,0.3);
+        }
+        .gallery-back-btn:active {
+          transform: translateY(4px);
+          box-shadow:
+            inset 0 3px 8px rgba(0,0,0,0.2),
+            0 2px 0 #1a3070,
+            0 4px 14px rgba(14,165,233,0.3);
+        }
+        .gallery-back-btn .back-icon-wrap {
+          width: 30px; height: 30px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,0.2);
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4);
+          transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .gallery-back-btn:hover .back-icon-wrap {
+          background: rgba(255,255,255,0.35);
+          transform: scale(1.15) translateX(-3px);
+          box-shadow: 0 0 14px rgba(139,92,246,0.6);
+        }
+
+        .gallery-filter-bar {
+          display: flex;
+          width: 100%;
+          margin-bottom: 24px;
+          border-radius: 0;
+          overflow: visible;
+          gap: 0;
+          filter: drop-shadow(0 8px 20px rgba(0,0,0,0.15));
+        }
+        .gallery-filter-btn {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 14px 10px 12px;
+          border: none;
+          border-right: 2px solid rgba(255,255,255,0.1);
+          background: linear-gradient(180deg, #1e3158 0%, #1e3a8a 40%, #1d4ed8 100%);
+          color: #bfdbfe;
+          font-weight: 900;
+          font-size: 13px;
+          letter-spacing: 0.05em;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s ease, background 0.2s;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.15),
+            inset 0 -2px 0 rgba(0,0,0,0.2),
+            0 7px 0 #1a316e,
+            0 8px 0 #162858,
+            0 9px 0 #121f44,
+            0 13px 22px rgba(14,165,233,0.2);
+          transform: translateY(0);
+          user-select: none;
+          text-transform: uppercase;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .gallery-filter-btn:last-child { border-right: none; }
+
+        /* Shimmer on hover */
+        .gallery-filter-btn::before {
+          content: '';
+          position: absolute;
+          top: 0; left: -120%; width: 55%; height: 100%;
+          background: linear-gradient(110deg, transparent, rgba(255,255,255,0.18), transparent);
+          transition: left 0.45s ease;
+          pointer-events: none;
+          z-index: 1;
+        }
+        .gallery-filter-btn:hover::before { left: 160%; }
+
+        /* Gold active indicator bar at top */
+        .gallery-filter-btn::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 50%;
+          transform: translateX(-50%) scaleX(0);
+          width: 70%; height: 4px;
+          background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+          border-radius: 0 0 6px 6px;
+          transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+          box-shadow: 0 0 12px rgba(245,158,11,0.8);
+        }
+
+        .gallery-filter-btn:hover {
+          background: linear-gradient(180deg, #312e81 0%, #4f46e5 40%, #6366f1 100%);
+          color: #e0e7ff;
+          transform: translateY(-5px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.2),
+            inset 0 -2px 0 rgba(0,0,0,0.15),
+            0 12px 0 #3730a3,
+            0 13px 0 #312e81,
+            0 14px 0 #27255c,
+            0 20px 32px rgba(99,102,241,0.4);
+        }
+        .gallery-filter-btn:active {
+          transform: translateY(5px);
+          box-shadow:
+            inset 0 3px 8px rgba(0,0,0,0.3),
+            0 2px 0 #1a316e,
+            0 4px 10px rgba(14,165,233,0.2);
+        }
+
+        /* ── ACTIVE STATE (gold/amber pressed) ── */
+        .gallery-filter-btn.active {
+          background: linear-gradient(180deg, #fefce8 0%, #f59e0b 40%, #d97706 100%);
+          color: #1c1917;
+          transform: translateY(5px);
+          text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+          box-shadow:
+            inset 0 3px 10px rgba(120,70,0,0.2),
+            inset 0 1px 0 rgba(255,255,255,0.6),
+            0 3px 0 #b45309,
+            0 4px 0 #92400e,
+            0 5px 0 #78350f,
+            0 9px 20px rgba(245,158,11,0.4);
+        }
+        .gallery-filter-btn.active::after {
+          transform: translateX(-50%) scaleX(1);
+          background: linear-gradient(90deg, #1e3a8a, #0ea5e9);
+          box-shadow: 0 0 12px rgba(14,165,233,0.8);
+        }
+        .gallery-filter-btn.active::before { content: none; }
+        .gallery-filter-btn.active:hover {
+          transform: translateY(2px);
+          box-shadow:
+            inset 0 2px 8px rgba(120,70,0,0.15),
+            0 6px 0 #b45309,
+            0 7px 0 #92400e,
+            0 10px 24px rgba(245,158,11,0.35);
+        }
+        .gallery-filter-btn.active:active {
+          transform: translateY(8px);
+          box-shadow:
+            inset 0 4px 10px rgba(120,70,0,0.25),
+            0 1px 0 #b45309;
+        }
+
+        /* Icon bubble */
+        .gallery-filter-btn .btn-icon-wrap {
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,0.1);
+          box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.15);
+          transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+          flex-shrink: 0;
+          font-size: 20px;
+        }
+        .gallery-filter-btn:hover .btn-icon-wrap {
+          background: rgba(255,255,255,0.18);
+          transform: scale(1.18) rotate(-5deg);
+          box-shadow: 0 0 18px rgba(99,102,241,0.6);
+        }
+        .gallery-filter-btn.active .btn-icon-wrap {
+          background: rgba(255,255,255,0.35);
+          box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 0 16px rgba(245,158,11,0.7);
+        }
+        .gallery-filter-btn.active:hover .btn-icon-wrap {
+          transform: scale(1.18) rotate(5deg);
+        }
+
+        .btn-label {
+          line-height: 1;
+          position: relative;
+          z-index: 2;
+        }
+
+        @media (max-width: 700px) {
+          .gallery-filter-btn { padding: 16px 4px 12px; font-size: 10px; gap: 5px; letter-spacing: 0; }
+          .gallery-filter-btn .btn-icon-wrap { width: 30px; height: 30px; }
+        }
+        @media (max-width: 480px) {
+          .gallery-filter-btn .btn-label { display: none; }
+          .gallery-filter-btn { padding: 16px 4px; }
+        }
+      `}</style>
+      <div className="gallery-filter-bar">
+        {[{ key: 'all', label: 'All', icon: null }, ...CATEGORIES].map(c => (
+          <button
+            key={c.key}
+            className={`gallery-filter-btn${filter === c.key ? ' active' : ''}`}
+            onClick={() => setFilter(c.key)}
+          >
+            <div className="btn-icon-wrap">
+              {c.icon ?? <span style={{ fontSize: 20 }}>🖼</span>}
+            </div>
+            <span className="btn-label">{c.label}</span>
           </button>
         ))}
       </div>
+
 
       {loading ? (
         <p style={{ textAlign: 'center', color: '#94a3b8' }}>Loading gallery...</p>

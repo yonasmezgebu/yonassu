@@ -8,7 +8,7 @@ import RentalPOS from './manager/RentalPOS';
 import NewRentalOrder from './manager/NewRentalOrder';
 import RentalOrders from './manager/RentalOrders';
 import OrderTracking from './manager/OrderTracking';
-import FleetManagement from './manager/FleetManagement';
+import FleetManager from './FleetManager';
 import AssetRegister from './manager/AssetRegister';
 import AddAsset from './manager/AddAsset';
 import Maintenance from './manager/Maintenance';
@@ -36,7 +36,7 @@ const CarRentingDashboard = () => {
 
     { label: 'Fleet & Assets', icon: 'truck',
       children: [
-        { label: 'Fleet Management',    path: '/car-renting/manager/fleet',       icon: 'grid',       color: '#3b82f6' },
+        { label: 'Post/Update/Delete Cars', path: '/car-renting/manager/fleet',       icon: 'car',       color: '#3b82f6' },
         { label: 'Asset Register',      path: '/car-renting/manager/assets',      icon: 'list',       color: '#64748b' },
         { label: 'Add Asset',           path: '/car-renting/manager/assets/new',  icon: 'plus-circle',color: '#10b981' },
         { label: 'Maintenance',         path: '/car-renting/manager/maintenance', icon: 'tool',       color: '#ef4444' },
@@ -68,7 +68,7 @@ const CarRentingDashboard = () => {
           <Route path="manager/tracking" element={<OrderTracking />} />
           
           {/* Fleet */}
-          <Route path="manager/fleet" element={<FleetManagement />} />
+          <Route path="manager/fleet" element={<FleetManager />} />
           <Route path="manager/assets" element={<AssetRegister />} />
           <Route path="manager/assets/new" element={<AddAsset />} />
           <Route path="manager/maintenance" element={<Maintenance />} />

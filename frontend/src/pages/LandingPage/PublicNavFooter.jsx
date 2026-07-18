@@ -53,9 +53,10 @@ export const PublicNav = () => {
 
   const isActive    = (path)   => location.pathname === path;
   const isActiveAt  = (prefix) => location.pathname.startsWith(prefix);
+  const isActiveHash = (path, hash) => location.pathname === path && location.hash === hash;
 
   // Close mobile menu on route change
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); }, [location.pathname, location.hash]);
 
   // Close on outside click
   useEffect(() => {
@@ -116,8 +117,8 @@ export const PublicNav = () => {
             onClose={() => setMarketOpen(false)}
             isActive={isActiveAt('/tenders') || isActiveAt('/marketplace')}
           >
-            <Link to="/tenders/smart-bids" className={`pub-dropdown-item ${location.pathname === '/tenders/smart-bids' ? 'active-sublink' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
-            <Link to="/tenders/buy"        className={`pub-dropdown-item ${location.pathname === '/tenders/buy' ? 'active-sublink' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
+            <Link to="/tenders/smart-bids" className={`pub-dropdown-item${isActive('/tenders/smart-bids') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
+            <Link to="/tenders/buy"        className={`pub-dropdown-item${isActive('/tenders/buy') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
           </NavDropdown>
 
           <NavDropdown
@@ -127,10 +128,10 @@ export const PublicNav = () => {
             onClose={() => setGalleryOpen(false)}
             isActive={isActiveAt('/gallery')}
           >
-            <Link to="/gallery#section-cars"       className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><Car size={17}/></span><span>Cars &amp; Fleet</span></Link>
-            <Link to="/gallery#section-workplace"  className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><Users size={17}/></span><span>Workers &amp; Workplace</span></Link>
-            <Link to="/gallery#section-events"     className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><PartyPopper size={17}/></span><span>Events &amp; Activities</span></Link>
-            <Link to="/gallery#section-products"   className="pub-dropdown-item" onClick={closeAll}><span className="pub-dropdown-icon"><Package size={17}/></span><span>Products Showcase</span></Link>
+            <Link to="/gallery#section-cars"       className={`pub-dropdown-item${isActiveHash('/gallery', '#section-cars') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Car size={17}/></span><span>Cars &amp; Fleet</span></Link>
+            <Link to="/gallery#section-workplace"  className={`pub-dropdown-item${isActiveHash('/gallery', '#section-workplace') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Users size={17}/></span><span>Workers &amp; Workplace</span></Link>
+            <Link to="/gallery#section-events"     className={`pub-dropdown-item${isActiveHash('/gallery', '#section-events') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><PartyPopper size={17}/></span><span>Events &amp; Activities</span></Link>
+            <Link to="/gallery#section-products"   className={`pub-dropdown-item${isActiveHash('/gallery', '#section-products') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Package size={17}/></span><span>Products Showcase</span></Link>
           </NavDropdown>
 
           <NavDropdown
@@ -184,10 +185,10 @@ export const PublicNav = () => {
 
           {/* Gallery */}
           <MobileGroup label="Gallery" icon={<Package size={16}/>}>
-            <Link to="/gallery#section-cars"      onClick={closeAll} className="pub-mobile-link"><Car size={14}/> Cars &amp; Fleet</Link>
-            <Link to="/gallery#section-workplace" onClick={closeAll} className="pub-mobile-link"><Users size={14}/> Workers &amp; Workplace</Link>
-            <Link to="/gallery#section-events"    onClick={closeAll} className="pub-mobile-link"><PartyPopper size={14}/> Events &amp; Activities</Link>
-            <Link to="/gallery#section-products"  onClick={closeAll} className="pub-mobile-link"><Package size={14}/> Products Showcase</Link>
+            <Link to="/gallery#section-cars"      onClick={closeAll} className={`pub-mobile-link${isActiveHash('/gallery', '#section-cars') ? ' active-sublink' : ''}`}><Car size={14}/> Cars &amp; Fleet</Link>
+            <Link to="/gallery#section-workplace" onClick={closeAll} className={`pub-mobile-link${isActiveHash('/gallery', '#section-workplace') ? ' active-sublink' : ''}`}><Users size={14}/> Workers &amp; Workplace</Link>
+            <Link to="/gallery#section-events"    onClick={closeAll} className={`pub-mobile-link${isActiveHash('/gallery', '#section-events') ? ' active-sublink' : ''}`}><PartyPopper size={14}/> Events &amp; Activities</Link>
+            <Link to="/gallery#section-products"  onClick={closeAll} className={`pub-mobile-link${isActiveHash('/gallery', '#section-products') ? ' active-sublink' : ''}`}><Package size={14}/> Products Showcase</Link>
           </MobileGroup>
 
           {/* News */}

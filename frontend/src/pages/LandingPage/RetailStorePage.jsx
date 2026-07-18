@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import { PublicNav } from './PublicNavFooter';
-import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCircle, Star, Zap, TrendingUp, ArrowRight } from 'lucide-react';
+import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCircle, Star, Zap, TrendingUp, ArrowRight, Truck, Phone, Mail, FileText, Shield, Info, CreditCard, Box, ChevronDown, ChevronUp, Clock, Banknote } from 'lucide-react';
+import retailStoreHero from '../../assets/hero-section/retail store.jpg';
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+@keyframes heroZoom { 0%{transform:scale(1)} 100%{transform:scale(1.15)} }
 @keyframes shimmerAnim { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
 @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
 @keyframes cartBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
@@ -374,8 +376,22 @@ const RetailStorePage = () => {
     customer_phone: '',
     customer_email: '',
     delivery_address: '',
+    delivery_address: '',
     notes: '',
   });
+
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const HOW_TO_BUY = [
+    { n: '1', title: 'Buy Direct (In-Stock)', desc: 'Browse available products, add to cart, and check out instantly.', icon: Package },
+    { n: '2', title: 'Order from Supplier', desc: 'Request out-of-stock items. We source directly from trusted suppliers.', icon: Truck },
+  ];
+
+  const FAQS = [
+    { q: 'How do supplier orders work?', a: 'If an item is out of stock, you can still request it. We will confirm the price and delivery timeline from our suppliers before finalizing your order.' },
+    { q: 'What is the wait time for supplier orders?', a: 'Supplier orders typically take 3-7 business days depending on availability and logistics.' },
+    { q: 'What if a requested item is unavailable?', a: 'If we cannot source the item from our suppliers, your request will be cancelled and any deposits fully refunded.' },
+  ];
 
   useEffect(() => {
     const u = localStorage.getItem('user');
@@ -480,37 +496,15 @@ const RetailStorePage = () => {
       <PublicNav />
 
       {/* ─── Hero ─── */}
-      <div className="rsp-hero">
-        <div className="rsp-hero-orbs">
-          <div className="rsp-hero-orb1" />
-          <div className="rsp-hero-orb2" />
-        </div>
-        <div className="rsp-hero-grid" />
-        <div className="rsp-hero-content">
+      <div className="rsp-hero" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `url("${retailStoreHero}")`, backgroundSize: 'cover', backgroundPosition: 'center', animation: 'heroZoom 20s ease-in-out infinite alternate', zIndex: 0 }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(15,76,53,0.7) 100%)', zIndex: 1 }} />
+        <div className="rsp-hero-grid" style={{ zIndex: 2 }} />
+        <div className="rsp-hero-content" style={{ zIndex: 3 }}>
           <div className="rsp-hero-text">
-            <div className="rsp-hero-badge">
-              <Zap size={13} /> Retail Marketplace
-            </div>
             <h1 className="rsp-hero-title">
               Shop Premium <span>Commercial</span> Goods
             </h1>
-            <p className="rsp-hero-sub">
-              Discover high-quality products from our retail store — office supplies, electronics, furniture and more. Place your order directly and our sales team will confirm.
-            </p>
-            <div className="rsp-hero-stats">
-              <div className="rsp-hero-stat">
-                <div className="rsp-hero-stat-num">{products.length}+</div>
-                <div className="rsp-hero-stat-label">Products</div>
-              </div>
-              <div className="rsp-hero-stat">
-                <div className="rsp-hero-stat-num">{categories.length}</div>
-                <div className="rsp-hero-stat-label">Categories</div>
-              </div>
-              <div className="rsp-hero-stat">
-                <div className="rsp-hero-stat-num">24h</div>
-                <div className="rsp-hero-stat-label">Fast Response</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -604,13 +598,110 @@ const RetailStorePage = () => {
             ))}
           </div>
         )}
+        
+        {/* ── Section: How to Buy ── */}
+        <div style={{ marginTop: 60, padding: '40px 0', borderTop: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>How to Buy</h2>
+          <p style={{ fontSize: 15, color: '#64748b', marginBottom: 24 }}>Two simple ways to get what you need.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+            {HOW_TO_BUY.map(step => (
+              <div key={step.n} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 16, padding: '24px' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f8fafc', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <step.icon size={24} />
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>{step.n}. {step.title}</h3>
+                <p style={{ fontSize: 14, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Section: Delivery & Payment ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 40, marginTop: 40 }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Truck size={22} color="#059669"/> Delivery / Pickup</h2>
+            <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Standard Delivery</strong>
+                <span style={{ fontSize: 14, color: '#64748b' }}>Available in major areas. Fees calculated at checkout. Delivery within 1-2 business days for in-stock items.</span>
+              </div>
+              <div>
+                <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Store Pickup</strong>
+                <span style={{ fontSize: 14, color: '#64748b' }}>Free pickup from our main branch. Ready within 2 hours for in-stock items.</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><CreditCard size={22} color="#059669"/> Payment Methods</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+                <Banknote size={20} color="#3b82f6" />
+                <div>
+                  <strong style={{ display: 'block', color: '#0f172a', fontSize: 14 }}>Bank Transfer</strong>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Direct transfer to our accounts (CBE, Awash, etc.)</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+                <Clock size={20} color="#f59e0b" />
+                <div>
+                  <strong style={{ display: 'block', color: '#0f172a', fontSize: 14 }}>Mobile Money</strong>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Telebirr, CBE Birr, and other wallets supported.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section: FAQs ── */}
+        <div style={{ marginTop: 60, padding: '40px 0', borderTop: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 24 }}>Frequently Asked Questions</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {FAQS.map((f, i) => (
+              <div key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <button 
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600, color: '#0f172a', fontSize: 16, cursor: 'pointer', textAlign: 'left' }}
+                >
+                  {f.q}
+                  {openFaq === i ? <ChevronUp size={18} color="#059669" /> : <ChevronDown size={18} color="#64748b" />}
+                </button>
+                {openFaq === i && <div style={{ padding: '0 0 20px', color: '#64748b', fontSize: 15, lineHeight: 1.6 }}>{f.a}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
 
-      {/* ─── Cart FAB ─── */}
-      <button className="rsp-cart-fab" onClick={() => setCartOpen(true)}>
-        <ShoppingCart size={26} />
-        {cartCount > 0 && <div className="rsp-cart-badge">{cartCount}</div>}
-      </button>
+      {/* ── Trust, Legal & Contact ── */}
+      <div style={{ background: '#0f172a', color: '#fff', padding: '60px 24px', position: 'relative', zIndex: 5 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 32 }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Legal & Policies</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13, color: '#94a3b8' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><Shield size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Terms of Service:</strong> Direct purchases can be returned within 3 days. Supplier orders are final sale once approved.</div></div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><FileText size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Privacy Policy:</strong> Your contact and address details are used solely for order fulfillment.</div></div>
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#fbbf24' }}>Disclaimer</h3>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: '#94a3b8' }}>
+              <Info size={16} color="#fbbf24" style={{flexShrink:0, marginTop:2}} />
+              <p style={{ margin: 0, lineHeight: 1.5 }}>Product availability, packaging, and final pricing may vary slightly for supplier orders compared to in-stock items. We always confirm details before billing.</p>
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Store Support</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: '#94a3b8' }}>
+              <a href="tel:+251911000000" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={16} color="#34d399" /> +251 911 000 000</a>
+              <a href="mailto:store@sutana.com" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={16} color="#34d399" /> store@sutana.com</a>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 13 }}><Clock size={16} color="#34d399" /> Mon-Sat, 8AM - 8PM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Cart FAB (Removed by request) ─── */}
 
       {/* ─── Cart Overlay & Sidebar ─── */}
       <div className={'rsp-overlay' + (cartOpen ? ' open' : '')} onClick={() => setCartOpen(false)} />

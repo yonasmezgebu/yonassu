@@ -94,11 +94,12 @@ const HRApplications = () => {
                       {app.status === 'Shortlisted' && (
                         <>
                           <button className={styles.actionBtn} onClick={() => updateStatus(app.id, 'Interview')}>Move to Interview</button>
+                          <button className={styles.actionBtn} onClick={() => updateStatus(app.id, 'SUBMITTED_TO_CEO')} style={{marginLeft: '5px', background: '#8b5cf6'}}>Forward to CEO</button>
                           <button className={styles.rejectBtn} onClick={() => handleReject(app.id)}>Reject</button>
                         </>
                       )}
-                      {['Interview', 'Offered'].includes(app.status) && (
-                        <span className={styles.handledMsg}>Handled in Interviews/Hiring Pipeline</span>
+                      {['Interview', 'Offered', 'SUBMITTED_TO_CEO'].includes(app.status) && (
+                        <span className={styles.handledMsg}>Handled in next stages / Forwarded</span>
                       )}
                       {app.status === 'Rejected' && (
                         <span className={styles.rejectedReason} title={app.rejectReason}>Rejected: {app.rejectReason}</span>

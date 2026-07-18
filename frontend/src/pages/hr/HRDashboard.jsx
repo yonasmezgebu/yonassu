@@ -23,6 +23,9 @@ import HRPerformanceReview from './HRPerformanceReview';
 import HRFeedback from './HRFeedback';
 import HRPolicies from './HRPolicies';
 import HRAnnouncements from './HRAnnouncements';
+import NewsManager from '../admin/NewsManager';
+import GalleryManager from '../admin/GalleryManager';
+import JobApplicationsManager from './JobApplicationsManager';
 import styles from './HRDashboard.module.css';
 
 const HRDashboard = () => {
@@ -50,6 +53,10 @@ const HRDashboard = () => {
         { label: 'Announcements',       path: '/hr/announcements',      icon: 'bell' },
       ]
     },
+    { type: 'divider' },
+    { label: 'Job Applications', path: '/hr/applications', icon: 'briefcase' },
+    { label: 'News & Notices',   path: '/hr/news',         icon: 'file-text' },
+    { label: 'Public Gallery',   path: '/hr/gallery',      icon: 'image' },
   ];
 
   const location = useLocation();
@@ -91,6 +98,10 @@ const HRDashboard = () => {
       <Route path="announcements"       element={<HRAnnouncements />} />
       <Route path="internal-notices"    element={<HRPolicies />} />
       <Route path="hr-messages"         element={<HRPolicies />} />
+      <Route path="news"                element={<NewsManager />} />
+      <Route path="gallery"             element={<GalleryManager />} />
+      <Route path="job-applications"    element={<JobApplicationsManager />} />
+      <Route path="applications"        element={<JobApplicationsManager />} />
       <Route path="/"                   element={<Navigate to="employee-summary" replace />} />
     </Routes>
   );

@@ -4,7 +4,7 @@ import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import pharmacyService from '../../services/pharmacyService';
 import axios from '../../services/apiClient';
-import { Search, Pill, XCircle, AlertTriangle, CheckCircle2, MapPin, Package, UploadCloud, X, ShoppingCart, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Pill, XCircle, AlertTriangle, CheckCircle2, MapPin, Package, UploadCloud, X, ShoppingCart, Zap, ChevronDown, ChevronUp, Phone, Clock, Star, Shield, Award, Truck, CreditCard, FileText, Users, HelpCircle, AlertCircle, Heart } from 'lucide-react';
 import pharmacyHero from '../../assets/hero-section/pharmacy.jpg';
 
 const STYLES = `
@@ -260,6 +260,207 @@ const STYLES = `
 }
 .php-submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.4); }
 .php-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ═══════ ADVISORY BANNER ═══════ */
+.php-advisory {
+  background: linear-gradient(90deg, #065f46, #047857);
+  color: white; padding: 12px 24px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 13px; font-weight: 600; position: relative;
+}
+.php-advisory-close {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.15); border: none; color: white;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  transition: background 0.2s;
+}
+.php-advisory-close:hover { background: rgba(255,255,255,0.3); }
+
+/* ═══════ HOW TO ORDER ═══════ */
+.php-how { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 72px 24px; }
+.php-how-inner { max-width: 1100px; margin: 0 auto; }
+.php-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #10b981; margin: 0 0 12px; }
+.php-section-title { font-size: clamp(24px, 4vw, 40px); font-weight: 900; margin: 0 0 48px; color: white; line-height: 1.2; }
+.php-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
+.php-step {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 32px 24px; text-align: center; position: relative;
+  transition: transform 0.25s, border-color 0.25s;
+}
+.php-step:hover { transform: translateY(-6px); border-color: rgba(16,185,129,0.4); }
+.php-step-num {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white; font-size: 22px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px; box-shadow: 0 8px 24px rgba(16,185,129,0.35);
+}
+.php-step-title { font-size: 15px; font-weight: 700; color: white; margin: 0 0 10px; }
+.php-step-desc { font-size: 13px; color: #94a3b8; line-height: 1.6; margin: 0; }
+.php-delivery-info {
+  margin-top: 48px; padding: 24px 32px;
+  background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 12px; display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+}
+.php-delivery-info-item { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 200px; }
+.php-delivery-info-item p { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.6; }
+.php-delivery-info-item strong { display: block; font-size: 14px; color: white; margin-bottom: 4px; }
+
+/* ═══════ ABOUT ═══════ */
+.php-about { padding: 80px 24px; background: #fff; }
+.php-about-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+@media(max-width:768px){ .php-about-inner { grid-template-columns: 1fr; } }
+.php-about-visual {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 20px; padding: 48px; display: flex; align-items: center; justify-content: center;
+  min-height: 300px; position: relative; overflow: hidden;
+}
+.php-about-visual::before {
+  content: ''; position: absolute; width: 250px; height: 250px;
+  background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%);
+  top: -50px; right: -50px;
+}
+.php-about-text .php-section-title { color: #0f172a; }
+.php-about-text p { color: #64748b; line-height: 1.8; margin: 0 0 20px; font-size: 15px; }
+.php-about-stat-row { display: flex; gap: 32px; margin-top: 32px; flex-wrap: wrap; }
+.php-about-stat { text-align: center; }
+.php-about-stat-num { font-size: 32px; font-weight: 900; color: #059669; line-height: 1; }
+.php-about-stat-lbl { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ═══════ TEAM ═══════ */
+.php-team { padding: 72px 24px; background: #f8fafc; }
+.php-team-inner { max-width: 1100px; margin: 0 auto; }
+.php-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+.php-team-card {
+  background: white; border-radius: 16px; overflow: hidden;
+  border: 1px solid #e4e6ea; text-align: center; padding-bottom: 24px;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.php-team-card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
+.php-team-avatar {
+  width: 100%; height: 180px;
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+}
+.php-team-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.php-team-name { font-size: 15px; font-weight: 800; color: #0f172a; margin: 0 0 4px; }
+.php-team-role { font-size: 12px; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px; }
+.php-team-bio { font-size: 12px; color: #64748b; padding: 0 16px; line-height: 1.6; margin: 0; }
+
+/* ═══════ TESTIMONIALS ═══════ */
+.php-reviews { padding: 72px 24px; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); }
+.php-reviews-inner { max-width: 1100px; margin: 0 auto; }
+.php-reviews-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.php-review-card {
+  background: white; border-radius: 16px; padding: 28px;
+  border: 1px solid #d1fae5; box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  transition: transform 0.25s;
+}
+.php-review-card:hover { transform: translateY(-4px); }
+.php-stars { display: flex; gap: 3px; margin-bottom: 16px; }
+.php-review-text { font-size: 14px; color: #334155; line-height: 1.7; margin: 0 0 20px; font-style: italic; }
+.php-reviewer { display: flex; align-items: center; gap: 12px; }
+.php-reviewer-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 800; font-size: 16px; flex-shrink: 0;
+}
+.php-reviewer-name { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
+.php-reviewer-date { font-size: 11px; color: #94a3b8; margin: 0; }
+
+/* ═══════ EMERGENCY ═══════ */
+.php-emergency {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  padding: 48px 24px; text-align: center;
+}
+.php-emergency-inner { max-width: 900px; margin: 0 auto; }
+.php-emergency h2 { font-size: clamp(20px, 3.5vw, 32px); font-weight: 900; color: white; margin: 0 0 12px; }
+.php-emergency p { color: rgba(255,255,255,0.8); font-size: 15px; margin: 0 0 28px; }
+.php-emergency-contacts { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.php-emergency-btn {
+  display: flex; align-items: center; gap: 10px;
+  background: white; color: #991b1b;
+  border: none; border-radius: 8px;
+  padding: 14px 28px; font-size: 16px; font-weight: 800;
+  cursor: pointer; text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.php-emergency-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.php-emergency-btn.secondary {
+  background: rgba(255,255,255,0.1); color: white;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* ═══════ PAYMENTS ═══════ */
+.php-payments { background: white; padding: 56px 24px; border-top: 1px solid #e4e6ea; }
+.php-payments-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
+.php-payments h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
+.php-payments-sub { font-size: 14px; color: #64748b; margin: 0 0 36px; }
+.php-payments-grid { display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
+.php-pay-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px; border-radius: 8px;
+  border: 2px solid #e4e6ea; background: #f8fafc;
+  font-size: 14px; font-weight: 700; color: #334155;
+  transition: border-color 0.2s, background 0.2s;
+}
+.php-pay-chip:hover { border-color: #10b981; background: #f0fdf4; }
+.php-pay-chip-icon { font-size: 20px; }
+
+/* ═══════ PARTNERS ═══════ */
+.php-partners { background: #f8fafc; padding: 56px 24px; border-top: 1px solid #e4e6ea; }
+.php-partners-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
+.php-partners h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
+.php-partners-sub { font-size: 14px; color: #64748b; margin: 0 0 36px; }
+.php-partners-grid { display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
+.php-partner-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 28px; border-radius: 10px;
+  border: 2px solid #e4e6ea; background: white;
+  font-size: 14px; font-weight: 700; color: #334155;
+  transition: all 0.25s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.php-partner-chip:hover { border-color: #10b981; box-shadow: 0 4px 16px rgba(16,185,129,0.15); }
+
+/* ═══════ FAQ ═══════ */
+.php-faq { padding: 72px 24px; background: white; }
+.php-faq-inner { max-width: 800px; margin: 0 auto; }
+.php-faq-item { border-bottom: 1px solid #e4e6ea; }
+.php-faq-q {
+  width: 100%; text-align: left; background: none; border: none;
+  padding: 20px 0; display: flex; justify-content: space-between; align-items: center;
+  font-size: 15px; font-weight: 700; color: #0f172a; cursor: pointer;
+  gap: 16px; font-family: inherit; transition: color 0.2s;
+}
+.php-faq-q:hover { color: #059669; }
+.php-faq-a {
+  overflow: hidden; max-height: 0;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+  font-size: 14px; color: #64748b; line-height: 1.8;
+  padding: 0;
+}
+.php-faq-a.open { max-height: 300px; padding-bottom: 20px; }
+
+/* ═══════ TRUST BAR ═══════ */
+.php-trust { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 40px 24px; }
+.php-trust-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+.php-trust-item { display: flex; align-items: flex-start; gap: 14px; }
+.php-trust-icon { width: 44px; height: 44px; border-radius: 10px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.php-trust-title { font-size: 14px; font-weight: 700; color: white; margin: 0 0 4px; }
+.php-trust-desc { font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5; }
+
+/* ═══════ DISCLAIMER ═══════ */
+.php-disclaimer {
+  background: #fefce8; border-top: 3px solid #fbbf24;
+  padding: 20px 24px; text-align: center;
+}
+.php-disclaimer p { max-width: 900px; margin: 0 auto; font-size: 12px; color: #92400e; line-height: 1.7; }
+.php-disclaimer strong { color: #78350f; }
 `;
 
 const imgSrc = (url) => {
@@ -279,6 +480,8 @@ const PharmacyHealthPage = () => {
   const [loading, setLoading] = useState(true);
 
   // Description & Image Modal state
+  const [advisoryOpen, setAdvisoryOpen] = useState(true);
+  const [openFaq, setOpenFaq] = useState(null);
   const [expandedDesc, setExpandedDesc] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -373,10 +576,41 @@ const PharmacyHealthPage = () => {
 
   // Removed renderStock function as per user request to hide internal stock text
 
+  const FAQS = [
+    { q: 'Do I need a prescription for all medications?', a: 'No. Many over-the-counter medications can be ordered without a prescription. However, some controlled or prescription-only drugs require a valid prescription uploaded during checkout or presented at pickup.' },
+    { q: 'What are your delivery areas and fees?', a: 'We currently deliver within Addis Ababa and surrounding areas. Delivery fee is 50 ETB flat within city limits. Free delivery for orders above 500 ETB. Rural deliveries may take 2–3 extra days.' },
+    { q: 'How long does it take to process my order?', a: 'Standard orders are processed within 2–4 hours during business hours. Home delivery takes 3–6 hours. Pickup orders are usually ready within 1 hour.' },
+    { q: 'Can I return or exchange a medication?', a: 'For safety reasons, medications cannot be returned once dispensed. If you received a wrong item, contact us within 24 hours and we will resolve the issue immediately.' },
+    { q: 'What happens if my prescribed drug is out of stock?', a: 'Our pharmacist will contact you to suggest a suitable alternative or notify you when the item is back in stock. You will not be charged until the order is fulfilled.' },
+    { q: 'Do you accept health insurance?', a: 'Yes. We work with several insurance providers including CBHI, Nyala Insurance, and Awash Insurance. Bring your insurance card to our branch or upload a photo during checkout.' },
+  ];
+
+  const TEAM = [
+    { name: 'Dr. Fikerte Haile', role: 'Chief Pharmacist', bio: 'B.Pharm, MSc. 12 years of clinical experience in pharmaceutical care and patient safety.', initials: 'FH', color: '#059669' },
+    { name: 'Abebe Girma', role: 'Senior Pharmacist', bio: 'B.Pharm. Specialist in chronic disease medication management and patient counselling.', initials: 'AG', color: '#0891b2' },
+    { name: 'Meron Tesfaye', role: 'Pharmacist', bio: 'B.Pharm. Focused on paediatric medications and women\'s health pharmaceutical care.', initials: 'MT', color: '#7c3aed' },
+    { name: 'Dawit Bekele', role: 'Pharmacy Technician', bio: 'Experienced in dispensing, inventory management, and compounding medications.', initials: 'DB', color: '#d97706' },
+  ];
+
+  const REVIEWS = [
+    { text: 'Fast delivery and the staff was very professional. My prescription was handled with care and they even called to confirm the dosage.', name: 'Selamawit T.', date: 'June 2025', rating: 5, initial: 'S' },
+    { text: 'I love that I can order refills online. No more waiting in long queues. The app notifies me when my order is ready!', name: 'Bereket M.', date: 'May 2025', rating: 5, initial: 'B' },
+    { text: 'Very affordable prices compared to other pharmacies. The MOH licensed badge gives me full confidence in the quality.', name: 'Hana G.', date: 'July 2025', rating: 4, initial: 'H' },
+  ];
+
   return (
     <div className="php-root">
       <style>{STYLES}</style>
       <PublicNav />
+
+      {/* ── Health Advisory Banner ── */}
+      {advisoryOpen && (
+        <div className="php-advisory">
+          <AlertCircle size={16} />
+          <span>⚕️ <strong>Health Advisory:</strong> Flu season is here — consult our pharmacists for vaccinations and preventive care.</span>
+          <button className="php-advisory-close" onClick={() => setAdvisoryOpen(false)}>×</button>
+        </div>
+      )}
 
       {/* Hero */}
       <div className="php-hero" style={{ backgroundImage: `linear-gradient(rgba(26,43,75,0.75), rgba(13,124,102,0.7)), url(${pharmacyHero})`, backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -503,6 +737,198 @@ const PharmacyHealthPage = () => {
         </div>
       )}
 
+      {/* ── Emergency / On-Call ── */}
+      <div className="php-emergency">
+        <div className="php-emergency-inner">
+          <h2>🚨 24/7 Emergency Pharmacist On-Call</h2>
+          <p>Our pharmacists are available around the clock for urgent consultations, emergency medication needs, and after-hours advice.</p>
+          <div className="php-emergency-contacts">
+            <a href="tel:+251911000000" className="php-emergency-btn">
+              <Phone size={20} /> +251 911 000 000
+            </a>
+            <a href="tel:+251922000000" className="php-emergency-btn secondary">
+              <Phone size={20} /> +251 922 000 000
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* ── How to Order ── */}
+      <div className="php-how">
+        <div className="php-how-inner">
+          <p className="php-section-label">Simple Process</p>
+          <h2 className="php-section-title">How to Order &amp; Delivery Policy</h2>
+          <div className="php-steps">
+            {[
+              { n: '1', title: 'Browse & Search', desc: 'Find your medication by name or category from our live catalog.' },
+              { n: '2', title: 'Place Your Order', desc: 'Add quantity, choose pickup or delivery, and optionally upload your prescription.' },
+              { n: '3', title: 'We Prepare & Verify', desc: 'Our licensed pharmacist verifies your order and prepares it safely.' },
+              { n: '4', title: 'Pickup or Delivery', desc: 'Collect from your nearest branch or receive it at your doorstep.' },
+            ].map(s => (
+              <div className="php-step" key={s.n}>
+                <div className="php-step-num">{s.n}</div>
+                <h3 className="php-step-title">{s.title}</h3>
+                <p className="php-step-desc">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="php-delivery-info">
+            <div className="php-delivery-info-item"><Truck size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Delivery Areas</strong><p>Addis Ababa & surrounding regions. 3–6 hrs standard delivery. Rural: 2–3 extra days.</p></div></div>
+            <div className="php-delivery-info-item"><CreditCard size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Delivery Fee</strong><p>Flat 50 ETB within city limits. Free delivery on orders above 500 ETB.</p></div></div>
+            <div className="php-delivery-info-item"><Clock size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Operating Hours</strong><p>Mon – Sat: 7:00 AM – 9:00 PM. Sunday: 9:00 AM – 5:00 PM. 24/7 On-Call available.</p></div></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── About Us ── */}
+      <div className="php-about">
+        <div className="php-about-inner">
+          <div className="php-about-visual">
+            <div style={{textAlign:'center',position:'relative',zIndex:1}}>
+              <div style={{width:120,height:120,borderRadius:'50%',background:'linear-gradient(135deg,#10b981,#059669)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'0 16px 40px rgba(16,185,129,0.35)'}}>
+                <Heart size={52} color="white" />
+              </div>
+              <div style={{fontSize:18,fontWeight:800,color:'#065f46'}}>Trusted Since 2010</div>
+              <div style={{fontSize:13,color:'#059669',marginTop:4}}>MOH Licensed Pharmacy</div>
+            </div>
+          </div>
+          <div className="php-about-text">
+            <p className="php-section-label">Who We Are</p>
+            <h2 className="php-section-title" style={{color:'#0f172a'}}>Ethiopia's Trusted Pharmaceutical Partner</h2>
+            <p>Sutana Pharmacy & Health has been serving communities across Ethiopia since 2010. Our mission is to make quality, affordable healthcare accessible to everyone — from essential everyday medications to specialized pharmaceutical care.</p>
+            <p>We operate under the direct supervision of licensed pharmacists and comply fully with the Ethiopian Food and Drug Authority (EFDA) standards and Ministry of Health (MOH) regulations.</p>
+            <div className="php-about-stat-row">
+              {[{n:'15+',l:'Years of Service'},{n:'5',l:'Branch Locations'},{n:'50,000+',l:'Patients Served'},{n:'24/7',l:'On-Call Support'}].map(s=>(
+                <div className="php-about-stat" key={s.l}>
+                  <div className="php-about-stat-num">{s.n}</div>
+                  <div className="php-about-stat-lbl">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Our Pharmacists ── */}
+      <div className="php-team">
+        <div className="php-team-inner">
+          <p className="php-section-label" style={{color:'#10b981'}}>Our Experts</p>
+          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>Meet Our Licensed Pharmacists</h2>
+          <div className="php-team-grid">
+            {TEAM.map(m => (
+              <div className="php-team-card" key={m.name}>
+                <div className="php-team-avatar" style={{background:`linear-gradient(135deg,${m.color}22,${m.color}44)`}}>
+                  <div style={{width:80,height:80,borderRadius:'50%',background:m.color,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:28,fontWeight:900}}>{m.initials}</div>
+                </div>
+                <p className="php-team-name">{m.name}</p>
+                <p className="php-team-role">{m.role}</p>
+                <p className="php-team-bio">{m.bio}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Patient Reviews ── */}
+      <div className="php-reviews">
+        <div className="php-reviews-inner">
+          <p className="php-section-label">Testimonials</p>
+          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>What Our Patients Say</h2>
+          <div className="php-reviews-grid">
+            {REVIEWS.map(r => (
+              <div className="php-review-card" key={r.name}>
+                <div className="php-stars">{[...Array(5)].map((_,i)=><Star key={i} size={16} fill={i<r.rating?'#fbbf24':'none'} color={i<r.rating?'#fbbf24':'#cbd5e1'} />)}</div>
+                <p className="php-review-text">"{r.text}"</p>
+                <div className="php-reviewer">
+                  <div className="php-reviewer-avatar">{r.initial}</div>
+                  <div><p className="php-reviewer-name">{r.name}</p><p className="php-reviewer-date">{r.date}</p></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Insurance & Partners ── */}
+      <div className="php-partners">
+        <div className="php-partners-inner">
+          <h2>Insurance Partners &amp; Trusted Suppliers</h2>
+          <p className="php-partners-sub">We work with leading insurance providers and pharmaceutical suppliers to guarantee quality and affordability.</p>
+          <div className="php-partners-grid">
+            {['CBHI Insurance','Nyala Insurance','Awash Insurance','Lucy Insurance','Abbay Insurance'].map(p=>(
+              <div className="php-partner-chip" key={p}><Shield size={18} color="#10b981"/>{p}</div>
+            ))}
+          </div>
+          <div style={{marginTop:24,borderTop:'1px solid #e4e6ea',paddingTop:24}}>
+            <p style={{fontSize:13,color:'#64748b',textAlign:'center',marginBottom:16,fontWeight:600}}>EFDA-Approved Supplier Brands</p>
+            <div className="php-partners-grid">
+              {['Almiral Pharma','Ethiopian Pharmaceuticals','Cadila Healthcare','Africa Pharma','BioTech Supply'].map(b=>(
+                <div className="php-partner-chip" key={b}><Award size={18} color="#0891b2"/>{b}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Payment Methods ── */}
+      <div className="php-payments">
+        <div className="php-payments-inner">
+          <h2>Accepted Payment Methods</h2>
+          <p className="php-payments-sub">Pay securely using your preferred method at pickup or on delivery.</p>
+          <div className="php-payments-grid">
+            {[
+              {icon:'💵', label:'Cash on Pickup'},
+              {icon:'💳', label:'Visa / Mastercard'},
+              {icon:'📱', label:'Telebirr'},
+              {icon:'🏦', label:'CBE Birr'},
+              {icon:'📲', label:'Amole'},
+              {icon:'🧾', label:'Insurance Direct Billing'},
+            ].map(m=>(
+              <div className="php-pay-chip" key={m.label}><span className="php-pay-chip-icon">{m.icon}</span>{m.label}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── FAQs ── */}
+      <div className="php-faq">
+        <div className="php-faq-inner">
+          <p className="php-section-label">Got Questions?</p>
+          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>Frequently Asked Questions</h2>
+          {FAQS.map((f,i)=>(
+            <div className="php-faq-item" key={i}>
+              <button className="php-faq-q" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
+                <span>{f.q}</span>
+                {openFaq===i ? <ChevronUp size={18} color="#059669" style={{flexShrink:0}}/> : <ChevronDown size={18} color="#64748b" style={{flexShrink:0}}/>}
+              </button>
+              <div className={`php-faq-a ${openFaq===i?'open':''}`}>{f.a}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Trust Bar (License & Certifications) ── */}
+      <div className="php-trust">
+        <div className="php-trust-inner">
+          {[
+            {Icon:Shield,title:'MOH Licensed',desc:'License No. ETH/MOH/PH-2024-00451. Fully accredited by the Ethiopian Ministry of Health.'},
+            {Icon:Award,title:'EFDA Certified',desc:'All medications sourced from Ethiopian Food & Drug Authority approved suppliers only.'},
+            {Icon:FileText,title:'Privacy Protected',desc:'Your health data is confidential and secured in compliance with Ethiopian data privacy laws.'},
+            {Icon:CheckCircle2,title:'Verified Pharmacists',desc:'Every dispensing pharmacist holds a valid B.Pharm degree and a current professional license.'},
+          ].map(({Icon,...t})=>(
+            <div className="php-trust-item" key={t.title}>
+              <div className="php-trust-icon"><Icon size={20} color="#10b981"/></div>
+              <div><p className="php-trust-title">{t.title}</p><p className="php-trust-desc">{t.desc}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Medical Disclaimer ── */}
+      <div className="php-disclaimer">
+        <p><strong>⚕️ Medical Disclaimer:</strong> The information provided on this page is for general informational and educational purposes only. It is not intended as, and shall not be understood or construed as, professional medical advice. Always consult a qualified healthcare professional before starting any medication. Sutana Pharmacy & Health is not liable for any decisions made based on the content of this page. | <strong>Terms of Use</strong> | <strong>Privacy Policy</strong> | <strong>MOH License No. ETH/MOH/PH-2024-00451</strong></p>
+      </div>
+
       {/* Order Modal */}
       {isModalOpen && selectedMedicine && (
         <div className="php-overlay" onClick={closeModal}>
@@ -526,7 +952,7 @@ const PharmacyHealthPage = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '0', border: '1px solid #e2e8f0' }}>
                       <div className="php-form-group" style={{ gridColumn: '1 / -1' }}>
                         <label>Customer Name</label>
-                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={`${authService.getCurrentUser().first_name || ''} ${authService.getCurrentUser().last_name || ''}`.trim() || 'Guest'} disabled />
+                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().full_name || authService.getCurrentUser().name || `${authService.getCurrentUser().first_name || ''} ${authService.getCurrentUser().last_name || ''}`.trim() || 'Guest'} disabled />
                       </div>
                       <div className="php-form-group">
                         <label>Email</label>
