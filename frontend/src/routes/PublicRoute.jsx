@@ -19,6 +19,7 @@ const PublicRoute = ({ children }) => {
       'Pharmacy Worker': '/pharmacy-worker',
       'Pharmacy Manager': '/pharmacy',
       'Car Renting Manager': '/car-renting',
+      'Sales Manager': '/sales/overview',
       'HR Manager': '/hr',
       'Employee': '/employee',
       'Customer': '/customer'
@@ -26,7 +27,7 @@ const PublicRoute = ({ children }) => {
     const rolePriority = [
       'Admin', 'CEO', 'Finance', 'Finance Manager', 'Purchase', 'Pharmacy Store Keeper',
       'General Store Keeper', 'Printing Supervisor', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
-      'Sales/Cashier', 'Car Renting Manager', 'HR Manager', 'Employee', 'Customer'
+      'Sales/Cashier', 'Car Renting Manager', 'Sales Manager', 'HR Manager', 'Employee', 'Customer'
     ];
     if (user?.roles) {
       for (const r of rolePriority) {

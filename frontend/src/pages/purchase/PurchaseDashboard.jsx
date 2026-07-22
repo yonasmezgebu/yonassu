@@ -10,7 +10,6 @@ import PurchaseSupplierBids from './PurchaseSupplierBids';
 import PurchaseRFQ from './PurchaseRFQ';
 import PurchaseSupplierQuotations from './PurchaseSupplierQuotations';
 import PurchaseOrders from './PurchaseOrders';
-import PurchaseGoodsReceiving from './PurchaseGoodsReceiving';
 import PurchaseReturns from './PurchaseReturns';
 import PurchaseHistory from './PurchaseHistory';
 import PurchaseSmartTenders from './PurchaseSmartTenders';
@@ -53,32 +52,20 @@ const PurchaseDashboard = () => {
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
         { label: '1. Market Research (M4)',    path: '/purchase/market-research', icon: 'search',       color: '#0284c7' },
-        { label: '2. Purchase Requests',       path: '/purchase/requests',        icon: 'file-text',    color: '#3b82f6' },
+        { label: '2. Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
         { label: '3. Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
-        { label: '4. Request for Quotation',   path: '/purchase/rfq',             icon: 'file',         color: '#22c55e' },
-        { label: '5. Supplier Quotations',     path: '/purchase/quotations',      icon: 'inbox',        color: '#f59e0b' },
-        { label: '6. Purchase Orders',         path: '/purchase/orders',          icon: 'shopping-cart', color: '#8b5cf6' },
-        { label: '8. Goods Receiving',         path: '/purchase/receiving',       icon: 'truck',        color: '#06b6d4' },
-        { label: '9. Purchase Returns',        path: '/purchase/returns',         icon: 'rotate-ccw',   color: '#ea580c' },
-        { label: '10. Purchase History',       path: '/purchase/history',         icon: 'clock',        color: '#475569' },
+        { label: '4. Quotation',               path: '/purchase/rfq',             icon: 'file',         color: '#22c55e' },
+        { label: '5. Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
       ]
     },
     { type: 'divider' },
-    { label: 'Supplier Management', icon: 'building',
-      children: [
-        { label: '11. Supplier List',          path: '/purchase/suppliers',          icon: 'users',        color: '#1d4ed8' },
-        { label: '12. Add Supplier',           path: '/purchase/suppliers/add',      icon: 'user-plus',    color: '#22c55e' },
-        { label: '13. Supplier Performance',   path: '/purchase/supplier-performance', icon: 'bar-chart-2', color: '#8b5cf6' },
-        { label: '14. Supplier Contracts',     path: '/purchase/contracts',          icon: 'file-text',    color: '#0891b2' },
-      ]
-    },
+    { label: 'Supplier Management', path: '/purchase/suppliers', icon: 'building' },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
       children: [
         { label: '22. Purchase Report',        path: '/purchase/reports/purchase',    icon: 'file-text',    color: '#0284c7' },
         { label: '23. Supplier Report',        path: '/purchase/reports/supplier',    icon: 'users',        color: '#8b5cf6' },
         { label: '24. Delivery Report',        path: '/purchase/reports/delivery',    icon: 'truck',        color: '#d97706' },
-        { label: '25. Outstanding Orders',     path: '/purchase/reports/outstanding', icon: 'alert-circle', color: '#dc2626' },
         { label: '26. Monthly Summary',        path: '/purchase/reports/monthly',     icon: 'bar-chart-2',  color: '#4f46e5' },
       ]
     }
@@ -98,7 +85,6 @@ const PurchaseDashboard = () => {
             <Route path="rfq" element={<PurchaseRFQ />} />
             <Route path="quotations" element={<PurchaseSupplierQuotations />} />
             <Route path="orders" element={<PurchaseOrders />} />
-            <Route path="receiving" element={<PurchaseGoodsReceiving />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="history" element={<PurchaseHistory />} />
 

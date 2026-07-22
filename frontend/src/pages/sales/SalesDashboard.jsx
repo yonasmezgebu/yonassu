@@ -1,175 +1,181 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { createContext, useState } from 'react';
+
+export const WorkerAuthContext = createContext();
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import SalesHome from './SalesHome';
+import BackButton from '../../components/pharmacy/BackButton';
+
+import SalesOverview from './SalesOverview';
+import SalesWorkerHome from './SalesWorkerHome';
 import POSPage from './POSPage';
-import CustomerManagement from './CustomerManagement';
-import SalesReports from './SalesReports';
 import ReturnsPage from './ReturnsPage';
-import ZReportPage from './ZReportPage';
+import SalesHealthPublisher from './SalesHealthPublisher';
+import SalesWorkerHealthPublisher from './SalesWorkerHealthPublisher';
 import SalesOrders from './SalesOrders';
-import SalesTenderProductPage from './SalesTenderProductPage';
-import RetailOrderPage from './RetailOrderPage';
-import SalesManagerHandover from './SalesManagerHandover';
+import SalesOrderHistory from './SalesOrderHistory';
+import SalesProducts from './SalesProducts';
+import SalesStoreInventory from './SalesStoreInventory';
+import SalesStockOperations from './SalesStockOperations';
+import SalesStockAdjustment from './SalesStockAdjustment';
+import SalesExpiryManagement from './SalesExpiryManagement';
+import SalesBatches from './SalesBatches';
+import SalesStaff from './SalesStaff';
+import SalesAttendance from './SalesAttendance';
+import SalesBranches from './SalesBranches';
+import SalesCEOReport from './SalesCEOReport';
+import SalesFinanceReview from './SalesFinanceReview';
+import SalesDailySummary from './SalesDailySummary';
+import SalesNewOrder from './SalesNewOrder';
+import SalesPendingOrders from './SalesPendingOrders';
+import CashierAuditLog from './CashierAuditLog';
 
-// New Sales Manager Pages
-import SalesManagerDashboard from './manager/SalesManagerDashboard';
-import SalesNewSale from './manager/SalesNewSale';
-import SalesQuotations from './manager/SalesQuotations';
-import SalesManagerOrders from './manager/SalesOrders';
-import SalesInvoices from './manager/SalesInvoices';
-import SalesManagerReturns from './manager/SalesReturns';
-import SalesHistory from './manager/SalesHistory';
-import SalesCustomerList from './manager/SalesCustomerList';
-import SalesAddCustomer from './manager/SalesAddCustomer';
-import SalesCreditCustomers from './manager/SalesCreditCustomers';
-import SalesCustomerStatement from './manager/SalesCustomerStatement';
-
-// Addendum Pages
-import ReceivePayment from './manager/payments/ReceivePayment';
-import PaymentHistory from './manager/payments/PaymentHistory';
-import OutstandingPayments from './manager/payments/OutstandingPayments';
-
-import ProductCatalog from './manager/products/ProductCatalog';
-import StockAvailability from './manager/products/StockAvailability';
-import PriceList from './manager/products/PriceList';
-import Promotions from './manager/products/Promotions';
-
-import PendingApprovals from './manager/approvals/PendingApprovals';
-import ApprovedApprovals from './manager/approvals/ApprovedApprovals';
-import RejectedApprovals from './manager/approvals/RejectedApprovals';
-
-// Reports Addendum Pages
-import SalesReport from './manager/reports/SalesReport';
-import DailySales from './manager/reports/DailySales';
-import MonthlySales from './manager/reports/MonthlySales';
-import CustomerReport from './manager/reports/CustomerReport';
-import ProductPerformance from './manager/reports/ProductPerformance';
+// We import these directly if needed
+// import ProcurementRequests from '../procurement/ProcurementRequests';
+// import PharmacyReceive from '../procurement/PharmacyReceive';
+// import DirectDelivery from '../procurement/DirectDelivery';
 
 const SalesDashboard = () => {
-  const menuItems = [
-    { label: 'Dashboard', path: '/sales/manager/dashboard', icon: 'home', color: '#3b82f6' },
-    { type: 'divider' },
-    
-    // --- NEW SALES MANAGER SECTION ---
-    { label: 'Sales Manager', icon: 'trending-up',
-      children: [
-        { label: 'New Sale',       path: '/sales/manager/new-sale',  icon: 'shopping-cart',color: '#22c55e' },
-        { label: 'Quotations',     path: '/sales/manager/quotations',icon: 'file-text',    color: '#f59e0b' },
-        { label: 'Sales Orders',   path: '/sales/manager/orders',    icon: 'package',      color: '#06b6d4' },
-        { label: 'Invoices',       path: '/sales/manager/invoices',  icon: 'file-plus',    color: '#8b5cf6' },
-        { label: 'Sales Returns',  path: '/sales/manager/returns',   icon: 'rotate-ccw',   color: '#f97316' },
-        { label: 'Sales History',  path: '/sales/manager/history',   icon: 'clock',        color: '#64748b' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Customers (Manager)', icon: 'users',
-      children: [
-        { label: 'Customer List',    path: '/sales/manager/customers',          icon: 'users',      color: '#3b82f6' },
-        { label: 'Add Customer',     path: '/sales/manager/customers/new',      icon: 'user-plus',  color: '#22c55e' },
-        { label: 'Credit Customers', path: '/sales/manager/customers/credit',   icon: 'credit-card',color: '#ef4444' },
-        { label: 'Statements',       path: '/sales/manager/customers/statement',icon: 'file-text',  color: '#8b5cf6' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Payments (Manager)', icon: 'wallet',
-      children: [
-        { label: 'Receive Payment',     path: '/sales/manager/payments/new',      icon: 'credit-card', color: '#22c55e' },
-        { label: 'Payment History',     path: '/sales/manager/payments/history',  icon: 'clock',       color: '#3b82f6' },
-        { label: 'Outstanding Payments', path: '/sales/manager/payments/outstanding', icon: 'alert-circle', color: '#ef4444' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Products (Manager)', icon: 'box',
-      children: [
-        { label: 'Product Catalog',    path: '/sales/manager/products/catalog',    icon: 'package', color: '#8b5cf6' },
-        { label: 'Stock Availability', path: '/sales/manager/products/stock',      icon: 'layers',  color: '#0ea5e9' },
-        { label: 'Price List',         path: '/sales/manager/products/pricelist',  icon: 'tag',     color: '#f59e0b' },
-        { label: 'Promotions',         path: '/sales/manager/products/promotions', icon: 'star',    color: '#ec4899' },
-      ]
-    },
-    { type: 'divider' },
-    { label: 'Approvals (Manager)', icon: 'check-circle',
-      children: [
-        { label: 'Pending Approval', path: '/sales/manager/approvals/pending',  icon: 'clock',        color: '#f59e0b' },
-        { label: 'Approved',         path: '/sales/manager/approvals/approved', icon: 'check-circle', color: '#10b981' },
-        { label: 'Rejected',         path: '/sales/manager/approvals/rejected', icon: 'x-circle',     color: '#ef4444' },
-      ]
-    },
-    { type: 'divider' },
-    // --- END NEW SECTION ---
+  const location = useLocation();
+  const FULL_BLEED = [
+    '/sales/staff', '/sales/attendance', '/sales/branches', 
+    '/sales/daily-summary', '/sales/finance-review', '/sales/ceo-report', 
+    '/sales/store-inventory', '/sales/stock-operations', 
+    '/sales/procurement-requests', '/sales/stock-adjustment', 
+    '/sales/expiry-management', '/sales/batches', '/sales/health-publisher',
+    '/sales/products', '/sales/worker-home', '/sales/sales', '/sales/sales-return',
+    '/sales/rx', '/sales/rx/new', '/sales/rx/pending', '/sales/rx/history'
+  ];
+  const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
+  const hideBackButton = ['/sales/overview', '/sales'].includes(location.pathname) || isFullBleed;
 
-    { label: 'POS & Operations', icon: 'monitor',
+  const menuItems = [
+    // Manager Dashboard (From PharmacyManager)
+    { label: 'Manager Overview', path: '/sales/overview', icon: 'home' },
+    // Cashier Dashboard (From PharmacyWorker)
+    { label: 'Cashier Overview', path: '/sales/worker-home', icon: 'home' },
+    { type: 'divider' },
+
+    // ── Sales Section (From Worker) ──
+    {
+      label: 'Sales Section', icon: 'shopping-cart',
       children: [
-        { label: 'Point of Sale',  path: '/sales/pos',           icon: 'shopping-cart', color: '#22c55e' },
-        { label: 'Retail Orders',  path: '/sales/retail-order',  icon: 'package',       color: '#3b82f6' },
-        { label: 'Daily Sales',    path: '/sales/z-report',      icon: 'clock',         color: '#f59e0b' },
-        { label: 'Handover',       path: '/sales/handover',      icon: 'file-text',     color: '#8b5cf6' },
+        { label: '🛒 New Sale',          path: '/sales/pos',              icon: 'shopping-cart', color: '#059669', className: 'executive' },
+        { label: 'Sales Return',         path: '/sales/sales-return',       icon: 'rotate-ccw' },
+        { label: '🌐 Sales Publisher',  path: '/sales/worker-health-publisher',   icon: 'globe',         color: '#224f94' },
+      ]
+    },
+    { type: 'divider' },
+
+    // ── Orders (From Worker Prescriptions) ──
+    {
+      label: 'Retail Orders', icon: 'file-text',
+      children: [
+        { label: 'Orders Queue', path: '/sales/rx',         icon: 'clipboard-list', color: '#059669' },
+        { label: 'Order History', path: '/sales/rx/history', icon: 'list',           color: '#64748b' },
+      ]
+    },
+    { type: 'divider' },
+
+    // ── Inventory & Procurement (From Manager) ──
+    { label: 'Inventory', icon: 'pill',
+      children: [
+        { label: 'Store Inventory',  path: '/sales/store-inventory',  icon: 'database',  color: '#0891b2' },
+        { label: 'Stock Operations', path: '/sales/stock-operations', icon: 'package',   color: '#3b82f6' },
+        // { label: 'Product Procurement', path: '/sales/procurement-requests',  icon: 'shopping-cart', color: '#059669' },
+        { label: 'Stock Adjustment', path: '/sales/stock-adjustment',      icon: 'sliders',       color: '#f97316' },
+        { label: 'Expiry Management',path: '/sales/expiry-management',     icon: 'alert-triangle',color: '#ef4444' },
+        { label: 'Batch Management', path: '/sales/batches',               icon: 'layers',        color: '#14b8a6' },
+        { label: 'Customer Publisher', path: '/sales/health-publisher',      icon: 'globe',         color: '#059669' },
+      ] },
+
+    // ── Staff (From Manager) ──
+    { label: 'Staff & Ops', icon: 'users',
+      children: [
+        { label: 'Staff Mgmt',      path: '/sales/staff',          icon: 'settings' },
+        { label: 'Attendance',      path: '/sales/attendance',     icon: 'clock' },
+        { label: 'Branches',        path: '/sales/branches',       icon: 'building',  color: '#f59e0b' },
       ] },
     { type: 'divider' },
-    { label: 'Reports (Manager)', icon: 'pie-chart',
+
+    // ── Reports (From Manager) ──
+    { label: 'Reports', icon: 'bar-chart',
       children: [
-        { label: 'Sales Report',          path: '/sales/manager/reports/sales',       icon: 'trending-up',  color: '#3b82f6' },
-        { label: 'Daily Sales',           path: '/sales/manager/reports/daily',       icon: 'sun',          color: '#f59e0b' },
-        { label: 'Monthly Sales',         path: '/sales/manager/reports/monthly',     icon: 'bar-chart-2',  color: '#10b981' },
-        { label: 'Customer Report',       path: '/sales/manager/reports/customers',   icon: 'users',        color: '#8b5cf6' },
-        { label: 'Product Performance',   path: '/sales/manager/reports/products',    icon: 'package',      color: '#ec4899' },
+        { label: 'CEO Report', path: '/sales/ceo-report', icon: 'bar-chart-2',  color: '#064e3b' },
+        { label: 'Finance Review', path: '/sales/finance-review', icon: 'dollar-sign',  color: '#D97706' },
+        { label: 'Daily Summary',    path: '/sales/daily-summary',     icon: 'file-text' },
       ] },
   ];
 
+  const [hasManagerPermission, setHasManagerPermission] = useState(true);
+
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <DashboardLayout menuItems={menuItems}>
-        <Routes>
-          {/* Existing Routes */}
-          <Route path="pos" element={<POSPage />} />
-          <Route path="orders" element={<SalesOrders />} />
-          <Route path="customers" element={<CustomerManagement />} />
-          <Route path="reports" element={<SalesReports />} />
-          <Route path="returns" element={<ReturnsPage />} />
-          <Route path="z-report" element={<ZReportPage />} />
-          <Route path="tender-product" element={<SalesTenderProductPage />} />
-          <Route path="retail-order" element={<RetailOrderPage />} />
-          <Route path="handover" element={<SalesManagerHandover />} />
-          
-          {/* New Manager Routes */}
-          <Route path="manager/dashboard" element={<SalesManagerDashboard />} />
-          <Route path="manager/new-sale" element={<SalesNewSale />} />
-          <Route path="manager/quotations" element={<SalesQuotations />} />
-          <Route path="manager/orders" element={<SalesManagerOrders />} />
-          <Route path="manager/invoices" element={<SalesInvoices />} />
-          <Route path="manager/returns" element={<SalesManagerReturns />} />
-          <Route path="manager/history" element={<SalesHistory />} />
-          <Route path="manager/customers" element={<SalesCustomerList />} />
-          <Route path="manager/customers/new" element={<SalesAddCustomer />} />
-          <Route path="manager/customers/credit" element={<SalesCreditCustomers />} />
-          <Route path="manager/customers/statement" element={<SalesCustomerStatement />} />
+    <WorkerAuthContext.Provider value={{ hasManagerPermission, setHasManagerPermission }}>
+    <div>
+      <DashboardLayout menuItems={menuItems} title="Sales Manager (Unified)">
+        <div style={isFullBleed ? {
+          margin: '-32px -32px -32px -32px',
+          padding: 0,
+          background:
+            location.pathname.includes('/sales/ceo-report')     ? '#F1BE91' :
+            location.pathname.includes('/sales/finance-review') ? '#46D17A' :
+            (
+              location.pathname.includes('/sales/store-inventory') ||
+              location.pathname.includes('/sales/stock-operations') ||
+              location.pathname.includes('/sales/stock-adjustment') ||
+              location.pathname.includes('/sales/expiry-management') ||
+              location.pathname.includes('/sales/batches') ||
+              location.pathname.includes('/sales/health-publisher')
+            ) ? '#50760F' :
+            '#D5DCF0',
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+        } : {}}>
+          {!hideBackButton && <BackButton />}
+          <Routes>
+            {/* Dashboards */}
+            <Route path="overview"   element={<SalesOverview />} />
+            <Route path="worker-home" element={<SalesWorkerHome />} />
 
-          {/* Addendum Routes */}
-          <Route path="manager/payments/new" element={<ReceivePayment />} />
-          <Route path="manager/payments/history" element={<PaymentHistory />} />
-          <Route path="manager/payments/outstanding" element={<OutstandingPayments />} />
+            {/* Sales */}
+            <Route path="pos"           element={<POSPage />} />
+            <Route path="pos/:id"       element={<POSPage />} />
+            <Route path="sales-return"    element={<ReturnsPage />} />
+            <Route path="worker-health-publisher" element={<SalesWorkerHealthPublisher />} />
 
-          <Route path="manager/products/catalog" element={<ProductCatalog />} />
-          <Route path="manager/products/stock" element={<StockAvailability />} />
-          <Route path="manager/products/pricelist" element={<PriceList />} />
-          <Route path="manager/products/promotions" element={<Promotions />} />
+            {/* Orders (Prescriptions mapping) */}
+            <Route path="rx"              element={<SalesOrders />} />
+            <Route path="rx/new"          element={<SalesNewOrder />} />
+            <Route path="rx/pending"      element={<SalesPendingOrders />} />
+            <Route path="rx/history"      element={<SalesOrderHistory />} />
 
-          <Route path="manager/approvals/pending" element={<PendingApprovals />} />
-          <Route path="manager/approvals/approved" element={<ApprovedApprovals />} />
-          <Route path="manager/approvals/rejected" element={<RejectedApprovals />} />
+            {/* Inventory */}
+            <Route path="products"        element={<SalesProducts />} />
+            <Route path="store-inventory"  element={<SalesStoreInventory />} />
+            <Route path="stock-operations" element={<SalesStockOperations />} />
+            <Route path="stock-adjustment" element={<SalesStockAdjustment />} />
+            <Route path="expiry-management" element={<SalesExpiryManagement />} />
+            <Route path="batches"          element={<SalesBatches />} />
+            <Route path="health-publisher" element={<SalesHealthPublisher />} />
 
-          {/* Reports Addendum Routes */}
-          <Route path="manager/reports/sales" element={<SalesReport />} />
-          <Route path="manager/reports/daily" element={<DailySales />} />
-          <Route path="manager/reports/monthly" element={<MonthlySales />} />
-          <Route path="manager/reports/customers" element={<CustomerReport />} />
-          <Route path="manager/reports/products" element={<ProductPerformance />} />
+            {/* Staff */}
+            <Route path="staff"         element={<SalesStaff />} />
+            <Route path="attendance"    element={<SalesAttendance />} />
+            <Route path="branches"   element={<SalesBranches />} />
 
-          <Route path="/" element={<Navigate to="manager/dashboard" replace />} />
-        </Routes>
+            {/* Reports */}
+            <Route path="ceo-report"    element={<SalesCEOReport />} />
+            <Route path="finance-review" element={<SalesFinanceReview />} />
+            <Route path="finance-review/:id" element={<SalesFinanceReview />} />
+            <Route path="daily-summary" element={<SalesDailySummary />} />
+            
+            <Route path="audit" element={<CashierAuditLog source="sales" />} />
+
+            <Route path="/" element={<Navigate to="overview" replace />} />
+          </Routes>
+        </div>
       </DashboardLayout>
     </div>
+    </WorkerAuthContext.Provider>
   );
 };
 

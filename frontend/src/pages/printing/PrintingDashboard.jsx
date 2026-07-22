@@ -18,13 +18,11 @@ import PrintingDesignRequests from './PrintingDesignRequests';
 import PrintingUploadArtwork from './PrintingUploadArtwork';
 import PrintingFileReview from './PrintingFileReview';
 
-// Production (14-18)
-import PrintingMachineAllocation from './PrintingMachineAllocation';
-import PrintingPrintSchedule from './PrintingPrintSchedule';
-import PrintingJobProgressTracking from './PrintingJobProgressTracking';
-import PrintingMaterialUsage from './PrintingMaterialUsage';
+import PrintingProdMachines from './PrintingProdMachines';
+import PrintingProdMaterials from './PrintingProdMaterials';
+import PrintingStoreMaterials from './PrintingStoreMaterials';
+import PrintingProdLogs from './PrintingProdLogs';
 import PrintingReprintRequests from './PrintingReprintRequests';
-
 
 // Reports (31-35)
 import PrintingDailyProductionReport from './PrintingDailyProductionReport';
@@ -32,45 +30,44 @@ import PrintingJobCostReport from './PrintingJobCostReport';
 import PrintingMaterialConsumptionReport from './PrintingMaterialConsumptionReport';
 import PrintingMonthlySummaryReport from './PrintingMonthlySummaryReport';
 
-
 import styles from './PrintingDashboard.module.css';
 
 const PrintingDashboard = () => {
   const menuItems = [
     { label: 'Dashboard', path: '/printing-manager/overview', icon: 'home' },
     { type: 'divider' },
-    { label: 'Jobs', icon: 'folder',
+    { label: 'Jobs', icon: 'printer',
       children: [
-        { label: 'Job Process',            path: '/printing-manager/jobs/new',        icon: 'plus-circle',  color: '#22c55e' },
-        { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#64748b' },
-        { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#ec4899' },
+        { label: 'Job Process',            path: '/printing-manager/jobs/new',        icon: 'plus-circle',  color: '#228B22' },
+        { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
+        { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
       ]
     },
     { type: 'divider' },
     { label: 'Design & Files', icon: 'image',
       children: [
-        { label: 'Design Requests',        path: '/printing-manager/design/requests', icon: 'inbox',        color: '#f43f5e' },
-        { label: 'Upload Artwork',         path: '/printing-manager/design/upload',   icon: 'upload-cloud', color: '#3b82f6' },
-        { label: 'File Review',            path: '/printing-manager/design/review',   icon: 'eye',          color: '#8b5cf6' },
+        { label: 'Design Requests',        path: '/printing-manager/design/requests', icon: 'inbox',        color: '#2E8B57' },
+        { label: 'Upload Artwork',         path: '/printing-manager/design/upload',   icon: 'upload-cloud', color: '#4CAF50' },
+        { label: 'File Review',            path: '/printing-manager/design/review',   icon: 'eye',          color: '#8BC34A' },
       ]
     },
     { type: 'divider' },
     { label: 'Production', icon: 'tool',
       children: [
-        { label: 'Printing Store Machine',      path: '/printing-manager/prod/machines',   icon: 'cpu',          color: '#ef4444' },
-        { label: 'Printing Production Machine', path: '/printing-manager/prod/schedule',   icon: 'calendar',     color: '#f97316' },
-        { label: 'Printing Store Material',     path: '/printing-manager/prod/progress',   icon: 'bar-chart',    color: '#10b981' },
-        { label: 'Printing Production Material',path: '/printing-manager/prod/materials',  icon: 'package',      color: '#6366f1' },
+        { label: 'Production Machines',   path: '/printing-manager/prod/machines',  icon: 'cpu',       color: '#228B22' },
+        { label: 'Production Materials',  path: '/printing-manager/prod/materials', icon: 'package',   color: '#2E8B57' },
+        { label: 'Store Material',        path: '/printing-manager/prod/store-materials', icon: 'box', color: '#1B5E20' },
+        { label: 'Production Logs',       path: '/printing-manager/prod/logs',      icon: 'file-text', color: '#6B8E23' },
       ]
     },
 
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
       children: [
-        { label: 'Daily Production',      path: '/printing-manager/reports/daily',    icon: 'activity',    color: '#0ea5e9' },
-        { label: 'Job Cost Report',       path: '/printing-manager/reports/costs',    icon: 'dollar-sign', color: '#10b981' },
-        { label: 'Material Consumption',  path: '/printing-manager/reports/materials',icon: 'layers',      color: '#f97316' },
-        { label: 'Monthly Summary',       path: '/printing-manager/reports/summary',  icon: 'pie-chart',   color: '#8b5cf6' },
+        { label: 'Daily Production',      path: '/printing-manager/reports/daily',    icon: 'activity',    color: '#87CEEB' },
+        { label: 'Job Cost Report',       path: '/printing-manager/reports/costs',    icon: 'dollar-sign', color: '#4CAF50' },
+        { label: 'Material Consumption',  path: '/printing-manager/reports/materials',icon: 'layers',      color: '#8D6E63' },
+        { label: 'Monthly Summary',       path: '/printing-manager/reports/summary',  icon: 'pie-chart',   color: '#228B22' },
       ]
     },
 
@@ -78,7 +75,7 @@ const PrintingDashboard = () => {
 
   return (
     <div className={styles.dashboardWrapper}>
-      <DashboardLayout menuItems={menuItems} title="Printing Supervisor Dashboard — 26 Links">
+      <DashboardLayout menuItems={menuItems} title="Printing Supervisor Dashboard">
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Routes>
             <Route path="overview" element={<PrintingHome />} />
@@ -99,12 +96,11 @@ const PrintingDashboard = () => {
             <Route path="design/review" element={<PrintingFileReview />} />
 
             {/* Production */}
-            <Route path="prod/machines" element={<PrintingMachineAllocation />} />
-            <Route path="prod/schedule" element={<PrintingPrintSchedule />} />
-            <Route path="prod/progress" element={<PrintingJobProgressTracking />} />
-            <Route path="prod/materials" element={<PrintingMaterialUsage />} />
+            <Route path="prod/machines" element={<PrintingProdMachines />} />
+            <Route path="prod/materials" element={<PrintingProdMaterials />} />
+            <Route path="prod/store-materials" element={<PrintingStoreMaterials />} />
+            <Route path="prod/logs" element={<PrintingProdLogs />} />
             <Route path="prod/reprints" element={<PrintingReprintRequests />} />
-
 
             {/* Reports */}
             <Route path="reports/daily" element={<PrintingDailyProductionReport />} />

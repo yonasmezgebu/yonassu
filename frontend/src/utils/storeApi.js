@@ -1,4 +1,4 @@
-const API = '/api/v1/store';
+const API = '/api/v1/store-inventory';
 
 function headers() {
   return {
@@ -245,6 +245,20 @@ export async function markStoreAttendance(data) {
 // Generic
 export async function addNewStock(data) {
   const r = await fetch(API + '/add-stock', { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+  return r.json();
+}
+
+// Stock Update Requests
+export async function getPendingUpdateRequests() {
+  const r = await fetch(API + '/update-requests/pending', { headers: headers() });
+  return r.json();
+}
+export async function approveUpdateRequest(id) {
+  const r = await fetch(API + '/update-requests/' + id + '/approve', { method: 'PATCH', headers: headers() });
+  return r.json();
+}
+export async function rejectUpdateRequest(id, reason) {
+  const r = await fetch(API + '/update-requests/' + id + '/reject', { method: 'PATCH', headers: headers(), body: JSON.stringify({ reason }) });
   return r.json();
 }
 

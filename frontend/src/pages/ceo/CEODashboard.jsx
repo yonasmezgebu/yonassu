@@ -36,6 +36,7 @@ import CEOPrinting from './CEOPrinting';
 import CEOCarRental from './CEOCarRental';
 import CEOAgrirent from './CEOAgrirent';
 import StoreAdjustmentApprovals from './StoreAdjustmentApprovals';
+import CEOStockUpdateApprovals from './CEOStockUpdateApprovals';
 import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 import CEOApplicants from './CEOApplicants';
 
@@ -131,6 +132,7 @@ const CEODashboard = () => {
             {/* 9 Additional Approval & Report Modules */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />
             <Route path="store-adjustments" element={<StoreAdjustmentApprovals />} />
+            <Route path="store-update-approvals" element={<CEOStockUpdateApprovals />} />
             <Route path="approvals/approved" element={<CEOApprovedApprovals />} />
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
             <Route path="reports/executive" element={<CEOExecutiveReport />} />

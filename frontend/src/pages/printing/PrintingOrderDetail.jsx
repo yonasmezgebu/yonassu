@@ -3,12 +3,29 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import { ArrowLeft, Clock, User, FileText, Package, Download, ChevronDown, ChevronUp } from 'lucide-react';
 
-const STATUS_FLOW = ['received', 'in_progress', 'quality_check', 'ready', 'delivered'];
+// Real DB status flow matching order_statuses table
+const STATUS_FLOW = ['received', 'in_queue', 'in_design', 'file_check', 'in_printing', 'in_progress', 'finishing', 'ready', 'delivered'];
+const STATUS_LABELS = {
+  received:    '📥 Received',
+  in_queue:    '📋 Job Queue',
+  in_design:   '🎨 In Design',
+  file_check:  '🔍 File Check',
+  in_printing: '🖨️ In Printing',
+  in_progress: '⚙️ In Progress',
+  finishing:   '✂️ Finishing',
+  ready:       '✅ Ready for Pickup',
+  delivered:   '🎉 Delivered'
+};
 
 const statusBadge = (code) => {
-  const colors = { received: '#9CA3AF', in_progress: '#3B82F6', quality_check: '#F59E0B', ready: '#10B981', delivered: '#059669', cancelled: '#EF4444' };
+  const colors = {
+    received: '#87CEEB', in_queue: '#8BC34A', in_design: '#6B8E23',
+    file_check: '#FF9800', in_printing: '#2E8B57', in_progress: '#059669',
+    finishing: '#228B22', ready: '#4CAF50', delivered: '#1B5E20', cancelled: '#EF4444'
+  };
   return { background: (colors[code] || '#6B7280') + '20', color: colors[code] || '#6B7280' };
 };
+
 
 const PrintingOrderDetail = () => {
   const { id } = useParams();
@@ -71,9 +88,19 @@ const PrintingOrderDetail = () => {
             Created {new Date(order.created_at).toLocaleString()}
           </p>
         </div>
-        <span style={{ ...statusBadge(order.status_code), padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
-          {order.status_name}
-        </span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{
+            padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+            background: order.payment_status === 'Confirmed' ? '#dcfce7' : order.payment_status === 'Rejected' ? '#fee2e2' : '#ffedd5',
+            color: order.payment_status === 'Confirmed' ? '#16a34a' : order.payment_status === 'Rejected' ? '#ef4444' : '#ea580c',
+            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : order.payment_status === 'Rejected' ? '#fca5a5' : '#fdba74'}`
+          }}>
+            {order.payment_status === 'Confirmed' ? '✅ Paid' : order.payment_status === 'Rejected' ? '❌ Payment Rejected' : '⏳ Payment Pending'}
+          </span>
+          <span style={{ ...statusBadge(order.status_code), padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+            {order.status_name}
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -112,20 +139,34 @@ const PrintingOrderDetail = () => {
       {!isDelivered && !isCancelled && (
         <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Status Progress</h4>
+          
+          {/* Payment status banner */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, marginBottom: 14,
+            background: order.payment_status === 'Confirmed' ? '#dcfce7' : '#fff7ed',
+            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : '#fed7aa'}`
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: order.payment_status === 'Confirmed' ? '#16a34a' : '#ea580c' }}>
+              {order.payment_status === 'Confirmed'
+                ? '✅ Payment Confirmed by Finance — Order can proceed to printing'
+                : '⏳ Awaiting Finance Payment Confirmation — Cannot proceed to In Progress until Finance approves'}
+            </span>
+          </div>
+
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {STATUS_FLOW.map((s, i) => {
               const done = i <= statusIdx;
               const isNext = i === statusIdx + 1;
+
               return (
                 <button key={s} onClick={() => isNext && updateStatus(s)} disabled={!isNext || updating}
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600,
-                    background: done ? '#059669' : isNext ? '#3b82f6' : '#f1f5f9',
-                    color: done || isNext ? 'white' : '#94a3b8',
-                    cursor: isNext && !updating ? 'pointer' : 'default',
-                    opacity: isNext && updating ? 0.6 : 1
+                    background: done ? '#059669' : (isNext ? '#2563eb' : '#f1f5f9'),
+                    color: done ? 'white' : (isNext ? 'white' : '#94a3b8'),
+                    cursor: (isNext && !updating) ? 'pointer' : 'not-allowed',
                   }}>
-                  {s.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {STATUS_LABELS[s] || s.replace(/_/g, ' ')}
                 </button>
               );
             })}

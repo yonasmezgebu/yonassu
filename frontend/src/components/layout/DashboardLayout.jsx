@@ -675,7 +675,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   };
 
   const isCeoRoute = location.pathname.startsWith('/ceo');
-  const isPharmacyRoute = location.pathname.startsWith('/pharmacy') && !location.pathname.startsWith('/pharmacy-worker');
+  const isPharmacyRoute = location.pathname.startsWith('/pharmacy') && !location.pathname.startsWith('/pharmacy-worker') && !location.pathname.startsWith('/pharmacy/store');
   const isPurchaseRoute = location.pathname.startsWith('/purchase');
   const isFinanceRoute = location.pathname.startsWith('/finance');
   const showToast = useCallback((message, type = 'info') => {
@@ -803,10 +803,15 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         const reqs = Array.isArray(res) ? res : (res?.data || []);
         setPharmacyPending(reqs.filter(r => r.status === 'SHIPPED').length);
       }).catch(() => {});
-      apiClient.get('/pharmacy/requests/pending').then(res => {
-        const reqs = Array.isArray(res?.data?.data) ? res.data.data : (res?.data || []);
-        setPharmacyOnlinePending(reqs.length);
-      }).catch(() => {});
+      // Only pharmacy-worker routes can access online prescription requests
+      if (location.pathname.startsWith('/pharmacy-worker')) {
+        apiClient.get('/pharmacy/requests/pending').then(res => {
+          const reqs = Array.isArray(res?.data?.data) ? res.data.data : (res?.data || []);
+          setPharmacyOnlinePending(reqs.length);
+        }).catch(() => {});
+      } else {
+        setPharmacyOnlinePending(0);
+      }
     } else {
       setPharmacyPending(0);
       setPharmacyOnlinePending(0);

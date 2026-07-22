@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Download, Plus, Send, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Download, Plus, Send, AlertTriangle, FileText, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { purchaseState, createPurchaseOrder } from '../../utils/purchaseTransactionService';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 
 const PurchaseOrders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([...purchaseState.purchaseOrders]);
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterSupplier, setFilterSupplier] = useState('');
@@ -47,6 +49,17 @@ const PurchaseOrders = () => {
             <ShoppingCart color="#8b5cf6" size={28} /> PURCHASE ORDERS
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Create and track POs sent to suppliers.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <FileText size={16} /> Purchase Request
+            </button>
+            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <ShoppingCart size={16} /> Purchase Order
+            </button>
+            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <RotateCcw size={16} /> Purchase Return
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>

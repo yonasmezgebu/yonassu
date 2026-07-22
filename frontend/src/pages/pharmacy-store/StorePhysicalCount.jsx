@@ -1,267 +1,274 @@
-import React, { useState, useEffect } from 'react';
-import { ClipboardCheck, Printer, CheckCircle, AlertTriangle, Search } from 'lucide-react';
-import { createCount, getInventory } from '../../utils/storeApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ClipboardCheck, Plus, Trash2, Search, Eye, RefreshCw, CheckCircle } from 'lucide-react';
+import { NotifStore } from './StoreHomeNew';
 
-const REASON_CODES = ['Counting Error', 'Damage/Breakage', 'Theft/Loss', 'Supplier Short-Shipment', 'Misidentification', 'System Data Entry Error', 'Other'];
+const G = {
+  forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
+  sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
+  brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336', sky:'#0288D1',
+};
+const API = '/api/v1/store-inventory';
+function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { headers: hdrs(), ...opts });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'Request failed');
+  return d;
+}
 
-const StorePhysicalCount = () => {
-  const [countType, setCountType] = useState('Full Store Count');
-  const [counts, setCounts] = useState([]);
-  const [submitted, setSubmitted] = useState(null);
-  const [errors, setErrors] = useState({});
+const CountForm = ({ onSuccess, onClose }) => {
+  const [drugs, setDrugs] = useState([]);
   const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [form, setForm] = useState({ count_no: 'PC-' + Date.now(), count_date: new Date().toISOString().split('T')[0], counted_by: '', remarks: '' });
+  const [items, setItems] = useState([{ drug_id: '', system_quantity: 0, physical_quantity: '' }]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        setLoading(true);
-        const res = await getInventory();
-        const inventoryData = res.data || [];
-        setInventory(inventoryData);
-        const mappedItems = (inventoryData || []).map(item => ({
-          drug_id: item.drug_id,
-          name: item.drug_name + (item.strength ? ' ' + item.strength : ''),
-          systemQty: Number(item.quantity),
-          physicalQty: '',
-          reasonCode: ''
-        }));
-        setCounts(mappedItems);
-      } catch (err) {
-        setError(err.message || 'Failed to load inventory');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInventory();
+    apiFetch(API + '/inventory').then(d => setDrugs(d.data || d || [])).catch(() => {});
+    apiFetch(`${API}/inventory`).then(d => setInventory(d.data || [])).catch(() => {});
   }, []);
 
-  const updateCount = (idx, field, value) => {
-    setCounts(c => c.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  };
-
-  const getVariance = (item) => {
-    if (item.physicalQty === '' || isNaN(item.physicalQty)) return null;
-    return +item.physicalQty - item.systemQty;
-  };
-
-  const validate = () => {
-    const e = {};
-    counts.forEach((item, i) => {
-      if (item.physicalQty === '' || isNaN(item.physicalQty)) {
-        e[`qty_${i}`] = 'Physical count required';
-      } else {
-        const variance = getVariance(item);
-        if (variance !== 0 && !item.reasonCode) {
-          e[`reason_${i}`] = 'Reason required when variance ≠ 0';
-        }
+  const setItem = (i, k, v) => {
+    setItems(prev => prev.map((it, idx) => {
+      if (idx !== i) return it;
+      if (k === 'drug_id') {
+        const inv = inventory.find(inv => String(inv.drug_id) === String(v));
+        return { ...it, [k]: v, system_quantity: inv ? inv.quantity : 0 };
       }
-    });
-    return e;
+      return { ...it, [k]: v };
+    }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    const totalVariance = counts.reduce((s, item) => {
-      const v = getVariance(item);
-      return s + (v !== null ? Math.abs(v) : 0);
-    }, 0);
-
-    try {
-      const count_no = 'CNT-' + Date.now().toString().slice(-6);
-      const payload = {
-        count_no,
-        count_type: countType,
-        count_date: new Date().toISOString().split('T')[0],
-        items: counts
-          .filter(item => item.physicalQty !== '' && !isNaN(item.physicalQty))
-          .map(item => ({
-            drug_id: Number(item.drug_id || item.id),
-            physical_quantity: Number(item.physicalQty),
-            reason_code: item.reasonCode || null,
-          }))
-      };
-      const res = await createCount(payload);
-      if (!res.success) throw new Error(res.message);
-      setSubmitted({
-        reportNumber: count_no,
-        countType,
-        counts,
-        totalVariance,
-        date: new Date().toISOString()
-      });
-    } catch (err) {
-      setError(err.message || 'Failed to submit count');
+    if (items.some(it => !it.drug_id || it.physical_quantity === '')) {
+      NotifStore.push('Select a drug and enter physical count for all lines.', 'warning'); return;
     }
+    setSaving(true);
+    try {
+      await apiFetch(`${API}/counts`, {
+        method: 'POST',
+        body: JSON.stringify({ ...form, items: items.map(it => ({ ...it, physical_quantity: Number(it.physical_quantity), variance: Number(it.physical_quantity) - Number(it.system_quantity) })) })
+      });
+      NotifStore.push('Physical count submitted!', 'success');
+      onSuccess();
+    } catch (e) { NotifStore.push('Failed: ' + e.message, 'error'); }
+    finally { setSaving(false); }
   };
 
-  const resetCounts = () => {
-    setCounts(inventory.map(item => ({
-      drug_id: item.drug_id,
-      name: item.drug_name + (item.strength ? ' ' + item.strength : ''),
-      systemQty: Number(item.quantity),
-      physicalQty: '',
-      reasonCode: ''
-    })));
-    setErrors({});
-  };
-
-  if (loading) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#64748b', fontSize: 16 }}>Loading inventory...</p>
-      </div>
-    );
-  }
-
-  if (error && !submitted) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: 20, textAlign: 'center' }}>
-          <AlertTriangle color="#b91c1c" size={24} />
-          <p style={{ color: '#b91c1c', fontWeight: 600, marginTop: 8 }}>{error}</p>
-          <button onClick={() => window.location.reload()} style={{ marginTop: 12, padding: '8px 20px', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Retry</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', background: 'white', borderRadius: 12, border: '2px solid #06b6d4', padding: 32 }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <CheckCircle size={56} color="#06b6d4" />
-            <h2 style={{ fontSize: 22, fontWeight: 'bold', color: '#164e63', margin: '12px 0 4px' }}>Physical Count Submitted</h2>
-            <p style={{ color: '#64748b' }}>Count Report generated and submitted to Internal Auditor for review.</p>
-          </div>
-          <div style={{ background: '#f0f9ff', borderRadius: 8, padding: 20, border: '1px solid #bae6fd', marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, fontSize: 14, marginBottom: 16 }}>
-              <div><strong>Count #:</strong> <span style={{ fontFamily: 'monospace', color: '#0284c7' }}>{submitted.reportNumber}</span></div>
-              <div><strong>Type:</strong> {submitted.countType}</div>
-              <div><strong>Date:</strong> {new Date(submitted.date).toLocaleDateString()}</div>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead><tr style={{ background: '#e0f2fe' }}>
-                {['Item Name', 'System Qty', 'Physical Qty', 'Variance', 'Reason Code'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left' }}>{h}</th>)}
-              </tr></thead>
-              <tbody>{submitted.counts.map((item, i) => {
-                const v = item.physicalQty - item.systemQty;
-                return (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: v !== 0 ? '#fff7ed' : 'transparent' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{item.name}</td>
-                    <td style={{ padding: '8px 10px' }}>{item.systemQty}</td>
-                    <td style={{ padding: '8px 10px' }}>{item.physicalQty}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 700, color: v < 0 ? '#b91c1c' : v > 0 ? '#166534' : '#475569' }}>
-                      {v > 0 ? `+${v}` : v}
-                    </td>
-                    <td style={{ padding: '8px 10px', color: '#64748b' }}>{item.reasonCode || '—'}</td>
-                  </tr>
-                );
-              })}</tbody>
-            </table>
-            <div style={{ marginTop: 16, padding: 12, background: submitted.totalVariance > 0 ? '#fee2e2' : '#dcfce7', border: `1px solid ${submitted.totalVariance > 0 ? '#fca5a5' : '#86efac'}`, borderRadius: 6, fontSize: 14, fontWeight: 700, textAlign: 'center' }}>
-              Total Absolute Variance: {submitted.totalVariance} units | Status: Submitted to Auditor ✓
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
-              <Printer size={15} /> Print Report
-            </button>
-            <button onClick={() => { setSubmitted(null); resetCounts(); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-              + New Count
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const inputStyle = { width: '100%', padding: '9px 12px', border: `2px solid ${G.dark}`, background: G.white, fontFamily: "'Inter', sans-serif", fontSize: 13, outline: 'none', color: G.darkGray, boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4, display: 'block' };
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ClipboardCheck color="#06b6d4" size={28} /> PHYSICAL COUNT
-        </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Document Model: Count Report — Manager Access Only</p>
-      </div>
-
-      <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14 }}>
-        <AlertTriangle color="#0284c7" size={18} />
-        <span><strong>Validation Rule:</strong> Any item with a non-zero variance MUST have a Reason Code before the count can be submitted.</span>
-      </div>
-
-      {error && (
-        <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 14, fontWeight: 600 }}>
-          {error}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}`, width: '100%', maxWidth: 820, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: G.dark, color: G.white, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: 16 }}><ClipboardCheck size={20} /> New Physical Count</div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: `1px solid rgba(255,255,255,.4)`, color: G.white, padding: '5px 12px', cursor: 'pointer', fontWeight: 900, fontSize: 16, fontFamily: "'Inter', sans-serif" }}>×</button>
         </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15 }}>Count Configuration</h3>
-            <select value={countType} onChange={e => setCountType(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-              <option>Full Store Count</option>
-              <option>Category-wise Count</option>
-              <option>Spot Check</option>
-            </select>
+        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
+            {[
+              { key: 'count_no', label: 'Count No *', type: 'text' },
+              { key: 'count_date', label: 'Count Date', type: 'date' },
+              { key: 'counted_by', label: 'Counted By', type: 'text' },
+              { key: 'remarks', label: 'Remarks', type: 'text' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={labelStyle}>{f.label}</label>
+                <input type={f.type} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle} />
+              </div>
+            ))}
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: '#f1f5f9' }}>
-                <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700 }}>Item Name</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>System Qty</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>Physical Qty *</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>Variance</th>
-                <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700 }}>Reason Code (if Variance ≠ 0)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {counts.map((item, i) => {
-                const variance = getVariance(item);
-                const hasVariance = variance !== null && variance !== 0;
-                return (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: hasVariance ? '#fff7ed' : 'transparent' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>{item.name}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b' }}>{item.systemQty}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <input type="number" value={item.physicalQty} onChange={e => updateCount(i, 'physicalQty', e.target.value)} placeholder="0" style={{ width: 80, padding: '6px 8px', border: `1px solid ${errors[`qty_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, textAlign: 'center', fontSize: 13 }} />
-                      {errors[`qty_${i}`] && <div style={{ color: '#ef4444', fontSize: 11 }}>{errors[`qty_${i}`]}</div>}
-                    </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: variance === null ? '#94a3b8' : variance < 0 ? '#b91c1c' : variance > 0 ? '#166534' : '#475569' }}>
-                      {variance === null ? '—' : variance > 0 ? `+${variance}` : variance}
-                    </td>
-                    <td style={{ padding: '10px 14px' }}>
-                      {hasVariance ? (
-                        <div>
-                          <select value={item.reasonCode} onChange={e => updateCount(i, 'reasonCode', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: `1px solid ${errors[`reason_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13 }}>
-                            <option value="">— Select Reason Code —</option>
-                            {REASON_CODES.map(r => <option key={r}>{r}</option>)}
-                          </select>
-                          {errors[`reason_${i}`] && <div style={{ color: '#ef4444', fontSize: 11 }}>{errors[`reason_${i}`]}</div>}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>N/A</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: 13, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>Count Lines</div>
+            <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', system_quantity: 0, physical_quantity: '' }])} style={{ background: G.sky, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.white, padding: '6px 14px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Plus size={14} /> Add Line
+            </button>
+          </div>
+
+          <div style={{ border: `2px solid ${G.dark}`, marginBottom: 20 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: G.dark, color: G.white }}>
+                  {['Drug *', 'System Qty', 'Physical Qty *', 'Variance', ''].map(h => <th key={h} style={{ padding: '10px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, i) => {
+                  const variance = item.physical_quantity !== '' ? Number(item.physical_quantity) - Number(item.system_quantity) : null;
+                  return (
+                    <tr key={i} style={{ borderBottom: `1px solid ${G.sage}` }}>
+                      <td style={{ padding: 6 }}>
+                        <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required>
+                          <option value="">Select drug…</option>
+                          {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name} {d.strength || ''}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <div style={{ padding: '8px 10px', background: G.lightGray, border: `1px solid ${G.sage}`, fontWeight: 800, color: G.dark }}>{item.system_quantity}</div>
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <input type="number" min={0} value={item.physical_quantity} onChange={e => setItem(i, 'physical_quantity', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required />
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        {variance !== null && (
+                          <div style={{ padding: '8px 10px', fontWeight: 900, color: variance === 0 ? G.forest : variance > 0 ? G.sky : G.red, background: variance === 0 ? '#E8F5E9' : variance > 0 ? '#E3F2FD' : '#FFEBEE', border: `1px solid ${variance === 0 ? G.forest : variance > 0 ? G.sky : G.red}` }}>
+                            {variance > 0 ? '+' : ''}{variance}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} style={{ background: G.red, border: 'none', color: G.white, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ background: G.forest, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              {saving ? 'Submitting…' : 'Submit Count'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const StorePhysicalCount = () => {
+  const [counts, setCounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await apiFetch(`${API}/counts`);
+      setCounts(d.data || []);
+    } catch (e) { NotifStore.push('Failed to load counts: ' + e.message, 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = counts.filter(r => !search || (r.count_no || '').toLowerCase().includes(search.toLowerCase()) || (r.counted_by || '').toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
+      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      {showForm && <CountForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: G.sky, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+              <ClipboardCheck size={24} color={G.white} />
+            </div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Physical Count</h1>
+              <p style={{ margin: 0, fontSize: 12, opacity: .8 }}>Audit physical vs system quantities</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowForm(true)} style={{ background: G.sky, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              <Plus size={16} /> New Count
+            </button>
+            <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Search size={16} color={G.olive} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by count no or counted by…" style={{ border: 'none', outline: 'none', fontSize: 13, fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent', color: G.darkGray }} />
+          <div style={{ fontWeight: 800, color: G.forest, fontSize: 13 }}>{filtered.length} sessions</div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={resetCounts} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
-          <button type="submit" style={{ padding: '10px 28px', background: '#164e63', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Submit Count & Generate Report</button>
-        </div>
-      </form>
+        {loading ? (
+          <div style={{ padding: 60, textAlign: 'center' }}>
+            <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+            <div style={{ color: G.forest, fontWeight: 800 }}>Loading count records…</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: G.sage, fontWeight: 800, border: `3px dashed ${G.sage}` }}>No physical counts recorded.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filtered.map(r => (
+              <div key={r.id} style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `5px 5px 0 ${G.sky}` }}>
+                <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ background: G.sky, padding: 8, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
+                      <ClipboardCheck size={18} color={G.white} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>{r.count_no || `PC-${r.id}`}</div>
+                      <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
+                        By: {r.counted_by || 'N/A'} &nbsp;|&nbsp;
+                        {r.count_date ? new Date(r.count_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString()} &nbsp;|&nbsp;
+                        {(r.items || []).length} line{(r.items || []).length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {/* Show variance summary */}
+                    {(() => {
+                      const items = r.items || [];
+                      const hasVariance = items.some(it => it.variance && it.variance !== 0);
+                      return (
+                        <span style={{ background: hasVariance ? '#FFEBEE' : '#E8F5E9', border: `2px solid ${hasVariance ? G.red : G.forest}`, color: hasVariance ? G.red : G.forest, padding: '4px 10px', fontWeight: 800, fontSize: 12 }}>
+                          {hasVariance ? '⚠ Variance Found' : '✓ Balanced'}
+                        </span>
+                      );
+                    })()}
+                    <button onClick={() => setExpanded(expanded === r.id ? null : r.id)} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, padding: '6px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6, color: G.dark }}>
+                      <Eye size={14} /> {expanded === r.id ? 'Hide' : 'View'}
+                    </button>
+                  </div>
+                </div>
+                {expanded === r.id && (r.items || []).length > 0 && (
+                  <div style={{ borderTop: `2px solid ${G.sage}`, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: G.lightGray }}>
+                          {['Drug ID', 'System Qty', 'Physical Qty', 'Variance'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: G.dark, borderBottom: `1px solid ${G.sage}` }}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.items.map((it, i) => {
+                          const v = Number(it.variance ?? (it.physical_quantity - it.system_quantity));
+                          return (
+                            <tr key={i} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? G.white : '#F1F8F1' }}>
+                              <td style={{ padding: '8px 12px', color: G.emerald, fontWeight: 800 }}>{it.drug_id}</td>
+                              <td style={{ padding: '8px 12px', fontWeight: 700 }}>{it.system_quantity}</td>
+                              <td style={{ padding: '8px 12px', fontWeight: 700 }}>{it.physical_quantity}</td>
+                              <td style={{ padding: '8px 12px', fontWeight: 900, color: v === 0 ? G.forest : v > 0 ? G.sky : G.red }}>
+                                {v > 0 ? '+' : ''}{v}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

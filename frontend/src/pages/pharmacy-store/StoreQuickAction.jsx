@@ -1,42 +1,57 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Package, Truck, ArrowUpRight, ArrowLeftRight, Sliders, ClipboardCheck, FileText, PlusCircle } from 'lucide-react';
+import { Zap, Package, Truck, ArrowUpRight, ArrowRightLeft, Sliders, ClipboardCheck, PlusCircle } from 'lucide-react';
+
+const G = {
+  forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
+  sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
+  brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336', sky:'#0288D1',
+};
 
 const actions = [
-  { label: 'New Goods Receiving', path: '/store/goods-receiving', icon: <Truck size={22} />, color: '#22c55e', bg: '#f0fdf4', border: '#bbf7d0' },
-  { label: 'New Goods Issue', path: '/store/goods-issue', icon: <ArrowUpRight size={22} />, color: '#f97316', bg: '#fff7ed', border: '#fed7aa' },
-  { label: 'New Stock Transfer', path: '/store/stock-transfer', icon: <ArrowLeftRight size={22} />, color: '#8b5cf6', bg: '#f3e8ff', border: '#c4b5fd' },
-  { label: 'New Stock Adjustment', path: '/store/stock-adjustment', icon: <Sliders size={22} />, color: '#f59e0b', bg: '#fef3c7', border: '#fde68a' },
-  { label: 'New Physical Count', path: '/store/physical-count', icon: <ClipboardCheck size={22} />, color: '#06b6d4', bg: '#ecfeff', border: '#a5f3fc' },
-  { label: 'New Requisition', path: '/store/requisitions', icon: <FileText size={22} />, color: '#6366f1', bg: '#eef2ff', border: '#c7d2fe' },
-  { label: 'Add New Stock', path: '/store/add-new-stock', icon: <PlusCircle size={22} />, color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
-  { label: 'Stock List', path: '/store/stock-list', icon: <Package size={22} />, color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+  { label: 'New Goods Receiving', path: '/pharmacy-store/goods-receiving', icon: <Truck size={24} />, color: G.leaf },
+  { label: 'New Goods Issue', path: '/pharmacy-store/goods-issue', icon: <ArrowUpRight size={24} />, color: G.orange },
+  { label: 'New Stock Transfer', path: '/pharmacy-store/stock-transfer', icon: <ArrowRightLeft size={24} />, color: G.brown },
+  { label: 'New Stock Adjustment', path: '/pharmacy-store/stock-adjustment', icon: <Sliders size={24} />, color: G.emerald },
+  { label: 'New Physical Count', path: '/pharmacy-store/physical-count', icon: <ClipboardCheck size={24} />, color: G.sky },
+  { label: 'Add New Stock', path: '/pharmacy-store/add-new-stock', icon: <PlusCircle size={24} />, color: G.forest },
+  { label: 'Stock List', path: '/pharmacy-store/stock-list', icon: <Package size={24} />, color: G.dark },
 ];
 
 const StoreQuickAction = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Zap color="#f59e0b" size={28} /> QUICK ACTION
-        </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>One-click access to frequently used store operations</p>
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ background: G.orange, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+            <Zap size={24} color={G.white} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Quick Actions</h1>
+            <p style={{ margin: 0, fontSize: 12, opacity: .8 }}>One-click access to frequently used operations</p>
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-        {actions.map(a => (
-          <div key={a.label} onClick={() => navigate(a.path)}
-            style={{ background: a.bg, border: '1px solid ' + a.border, borderRadius: 12, padding: 24, cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: a.bg, border: '2px solid ' + a.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color }}>
-              {a.icon}
-            </div>
-            <span style={{ fontWeight: 700, color: a.color, fontSize: 14 }}>{a.label}</span>
-          </div>
-        ))}
+      <div style={{ padding: '40px 36px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
+          {actions.map(a => (
+            <button key={a.label} onClick={() => navigate(a.path)}
+              style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${a.color}`, padding: 24, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center', transition: 'all .1s', outline: 'none' }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translate(3px, 3px)'; e.currentTarget.style.boxShadow = `3px 3px 0 ${a.color}`; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `6px 6px 0 ${a.color}`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = `6px 6px 0 ${a.color}`; }}
+            >
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: G.lightGray, border: `3px solid ${a.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.color }}>
+                {a.icon}
+              </div>
+              <span style={{ fontWeight: 900, color: G.dark, fontSize: 15, textTransform: 'uppercase', letterSpacing: 1 }}>{a.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

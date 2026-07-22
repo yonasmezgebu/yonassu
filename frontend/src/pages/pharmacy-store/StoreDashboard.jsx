@@ -1,11 +1,12 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { NotifToastContainer } from './StoreHomeNew';
 
 // New Home
 import StoreHomeNew from './StoreHomeNew';
 
-// Stock Operations (Menu Items 1-7)
+// Stock Operations
 import StoreStockList from './StoreStockList';
 import StoreAddNewStock from './StoreAddNewStock';
 import StoreGoodsReceiving from './StoreGoodsReceiving';
@@ -15,7 +16,7 @@ import StoreStockAdjustment from './StoreStockAdjustment';
 import StorePhysicalCount from './StorePhysicalCount';
 import StoreStockMovement from './StoreStockMovement';
 
-// New Pages
+// Quick/Real-time Views
 import StoreRealTimeAccess from './StoreRealTimeAccess';
 import StoreQuickAction from './StoreQuickAction';
 import StoreGoodsReceivedToday from './StoreGoodsReceivedToday';
@@ -24,9 +25,6 @@ import StoreTransfersList from './StoreTransfersList';
 
 // Monitoring & Reports
 import StoreReports from './StoreReports';
-import StoreAlerts from './StoreAlerts';
-import StoreAuditTrail from './StoreAuditTrail';
-
 import styles from './StoreDashboard.module.css';
 
 const PharmacyStoreDashboard = () => {
@@ -36,32 +34,29 @@ const PharmacyStoreDashboard = () => {
     {
       label: 'Stock Operations', icon: 'package',
       children: [
-        { label: '1. Stock List',       path: '/pharmacy-store/stock-list',        icon: 'list',             color: '#3b82f6' },
-        { label: 'Add New Stock',       path: '/pharmacy-store/add-new-stock',     icon: 'plus',             color: '#059669' },
-        { label: '2. Goods Receiving',  path: '/pharmacy-store/goods-receiving',   icon: 'truck',            color: '#22c55e' },
-        { label: '3. Goods Issue',      path: '/pharmacy-store/goods-issue',       icon: 'arrow-up-right',   color: '#f59e0b' },
-        { label: '4. Stock Transfer',   path: '/pharmacy-store/stock-transfer',    icon: 'arrow-left-right', color: '#8b5cf6' },
-        { label: '5. Stock Adjustment', path: '/pharmacy-store/stock-adjustment',  icon: 'sliders',          color: '#f97316' },
-        { label: '6. Physical Count',   path: '/pharmacy-store/physical-count',    icon: 'clipboard-check',  color: '#06b6d4' },
-        { label: '7. Stock Movement',   path: '/pharmacy-store/stock-movement',    icon: 'activity',         color: '#14b8a6' },
-        { label: '8. Requests',         path: '/pharmacy-store/requests',          icon: 'clipboard',        color: '#6366f1' },
-        { label: '9. Operation',        path: '/pharmacy-store/operation',         icon: 'settings',         color: '#8b5cf6' },
+        { label: 'Stock Catalog',       path: '/pharmacy-store/stock-list',        icon: 'list',             color: '#228B22' },
+        { label: 'Add New Stock',       path: '/pharmacy-store/add-new-stock',     icon: 'plus',             color: '#228B22' },
+        { label: 'Goods Receiving',     path: '/pharmacy-store/goods-receiving',   icon: 'truck',            color: '#228B22' },
+        { label: 'Goods Issue',         path: '/pharmacy-store/goods-issue',       icon: 'arrow-up-right',   color: '#228B22' },
+        { label: 'Stock Transfer',      path: '/pharmacy-store/stock-transfer',    icon: 'arrow-left-right', color: '#228B22' },
+        { label: 'Stock Adjustment',    path: '/pharmacy-store/stock-adjustment',  icon: 'sliders',          color: '#228B22' },
+        { label: 'Physical Count',      path: '/pharmacy-store/physical-count',    icon: 'clipboard-check',  color: '#228B22' },
+        { label: 'Movement Log',        path: '/pharmacy-store/stock-movement',    icon: 'activity',         color: '#228B22' },
       ]
     },
     { type: 'divider' },
     {
-      label: 'Monitoring & Reports', icon: 'shield',
+      label: 'System & Reports', icon: 'shield',
       children: [
-        { label: 'Report',      path: '/pharmacy-store/reports',     icon: 'file-text', color: '#3b82f6' },
-        { label: 'Alert',       path: '/pharmacy-store/alerts',      icon: 'bell',      color: '#ef4444' },
-        { label: 'Audit Trail', path: '/pharmacy-store/audit-trail', icon: 'lock',      color: '#10b981' },
+        { label: 'Reports',       path: '/pharmacy-store/reports',     icon: 'file-text', color: '#1B5E20' },
       ]
     },
   ];
 
   return (
     <div className={styles.dashboardWrapper}>
-      <DashboardLayout menuItems={menuItems} title="💊 Pharmacy Store Keeper Dashboard">
+      <NotifToastContainer />
+      <DashboardLayout menuItems={menuItems} title="🌿 Pharmacy Store Management">
         <Routes>
           {/* Home & New Pages */}
           <Route path="overview"            element={<StoreHomeNew />} />
@@ -83,8 +78,6 @@ const PharmacyStoreDashboard = () => {
 
           {/* Monitoring & Reports */}
           <Route path="reports"     element={<StoreReports />} />
-          <Route path="alerts"      element={<StoreAlerts />} />
-          <Route path="audit-trail" element={<StoreAuditTrail />} />
 
           <Route path="/" element={<Navigate to="overview" replace />} />
         </Routes>

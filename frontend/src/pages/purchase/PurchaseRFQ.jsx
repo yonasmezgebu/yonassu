@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { File, Download, Plus, Send, CheckCircle } from 'lucide-react';
+import { File, Download, Plus, Send, CheckCircle, Inbox } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { purchaseState } from '../../utils/purchaseTransactionService';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 
 const PurchaseRFQ = () => {
+  const navigate = useNavigate();
   const [rfqs, setRfqs] = useState([...purchaseState.rfqs]);
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterItem, setFilterItem] = useState('');
@@ -45,6 +47,14 @@ const PurchaseRFQ = () => {
             <File color="#22c55e" size={28} /> REQUEST FOR QUOTATION
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Manage RFQs for non-tender procurement.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/rfq')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#22c55e', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <File size={16} /> Request for Quotation
+            </button>
+            <button onClick={() => navigate('/purchase/quotations')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <Inbox size={16} /> Supplier Quotation
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#22c55e', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>

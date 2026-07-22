@@ -49,6 +49,9 @@ import FinanceLiveIncome from './FinanceLiveIncome';
 import PurchaseFlowDashboard from './PurchaseFlowDashboard';
 import FinanceApprovePay from './FinanceApprovePay';
 import FinancePayrollPayments from './FinancePayrollPayments';
+import FinancePrintingAssets from './FinancePrintingAssets';
+import FinancePrintingMachines from './FinancePrintingMachines';
+import FinancePharmacyAssets from './FinancePharmacyAssets';
 
 import styles from './FinanceDashboard.module.css';
 
@@ -79,6 +82,13 @@ const FinanceDashboard = () => {
         { label: 'Payroll Payments',    path: '/finance/payroll',        icon: 'banknote',    color: '#7c3aed' },
       ] },
     { type: 'divider' },
+    { label: 'Assets', icon: 'package',
+      children: [
+        { label: 'General Store Valuation',      path: '/finance/general-store-assets', icon: 'package', color: '#228B22' },
+        { label: 'Printing Machines Valuation',  path: '/finance/printing-machines-assets', icon: 'printer', color: '#2E8B57' },
+        { label: 'Pharmacy Store & Stock',       path: '/finance/pharmacy-assets', icon: 'briefcase', color: '#6B8E23' },
+      ] },
+    { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
       children: [
         { label: '20. Cash Flow',         path: '/finance/cash-flow',       icon: 'droplets',     color: '#0369a1' },
@@ -91,10 +101,15 @@ const FinanceDashboard = () => {
 
   return (
     <div className={styles.dashboardWrapper}>
-      <DashboardLayout menuItems={menuItems} title="Finance Dashboard — 27 Links">
+      <DashboardLayout menuItems={menuItems} title="Finance Dashboard">
         <div className={styles.dashboardContent}>
           <Routes>
             <Route path="overview" element={<FinanceHome />} />
+
+            {/* Assets */}
+            <Route path="general-store-assets" element={<FinancePrintingAssets />} />
+            <Route path="printing-machines-assets" element={<FinancePrintingMachines />} />
+            <Route path="pharmacy-assets" element={<FinancePharmacyAssets />} />
 
             {/* Cash Management */}
             <Route path="crv" element={<FinanceCRV />} />

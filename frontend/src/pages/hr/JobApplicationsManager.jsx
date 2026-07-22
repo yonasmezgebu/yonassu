@@ -5,15 +5,17 @@ import { Mail, Check, X, Eye } from 'lucide-react';
 const JobApplicationsManager = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     fetchApplications();
-  }, []);
+  }, [statusFilter]);
 
   const fetchApplications = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/applications');
+      const url = statusFilter ? `/applications?status=${statusFilter}` : '/applications';
+      const res = await axios.get(url);
       setApplications(res.data);
     } catch (err) {
       console.error(err);
@@ -41,7 +43,21 @@ const JobApplicationsManager = () => {
 
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 24px', color: '#0f172a' }}>Job Applications</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>Job Applications</h1>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14, minWidth: 200 }}
+        >
+          <option value="">All Applications</option>
+          <option value="PENDING">Pending</option>
+          <option value="IN_PERSON_INVITED">Invited</option>
+          <option value="SUBMITTED_TO_CEO">Sent to CEO</option>
+          <option value="APPROVED">Approved by CEO</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+      </div>
       
       <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

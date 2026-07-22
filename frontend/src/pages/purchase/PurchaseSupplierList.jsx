@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Users, Download, Printer, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Download, Printer, Star, UserPlus, BarChart2, FileText } from 'lucide-react';
 import { financeState } from '../../utils/financeTransactionService';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 
 const ratingStars = (n) => '★'.repeat(Math.min(5, Math.max(0, Math.round(n / 20)))) + '☆'.repeat(5 - Math.min(5, Math.max(0, Math.round(n / 20))));
 
 const PurchaseSupplierList = () => {
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState(financeState.suppliers.map(s => ({
     ...s,
     category: s.category || 'Pharmaceutical',
@@ -38,6 +40,17 @@ const PurchaseSupplierList = () => {
             <Users color="#3b82f6" size={28} /> SUPPLIER LIST
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Complete supplier database — shared across Store, Finance, and Purchase modules.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/suppliers/add')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <UserPlus size={16} /> Add Supplier
+            </button>
+            <button onClick={() => navigate('/purchase/supplier-performance')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <BarChart2 size={16} /> Supplier Performance
+            </button>
+            <button onClick={() => navigate('/purchase/contracts')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#0891b2', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <FileText size={16} /> Supplier Contracts
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '12px 20px', textAlign: 'center' }}>

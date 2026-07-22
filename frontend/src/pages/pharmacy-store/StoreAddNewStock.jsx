@@ -1,177 +1,305 @@
 import React, { useState } from 'react';
-import { Package, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Package, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
+import { NotifStore } from './StoreHomeNew';
 import { addNewStock } from '../../utils/storeApi';
 
-const StoreAddNewStock = () => {
-  const [name, setName] = useState('');
-  const [strength, setStrength] = useState('');
-  const [unit, setUnit] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
-  const [category, setCategory] = useState('');
-  const [therapeuticUse, setTherapeuticUse] = useState('');
-  const [requiresPrescription, setRequiresPrescription] = useState(false);
-  const [initialQty, setInitialQty] = useState('');
-  const [minLevel, setMinLevel] = useState('');
-  const [maxLevel, setMaxLevel] = useState('');
-  const [storageLocation, setStorageLocation] = useState('');
-  const [submitted, setSubmitted] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [submitError, setSubmitError] = useState('');
-  const [loading, setLoading] = useState(false);
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
+  sage: '#A5D6A7', olive: '#6B8E23', mint: '#98FF98',
+  brown: '#8D6E63', white: '#FFFFFF', lightGray: '#F5F5F5',
+  darkGray: '#424242', orange: '#FF9800', red: '#F44336', sky: '#0288D1',
+};
 
+const EMPTY = {
+  name: '', strength: '', unit: '', unitPrice: '', category: '',
+  therapeuticUse: '', requiresPrescription: false,
+  batchNo: '', expiryDate: '', nearExpiryDays: '90',
+  initialQty: '', minLevel: '', maxLevel: '', storageLocation: '',
+};
+
+const StoreAddNewStock = () => {
+  const [form, setForm] = useState({ ...EMPTY });
+  const [loading, setLoading] = useState(false);
+  const [confirmed, setConfirmed] = useState(null); // holds last registered drug summary
+
+  const set = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
+  const resetForm = () => { setForm({ ...EMPTY }); setConfirmed(null); };
+
+  /* ── Validation ────────────────────────────────────────────────── */
   const validate = () => {
-    const e = {};
-    if (!name.trim()) e.name = 'Drug name is required';
-    if (initialQty && (isNaN(initialQty) || Number(initialQty) < 0)) e.initialQty = 'Invalid quantity';
-    return e;
+    if (!form.name.trim())    { NotifStore.push('Drug name is required', 'warning'); return false; }
+    if (!form.batchNo.trim()) { NotifStore.push('Batch No is required', 'warning'); return false; }
+    if (!form.expiryDate)     { NotifStore.push('Expiry Date is required', 'warning'); return false; }
+    if (!form.unit)           { NotifStore.push('Unit is required', 'warning'); return false; }
+    if (!form.initialQty || Number(form.initialQty) <= 0) {
+      NotifStore.push('Initial Quantity must be greater than 0', 'warning');
+      return false;
+    }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (new Date(form.expiryDate) <= today) {
+      NotifStore.push('Expiry date must be in the future', 'warning');
+      return false;
+    }
+    return true;
   };
 
+  /* ── Submit ────────────────────────────────────────────────────── */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitError('');
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (!validate()) return;
     setLoading(true);
     try {
       const res = await addNewStock({
-        name: name.trim(),
-        strength: strength || null,
-        unit: unit || null,
-        unit_price: unitPrice ? parseFloat(unitPrice) : 0,
-        category: category || null,
-        therapeutic_use: therapeuticUse || null,
-        requires_prescription: requiresPrescription,
-        initial_quantity: initialQty ? Number(initialQty) : 0,
-        min_level: minLevel ? Number(minLevel) : 0,
-        max_level: maxLevel ? Number(maxLevel) : 0,
-        storage_location: storageLocation || null,
+        name:                   form.name.trim(),
+        strength:               form.strength || null,
+        unit:                   form.unit,
+        unit_price:             form.unitPrice ? parseFloat(form.unitPrice) : 0,
+        category:               form.category || null,
+        therapeutic_use:        form.therapeuticUse || null,
+        requires_prescription:  form.requiresPrescription,
+        batch_no:               form.batchNo.trim(),
+        expiry_date:            form.expiryDate,
+        near_expiry_days:       form.nearExpiryDays ? Number(form.nearExpiryDays) : 90,
+        initial_quantity:       Number(form.initialQty),
+        min_level:              form.minLevel ? Number(form.minLevel) : 0,
+        max_level:              form.maxLevel ? Number(form.maxLevel) : 0,
+        storage_location:       form.storageLocation || null,
       });
-      if (!res.success) throw new Error(res.message);
-      setSubmitted(res.data);
+      if (!res.success) throw new Error(res.message || 'Registration failed');
+
+      // Show in-app confirmation panel
+      setConfirmed({
+        name:        form.name.trim(),
+        batchNo:     form.batchNo.trim(),
+        expiryDate:  form.expiryDate,
+        unit:        form.unit,
+        category:    form.category,
+        initialQty:  form.initialQty,
+        unitPrice:   form.unitPrice,
+        storage:     form.storageLocation,
+      });
+      NotifStore.push(`✅ "${form.name.trim()}" registered (Batch: ${form.batchNo.trim()})`, 'success');
+      setForm({ ...EMPTY });
     } catch (err) {
-      setSubmitError(err.message || 'Failed to register');
+      NotifStore.push(err.message || 'Failed to register new stock', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  if (submitted) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', background: 'white', borderRadius: 12, border: '2px solid #22c55e', padding: 32, textAlign: 'center' }}>
-          <CheckCircle size={56} color="#22c55e" />
-          <h2 style={{ fontSize: 22, fontWeight: 'bold', color: '#166534', margin: '12px 0 4px' }}>New Stock Item Registered</h2>
-          <p style={{ color: '#64748b', marginBottom: 20 }}>The product has been added to the drug catalog and store inventory.</p>
-          <div style={{ background: '#f0fdf4', borderRadius: 8, padding: 20, border: '1px dashed #86efac', marginBottom: 20, textAlign: 'left' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 14 }}>
-              <div><strong>Name:</strong> {submitted.name}</div>
-              <div><strong>Strength:</strong> {submitted.strength || '-'}</div>
-              <div><strong>Unit:</strong> {submitted.unit || '-'}</div>
-              <div><strong>Price:</strong> {submitted.unit_price ? `${Number(submitted.unit_price).toFixed(2)} ETB` : '-'}</div>
-              <div><strong>Category:</strong> {submitted.category || '-'}</div>
-              <div><strong>Status:</strong> {submitted.status}</div>
-            </div>
-          </div>
-          <button onClick={() => { setSubmitted(null); setName(''); setStrength(''); setUnit(''); setUnitPrice(''); setCategory(''); setTherapeuticUse(''); setRequiresPrescription(false); setInitialQty(''); setMinLevel(''); setMaxLevel(''); setStorageLocation(''); setErrors({}); setSubmitError(''); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Register Another</button>
-        </div>
+  /* ── Styles ────────────────────────────────────────────────────── */
+  const inp = (required = false) => ({
+    width: '100%', padding: '10px 12px',
+    border: `2px solid ${required ? G.forest : G.dark}`,
+    background: G.white, fontFamily: "'Inter', sans-serif",
+    fontSize: 13, outline: 'none', color: G.darkGray, boxSizing: 'border-box',
+    borderRadius: 0,
+  });
+  const lbl = (required = false) => ({
+    fontSize: 11, fontWeight: 900, color: required ? G.forest : G.dark,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5, display: 'flex',
+    alignItems: 'center', gap: 4,
+  });
+
+  const SectionHeader = ({ title, sub }) => (
+    <div style={{ background: G.dark, color: G.white, padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>{title}</span>
+      {sub && <span style={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>{sub}</span>}
+    </div>
+  );
+
+  const RequiredStar = () => <span style={{ color: G.red, fontWeight: 900 }}>*</span>;
+
+  /* ── Success Confirmation Panel ─────────────────────────────────── */
+  const ConfirmBanner = () => confirmed ? (
+    <div style={{
+      background: '#E8F5E9', border: `3px solid ${G.forest}`,
+      boxShadow: `6px 6px 0 ${G.dark}`, marginBottom: 28, padding: 0, overflow: 'hidden',
+      animation: 'slideDown 0.4s ease',
+    }}>
+      <div style={{ background: G.forest, color: G.white, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <CheckCircle size={20} />
+        <span style={{ fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>
+          Stock Successfully Registered
+        </span>
       </div>
-    );
-  }
-
-  const inputStyle = { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' };
-
-  return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Package color="#3b82f6" size={28} /> REGISTER NEW STOCK ITEM
-        </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Add a new drug/product to the catalog and optionally set initial store inventory.</p>
-      </div>
-
-      {submitError && <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 14, color: '#b91c1c' }}>{submitError}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Drug Information</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Drug Name *</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Amoxicillin" style={{ ...inputStyle, borderColor: errors.name ? '#ef4444' : '#cbd5e1' }} />
-              {errors.name && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.name}</span>}
+      <div style={{ padding: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+          {[
+            { label: 'Drug Name',       val: confirmed.name },
+            { label: 'Batch No',        val: confirmed.batchNo },
+            { label: 'Expiry Date',     val: confirmed.expiryDate ? new Date(confirmed.expiryDate).toLocaleDateString() : '—' },
+            { label: 'Unit',            val: confirmed.unit || '—' },
+            { label: 'Initial Qty',     val: confirmed.initialQty || '—' },
+            { label: 'Unit Price',      val: confirmed.unitPrice ? `ETB ${parseFloat(confirmed.unitPrice).toFixed(2)}` : '—' },
+            { label: 'Category',        val: confirmed.category || '—' },
+            { label: 'Storage',         val: confirmed.storage || '—' },
+          ].map(({ label, val }) => (
+            <div key={label} style={{ background: G.white, border: `1px solid ${G.sage}`, padding: '10px 14px' }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: G.dark }}>{val}</div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Strength</label>
-              <input value={strength} onChange={e => setStrength(e.target.value)} placeholder="e.g. 500mg" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Unit</label>
-              <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Tablets">Tablets</option>
-                <option value="Capsules">Capsules</option>
-                <option value="Bottles">Bottles</option>
-                <option value="Vials">Vials</option>
-                <option value="Ampoules">Ampoules</option>
-                <option value="Sachets">Sachets</option>
-                <option value="Pieces">Pieces</option>
-                <option value="Packs">Packs</option>
-                <option value="Boxes">Boxes</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Unit Price (ETB)</label>
-              <input type="number" step="0.01" min="0" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} placeholder="0.00" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Category</label>
-              <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Antibiotics" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Requires Prescription</label>
-              <select value={requiresPrescription} onChange={e => setRequiresPrescription(e.target.value === 'true')} style={inputStyle}>
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </select>
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Therapeutic Use</label>
-              <textarea value={therapeuticUse} onChange={e => setTherapeuticUse(e.target.value)} rows={2} placeholder="e.g. Antibiotic used to treat bacterial infections" style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-          </div>
+          ))}
         </div>
-
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Store Inventory (optional)</h3>
-          <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 12px' }}>Set initial stock levels for the store. Leave blank to register the drug without stock.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Initial Quantity</label>
-              <input type="number" min="0" value={initialQty} onChange={e => setInitialQty(e.target.value)} placeholder="0" style={{ ...inputStyle, borderColor: errors.initialQty ? '#ef4444' : '#cbd5e1' }} />
-              {errors.initialQty && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.initialQty}</span>}
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Min Level</label>
-              <input type="number" min="0" value={minLevel} onChange={e => setMinLevel(e.target.value)} placeholder="0" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Max Level</label>
-              <input type="number" min="0" value={maxLevel} onChange={e => setMaxLevel(e.target.value)} placeholder="0" style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Storage Location</label>
-              <input value={storageLocation} onChange={e => setStorageLocation(e.target.value)} placeholder="e.g. Rack A-1" style={inputStyle} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={() => { setName(''); setStrength(''); setUnit(''); setUnitPrice(''); setCategory(''); setTherapeuticUse(''); setRequiresPrescription(false); setInitialQty(''); setMinLevel(''); setMaxLevel(''); setStorageLocation(''); setErrors({}); setSubmitError(''); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
-          <button type="submit" disabled={loading} style={{ padding: '10px 28px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {loading ? 'Registering...' : <><Package size={15} /> Register Stock</>}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={() => setConfirmed(null)} style={{ background: G.forest, color: G.white, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', cursor: 'pointer', fontWeight: 900, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+            ＋ Register Another Drug
+          </button>
+          <button onClick={() => setConfirmed(null)} style={{ background: G.white, color: G.dark, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', cursor: 'pointer', fontWeight: 900, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+            Dismiss
           </button>
         </div>
-      </form>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", paddingBottom: 60 }}>
+      <style>{`@keyframes slideDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }`}</style>
+
+      {/* ── Header ── */}
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ background: G.leaf, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+            <Package size={24} color={G.white} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Register New Stock</h1>
+            <p style={{ margin: 0, fontSize: 12, opacity: 0.8 }}>Catalog a new drug with batch tracking — Batch No &amp; Expiry Date are required</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '28px 36px', width: '100%', boxSizing: 'border-box' }}>
+        {/* Success Banner appears here after submission */}
+        <ConfirmBanner />
+
+        <form onSubmit={handleSubmit}>
+
+          {/* ── SECTION 1: Drug Information ── */}
+          <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}`, marginBottom: 24 }}>
+            <SectionHeader title="Drug Information" sub="* Required fields" />
+            <div style={{ padding: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+                <div>
+                  <label style={lbl(true)}>Drug Name <RequiredStar /></label>
+                  <input value={form.name} onChange={set('name')} placeholder="e.g. Amoxicillin" style={inp(true)} required />
+                </div>
+                <div>
+                  <label style={lbl()}>Strength</label>
+                  <input value={form.strength} onChange={set('strength')} placeholder="e.g. 500mg" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl(true)}>Unit <RequiredStar /></label>
+                  <select value={form.unit} onChange={set('unit')} style={inp(true)} required>
+                    <option value="">Select unit…</option>
+                    {['Tablets', 'Capsules', 'Bottles', 'Vials', 'Ampoules', 'Sachets', 'Pieces', 'Packs', 'Boxes', 'Syringes', 'Tubes'].map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl()}>Unit Price (ETB)</label>
+                  <input type="number" step="0.01" min="0" value={form.unitPrice} onChange={set('unitPrice')} placeholder="0.00" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl()}>Category</label>
+                  <input value={form.category} onChange={set('category')} placeholder="e.g. Antibiotics" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl()}>Requires Prescription</label>
+                  <select value={form.requiresPrescription} onChange={e => setForm(p => ({ ...p, requiresPrescription: e.target.value === 'true' }))} style={inp()}>
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={lbl()}>Therapeutic Use / Description</label>
+                  <input value={form.therapeuticUse} onChange={set('therapeuticUse')} placeholder="e.g. Treatment of bacterial infections" style={inp()} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECTION 2: Batch & Expiry (REQUIRED) ── */}
+          <div style={{ background: G.white, border: `3px solid ${G.forest}`, boxShadow: `6px 6px 0 ${G.forest}`, marginBottom: 24 }}>
+            <SectionHeader title="📦 Batch & Traceability — Required" sub="Links stock to its delivery for full recall & expiry tracking" />
+            <div style={{ padding: 24 }}>
+              <div style={{ background: '#FFF8E1', border: `2px solid ${G.orange}`, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#5D4037', fontWeight: 600 }}>
+                <AlertTriangle size={16} color={G.orange} />
+                Batch No and Expiry Date are required. Each delivery batch must be recorded separately for expiry tracking, audit, and recall capability.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+                <div>
+                  <label style={lbl(true)}>Batch No <RequiredStar /></label>
+                  <input value={form.batchNo} onChange={set('batchNo')} placeholder="e.g. BT-2025-0042" style={inp(true)} required />
+                </div>
+                <div>
+                  <label style={lbl(true)}>Expiry Date <RequiredStar /></label>
+                  <input type="date" value={form.expiryDate} onChange={set('expiryDate')} style={inp(true)} required />
+                </div>
+                <div>
+                  <label style={lbl()}>Alert Days Before Expiry</label>
+                  <input type="number" min="1" value={form.nearExpiryDays} onChange={set('nearExpiryDays')} placeholder="e.g. 90" style={inp()} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECTION 3: Initial Inventory ── */}
+          <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}`, marginBottom: 28 }}>
+            <SectionHeader title="Initial Inventory" sub="Opening stock quantity for this batch" />
+            <div style={{ padding: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+                <div>
+                  <label style={lbl(true)}>Initial Quantity <RequiredStar /></label>
+                  <input type="number" min="1" value={form.initialQty} onChange={set('initialQty')} placeholder="e.g. 500" style={inp(true)} required />
+                </div>
+                <div>
+                  <label style={lbl()}>Min Reorder Level</label>
+                  <input type="number" min="0" value={form.minLevel} onChange={set('minLevel')} placeholder="e.g. 50" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl()}>Max Stock Level</label>
+                  <input type="number" min="0" value={form.maxLevel} onChange={set('maxLevel')} placeholder="e.g. 1000" style={inp()} />
+                </div>
+                <div>
+                  <label style={lbl()}>Storage Location</label>
+                  <input value={form.storageLocation} onChange={set('storageLocation')} placeholder="e.g. Rack A-1, Shelf 3" style={inp()} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Action Buttons ── */}
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button type="button" onClick={resetForm} style={{
+              background: G.lightGray, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`,
+              padding: '12px 28px', cursor: 'pointer', fontWeight: 900, fontSize: 14,
+              fontFamily: "'Inter', sans-serif", color: G.darkGray,
+            }}>
+              Clear Form
+            </button>
+            <button type="submit" disabled={loading} style={{
+              background: loading ? G.olive : G.forest,
+              border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`,
+              color: G.white, padding: '12px 32px', cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 900, fontSize: 14, fontFamily: "'Inter', sans-serif",
+              display: 'flex', alignItems: 'center', gap: 8, opacity: loading ? 0.8 : 1,
+            }}>
+              {loading ? (
+                <>
+                  <span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  Registering…
+                </>
+              ) : (
+                <><Plus size={18} /> Register Stock</>
+              )}
+            </button>
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </form>
+      </div>
     </div>
   );
 };

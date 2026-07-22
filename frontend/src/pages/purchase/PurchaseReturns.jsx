@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { RotateCcw, Download, Plus, Send } from 'lucide-react';
+import { RotateCcw, Download, Plus, Send, FileText, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { purchaseState, createReturnNote } from '../../utils/purchaseTransactionService';
 
 const PurchaseReturns = () => {
+  const navigate = useNavigate();
   const [returns, setReturns] = useState([...purchaseState.returns]);
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterReason, setFilterReason] = useState('All');
@@ -37,6 +39,17 @@ const PurchaseReturns = () => {
             <RotateCcw color="#ea580c" size={28} /> PURCHASE RETURNS
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Manage return of goods and trigger inventory/financial adjustments.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <FileText size={16} /> Purchase Request
+            </button>
+            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <ShoppingCart size={16} /> Purchase Order
+            </button>
+            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <RotateCcw size={16} /> Purchase Return
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>

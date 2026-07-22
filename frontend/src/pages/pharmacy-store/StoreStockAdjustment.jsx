@@ -1,237 +1,257 @@
-import React, { useState, useEffect } from 'react';
-import { Sliders, CheckCircle, Printer, ShieldAlert, Search } from 'lucide-react';
-import { createAdjustment, getAllDrugs } from '../../utils/storeApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Sliders, Plus, Trash2, Search, Eye, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { NotifStore } from './StoreHomeNew';
 
-const StoreStockAdjustment = () => {
-  const [adjType, setAdjType] = useState('Damage Write-off');
-  const [drugId, setDrugId] = useState('');
-  const [drugName, setDrugName] = useState('');
-  const [qtyToAdjust, setQtyToAdjust] = useState('');
-  const [reason, setReason] = useState('');
-  const [approver, setApprover] = useState('Store Manager');
-  const [ceoCode, setCeoCode] = useState('');
-  const [ceoCodeError, setCeoCodeError] = useState('');
-  const [submitted, setSubmitted] = useState(null);
-  const [errors, setErrors] = useState({});
+const G = {
+  forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
+  sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
+  brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336',
+};
+const API = '/api/v1/store-inventory';
+function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { headers: hdrs(), ...opts });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'Request failed');
+  return d;
+}
+
+const REASONS = ['Damaged goods', 'Expired goods', 'Count correction', 'System error correction', 'Donation/Write-off', 'Other'];
+
+const AdjustmentForm = ({ onSuccess, onClose }) => {
   const [drugs, setDrugs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [submitError, setSubmitError] = useState('');
-
-  const isLargeAdj = +qtyToAdjust >= 100;
+  const [form, setForm] = useState({ adjustment_no: 'ADJ-' + Date.now(), adjustment_date: new Date().toISOString().split('T')[0], reason: '', remarks: '' });
+  const [items, setItems] = useState([{ drug_id: '', adjustment_type: 'ADD', quantity: '', batch_no: '' }]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchDrugs = async () => {
-      try {
-        const res = await getAllDrugs();
-        setDrugs(res.data || []);
-      } catch (err) {
-        setError(err.message || 'Failed to load drugs');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDrugs();
+    apiFetch(API + '/inventory').then(d => setDrugs(d.data || d || [])).catch(() => {});
   }, []);
 
-  const validate = () => {
-    const e = {};
-    if (!drugId) e.itemName = 'Item name is required';
-    if (!qtyToAdjust || isNaN(qtyToAdjust) || +qtyToAdjust <= 0) e.qty = 'Valid quantity required';
-    if (!reason.trim()) e.reason = 'Reason is required';
-    return e;
-  };
+  const setItem = (i, k, v) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    setSubmitError('');
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    if (isLargeAdj) {
-      if (!ceoCode.trim()) { setCeoCodeError('CEO approval code is required for large adjustments'); return; }
+    if (!form.reason || items.some(it => !it.drug_id || !it.quantity)) {
+      NotifStore.push('Fill all required fields.', 'warning'); return;
     }
-
-    const adjustment_no = 'ADJ-' + Date.now().toString().slice(-6);
-    let qty;
-    if (['Counting Correction', 'Return to Supplier'].includes(adjType) && approver === 'Store Manager') {
-      qty = Math.abs(Number(qtyToAdjust));
-    } else {
-      qty = -Math.abs(Number(qtyToAdjust));
-    }
-
-    const payload = {
-      adjustment_no,
-      drug_id: Number(drugId),
-      adjustment_type: adjType,
-      reason,
-      adjustment_qty: qty,
-      approval_code: ceoCode || null,
-      adjustment_date: new Date().toISOString().split('T')[0],
-    };
-
+    setSaving(true);
     try {
-      const res = await createAdjustment(payload);
-      if (!res.success) throw new Error(res.message);
-      setSubmitted({
-        adjNumber: adjustment_no,
-        adjType,
-        itemName: drugName,
-        qtyToAdjust,
-        reason,
-        approver,
-        ceoApproved: isLargeAdj,
-        date: new Date().toISOString(),
+      await apiFetch(`${API}/adjustments`, {
+        method: 'POST',
+        body: JSON.stringify({ ...form, items: items.map(it => ({ ...it, quantity: Number(it.quantity) })) })
       });
-    } catch (err) {
-      setSubmitError(err.message || 'Failed to submit adjustment');
-    }
+      NotifStore.push('Adjustment recorded!', 'success');
+      onSuccess();
+    } catch (e) { NotifStore.push('Failed: ' + e.message, 'error'); }
+    finally { setSaving(false); }
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div>Loading drugs...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#ef4444' }}>Error: {error}</div>
-      </div>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ maxWidth: 700, margin: '0 auto', background: 'white', borderRadius: 12, border: '2px solid #f59e0b', padding: 32 }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <CheckCircle size={56} color="#f59e0b" />
-            <h2 style={{ fontSize: 22, fontWeight: 'bold', color: '#92400e', margin: '12px 0 4px' }}>Submitted for CEO Approval</h2>
-            <p style={{ color: '#64748b' }}>This adjustment is pending CEO review. Inventory will be updated once approved.</p>
-          </div>
-          <div style={{ background: '#fefce8', borderRadius: 8, padding: 20, border: '1px dashed #f59e0b', marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 14 }}>
-              <div><strong>Adjustment #:</strong> <span style={{ fontFamily: 'monospace', color: '#f59e0b' }}>{submitted.adjNumber}</span></div>
-              <div><strong>Type:</strong> {submitted.adjType}</div>
-              <div><strong>Item:</strong> {submitted.itemName}</div>
-              <div><strong>Quantity Adjusted:</strong> {submitted.qtyToAdjust}</div>
-              <div><strong>Submitted By:</strong> {submitted.approver}</div>
-              <div><strong>Date:</strong> {new Date(submitted.date).toLocaleDateString()}</div>
-              <div style={{ gridColumn: '1 / -1' }}><strong>Reason:</strong> {submitted.reason}</div>
-            </div>
-            <div style={{ marginTop: 16, padding: 12, background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 6, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 18 }}>⏳</span> Pending CEO decision — you will be notified when approved or rejected.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
-              <Printer size={15} /> Print Note
-            </button>
-            <button onClick={() => { setSubmitted(null); setDrugId(''); setDrugName(''); setQtyToAdjust(''); setReason(''); setCeoCode(''); setCeoCodeError(''); setErrors({}); setSubmitError(''); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-              + New Adjustment
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const inputStyle = { width: '100%', padding: '9px 12px', border: `2px solid ${G.dark}`, background: G.white, fontFamily: "'Inter', sans-serif", fontSize: 13, outline: 'none', color: G.darkGray, boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4, display: 'block' };
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sliders color="#f97316" size={28} /> STOCK ADJUSTMENT
-        </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Document Model: Adjustment Note — Manager Access Only</p>
-      </div>
-
-      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14 }}>
-        <ShieldAlert color="#f97316" size={18} />
-        <span><strong>Permission Note:</strong> All stock adjustments require CEO approval before being applied to inventory.</span>
-      </div>
-
-      {submitError && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 14, color: '#b91c1c' }}>
-          {submitError}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}`, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: G.dark, color: G.white, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: 16 }}><Sliders size={20} /> New Stock Adjustment</div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: `1px solid rgba(255,255,255,.4)`, color: G.white, padding: '5px 12px', cursor: 'pointer', fontWeight: 900, fontSize: 16, fontFamily: "'Inter', sans-serif" }}>×</button>
         </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Adjustment Details</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Adjustment Type *</label>
-              <select value={adjType} onChange={e => setAdjType(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-                <option>Damage Write-off</option>
-                <option>Expiry Write-off</option>
-                <option>Counting Correction</option>
-                <option>Theft / Loss</option>
-                <option>Return to Supplier</option>
+              <label style={labelStyle}>Adjustment No *</label>
+              <input value={form.adjustment_no} onChange={e => setForm(p => ({ ...p, adjustment_no: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Date</label>
+              <input type="date" value={form.adjustment_date} onChange={e => setForm(p => ({ ...p, adjustment_date: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Reason *</label>
+              <select value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={inputStyle} required>
+                <option value="">Select reason…</option>
+                {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Approver *</label>
-              <select value={approver} onChange={e => setApprover(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-                <option>Store Manager</option>
-                <option>CEO</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Item Name *</label>
-              <select value={drugId} onChange={e => {
-                const selected = drugs.find(d => String(d.id) === e.target.value);
-                setDrugId(e.target.value);
-                setDrugName(selected ? `${selected.name} ${selected.strength} - ${selected.unit}` : '');
-              }} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.itemName ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value="">Select item...</option>
-                {drugs.map(d => (
-                  <option key={d.id} value={d.id}>{d.name} {d.strength} - {d.unit}</option>
-                ))}
-              </select>
-              {errors.itemName && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.itemName}</span>}
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-                Quantity to Adjust *
-                {isLargeAdj && <span style={{ color: '#f97316', fontWeight: 700, marginLeft: 8 }}>⚠️ Large Adjustment — CEO Approval Required</span>}
-              </label>
-              <input type="number" value={qtyToAdjust} onChange={e => setQtyToAdjust(e.target.value)} placeholder="0" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.qty ? '#ef4444' : isLargeAdj ? '#f97316' : '#cbd5e1'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-              {errors.qty && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.qty}</span>}
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Reason for Adjustment *</label>
-              <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Describe the reason for this adjustment..." style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.reason ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
-              {errors.reason && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.reason}</span>}
+              <label style={labelStyle}>Remarks</label>
+              <input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} style={inputStyle} />
             </div>
           </div>
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: 13, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>Adjustment Lines</div>
+            <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', adjustment_type: 'ADD', quantity: '', batch_no: '' }])} style={{ background: G.orange, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.white, padding: '6px 14px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Plus size={14} /> Add Line
+            </button>
+          </div>
+          <div style={{ border: `2px solid ${G.dark}`, marginBottom: 20 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: G.dark, color: G.white }}>
+                  {['Drug *', 'Batch No', 'Type', 'Quantity *', ''].map(h => <th key={h} style={{ padding: '10px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${G.sage}` }}>
+                    <td style={{ padding: 6 }}>
+                      <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required>
+                        <option value="">Select drug…</option>
+                        {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name} {d.strength || ''}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: 6 }}><input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} /></td>
+                    <td style={{ padding: 6 }}>
+                      <select value={item.adjustment_type} onChange={e => setItem(i, 'adjustment_type', e.target.value)} style={{ ...inputStyle, padding: '7px 8px', color: item.adjustment_type === 'ADD' ? G.forest : G.red }}>
+                        <option value="ADD">+ ADD</option>
+                        <option value="REMOVE">− REMOVE</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: 6 }}><input type="number" min={1} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required /></td>
+                    <td style={{ padding: 6 }}>
+                      <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} style={{ background: G.red, border: 'none', color: G.white, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ background: G.forest, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              {saving ? 'Saving…' : 'Submit Adjustment'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const StoreStockAdjustment = () => {
+  const [adjustments, setAdjustments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await apiFetch(`${API}/adjustments`);
+      setAdjustments(d.data || []);
+    } catch (e) { NotifStore.push('Failed to load adjustments: ' + e.message, 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = adjustments.filter(r => !search ||
+    (r.adjustment_no || '').toLowerCase().includes(search.toLowerCase()) ||
+    (r.reason || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
+      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      {showForm && <AdjustmentForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: G.orange, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+              <Sliders size={24} color={G.white} />
+            </div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stock Adjustment</h1>
+              <p style={{ margin: 0, fontSize: 12, opacity: .8 }}>Add or remove stock with reason</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowForm(true)} style={{ background: G.orange, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              <Plus size={16} /> New Adjustment
+            </button>
+            <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Search size={16} color={G.olive} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by adjustment no or reason…" style={{ border: 'none', outline: 'none', fontSize: 13, fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent', color: G.darkGray }} />
+          <div style={{ fontWeight: 800, color: G.forest, fontSize: 13 }}>{filtered.length} records</div>
         </div>
 
-        {/* CEO Approval Gate */}
-        {isLargeAdj && (
-          <div style={{ background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 8, padding: 20, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <ShieldAlert color="#b45309" size={20} />
-              <h3 style={{ margin: 0, color: '#92400e', fontSize: 15 }}>CEO Approval Required</h3>
-            </div>
-            <p style={{ color: '#78350f', fontSize: 13, margin: '0 0 12px' }}>
-              This adjustment exceeds 100 units. You must obtain a valid CEO approval code before submitting. Contact the CEO and enter the provided code below.
-            </p>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 6 }}>CEO Approval Code *</label>
-            <input value={ceoCode} onChange={e => { setCeoCode(e.target.value); setCeoCodeError(''); }} placeholder="Enter CEO approval code..." style={{ width: '100%', padding: '10px 12px', border: `1px solid ${ceoCodeError ? '#ef4444' : '#f59e0b'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box', maxWidth: 360 }} />
-            {ceoCodeError && <div style={{ color: '#ef4444', fontSize: 13, marginTop: 6 }}>{ceoCodeError}</div>}
+        {loading ? (
+          <div style={{ padding: 60, textAlign: 'center' }}>
+            <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+            <div style={{ color: G.forest, fontWeight: 800 }}>Loading adjustments…</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: G.sage, fontWeight: 800, border: `3px dashed ${G.sage}` }}>No adjustments found.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filtered.map(r => (
+              <div key={r.id} style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `5px 5px 0 ${G.orange}` }}>
+                <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ background: G.orange, padding: 8, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
+                      <Sliders size={18} color={G.white} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>{r.adjustment_no || `ADJ-${r.id}`}</div>
+                      <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
+                        Reason: {r.reason || 'N/A'} &nbsp;|&nbsp;
+                        {r.adjustment_date ? new Date(r.adjustment_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ background: r.status === 'APPROVED' ? '#E8F5E9' : '#FFF3E0', border: `2px solid ${r.status === 'APPROVED' ? G.forest : G.orange}`, color: r.status === 'APPROVED' ? G.forest : G.orange, padding: '4px 10px', fontWeight: 800, fontSize: 12 }}>
+                      {r.status || 'PENDING'}
+                    </span>
+                    <button onClick={() => setExpanded(expanded === r.id ? null : r.id)} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, padding: '6px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6, color: G.dark }}>
+                      <Eye size={14} /> {expanded === r.id ? 'Hide' : 'View'}
+                    </button>
+                  </div>
+                </div>
+                {expanded === r.id && (r.items || []).length > 0 && (
+                  <div style={{ borderTop: `2px solid ${G.sage}`, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: G.lightGray }}>
+                          {['Drug ID', 'Batch', 'Type', 'Quantity'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: G.dark, borderBottom: `1px solid ${G.sage}` }}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.items.map((it, i) => (
+                          <tr key={i} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? G.white : '#F1F8F1' }}>
+                            <td style={{ padding: '8px 12px', color: G.emerald, fontWeight: 800 }}>{it.drug_id}</td>
+                            <td style={{ padding: '8px 12px' }}>{it.batch_no || '—'}</td>
+                            <td style={{ padding: '8px 12px' }}>
+                              <span style={{ color: it.adjustment_type === 'ADD' ? G.forest : G.red, fontWeight: 800 }}>
+                                {it.adjustment_type === 'ADD' ? '+ ADD' : '− REMOVE'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '8px 12px', fontWeight: 800 }}>{it.quantity}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={() => { setDrugId(''); setDrugName(''); setQtyToAdjust(''); setReason(''); setCeoCode(''); setErrors({}); setSubmitError(''); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
-          <button type="submit" style={{ padding: '10px 28px', background: '#9a3412', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Submit Adjustment</button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 };

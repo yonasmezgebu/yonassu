@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileText, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { FileText, Download, CheckCircle, XCircle, Clock, ShoppingCart, RotateCcw } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { mockInventoryState } from '../../utils/storeTransactionService';
 import { createTenderFromRequest, createRFQFromRequest } from '../../utils/purchaseTransactionService';
 import { submitNotification } from '../../utils/pharmacyNotifications';
@@ -15,6 +15,7 @@ const statusBadge = {
 };
 
 const PurchaseRequests = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const presetStatus = searchParams.get('status') || 'All';
   const [requests, setRequests] = useState([...mockInventoryState.m20Requisitions]);
@@ -70,6 +71,17 @@ const PurchaseRequests = () => {
             <FileText color="#3b82f6" size={28} /> PURCHASE REQUESTS (M20)
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Process requisitions from Pharmacy, Store, and other departments.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <FileText size={16} /> Purchase Request
+            </button>
+            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <ShoppingCart size={16} /> Purchase Order
+            </button>
+            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <RotateCcw size={16} /> Purchase Return
+            </button>
+          </div>
         </div>
         <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
           <Download size={16} /> Export

@@ -1,245 +1,239 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, Plus, Trash2, Printer, CheckCircle, Search } from 'lucide-react';
-import { createIssue, getInventory } from '../../utils/storeApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowUpRight, Plus, Trash2, Search, Eye, FileText, RefreshCw } from 'lucide-react';
+import { NotifStore } from './StoreHomeNew';
 
-const DESTINATION_LIST = [
-  'Pharmacy',
-  'Sales',
-  'Printing',
-  'Finance',
-  'HR',
-  'Administration',
-  'Maintenance',
-  'Laboratory',
-  'Radiology',
-  'Other Department',
-];
+const G = {
+  forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
+  sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
+  brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336',
+};
+const API = '/api/v1/store-inventory';
+function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { headers: hdrs(), ...opts });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'Request failed');
+  return d;
+}
 
-const emptyLine = () => ({ id: Date.now(), drug_id: '', drug_name: '', qtyToIssue: '', batchNumber: '' });
-
-const StoreGoodsIssue = () => {
-  const [destination, setDestination] = useState('Pharmacy');
-  const [requisitionRef, setRequisitionRef] = useState('');
-  const [approvalRef, setApprovalRef] = useState('');
-  const [lines, setLines] = useState([emptyLine()]);
-  const [submitted, setSubmitted] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const IssueForm = ({ onSuccess, onClose }) => {
+  const [drugs, setDrugs] = useState([]);
+  const [form, setForm] = useState({ issue_no: 'GI-' + Date.now(), issued_to: '', issued_by: '', issue_date: new Date().toISOString().split('T')[0], purpose: '', remarks: '' });
+  const [items, setItems] = useState([{ drug_id: '', quantity: '', batch_no: '' }]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        setLoading(true);
-        const res = await getInventory();
-        setInventory(res.data || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInventory();
+    apiFetch(API + '/inventory').then(d => setDrugs(d.data || d || [])).catch(() => {});
   }, []);
 
-  const addLine = () => setLines(l => [...l, emptyLine()]);
-  const removeLine = (id) => setLines(l => l.filter(x => x.id !== id));
-  const updateLine = (id, field, value) => setLines(l => l.map(x => x.id === id ? { ...x, [field]: value } : x));
+  const setItem = (i, k, v) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
 
-  const handleDrugSelect = (id, drugId) => {
-    const item = inventory.find(i => i.drug_id === Number(drugId));
-    if (item) {
-      updateLine(id, 'drug_id', drugId);
-      updateLine(id, 'drug_name', item.drug_name);
-      updateLine(id, 'batchNumber', item.batch_no || '');
-    }
-  };
-
-  const validate = () => {
-    const e = {};
-    if (!requisitionRef.trim()) e.requisitionRef = 'Requisition # (M20) is required';
-    if (!approvalRef.trim()) e.approvalRef = 'Approval # (M21) is required';
-    lines.forEach((line, i) => {
-      if (!line.drug_id) e[`item_${i}`] = 'Item required';
-      if (!line.qtyToIssue || isNaN(line.qtyToIssue) || +line.qtyToIssue <= 0) e[`qty_${i}`] = 'Valid quantity required';
-    });
-    return e;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    try {
-      const issue_no = 'M22-' + Date.now().toString().slice(-6);
-      const payload = {
-        issue_no,
-        department: destination,
-        issued_to: destination,
-        requisition_ref: requisitionRef,
-        approval_ref: approvalRef,
-        items: lines.map(line => ({
-          drug_id: Number(line.drug_id),
-          quantity: Number(line.qtyToIssue),
-          batch_no: line.batchNumber,
-        }))
-      };
-      const res = await createIssue(payload);
-      if (!res.success) throw new Error(res.message);
-      const responseData = res.data || res;
-      setSubmitted({
-        m22Number: responseData.issue_no || responseData.id,
-        date: responseData.created_at || new Date().toISOString(),
-        destination: responseData.department || responseData.issued_to || destination,
-        requisitionRef: responseData.requisition_ref || requisitionRef,
-        approvalRef: responseData.approval_ref || approvalRef,
-        lines: (responseData.items || lines).map((item, idx) => ({
-          itemName: item.drug_name || (lines[idx] ? lines[idx].drug_name : ''),
-          qtyToIssue: item.quantity || item.qtyToIssue,
-          batchNumber: item.batch_no || item.batchNumber || '',
-        }))
-      });
-    } catch (err) {
-      setErrors({ requisitionRef: err.message });
+    if (items.some(it => !it.drug_id || !it.quantity)) {
+      NotifStore.push('Select a drug and enter quantity for all lines.', 'warning'); return;
     }
+    setSaving(true);
+    try {
+      await apiFetch(`${API}/issues`, {
+        method: 'POST',
+        body: JSON.stringify({ ...form, items: items.map(it => ({ ...it, quantity: Number(it.quantity) })) })
+      });
+      NotifStore.push('Goods Issue recorded successfully!', 'success');
+      onSuccess();
+    } catch (e) { NotifStore.push('Failed: ' + e.message, 'error'); }
+    finally { setSaving(false); }
   };
 
-  if (submitted) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', background: 'white', borderRadius: 12, border: '2px solid #f59e0b', padding: 32 }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <CheckCircle size={56} color="#f59e0b" />
-            <h2 style={{ fontSize: 22, fontWeight: 'bold', color: '#92400e', margin: '12px 0 4px' }}>Goods Issued Successfully</h2>
-            <p style={{ color: '#64748b' }}>M22 Issue Note has been generated and inventory updated.</p>
-          </div>
-          <div style={{ background: '#f8fafc', borderRadius: 8, padding: 20, border: '1px dashed #cbd5e1', marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 14, marginBottom: 16 }}>
-              <div><strong>M22 Number:</strong> <span style={{ fontFamily: 'monospace', color: '#f59e0b' }}>{submitted.m22Number}</span></div>
-              <div><strong>Destination:</strong> {submitted.destination}</div>
-              <div><strong>Requisition # (M20):</strong> {submitted.requisitionRef}</div>
-              <div><strong>Approval # (M21):</strong> {submitted.approvalRef}</div>
-              <div><strong>Date:</strong> {new Date(submitted.date).toLocaleDateString()}</div>
-            </div>
-            <h4 style={{ margin: '16px 0 8px', color: '#475569' }}>Items Issued:</h4>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead><tr style={{ background: '#fef3c7' }}>
-                {['Item Name', 'Qty Issued', 'Batch #'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left' }}>{h}</th>)}
-              </tr></thead>
-              <tbody>{submitted.lines.map((l, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 600 }}>{l.itemName}</td>
-                  <td style={{ padding: '8px 10px' }}>{l.qtyToIssue}</td>
-                  <td style={{ padding: '8px 10px', fontFamily: 'monospace' }}>{l.batchNumber || 'N/A'}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-            <div style={{ marginTop: 24, padding: 16, background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 8, textAlign: 'center', fontWeight: 'bold', fontSize: 16, color: '#92400e' }}>
-              📤 GOODS ISSUED — STORE MANAGER STAMP: M22-APPROVED-{submitted.m22Number}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
-              <Printer size={15} /> Print M22
-            </button>
-            <button onClick={() => { setSubmitted(null); setLines([emptyLine()]); setErrors({}); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-              + New Issue Note
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <p style={{ color: '#64748b', fontSize: 16 }}>Loading inventory...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <p style={{ color: '#ef4444', fontSize: 16 }}>Error: {error}</p>
-      </div>
-    );
-  }
+  const inputStyle = { width: '100%', padding: '9px 12px', border: `2px solid ${G.dark}`, background: G.white, fontFamily: "'Inter', sans-serif", fontSize: 13, outline: 'none', color: G.darkGray, boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4, display: 'block' };
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ArrowUpRight color="#f59e0b" size={28} /> GOODS ISSUE
-        </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Document Model: M22 — Issue Note</p>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15 }}>Destination & Reference</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Destination *</label>
-              <select value={destination} onChange={e => setDestination(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-                {DESTINATION_LIST.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Requisition # (M20) *</label>
-              <input value={requisitionRef} onChange={e => setRequisitionRef(e.target.value)} placeholder="e.g. M20-2026-0045" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.requisitionRef ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-              {errors.requisitionRef && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.requisitionRef}</span>}
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>Approval # (M21) *</label>
-              <input value={approvalRef} onChange={e => setApprovalRef(e.target.value)} placeholder="e.g. M21-2026-0041" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.approvalRef ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }} />
-              {errors.approvalRef && <span style={{ color: '#ef4444', fontSize: 12 }}>{errors.approvalRef}</span>}
-            </div>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}`, width: '100%', maxWidth: 760, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: G.dark, color: G.white, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: 16 }}>
+            <ArrowUpRight size={20} /> New Goods Issue
           </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: `1px solid rgba(255,255,255,.4)`, color: G.white, padding: '5px 12px', cursor: 'pointer', fontWeight: 900, fontSize: 16, fontFamily: "'Inter', sans-serif" }}>×</button>
         </div>
-
-        <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15 }}>Items to Issue</h3>
-            <button type="button" onClick={addLine} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-              <Plus size={14} /> Add Item
+        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
+            {[
+              { key: 'issue_no', label: 'Issue No *', type: 'text' },
+              { key: 'issued_to', label: 'Issued To (Dept/Name)', type: 'text' },
+              { key: 'issued_by', label: 'Issued By', type: 'text' },
+              { key: 'issue_date', label: 'Issue Date', type: 'date' },
+              { key: 'purpose', label: 'Purpose', type: 'text' },
+              { key: 'remarks', label: 'Remarks', type: 'text' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={labelStyle}>{f.label}</label>
+                <input type={f.type} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle} />
+              </div>
+            ))}
+          </div>
+          {/* Line items */}
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: 13, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>Line Items</div>
+            <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', quantity: '', batch_no: '' }])} style={{ background: G.leaf, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.white, padding: '6px 14px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Plus size={14} /> Add Line
             </button>
           </div>
-          {lines.map((line, i) => (
-            <div key={line.id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr auto', gap: 10, marginBottom: 12, alignItems: 'flex-start' }}>
-              <div>
-                {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ITEM NAME *</label>}
-                <select value={line.drug_id} onChange={e => handleDrugSelect(line.id, e.target.value)} style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`item_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}>
-                  <option value="">Select item...</option>
-                  {inventory.map(item => (
-                    <option key={item.drug_id} value={item.drug_id}>{item.drug_name} {item.strength} (Stock: {item.quantity})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>QTY TO ISSUE *</label>}
-                <input type="number" value={line.qtyToIssue} onChange={e => updateLine(line.id, 'qtyToIssue', e.target.value)} placeholder="0" style={{ width: '100%', padding: '9px 10px', border: `1px solid ${errors[`qty_${i}`] ? '#ef4444' : '#cbd5e1'}`, borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                {i === 0 && <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>BATCH # (opt)</label>}
-                <input value={line.batchNumber} onChange={e => updateLine(line.id, 'batchNumber', e.target.value)} placeholder="BT-XXXX" style={{ width: '100%', padding: '9px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ paddingTop: i === 0 ? 20 : 0 }}>
-                {lines.length > 1 && <button type="button" onClick={() => removeLine(line.id)} style={{ padding: '9px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer' }}><Trash2 size={14} color="#ef4444" /></button>}
-              </div>
+          <div style={{ border: `2px solid ${G.dark}`, marginBottom: 20 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: G.dark, color: G.white }}>
+                  {['Drug *', 'Batch No', 'Quantity *', ''].map(h => <th key={h} style={{ padding: '10px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${G.sage}` }}>
+                    <td style={{ padding: 6 }}>
+                      <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required>
+                        <option value="">Select drug…</option>
+                        {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name} {d.strength || ''}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: 6 }}><input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} /></td>
+                    <td style={{ padding: 6 }}><input type="number" min={1} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required /></td>
+                    <td style={{ padding: 6 }}>
+                      <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} style={{ background: G.red, border: 'none', color: G.white, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ background: G.forest, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '10px 20px', cursor: 'pointer', fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              {saving ? 'Saving…' : 'Record Issue'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const StoreGoodsIssue = () => {
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await apiFetch(`${API}/issues`);
+      setIssues(d.data || []);
+    } catch (e) { NotifStore.push('Failed to load issues: ' + e.message, 'error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = issues.filter(r => !search || (r.issue_no || '').toLowerCase().includes(search.toLowerCase()) || (r.issued_to || '').toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
+      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+      {showForm && <IssueForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: G.orange, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+              <ArrowUpRight size={24} color={G.white} />
             </div>
-          ))}
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Goods Issue</h1>
+              <p style={{ margin: 0, fontSize: 12, opacity: .8 }}>Record stock issued from store</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowForm(true)} style={{ background: G.orange, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+              <Plus size={16} /> New Issue
+            </button>
+            <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Search size={16} color={G.olive} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by issue no or recipient…" style={{ border: 'none', outline: 'none', fontSize: 13, fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent', color: G.darkGray }} />
+          <div style={{ fontWeight: 800, color: G.forest, fontSize: 13 }}>{filtered.length} records</div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button type="button" onClick={() => { setLines([emptyLine()]); setErrors({}); }} style={{ padding: '10px 24px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Reset</button>
-          <button type="submit" style={{ padding: '10px 28px', background: '#92400e', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Submit & Generate M22</button>
-        </div>
-      </form>
+        {loading ? (
+          <div style={{ padding: 60, textAlign: 'center' }}>
+            <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+            <div style={{ color: G.forest, fontWeight: 800 }}>Loading issues…</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: G.sage, fontWeight: 800, border: `3px dashed ${G.sage}` }}>No goods issues found.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filtered.map(r => (
+              <div key={r.id} style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `5px 5px 0 ${G.orange}` }}>
+                <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ background: G.orange, padding: 8, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
+                      <FileText size={18} color={G.white} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>{r.issue_no}</div>
+                      <div style={{ fontSize: 12, color: G.olive, marginTop: 2 }}>
+                        To: {r.issued_to || 'N/A'} &nbsp;|&nbsp; By: {r.issued_by || 'N/A'} &nbsp;|&nbsp;
+                        {r.issue_date ? new Date(r.issue_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ background: '#FFF3E0', border: `2px solid ${G.orange}`, color: G.orange, padding: '4px 10px', fontWeight: 800, fontSize: 12 }}>
+                      {(r.items || []).length} item{(r.items || []).length !== 1 ? 's' : ''}
+                    </span>
+                    <button onClick={() => setExpanded(expanded === r.id ? null : r.id)} style={{ background: G.lightGray, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, padding: '6px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: 6, color: G.dark }}>
+                      <Eye size={14} /> {expanded === r.id ? 'Hide' : 'View'}
+                    </button>
+                  </div>
+                </div>
+                {expanded === r.id && (r.items || []).length > 0 && (
+                  <div style={{ borderTop: `2px solid ${G.sage}`, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: G.lightGray }}>
+                          {['Drug ID', 'Batch No', 'Quantity'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: G.dark, borderBottom: `1px solid ${G.sage}` }}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.items.map((it, i) => (
+                          <tr key={i} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? G.white : '#F1F8F1' }}>
+                            <td style={{ padding: '8px 12px', color: G.emerald, fontWeight: 800 }}>{it.drug_id}</td>
+                            <td style={{ padding: '8px 12px' }}>{it.batch_no || '—'}</td>
+                            <td style={{ padding: '8px 12px', fontWeight: 800, color: G.orange }}>{it.quantity}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

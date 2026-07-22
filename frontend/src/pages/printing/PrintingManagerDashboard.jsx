@@ -27,9 +27,9 @@ const PrintingManagerDashboard = () => {
     { type: 'divider' },
     { label: 'Production', icon: 'settings',
       children: [
-        { label: 'Printing Store Machine',       path: '/printing-manager/orders', icon: 'monitor' },
-        { label: 'Printing Production Machine',  path: '/printing-manager/orders', icon: 'calendar' },
-        { label: 'Printing Store Material',      path: '/printing-manager/orders', icon: 'trending-up' },
+        { label: 'Store Machine',       path: '/printing-manager/orders', icon: 'monitor' },
+        { label: 'Production Machine',  path: '/printing-manager/orders', icon: 'calendar' },
+        { label: 'Store Material',      path: '/printing-manager/orders', icon: 'trending-up' },
         { label: 'Printing Production Material', path: '/printing-manager/overview', icon: 'package' },
       ] },
     { type: 'divider' },

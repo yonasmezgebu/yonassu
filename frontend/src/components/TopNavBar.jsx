@@ -190,25 +190,38 @@ export default function TopNavBar() {
                   {notifications.length === 0 ? (
                     <div className="tnb-dropdown-empty">All caught up!</div>
                   ) : (
-                    notifications.slice(0, 5).map(n => {
-                      const isPharmacy = n._type === 'pharmacy';
+                    notifications.slice(0, 8).map(n => {
+                      // Determine navigation target by notification type
+                      const getLink = () => {
+                        if (n._link) return n._link;
+                        const t = (n._type || '').toLowerCase();
+                        const title = (n.title || '').toLowerCase();
+                        const msg   = (n.message || '').toLowerCase();
+                        if (t === 'pharmacy' || title.includes('prescription') || title.includes('pharmacy')) return '/ceo/pharmacy-requests';
+                        if (t === 'printing_material' || t === 'printing' || title.includes('printing') || title.includes('material request') || msg.includes('printing')) return '/ceo/printing?tab=material';
+                        if (t === 'purchase' || title.includes('purchase') || title.includes('procurement')) return '/ceo/purchase';
+                        if (t === 'farming' || title.includes('farming') || title.includes('agri')) return '/ceo/farming';
+                        if (t === 'hiring' || title.includes('hiring') || title.includes('applicant')) return '/ceo/applicants';
+                        return null;
+                      };
+                      const link = getLink();
                       return (
-                      <div key={n.id} className="tnb-notif-item" style={{ cursor: 'pointer', background: n.isRead ? 'transparent' : '#f0f7ff' }}
+                      <div key={n.id} className="tnb-notif-item"
+                        style={{ cursor: 'pointer', background: n.isRead ? 'transparent' : '#f0fdf4', borderLeft: n.isRead ? 'none' : '3px solid #228B22' }}
                         onClick={async () => {
                           setNotifOpen(false);
-                          // Mark as read (system) or remove from local state (real-time/socket)
+                          // Always remove from state immediately (disappear on click)
+                          setNotifications(prev => prev.filter(x => x.id !== n.id));
+                          // Mark as read on server if system notification
                           if (n.id && n.id.startsWith('sys-') && n._refId) {
                             try { await notificationService.markSystemAsRead(n._refId); } catch (_) {}
-                            // Remove from local state immediately to make it "lost"
-                            setNotifications(prev => prev.filter(x => x.id !== n.id));
-                          } else {
-                            setNotifications(prev => prev.filter(x => x.id !== n.id));
                           }
-                          if (n._link) navigate(n._link);
-                          else if (isPharmacy) navigate('/ceo/pharmacy-requests');
+                          // Navigate
+                          if (link) navigate(link);
                         }}>
                         <p className="tnb-notif-title">{n.title}</p>
                         <p className="tnb-notif-msg">{n.message}</p>
+                        {link && <p style={{margin:'2px 0 0',fontSize:'0.7rem',color:'#228B22',fontWeight:700}}>→ Click to view</p>}
                       </div>
                       );
                     })

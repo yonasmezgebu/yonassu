@@ -23,7 +23,6 @@ const SalesManagerDashboard = () => {
   return (
     <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0' }}>Sales Manager Dashboard</h1>
         <p style={{ color: '#64748b', margin: 0 }}>Overview of sales performance, orders, and customer credit.</p>
       </div>
 

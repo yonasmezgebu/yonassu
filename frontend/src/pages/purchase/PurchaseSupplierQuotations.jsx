@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Inbox, Download, Check, X, ShoppingCart } from 'lucide-react';
+import { Inbox, Download, Check, X, ShoppingCart, File } from 'lucide-react';
 import { purchaseState, createPurchaseOrder } from '../../utils/purchaseTransactionService';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +64,14 @@ const PurchaseSupplierQuotations = () => {
             <Inbox color="#f59e0b" size={28} /> SUPPLIER QUOTATIONS
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0' }}>Compare quotations and convert winning quotes to Purchase Orders.</p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <button onClick={() => navigate('/purchase/rfq')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#22c55e', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <File size={16} /> Request for Quotation
+            </button>
+            <button onClick={() => navigate('/purchase/quotations')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
+              <Inbox size={16} /> Supplier Quotation
+            </button>
+          </div>
         </div>
         <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
           <Download size={16} /> Export

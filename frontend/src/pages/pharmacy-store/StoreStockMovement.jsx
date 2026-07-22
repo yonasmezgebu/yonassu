@@ -1,148 +1,185 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, Filter, Download, Printer } from 'lucide-react';
-import { getMovements } from '../../utils/storeApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Activity, RefreshCw, Search, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { NotifStore } from './StoreHomeNew';
 
-const typeColors = {
-  Receipt: { bg: '#dcfce7', color: '#166534' },
-  Issue: { bg: '#fee2e2', color: '#991b1b' },
-  Transfer: { bg: '#ede9fe', color: '#5b21b6' },
-  Adjustment: { bg: '#fff7ed', color: '#9a3412' },
+const G = {
+  forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
+  sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
+  brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336', sky:'#0288D1',
 };
+const API = '/api/v1/store-inventory';
+function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { headers: hdrs(), ...opts });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'Request failed');
+  return d;
+}
 
-const fallbackColor = { bg: '#f1f5f9', color: '#475569' };
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const TYPE_META = {
+  RECEIPT:    { label: 'Receipt',    color: G.leaf,    bg: '#E8F5E9' },
+  ISSUE:      { label: 'Issue',      color: G.orange,  bg: '#FFF3E0' },
+  TRANSFER:   { label: 'Transfer',   color: G.brown,   bg: '#EFEBE9' },
+  ADJUSTMENT: { label: 'Adjustment', color: G.emerald, bg: '#E0F2F1' },
+  COUNT:      { label: 'Count',      color: G.sky,     bg: '#E3F2FD' },
 };
 
 const StoreStockMovement = () => {
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [filterItem, setFilterItem] = useState('');
-  const [filterType, setFilterType] = useState('All');
-  const [data, setData] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [sort, setSort] = useState({ col: 'created_at', dir: 'desc' });
 
-  const fetchData = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await getMovements();
-      setData(res.data || []);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch movements');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
+      const d = await apiFetch(`${API}/movements`);
+      setMovements(d.data || []);
+    } catch (e) { NotifStore.push('Failed to load movements: ' + e.message, 'error'); }
+    finally { setLoading(false); }
   }, []);
 
-  const filtered = data.filter(m => {
-    if (filterType !== 'All' && m.movement_type !== filterType) return false;
-    if (filterItem && !(m.item_name || '').toLowerCase().includes(filterItem.toLowerCase())) return false;
-    if (dateFrom && m.created_at && m.created_at.slice(0, 10) < dateFrom) return false;
-    if (dateTo && m.created_at && m.created_at.slice(0, 10) > dateTo) return false;
-    return true;
-  });
+  useEffect(() => { load(); }, [load]);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f8fafc' }}>
-        <p style={{ fontSize: 18, color: '#64748b' }}>Loading...</p>
-      </div>
-    );
-  }
+  const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
+  const SortIcon = ({ col }) => sort.col === col ? (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
 
-  if (error) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f8fafc', gap: 16 }}>
-        <p style={{ fontSize: 16, color: '#b91c1c' }}>{error}</p>
-        <button onClick={fetchData} style={{ padding: '8px 20px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Retry</button>
-      </div>
-    );
-  }
+  const filtered = movements
+    .filter(m => typeFilter === 'ALL' || (m.movement_type || m.type || '').toUpperCase() === typeFilter)
+    .filter(m => !search || (m.drug_name || '').toLowerCase().includes(search.toLowerCase()) || (m.reference_no || m.ref_no || '').toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const va = a[sort.col] ?? '', vb = b[sort.col] ?? '';
+      if (sort.col === 'created_at') return sort.dir === 'asc' ? new Date(va) - new Date(vb) : new Date(vb) - new Date(va);
+      return sort.dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+    });
+
+  const cols = [
+    { key: 'created_at', label: 'Date/Time' },
+    { key: 'movement_type', label: 'Type' },
+    { key: 'drug_name', label: 'Drug' },
+    { key: 'reference_no', label: 'Reference' },
+    { key: 'quantity_in', label: 'Qty In' },
+    { key: 'quantity_out', label: 'Qty Out' },
+    { key: 'balance', label: 'Balance' },
+    { key: 'performed_by', label: 'By' },
+  ];
+
+  const types = ['ALL', 'RECEIPT', 'ISSUE', 'TRANSFER', 'ADJUSTMENT', 'COUNT'];
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Activity color="#14b8a6" size={28} /> STOCK MOVEMENT LOG
-          </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Document Model: Movement Log — Read-Only Historical Record</p>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
-            <Printer size={15} /> Print
-          </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
-            <Download size={15} /> Export
+    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
+      <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @media (max-width: 768px) { .type-filters { flex-wrap: wrap !important; } }
+      `}</style>
+
+      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#558B2F', padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
+              <Activity size={24} color={G.white} />
+            </div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stock Movement Log</h1>
+              <p style={{ margin: 0, fontSize: 12, opacity: .8 }}>Complete audit trail of all inventory movements</p>
+            </div>
+          </div>
+          <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+            <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* FILTERS */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20, background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', alignItems: 'center' }}>
-        <Filter size={15} color="#64748b" />
-        <input value={filterItem} onChange={e => setFilterItem(e.target.value)} placeholder="Filter by item name..." style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14, width: 200 }} />
-        <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }}>
-          <option value="All">All Types</option>
-          <option>Receipt</option>
-          <option>Issue</option>
-          <option>Transfer</option>
-          <option>Adjustment</option>
-        </select>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>From:</label>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }} />
+      <div style={{ padding: '24px 36px' }}>
+        {/* Summary stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+          {Object.entries(TYPE_META).map(([type, meta]) => {
+            const count = movements.filter(m => (m.movement_type || m.type || '').toUpperCase() === type).length;
+            return (
+              <button key={type} onClick={() => setTypeFilter(typeFilter === type ? 'ALL' : type)} style={{ background: typeFilter === type ? meta.color : G.white, border: `3px solid ${typeFilter === type ? G.dark : G.sage}`, boxShadow: typeFilter === type ? `4px 4px 0 ${G.dark}` : 'none', padding: '12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif", transition: 'all .15s', textAlign: 'left' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, color: typeFilter === type ? G.white : meta.color }}>{meta.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: typeFilter === type ? G.white : G.dark, marginTop: 4 }}>{count}</div>
+              </button>
+            );
+          })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>To:</label>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 14 }} />
-        </div>
-        <span style={{ marginLeft: 'auto', fontSize: 13, color: '#64748b' }}>{filtered.length} records shown</span>
-      </div>
 
-      {/* TABLE */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: '#f1f5f9' }}>
-              {['Date & Time', 'Item Name', 'Strength', 'Qty Moved', 'Unit', 'Movement Type', 'Reference Document', 'Performed By'].map(h => (
-                <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((m, i) => (
-              <tr key={m.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{formatDate(m.created_at)}</td>
-                <td style={{ padding: '12px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{m.item_name || '-'}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{m.strength || '-'}</td>
-                <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{m.qty_moved != null ? m.qty_moved : '-'}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{m.unit || '-'}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, ...(typeColors[m.movement_type] || fallbackColor) }}>{m.movement_type}</span>
-                </td>
-                <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#3b82f6', fontSize: 12, whiteSpace: 'nowrap' }}>{m.ref_no}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 12 }}>{m.performed_by || '-'}</td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>No movements found</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {/* Search */}
+        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Search size={16} color={G.olive} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by drug name or reference…" style={{ border: 'none', outline: 'none', fontSize: 13, fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent', color: G.darkGray }} />
+          <div style={{ fontWeight: 800, color: G.forest, fontSize: 13 }}>{filtered.length} records</div>
+        </div>
+
+        {/* Table */}
+        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
+          {loading ? (
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+              <div style={{ color: G.forest, fontWeight: 800 }}>Loading movement log…</div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: G.sage, fontWeight: 800, border: `3px dashed ${G.sage}`, margin: 20 }}>No stock movements found.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 900 }}>
+                <thead>
+                  <tr style={{ background: G.dark, color: G.white }}>
+                    {cols.map(c => (
+                      <th key={c.key} onClick={() => toggleSort(c.key)} style={{ padding: '13px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer', whiteSpace: 'nowrap', borderBottom: `3px solid ${G.forest}`, userSelect: 'none' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{c.label} <SortIcon col={c.key} /></span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((m, i) => {
+                    const typeMeta = TYPE_META[(m.movement_type || m.type || '').toUpperCase()] || { label: m.movement_type || m.type, color: G.darkGray, bg: G.lightGray };
+                    return (
+                      <tr key={m.id || i} style={{ background: i % 2 === 0 ? G.white : '#F1F8F1', borderBottom: `1px solid ${G.sage}` }}>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: G.darkGray, fontSize: 11 }}>
+                          {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <span style={{ display: 'inline-block', padding: '3px 8px', background: typeMeta.bg, border: `1px solid ${typeMeta.color}`, color: typeMeta.color, fontWeight: 800, fontSize: 10 }}>
+                            {typeMeta.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: G.dark }}>{m.drug_name || '—'}</td>
+                        <td style={{ padding: '10px 12px', color: G.olive, fontFamily: 'monospace', fontSize: 11 }}>{m.reference_no || m.ref_no || '—'}</td>
+                        <td style={{ padding: '10px 12px', fontWeight: 900, color: G.forest }}>
+                          {m.quantity_in ? '+' + m.quantity_in : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 900, color: G.red }}>
+                          {m.quantity_out ? '-' + m.quantity_out : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 900, color: G.dark }}>{m.balance ?? '—'}</td>
+                        <td style={{ padding: '10px 12px', color: G.darkGray, fontSize: 11 }}>{m.performed_by || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: G.dark, color: G.white }}>
+                    <td colSpan={4} style={{ padding: '12px', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                      Total Movements — {filtered.length}
+                    </td>
+                    <td style={{ padding: '12px', fontWeight: 900, color: G.mint }}>
+                      +{filtered.reduce((s, m) => s + Number(m.quantity_in || 0), 0).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '12px', fontWeight: 900, color: '#FF8A80' }}>
+                      -{filtered.reduce((s, m) => s + Number(m.quantity_out || 0), 0).toLocaleString()}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

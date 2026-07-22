@@ -1,205 +1,429 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Package, TrendingDown, Clock, Inbox, Truck, ArrowUpRight, ClipboardCheck, AlertTriangle } from 'lucide-react';
-import { getDashboardStats } from '../../utils/storeApi';
+import React, { useState, useEffect, useCallback } from 'react';
 
+/* ─── Color Palette — matches General Store exactly ─────────────────────── */
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
+  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
+  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
+  orange: '#FF9800', red: '#F44336', purple: '#7C3AED',
+};
+
+/* ─── NOTIFICATION STORE (exported for other pages) ─────────────────────── */
+let _listeners = [];
+let _notifications = [];
+export const NotifStore = {
+  push(msg, type = 'info') {
+    const n = { id: Date.now(), msg, type, time: new Date() };
+    _notifications = [n, ..._notifications].slice(0, 20);
+    _listeners.forEach(fn => fn([..._notifications]));
+    return n.id;
+  },
+  subscribe(fn) { _listeners.push(fn); return () => { _listeners = _listeners.filter(l => l !== fn); }; },
+  get() { return [..._notifications]; },
+  dismiss(id) {
+    _notifications = _notifications.filter(n => n.id !== id);
+    _listeners.forEach(fn => fn([..._notifications]));
+  }
+};
+
+export function NotifToastContainer() {
+  const [notes, setNotes] = useState(NotifStore.get());
+  useEffect(() => NotifStore.subscribe(setNotes), []);
+  return (
+    <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 }}>
+      {notes.map(n => {
+        const c = { success: { bg: G.leaf, border: G.dark }, warning: { bg: G.orange, border: '#E65100' }, error: { bg: G.red, border: '#B71C1C' }, info: { bg: G.emerald, border: G.dark } }[n.type] || { bg: G.emerald, border: G.dark };
+        return (
+          <div key={n.id} style={{ background: c.bg, border: `2px solid ${c.border}`, color: '#fff', padding: '12px 16px', boxShadow: `4px 4px 0 ${c.border}`, fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, animation: 'slideIn .25s ease-out' }}>
+            <span style={{ flex: 1 }}>{n.msg}</span>
+            <button onClick={() => NotifStore.dismiss(n.id)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 900, padding: 0, lineHeight: 1 }}>×</button>
+          </div>
+        );
+      })}
+      <style>{`@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
+    </div>
+  );
+}
+
+/* ─── Shared API ─────────────────────────────────────────────────────────── */
+const API = '/api/v1/store-inventory';
+function hdrs() {
+  return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') };
+}
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, { headers: hdrs(), ...opts });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+/* ─── CategoryBar — same as General Store ───────────────────────────────── */
+const CategoryBar = ({ value, max, color }) => (
+  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
+    <div style={{ height: '100%', borderRadius: 0, background: color, width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`, transition: 'width 1.2s ease' }} />
+  </div>
+);
+
+/* ─── Floating leaf decorations — same as General Store ─────────────────── */
+const DecorPlants = () => (
+  <>
+    {[
+      { e: '🍃', sz: 55, op: 0.22, top: '1%',    left: '0.5%'  },
+      { e: '🌿', sz: 48, op: 0.18, top: '0%',    right: '0.5%' },
+      { e: '🌾', sz: 52, op: 0.20, bottom: '1%', left: '0.5%'  },
+      { e: '🍃', sz: 50, op: 0.18, bottom: '0%', right: '0.5%' },
+    ].map((p, i) => (
+      <span key={i} style={{ position: 'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents: 'none', userSelect: 'none', animation: `floatLeaf ${9 + i * 1.5}s ease-in-out infinite`, animationDelay: `${i * 1.2}s`, zIndex: 0 }}>{p.e}</span>
+    ))}
+  </>
+);
+
+/* ─── Global Styles — EXACT COPY from GeneralStoreOperations ────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
+    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
+    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
+    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+
+    /* 3D Header */
+    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
+    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
+    .btn-3d { background:linear-gradient(135deg, #ffffff, #e6f2eb); color:#1B5E20; border:2px solid #228B22; border-radius:14px; padding:10px 24px; font-weight:900; font-size:14px; cursor:pointer; box-shadow:0px 5px 0px #228B22, 0px 8px 15px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); transition:all 0.1s cubic-bezier(0.4, 0, 0.2, 1); display:inline-flex; align-items:center; justify-content:center; gap:8px; text-transform:uppercase; letter-spacing:1.5px; }
+    .btn-3d:active { transform:translateY(6px); box-shadow:0px 0px 0px #228B22, 0px 2px 5px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); }
+    .btn-3d:hover { filter:brightness(1.05); }
+    .btn-text-3d { text-shadow:1px 1px 0px rgba(255,255,255,0.8); }
+
+    /* Border-tracking cards */
+    .d-card {
+      --hover-color: #2E8B57;
+      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
+      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
+
+    .d-card-no-hover {
+      --hover-color: #228B22;
+      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
+      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
+
+    /* Alert rows */
+    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
+    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+
+    /* Category rows */
+    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:160px 1fr 60px 90px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
+    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
+    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+
+    /* Recent activity rows */
+    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
+    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
+    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+
+    /* Quick action cards */
+    .qa-card {
+      --hover-color: #2E8B57;
+      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
+      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, transparent, transparent);
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+    }
+    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
+    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+  `}</style>
+);
+
+/* ─── MAIN DASHBOARD ─────────────────────────────────────────────────────── */
 const StoreHomeNew = () => {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [stats,      setStats]      = useState(null);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
 
+  /* Live clock — same as General Store */
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await getDashboardStats();
-        setStats(res.data || res);
-      } catch (err) {
-        setError(err.message || 'Failed to load dashboard');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    const update = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    update();
+    const t = setInterval(update, 60000);
+    return () => clearInterval(t);
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 18, color: '#64748b' }}>Loading...</div>
-      </div>
-    );
-  }
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const data = await apiFetch(`${API}/dashboard`);
+      const s = data.data || data;
+      setStats(s);
 
-  if (error) {
-    return (
-      <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <div style={{ fontSize: 18, color: '#dc2626' }}>{error}</div>
-        <button
-          onClick={() => {
-            setLoading(true);
-            setError(null);
-            getDashboardStats()
-              .then(res => setStats(res.data || res))
-              .catch(err => setError(err.message || 'Failed to load dashboard'))
-              .finally(() => setLoading(false));
-          }}
-          style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+      /* Build a recent-activity feed from receipts + issues + transfers */
+      const feed = [
+        ...(s.recentReceipts  || []).map(r => ({ action_type: 'Goods Received',  item_id: r.receipt_no,   department: 'Receiving', date_time: r.created_at, _icon: '📥', _color: G.leaf    })),
+        ...(s.recentIssues    || []).map(r => ({ action_type: 'Goods Issued',    item_id: r.issue_no,     department: 'Issue',     date_time: r.created_at, _icon: '📤', _color: G.orange  })),
+        ...(s.recentTransfers || []).map(r => ({ action_type: 'Stock Transfer',  item_id: r.transfer_no || String(r.id), department: 'Transfer', date_time: r.created_at, _icon: '🔄', _color: G.emerald })),
+      ].sort((a, b) => new Date(b.date_time) - new Date(a.date_time)).slice(0, 8);
+      setRecentLogs(feed);
+    } catch (e) {
+      NotifStore.push('Failed to load: ' + e.message, 'error');
+    }
+    setRefreshing(false);
+  }, []);
 
-  const summaryCards = [
-    { label: 'Total Items in Stock', value: String(stats.totalItems), icon: <Package size={24} color="#3b82f6" />, bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', path: '/store/stock-list' },
-    { label: 'Total Stock Value', value: 'ETB ' + Number(stats.totalValue).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}), icon: <TrendingDown size={24} color="#10b981" />, bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', path: '/store/stock-list' },
-    { label: 'Low Stock Alerts', value: String(stats.lowStockCount), icon: <AlertTriangle size={24} color="#f59e0b" />, bg: '#fef3c7', border: '#fde68a', color: '#b45309', path: '/store/stock-list' },
-    { label: 'Pending Requisitions', value: String(stats.pendingRequisitions), icon: <Clock size={24} color="#8b5cf6" />, bg: '#ede9fe', border: '#c4b5fd', color: '#6d28d9', path: '/store/pending-requests' },
-    { label: 'Goods Received Today', value: String(stats.todayReceipts), icon: <Inbox size={24} color="#22c55e" />, bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', path: '/store/goods-received-today' },
-    { label: 'Goods Issued Today', value: String(stats.todayIssues), icon: <ArrowUpRight size={24} color="#f97316" />, bg: '#fff7ed', border: '#fed7aa', color: '#9a3412', path: '/store/goods-issued-today' },
-    { label: 'Pending Transfers', value: String(stats.pendingTransfers), icon: <ClipboardCheck size={24} color="#06b6d4" />, bg: '#ecfeff', border: '#a5f3fc', color: '#0e7490', path: '/store/stock-transfer' },
+  useEffect(() => { load(); }, [load]);
+
+  const nav = (path) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
+
+  /* ── Derived values — pharmacy equivalents of General Store KPIs ───────── */
+  const s             = stats || {};
+  const totalValue    = Number(s.totalValue    ?? 0);
+  const totalItems    = Number(s.totalItems    ?? 0);   // SKU lines
+  const totalQuantity = Number(s.totalQuantity ?? 0);   // total units
+  const lowStockItems = s.lowStockItems || [];
+  const lowStockCount = lowStockItems.length;
+
+  /* Activity breakdown — maps to General Store action breakdown table */
+  const activityRows = [
+    { type: 'Goods Received Today', count: s.todayReceipts  ?? 0, qty: s.todayReceipts  ?? 0, color: G.forest  },
+    { type: 'Goods Issued Today',   count: s.todayIssues    ?? 0, qty: s.todayIssues    ?? 0, color: G.orange  },
+    { type: 'Pending Transfers',    count: s.pendingTransfers ?? 0, qty: s.pendingTransfers ?? 0, color: G.purple },
+    { type: 'Pending Requisitions', count: s.pendingRequisitions ?? 0, qty: s.pendingRequisitions ?? 0, color: G.sky },
+  ].filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+  const maxCount = Math.max(...activityRows.map(r => r.count), 1);
+
+  /* Sub-KPI mini-cards (replaces Machines sub-KPIs) */
+  const subKpis = [
+    { label: 'Total Drug Types', val: s.totalDrugs    ?? 0, icon: '💊', c: G.forest  },
+    { label: 'Stock Items',      val: totalItems,            icon: '📦', c: G.emerald },
+    { label: 'Low Stock',        val: lowStockCount,         icon: '⚠️', c: G.orange  },
+    { label: 'Pending Moves',    val: (s.pendingTransfers ?? 0) + (s.pendingRequisitions ?? 0), icon: '🔄', c: G.purple },
   ];
 
-  const notifications = [];
-  const now = new Date();
-
-  if (stats.recentReceipts && stats.recentReceipts.length > 0) {
-    stats.recentReceipts.slice(0, 2).forEach(item => {
-      notifications.push({ icon: '📥', msg: 'Goods Received - ' + item.receipt_no, type: 'success', time: 'Just now' });
-    });
-  }
-  if (stats.recentIssues && stats.recentIssues.length > 0) {
-    stats.recentIssues.slice(0, 2).forEach(item => {
-      notifications.push({ icon: '📤', msg: 'Goods Issued - ' + item.issue_no, type: 'info', time: 'Just now' });
-    });
-  }
-  if (stats.recentTransfers && stats.recentTransfers.length > 0) {
-    stats.recentTransfers.slice(0, 2).forEach(item => {
-      notifications.push({ icon: '🔄', msg: 'Transfer - ' + item.transfer_no, type: 'info', time: 'Just now' });
-    });
-  }
-  if (stats.lowStockItems && stats.lowStockItems.length > 0) {
-    stats.lowStockItems.slice(0, 3).forEach(item => {
-      notifications.push({ icon: '⚠️', msg: 'Low Stock Alert - ' + item.drug_name + ' (' + item.quantity + ')', type: 'warning', time: 'Just now' });
-    });
-  }
-  if (stats.pendingRequisitions > 0) {
-    notifications.push({ icon: '⏳', msg: 'Pending Requisitions - ' + stats.pendingRequisitions + ' awaiting action', type: 'info', time: 'Just now' });
-  }
-
-  const notificationBg = { success: '#f0fdf4', info: '#eff6ff', warning: '#fef3c7' };
-  const notificationBorder = { success: '#bbf7d0', info: '#bfdbfe', warning: '#fde68a' };
-
-  const getNotifPath = (icon, msg) => {
-    if (icon === '📥') return '/store/goods-received-today';
-    if (icon === '📤') return '/store/goods-issued-today';
-    if (icon === '🔄') return '/store/transfers-list';
-    if (icon === '⚠️') return '/store/stock-list';
-    if (icon === '⏳') return '/store/pending-requests';
-    return '/store/overview';
-  };
-
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      {/* HEADER */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#0f172a' }}>
-              📦 Inventory (Store) Dashboard
-            </h1>
-            <p style={{ color: '#64748b', margin: '6px 0 0', fontSize: 15 }}>
-              Welcome, <strong>Store Manager</strong> — {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
-          <div style={{ background: '#0f172a', color: 'white', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600 }}>
-            📍 Store Location: HQ Main Warehouse
-          </div>
+    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      <GlobalStyles />
+      <NotifToastContainer />
+      <DecorPlants />
+
+      {/* ── HEADER — 3-column identical to General Store ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position: 'relative', zIndex: 1 }}>
+        <div style={{ justifySelf: 'start' }}>
+          <h1 className="artistic-3d-title">
+            Pharmacy HQ. <span className="blink-star">💊</span>
+          </h1>
+        </div>
+        <div style={{ justifySelf: 'center' }}>
+          <p className="artistic-3d-subtitle">
+            Pharmacy Store · It&apos;s {timeString}
+          </p>
+        </div>
+        <div style={{ justifySelf: 'end' }}>
+          <button onClick={load} className="btn-3d" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+            <span style={{ display: 'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+            <span className="btn-text-3d">Sync</span>
+          </button>
         </div>
       </div>
 
-      {/* QUICK STORE SUMMARY WIDGET */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 14px' }}>📊 Quick Store Summary</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
-        {summaryCards.map(card => (
-          <div key={card.label} onClick={() => navigate(card.path)} style={{ background: card.bg, border: `1px solid ${card.border}`, borderRadius: 10, padding: 18, cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: card.color }}>{card.label.toUpperCase()}</div>
-              {card.icon}
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 'bold', color: card.color }}>{card.value}</div>
+      {/* ── ROW 1: KPI HERO CARDS — grid 2.5fr 1fr 1fr 1fr ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position: 'relative', zIndex: 1 }}>
+
+        {/* Hero — Total Store Value */}
+        <div className="d-card" onClick={() => nav('/pharmacy-store/stock-list')}
+          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
+          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
+            <span style={{ fontSize: 24 }}>💰</span>
           </div>
-        ))}
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Store Value</div>
+          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
+            <span style={{ fontSize: '1.1rem', opacity: 0.75, marginRight: 6 }}>ETB</span>
+            {totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+            <span>📊</span> Across {totalItems} distinct drug lines
+          </div>
+        </div>
+
+        {/* Stock Lines / Drug SKUs */}
+        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/pharmacy-store/stock-list')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Stock Lines</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize: 18 }}>📦</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{totalItems.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Unique drug SKU lines</div>
+        </div>
+
+        {/* Total Qty */}
+        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/pharmacy-store/stock-list')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Total Qty</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize: 18 }}>📋</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{Number(totalQuantity).toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Total units in store</div>
+        </div>
+
+        {/* Low Stock */}
+        <div className="d-card" style={{ animationDelay: '0.2s', background: lowStockCount > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/pharmacy-store/stock-list')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: lowStockCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Low Stock</span>
+            <div style={{ background: lowStockCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize: 18 }}>{lowStockCount > 0 ? '⚠️' : '✅'}</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: lowStockCount > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{lowStockCount}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Items below min level</div>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* REAL-TIME NOTIFICATIONS WIDGET */}
-        <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e2e8f0', padding: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 16px' }}>🔔 Real-Time Notifications</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {notifications.map((n, i) => (
-              <div key={i} onClick={() => navigate(getNotifPath(n.icon, n.msg))} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', background: notificationBg[n.type], border: `1px solid ${notificationBorder[n.type]}`, borderRadius: 8, cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{n.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{n.msg}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{n.time}</div>
-                </div>
+      {/* ── ROW 2: ACTIVITY BREAKDOWN + RECENT ACTIVITY — 3fr 2fr ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position: 'relative', zIndex: 1 }}>
+
+        {/* Store Activity Breakdown */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <span style={{ fontSize: 18 }}>🔀</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Store Activity Breakdown</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Based on recent logs</span>
+          </div>
+
+          {/* Sub-KPI mini-grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+            {subKpis.map(k => (
+              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
+                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
               </div>
             ))}
-            {notifications.length === 0 && (
-              <div style={{ fontSize: 13, color: '#94a3b8', padding: '12px 14px' }}>No recent notifications</div>
-            )}
           </div>
+
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 60px 90px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+            {['Activity', '', 'Count', 'Docs'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+            ))}
+          </div>
+
+          {/* Activity rows */}
+          {activityRows.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '28px 0', color: G.olive, fontSize: 13 }}>No activity data yet</div>
+          ) : activityRows.map((row) => (
+            <div key={row.type} className="cat-row" onClick={() => nav('/pharmacy-store/stock-movement')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 0, background: row.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.type}</span>
+              </div>
+              <CategoryBar value={row.count} max={maxCount} color={row.color} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{row.count}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: G.emerald, textAlign: 'right' }}>{Number(row.qty).toLocaleString()}</span>
+            </div>
+          ))}
         </div>
 
-        {/* QUICK ACCESS TABLE */}
-        <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e2e8f0', padding: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 16px' }}>⚡ Quick Access — 12 Menu Items</h2>
-          <div style={{ overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: '#f1f5f9' }}>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>#</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>Menu Item</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>Type</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>Document Model</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  [1, 'Stock List', 'View', 'View Only', '/store/stock-list'],
-                  [2, 'Goods Receiving', 'Transaction', 'Model 19', '/store/goods-receiving'],
-                  [3, 'Goods Issue', 'Transaction', 'Model 22', '/store/goods-issue'],
-                  [4, 'Stock Transfer', 'Transaction', 'Transfer Note', '/store/stock-transfer'],
-                  [5, 'Stock Adjustment', 'Transaction', 'Adjustment Note', '/store/stock-adjustment'],
-                  [6, 'Physical Count', 'Audit', 'Count Report', '/store/physical-count'],
-                  [7, 'Stock Movement', 'Report', 'Movement Log', '/store/stock-movement'],
-                  [8, 'Requisitions (From Managers)', 'Management', 'Model 20', '/store/requisitions'],
-                  [9, 'Pending (Awaiting Fulfillment)', 'Management', 'Model 20', '/store/pending-requests'],
-                  [10, 'Issued / Fulfilled', 'Management', 'Model 21', '/store/approved-requests'],
-                  [11, 'Request History', 'Report', 'Request Log', '/store/request-history'],
-                  [12, 'Physical Count (History)', 'Report', 'Count History', '/store/count-history'],
-                ].map(([num, name, type, doc, path]) => (
-                  <tr key={num} onClick={() => navigate(path)} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                    <td style={{ padding: '8px 10px', color: '#94a3b8', fontWeight: 700 }}>{num}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{name}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: type === 'Transaction' ? '#dcfce7' : type === 'Report' ? '#eff6ff' : type === 'Audit' ? '#fef3c7' : '#f1f5f9', color: type === 'Transaction' ? '#166534' : type === 'Report' ? '#1d4ed8' : type === 'Audit' ? '#92400e' : '#475569' }}>{type}</span>
-                    </td>
-                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#64748b', fontSize: 11 }}>{doc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Recent Activity Feed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: 18 }}>📜</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Activity</span>
+            </div>
+            {recentLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
+                <span style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No logs yet
+              </div>
+            ) : recentLogs.slice(0, 6).map((l, i) => (
+              <div key={i} className="top-row" onClick={() => nav('/pharmacy-store/stock-movement')}>
+                <div style={{ width: 32, height: 32, borderRadius: 0, background: `${l._color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14 }}>{l._icon}</span>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {l.action_type}: {l.item_id}
+                  </div>
+                  <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{l.department}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 800, color: l._color, whiteSpace: 'nowrap' }}>
+                  {l.date_time ? new Date(l.date_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 3: ATTENTION REQUIRED + QUICK OPERATIONS — 1fr 2fr ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position: 'relative', zIndex: 1 }}>
+
+        {/* Attention Required (mirrors General Store "alert-row" panel) */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
+          {[
+            { label: `${(s.pendingTransfers ?? 0) + (s.pendingRequisitions ?? 0)} Pending Actions`, sub: 'Transfers & requisitions awaiting', icon: '🔄', bg: '#EFF6FF', c: '#3b82f6', path: '/pharmacy-store/stock-transfer' },
+            { label: `${lowStockCount} Low Stock Items`, sub: 'Below minimum level', icon: '⚠️', bg: '#FFFBEB', c: '#f59e0b', path: '/pharmacy-store/stock-list' },
+          ].map(row => (
+            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
+              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
+              </div>
+              <span style={{ fontSize: 14, color: '#ccc' }}>›</span>
+            </div>
+          ))}
+
+          {/* Low-stock mini list */}
+          {lowStockItems.slice(0, 3).map(item => (
+            <div key={item.id || item.drug_name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${G.sage}44` }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: G.orange, minWidth: 28 }}>{item.quantity}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: G.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.drug_name || item.name}</span>
+              <span style={{ fontSize: 10, color: G.olive }}>min:{item.min_level || 0}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Operations */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {[
+              { label: 'Stock List',       sub: 'Browse drugs',   icon: '📋', bg: '#E6F2EB', color: G.forest,  href: '/pharmacy-store/stock-list'       },
+              { label: 'Add New Stock',    sub: 'Register drug',  icon: '➕', bg: '#E8F9F1', color: G.emerald, href: '/pharmacy-store/add-new-stock'    },
+              { label: 'Goods Receiving',  sub: 'Receive stock',  icon: '📥', bg: '#F1F8E9', color: G.olive,   href: '/pharmacy-store/goods-receiving'  },
+              { label: 'Goods Issue',      sub: 'Issue to dept',  icon: '📤', bg: '#FFF3E0', color: G.orange,  href: '/pharmacy-store/goods-issue'      },
+              { label: 'Stock Transfer',   sub: 'Move stock',     icon: '🔄', bg: '#E1F5FE', color: G.sky,     href: '/pharmacy-store/stock-transfer'   },
+              { label: 'Stock Adjustment', sub: 'Adjust qty',     icon: '📊', bg: '#F3E5F5', color: G.purple,  href: '/pharmacy-store/stock-adjustment' },
+              { label: 'Physical Count',   sub: 'Count audit',    icon: '✅', bg: '#EFEBE9', color: G.brown,   href: '/pharmacy-store/physical-count'   },
+              { label: 'Stock Movement',   sub: 'View history',   icon: '📜', bg: '#E8F4EC', color: G.forest,  href: '/pharmacy-store/stock-movement'   },
+            ].map((a, i) => (
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
+                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
+                  <span style={{ fontSize: 22 }}>{a.icon}</span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -13,7 +13,6 @@ import CustomerBids           from './CustomerBids';
 import CustomerInvoices       from './CustomerInvoices';
 import CustomerReceipts       from './CustomerReceipts';
 import SupportTickets         from './SupportTickets';
-import CustomerProfile        from './CustomerProfile';
 
 const CustomerPortal = () => {
   const menuItems = [
@@ -46,7 +45,6 @@ const CustomerPortal = () => {
       label: 'Settings & Support', icon: 'settings',
       children: [
         { label: 'Support Tickets', path: '/customer/support', icon: 'message-circle', color: '#64748b' },
-        { label: 'My Profile',      path: '/customer/profile', icon: 'user',           color: '#0f172a' },
       ],
     },
   ];
@@ -69,9 +67,8 @@ const CustomerPortal = () => {
         <Route path="invoices"        element={<CustomerInvoices />} />
         <Route path="receipts"        element={<CustomerReceipts />} />
 
-        {/* Support & Profile */}
+        {/* Support */}
         <Route path="support"         element={<SupportTickets />} />
-        <Route path="profile"         element={<CustomerProfile />} />
 
         {/* Catch-all */}
         <Route path="*"               element={<Navigate to="dashboard" replace />} />

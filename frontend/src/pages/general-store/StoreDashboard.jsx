@@ -2,30 +2,17 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
-// New Home
-import StoreHomeNew from './StoreHomeNew';
+import {
+  GSHome,
+  GSInventory,
+  GSRegisterItem,
+  GSIssueItem,
+  GSLogs,
+  GSValuation,
+  GSAlerts,
+} from './GeneralStoreOperations';
 
-// Stock Operations (Menu Items 1-7)
-import StoreStockList from './StoreStockList';
-import StoreAddNewStock from './StoreAddNewStock';
-import StoreGoodsReceiving from './StoreGoodsReceiving';
-import StoreGoodsIssue from './StoreGoodsIssue';
-import StoreStockTransfer from './StoreStockTransfer';
-import StoreStockAdjustment from './StoreStockAdjustment';
-import StorePhysicalCount from './StorePhysicalCount';
-import StoreStockMovement from './StoreStockMovement';
-
-// New Pages
-import StoreRealTimeAccess from './StoreRealTimeAccess';
-import StoreQuickAction from './StoreQuickAction';
-import StoreGoodsReceivedToday from './StoreGoodsReceivedToday';
-import StoreGoodsIssuedToday from './StoreGoodsIssuedToday';
-import StoreTransfersList from './StoreTransfersList';
-
-// Monitoring & Reports
 import StoreReports from './StoreReports';
-import StoreAlerts from './StoreAlerts';
-import StoreAuditTrail from './StoreAuditTrail';
 
 import styles from './StoreDashboard.module.css';
 
@@ -36,16 +23,12 @@ const GeneralStoreDashboard = () => {
     {
       label: 'Stock Operations', icon: 'package',
       children: [
-        { label: '1. Stock List',       path: '/general-store/stock-list',        icon: 'list',             color: '#3b82f6' },
-        { label: 'Add New Stock',       path: '/general-store/add-new-stock',     icon: 'plus',             color: '#059669' },
-        { label: '2. Goods Receiving',  path: '/general-store/goods-receiving',   icon: 'truck',            color: '#22c55e' },
-        { label: '3. Goods Issue',      path: '/general-store/goods-issue',       icon: 'arrow-up-right',   color: '#f59e0b' },
-        { label: '4. Stock Transfer',   path: '/general-store/stock-transfer',    icon: 'arrow-left-right', color: '#8b5cf6' },
-        { label: '5. Stock Adjustment', path: '/general-store/stock-adjustment',  icon: 'sliders',          color: '#f97316' },
-        { label: '6. Physical Count',   path: '/general-store/physical-count',    icon: 'clipboard-check',  color: '#06b6d4' },
-        { label: '7. Stock Movement',   path: '/general-store/stock-movement',    icon: 'activity',         color: '#14b8a6' },
-        { label: '8. Requests',         path: '/general-store/requests',          icon: 'clipboard',        color: '#6366f1' },
-        { label: '9. Operation',        path: '/general-store/operation',         icon: 'settings',         color: '#8b5cf6' },
+        { label: '1. Consumables Inventory', path: '/general-store/inventory',        icon: 'list',           color: '#3b82f6' },
+        { label: '2. Register New Item',     path: '/general-store/register',         icon: 'plus',           color: '#22c55e' },
+        { label: '3. Issue to Department',   path: '/general-store/issue',            icon: 'arrow-up-right', color: '#f59e0b' },
+        { label: '4. Low Stock Alerts',      path: '/general-store/alerts',           icon: 'bell',           color: '#ef4444' },
+        { label: '5. Movement Logs',         path: '/general-store/logs',             icon: 'list',           color: '#6366f1' },
+        { label: '6. Stock Valuation',       path: '/general-store/valuation',        icon: 'dollar-sign',    color: '#8b5cf6' },
       ]
     },
     { type: 'divider' },
@@ -53,8 +36,6 @@ const GeneralStoreDashboard = () => {
       label: 'Monitoring & Reports', icon: 'shield',
       children: [
         { label: 'Report',      path: '/general-store/reports',     icon: 'file-text', color: '#3b82f6' },
-        { label: 'Alert',       path: '/general-store/alerts',      icon: 'bell',      color: '#ef4444' },
-        { label: 'Audit Trail', path: '/general-store/audit-trail', icon: 'lock',      color: '#10b981' },
       ]
     },
   ];
@@ -62,32 +43,19 @@ const GeneralStoreDashboard = () => {
   return (
     <div className={styles.dashboardWrapper}>
       <DashboardLayout menuItems={menuItems} title="🏪 General Store Keeper Dashboard">
-        <Routes>
-          {/* Home & New Pages */}
-          <Route path="overview"             element={<StoreHomeNew />} />
-          <Route path="real-time-access"     element={<StoreRealTimeAccess />} />
-          <Route path="quick-action"         element={<StoreQuickAction />} />
-          <Route path="goods-received-today" element={<StoreGoodsReceivedToday />} />
-          <Route path="goods-issued-today"   element={<StoreGoodsIssuedToday />} />
-          <Route path="transfers-list"       element={<StoreTransfersList />} />
-
-          {/* Stock Operations */}
-          <Route path="stock-list"        element={<StoreStockList />} />
-          <Route path="add-new-stock"     element={<StoreAddNewStock />} />
-          <Route path="goods-receiving"   element={<StoreGoodsReceiving />} />
-          <Route path="goods-issue"       element={<StoreGoodsIssue />} />
-          <Route path="stock-transfer"    element={<StoreStockTransfer />} />
-          <Route path="stock-adjustment"  element={<StoreStockAdjustment />} />
-          <Route path="physical-count"    element={<StorePhysicalCount />} />
-          <Route path="stock-movement"    element={<StoreStockMovement />} />
-
-          {/* Monitoring & Reports */}
-          <Route path="reports"     element={<StoreReports />} />
-          <Route path="alerts"      element={<StoreAlerts />} />
-          <Route path="audit-trail" element={<StoreAuditTrail />} />
-
-          <Route path="/" element={<Navigate to="overview" replace />} />
-        </Routes>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <Routes>
+            <Route path="overview"     element={<GSHome />} />
+            <Route path="inventory"    element={<GSInventory />} />
+            <Route path="register"     element={<GSRegisterItem />} />
+            <Route path="issue"        element={<GSIssueItem />} />
+            <Route path="alerts"       element={<GSAlerts />} />
+            <Route path="logs"         element={<GSLogs />} />
+            <Route path="valuation"    element={<GSValuation />} />
+            <Route path="reports"      element={<StoreReports />} />
+            <Route path="*"            element={<Navigate to="overview" replace />} />
+          </Routes>
+        </div>
       </DashboardLayout>
     </div>
   );

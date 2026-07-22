@@ -15,6 +15,7 @@ import AssetStatusHistory from './manager/AssetStatusHistory';
 import RentalReport from './manager/RentalReport';
 import RevenueReport from './manager/RevenueReport';
 import PerformanceReport from './manager/PerformanceReport';
+import CarRentingStoreRequest from './manager/CarRentingStoreRequest';
 
 const CarRentingDashboard = () => {
   const menuItems = [
@@ -25,18 +26,26 @@ const CarRentingDashboard = () => {
       children: [
         { label: 'Rental Order',     path: '/car-renting/manager/orders',      icon: 'clipboard',   color: '#0ea5e9' },
         { label: 'Agri Rent Order',  path: '/car-renting/manager/agri-orders', icon: 'leaf',        color: '#22c55e' },
+        { label: 'Store Request',    path: '/car-renting/manager/store-request', icon: 'package',     color: '#f59e0b' },
+        { label: 'Audit Log',        path: '/car-renting/manager/history',     icon: 'shield',      color: '#64748b' },
       ]
     },
     { type: 'divider' },
 
     { label: 'Fleet & Assets', icon: 'truck',
       children: [
-        { label: 'Post/Update/Delete Cars', path: '/car-renting/manager/fleet',       icon: 'car',        color: '#3b82f6' },
-        { label: 'Asset Register',          path: '/car-renting/manager/assets',      icon: 'list',       color: '#64748b' },
-        { label: 'Maintenance',             path: '/car-renting/manager/maintenance', icon: 'tool',       color: '#ef4444' },
-        { label: 'Service & Fuel',          path: '/car-renting/manager/utilization', icon: 'activity',   color: '#f59e0b' },
-        { label: 'Drivers',                 path: '/car-renting/manager/calendar',    icon: 'users',      color: '#8b5cf6' },
-        { label: 'Audit Log',               path: '/car-renting/manager/history',     icon: 'shield',     color: '#64748b' },
+        { label: 'Rental Post',             path: '/car-renting/manager/fleet',         icon: 'car',        color: '#3b82f6' },
+        { label: 'Tractor Post',            path: '/car-renting/manager/tractor-fleet', icon: 'truck',      color: '#22c55e' },
+        { label: 'Asset Register',          path: '/car-renting/manager/assets',        icon: 'list',       color: '#64748b' },
+      ]
+    },
+    { type: 'divider' },
+
+    { label: 'Service & Drivers', icon: 'tool',
+      children: [
+        { label: 'Maintenance',             path: '/car-renting/manager/maintenance',   icon: 'tool',       color: '#ef4444' },
+        { label: 'Service & Fuel',          path: '/car-renting/manager/utilization',   icon: 'activity',   color: '#f59e0b' },
+        { label: 'Drivers',                 path: '/car-renting/manager/calendar',      icon: 'users',      color: '#8b5cf6' },
       ]
     },
     { type: 'divider' },
@@ -60,10 +69,12 @@ const CarRentingDashboard = () => {
           {/* Operations */}
           <Route path="manager/orders"      element={<RentalOrders />} />
           <Route path="manager/agri-orders" element={<RentalOrders />} />
+          <Route path="manager/store-request" element={<CarRentingStoreRequest />} />
 
           {/* Fleet */}
-          <Route path="manager/fleet"        element={<FleetManager />} />
-          <Route path="manager/assets"       element={<AssetRegister />} />
+          <Route path="manager/fleet"         element={<FleetManager />} />
+          <Route path="manager/tractor-fleet" element={<FleetManager />} />
+          <Route path="manager/assets"        element={<AssetRegister />} />
           <Route path="manager/assets/new"   element={<AddAsset />} />
           <Route path="manager/maintenance"  element={<Maintenance />} />
           <Route path="manager/utilization"  element={<AssetUtilization />} />
