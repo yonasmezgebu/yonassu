@@ -11,6 +11,10 @@ router.get('/inventory', authenticate, ctrl.getInventory);
 router.get('/inventory/:id', authenticate, ctrl.getInventoryItem);
 router.put('/inventory/:id', authenticate, ctrl.updateInventoryItem);
 
+router.get('/update-requests/pending', authenticate, ctrl.getPendingUpdateRequests);
+router.patch('/update-requests/:id/approve', authenticate, ctrl.approveUpdateRequest);
+router.patch('/update-requests/:id/reject', authenticate, ctrl.rejectUpdateRequest);
+
 router.post('/receipts', authenticate, ctrl.createReceipt);
 router.get('/receipts', authenticate, ctrl.listReceipts);
 router.get('/receipts/today', authenticate, ctrl.listTodayReceipts);

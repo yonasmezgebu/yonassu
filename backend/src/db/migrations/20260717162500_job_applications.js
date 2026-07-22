@@ -8,7 +8,8 @@ exports.up = function(knex) {
     table.string('education_status').notNullable();
     table.string('national_id').notNullable();
     table.enu('sex', ['Male', 'Female']).notNullable();
-    table.enu('status', ['PENDING', 'IN_PERSON_INVITED', 'SUBMITTED_TO_CEO', 'REJECTED']).defaultTo('PENDING');
+    table.enu('status', ['PENDING', 'IN_PERSON_INVITED', 'SUBMITTED_TO_CEO', 'REJECTED', 'APPROVED', 'INFORMED']).defaultTo('PENDING');
+    table.text('rejection_reason').nullable();
     table.timestamps(true, true);
   });
 };

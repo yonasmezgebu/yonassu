@@ -63,7 +63,8 @@ const updateStatusValidation = [
     .if(body('statusId').not().exists())
     .notEmpty().withMessage('Status or statusId is required')
     .isIn([
-      'received', 'in_progress', 'quality_check', 'ready', 'delivered',
+      'received', 'in_queue', 'in_design', 'file_check', 'in_printing',
+      'finishing', 'ready', 'delivered', 'cancelled', 'in_progress',
       'Received', 'In Progress', 'Quality Check', 'Ready', 'Delivered'
     ]).withMessage('Invalid status value'),
   body('statusId')
@@ -73,6 +74,7 @@ const updateStatusValidation = [
     .optional()
     .isLength({ max: 500 }).withMessage('Notes cannot exceed 500 characters')
 ];
+
 const listOrdersValidation = [
   query('page')
     .optional()
@@ -84,7 +86,11 @@ const listOrdersValidation = [
     .toInt(),
   query('status')
     .optional()
-    .isIn(['Received', 'In Progress', 'Quality Check', 'Ready', 'Delivered']),
+    .isIn([
+      'received', 'in_queue', 'in_design', 'file_check', 'in_printing',
+      'finishing', 'ready', 'delivered', 'cancelled', 'in_progress',
+      'Received', 'In Progress', 'Quality Check', 'Ready', 'Delivered'
+    ]),
   query('search')
     .optional()
     .isString()
@@ -120,9 +126,16 @@ router.get('/public/product-types', PrintingController.getProductTypes);
 router.get('/public/paper-types', PrintingController.getPaperTypes);
 router.get('/public/binding-types', PrintingController.getBindingTypes);
 router.get('/public/calculate-price', PrintingController.calculatePrice);
+router.get('/public/track/:orderNumber', PrintingController.trackOrder);
 
 // ── Customer (login required) ──────────────────────────────────
-router.post('/customer/orders', authenticate, PrintingController.createCustomerOrder);
+router.post(
+  '/customer/orders',
+  authenticate,
+  uploads.singleOrderAttachment.single('document'),
+  handleUploadError,
+  PrintingController.createCustomerOrder
+);
 router.get('/customer/orders', authenticate, PrintingController.getCustomerOrders);
 
 // ── Worker / Manager (role required) ──────────────────────────

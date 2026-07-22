@@ -600,8 +600,13 @@ module.exports = {
 // ---- NEW HR DASHBOARD SERVICES ----
 const getTodayActivities = async () => {
   const today = new Date().toISOString().split('T')[0];
-  const logs = await db('attendance_records').where('work_date', today).orderBy('timestamp', 'desc').limit(50);
-  const leaves = await db('leave_requests').where('created_at', '>=', today).limit(20);
+  let logs = [], leaves = [];
+  try {
+    logs = await db('attendance_records').where('work_date', today).orderBy('timestamp', 'desc').limit(50);
+  } catch (e) { /* table may be empty or not exist yet */ }
+  try {
+    leaves = await db('leave_requests').where('start_date', '<=', today).where('end_date', '>=', today).limit(20);
+  } catch (e) { /* table may be empty */ }
   return { logs, leaves };
 };
 
@@ -813,10 +818,13 @@ const getApplications = async (params) => {
       'ja.id',
       'ja.full_name as applicantName',
       'ja.email',
+      'ja.phone_number',
+      'ja.education_status',
+      'ja.national_id',
+      'ja.sex',
       'np.title as jobTitle',
       'ja.created_at as dateApplied',
-      'ja.status',
-      'ja.reject_reason as rejectReason'
+      'ja.status'
     );
     
   if (params.status) {

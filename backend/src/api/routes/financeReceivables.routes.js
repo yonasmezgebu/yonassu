@@ -3,7 +3,7 @@ const router = express.Router();
 const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
 
-// GET pending live income submissions
+// ── GET all pending/all submissions ──────────────────────────────
 router.get('/live-income', authenticate, async (req, res) => {
   try {
     const submissions = await knex('finance_income_submissions')
@@ -16,22 +16,94 @@ router.get('/live-income', authenticate, async (req, res) => {
   }
 });
 
-// POST submit new income
+// ── GET detail of one submission + all linked transactions ────────
+router.get('/live-income/:id/detail', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch the submission header
+    const submission = await knex('finance_income_submissions').where({ id }).first();
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+
+    let transactions = [];
+
+    // For Pharmacy dept — fetch the real individual sale transactions if it's not a manual walk-in
+    if (submission.department === 'Pharmacy' && !submission.manual_details) {
+      // Get all submitted pharmacy sales with worker + branch info
+      const sales = await knex('pharmacy_sales as ps')
+        .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
+        .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
+        .leftJoin('pharmacy_payments as pp', 'ps.id', 'pp.sale_id')
+        .where('ps.is_submitted', true)
+        .select(
+          'ps.id',
+          'ps.receipt_no',
+          'ps.sale_type',
+          'ps.recipient_name',
+          'ps.recipient_phone',
+          'ps.total_products',
+          'ps.total_amount',
+          'ps.created_at',
+          'pw.name as worker_name',
+          'pb.name as branch_name',
+          'pp.payment_method',
+          'pp.bank_name',
+          'pp.account_holder',
+          'pp.account_number',
+          'pp.telbir_number',
+          'pp.recipient_name as pp_recipient_name',
+          'pp.recipient_phone as pp_recipient_phone'
+        )
+        .orderBy('ps.created_at', 'asc');
+
+      // For each sale, fetch the items
+      for (const sale of sales) {
+        const items = await knex('pharmacy_sale_items')
+          .where('sale_id', sale.id)
+          .select('drug_name', 'quantity', 'unit_price', 'total_price');
+        transactions.push({ ...sale, items });
+      }
+    }
+
+    // System total = sum of all individual transactions (for Pharmacy), else use submission amount
+    const systemTotal = transactions.length > 0
+      ? transactions.reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
+      : parseFloat(submission.amount);
+
+    res.json({
+      success: true,
+      data: {
+        submission,
+        transactions,
+        systemTotal: parseFloat(systemTotal.toFixed(2)),
+        transactionCount: transactions.length > 0 ? transactions.length : (submission.manual_details ? 1 : 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching submission detail:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch submission detail' });
+  }
+});
+
+// ── POST submit new income ────────────────────────────────────────
 router.post('/live-income', authenticate, async (req, res) => {
   try {
-    const { department, amount, reference_no, description } = req.body;
-    
+    const { department, amount, reference_no, description, manual_details } = req.body;
+
     if (!department || !amount) {
       return res.status(400).json({ success: false, message: 'Department and amount are required' });
     }
 
     const [id] = await knex('finance_income_submissions').insert({
       department,
-      submitted_by: req.user ? req.user.name : 'Unknown User',
+      submitted_by: (req.user && req.user.fullName) || (manual_details && manual_details.preparedBy) || 'Unknown User',
       amount,
       reference_no,
       description,
-      status: 'Pending'
+      status: 'Pending',
+      manual_details: manual_details ? JSON.stringify(manual_details) : null
     });
 
     res.status(201).json({ success: true, message: 'Income submitted successfully', id });
@@ -41,46 +113,131 @@ router.post('/live-income', authenticate, async (req, res) => {
   }
 });
 
-// PUT approve income and record to receivables
+// ── PUT approve with cash-count reconciliation ────────────────────
 router.put('/live-income/:id/approve', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const { cash_count, finance_signature, finance_name } = req.body; // actual physical cash counted by Finance
 
     const submission = await knex('finance_income_submissions').where({ id }).first();
     if (!submission) {
       return res.status(404).json({ success: false, message: 'Submission not found' });
     }
-
     if (submission.status !== 'Pending') {
       return res.status(400).json({ success: false, message: 'Submission is already processed' });
     }
 
-    await knex.transaction(async trx => {
-      // 1. Mark submission as Approved
-      await trx('finance_income_submissions').where({ id }).update({ status: 'Approved', updated_at: knex.fn.now() });
+    // Compute the real system total from pharmacy_sales if department is Pharmacy and it's not a manual walk-in submission
+    let systemTotal = parseFloat(submission.amount);
+    if (submission.department === 'Pharmacy' && !submission.manual_details) {
+      const result = await knex('pharmacy_sales')
+        .where('is_submitted', true)
+        .sum('total_amount as total');
+      systemTotal = parseFloat(result[0].total || 0);
+    }
 
-      // 2. Create entry in finance_receivables
+    // ── Reconciliation check ──────────────────────────────────────
+    if (cash_count !== undefined && cash_count !== null && cash_count !== '') {
+      const cashVal = parseFloat(cash_count);
+      const diff = Math.abs(cashVal - systemTotal);
+      const tolerance = 0.01; // allow 1-cent rounding difference
+
+      if (diff > tolerance) {
+        return res.status(400).json({
+          success: false,
+          mismatch: true,
+          systemTotal,
+          cashCount: cashVal,
+          difference: parseFloat((cashVal - systemTotal).toFixed(2)),
+          message: `Cash count mismatch! System shows ETB ${systemTotal.toFixed(2)} but you counted ETB ${cashVal.toFixed(2)}. Difference: ETB ${(cashVal - systemTotal).toFixed(2)}. Please recount and try again.`
+        });
+      }
+    }
+
+    // ── All good — approve ────────────────────────────────────────
+    await knex.transaction(async trx => {
+      let manualDetails = submission.manual_details ? JSON.parse(submission.manual_details) : {};
+      manualDetails.financeSignature = finance_signature || null;
+      manualDetails.financeName = finance_name || (req.user && req.user.fullName) || 'Finance Officer';
+      
+      await trx('finance_income_submissions')
+        .where({ id })
+        .update({ 
+          status: 'Approved', 
+          updated_at: knex.fn.now(),
+          manual_details: JSON.stringify(manualDetails) 
+        });
+
+      let customerName = `Internal - ${submission.department}`;
+      if (manualDetails.receivedFrom) {
+        customerName = manualDetails.receivedFrom;
+      }
+
       await trx('finance_receivables').insert({
-        customer_name: `Internal - ${submission.department}`,
+        customer_name: customerName,
         invoice_no: submission.reference_no || `REC-${Date.now()}`,
         invoice_date: knex.fn.now(),
         due_date: knex.fn.now(),
-        total_amount: submission.amount,
-        amount_paid: submission.amount,
+        total_amount: systemTotal,
+        amount_paid: systemTotal,
         outstanding_balance: 0,
         status: 'Paid',
-        department_source: submission.department
+        department_source: submission.department,
+        manual_details: JSON.stringify(manualDetails)
       });
+
+      // Update Printing order payment_status ONLY — do NOT touch status_id
+      // (Changing status_id here resets the order's workflow position which causes data loss)
+      if (submission.department === 'Printing' && submission.manual_details) {
+        try {
+          const parsed = JSON.parse(submission.manual_details);
+          if (parsed.order_id) {
+            // Find the in_queue status so confirmed order enters the print job queue
+            const inQueueStatus = await trx('order_statuses').where('status_code', 'in_queue').first();
+
+            const updatePayload = {
+              payment_status: 'Confirmed',
+              updated_at: knex.fn.now()
+            };
+
+            // Auto-advance to Job Queue so supervisor can see and process
+            if (inQueueStatus) {
+              updatePayload.status_id = inQueueStatus.id;
+            }
+
+            await trx('printing_orders')
+              .where({ id: parsed.order_id })
+              .update(updatePayload);
+
+            // Log history
+            if (inQueueStatus) {
+              await trx('order_status_history').insert({
+                order_id: parsed.order_id,
+                status_id: inQueueStatus.id,
+                changed_by: req.user ? req.user.id : null,
+                notes: 'Payment confirmed by Finance — moved to Job Queue for printing'
+              });
+            }
+          }
+        } catch(e) {
+          console.error('Failed to update printing order payment status:', e);
+        }
+      }
     });
 
-    res.json({ success: true, message: 'Income approved and recorded to Receivables Book' });
+    res.json({
+      success: true,
+      message: 'Income approved and recorded to Receivables Book',
+      systemTotal,
+      cashCount: cash_count !== undefined ? parseFloat(cash_count) : systemTotal
+    });
   } catch (error) {
     console.error('Error approving income:', error);
     res.status(500).json({ success: false, message: 'Failed to approve income' });
   }
 });
 
-// GET all receivables for the Receivables Book
+// ── GET all receivables (Receivables Book) ────────────────────────
 router.get('/book', authenticate, async (req, res) => {
   try {
     const receivables = await knex('finance_receivables')
@@ -89,6 +246,69 @@ router.get('/book', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Error fetching receivables:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch receivables' });
+  }
+});
+
+// ── GET detail of a receivable book entry ─────────────────────────
+router.get('/book/:id/detail', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const receivable = await knex('finance_receivables').where({ id }).first();
+    
+    if (!receivable) {
+      return res.status(404).json({ success: false, message: 'Receivable not found' });
+    }
+
+    let transactions = [];
+    if (receivable.department_source === 'Pharmacy') {
+      // In this system, pharmacy sales are aggregated. We fetch the submitted ones.
+      // Ideally, they should be linked by a submission ID, but this is the current behavior.
+      const sales = await knex('pharmacy_sales as ps')
+        .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
+        .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
+        .leftJoin('pharmacy_payments as pp', 'ps.id', 'pp.sale_id')
+        .where('ps.is_submitted', true)
+        .select(
+          'ps.id',
+          'ps.receipt_no',
+          'ps.sale_type',
+          'ps.recipient_name',
+          'ps.recipient_phone',
+          'ps.total_products',
+          'ps.total_amount',
+          'ps.created_at',
+          'pw.name as worker_name',
+          'pb.name as branch_name',
+          'pp.payment_method',
+          'pp.bank_name',
+          'pp.account_holder',
+          'pp.account_number',
+          'pp.telbir_number',
+          'pp.recipient_name as pp_recipient_name',
+          'pp.recipient_phone as pp_recipient_phone'
+        )
+        .orderBy('ps.created_at', 'asc');
+
+      for (const sale of sales) {
+        const items = await knex('pharmacy_sale_items')
+          .where('sale_id', sale.id)
+          .select('drug_name', 'quantity', 'unit_price', 'total_price');
+        transactions.push({ ...sale, items });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        receivable,
+        transactions,
+        systemTotal: parseFloat(receivable.total_amount),
+        transactionCount: transactions.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching receivable detail:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch detail' });
   }
 });
 

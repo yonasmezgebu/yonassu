@@ -22,8 +22,7 @@ router.get('/products/all', authenticate, authorizeRoles(['Pharmacy Manager', 'A
 router.delete('/products/all', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO']), pharmacyController.deleteAllProducts);
 router.get('/products/:id', optionalAuthenticate, pharmacyController.getProductById);
 router.get('/branches', optionalAuthenticate, pharmacyController.getBranches);
-router.get('/store-inventory', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO']), pharmacyController.getStoreInventory);
-
+router.get('/store-inventory', authenticate, authorizeRoles(['Pharmacy Manager', 'Admin', 'CEO', 'Finance Manager', 'Finance Cashier']), pharmacyController.getStoreInventory);
 router.get('/dashboard', optionalAuthenticate, pharmacyController.getDashboardStats);
 
 // Public product posts (published only)

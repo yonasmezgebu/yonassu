@@ -7,7 +7,7 @@ const { authenticate, authorizeRoles } = require('../middleware/auth.middleware'
 router.post('/', applicationsController.submitApplication);
 
 // Admin/HR routes
-router.use(authenticate, authorizeRoles(['Admin', 'HR', 'CEO']));
+router.use(authenticate, authorizeRoles(['Admin', 'HR', 'HR Manager', 'CEO']));
 router.get('/', applicationsController.getApplications);
 router.put('/:id/status', applicationsController.updateStatus);
 

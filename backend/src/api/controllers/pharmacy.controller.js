@@ -294,7 +294,8 @@ const pharmacyController = {
         db.raw('COALESCE(dc.name, d.category) as category'),
         'd.unit',
         'si.quantity as stock_quantity',
-        'si.min_level'
+        'si.min_level',
+        'd.unit_price'
       )
       .orderBy('d.name', 'asc');
 

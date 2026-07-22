@@ -208,6 +208,17 @@ const salesController = {
         .where('is_submitted', false)
         .orWhereNull('is_submitted')
         .update({ is_submitted: true });
+
+      // Send to Finance Live Income for Receivables Book
+      const refNo = `PHARM-${Date.now().toString().slice(-6)}`;
+      await trx('finance_income_submissions').insert({
+        department: 'Pharmacy',
+        submitted_by: validWorker ? validWorker.name : 'Pharmacy Staff',
+        amount: totalAmount,
+        reference_no: refNo,
+        description: `Daily Pharmacy Sales - ${totalTransactions} transactions`,
+        status: 'Pending'
+      });
     });
 
     res.json({

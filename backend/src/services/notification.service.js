@@ -38,8 +38,13 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
     // 1. Resolve user IDs
     let userIds = [];
     if (recipientRole && !recipientId) {
-      // Broadcast to all users with this role
-      const users = await db('users').where('role', recipientRole).select('id');
+      // Broadcast to all users with this role (roles are in user_roles + roles tables)
+      const users = await db('user_roles')
+        .join('roles', 'user_roles.role_id', 'roles.id')
+        .join('users', 'user_roles.user_id', 'users.id')
+        .where('roles.name', recipientRole)
+        .whereNull('users.deleted_at')
+        .select('users.id');
       userIds = users.map(u => u.id);
     } else if (recipientId) {
       userIds = [recipientId];

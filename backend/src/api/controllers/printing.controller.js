@@ -25,9 +25,9 @@ exports.getAllOrders = catchAsync(async (req, res) => {
     .select(
       'po.id', 'po.order_number', 'po.total_price', 'po.quantity',
       'po.product_type', 'po.paper_type', 'po.color_printing', 'po.pages_per_copy',
-      'po.due_date', 'po.binding_type',
+      'po.due_date', 'po.binding_type', 'po.special_instructions',
+      'po.attachments',
       'po.created_at', 'po.completed_at', 'po.updated_at',
-      'po.due_date', 'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex',
       'c.name as customer_name', 'c.phone as customer_phone',
       'u.full_name as created_by_name'
@@ -40,7 +40,17 @@ exports.getAllOrders = catchAsync(async (req, res) => {
         .orWhere('c.name', 'like', `%${search}%`);
     });
   }
-  if (startDate && endDate) query = query.whereBetween('po.created_at', [startDate, endDate]);
+  if (startDate && endDate) {
+    const endOfDay = endDate.includes(':') ? endDate : `${endDate} 23:59:59`;
+    if (status === 'delivered') {
+      query = query.where(function() {
+        this.whereBetween('po.completed_at', [startDate, endOfDay])
+            .orWhereBetween('po.updated_at', [startDate, endOfDay]);
+      });
+    } else {
+      query = query.whereBetween('po.created_at', [startDate, endOfDay]);
+    }
+  }
   const total = await query.clone().clearSelect().count('po.id as count').first();
   const orders = await query.orderBy('po.due_date', 'asc').limit(parseInt(limit)).offset(offset);
   res.json({
@@ -57,12 +67,13 @@ exports.getAllOrders = catchAsync(async (req, res) => {
 });
 exports.getPendingOrders = catchAsync(async (req, res) => {
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
+  const cancelledStatus = await db('order_statuses').where('status_code', 'cancelled').first();
   const orders = await db('printing_orders as po')
     .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
     .leftJoin('customers as c', 'po.customer_id', 'c.id')
     .select('po.*', 'os.status_name', 'os.color_hex', 'c.name as customer_name')
     .whereNull('po.deleted_at')
-    .where('po.status_id', '!=', deliveredStatus?.id || 5)
+    .whereNotIn('po.status_id', [deliveredStatus?.id || 8, cancelledStatus?.id || 9])
     .orderBy('po.due_date', 'asc');
   res.json({ status: 'success', data: { orders } });
 });
@@ -94,7 +105,9 @@ exports.createOrder = catchAsync(async (req, res) => {
     colorPrinting,
     bindingType,
     dueDate,
-    specialInstructions
+    specialInstructions,
+    paymentMethod,
+    paymentReference
   } = req.body;
   const userId = req.user.id;
   let resolvedCustomerId = req.body.customerId || null;
@@ -128,7 +141,7 @@ exports.createOrder = catchAsync(async (req, res) => {
   });
   const pricing = orderModel.calculatePrice();
   const orderNumber = await generateOrderNumber('PRT');
-  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
+  const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
   const [orderId] = await db('printing_orders').insert({
     order_number: orderNumber,
     customer_id: resolvedCustomerId,
@@ -145,10 +158,33 @@ exports.createOrder = catchAsync(async (req, res) => {
     binding_cost: pricing.bindingCost,
     total_price: pricing.totalPrice,
     status_id: initialStatus?.id || 1,
+    payment_method: paymentMethod || null,
+    payment_reference: paymentReference || null,
+    payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
     created_by: userId,
     created_at: db.fn.now(),
     updated_at: db.fn.now()
   });
+
+  // Automatically send to Finance Live Income for verification
+  if (paymentMethod && paymentReference) {
+    await db('finance_income_submissions').insert({
+      department: 'Printing',
+      submitted_by: req.user.full_name || req.user.name || 'Printing Cashier',
+      amount: pricing.totalPrice,
+      reference_no: paymentReference,
+      description: `Printing Order ${orderNumber} - ${customer?.name || 'Walk-in'}`,
+      status: 'Pending',
+      manual_details: JSON.stringify({
+        order_id: orderId,
+        paymentMethod: paymentMethod,
+        receivedFrom: customer?.name || 'Walk-in Customer'
+      }),
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    }).catch(err => console.error('Failed to submit to finance:', err.message));
+  }
+
   await audit('PRINTING_ORDER_CREATED', userId, { ip: req.ip, resourceId: orderId });
 
   // NOTIFY PRINTING DEPARTMENT
@@ -212,7 +248,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   if (!statusRow) throw new AppError(`Status '${status || statusId}' not found`, 400);
   const newStatusId = statusRow.id;
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
-  const deliveredId = deliveredStatus?.id || 5;
+  const deliveredId = deliveredStatus?.id || 8;
   const updateData = {
     status_id: newStatusId,
     updated_at: db.fn.now()
@@ -223,11 +259,12 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   await db('printing_orders').where('id', id).update(updateData);
   await db('order_status_history').insert({
     order_id: id,
-    status_id: newStatusId,
+    from_status: order.status_id ? (await db('order_statuses').where('id', order.status_id).first())?.status_code || null : null,
+    to_status: statusRow.status_code,
+    note: notes || null,
     changed_by: userId,
-    notes: notes || null,
-    created_at: db.fn.now()
-  }).catch(() => {});
+    changed_at: db.fn.now(),
+  }).catch(err => console.error('Status history insert failed:', err.message));
   if (order.customer_id) {
     // Insert into customer_notifications (for Customer Portal view)
     await db('customer_notifications').insert({
@@ -310,7 +347,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
 
   await audit('PRINTING_ORDER_STATUS_UPDATED', userId, {
     ip: req.ip, resourceId: id,
-    afterState: { status_code: statusRow.status_code, completed_at: updateData.completed_at || null }
+    afterState: { status_code: statusRow.status_code, completed_at: newStatusId === deliveredId ? new Date().toISOString() : null }
   });
   res.json({ status: 'success', message: 'Order status updated successfully', data: { statusCode: statusRow.status_code, statusName: statusRow.status_name } });
 });
@@ -681,7 +718,8 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   const userId = req.user.id;
   const {
     productType, quantity, paperType, pagesPerCopy,
-    colorPrinting, bindingType, dueDate, specialInstructions
+    colorPrinting, bindingType, dueDate, specialInstructions,
+    paymentMethod, paymentReference
   } = req.body;
 
   const OrderModel = require('../../models/Order.model');
@@ -694,7 +732,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   });
   const pricing = orderModel.calculatePrice();
   const orderNumber = await generateOrderNumber('PRT');
-  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
+  const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
 
   const user = await db('users').where('id', userId).first();
   let customerId = null;
@@ -714,6 +752,21 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     }
   }
 
+  let attachmentsStr = null;
+  if (req.file) {
+    const newAttachment = {
+      id: Date.now() + Math.random().toString(36).substr(2, 9),
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype,
+      path: req.file.path,
+      uploadedBy: userId,
+      uploadedAt: new Date().toISOString()
+    };
+    attachmentsStr = JSON.stringify([newAttachment]);
+  }
+
   const [orderId] = await db('printing_orders').insert({
     order_number: orderNumber,
     customer_id: customerId,
@@ -730,10 +783,33 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     binding_cost: pricing.bindingCost,
     total_price: pricing.totalPrice,
     status_id: initialStatus?.id || 1,
+    payment_method: paymentMethod || null,
+    payment_reference: paymentReference || null,
+    payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
+    attachments: attachmentsStr,
     created_by: userId,
     created_at: db.fn.now(),
     updated_at: db.fn.now()
   });
+
+  // Automatically send to Finance Live Income for verification
+  if (paymentMethod && paymentReference) {
+    await db('finance_income_submissions').insert({
+      department: 'Printing',
+      submitted_by: user.full_name || 'Customer Portal',
+      amount: pricing.totalPrice,
+      reference_no: paymentReference,
+      description: `Customer Printing Order ${orderNumber} - ${user.full_name || 'Customer'}`,
+      status: 'Pending',
+      manual_details: JSON.stringify({
+        order_id: orderId,
+        paymentMethod: paymentMethod,
+        receivedFrom: user.full_name || 'Customer'
+      }),
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    }).catch(err => console.error('Failed to submit to finance:', err.message));
+  }
 
   res.status(201).json({ status: 'success', message: 'Order placed successfully', data: { orderId, orderNumber, totalPrice: pricing.totalPrice } });
 });
@@ -841,4 +917,61 @@ exports.closeShift = catchAsync(async (req, res) => {
     updated_at: db.fn.now()
   });
   res.json({ status: 'success', message: 'Printing daily sales handed over to finance.' });
+});
+
+// ── PUBLIC: Track order by order number (no auth required) ────────
+exports.trackOrder = catchAsync(async (req, res) => {
+  const { orderNumber } = req.params;
+  const order = await db('printing_orders as po')
+    .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
+    .leftJoin('customers as c', 'po.customer_id', 'c.id')
+    .select(
+      'po.order_number', 'po.product_type', 'po.quantity', 'po.paper_type',
+      'po.color_printing', 'po.binding_type', 'po.due_date', 'po.total_price',
+      'po.created_at', 'po.completed_at', 'po.updated_at',
+      'os.status_name', 'os.status_code', 'os.color_hex', 'os.sort_order',
+      'c.name as customer_name'
+    )
+    .where('po.order_number', orderNumber)
+    .whereNull('po.deleted_at')
+    .first();
+  if (!order) throw new AppError('Order not found. Please check the order number and try again.', 404);
+
+  // Fetch status history
+  const history = await db('order_status_history as osh')
+    .leftJoin('printing_orders as po', 'osh.order_id', 'po.id')
+    .leftJoin('order_statuses as os', 'osh.status_id', 'os.id')
+    .select('os.status_name', 'os.status_code', 'os.color_hex', 'osh.created_at', 'osh.notes')
+    .where('po.order_number', orderNumber)
+    .orderBy('osh.created_at', 'asc');
+
+  // All possible steps in order
+  const allSteps = [
+    { code: 'received',    name: 'Order Received',     icon: 'inbox' },
+    { code: 'in_queue',    name: 'Job Queue',           icon: 'list' },
+    { code: 'in_design',   name: 'In Design',           icon: 'pen-line' },
+    { code: 'file_check',  name: 'File Check',          icon: 'file-check' },
+    { code: 'in_printing', name: 'In Printing',         icon: 'printer' },
+    { code: 'finishing',   name: 'Finishing',           icon: 'scissors' },
+    { code: 'ready',       name: 'Ready for Pickup',    icon: 'package-check' },
+    { code: 'delivered',   name: 'Delivered',           icon: 'check-circle' },
+  ];
+
+  const currentSortOrder = order.sort_order || 1;
+  const steps = allSteps.map((step, idx) => {
+    const histEntry = history.find(h => h.status_code === step.code);
+    const stepOrder = idx + 1;
+    return {
+      ...step,
+      completed: stepOrder < currentSortOrder,
+      active: step.code === order.status_code,
+      timestamp: histEntry?.created_at || null,
+      notes: histEntry?.notes || null,
+    };
+  });
+
+  res.json({
+    status: 'success',
+    data: { order, steps }
+  });
 });

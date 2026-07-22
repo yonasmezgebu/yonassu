@@ -39,6 +39,9 @@ exports.getMyNotifications = async (req, res) => {
     } else if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
       roleTarget = 'FINANCE';
       allowedTypes = ROLE_ALLOWED_TYPES.FINANCE;
+    } else if (lowerRoles.some(r => r.includes('hr'))) {
+      roleTarget = 'HR Manager';
+      allowedTypes = null;
     }
 
     const notifications = await notificationRepository.getForUserOrRole(userId, roleTarget, allowedTypes);
@@ -87,6 +90,9 @@ exports.markAllAsRead = async (req, res) => {
     } else if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
       roleTarget = 'FINANCE';
       allowedTypes = ROLE_ALLOWED_TYPES.FINANCE;
+    } else if (lowerRoles.some(r => r.includes('hr'))) {
+      roleTarget = 'HR Manager';
+      allowedTypes = null;
     }
 
     await notificationRepository.markAllAsRead(userId, roleTarget, allowedTypes);

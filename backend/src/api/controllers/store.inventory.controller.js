@@ -16,6 +16,9 @@ exports.getInventory = async (req, res) => {
         'drugs.unit',
         'drugs.unit_price',
         'drugs.category',
+        'drugs.classification',
+        'drugs.therapeutic_use',
+        'drugs.requires_prescription',
         'drugs.status as drug_status'
       )
       .orderBy('drugs.name');
@@ -51,18 +54,156 @@ exports.getInventoryItem = async (req, res) => {
 };
 
 exports.updateInventoryItem = async (req, res) => {
+  const trx = await db.transaction();
   try {
-    const { quantity, min_level, batch_no, expiry_date, unit_cost, storage_location } = req.body;
-    const upd = {};
-    if (quantity !== undefined) upd.quantity = quantity;
-    if (min_level !== undefined) upd.min_level = min_level;
-    if (batch_no !== undefined) upd.batch_no = batch_no;
-    if (expiry_date !== undefined) upd.expiry_date = expiry_date;
-    if (unit_cost !== undefined) upd.unit_cost = unit_cost;
-    if (storage_location !== undefined) upd.storage_location = storage_location;
-    const affected = await db('store_inventory').where('id', req.params.id).update(upd);
-    if (!affected) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, message: 'Updated' });
+    const { 
+      // store_inventory fields
+      quantity, min_level, max_level, batch_no, expiry_date, near_expiry_days, unit_cost, storage_location,
+      // drugs fields
+      drug_name, strength, unit, unit_price, category, classification, therapeutic_use, requires_prescription
+    } = req.body;
+
+    const inv = await trx('store_inventory').where('id', req.params.id).first();
+    if (!inv) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: 'Inventory item not found' });
+    }
+    const drug = await trx('drugs').where('id', inv.drug_id).first();
+
+    const oldData = {
+      ...inv,
+      drug_name: drug.name,
+      strength: drug.strength,
+      unit: drug.unit,
+      unit_price: drug.unit_price,
+      category: drug.category,
+      classification: drug.classification,
+      therapeutic_use: drug.therapeutic_use,
+      requires_prescription: drug.requires_prescription
+    };
+
+    const newData = { ...req.body };
+
+    await trx('stock_update_requests').insert({
+      inventory_id: inv.id,
+      drug_id: drug.id,
+      requested_by: req.user?.id,
+      old_data: JSON.stringify(oldData),
+      new_data: JSON.stringify(newData),
+      status: 'PENDING'
+    });
+
+    await notificationRepository.create({
+      roleTarget: 'CEO',
+      title: 'Stock Update Approval',
+      message: `Pending record update for ${drug.name}`,
+      type: 'pharmacy',
+      link: '/ceo/store-update-approvals'
+    });
+
+    await trx.commit();
+    res.json({ success: true, message: 'Update submitted for CEO approval', status: 'PENDING' });
+  } catch (e) {
+    await trx.rollback();
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+// ================================================================
+// STOCK UPDATE APPROVALS
+// ================================================================
+
+exports.getPendingUpdateRequests = async (req, res) => {
+  try {
+    const rows = await db('stock_update_requests')
+      .join('drugs', 'stock_update_requests.drug_id', 'drugs.id')
+      .select('stock_update_requests.*', 'drugs.name as drug_name')
+      .orderBy('created_at', 'desc');
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.approveUpdateRequest = async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const reqData = await trx('stock_update_requests').where('id', id).first();
+    if (!reqData) { await trx.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (reqData.status !== 'PENDING') { await trx.rollback(); return res.status(400).json({ success: false, message: 'Not pending' }); }
+
+    let newData = reqData.new_data;
+    if (typeof newData === 'string') newData = JSON.parse(newData);
+
+    const invUpd = {};
+    if (newData.quantity !== undefined) invUpd.quantity = newData.quantity;
+    if (newData.min_level !== undefined) invUpd.min_level = newData.min_level;
+    if (newData.max_level !== undefined) invUpd.max_level = newData.max_level;
+    if (newData.batch_no !== undefined) invUpd.batch_no = newData.batch_no;
+    if (newData.expiry_date !== undefined) invUpd.expiry_date = newData.expiry_date;
+    if (newData.near_expiry_days !== undefined) invUpd.near_expiry_days = newData.near_expiry_days;
+    if (newData.unit_cost !== undefined) invUpd.unit_cost = newData.unit_cost;
+    if (newData.storage_location !== undefined) invUpd.storage_location = newData.storage_location;
+    if (Object.keys(invUpd).length > 0) {
+      await trx('store_inventory').where('id', reqData.inventory_id).update(invUpd);
+    }
+
+    const drugUpd = {};
+    if (newData.drug_name !== undefined) drugUpd.name = newData.drug_name;
+    if (newData.strength !== undefined) drugUpd.strength = newData.strength;
+    if (newData.unit !== undefined) drugUpd.unit = newData.unit;
+    if (newData.unit_price !== undefined) drugUpd.unit_price = newData.unit_price;
+    if (newData.category !== undefined) drugUpd.category = newData.category;
+    if (newData.classification !== undefined) drugUpd.classification = newData.classification;
+    if (newData.therapeutic_use !== undefined) drugUpd.therapeutic_use = newData.therapeutic_use;
+    if (newData.requires_prescription !== undefined) drugUpd.requires_prescription = newData.requires_prescription;
+    if (Object.keys(drugUpd).length > 0) {
+      await trx('drugs').where('id', reqData.drug_id).update(drugUpd);
+    }
+
+    await trx('stock_update_requests').where('id', id).update({
+      status: 'APPROVED', approved_by: req.user?.id, approved_at: new Date()
+    });
+
+    await notificationRepository.create({
+      roleTarget: 'Pharmacy Manager',
+      title: 'Update Approved',
+      message: `Your update for ${drugUpd.name || 'a drug'} was approved.`,
+      type: 'pharmacy',
+      link: '/pharmacy/stock'
+    });
+
+    await trx.commit();
+    res.json({ success: true, message: 'Update approved and applied' });
+  } catch (e) {
+    await trx.rollback();
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.rejectUpdateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ success: false, message: 'Reason required' });
+
+    const reqData = await db('stock_update_requests').where('id', id).first();
+    if (!reqData) return res.status(404).json({ success: false, message: 'Not found' });
+
+    await db('stock_update_requests').where('id', id).update({
+      status: 'REJECTED', rejection_reason: reason
+    });
+
+    await notificationRepository.create({
+      roleTarget: 'Pharmacy Manager',
+      title: 'Update Rejected',
+      message: `Update rejected: ${reason}`,
+      type: 'pharmacy',
+      link: '/pharmacy/stock'
+    });
+
+    res.json({ success: true, message: 'Update rejected' });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -384,13 +525,35 @@ exports.updateTransferStatus = async (req, res) => {
 // ================================================================
 
 exports.addNewStock = async (req, res) => {
+  const trx = await db.transaction();
   try {
-    const { name, strength, unit, unit_price, category, classification, therapeutic_use, requires_prescription, initial_quantity, min_level, max_level, storage_location } = req.body;
+    const {
+      name, strength, unit, unit_price, category, classification,
+      therapeutic_use, requires_prescription,
+      batch_no, expiry_date, near_expiry_days,
+      initial_quantity, min_level, max_level, storage_location
+    } = req.body;
+
+    // Validate required fields
     if (!name || !name.trim()) {
+      await trx.rollback();
       return res.status(400).json({ success: false, message: 'Drug name is required' });
     }
+    if (!batch_no || !batch_no.trim()) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'Batch No is required for full traceability' });
+    }
+    if (!expiry_date) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'Expiry Date is required for batch tracking' });
+    }
+    if (!initial_quantity || Number(initial_quantity) <= 0) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'Initial quantity must be greater than 0' });
+    }
 
-    const [drugId] = await db('drugs').insert({
+    // 1. Insert the drug into the drugs catalog
+    const [drugId] = await trx('drugs').insert({
       name: name.trim(),
       strength: strength || null,
       unit: unit || null,
@@ -402,25 +565,52 @@ exports.addNewStock = async (req, res) => {
       status: 'ACTIVE'
     });
 
-    if (initial_quantity && Number(initial_quantity) > 0) {
-      const qty = Number(initial_quantity);
-      const existing = await db('store_inventory').where('drug_id', drugId).first();
-      if (existing) {
-        await db('store_inventory').where('drug_id', drugId).update({ quantity: existing.quantity + qty });
-      } else {
-        await db('store_inventory').insert({
-          drug_id: drugId, quantity: qty,
-          min_level: min_level || 0, max_level: max_level || 0,
-          storage_location: storage_location || null,
-          batch_no: 'BT-INITIAL', unit_cost: unit_price || 0,
-          expiry_date: null
-        });
-      }
-    }
+    // 2. Always create an inventory row with the correct batch_no and expiry_date
+    const qty = Number(initial_quantity);
+    await trx('store_inventory').insert({
+      drug_id:          drugId,
+      quantity:         qty,
+      batch_no:         batch_no.trim(),
+      expiry_date:      expiry_date,
+      near_expiry_days: near_expiry_days ? Number(near_expiry_days) : 90,
+      unit_cost:        unit_price || 0,
+      min_level:        min_level ? Number(min_level) : 0,
+      max_level:        max_level ? Number(max_level) : 0,
+      storage_location: storage_location || null,
+      last_received_at: trx.fn.now(),
+    });
+
+    // 3. Record initial receipt for stock movement / audit trail
+    const receipt_no = `INIT-${drugId}-${Date.now()}`;
+    const [receipt_id] = await trx('stock_receipts').insert({
+      receipt_no,
+      supplier_name:  'Initial Registration',
+      receipt_date:   trx.fn.now(),
+      remarks:        `Opening stock registration for ${name.trim()} — Batch ${batch_no.trim()}`,
+      received_by:    req.user?.id || null,
+    });
+    await trx('stock_receipt_items').insert({
+      receipt_id,
+      drug_id:          drugId,
+      batch_no:         batch_no.trim(),
+      expiry_date:      expiry_date,
+      near_expiry_days: near_expiry_days ? Number(near_expiry_days) : 90,
+      quantity:         qty,
+      unit_cost:        unit_price || 0,
+      subtotal:         qty * (unit_price || 0),
+      storage_location: storage_location || null,
+    });
+
+    await trx.commit();
 
     const drug = await db('drugs').where('id', drugId).first();
-    res.status(201).json({ success: true, message: 'New stock item registered', data: drug });
+    res.status(201).json({
+      success: true,
+      message: `New stock item "${name.trim()}" registered with Batch No ${batch_no.trim()}`,
+      data: drug
+    });
   } catch (e) {
+    await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
   }
 };
