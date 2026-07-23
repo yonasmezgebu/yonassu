@@ -249,8 +249,8 @@ export async function addNewStock(data) {
 }
 
 // Stock Update Requests
-export async function getPendingUpdateRequests() {
-  const r = await fetch(API + '/update-requests/pending', { headers: headers() });
+export async function getPendingUpdateRequests(status = 'Pending') {
+  const r = await fetch(API + `/update-requests/pending?status=${status}`, { headers: headers() });
   return r.json();
 }
 export async function approveUpdateRequest(id) {
