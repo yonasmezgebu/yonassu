@@ -12,7 +12,7 @@ import RequisitionForm from './RequisitionForm';
 import GRNForm from './GRNForm';
 import ProcurementRequests from '../procurement/ProcurementRequests';
 import PharmacyReceive from '../procurement/PharmacyReceive';
-import DirectDelivery from '../procurement/DirectDelivery';
+import PharmacyDirectDeliveries from './PharmacyDirectDeliveries';
 import CashierAuditLog from '../sales/CashierAuditLog';
 import SalesReports from '../sales/SalesReports';
 import ReturnsPage from '../sales/ReturnsPage';
@@ -72,9 +72,10 @@ const PharmacyDashboard = () => {
     { type: 'divider' },
     { label: 'Pharmacy', icon: 'pill',
       children: [
-        { label: 'Store Inventory',  path: '/pharmacy/store-inventory',  icon: 'database',  color: '#0891b2' },
-        { label: 'Stock Operations', path: '/pharmacy/stock-operations', icon: 'package',   color: '#3b82f6' },
-        { label: 'Drug Procurement', path: '/pharmacy/procurement-requests',  icon: 'shopping-cart', color: '#059669' },
+        { label: 'Store Inventory',  path: '/pharmacy/store-inventory',  icon: 'database',  color: '#0891b2', altActiveOn: ['/pharmacy/medicines', '/pharmacy/pharmacy-stock', '/pharmacy/products', '/pharmacy/categories'] },
+        { label: 'Stock Operations', path: '/pharmacy/stock-operations', icon: 'package',   color: '#3b82f6', altActiveOn: ['/pharmacy/stock-transfer', '/pharmacy/receiving', '/pharmacy/goods-receiving', '/pharmacy/pending-shipments', '/pharmacy/branch-drugs', '/pharmacy/warehouses'] },
+        { label: 'Drug Procurement', path: '/pharmacy/procurement-requests',  icon: 'shopping-cart', color: '#059669', altActiveOn: ['/pharmacy/store-requisition', '/pharmacy/requisitions', '/pharmacy/grn', '/pharmacy/receive-shipment'] },
+        { label: 'Direct Delivery',  path: '/pharmacy/direct-delivery',       icon: 'truck',         color: '#8b5cf6' },
         { label: 'Stock Adjustment', path: '/pharmacy/stock-adjustment',      icon: 'sliders',       color: '#f97316' },
         { label: 'Expiry Management',path: '/pharmacy/expiry-management',     icon: 'alert-triangle',color: '#ef4444' },
         { label: 'Batch Management', path: '/pharmacy/batches',               icon: 'layers',        color: '#14b8a6' },
@@ -133,7 +134,7 @@ const PharmacyDashboard = () => {
             <Route path="procurement-requests" element={<ProcurementRequests />} />
             <Route path="procurement-requests/:id" element={<ProcurementRequests />} />
             <Route path="receive-shipment" element={<PharmacyReceive />} />
-            <Route path="direct-delivery" element={<DirectDelivery />} />
+            <Route path="direct-delivery" element={<PharmacyDirectDeliveries />} />
             {/* <Route path="product-posts" element={<PharmacyWorkerProductPosts />} /> */}
             <Route path="health-publisher" element={<PharmacyHealthPublisher />} />
             <Route path="finance-review" element={<PharmacyFinanceReview />} />
