@@ -28,15 +28,12 @@ import CEOPharmacyHub from './CEOPharmacyHub';
 import CEOPharmacyM20M22 from './CEOPharmacyM20M22';
 import CEOStoreRequisitions from './CEOStoreRequisitions';
 import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
-import PharmacyFinanceControls from '../pharmacy/PharmacyFinanceControls';
 import CEODirectDelivery from './CEODirectDelivery';
 import CEOTenderManager from './CEOTenderManager';
 import CEOFundApprovalsM9 from './CEOFundApprovalsM9';
 import CEOPrinting from './CEOPrinting';
 import CEOCarRental from './CEOCarRental';
 import CEOAgrirent from './CEOAgrirent';
-import StoreAdjustmentApprovals from './StoreAdjustmentApprovals';
-import CEOStockUpdateApprovals from './CEOStockUpdateApprovals';
 import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 import CEOApplicants from './CEOApplicants';
 
@@ -65,7 +62,7 @@ const CEODashboard = () => {
       children: [
         { label: 'Sales', path: '/ceo/sales', icon: 'trending-up', color: '#10b981' },
         { label: 'Purchase', path: '/ceo/purchase', icon: 'shopping-cart', color: '#3b82f6' },
-        { label: 'Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b' },
+        { label: 'Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b', altActiveOn: ['/ceo/store-adjustments', '/ceo/store-counts', '/ceo/store-update-approvals', '/ceo/approvals/pending', '/ceo/approvals/approved', '/ceo/approvals/rejected'] },
         { label: 'Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
         { label: 'HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
         { label: 'Pharmacy', path: '/ceo/pharmacy-hub', icon: 'plus-circle', color: '#ef4444' },
@@ -117,7 +114,7 @@ const CEODashboard = () => {
             {/* Pharmacy Hub */}
             <Route path="pharmacy-hub" element={<CEOPharmacyHub />} />
             <Route path="pharmacy" element={<CEOPharmacyM20M22 />} />
-            <Route path="pharmacy-finance" element={<PharmacyFinanceControls />} />
+
             <Route path="procurement-decisions" element={<CEOProcurementDecisions />} />
             <Route path="direct-delivery" element={<CEODirectDelivery />} />
             <Route path="store-requisitions" element={<CEOStoreRequisitions />} />
@@ -131,8 +128,9 @@ const CEODashboard = () => {
 
             {/* 9 Additional Approval & Report Modules */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />
-            <Route path="store-adjustments" element={<StoreAdjustmentApprovals />} />
-            <Route path="store-update-approvals" element={<CEOStockUpdateApprovals />} />
+            <Route path="store-adjustments" element={<Navigate to="/ceo/pharmacy-hub?tab=adjustments" replace />} />
+            <Route path="store-counts" element={<Navigate to="/ceo/pharmacy-hub?tab=counts" replace />} />
+            <Route path="store-update-approvals" element={<Navigate to="/ceo/pharmacy-hub?tab=updates" replace />} />
             <Route path="approvals/approved" element={<CEOApprovedApprovals />} />
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
             <Route path="reports/executive" element={<CEOExecutiveReport />} />

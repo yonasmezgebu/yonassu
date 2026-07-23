@@ -11,7 +11,7 @@ import StoreStockList from './StoreStockList';
 import StoreAddNewStock from './StoreAddNewStock';
 import StoreGoodsReceiving from './StoreGoodsReceiving';
 import StoreGoodsIssue from './StoreGoodsIssue';
-import StoreStockTransfer from './StoreStockTransfer';
+
 import StoreStockAdjustment from './StoreStockAdjustment';
 import StorePhysicalCount from './StorePhysicalCount';
 import StoreStockMovement from './StoreStockMovement';
@@ -21,7 +21,7 @@ import StoreRealTimeAccess from './StoreRealTimeAccess';
 import StoreQuickAction from './StoreQuickAction';
 import StoreGoodsReceivedToday from './StoreGoodsReceivedToday';
 import StoreGoodsIssuedToday from './StoreGoodsIssuedToday';
-import StoreTransfersList from './StoreTransfersList';
+
 
 // Monitoring & Reports
 import StoreReports from './StoreReports';
@@ -38,7 +38,6 @@ const PharmacyStoreDashboard = () => {
         { label: 'Add New Stock',       path: '/pharmacy-store/add-new-stock',     icon: 'plus',             color: '#228B22' },
         { label: 'Goods Receiving',     path: '/pharmacy-store/goods-receiving',   icon: 'truck',            color: '#228B22' },
         { label: 'Goods Issue',         path: '/pharmacy-store/goods-issue',       icon: 'arrow-up-right',   color: '#228B22' },
-        { label: 'Stock Transfer',      path: '/pharmacy-store/stock-transfer',    icon: 'arrow-left-right', color: '#228B22' },
         { label: 'Stock Adjustment',    path: '/pharmacy-store/stock-adjustment',  icon: 'sliders',          color: '#228B22' },
         { label: 'Physical Count',      path: '/pharmacy-store/physical-count',    icon: 'clipboard-check',  color: '#228B22' },
         { label: 'Movement Log',        path: '/pharmacy-store/stock-movement',    icon: 'activity',         color: '#228B22' },
@@ -64,14 +63,13 @@ const PharmacyStoreDashboard = () => {
           <Route path="quick-action"        element={<StoreQuickAction />} />
           <Route path="goods-received-today" element={<StoreGoodsReceivedToday />} />
           <Route path="goods-issued-today"  element={<StoreGoodsIssuedToday />} />
-          <Route path="transfers-list"      element={<StoreTransfersList />} />
+
 
           {/* Stock Operations */}
           <Route path="stock-list"        element={<StoreStockList />} />
           <Route path="add-new-stock"     element={<StoreAddNewStock />} />
           <Route path="goods-receiving"   element={<StoreGoodsReceiving />} />
           <Route path="goods-issue"       element={<StoreGoodsIssue />} />
-          <Route path="stock-transfer"    element={<StoreStockTransfer />} />
           <Route path="stock-adjustment"  element={<StoreStockAdjustment />} />
           <Route path="physical-count"    element={<StorePhysicalCount />} />
           <Route path="stock-movement"    element={<StoreStockMovement />} />

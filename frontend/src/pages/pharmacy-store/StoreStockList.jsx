@@ -47,6 +47,7 @@ const StoreStockList = () => {
   const [sort, setSort]       = useState({ col: 'drug_name', dir: 'asc' });
   const [stats, setStats]     = useState({ total_items: 0, total_quantity: 0, total_value: 0, low_stock_count: 0 });
   const [editModal, setEditModal] = useState({ open: false, data: null, saving: false });
+  const [pendingItems, setPendingItems] = useState(new Set()); // ids awaiting CEO approval
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,12 +173,49 @@ const StoreStockList = () => {
         storage_location: d.storage_location
       });
       NotifStore.push(res.message || 'Update submitted for CEO approval', 'success');
+      setPendingItems(prev => new Set([...prev, d.id]));
       setEditModal({ open: false, data: null, saving: false });
-      load();
+      // Don't reload — the pending badge will show immediately
     } catch (err) {
       NotifStore.push(err.message || 'Failed to update item', 'error');
       setEditModal(p => ({ ...p, saving: false }));
     }
+  };
+
+  const handlePrint = () => {
+    const pw = window.open('', '_blank');
+    if (!pw) { NotifStore.push('Allow popups to print.', 'error'); return; }
+    const dt = new Date().toLocaleString();
+    const TH = (t) => `<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;border:1px solid #aaa;background:#1B5E20;color:#fff;">${t}</th>`;
+    const TD = (t) => `<td style="padding:6px 10px;border:1px solid #ddd;font-size:11px;word-break:break-word;">${t ?? "---"}</td>`;
+    const fmt2 = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+    
+    const grand = sorted.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price || 0), 0);
+    
+    let body = `<p style="font-size:15px;font-weight:bold;color:#1B5E20;margin-bottom:10px">Total Value: ETB ${fmt2(grand)} | Total Items: ${sorted.length}</p>`;
+    
+    body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("#")}${TH("Drug Name")}${TH("Strength")}${TH("Category")}${TH("Batch No")}${TH("Unit")}${TH("Price (ETB)")}${TH("Qty")}${TH("Min Level")}${TH("Expiry Date")}${TH("Status")}</tr></thead><tbody>`;
+    
+    sorted.forEach((row, i) => {
+      const expStat = expiryStatus(row.expiry_date, row.near_expiry_days);
+      const isExpired = expStat === 'expired';
+      const isNear = expStat === 'near';
+      const isOut = Number(row.quantity) === 0;
+      const isLow = Number(row.quantity) <= Number(row.min_level || 0);
+      
+      let statusHtml = '';
+      if (isExpired) statusHtml = `<span style="color:#d32f2f;font-weight:bold">EXPIRED</span>`;
+      else if (isNear) statusHtml = `<span style="color:#f57c00;font-weight:bold">NEAR EXPIRY</span>`;
+      else if (isOut) statusHtml = `<span style="color:#d32f2f;font-weight:bold">OUT OF STOCK</span>`;
+      else if (isLow) statusHtml = `<span style="color:#f57c00;font-weight:bold">LOW STOCK</span>`;
+      else statusHtml = `<span style="color:#388e3c;font-weight:bold">IN STOCK</span>`;
+
+      body += `<tr>${TD(i + 1)}${TD(row.drug_name || row.name)}${TD(row.strength)}${TD(row.category)}${TD(row.batch_no)}${TD(row.unit)}${TD(fmt2(row.unit_price))}${TD(Number(row.quantity).toLocaleString())}${TD(row.min_level)}${TD(row.expiry_date ? new Date(row.expiry_date).toLocaleDateString() : '---')}${TD(statusHtml)}</tr>`;
+    });
+    body += "</tbody></table>";
+
+    pw.document.write(`<html><head><title>Pharmacy Stock Catalog</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial;font-size:12px;padding:20px}h1{color:#1B5E20;border-bottom:3px solid #228B22;padding-bottom:6px;margin-bottom:4px;font-size:18px}h3{font-size:13px}.meta{font-size:11px;color:#555;margin-bottom:14px}tr:nth-child(even)td{background:#f0fdf4}tr{page-break-inside:avoid}@page{margin:10mm;size:A4 landscape}</style></head><body><h1>Pharmacy Stock Catalog</h1><div class="meta">Generated: ${dt} | Sutana University</div>${body}<script>window.onload=function(){window.print();}</script></body></html>`);
+    pw.document.close();
   };
 
   const FILTERS = [
@@ -192,6 +230,7 @@ const StoreStockList = () => {
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        @keyframes pendingPulse { 0%,100%{opacity:1;box-shadow:2px 2px 0 #D97706} 50%{opacity:.7;box-shadow:2px 2px 0 #F59E0B,0 0 8px rgba(245,158,11,.4)} }
         .stock-row:hover td { background: #E8F5E9 !important; }
         @media (max-width:768px) { .top-bar{flex-direction:column!important} .stat-grid{grid-template-columns:1fr 1fr!important} }
       `}</style>
@@ -209,6 +248,9 @@ const StoreStockList = () => {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={handlePrint} style={{ background: '#fff', color: G.dark, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 900, fontSize: 13, textTransform: 'uppercase', border: 'none', boxShadow: `3px 3px 0 ${G.sage}` }}>
+              Print Catalog
+            </button>
             <button onClick={() => navigate('/pharmacy-store/add-new-stock')} style={{ background: G.leaf, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter',sans-serif" }}>
               <Plus size={16} /> Add New Stock
             </button>
@@ -388,9 +430,24 @@ const StoreStockList = () => {
                         
                         {/* Action / Update */}
                         <td style={{ padding: '11px 12px', textAlign: 'center' }}>
-                          <button onClick={() => setEditModal({ open: true, data: { ...row, expiry_date: row.expiry_date ? row.expiry_date.split('T')[0] : '' }, saving: false })} style={{ background: G.white, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.dark, padding: '6px 10px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 900, fontSize: 11, textTransform: 'uppercase' }}>
-                            <Edit2 size={13} /> Edit
-                          </button>
+                          {pendingItems.has(row.id) ? (
+                             <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                               <span style={{
+                                 display: 'inline-flex', alignItems: 'center', gap: 6,
+                                 background: '#FFF8E1', border: '2px solid #F59E0B',
+                                 boxShadow: '2px 2px 0 #D97706',
+                                 color: '#92400E', padding: '5px 10px',
+                                 fontSize: 10, fontWeight: 900, letterSpacing: 0.4,
+                                 animation: 'pendingPulse 1.8s ease-in-out infinite'
+                               }}>
+                                 ⏳ AWAITING CEO APPROVAL
+                               </span>
+                             </div>
+                           ) : (
+                             <button onClick={() => setEditModal({ open: true, data: { ...row, expiry_date: row.expiry_date ? row.expiry_date.split('T')[0] : '' }, saving: false })} style={{ background: G.white, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.dark, padding: '6px 10px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 900, fontSize: 11, textTransform: 'uppercase' }}>
+                               <Edit2 size={13} /> Edit
+                             </button>
+                           )}
                         </td>
                       </tr>
                     );

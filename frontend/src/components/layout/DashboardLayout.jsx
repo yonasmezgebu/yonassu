@@ -94,7 +94,7 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -222,8 +222,8 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
       apiClient.post('/erp/mark-ceo-read', { type: item.type, id: item.id }).catch(() => {});
     }
 
-    // Navigate — use window.location.href to guarantee navigation even on same-route
-    window.location.href = link;
+    // Navigate using React Router to avoid hard page refresh
+    navigate(link, { state: { bellTs: Date.now() } });
   };
 
   useEffect(() => { load(); }, [refreshTrigger]);
@@ -235,7 +235,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const totalBadge = (
     (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
     (ceoFundRequestsPending || 0) +
-    pharmacyPending +
+    (isPharmacyManagerRoute ? pharmacyPending : 0) +
     (window.location.pathname.startsWith('/pharmacy-worker') ? (pharmacyOnlinePending || 0) : 0) +
     purchasePending +
     (purchaseApprovedTenders?.length || 0) +
@@ -314,7 +314,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 {item.details && item.details.map(detail => (
                   <div key={detail.id} style={{ padding: '10px 18px 10px 48px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#FFFBEB' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => handleCeoClick(detail)}>
+                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => handleCeoClick({ ...detail, link: detail.link || item.link })}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>{detail.title}</p>
                         <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>{detail.subtitle}</p>
                       </div>
@@ -332,7 +332,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
 
             {isCeoRoute && ceoFundRequestsPending > 0 && (
               <div
-                onClick={() => { setOpen(false); window.location.href = '/ceo/tenders?tab=Fund+Requests'; }}
+                onClick={() => { setOpen(false); navigate('/ceo/tenders?tab=Fund+Requests', { state: { bellTs: Date.now() } }); }}
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
                   cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
@@ -390,7 +390,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 {purchaseApprovedTenders.map(t => (
                   <div
                     key={`appr-${t.id}`}
-                    onClick={() => { setOpen(false); window.location.href = `/purchase/smart-tenders?viewTender=${t.id}`; }}
+                    onClick={() => { setOpen(false); navigate(`/purchase/smart-tenders?viewTender=${t.id}`, { state: { bellTs: Date.now() } }); }}
                     style={{ padding: '10px 18px 10px 16px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#F0FDF4', cursor: 'pointer', transition: 'background 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DCFCE7'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F0FDF4'}
@@ -433,7 +433,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
               </Link>
             )}
             
-            {pharmacyPending > 0 && (
+            {pharmacyPending > 0 && isPharmacyManagerRoute && (
               <Link
                 to="/pharmacy/store-inventory"
                 state={{ tab: 'my_requests', bellTs: Date.now() }}
@@ -483,7 +483,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                         setOpen(false);
                         if (setPurchaseBidsList) setPurchaseBidsList(prev => prev.filter(x => x.id !== b.id));
                         if (setPurchaseNewBids) setPurchaseNewBids(prev => Math.max(0, prev - 1));
-                        window.location.href = `/purchase/smart-tenders?viewTender=${b.public_tender_id}`;
+                        navigate(`/purchase/smart-tenders?viewTender=${b.public_tender_id}`, { state: { bellTs: Date.now() } });
                       }}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>Bid from {b.competitor_name}</p>
                         <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>Pending Evaluation</p>
@@ -1083,6 +1083,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               pcvNotifications={pcvNotifications}
               setPcvNotifications={setPcvNotifications}
               isFinanceRoute={location.pathname.startsWith('/finance')}
+              isPharmacyManagerRoute={location.pathname === '/pharmacy' || location.pathname.startsWith('/pharmacy/')}
             />
             <div className="dash-profile-dropdown" ref={profileRef}>
               <button 

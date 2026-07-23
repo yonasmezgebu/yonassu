@@ -10,10 +10,10 @@ const G = {
 };
 
 const actions = [
-  { label: 'New Goods Receiving', path: '/pharmacy-store/goods-receiving', icon: <Truck size={24} />, color: G.leaf },
-  { label: 'New Goods Issue', path: '/pharmacy-store/goods-issue', icon: <ArrowUpRight size={24} />, color: G.orange },
-  { label: 'New Stock Transfer', path: '/pharmacy-store/stock-transfer', icon: <ArrowRightLeft size={24} />, color: G.brown },
-  { label: 'New Stock Adjustment', path: '/pharmacy-store/stock-adjustment', icon: <Sliders size={24} />, color: G.emerald },
+  { label: 'Receive Goods', path: '/pharmacy-store/goods-receiving', icon: <Truck size={24} />, color: G.olive },
+  { label: 'Goods Issue', path: '/pharmacy-store/goods-issue', icon: <ArrowUpRight size={24} />, color: G.brown },
+  { label: 'Stock Adjustment', path: '/pharmacy-store/stock-adjustment', icon: <Sliders size={24} />, color: G.emerald },
+  { label: 'Physical Count', path: '/pharmacy-store/physical-count', icon: <ClipboardCheck size={24} />, color: G.dark },
   { label: 'New Physical Count', path: '/pharmacy-store/physical-count', icon: <ClipboardCheck size={24} />, color: G.sky },
   { label: 'Add New Stock', path: '/pharmacy-store/add-new-stock', icon: <PlusCircle size={24} />, color: G.forest },
   { label: 'Stock List', path: '/pharmacy-store/stock-list', icon: <Package size={24} />, color: G.dark },

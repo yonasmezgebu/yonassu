@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Plus, Trash2, Search, Eye, FileText, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Plus, Trash2, Search, Eye, FileText, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { NotifStore } from './StoreHomeNew';
 
 const G = {
   forest:'#228B22', dark:'#1B5E20', emerald:'#2E8B57', leaf:'#4CAF50',
   sage:'#A5D6A7', olive:'#6B8E23', mint:'#98FF98',
   brown:'#8D6E63', white:'#FFFFFF', lightGray:'#F5F5F5',
-  darkGray:'#424242', orange:'#FF9800', red:'#F44336',
+  darkGray:'#424242', orange:'#FF9800', red:'#F44336', sky:'#0288D1', teal:'#00838F'
 };
 const API = '/api/v1/store-inventory';
 function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
@@ -18,10 +18,18 @@ async function apiFetch(url, opts = {}) {
   return d;
 }
 
-const IssueForm = ({ onSuccess, onClose }) => {
+const IssueForm = ({ onSuccess, onClose, prefillData }) => {
   const [drugs, setDrugs] = useState([]);
-  const [form, setForm] = useState({ issue_no: 'GI-' + Date.now(), issued_to: '', issued_by: '', issue_date: new Date().toISOString().split('T')[0], purpose: '', remarks: '' });
-  const [items, setItems] = useState([{ drug_id: '', quantity: '', batch_no: '' }]);
+  const [form, setForm] = useState({ 
+    issue_no: 'GI-' + Date.now(), 
+    issued_to: prefillData?.issued_to || '', 
+    issued_by: '', 
+    issue_date: new Date().toISOString().split('T')[0], 
+    department: prefillData?.department || prefillData?.purpose || '', 
+    remarks: prefillData?.remarks || '',
+    transfer_request_id: prefillData?.transfer_request_id || null
+  });
+  const [items, setItems] = useState(prefillData?.items?.length ? prefillData.items : [{ drug_id: '', quantity: '', batch_no: '' }]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -30,11 +38,35 @@ const IssueForm = ({ onSuccess, onClose }) => {
 
   const setItem = (i, k, v) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
 
+  const handleDrugChange = (i, val) => {
+    const selectedDrug = drugs.find(d => String(d.drug_id || d.id) === String(val));
+    setItems(prev => prev.map((it, idx) => {
+      if (idx === i) {
+        return {
+          ...it,
+          drug_id: val,
+          batch_no: it.batch_no || (selectedDrug ? (selectedDrug.batch_no || '') : '')
+        };
+      }
+      return it;
+    }));
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     if (items.some(it => !it.drug_id || !it.quantity)) {
       NotifStore.push('Select a drug and enter quantity for all lines.', 'warning'); return;
     }
+
+    // Validate stock availability
+    for (const it of items) {
+      const d = drugs.find(x => String(x.drug_id || x.id) === String(it.drug_id));
+      if (d && Number(it.quantity) > Number(d.quantity)) {
+        NotifStore.push(`Cannot issue ${it.quantity} of ${d.drug_name || d.name}. Only ${d.quantity} available in store.`, 'error');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await apiFetch(`${API}/issues`, {
@@ -59,19 +91,33 @@ const IssueForm = ({ onSuccess, onClose }) => {
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: `1px solid rgba(255,255,255,.4)`, color: G.white, padding: '5px 12px', cursor: 'pointer', fontWeight: 900, fontSize: 16, fontFamily: "'Inter', sans-serif" }}>×</button>
         </div>
+        
+        {prefillData?.transfer_request_id && (
+          <div style={{ background: '#E3F2FD', borderBottom: `2px solid ${G.sky}`, padding: '12px 24px', fontSize: 12, color: G.dark, display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+            <AlertCircle size={16} color={G.sky} />
+            Fulfilling Pharmacy Request: {prefillData.requisition_ref}. This will notify the pharmacy upon completion.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
             {[
-              { key: 'issue_no', label: 'Issue No *', type: 'text' },
+              { key: 'issue_no', label: 'Issue No (Auto)', type: 'text', readOnly: true },
               { key: 'issued_to', label: 'Issued To (Dept/Name)', type: 'text' },
               { key: 'issued_by', label: 'Issued By', type: 'text' },
               { key: 'issue_date', label: 'Issue Date', type: 'date' },
-              { key: 'purpose', label: 'Purpose', type: 'text' },
+              { key: 'department', label: 'Department / Purpose', type: 'text' },
               { key: 'remarks', label: 'Remarks', type: 'text' },
             ].map(f => (
               <div key={f.key}>
                 <label style={labelStyle}>{f.label}</label>
-                <input type={f.type} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={inputStyle} />
+                <input 
+                  type={f.type} 
+                  value={form[f.key]} 
+                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} 
+                  style={{ ...inputStyle, ...(f.readOnly ? { background: G.lightGray, color: G.darkGray, cursor: 'not-allowed' } : {}) }} 
+                  readOnly={f.readOnly}
+                />
               </div>
             ))}
           </div>
@@ -90,23 +136,28 @@ const IssueForm = ({ onSuccess, onClose }) => {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${G.sage}` }}>
-                    <td style={{ padding: 6 }}>
-                      <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required>
-                        <option value="">Select drug…</option>
-                        {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name} {d.strength || ''}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: 6 }}><input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} /></td>
-                    <td style={{ padding: 6 }}><input type="number" min={1} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required /></td>
-                    <td style={{ padding: 6 }}>
-                      <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} style={{ background: G.red, border: 'none', color: G.white, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                {items.map((item, i) => {
+                  const maxQty = drugs.find(d => String(d.drug_id || d.id) === String(item.drug_id))?.quantity || null;
+                  return (
+                    <tr key={i} style={{ borderBottom: `1px solid ${G.sage}` }}>
+                      <td style={{ padding: 6 }}>
+                        <select value={item.drug_id} onChange={e => handleDrugChange(i, e.target.value)} style={{ ...inputStyle, padding: '7px 8px' }} required>
+                          <option value="">Select drug…</option>
+                          {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name} {d.strength || ''} (Stock: {d.quantity})</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: 6 }}><input type="text" value={item.batch_no || ''} readOnly style={{ ...inputStyle, padding: '7px 8px', background: G.lightGray, color: G.darkGray, cursor: 'not-allowed' }} placeholder="Auto-filled" /></td>
+                      <td style={{ padding: 6 }}>
+                        <input type="number" min={1} max={maxQty} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} style={{ ...inputStyle, padding: '7px 8px', borderColor: maxQty && Number(item.quantity) > maxQty ? G.red : G.dark }} required />
+                      </td>
+                      <td style={{ padding: 6 }}>
+                        <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} style={{ background: G.red, border: 'none', color: G.white, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         <Trash2 size={13} />
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -124,17 +175,22 @@ const IssueForm = ({ onSuccess, onClose }) => {
 
 const StoreGoodsIssue = () => {
   const [issues, setIssues] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [formPrefill, setFormPrefill] = useState(null); // null means closed, {} means open blank
   const [expanded, setExpanded] = useState(null);
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await apiFetch(`${API}/issues`);
+      const [d, reqs] = await Promise.all([
+        apiFetch(`${API}/issues`),
+        apiFetch('/api/v1/transfer-requests?status=APPROVED')
+      ]);
       setIssues(d.data || []);
-    } catch (e) { NotifStore.push('Failed to load issues: ' + e.message, 'error'); }
+      setApprovedRequests((reqs.data || []).filter(r => r.status === 'APPROVED'));
+    } catch (e) { NotifStore.push('Failed to load data: ' + e.message, 'error'); }
     finally { setLoading(false); }
   }, []);
 
@@ -144,8 +200,15 @@ const StoreGoodsIssue = () => {
 
   return (
     <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px' }}>
-      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-      {showForm && <IssueForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
+      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } } .req-card:hover { transform: translateY(-2px); box-shadow: 4px 4px 0 #0288D1 !important; }`}</style>
+      
+      {formPrefill !== null && (
+        <IssueForm 
+          prefillData={formPrefill} 
+          onSuccess={() => { setFormPrefill(null); load(); }} 
+          onClose={() => setFormPrefill(null)} 
+        />
+      )}
 
       <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
@@ -159,7 +222,7 @@ const StoreGoodsIssue = () => {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => setShowForm(true)} style={{ background: G.orange, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+            <button onClick={() => setFormPrefill({})} style={{ background: G.orange, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
               <Plus size={16} /> New Issue
             </button>
             <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
@@ -170,6 +233,50 @@ const StoreGoodsIssue = () => {
       </div>
 
       <div style={{ padding: '24px 36px' }}>
+
+        {/* ── PENDING APPROVED PHARMACY REQUESTS ── */}
+        {approvedRequests.length > 0 && (
+          <div style={{ marginBottom: 30 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ background: G.sky, color: G.white, padding: 6, borderRadius: '50%' }}><AlertCircle size={16} /></div>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>Pending Pharmacy Requests</h2>
+              <span style={{ background: G.sky, color: G.white, padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 800 }}>{approvedRequests.length} Approved</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+              {approvedRequests.map(req => (
+                <div key={req.id} className="req-card" style={{ background: G.white, border: `2px solid ${G.sky}`, boxShadow: `3px 3px 0 rgba(2,136,209,0.3)`, padding: 16, transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 900, color: G.sky, textTransform: 'uppercase', letterSpacing: 1 }}>{req.request_code}</div>
+                      <div style={{ fontWeight: 800, color: G.dark, fontSize: 15, marginTop: 4 }}>{req.drug_name}</div>
+                    </div>
+                    <div style={{ background: '#E3F2FD', color: G.sky, padding: '4px 10px', fontWeight: 900, fontSize: 16, border: `2px solid ${G.sky}` }}>
+                      {req.requested_qty}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: G.darkGray }}>
+                    Requested by: Pharmacy Manager<br/>
+                    Urgency: <strong style={{ color: req.urgency === 'HIGH' ? G.red : G.orange }}>{req.urgency}</strong><br/>
+                    Approved by CEO
+                  </div>
+                  <button 
+                    onClick={() => setFormPrefill({
+                      transfer_request_id: req.id,
+                      issued_to: 'Pharmacy Manager',
+                      purpose: 'Pharmacy Stock Replenishment',
+                      requisition_ref: req.request_code,
+                      items: [{ drug_id: req.drug_id, quantity: req.requested_qty, batch_no: '' }]
+                    })}
+                    style={{ marginTop: 'auto', background: G.sky, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.white, padding: '8px', cursor: 'pointer', fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <CheckCircle size={14} /> Fulfill Request
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Search size={16} color={G.olive} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by issue no or recipient…" style={{ border: 'none', outline: 'none', fontSize: 13, fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent', color: G.darkGray }} />
@@ -209,24 +316,35 @@ const StoreGoodsIssue = () => {
                     </button>
                   </div>
                 </div>
-                {expanded === r.id && (r.items || []).length > 0 && (
-                  <div style={{ borderTop: `2px solid ${G.sage}`, overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: G.lightGray }}>
-                          {['Drug ID', 'Batch No', 'Quantity'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: G.dark, borderBottom: `1px solid ${G.sage}` }}>{h}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {r.items.map((it, i) => (
-                          <tr key={i} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? G.white : '#F1F8F1' }}>
-                            <td style={{ padding: '8px 12px', color: G.emerald, fontWeight: 800 }}>{it.drug_id}</td>
-                            <td style={{ padding: '8px 12px' }}>{it.batch_no || '—'}</td>
-                            <td style={{ padding: '8px 12px', fontWeight: 800, color: G.orange }}>{it.quantity}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {expanded === r.id && (
+                  <div style={{ borderTop: `2px solid ${G.sage}` }}>
+                    <div style={{ padding: '12px 20px', background: '#F8FAF8', fontSize: 12, color: G.darkGray, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, borderBottom: `1px solid ${G.sage}` }}>
+                      {r.department && <div><strong style={{ color: G.dark }}>Department:</strong> {r.department}</div>}
+                      {r.purpose && <div><strong style={{ color: G.dark }}>Purpose:</strong> {r.purpose}</div>}
+                      <div><strong style={{ color: G.dark }}>Remarks:</strong> {r.remarks || '—'}</div>
+                      {r.requisition_ref && <div><strong style={{ color: G.dark }}>Req Ref:</strong> {r.requisition_ref}</div>}
+                      {r.approval_ref && <div><strong style={{ color: G.dark }}>Approval Ref:</strong> {r.approval_ref}</div>}
+                    </div>
+                    {(r.items || []).length > 0 && (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: G.lightGray }}>
+                              {['Drug ID', 'Batch No', 'Quantity'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 900, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: G.dark, borderBottom: `1px solid ${G.sage}` }}>{h}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {r.items.map((it, i) => (
+                              <tr key={i} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? G.white : '#F1F8F1' }}>
+                                <td style={{ padding: '8px 12px', color: G.emerald, fontWeight: 800 }}>{it.drug_id}</td>
+                                <td style={{ padding: '8px 12px' }}>{it.batch_no || '—'}</td>
+                                <td style={{ padding: '8px 12px', fontWeight: 800, color: G.orange }}>{it.quantity}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

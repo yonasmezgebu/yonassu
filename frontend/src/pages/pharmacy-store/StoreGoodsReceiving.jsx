@@ -28,9 +28,42 @@ const GoodsReceivingForm = ({ onSuccess, onClose }) => {
   const [items, setItems] = useState([{ drug_id: '', batch_no: '', expiry_date: '', quantity: '', unit_cost: '', storage_location: '' }]);
   const [saving, setSaving] = useState(false);
 
+  const [pendingPurchases, setPendingPurchases] = useState([]);
+
   useEffect(() => {
     apiFetch(API + '/inventory').then(d => setDrugs(d.data || d || [])).catch(() => {});
+    apiFetch('/api/v1/purchase/workflow').then(d => {
+      const all = d.data || d || [];
+      setPendingPurchases(all.filter(w => w.status === 'GOODS_PURCHASED' || w.status === 'ADVANCE_PAID' || w.status === 'BUDGET_READY' || w.status === 'BUDGET_APPROVED'));
+    }).catch(() => {});
   }, []);
+
+  const handlePurchaseSelect = (e) => {
+    const wfId = e.target.value;
+    if (!wfId) return;
+    const wf = pendingPurchases.find(p => p.id === Number(wfId));
+    if (!wf) return;
+    
+    setForm(p => ({
+      ...p,
+      supplier_name: wf.supplier_name || p.supplier_name,
+      remarks: wf.po_number ? `PO: ${wf.po_number}` : `Req: ${wf.request_number}`,
+      linked_workflow_id: wf.id
+    }));
+
+    const pName = (wf.product_name || '').toLowerCase();
+    const matchedDrug = drugs.find(d => (d.drug_name || d.name || '').toLowerCase() === pName);
+
+    setItems([{
+      drug_id: matchedDrug ? (matchedDrug.drug_id || matchedDrug.id) : '',
+      batch_no: '',
+      expiry_date: '',
+      quantity: wf.quantity || '',
+      unit_cost: wf.estimated_cost || '',
+      storage_location: ''
+    }]);
+    NotifStore.push('Form auto-filled from purchase request', 'info');
+  };
 
   const setItem = (i, k, v) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it));
   const addItem = () => setItems(prev => [...prev, { drug_id: '', batch_no: '', expiry_date: '', quantity: '', unit_cost: '', storage_location: '' }]);
@@ -47,6 +80,14 @@ const GoodsReceivingForm = ({ onSuccess, onClose }) => {
         method: 'POST',
         body: JSON.stringify({ ...form, items: items.map(it => ({ ...it, quantity: Number(it.quantity), unit_cost: Number(it.unit_cost) || 0 })) })
       });
+      if (form.linked_workflow_id) {
+        try {
+          await apiFetch(`/api/v1/purchase/workflow/${form.linked_workflow_id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'GOODS_RECEIVED', receiving_notes: `Received via GRN: ${form.receipt_no}` })
+          });
+        } catch(err) { console.error('Failed to update workflow status:', err); }
+      }
       NotifStore.push('Goods Receipt created successfully!', 'success');
       onSuccess();
     } catch (e) {
@@ -72,6 +113,15 @@ const GoodsReceivingForm = ({ onSuccess, onClose }) => {
         <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
           {/* Form Header Fields */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 20 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Link to Purchase Request (Auto-fill)</label>
+              <select onChange={handlePurchaseSelect} style={inputStyle}>
+                <option value="">-- Select Pending Purchase (Optional) --</option>
+                {pendingPurchases.map(p => (
+                  <option key={p.id} value={p.id}>{p.request_number} - {p.product_name} ({p.quantity} items) - {p.supplier_name || 'No Supplier'}</option>
+                ))}
+              </select>
+            </div>
             {[
               { key: 'receipt_no', label: 'Receipt No *', type: 'text' },
               { key: 'supplier_name', label: 'Supplier Name', type: 'text' },

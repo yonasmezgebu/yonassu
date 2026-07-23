@@ -12,10 +12,13 @@ const G = {
 let _listeners = [];
 let _notifications = [];
 export const NotifStore = {
-  push(msg, type = 'info') {
+  push(msg, type = 'info', duration = 5000) {
     const n = { id: Date.now(), msg, type, time: new Date() };
     _notifications = [n, ..._notifications].slice(0, 20);
     _listeners.forEach(fn => fn([..._notifications]));
+    if (duration > 0) {
+      setTimeout(() => NotifStore.dismiss(n.id), duration);
+    }
     return n.id;
   },
   subscribe(fn) { _listeners.push(fn); return () => { _listeners = _listeners.filter(l => l !== fn); }; },
@@ -379,7 +382,7 @@ const StoreHomeNew = () => {
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
           {[
-            { label: `${(s.pendingTransfers ?? 0) + (s.pendingRequisitions ?? 0)} Pending Actions`, sub: 'Transfers & requisitions awaiting', icon: '🔄', bg: '#EFF6FF', c: '#3b82f6', path: '/pharmacy-store/stock-transfer' },
+            { label: `${s.pendingRequisitions ?? 0} Pending Requisitions`, sub: 'Requisitions awaiting approval', icon: '📝', bg: '#EFF6FF', c: '#3b82f6', path: '/pharmacy-store/goods-issue' },
             { label: `${lowStockCount} Low Stock Items`, sub: 'Below minimum level', icon: '⚠️', bg: '#FFFBEB', c: '#f59e0b', path: '/pharmacy-store/stock-list' },
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
@@ -411,7 +414,6 @@ const StoreHomeNew = () => {
               { label: 'Add New Stock',    sub: 'Register drug',  icon: '➕', bg: '#E8F9F1', color: G.emerald, href: '/pharmacy-store/add-new-stock'    },
               { label: 'Goods Receiving',  sub: 'Receive stock',  icon: '📥', bg: '#F1F8E9', color: G.olive,   href: '/pharmacy-store/goods-receiving'  },
               { label: 'Goods Issue',      sub: 'Issue to dept',  icon: '📤', bg: '#FFF3E0', color: G.orange,  href: '/pharmacy-store/goods-issue'      },
-              { label: 'Stock Transfer',   sub: 'Move stock',     icon: '🔄', bg: '#E1F5FE', color: G.sky,     href: '/pharmacy-store/stock-transfer'   },
               { label: 'Stock Adjustment', sub: 'Adjust qty',     icon: '📊', bg: '#F3E5F5', color: G.purple,  href: '/pharmacy-store/stock-adjustment' },
               { label: 'Physical Count',   sub: 'Count audit',    icon: '✅', bg: '#EFEBE9', color: G.brown,   href: '/pharmacy-store/physical-count'   },
               { label: 'Stock Movement',   sub: 'View history',   icon: '📜', bg: '#E8F4EC', color: G.forest,  href: '/pharmacy-store/stock-movement'   },
