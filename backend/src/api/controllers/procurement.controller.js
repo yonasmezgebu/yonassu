@@ -788,6 +788,151 @@ const procController = {
     res.json({ status: 'success', data: rows });
   },
 
+  // ─────────────────────────────────────────────────────────────────────
+  //  PHARMACY DIRECT DELIVERY FLOW
+  //  Step 1: Pharmacy Manager records goods received directly from supplier
+  //  Step 2: CEO confirms delivery (triggers finance payable)
+  //  Step 3: Finance creates payable linked to this delivery
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** POST /procurement/direct-deliveries — Pharmacy Manager submits a direct delivery */
+  createDirectDelivery: async (req, res) => {
+    const {
+      supplierName, drugName, quantity, unitOfMeasure = 'Units',
+      unitPrice, deliveryDate, invoiceNo, notes
+    } = req.body;
+    if (!supplierName || !drugName || !quantity || !unitPrice || !deliveryDate) {
+      throw new AppError('supplierName, drugName, quantity, unitPrice and deliveryDate are required', HTTP_STATUS.BAD_REQUEST);
+    }
+    const userId = req.user.id;
+    const userName = req.user.full_name || 'Pharmacy Manager';
+    const totalAmount = parseFloat(unitPrice) * parseInt(quantity);
+
+    // Generate delivery_no
+    const last = await db('pharmacy_direct_deliveries').orderBy('id', 'desc').first();
+    const num = last ? parseInt((last.delivery_no || '').split('-')[3] || '0') + 1 : 1;
+    const deliveryNo = `PDD-${new Date().getFullYear()}-${String(num).padStart(4, '0')}`;
+
+    const [id] = await db('pharmacy_direct_deliveries').insert({
+      delivery_no: deliveryNo,
+      supplier_name: supplierName,
+      drug_name: drugName,
+      quantity: parseInt(quantity),
+      unit_of_measure: unitOfMeasure,
+      unit_price: parseFloat(unitPrice),
+      total_amount: totalAmount,
+      delivery_date: deliveryDate,
+      invoice_no: invoiceNo || null,
+      notes: notes || null,
+      received_by: userId,
+      received_by_name: userName,
+      status: 'PENDING_CEO',
+    });
+
+    // Notify CEO
+    try {
+      await notificationRepository.create({
+        roleTarget: 'CEO',
+        title: '🚚 Direct Delivery — CEO Confirmation Required',
+        message: `${drugName} (${quantity} ${unitOfMeasure}) received from ${supplierName}. ETB ${totalAmount.toLocaleString()}. Please confirm.`,
+        type: 'info',
+        link: '/ceo/pharmacy-hub?tab=delivery',
+      });
+    } catch (_) {}
+
+    res.status(HTTP_STATUS.CREATED).json({ status: 'success', data: { id, delivery_no: deliveryNo } });
+  },
+
+  /** GET /procurement/direct-deliveries — List direct deliveries (filterable by status) */
+  listDirectDeliveries: async (req, res) => {
+    const { status } = req.query;
+    let query = db('pharmacy_direct_deliveries').orderBy('created_at', 'desc');
+    if (status) query = query.where('status', status);
+    const rows = await query;
+    res.json({ status: 'success', data: rows });
+  },
+
+  /** PATCH /procurement/direct-deliveries/:id/ceo-confirm — CEO confirms or rejects */
+  ceoConfirmDelivery: async (req, res) => {
+    const { action, ceoNotes } = req.body; // action = 'CONFIRM' | 'REJECT'
+    const delivery = await db('pharmacy_direct_deliveries').where({ id: req.params.id }).first();
+    if (!delivery) throw new AppError('Delivery not found', HTTP_STATUS.NOT_FOUND);
+    if (delivery.status !== 'PENDING_CEO') throw new AppError('Delivery is not pending CEO confirmation', HTTP_STATUS.BAD_REQUEST);
+
+    const userId = req.user.id;
+    const newStatus = action === 'CONFIRM' ? 'CEO_CONFIRMED' : 'CEO_REJECTED';
+
+    await db('pharmacy_direct_deliveries').where({ id: delivery.id }).update({
+      status: newStatus,
+      ceo_confirmed_at: db.fn.now(),
+      ceo_confirmed_by: userId,
+      ceo_notes: ceoNotes || null,
+    });
+
+    if (action === 'CONFIRM') {
+      // Auto-update pharmacy stock
+      try {
+        const existing = await db('pharmacy_medications').where({ name: delivery.drug_name }).first();
+        if (existing) {
+          await db('pharmacy_medications').where({ id: existing.id }).increment('stock_quantity', delivery.quantity);
+        } else {
+          await db('pharmacy_medications').insert({
+            name: delivery.drug_name, category_id: 1,
+            price: delivery.unit_price, stock_quantity: delivery.quantity, is_active: true,
+          });
+        }
+      } catch (_) {}
+
+      // Notify Finance to create payable
+      try {
+        await notificationRepository.create({
+          roleTarget: 'Finance Manager',
+          title: '💳 Create Payable — Direct Delivery Confirmed',
+          message: `CEO confirmed delivery ${delivery.delivery_no}: ${delivery.drug_name} from ${delivery.supplier_name}. Total: ETB ${parseFloat(delivery.total_amount).toLocaleString()}. Create payable.`,
+          type: 'success',
+          link: '/finance/flow2-funds',
+        });
+      } catch (_) {}
+
+      // Notify Pharmacy Manager
+      try {
+        await notificationRepository.create({
+          roleTarget: 'Pharmacy Manager',
+          title: '✅ Delivery Confirmed by CEO',
+          message: `${delivery.drug_name} (${delivery.delivery_no}) has been confirmed. Stock updated and Finance has been notified.`,
+          type: 'success',
+          link: '/pharmacy-manager/direct-deliveries',
+        });
+      } catch (_) {}
+    } else {
+      // Notify Pharmacy Manager of rejection
+      try {
+        await notificationRepository.create({
+          roleTarget: 'Pharmacy Manager',
+          title: '❌ Delivery Rejected by CEO',
+          message: `${delivery.delivery_no} (${delivery.drug_name}) was rejected. Notes: ${ceoNotes || 'No reason given'}`,
+          type: 'error',
+          link: '/pharmacy-manager/direct-deliveries',
+        });
+      } catch (_) {}
+    }
+
+    res.json({ status: 'success', data: { id: delivery.id, delivery_no: delivery.delivery_no, status: newStatus } });
+  },
+
+  /** PATCH /procurement/direct-deliveries/:id/finance-pay — Finance marks as paid */
+  financeMarkDeliveryPaid: async (req, res) => {
+    const { payableId } = req.body;
+    const delivery = await db('pharmacy_direct_deliveries').where({ id: req.params.id }).first();
+    if (!delivery) throw new AppError('Delivery not found', HTTP_STATUS.NOT_FOUND);
+    await db('pharmacy_direct_deliveries').where({ id: delivery.id }).update({
+      status: 'FINANCE_PAID',
+      finance_payable_id: payableId || null,
+    });
+    res.json({ status: 'success', data: { id: delivery.id, status: 'FINANCE_PAID' } });
+  },
+
 };
 
 module.exports = procController;
+

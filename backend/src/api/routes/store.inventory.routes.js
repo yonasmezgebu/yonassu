@@ -36,14 +36,20 @@ router.put('/transfers/:id/status', authenticate, ctrl.updateTransferStatus);
 
 router.post('/adjustments', authenticate, ctrl.createAdjustment);
 router.get('/adjustments', authenticate, ctrl.listAdjustments);
+router.get('/adjustments/all', authenticate, ctrl.getAllAdjustments);
+router.get('/adjustments/next-no', authenticate, ctrl.getNextAdjustmentNo);
 router.get('/adjustments/pending', authenticate, ctrl.getPendingAdjustments);
 router.patch('/adjustments/:id/approve', authenticate, ctrl.approveAdjustment);
 router.patch('/adjustments/:id/reject', authenticate, ctrl.rejectAdjustment);
 
 router.post('/counts', authenticate, ctrl.createCount);
 router.get('/counts', authenticate, ctrl.listCounts);
+router.get('/counts/next-no', authenticate, ctrl.getNextCountNo);
+router.get('/counts/pending', authenticate, ctrl.getPendingCounts);
 router.get('/counts/:id', authenticate, ctrl.getCount);
 router.put('/counts/:id/status', authenticate, ctrl.updateCountStatus);
+router.patch('/counts/:id/approve', authenticate, ctrl.approveCount);
+router.patch('/counts/:id/reject', authenticate, ctrl.rejectCount);
 
 router.post('/requisitions', authenticate, ctrl.createRequisition);
 router.get('/requisitions', authenticate, ctrl.listRequisitions);

@@ -1,4 +1,5 @@
 const { db } = require('../../config/database');
+const notificationRepository = require('../../repositories/notification.repository');
 
 // ================================================================
 // INVENTORY (store_inventory)
@@ -84,7 +85,7 @@ exports.updateInventoryItem = async (req, res) => {
 
     const newData = { ...req.body };
 
-    await trx('stock_update_requests').insert({
+    const [reqId] = await trx('stock_update_requests').insert({
       inventory_id: inv.id,
       drug_id: drug.id,
       requested_by: req.user?.id,
@@ -98,10 +99,25 @@ exports.updateInventoryItem = async (req, res) => {
       title: 'Stock Update Approval',
       message: `Pending record update for ${drug.name}`,
       type: 'pharmacy',
-      link: '/ceo/store-update-approvals'
+      link: '/ceo/pharmacy-hub?tab=updates',
+      reference_id: reqId
     });
 
     await trx.commit();
+
+    // Emit real-time socket event so CEO bell updates instantly
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('pharmacy-transfer', {
+          title: 'Stock Update Approval',
+          message: `Pending record update for ${drug.name}`,
+          type: 'pharmacy',
+          link: '/ceo/pharmacy-hub?tab=updates'
+        });
+      }
+    } catch (_) {}
+
     res.json({ success: true, message: 'Update submitted for CEO approval', status: 'PENDING' });
   } catch (e) {
     await trx.rollback();
@@ -115,10 +131,16 @@ exports.updateInventoryItem = async (req, res) => {
 
 exports.getPendingUpdateRequests = async (req, res) => {
   try {
-    const rows = await db('stock_update_requests')
+    const { status } = req.query;
+    let query = db('stock_update_requests')
       .join('drugs', 'stock_update_requests.drug_id', 'drugs.id')
-      .select('stock_update_requests.*', 'drugs.name as drug_name')
-      .orderBy('created_at', 'desc');
+      .select('stock_update_requests.*', 'drugs.name as drug_name');
+    
+    if (status && status !== 'All') {
+      query = query.where('stock_update_requests.status', status.toUpperCase());
+    }
+
+    const rows = await query.orderBy('stock_update_requests.created_at', 'desc');
     res.json({ success: true, data: rows });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -339,7 +361,7 @@ exports.deleteReceipt = async (req, res) => {
 exports.createIssue = async (req, res) => {
   const trx = await db.transaction();
   try {
-    const { issue_no, department, issued_to, requisition_ref, approval_ref, issue_date, remarks, items } = req.body;
+    const { issue_no, department, issued_to, requisition_ref, approval_ref, issue_date, remarks, items, transfer_request_id } = req.body;
     if (!issue_no || !items || !items.length) {
       return res.status(400).json({ success: false, message: 'issue_no and items required' });
     }
@@ -364,6 +386,34 @@ exports.createIssue = async (req, res) => {
         last_issued_at: db.raw('NOW()')
       });
     }
+
+    if (transfer_request_id) {
+      const tr = await trx('transfer_requests').where({ id: transfer_request_id }).first();
+      if (tr) {
+        const totalShipped = items.reduce((sum, item) => sum + Number(item.quantity), 0);
+        await trx('transfer_requests').where({ id: transfer_request_id }).update({
+          status: 'SHIPPED',
+          shipped_by: req.user?.id,
+          shipped_qty: totalShipped,
+          shipped_at: new Date(),
+          updated_at: new Date()
+        });
+
+        const notificationService = require('../../services/notification.service');
+        try {
+          await notificationService.sendNotification('Pharmacy Manager', tr.created_by, {
+            type: 'REQUEST_SHIPPED',
+            title: '📦 Shipment Ready — Confirm Receipt',
+            message: `Store has shipped ${totalShipped} units of your request ${tr.request_code}. Please go to Transfer Requests and click "Receive Stock".`,
+            related_entity_id: transfer_request_id,
+            link: `/pharmacy/store-inventory?tab=my_requests`
+          });
+        } catch (notifyErr) {
+          console.warn('[createIssue] Notification failed (non-fatal):', notifyErr.message);
+        }
+      }
+    }
+
     await trx.commit();
     res.status(201).json({ success: true, message: 'Issue created', data: { id: issue_id } });
   } catch (e) {
@@ -618,16 +668,80 @@ exports.addNewStock = async (req, res) => {
 // STOCK ADJUSTMENTS
 // ================================================================
 
-exports.createAdjustment = async (req, res) => {
+exports.getNextAdjustmentNo = async (req, res) => {
   try {
-    const { adjustment_no, drug_id, batch_no, adjustment_type, reason, adjustment_qty, approval_code, adjustment_date } = req.body;
+    const year = new Date().getFullYear();
+    const prefix = `ADJ-${year}-`;
+    const last = await db('stock_adjustments')
+      .where('adjustment_no', 'like', `${prefix}%`)
+      .orderBy('id', 'desc')
+      .first();
+    let nextSeq = 1;
+    if (last && last.adjustment_no) {
+      const parts = last.adjustment_no.split('-');
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num)) nextSeq = num + 1;
+    }
+    const adjustment_no = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    res.json({ success: true, adjustment_no });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.createAdjustment = async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { adjustment_no, reason, remarks, adjustment_date, items } = req.body;
+
+    // ── New format: items array from the form ──
+    if (Array.isArray(items) && items.length > 0) {
+      if (!adjustment_no) {
+        await trx.rollback();
+        return res.status(400).json({ success: false, message: 'adjustment_no is required' });
+      }
+      if (!reason) {
+        await trx.rollback();
+        return res.status(400).json({ success: false, message: 'reason is required' });
+      }
+      for (const item of items) {
+        const { drug_id, batch_no, adjustment_type = 'ADD', quantity } = item;
+        if (!drug_id || !quantity) {
+          await trx.rollback();
+          return res.status(400).json({ success: false, message: 'Each item must have drug_id and quantity' });
+        }
+        const inv = await trx('store_inventory').where('drug_id', drug_id).first();
+        const qty_before = inv ? Number(inv.quantity) : 0;
+        const adj_qty = adjustment_type === 'REMOVE' ? -Math.abs(Number(quantity)) : Math.abs(Number(quantity));
+        const qty_after = Math.max(0, qty_before + adj_qty);
+        await trx('stock_adjustments').insert({
+          adjustment_no,
+          drug_id,
+          batch_no: batch_no || (inv ? inv.batch_no : null),
+          adjustment_type,
+          reason,
+          quantity_before: qty_before,
+          quantity_after: qty_after,
+          adjustment_qty: adj_qty,
+          adjustment_date: adjustment_date || new Date(),
+          adjusted_by: req.user?.id,
+          status: 'PENDING'
+        });
+      }
+      await trx.commit();
+      return res.status(201).json({ success: true, message: 'Adjustment submitted for CEO approval', status: 'PENDING' });
+    }
+
+    // ── Legacy single-item format ──
+    const { drug_id, batch_no, adjustment_type, adjustment_qty, approval_code } = req.body;
     if (!adjustment_no || !drug_id || adjustment_qty === undefined) {
+      await trx.rollback();
       return res.status(400).json({ success: false, message: 'adjustment_no, drug_id, adjustment_qty required' });
     }
-    const inv = await db('store_inventory').where('drug_id', drug_id).first();
+    const inv = await trx('store_inventory').where('drug_id', drug_id).first();
     const qty_before = inv ? Number(inv.quantity) : 0;
     const qty_after = Math.max(0, qty_before + Number(adjustment_qty));
-    await db('stock_adjustments').insert({
+    await trx('stock_adjustments').insert({
       adjustment_no, drug_id, batch_no, adjustment_type, reason,
       quantity_before: qty_before, quantity_after: qty_after,
       adjustment_qty: Number(adjustment_qty), approval_code,
@@ -635,8 +749,10 @@ exports.createAdjustment = async (req, res) => {
       adjusted_by: req.user?.id,
       status: 'PENDING'
     });
+    await trx.commit();
     res.status(201).json({ success: true, message: 'Adjustment submitted for CEO approval', status: 'PENDING' });
   } catch (e) {
+    await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -655,40 +771,85 @@ exports.listAdjustments = async (req, res) => {
 
 exports.getPendingAdjustments = async (req, res) => {
   try {
-    const rows = await db('stock_adjustments')
-      .join('drugs', 'stock_adjustments.drug_id', 'drugs.id')
-      .select('stock_adjustments.*', 'drugs.name as drug_name', 'drugs.strength', 'drugs.unit')
-      .where('stock_adjustments.status', 'PENDING')
-      .orderBy('created_at', 'desc');
+    const { status } = req.query;
+    let query = db('stock_adjustments as sa')
+      .join('drugs', 'sa.drug_id', 'drugs.id')
+      .leftJoin('users as u', 'sa.approved_by', 'u.id')
+      .leftJoin('users as ab', 'sa.adjusted_by', 'ab.id')
+      .select(
+        'sa.*',
+        'drugs.name as drug_name', 'drugs.strength', 'drugs.unit',
+        db.raw('u.full_name as approved_by_name'),
+        db.raw('ab.full_name as adjusted_by_name')
+      );
+    
+    if (status && status !== 'All') {
+      query = query.where('sa.status', status.toUpperCase());
+    }
+
+    const rows = await query.orderBy('sa.created_at', 'desc');
     res.json({ success: true, data: rows });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
 };
 
+
+
+exports.getAllAdjustments = async (req, res) => {
+  try {
+    const rows = await db('stock_adjustments as sa')
+      .join('drugs', 'sa.drug_id', 'drugs.id')
+      .leftJoin('users as u', 'sa.approved_by', 'u.id')
+      .select(
+        'sa.*',
+        'drugs.name as drug_name', 'drugs.strength', 'drugs.unit',
+        db.raw('u.full_name as approved_by_name')
+      )
+      .orderBy('sa.created_at', 'desc');
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+
+
 exports.approveAdjustment = async (req, res) => {
   const trx = await db.transaction();
   try {
     const { id } = req.params;
-    const adj = await trx('stock_adjustments').where('id', id).first();
-    if (!adj) return res.status(404).json({ success: false, message: 'Adjustment not found' });
-    if (adj.status !== 'PENDING') return res.status(400).json({ success: false, message: 'Adjustment is not pending' });
+    const refAdj = await trx('stock_adjustments').where('id', id).first();
+    if (!refAdj) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: 'Adjustment not found' });
+    }
 
-    await trx('stock_adjustments').where('id', id).update({
-      status: 'APPROVED',
-      approved_by: req.user?.id,
-      approved_at: new Date()
-    });
+    const allLines = await trx('stock_adjustments').where('adjustment_no', refAdj.adjustment_no);
+    const pendingLines = allLines.filter(a => a.status === 'PENDING');
+    
+    if (pendingLines.length === 0) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'No pending lines found for this adjustment' });
+    }
 
-    const inv = await trx('store_inventory').where('drug_id', adj.drug_id).first();
-    if (inv) {
-      await trx('store_inventory').where('id', inv.id).update({ quantity: adj.quantity_after });
-    } else {
-      await trx('store_inventory').insert({ drug_id: adj.drug_id, quantity: adj.quantity_after, batch_no: adj.batch_no });
+    for (const adj of pendingLines) {
+      await trx('stock_adjustments').where('id', adj.id).update({
+        status: 'APPROVED',
+        approved_by: req.user?.id,
+        approved_at: new Date()
+      });
+
+      const inv = await trx('store_inventory').where('drug_id', adj.drug_id).first();
+      if (inv) {
+        await trx('store_inventory').where('id', inv.id).update({ quantity: adj.quantity_after });
+      } else {
+        await trx('store_inventory').insert({ drug_id: adj.drug_id, quantity: adj.quantity_after, batch_no: adj.batch_no });
+      }
     }
 
     await trx.commit();
-    res.json({ success: true, message: 'Adjustment approved and applied', data: adj });
+    res.json({ success: true, message: 'Adjustment group approved and applied' });
   } catch (e) {
     await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
@@ -696,24 +857,34 @@ exports.approveAdjustment = async (req, res) => {
 };
 
 exports.rejectAdjustment = async (req, res) => {
+  const trx = await db.transaction();
   try {
     const { id } = req.params;
     const { reason } = req.body;
     if (!reason || !reason.trim()) {
+      await trx.rollback();
       return res.status(400).json({ success: false, message: 'Rejection reason is required' });
     }
-    const adj = await db('stock_adjustments').where('id', id).first();
-    if (!adj) return res.status(404).json({ success: false, message: 'Adjustment not found' });
-    if (adj.status !== 'PENDING') return res.status(400).json({ success: false, message: 'Adjustment is not pending' });
+    const refAdj = await trx('stock_adjustments').where('id', id).first();
+    if (!refAdj) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: 'Adjustment not found' });
+    }
 
-    await db('stock_adjustments').where('id', id).update({
-      status: 'REJECTED',
-      rejection_reason: reason.trim(),
-      approved_by: req.user?.id,
-      approved_at: new Date()
-    });
-    res.json({ success: true, message: 'Adjustment rejected' });
+    await trx('stock_adjustments')
+      .where('adjustment_no', refAdj.adjustment_no)
+      .where('status', 'PENDING')
+      .update({
+        status: 'REJECTED',
+        rejection_reason: reason.trim(),
+        approved_by: req.user?.id,
+        approved_at: new Date()
+      });
+
+    await trx.commit();
+    res.json({ success: true, message: 'Adjustment group rejected' });
   } catch (e) {
+    await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -722,28 +893,75 @@ exports.rejectAdjustment = async (req, res) => {
 // PHYSICAL COUNTS
 // ================================================================
 
+exports.getNextCountNo = async (req, res) => {
+  try {
+    const last = await db('stock_counts').orderBy('id', 'desc').first();
+    let num = 1;
+    const year = new Date().getFullYear();
+    if (last && last.count_no && last.count_no.startsWith(`PC-${year}-`)) {
+      const parts = last.count_no.split('-');
+      if (parts.length === 3) {
+        num = parseInt(parts[2], 10) + 1;
+      }
+    }
+    res.json({ success: true, count_no: `PC-${year}-${String(num).padStart(4, '0')}` });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.getPendingCounts = async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = db('stock_counts as sc')
+      .leftJoin('users as u', 'sc.verified_by', 'u.id')
+      .select('sc.*', db.raw('u.full_name as approved_by_name'));
+    
+    if (status && status !== 'All') {
+      query = query.where('sc.status', status.toUpperCase());
+    }
+
+    const rows = await query.orderBy('sc.created_at', 'desc');
+    for (const r of rows) {
+      r.items = await db('stock_count_items')
+        .join('drugs', 'stock_count_items.drug_id', 'drugs.id')
+        .select('stock_count_items.*', 'drugs.name as drug_name', 'drugs.strength', 'drugs.unit')
+        .where('stock_count_items.count_id', r.id);
+    }
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+
+
 exports.createCount = async (req, res) => {
+  const trx = await db.transaction();
   try {
     const { count_no, count_type, count_date, remarks, items } = req.body;
     if (!count_no || !items || !items.length) {
+      await trx.rollback();
       return res.status(400).json({ success: false, message: 'count_no and items required' });
     }
-    const [count_id] = await db('stock_counts').insert({
+    const [count_id] = await trx('stock_counts').insert({
       count_no, count_type, count_date: count_date || new Date(),
-      remarks, counted_by: req.user?.id, status: 'Draft'
+      remarks, counted_by: req.user?.id, status: 'PENDING'
     });
     for (const item of items) {
-      const inv = await db('store_inventory').where('drug_id', item.drug_id).first();
+      const inv = await trx('store_inventory').where('drug_id', item.drug_id).first();
       const system_qty = inv ? Number(inv.quantity) : 0;
       const phys_qty = Number(item.physical_quantity);
-      await db('stock_count_items').insert({
+      await trx('stock_count_items').insert({
         count_id, drug_id: item.drug_id, batch_no: item.batch_no,
         system_quantity: system_qty, physical_quantity: phys_qty,
         variance: phys_qty - system_qty, reason_code: item.reason_code
       });
     }
-    res.status(201).json({ success: true, message: 'Count created', data: { id: count_id } });
+    await trx.commit();
+    res.status(201).json({ success: true, message: 'Count created and pending CEO approval', data: { id: count_id } });
   } catch (e) {
+    await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -764,9 +982,83 @@ exports.getCount = async (req, res) => {
   try {
     const row = await db('stock_counts').where('id', req.params.id).first();
     if (!row) return res.status(404).json({ success: false, message: 'Not found' });
-    row.items = await db('stock_count_items').where('count_id', row.id);
+    row.items = await db('stock_count_items')
+        .join('drugs', 'stock_count_items.drug_id', 'drugs.id')
+        .select('stock_count_items.*', 'drugs.name as drug_name', 'drugs.strength', 'drugs.unit')
+        .where('stock_count_items.count_id', row.id);
     res.json({ success: true, data: row });
   } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.approveCount = async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const refCount = await trx('stock_counts').where('id', id).first();
+    if (!refCount) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: 'Count not found' });
+    }
+    if (refCount.status !== 'PENDING') {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'Count is not pending' });
+    }
+
+    // Apply adjustments for all items with a variance
+    const items = await trx('stock_count_items').where('count_id', refCount.id);
+    for (const item of items) {
+      if (item.variance !== 0) {
+        const inv = await trx('store_inventory').where('drug_id', item.drug_id).first();
+        if (inv) {
+          await trx('store_inventory').where('id', inv.id).update({ quantity: item.physical_quantity });
+        } else {
+          await trx('store_inventory').insert({ drug_id: item.drug_id, quantity: item.physical_quantity, batch_no: item.batch_no });
+        }
+      }
+    }
+
+    await trx('stock_counts').where('id', id).update({
+      status: 'APPROVED',
+      verified_by: req.user?.id,
+      updated_at: new Date()
+    });
+
+    await trx.commit();
+    res.json({ success: true, message: 'Physical count approved and inventory updated' });
+  } catch (e) {
+    await trx.rollback();
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+exports.rejectCount = async (req, res) => {
+  const trx = await db.transaction();
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+    }
+    const refCount = await trx('stock_counts').where('id', id).first();
+    if (!refCount) {
+      await trx.rollback();
+      return res.status(404).json({ success: false, message: 'Count not found' });
+    }
+
+    await trx('stock_counts').where('id', id).update({
+      status: 'REJECTED',
+      remarks: (refCount.remarks ? refCount.remarks + '. ' : '') + 'Rejected: ' + reason.trim(),
+      updated_at: new Date(),
+      verified_by: req.user?.id
+    });
+
+    await trx.commit();
+    res.json({ success: true, message: 'Physical count rejected' });
+  } catch (e) {
+    await trx.rollback();
     res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -816,7 +1108,7 @@ exports.listRequisitions = async (req, res) => {
   try {
     const { status } = req.query;
     let query = db('store_requisitions').orderBy('created_at', 'desc');
-    if (status) query = query.where('status', status);
+    if (status && status !== 'All') query = query.where('status', status);
     const rows = await query;
     for (const r of rows) {
       r.items = await db('store_requisition_items').where('requisition_id', r.id);
@@ -959,63 +1251,106 @@ exports.dashboardStats = async (req, res) => {
 
 exports.stockMovements = async (req, res) => {
   try {
-    const { limit } = req.query;
-    const receipts = await db('stock_receipts')
-      .join('stock_receipt_items', 'stock_receipts.id', 'stock_receipt_items.receipt_id')
-      .join('drugs', 'stock_receipt_items.drug_id', 'drugs.id')
-      .select(
-        db.raw("'Receipt' as movement_type"),
-        'stock_receipt_items.id as id',
-        'stock_receipts.receipt_no as ref_no',
-        'drugs.name as item_name',
-        'drugs.strength',
-        'stock_receipt_items.quantity as qty_moved',
-        'drugs.unit',
-        db.raw("COALESCE(NULLIF(stock_receipts.received_by, ''), 'Store') as performed_by"),
-        'stock_receipts.created_at'
-      );
-    const issues = await db('stock_issues')
-      .join('stock_issue_items', 'stock_issues.id', 'stock_issue_items.issue_id')
-      .join('drugs', 'stock_issue_items.drug_id', 'drugs.id')
-      .select(
-        db.raw("'Issue' as movement_type"),
-        'stock_issue_items.id as id',
-        'stock_issues.issue_no as ref_no',
-        'drugs.name as item_name',
-        'drugs.strength',
-        'stock_issue_items.quantity as qty_moved',
-        'drugs.unit',
-        'stock_issues.issued_to as performed_by',
-        'stock_issues.created_at'
-      );
-    const adjustments = await db('stock_adjustments')
-      .join('drugs', 'stock_adjustments.drug_id', 'drugs.id')
-      .select(
-        db.raw("'Adjustment' as movement_type"),
-        'stock_adjustments.id',
-        'stock_adjustments.adjustment_no as ref_no',
-        'drugs.name as item_name',
-        'drugs.strength',
-        'stock_adjustments.adjustment_qty as qty_moved',
-        'drugs.unit',
-        db.raw("'' as performed_by"),
-        'stock_adjustments.created_at'
-      );
-    const transfers = await db('stock_transfers')
-      .join('stock_transfer_items', 'stock_transfers.id', 'stock_transfer_items.transfer_id')
-      .join('drugs', 'stock_transfer_items.drug_id', 'drugs.id')
-      .select(
-        db.raw("'Transfer' as movement_type"),
-        'stock_transfer_items.id as id',
-        'stock_transfers.transfer_no as ref_no',
-        'drugs.name as item_name',
-        'drugs.strength',
-        'stock_transfer_items.quantity as qty_moved',
-        'drugs.unit',
-        db.raw("CONCAT(COALESCE(stock_transfers.authorized_by, ''), ' (', COALESCE(stock_transfers.from_location, ''), ' → ', COALESCE(stock_transfers.to_location, ''), ')') as performed_by"),
-        'stock_transfers.created_at'
-      );
-    const all = [...receipts, ...issues, ...adjustments, ...transfers]
+    const { limit, type, period } = req.query;
+
+    // Build date filter
+    let dateFrom = null;
+    const now = new Date();
+    if (period === 'week') {
+      dateFrom = new Date(now); dateFrom.setDate(now.getDate() - 7);
+    } else if (period === 'month') {
+      dateFrom = new Date(now); dateFrom.setMonth(now.getMonth() - 1);
+    } else if (period === 'quarter') {
+      dateFrom = new Date(now); dateFrom.setMonth(now.getMonth() - 3);
+    } else if (period === 'year') {
+      dateFrom = new Date(now); dateFrom.setFullYear(now.getFullYear() - 1);
+    }
+    const applyDate = (q, col) => dateFrom ? q.where(col, '>=', dateFrom.toISOString().split('T')[0]) : q;
+
+    const shouldInclude = (t) => !type || type === 'ALL' || type === t;
+
+    const receipts = shouldInclude('RECEIPT') ? await applyDate(
+      db('stock_receipts')
+        .join('stock_receipt_items', 'stock_receipts.id', 'stock_receipt_items.receipt_id')
+        .join('drugs', 'stock_receipt_items.drug_id', 'drugs.id')
+        .leftJoin('users', 'stock_receipts.received_by', 'users.id')
+        .select(
+          db.raw("'RECEIPT' as movement_type"),
+          'stock_receipt_items.id as id',
+          'stock_receipts.receipt_no as reference_no',
+          'drugs.name as drug_name',
+          'drugs.strength',
+          'stock_receipt_items.quantity as quantity_in',
+          db.raw('NULL as quantity_out'),
+          'drugs.unit',
+          db.raw("COALESCE(users.full_name, 'Store') as performed_by"),
+          'stock_receipt_items.batch_no',
+          'stock_receipts.remarks',
+          'stock_receipts.created_at'
+        ), 'stock_receipts.receipt_date') : [];
+
+    const issues = shouldInclude('ISSUE') ? await applyDate(
+      db('stock_issues')
+        .join('stock_issue_items', 'stock_issues.id', 'stock_issue_items.issue_id')
+        .join('drugs', 'stock_issue_items.drug_id', 'drugs.id')
+        .leftJoin('users', 'stock_issues.issued_by', 'users.id')
+        .select(
+          db.raw("'ISSUE' as movement_type"),
+          'stock_issue_items.id as id',
+          'stock_issues.issue_no as reference_no',
+          'drugs.name as drug_name',
+          'drugs.strength',
+          db.raw('NULL as quantity_in'),
+          'stock_issue_items.quantity as quantity_out',
+          'drugs.unit',
+          db.raw("COALESCE(users.full_name, stock_issues.issued_to, 'Store') as performed_by"),
+          'stock_issue_items.batch_no',
+          db.raw("CONCAT(IFNULL(stock_issues.department, ''), IF(stock_issues.department IS NOT NULL AND stock_issues.remarks IS NOT NULL, ' - ', ''), IFNULL(stock_issues.remarks, '')) as remarks"),
+          'stock_issues.created_at'
+        ), 'stock_issues.issue_date') : [];
+
+    const adjustments = shouldInclude('ADJUSTMENT') ? await applyDate(
+      db('stock_adjustments')
+        .join('drugs', 'stock_adjustments.drug_id', 'drugs.id')
+        .leftJoin('users', 'stock_adjustments.adjusted_by', 'users.id')
+        .select(
+          db.raw("'ADJUSTMENT' as movement_type"),
+          'stock_adjustments.id',
+          'stock_adjustments.adjustment_no as reference_no',
+          'drugs.name as drug_name',
+          'drugs.strength',
+          db.raw("IF(stock_adjustments.adjustment_type = 'ADD', stock_adjustments.adjustment_qty, NULL) as quantity_in"),
+          db.raw("IF(stock_adjustments.adjustment_type != 'ADD', stock_adjustments.adjustment_qty, NULL) as quantity_out"),
+          'drugs.unit',
+          db.raw("COALESCE(users.full_name, 'Admin') as performed_by"),
+          'stock_adjustments.batch_no',
+          'stock_adjustments.reason as remarks',
+          'stock_adjustments.created_at'
+        ), 'stock_adjustments.adjustment_date') : [];
+
+    const counts = shouldInclude('COUNT') ? await applyDate(
+      db('stock_counts')
+        .join('stock_count_items', 'stock_counts.id', 'stock_count_items.count_id')
+        .join('drugs', 'stock_count_items.drug_id', 'drugs.id')
+        .leftJoin('users', 'stock_counts.counted_by', 'users.id')
+        .where('stock_counts.status', 'APPROVED')
+        .whereRaw('stock_count_items.variance != 0')
+        .select(
+          db.raw("'COUNT' as movement_type"),
+          'stock_count_items.id as id',
+          'stock_counts.count_no as reference_no',
+          'drugs.name as drug_name',
+          'drugs.strength',
+          db.raw("IF(stock_count_items.variance > 0, stock_count_items.variance, NULL) as quantity_in"),
+          db.raw("IF(stock_count_items.variance < 0, ABS(stock_count_items.variance), NULL) as quantity_out"),
+          'drugs.unit',
+          db.raw("COALESCE(users.full_name, 'Counter') as performed_by"),
+          'stock_count_items.batch_no',
+          'stock_counts.remarks',
+          'stock_counts.created_at'
+        ), 'stock_counts.count_date') : [];
+
+    const all = [...receipts, ...issues, ...adjustments, ...counts]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const sliced = limit ? all.slice(0, Number(limit)) : all;
     res.json({ success: true, data: sliced, total: all.length });

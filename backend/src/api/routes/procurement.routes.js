@@ -69,4 +69,10 @@ router.post('/pharmacy/direct-delivery', procController.directDeliveryToPharmacy
 // CEO Confirm Direct Delivery
 router.post('/pharmacy/ceo-confirm-direct', procController.ceoConfirmDirectDelivery);
 
+// ── Pharmacy Direct Delivery Flow (new structured flow) ──
+router.post('/direct-deliveries', procController.createDirectDelivery);
+router.get('/direct-deliveries', procController.listDirectDeliveries);
+router.patch('/direct-deliveries/:id/ceo-confirm', procController.ceoConfirmDelivery);
+router.patch('/direct-deliveries/:id/finance-pay', procController.financeMarkDeliveryPaid);
+
 module.exports = router;

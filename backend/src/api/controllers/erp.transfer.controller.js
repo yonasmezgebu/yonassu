@@ -487,6 +487,9 @@ const erpController = {
     const pendingTenders = await db('public_tenders').where('status', 'awaiting_ceo_approval').where('ceo_read', false);
     const recentBids = await db('public_bids').where('bid_status', 'pending').where('ceo_read', false);
     const pendingPCVs = await db('finance_pcvs').where('status', 'pending_ceo').where('ceo_read', false);
+    const pendingStockUpdates = await db('stock_update_requests').where('status', 'PENDING');
+    const pendingStockAdjustments = await db('stock_adjustments').where('status', 'PENDING');
+    const pendingPhysicalCounts = await db('stock_counts').where('status', 'PENDING');
     
     const items = [];
     
@@ -519,6 +522,33 @@ const erpController = {
         details: pendingTransfers.map(t => ({ id: t.id, title: `Transfer ${t.tr_no}`, subtitle: 'Pending CEO Approval' }))
       });
     }
+    if (pendingStockUpdates.length > 0) {
+      items.push({ 
+        type: 'store_update', 
+        count: pendingStockUpdates.length, 
+        label: `${pendingStockUpdates.length} Stock Update Request(s) Pending`, 
+        link: '/ceo/pharmacy-hub?tab=updates',
+        details: pendingStockUpdates.map(s => ({ id: s.id, title: `Update Request #${s.id}`, subtitle: 'Pending CEO Approval' }))
+      });
+    }
+    if (pendingStockAdjustments.length > 0) {
+      items.push({ 
+        type: 'store_adjustment', 
+        count: pendingStockAdjustments.length, 
+        label: `${pendingStockAdjustments.length} Stock Adjustment Request(s) Pending`, 
+        link: '/ceo/pharmacy-hub?tab=adjustments',
+        details: pendingStockAdjustments.map(s => ({ id: s.id, title: `Adjustment ${s.adjustment_no}`, subtitle: 'Pending CEO Approval' }))
+      });
+    }
+    if (pendingPhysicalCounts.length > 0) {
+      items.push({ 
+        type: 'store_physical_count', 
+        count: pendingPhysicalCounts.length, 
+        label: `${pendingPhysicalCounts.length} Physical Count(s) Pending CEO Approval`, 
+        link: '/ceo/pharmacy-hub?tab=counts',
+        details: pendingPhysicalCounts.map(s => ({ id: s.id, title: `Count ${s.count_no}`, subtitle: 'Pending CEO Approval' }))
+      });
+    }
     if (pendingManager.length > 0) {
       items.push({ 
         type: 'manager_request', 
@@ -533,7 +563,7 @@ const erpController = {
         type: 'procurement_request', 
         count: pendingProcurements.length, 
         label: `${pendingProcurements.length} Procurement Request(s) Pending`, 
-        link: '/ceo/procurement-decisions',
+        link: '/ceo/pharmacy-hub?tab=procurement',
         details: pendingProcurements.map(p => ({ 
           id: p.id, 
           title: `PR ${p.pr_no}: ${p.drug_name}`, 
