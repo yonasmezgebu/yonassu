@@ -58,7 +58,8 @@ exports.createCar = async (req, res) => {
       image1: carModel.image1,
       image2: carModel.image2,
       image3: carModel.image3,
-      image4: carModel.image4
+      image4: carModel.image4,
+      deleted_at: req.body.visibility === 'internal' ? new Date() : null
     };
 
     const newCar = await carRepository.createAndReturn(dataToInsert);
@@ -151,7 +152,26 @@ exports.hardDeleteCar = async (req, res) => {
     await carRepository.delete(id);
     res.status(200).json({ status: 'success', message: 'Vehicle permanently deleted' });
   } catch (error) {
-    logger.error('Error hard deleting car:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to permanently delete vehicle' });
+    logger.error('Error in hardDeleteCar:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to permanently delete car' });
+  }
+};
+
+exports.updateAssetValue = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asset_value } = req.body;
+    
+    if (asset_value === undefined) {
+      return res.status(400).json({ status: 'error', message: 'asset_value is required' });
+    }
+
+    const { db } = require('../../config/database');
+    await db('cars').where({ id }).update({ asset_value, updated_at: new Date() });
+    
+    res.status(200).json({ status: 'success', message: 'Asset value updated successfully' });
+  } catch (error) {
+    logger.error('Error updating asset value:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update asset value' });
   }
 };

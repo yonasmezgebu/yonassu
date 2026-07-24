@@ -1,0 +1,175 @@
+const tractorRepository = require('../../repositories/tractor.repository');
+const TractorModel = require('../../models/Tractor.model');
+const { logger } = require('../../config/logger');
+
+exports.getAllTractorsPublic = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const tractors = await db('tractors').whereNull('deleted_at').orderBy('created_at', 'desc');
+    const TractorModel = require('../../models/Tractor.model');
+    res.status(200).json({
+      status: 'success',
+      data: tractors.map(t => TractorModel.fromDatabase(t).toJSON())
+    });
+  } catch (error) {
+    logger.error('Error fetching public tractors:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch tractors' });
+  }
+};
+
+exports.getAllTractorsManager = async (req, res) => {
+  try {
+    const tractors = await tractorRepository.findAll({});
+    res.status(200).json({
+      status: 'success',
+      data: tractors.map(t => t.toJSON())
+    });
+  } catch (error) {
+    logger.error('Error fetching manager tractors:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch tractors' });
+  }
+};
+
+exports.createTractor = async (req, res) => {
+  try {
+    const tractorModel = TractorModel.fromRequest(req.body);
+    
+    if (req.files) {
+      if (req.files.image1) tractorModel.image1 = `/uploads/cars/${req.files.image1[0].filename}`;
+      if (req.files.image2) tractorModel.image2 = `/uploads/cars/${req.files.image2[0].filename}`;
+      if (req.files.image3) tractorModel.image3 = `/uploads/cars/${req.files.image3[0].filename}`;
+      if (req.files.image4) tractorModel.image4 = `/uploads/cars/${req.files.image4[0].filename}`;
+    }
+
+    const validation = tractorModel.validate();
+    if (!validation.isValid) {
+      return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validation.errors });
+    }
+
+    const dataToInsert = {
+      name: tractorModel.name,
+      daily_rate: tractorModel.dailyRate,
+      transmission: tractorModel.transmission,
+      fuel_type: tractorModel.fuelType,
+      tractor_type: tractorModel.tractorType,
+      description: tractorModel.description,
+      availability: tractorModel.availability,
+      image1: tractorModel.image1,
+      image2: tractorModel.image2,
+      image3: tractorModel.image3,
+      image4: tractorModel.image4,
+      deleted_at: req.body.visibility === 'internal' ? new Date() : null
+    };
+
+    const newTractor = await tractorRepository.createAndReturn(dataToInsert);
+    res.status(201).json({ status: 'success', data: TractorModel.fromDatabase(newTractor).toJSON() });
+  } catch (error) {
+    logger.error('Error creating tractor:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to create tractor' });
+  }
+};
+
+exports.updateTractor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existingTractor = await tractorRepository.findById(id);
+    if (!existingTractor) {
+      return res.status(404).json({ status: 'error', message: 'Tractor not found' });
+    }
+
+    const tractorModel = TractorModel.fromRequest({ ...existingTractor.toJSON(), ...req.body });
+
+    if (req.files) {
+      if (req.files.image1) tractorModel.image1 = `/uploads/cars/${req.files.image1[0].filename}`;
+      if (req.files.image2) tractorModel.image2 = `/uploads/cars/${req.files.image2[0].filename}`;
+      if (req.files.image3) tractorModel.image3 = `/uploads/cars/${req.files.image3[0].filename}`;
+      if (req.files.image4) tractorModel.image4 = `/uploads/cars/${req.files.image4[0].filename}`;
+    }
+
+    const validation = tractorModel.validate();
+    if (!validation.isValid) {
+      return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validation.errors });
+    }
+
+    const dataToUpdate = {
+      name: tractorModel.name,
+      daily_rate: tractorModel.dailyRate,
+      transmission: tractorModel.transmission,
+      fuel_type: tractorModel.fuelType,
+      tractor_type: tractorModel.tractorType,
+      description: tractorModel.description,
+      availability: tractorModel.availability,
+      ...(tractorModel.image1 && { image1: tractorModel.image1 }),
+      ...(tractorModel.image2 && { image2: tractorModel.image2 }),
+      ...(tractorModel.image3 && { image3: tractorModel.image3 }),
+      ...(tractorModel.image4 && { image4: tractorModel.image4 })
+    };
+
+    const updatedTractor = await tractorRepository.updateAndReturn(id, dataToUpdate);
+    res.status(200).json({ status: 'success', data: TractorModel.fromDatabase(updatedTractor).toJSON() });
+  } catch (error) {
+    logger.error('Error updating tractor:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update tractor' });
+  }
+};
+
+exports.deleteTractor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existingTractor = await tractorRepository.findById(id);
+    if (!existingTractor) {
+      return res.status(404).json({ status: 'error', message: 'Tractor not found' });
+    }
+
+    await tractorRepository.softDelete(id);
+    res.status(200).json({ status: 'success', message: 'Tractor deleted successfully' });
+  } catch (error) {
+    logger.error('Error deleting tractor:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to delete tractor' });
+  }
+};
+
+exports.restoreTractor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await tractorRepository.restore(id);
+    res.status(200).json({ status: 'success', message: 'Tractor restored successfully' });
+  } catch (error) {
+    logger.error('Error restoring tractor:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to restore tractor' });
+  }
+};
+
+exports.hardDeleteTractor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existingTractor = await tractorRepository.findById(id);
+    if (!existingTractor) {
+      return res.status(404).json({ status: 'error', message: 'Tractor not found' });
+    }
+    await tractorRepository.delete(id);
+    res.status(200).json({ status: 'success', message: 'Tractor permanently deleted' });
+  } catch (error) {
+    logger.error('Error in hardDeleteTractor:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to permanently delete tractor' });
+  }
+};
+
+exports.updateAssetValue = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asset_value } = req.body;
+    
+    if (asset_value === undefined) {
+      return res.status(400).json({ status: 'error', message: 'asset_value is required' });
+    }
+
+    const { db } = require('../../config/database');
+    await db('tractors').where({ id }).update({ asset_value, updated_at: new Date() });
+    
+    res.status(200).json({ status: 'success', message: 'Asset value updated successfully' });
+  } catch (error) {
+    logger.error('Error updating asset value:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update asset value' });
+  }
+};

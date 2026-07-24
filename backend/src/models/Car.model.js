@@ -9,6 +9,7 @@ class CarModel {
     this.carType = data.car_type || data.carType || 'Sedan';
     this.description = data.description || '';
     this.availability = data.availability || 'Available';
+    this.asset_value = data.asset_value !== undefined ? data.asset_value : null;
     this.image1 = data.image1 || null;
     this.image2 = data.image2 || null;
     this.image3 = data.image3 || null;
@@ -58,6 +59,7 @@ class CarModel {
       carType: this.carType,
       description: this.description,
       availability: this.availability,
+      asset_value: this.asset_value,
       image1: this.image1,
       image2: this.image2,
       image3: this.image3,

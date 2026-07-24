@@ -12,18 +12,31 @@ const uploadFields = uploads.carImages.fields([
   { name: 'image4', maxCount: 1 }
 ]);
 
-// Public route for Fleet Gallery
+// Public route for Fleet Gallery (no auth needed)
 router.get('/public', carController.getAllCarsPublic);
 
-// Protected routes for Car Renting Manager and Admin
+// All routes below require authentication
 router.use(authenticate);
-router.use(authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']));
 
-router.get('/', carController.getAllCarsManager);
-router.post('/', uploadFields, carController.createCar);
-router.put('/:id', uploadFields, carController.updateCar);
-router.delete('/:id', carController.deleteCar);
-router.patch('/:id/restore', carController.restoreCar);
-router.delete('/:id/permanent', carController.hardDeleteCar);
+// READ: Car Manager, Admin, CEO, Finance Manager, and Agri Rental Manager can all view cars
+router.get(
+  '/',
+  authorizeRoles(['Car Renting Manager', 'Admin', 'CEO', 'Finance Manager', 'Agri Rental Manager']),
+  carController.getAllCarsManager
+);
+
+// WRITE: Only Car Renting Manager, Admin, CEO can create/update/delete
+router.post('/', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), uploadFields, carController.createCar);
+router.put('/:id', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), uploadFields, carController.updateCar);
+router.delete('/:id', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.deleteCar);
+router.patch('/:id/restore', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.restoreCar);
+router.delete('/:id/permanent', authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), carController.hardDeleteCar);
+
+// ASSET VALUE: Finance Manager, Admin, CEO, Car Renting Manager can update asset values
+router.patch(
+  '/:id/asset-value',
+  authorizeRoles(['Finance Manager', 'Admin', 'CEO', 'Car Renting Manager']),
+  carController.updateAssetValue
+);
 
 module.exports = router;

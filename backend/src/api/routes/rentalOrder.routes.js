@@ -12,6 +12,7 @@ router.post('/:id/payment-proof', authenticate, uploads.singlePaymentProof.singl
 
 // Manager routes
 router.get('/', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getAllOrders);
+router.get('/:id', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO', 'Finance', 'Finance Manager']), rentalOrderController.getOrderById);
 router.put('/:id/status', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.updateOrderStatus);
 router.patch('/:id/status', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.updateOrderStatus);
 

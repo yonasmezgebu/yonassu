@@ -7,6 +7,84 @@ const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
 
+// ── HELPER: Sync car rental payment to Finance Receivables ───────────────────────
+// Mirrors same logic as AgriRent syncToFinance
+const syncRentalToFinance = async (order, userId, verifiedAmount) => {
+  try {
+    // Prevent duplicate entries — upsert by order_number
+    const existing = await db('finance_receivables')
+      .where('invoice_no', order.order_number || order.orderNumber)
+      .first();
+
+    // Resolve car name from join if not already on order object
+    let carName = order.car_name || order.carName || 'Car Rental';
+    if (!carName || carName === 'Car Rental') {
+      const car = await db('cars').where('id', order.car_id || order.carId).select('name').first();
+      if (car) carName = car.name;
+    }
+
+    const paymentMethod = order.payment_method || order.paymentMethod || 'Unknown';
+    const orderNumber = order.order_number || order.orderNumber;
+    const customerName = order.customer_name || order.customerName || 'Car Rental Customer';
+    const paidAmount = parseFloat(verifiedAmount || order.verified_amount || order.total_amount || order.totalAmount || 0);
+    const totalAmount = parseFloat(order.total_amount || order.totalAmount || 0);
+
+    const manualDetails = {
+      order_id: order.id,
+      order_number: orderNumber,
+      car_id: order.car_id || order.carId,
+      confirmed_by: userId,
+      paymentMethod,
+      receivedFrom: customerName,
+      amount: paidAmount,
+      paymentReference: order.payment_reference || order.paymentReference,
+      proofImagePath: order.payment_proof_url || order.paymentProofUrl,
+      bankDetails: null,
+      telebirrDetails: null,
+      financeSignature: true,
+      financeName: 'Finance Verified',
+      // Car Rental specific contract details
+      contractDetails: {
+        carName,
+        driverName: order.driver_name || order.driverName,
+        driverLicense: order.driver_license || order.driverLicense,
+        dates: `${new Date(order.pickup_date || order.pickupDate).toLocaleDateString()} → ${new Date(order.return_date || order.returnDate).toLocaleDateString()}`,
+        totalDays: order.total_days || order.totalDays,
+        dailyRate: order.daily_rate || order.dailyRate,
+        rentalAmount: order.rental_amount || order.rentalAmount,
+        securityDeposit: order.security_deposit || order.securityDeposit,
+        extensionFee: order.extension_fee || order.extensionFee || 0,
+        damageFee: order.damage_fee || order.damageFee || 0,
+        lateFee: order.late_fee || order.lateFee || 0,
+        specialRequests: order.special_requests || order.specialRequests
+      }
+    };
+
+    const record = {
+      customer_name: customerName,
+      invoice_no: orderNumber,
+      invoice_date: order.created_at || new Date(),
+      due_date: order.pickup_date || order.pickupDate || new Date(),
+      total_amount: totalAmount,
+      amount_paid: paidAmount,
+      outstanding_balance: Math.max(0, totalAmount - paidAmount),
+      status: paidAmount >= totalAmount ? 'Paid' : 'Partial',
+      department_source: 'Car Rental',
+      manual_details: JSON.stringify(manualDetails),
+      updated_at: new Date()
+    };
+
+    if (existing) {
+      await db('finance_receivables').where('id', existing.id).update(record);
+    } else {
+      record.created_at = new Date();
+      await db('finance_receivables').insert(record);
+    }
+  } catch (e) {
+    logger.error('Failed to sync car rental order to finance_receivables:', e);
+  }
+};
+
 exports.createOrder = async (req, res, next) => {
   try {
     const data = req.body;
@@ -78,6 +156,23 @@ exports.getAllOrders = async (req, res, next) => {
   } catch (error) {
     logger.error('Error fetching rental orders:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch rental orders' });
+  }
+};
+
+exports.getOrderById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const order = await rentalOrderRepository.findById(id);
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+    res.status(200).json({
+      status: 'success',
+      data: order.toJSON()
+    });
+  } catch (error) {
+    logger.error('Error fetching rental order by id:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch rental order' });
   }
 };
 
@@ -159,6 +254,29 @@ exports.uploadPaymentProof = async (req, res) => {
     };
 
     const updated = await rentalOrderRepository.update(id, updateData);
+
+    // Automatically send to Finance Live Income for verification
+    try {
+      await db('finance_income_submissions').insert({
+        department: 'Car Rental',
+        submitted_by: order.customerName || 'Car Rental Customer',
+        amount: order.additionalOwed > 0 ? order.additionalOwed : order.totalAmount,
+        reference_no: `CAR-PROOF-${order.orderNumber}`,
+        description: `Car Rental Order ${order.orderNumber} - ${order.customerName}`,
+        status: 'Pending',
+        manual_details: JSON.stringify({
+          order_id: id,
+          paymentMethod: order.paymentMethod || 'Bank/Telebirr',
+          proofImagePath: proofUrl,
+          amount: order.additionalOwed > 0 ? order.additionalOwed : order.totalAmount,
+          receivedFrom: order.customerName || 'Car Rental Customer'
+        }),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+    } catch (err) {
+      logger.error('Failed to submit Car Rental proof to finance live income:', err.message);
+    }
 
     res.status(200).json({
       status: 'success',
@@ -302,6 +420,15 @@ exports.verifyPayment = async (req, res) => {
         });
       } catch (err) {
         logger.error('Failed to record rental payment in bank_payments:', err.message);
+      }
+
+      // ── Sync to Finance Receivables (same flow as AgriRent) ──
+      if (order.status === 'APPROVED' || order.additionalOwed > 0) {
+        await syncRentalToFinance(
+          await db('rental_orders').where({ id: order.id }).first(),
+          req.user.id,
+          verifiedAmount
+        );
       }
     }
 
