@@ -134,11 +134,17 @@ const carService = {
     return res.data;
   },
 
-  async uploadPaymentProof(id, formData) {
+  uploadPaymentProof: async (id, formData) => {
     const response = await api.post(`/rental-orders/${id}/payment-proof`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
+  },
+
+  verifyPayment: async (id, data) => {
+    // data: { isVerified: boolean, verifiedAmount?: number, notes?: string, referenceNumber?: string }
+    const res = await api.post(`/rental-orders/${id}/verify-payment`, data);
+    return res.data;
   },
 
   markNoShow: async (id) => {

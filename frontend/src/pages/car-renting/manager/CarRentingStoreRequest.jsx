@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 import { ShoppingCart, Package, CheckCircle, AlertCircle, ArrowLeft, Clock, XCircle, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,21 +26,26 @@ export default function CarRentingStoreRequest() {
   const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
-    axios.get('/car-renting/admin/products?include_inactive=false')
+    apiClient.get('/car-renting/admin/products?include_inactive=false')
       .then(r => setProducts((r.data || r)?.filter(p => p.is_active !== false) || []))
       .catch(() => {});
     loadRequests();
   }, []);
 
   const loadRequests = () => {
-    axios.get('/car-renting/store-requests')
-      .then(r => setRequests((r.data || r) || []))
-      .catch(() => {});
+    apiClient.get('/car-renting/store-requests')
+      .then(r => {
+        const data = (r.data || r);
+        setRequests(Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []));
+      })
+      .catch(() => {
+        setRequests([]); // Fallback to empty array on error
+      });
   };
 
   const loadDetail = async (id) => {
     try {
-      const r = await axios.get(`/car-renting/store-requests/${id}`);
+      const r = await apiClient.get(`/car-renting/store-requests/${id}`);
       setDetail(r.data);
     } catch (e) { setErr(e.response?.data?.message || e.message); setTimeout(() => setErr(null), 4000); }
   };
@@ -55,7 +60,7 @@ export default function CarRentingStoreRequest() {
     if (!valid.length) { setErr('Add at least one product with quantity'); return; }
     setSubmitting(true); setErr(null); setMsg(null);
     try {
-      await axios.post('/car-renting/store-requests', {
+      await apiClient.post('/car-renting/store-requests', {
         items: valid.map(i => ({ product_id: parseInt(i.product_id), quantity_requested: parseInt(i.qty) })),
         notes
       });
@@ -69,7 +74,7 @@ export default function CarRentingStoreRequest() {
 
   const confirmReceived = async (id) => {
     try {
-      await axios.patch(`/car-renting/store-requests/${id}/status`, { status: 'RECEIVED' });
+      await apiClient.patch(`/car-renting/store-requests/${id}/status`, { status: 'RECEIVED' });
       setConfirm(null); setDetail(null);
       setMsg('Receipt confirmed successfully');
       loadRequests();

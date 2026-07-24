@@ -94,7 +94,7 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -241,6 +241,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     (purchaseApprovedTenders?.length || 0) +
     procurementMessages +
     purchaseNewBids +
+    (agriRentPending || 0) +
     notifCount +
     pcvUnread
   );
@@ -635,6 +636,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [purchaseBidsList, setPurchaseBidsList] = useState([]);
   const [purchaseApprovedTenders, setPurchaseApprovedTenders] = useState([]);
   const [ceoFundRequestsPending, setCeoFundRequestsPending] = useState(0);
+  const [agriRentPending, setAgriRentPending] = useState(0);
   const [pageNotifs, setPageNotifs] = useState([]); // unread notifs for current page
   const [pcvNotifications, setPcvNotifications] = useState([]); // PCV approval notifications
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -678,6 +680,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const isPharmacyRoute = location.pathname.startsWith('/pharmacy') && !location.pathname.startsWith('/pharmacy-worker') && !location.pathname.startsWith('/pharmacy/store');
   const isPurchaseRoute = location.pathname.startsWith('/purchase');
   const isFinanceRoute = location.pathname.startsWith('/finance');
+  const isCarRentingRoute = location.pathname.startsWith('/car-renting');
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -686,6 +689,20 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const toggleSubmenu = (label) => {
     setExpandedMenus(prev => ({ ...prev, [label]: !prev[label] }));
   };
+
+  // Listen for global hijacked alerts
+  useEffect(() => {
+    const handleGlobalToast = (e) => {
+      const detail = e.detail;
+      if (typeof detail === 'string') {
+        showToast(detail, 'info');
+      } else if (detail && detail.message) {
+        showToast(detail.message, detail.type || 'info');
+      }
+    };
+    window.addEventListener('app-toast', handleGlobalToast);
+    return () => window.removeEventListener('app-toast', handleGlobalToast);
+  }, [showToast]);
 
   useEffect(() => {
     setExpandedMenus(prev => {
@@ -842,7 +859,17 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       setPurchaseBidsList([]);
       setPurchaseApprovedTenders([]);
     }
-  }, [location.pathname, isCeoRoute, isPharmacyRoute, isPurchaseRoute, isFinanceRoute, notifRefresh]);
+
+    if (isCarRentingRoute) {
+      apiClient.get('/agrirent-orders?status=pending').then(res => {
+        if (res?.data?.data?.orders) {
+          setAgriRentPending(res.data.data.orders.length);
+        }
+      }).catch(() => {});
+    } else {
+      setAgriRentPending(0);
+    }
+  }, [location.pathname, isCeoRoute, isPharmacyRoute, isPurchaseRoute, isFinanceRoute, isCarRentingRoute, notifRefresh]);
 
   // Load page-level unread notifications matching current URL
   useEffect(() => {
@@ -1079,6 +1106,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               setPurchaseBidsList={setPurchaseBidsList}
               setPurchaseNewBids={setPurchaseNewBids}
               ceoFundRequestsPending={ceoFundRequestsPending}
+              agriRentPending={agriRentPending}
               onOpenProcurementInbox={() => navigate('/purchase/smart-tenders?tab=contact')}
               pcvNotifications={pcvNotifications}
               setPcvNotifications={setPcvNotifications}
@@ -1185,7 +1213,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
           </div>
         </header>
         )}
-        <div className="dash-content" style={noPadding ? { padding: 0, background: '#ffffff', display: 'flex', flexDirection: 'column' } : {}}>
+        {/* Page Content stretched 100% */}
+        <div className="dash-content" style={{ width: '100%', overflowX: 'hidden', ...(noPadding ? { padding: 0, background: '#ffffff', display: 'flex', flexDirection: 'column' } : {}) }}>
           {pageNotifs.length > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '12px',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Settings2, Fuel, Users, Package, 
   CarFront, CheckCircle2, Clock, AlertTriangle, ArrowRight, X,
@@ -42,7 +42,20 @@ const FleetGalleryPage = () => {
   const [toast, setToast] = useState({ show: false, type: '', title: '', message: '' });
   
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
+
+  // Auto-open modal after returning from login
+  useEffect(() => {
+    if (location.state?.openCarRentalOrder && authService.isAuthenticated()) {
+      const car = location.state.car;
+      if (car) {
+        setSelectedCarForReserve(car);
+        setReserveModalOpen(true);
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -98,7 +111,7 @@ const FleetGalleryPage = () => {
 
   const handleReserve = (car) => {
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/login', { state: { from: location.pathname, openCarRentalOrder: true, car: car } });
     } else {
       setSelectedCarForReserve(car);
       setReserveModalOpen(true);

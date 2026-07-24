@@ -154,9 +154,9 @@
 
 /* ── Main Content ─────────────────────────────────── */
 .mainContent {
-  max-width: 1200px;
-  margin: -2.5rem auto 4rem;
-  padding: 0 2rem;
+  max-width: 1440px;
+  margin: 0 auto 4rem;
+  padding: 32px 24px 0;
   width: 100%;
   position: relative;
   z-index: 10;
@@ -283,32 +283,40 @@
 /* ── Products ─────────────────────────────────────── */
 .productsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
 }
 
+/* ── Card — identical to Printing page psp-card ── */
 .productCard {
   background: white;
-  border-radius: 1rem;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid #e4e6ea;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   display: flex;
   flex-direction: column;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  animation: farmCardUp 0.4s both;
+  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+@keyframes farmCardUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .productCard:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px -12px rgba(0,0,0,0.15);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
+  transform: translateY(-4px);
+  border-color: #bae6fd;
 }
 
-/* Image */
+/* Image wrapper — identical to psp-card-img-wrap */
 .productImageWrapper {
-  width: 100%;
-  height: 200px;
-  overflow: hidden;
   position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 220px;
   background: #f1f5f9;
 }
 
@@ -316,197 +324,154 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s;
+  transition: transform 0.5s;
   cursor: zoom-in;
 }
 
-.productCard:hover .productImage { transform: scale(1.08); }
+.productCard:hover .productImage { transform: scale(1.06); }
 
 .productPlaceholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  color: #cbd5e1; background: #f8fafc;
+  background: linear-gradient(135deg,#1a2b4b,#0D7C66);
+  color: rgba(255,255,255,0.4);
 }
 
-/* Badges on image */
+/* Badges — identical to psp-card-badge */
 .productImageBadges {
   position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 12px;
+  left: 12px;
   display: flex;
-  gap: 0.375rem;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .typeBadge {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.lowStockBadge {
-  background: #fef3c7;
-  color: #92400e;
-  padding: 0.25rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 700;
+  gap: 4px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(6px);
+  padding: 4px 12px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1a2b4b;
+  letter-spacing: 0.3px;
 }
 
 .outOfStockBadge {
+  display: inline-flex;
+  align-items: center;
   background: #fee2e2;
   color: #991b1b;
-  padding: 0.25rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 800;
 }
 
-/* Price tag overlay */
-.priceTag {
-  position: absolute;
-  bottom: 0.75rem;
-  right: 0.75rem;
-  background: linear-gradient(135deg, #059669, #10b981);
-  color: white;
-  padding: 0.4rem 0.75rem;
-  border-radius: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.2;
-  box-shadow: 0 4px 8px rgba(5,150,105,0.3);
-}
+/* Remove old price-tag overlay — price now in card body */
+.priceTag { display: none; }
+.priceCurrency { display: none; }
+.priceValue { display: none; }
 
-.priceCurrency { font-size: 0.6rem; font-weight: 500; opacity: 0.9; }
-.priceValue { font-size: 1rem; font-weight: 800; }
-
-/* Product Info */
+/* Card body — identical to psp-card-body */
 .productInfo {
-  padding: 1.125rem;
+  padding: 20px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  flex: 1;
 }
 
+/* Name — identical to psp-card-name */
 .productName {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #0f172a;
-  margin: 0 0 0.2rem;
+  margin: 0 0 6px;
 }
 
+/* Subtitle / fuel+transmission row */
 .productCategory {
-  font-size: 0.75rem;
-  color: #10b981;
-  font-weight: 600;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.productDesc {
-  font-size: 0.8rem;
-  color: #64748b;
-  line-height: 1.5;
-  margin: 0 0 0.75rem;
+  gap: 4px;
+  margin-bottom: 0px;
+  line-height: 1.6;
   flex: 1;
 }
 
-/* Usage instructions accordion */
-.usageSection {
-  margin-bottom: 0.75rem;
+/* Description — identical to psp-card-desc */
+.productDesc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 16px;
+  flex: 1;
 }
 
-.usageToggle {
-  display: inline-flex;
+/* Footer row — identical to psp-card-footer */
+.cardFooter {
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  background: #f0fdf4;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Price — identical to psp-price */
+.cardPrice {
+  font-size: 18px;
+  font-weight: 800;
   color: #059669;
+}
+
+.cardPriceSub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* Order button — identical to psp-order-btn */
+.orderBtn {
+  background: linear-gradient(135deg,#1a2b4b,#0D7C66);
+  color: white;
   border: none;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 0;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 13px;
   transition: all 0.2s;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
-.usageToggle:hover { background: #dcfce7; }
+.orderBtn:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 4px 16px rgba(13,124,102,0.4); }
+.orderBtn:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.7; }
 
-.usageContent {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  margin-top: 0.375rem;
-  font-size: 0.78rem;
-  color: #475569;
-  line-height: 1.5;
-  animation: fadeSlide 0.25s ease;
-}
+/* Keep skeleton / unused leftovers from old design */
+.usageSection { display: none; }
+.usageToggle { display: none; }
+.usageContent { display: none; }
+.stockSection { display: none; }
+.stockBarTrack { display: none; }
+.stockBarFill { display: none; }
+.stockLabel { display: none; }
+.lowStockBadge { display: none; }
 
 @keyframes fadeSlide {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-/* Stock bar */
-.stockSection {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.stockBarTrack {
-  flex: 1;
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.stockBarFill {
-  height: 100%;
-  border-radius: 9999px;
-  transition: width 0.5s ease;
-}
-
-.stockLabel {
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* Order button */
-.orderBtn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, #059669, #10b981);
-  color: white;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.25s;
-}
-
-.orderBtn:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 6px 16px rgba(5,150,105,0.35); }
-.orderBtn:disabled { background: #cbd5e1; cursor: not-allowed; }
 
 /* ── Info Sections ────────────────────────────────── */
 .infoGrid {

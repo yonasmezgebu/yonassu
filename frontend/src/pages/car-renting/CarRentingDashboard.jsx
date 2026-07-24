@@ -6,6 +6,10 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import RentalDashboard from './manager/RentalDashboard';
 import RentalOrders from './manager/RentalOrders';
 import FleetManager from './FleetManager';
+import TractorRegister from './manager/TractorRegister';
+import AgriRentList from './manager/AgriRentList';
+import AgriRentOrders from './manager/AgriRentOrders';
+import AgriRentCreateOrder from './manager/AgriRentCreateOrder';
 import AssetRegister from './manager/AssetRegister';
 import AddAsset from './manager/AddAsset';
 import Maintenance from './manager/Maintenance';
@@ -34,9 +38,8 @@ const CarRentingDashboard = () => {
 
     { label: 'Fleet & Assets', icon: 'truck',
       children: [
-        { label: 'Rental Post',             path: '/car-renting/manager/fleet',         icon: 'car',        color: '#3b82f6' },
-        { label: 'Tractor Post',            path: '/car-renting/manager/tractor-fleet', icon: 'truck',      color: '#22c55e' },
-        { label: 'Asset Register',          path: '/car-renting/manager/assets',        icon: 'list',       color: '#64748b' },
+        { label: 'Rental Post & Vehicle', path: '/car-renting/manager/fleet',         icon: 'car',   color: '#228B22' },
+        { label: 'Tractor Post',          path: '/car-renting/manager/tractor-fleet', icon: 'truck', color: '#2E8B57' },
       ]
     },
     { type: 'divider' },
@@ -60,7 +63,7 @@ const CarRentingDashboard = () => {
   ];
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+    <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
       <DashboardLayout menuItems={menuItems} title="Car & Agri Rental Dashboard">
         <Routes>
           {/* Dashboard */}
@@ -68,13 +71,15 @@ const CarRentingDashboard = () => {
 
           {/* Operations */}
           <Route path="manager/orders"      element={<RentalOrders />} />
-          <Route path="manager/agri-orders" element={<RentalOrders />} />
+          <Route path="manager/agri-orders" element={<AgriRentOrders />} />
+          <Route path="manager/agri-orders/new" element={<AgriRentCreateOrder />} />
           <Route path="manager/store-request" element={<CarRentingStoreRequest />} />
 
           {/* Fleet */}
           <Route path="manager/fleet"         element={<FleetManager />} />
-          <Route path="manager/tractor-fleet" element={<FleetManager />} />
-          <Route path="manager/assets"        element={<AssetRegister />} />
+          <Route path="manager/tractor-fleet"  element={<TractorRegister />} />
+          <Route path="manager/agrirent-list"  element={<AgriRentList />} />
+          <Route path="manager/assets"         element={<AssetRegister />} />
           <Route path="manager/assets/new"   element={<AddAsset />} />
           <Route path="manager/maintenance"  element={<Maintenance />} />
           <Route path="manager/utilization"  element={<AssetUtilization />} />

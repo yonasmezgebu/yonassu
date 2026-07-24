@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
-import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Star, Shield, Truck, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, FileBadge, Wallet } from 'lucide-react';
-import RentalAgreementModal from './RentalAgreementModal';
-import carService from '../../services/carService';
+import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2 } from 'lucide-react';
+import tractorService from '../../services/tractorService';
 import PrescriptionViewer from '../shared/PrescriptionViewer';
 import styles from './FarmingServicePage.module.css';
 import farmingHero from '../../assets/hero-section/farming.jpg';
@@ -42,37 +41,77 @@ function resolveImg(url) {
 const FarmingServicePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const fileRef = useRef(null);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedDesc, setExpandedDesc] = useState({});
-  const [expandedUsage, setExpandedUsage] = useState({});
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [reserveModalOpen, setReserveModalOpen] = useState(false);
-  const [toast, setToast] = useState({ show: false, type: '', title: '', message: '' });
   const [viewImage, setViewImage] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [categories] = useState([]);
+  const [expandedDesc, setExpandedDesc] = useState({});
+  const [toast, setToast] = useState({ show: false, type: '', title: '', message: '' });
+
+  // ── Auth / User ─────────────────────────────
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // ── Order Modal State ─────────────────────────────
+  const [orderModal, setOrderModal] = useState({ open: false, tractor: null });
+  const [orderForm, setOrderForm] = useState({
+    startDate: '', endDate: '',
+    fieldLocation: '', fieldSizeHectares: '',
+    farmingPurpose: '', specialInstructions: '',
+    paymentMethod: 'Telebirr', paymentReference: ''
+  });
+  const [orderFile, setOrderFile] = useState(null);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState('');
+  const [orderSuccess, setOrderSuccess] = useState(null);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
+
+  // ── Load finance accounts (same pattern as PharmacySalesForm) ─────────────
+  const loadFinanceAccounts = async () => {
+    try {
+      // apiClient interceptor unwraps response.data → result = { success, data, summary }
+      const result = await axios.get('/finance-bank');
+      if (result && result.success && Array.isArray(result.data)) {
+        setFinanceAccounts(result.data);
+      } else if (Array.isArray(result)) {
+        setFinanceAccounts(result);
+      } else if (result && Array.isArray(result.data)) {
+        setFinanceAccounts(result.data);
+      }
+    } catch (e) {
+      // On public pages a 401 is silently rejected — that's OK when user IS logged in
+      // but token was not sent. Try again with explicit token header.
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const result2 = await axios.get('/finance-bank', { headers: { Authorization: `Bearer ${token}` } });
+          if (result2 && Array.isArray(result2.data)) setFinanceAccounts(result2.data);
+          else if (Array.isArray(result2)) setFinanceAccounts(result2);
+        } catch (e2) {
+          console.error('[FarmingPage] Failed to load finance accounts:', e2.message);
+        }
+      } else {
+        console.error('[FarmingPage] No token, cannot load finance accounts:', e.message);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchPublicData = async () => {
       try {
         setLoading(true);
-        const [catRes, prodRes] = await Promise.all([
-          axios.get('/farming/categories'),
-          axios.get('/farming/products')
-        ]);
-        if (catRes.status === 'success') setCategories(catRes.data.filter(c => c.is_active));
-        if (prodRes.status === 'success') {
-          const activeProds = prodRes.data.filter(p => p.is_active);
-          setAllProducts(activeProds);
-          setSearchResults(activeProds);
+        const res = await tractorService.getAllPublicTractors();
+        if (res.status === 'success') {
+          setAllProducts(res.data);
+          setSearchResults(res.data);
         }
       } catch (error) {
-        console.error('Failed to fetch farming data', error);
+        console.error('Failed to fetch tractors', error);
       } finally {
         setLoading(false);
       }
@@ -80,13 +119,28 @@ const FarmingServicePage = () => {
     fetchPublicData();
   }, []);
 
+  // Load current user on mount
   useEffect(() => {
-    if (location.state?.orderProduct && authService.isAuthenticated()) {
-      setSelectedProduct(location.state.orderProduct);
-      setIsModalOpen(true);
+    if (authService.isAuthenticated()) setCurrentUser(authService.getCurrentUser());
+  }, []);
+
+  // Auto-open modal after returning from login
+  useEffect(() => {
+    if (location.state?.openFarmingOrder && authService.isAuthenticated()) {
+      const tractor = location.state.tractor;
+      if (tractor) {
+        const user = authService.getCurrentUser();
+        setCurrentUser(user);
+        setOrderModal({ open: true, tractor: tractor });
+        setOrderForm({ startDate: '', endDate: '', fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '', specialInstructions: '', paymentMethod: '', paymentReference: '' });
+        setOrderFile(null);
+        setOrderError('');
+        setOrderSuccess(null);
+        loadFinanceAccounts();
+      }
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [location.state]);
 
   const handleSearch = () => {
     let filtered = allProducts;
@@ -95,10 +149,9 @@ const FarmingServicePage = () => {
       filtered = filtered.filter(prod =>
         prod.name.toLowerCase().includes(query) ||
         (prod.description && prod.description.toLowerCase().includes(query)) ||
-        prod.category_name?.toLowerCase().includes(query)
+        (prod.tractor_type || prod.tractorType)?.toLowerCase().includes(query)
       );
     }
-    if (selectedCategory) filtered = filtered.filter(prod => prod.category_id === selectedCategory);
     setSearchResults(filtered);
   };
 
@@ -106,38 +159,79 @@ const FarmingServicePage = () => {
 
   const handleCategoryClick = (categoryId) => setSelectedCategory(selectedCategory === categoryId ? null : categoryId);
 
-  const showToast = (type, title, message, redirectDelay = 0) => {
+  const showToast = (type, title, message) => {
     setToast({ show: true, type, title, message });
-    if (redirectDelay) {
-      setTimeout(() => navigate('/customer'), redirectDelay);
-    } else {
-      setTimeout(() => setToast({ show: false, type: '', title: '', message: '' }), 5000);
-    }
+    setTimeout(() => setToast({ show: false, type: '', title: '', message: '' }), 6000);
   };
 
-  const handleReserve = (product) => {
+  const openOrderModal = (product) => {
     if (!authService.isAuthenticated()) {
-      navigate('/login');
-    } else {
-      setSelectedProduct({
-        id: product.id,
-        name: product.name,
-        dailyRate: product.price,
-        image1: product.product_image,
-        availability: product.stock_quantity > 0 ? 'Available' : 'Out of Stock'
-      });
-      setReserveModalOpen(true);
+      navigate('/login', { state: { openFarmingOrder: true, tractor: product, from: '/services/farming' } });
+      return;
     }
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+    setOrderModal({ open: true, tractor: product });
+    setOrderForm({ startDate: '', endDate: '', fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '', specialInstructions: '', paymentMethod: '', paymentReference: '' });
+    setOrderFile(null);
+    setOrderError('');
+    setOrderSuccess(null);
+    loadFinanceAccounts();
   };
 
-  const handleReservationSuccess = (orderData) => {
-    setReserveModalOpen(false);
-    showToast(
-      'success',
-      '🎉 Reservation Confirmed!',
-      `Your machinery rental #${orderData.orderNumber || orderData.id} has been submitted.`,
-      3000
-    );
+  const closeOrderModal = () => {
+    if (orderSubmitting) return;
+    setOrderModal({ open: false, tractor: null });
+    setOrderSuccess(null);
+  };
+
+  const totalDays = (() => {
+    if (!orderForm.startDate || !orderForm.endDate) return 0;
+    const diff = new Date(orderForm.endDate) - new Date(orderForm.startDate);
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  })();
+
+  const dailyRate = parseFloat(orderModal.tractor?.daily_rate || orderModal.tractor?.dailyRate || 0);
+  const totalAmount = dailyRate * totalDays;
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
+    if (totalDays <= 0) { setOrderError('End date must be after start date.'); return; }
+    if (!orderForm.paymentMethod) { setOrderError('Please select a payment account / method.'); return; }
+    if (!orderForm.paymentReference && !orderFile) { setOrderError('Please enter a payment reference or upload a screenshot.'); return; }
+    setOrderSubmitting(true);
+    setOrderError('');
+    try {
+      const fd = new FormData();
+      fd.append('tractorId', orderModal.tractor.id);
+      fd.append('startDate', orderForm.startDate);
+      fd.append('endDate', orderForm.endDate);
+      fd.append('fieldLocation', orderForm.fieldLocation);
+      fd.append('fieldSizeHectares', orderForm.fieldSizeHectares);
+      fd.append('farmingPurpose', orderForm.farmingPurpose);
+      fd.append('specialInstructions', orderForm.specialInstructions);
+      // paymentMethod stores the account ID; resolve to human-readable account name for backend
+      const selectedAcc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
+      fd.append('paymentMethod', selectedAcc ? selectedAcc.account_name : orderForm.paymentMethod);
+      fd.append('paymentReference', orderForm.paymentReference);
+      if (orderFile) fd.append('paymentScreenshot', orderFile);
+
+      const res = await axios.post('/agrirent-orders', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // apiClient interceptor returns response.data directly (res IS the data object)
+      if (res.status === 'success') {
+        setOrderSuccess(res.data);
+        showToast('success', '\uD83C\uDF89 Order Submitted!', `Your AgriRent order #${res.data.orderNumber} is now pending confirmation. Our team will contact you shortly.`);
+      } else if (res.data && res.data.status === 'success') {
+        setOrderSuccess(res.data.data);
+        showToast('success', '\uD83C\uDF89 Order Submitted!', `Your AgriRent order #${res.data.data.orderNumber} is now pending confirmation.`);
+      } else {
+        setOrderError('Failed to submit order. Please try again.');
+      }
+    } catch (err) {
+      setOrderError(err.response?.data?.message || 'An error occurred. Please try again.');
+    } finally {
+      setOrderSubmitting(false);
+    }
   };
 
   const handleImageClick = (imageUrl, name) => {
@@ -272,53 +366,41 @@ const FarmingServicePage = () => {
                 const cat = categories.find(c => c.id === product.category_id);
                 const tc = cat ? TYPE_CONFIG[cat.type] || TYPE_CONFIG.general : TYPE_CONFIG.general;
                 return (
-                  <div key={product.id} className={styles.productCard}>
+                  <div key={product.id} className={styles.productCard} style={{ animationDelay: (searchResults.indexOf(product) * 0.07) + 's' }}>
                     {/* Image Section */}
                     <div className={styles.productImageWrapper}>
-                      {product.product_image ? (
-                        <img src={resolveImg(product.product_image)} alt={product.name} className={styles.productImage} onClick={() => handleImageClick(product.product_image, product.name)} />
+                      {product.image1 ? (
+                        <img src={resolveImg(product.image1)} alt={product.name} className={styles.productImage} onClick={() => handleImageClick(product.image1, product.name)} />
                       ) : (
-                        <div className={styles.productPlaceholder}><Leaf size={40} /></div>
+                        <div className={styles.productPlaceholder}><Tractor size={60} /></div>
                       )}
                       <div className={styles.productImageBadges}>
-                        <span className={styles.typeBadge} style={{ background: tc.bg, color: tc.color }}>{tc.icon} {tc.label}</span>
-                        {product.stock_quantity <= product.reorder_level && product.stock_quantity > 0 && (
-                          <span className={styles.lowStockBadge}>Low Stock</span>
-                        )}
-                        {product.stock_quantity <= 0 && <span className={styles.outOfStockBadge}>Out of Stock</span>}
-                      </div>
-                      <div className={styles.priceTag}>
-                        <span className={styles.priceCurrency}>ETB</span>
-                        <span className={styles.priceValue}>{parseFloat(product.price).toFixed(2)}</span>
-                        <span style={{fontSize: '11px', opacity: 0.8, marginLeft: '4px'}}>/day</span>
+                        <span className={styles.typeBadge}><Tractor size={12}/> {product.tractor_type || product.tractorType || 'Tractor'}</span>
+                        {product.availability !== 'Available' && <span className={styles.outOfStockBadge}>{product.availability}</span>}
                       </div>
                     </div>
 
-                    {/* Info Section */}
+                    {/* Card Body */}
                     <div className={styles.productInfo}>
                       <h3 className={styles.productName}>{product.name}</h3>
-                      {cat && <span className={styles.productCategory}>{tc.icon} {cat.name}</span>}
-
-                      {/* Description */}
-                      {product.description && (
-                        <p className={styles.productDesc}>{product.description.length > 100 ? product.description.substring(0, 100) + '...' : product.description}</p>
-                      )}
-
-                      {/* Usage Instructions (expandable) */}
-                      {product.usage_instructions && (
-                        <div className={styles.usageSection}>
-                          <button className={styles.usageToggle} onClick={() => setExpandedUsage(p => ({ ...p, [product.id]: !p[product.id] }))}>
-                            <Info size={14} /> How to Use {expandedUsage[product.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                          {expandedUsage[product.id] && (
-                            <div className={styles.usageContent}>{product.usage_instructions}</div>
-                          )}
+                      <p className={styles.productCategory}>
+                        <Fuel size={13}/> {product.fuel_type || product.fuelType || '—'} &bull; {product.transmission || '—'}
+                      </p>
+                      <div className={styles.cardFooter}>
+                        <div>
+                          <div className={styles.cardPrice}>ETB {parseFloat(product.daily_rate || product.dailyRate || 0).toLocaleString()}</div>
+                          <div className={styles.cardPriceSub}>per day</div>
                         </div>
-                      )}
-
-                      <a href="tel:+251911000000" className={styles.orderBtn} style={{ textDecoration: 'none' }}>
-                        <PhoneCall size={16} /> {product.stock_quantity > 0 ? 'Call to Hire' : 'Unavailable'}
-                      </a>
+                        {product.availability === 'Available' ? (
+                          <button onClick={() => openOrderModal(product)} className={styles.orderBtn}>
+                            <ShoppingCart size={15} /> Order Now
+                          </button>
+                        ) : (
+                          <button className={styles.orderBtn} disabled>
+                            <X size={15} /> Unavailable
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -505,17 +587,375 @@ const FarmingServicePage = () => {
         {/* ── STATIC SECTIONS END ── */}
       </section>
 
-      {/* Order Modal */}
-      {reserveModalOpen && selectedProduct && (
-        <RentalAgreementModal 
-          car={selectedProduct} 
-          isOpen={reserveModalOpen} 
-          onClose={() => setReserveModalOpen(false)}
-          onSuccess={handleReservationSuccess}
-        />
+      {/* ── AgriRent Order Modal — Printing-style ────────────────── */}
+      {orderModal.open && (
+        <div className="psp-overlay" onClick={closeOrderModal}>
+          <div className="psp-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Header — identical to printing modal */}
+            <div className="psp-modal-header">
+              <div>
+                <h3 className="psp-modal-title"><Tractor size={22} /> Hire Agricultural Machine</h3>
+                <p className="psp-modal-subtitle">{orderModal.tractor?.name} — ETB {dailyRate.toLocaleString()}/day — Fill in all details below</p>
+              </div>
+              <button className="psp-close-btn" onClick={closeOrderModal}><X size={22} /></button>
+            </div>
+
+            {/* SUCCESS */}
+            {orderSuccess ? (
+              <div className="psp-success-body">
+                <span className="psp-success-emoji">✅</span>
+                <h3 className="psp-success-title">Order Placed Successfully!</h3>
+                <p className="psp-success-sub">
+                  Order <strong>{orderSuccess.orderNumber}</strong> has been received.<br />
+                  Our team will contact you shortly to confirm the booking.
+                </p>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                  <button className="psp-print-btn" onClick={() => {
+                    const win = window.open('', '_blank', 'width=760,height=800');
+                    const u = currentUser || {};
+                    const userName = u.fullName || u.full_name || u.name || 'Customer';
+                    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>AgriRent Receipt – ${orderSuccess.orderNumber}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f5f5f5;padding:20px;color:#1a1a1a}.wrap{max-width:700px;margin:0 auto;background:white;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12)}.hdr{background:linear-gradient(135deg,#1a2b4b,#0D7C66);padding:30px 36px;display:flex;justify-content:space-between;align-items:center}.hdr-l h1{color:#FFD700;font-size:20px;font-weight:900;margin-bottom:4px}.hdr-l p{color:rgba(255,255,255,0.7);font-size:12px}.ord-no{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:8px 16px;color:white;font-size:13px;font-weight:700;text-align:right}.ord-no span{display:block;font-size:10px;font-weight:400;color:rgba(255,255,255,0.6);margin-bottom:3px}.sbar{background:#0D7C66;padding:8px 36px;font-size:12px;font-weight:700;color:white}.body{padding:28px 36px}.sec-title{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}.cell{background:#f8fafc;border:1px solid #e2e8f0;padding:12px}.cell .lbl{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px}.cell .val{font-size:14px;font-weight:700;color:#0f172a}.total{background:#f0fdf4;border:2px solid #86efac;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.total .lbl{font-size:12px;color:#166534;font-weight:700}.total .val{font-size:22px;font-weight:900;color:#059669}.ftr{background:#0f172a;padding:20px 36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}.ftr-l{color:rgba(255,255,255,0.6);font-size:11px;line-height:1.7}.ftr-r{color:rgba(255,255,255,0.4);font-size:11px}@media print{body{background:white;padding:0}.wrap{box-shadow:none}}</style></head><body>
+<div class="wrap"><div class="hdr"><div class="hdr-l"><h1>🚜 SUTANA AgriRent</h1><p>Agricultural Equipment Hire — Addis Ababa, Ethiopia</p></div><div class="ord-no"><span>ORDER NO.</span>${orderSuccess.orderNumber}</div></div>
+<div class="sbar">✅ ORDER RECEIVED — PENDING CONFIRMATION BY OUR TEAM</div>
+<div class="body">
+<p class="sec-title">Customer Information</p>
+<div class="grid">
+<div class="cell"><div class="lbl">Full Name</div><div class="val">${userName}</div></div>
+<div class="cell"><div class="lbl">Email</div><div class="val">${u.email || '—'}</div></div>
+<div class="cell"><div class="lbl">Phone</div><div class="val">${u.phone || '—'}</div></div>
+<div class="cell"><div class="lbl">Order Date</div><div class="val">${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+</div>
+<p class="sec-title">Hired Machine</p>
+<div class="grid">
+<div class="cell"><div class="lbl">Machine</div><div class="val">${orderModal.tractor?.name || '—'}</div></div>
+<div class="cell"><div class="lbl">Type</div><div class="val">${orderModal.tractor?.tractor_type || orderModal.tractor?.tractorType || '—'}</div></div>
+<div class="cell"><div class="lbl">Start Date</div><div class="val">${orderForm.startDate}</div></div>
+<div class="cell"><div class="lbl">End Date</div><div class="val">${orderForm.endDate}</div></div>
+<div class="cell"><div class="lbl">Duration</div><div class="val">${totalDays} day${totalDays!==1?'s':''}</div></div>
+<div class="cell"><div class="lbl">Daily Rate</div><div class="val">ETB ${dailyRate.toLocaleString()}</div></div>
+${orderForm.fieldLocation?`<div class="cell"><div class="lbl">Field Location</div><div class="val">${orderForm.fieldLocation}</div></div>`:''}${orderForm.fieldSizeHectares?`<div class="cell"><div class="lbl">Field Size</div><div class="val">${orderForm.fieldSizeHectares} ha</div></div>`:''}${orderForm.farmingPurpose?`<div class="cell"><div class="lbl">Purpose</div><div class="val">${orderForm.farmingPurpose}</div></div>`:''}
+</div>
+<div class="total"><div class="lbl">TOTAL ESTIMATED AMOUNT</div><div class="val">ETB ${totalAmount.toLocaleString()}</div></div>
+<p class="sec-title">Payment Info</p>
+<div class="grid">
+<div class="cell"><div class="lbl">Method</div><div class="val">${orderForm.paymentMethod}</div></div>
+<div class="cell"><div class="lbl">Reference</div><div class="val">${orderForm.paymentReference||'Screenshot Uploaded'}</div></div>
+</div>
+${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;font-family:monospace;letter-spacing:3px;font-size:22px;color:#1a2b4b;background:#f1f5f9;padding:10px">${orderSuccess.orderNumber}</p>`:''}
+</div>
+<div class="ftr"><div class="ftr-l">SUTANA AgriRent &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>📞 +251 911 000 000 &nbsp;|&nbsp; ✉️ agrirent@sutana.com</div><div class="ftr-r">Printed: ${new Date().toLocaleString()}</div></div>
+</div><script>window.onload=function(){window.print()}<\/script></body></html>`);
+                    win.document.close();
+                  }}>
+                    <Tractor size={18} /> Print Receipt
+                  </button>
+                  <button style={{ padding: '12px 24px', background: '#f1f5f9', border: '2px solid #e2e8f0', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#334155' }}
+                    onClick={() => { closeOrderModal(); navigate('/customer'); }}>
+                    My Orders
+                  </button>
+                </div>
+                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 20 }}>Track your order from <strong>Customer Portal → AgriRent Orders</strong></p>
+              </div>
+
+            ) : (
+              <form onSubmit={handleOrderSubmit}>
+                <div className="psp-modal-body">
+
+                  {orderError && (
+                    <div className="psp-error-box"><X size={15} /> {orderError}</div>
+                  )}
+
+                  {/* Customer Info — pre-filled read-only (same as printing page) */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px' }}>
+                    <div className="psp-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
+                      <Wallet size={14} /> Customer Information
+                    </div>
+                    <div className="psp-form-row">
+                      <div className="psp-form-group">
+                        <label className="psp-form-label">Full Name</label>
+                        <input className="psp-form-input" value={currentUser?.fullName || currentUser?.full_name || currentUser?.name || ''} disabled />
+                      </div>
+                      <div className="psp-form-group">
+                        <label className="psp-form-label">Email</label>
+                        <input className="psp-form-input" value={currentUser?.email || ''} disabled />
+                      </div>
+                    </div>
+                    <div className="psp-form-group" style={{ marginTop: 12 }}>
+                      <label className="psp-form-label">Phone Number</label>
+                      <input className="psp-form-input" value={currentUser?.phone || ''} disabled />
+                    </div>
+                  </div>
+
+                  {/* Machine summary */}
+                  <div style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <Tractor size={28} color="#059669" />
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>{orderModal.tractor?.name}</div>
+                      <div style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>ETB {dailyRate.toLocaleString()}/day • {orderModal.tractor?.tractor_type || orderModal.tractor?.tractorType}</div>
+                    </div>
+                  </div>
+
+                  {/* Rental Period */}
+                  <div className="psp-section-divider"><Calendar size={14} /> Rental Period</div>
+                  <div className="psp-form-row">
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Start Date *</label>
+                      <input type="date" required className="psp-form-input" value={orderForm.startDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={e => setOrderForm(p => ({ ...p, startDate: e.target.value }))} />
+                    </div>
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">End Date *</label>
+                      <input type="date" required className="psp-form-input" value={orderForm.endDate}
+                        min={orderForm.startDate || new Date().toISOString().split('T')[0]}
+                        onChange={e => setOrderForm(p => ({ ...p, endDate: e.target.value }))} />
+                    </div>
+                  </div>
+                  {totalDays > 0 && (
+                    <div className="psp-price-summary">
+                      <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {totalAmount.toLocaleString()}</span></div>
+                      <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED</span><span>ETB {totalAmount.toLocaleString()}</span></div>
+                    </div>
+                  )}
+
+                  {/* Field Info */}
+                  <div className="psp-section-divider"><MapPin size={14} /> Field Information</div>
+                  <div className="psp-form-row">
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Field Location</label>
+                      <input type="text" className="psp-form-input" placeholder="e.g. Bishoftu, East Shewa"
+                        value={orderForm.fieldLocation} onChange={e => setOrderForm(p => ({ ...p, fieldLocation: e.target.value }))} />
+                    </div>
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Field Size (Hectares)</label>
+                      <input type="number" min="0" step="0.1" className="psp-form-input" placeholder="e.g. 2.5"
+                        value={orderForm.fieldSizeHectares} onChange={e => setOrderForm(p => ({ ...p, fieldSizeHectares: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="psp-form-group">
+                    <label className="psp-form-label">Farming Purpose</label>
+                    <select className="psp-form-input" value={orderForm.farmingPurpose} onChange={e => setOrderForm(p => ({ ...p, farmingPurpose: e.target.value }))}>
+                      <option value="">Select purpose…</option>
+                      <option>Plowing</option><option>Planting / Seeding</option><option>Harvesting</option>
+                      <option>Land Preparation</option><option>Irrigation</option><option>Other</option>
+                    </select>
+                  </div>
+
+                  {/* Payment */}
+                  <div className="psp-section-divider"><CreditCard size={14} /> Payment Proof</div>
+                  <div className="psp-form-row">
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Payment Method *</label>
+                      {financeAccounts.length === 0 ? (
+                        <div style={{ padding: '10px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '13px', color: '#92400e' }}>
+                          ⏳ Loading payment accounts…
+                        </div>
+                      ) : (
+                        <select required className="psp-form-input"
+                          value={orderForm.paymentMethod}
+                          onChange={e => {
+                            const selectedId = e.target.value;
+                            const acc = financeAccounts.find(a => String(a.id) === String(selectedId));
+                            setOrderForm(p => ({
+                              ...p,
+                              paymentMethod: selectedId,
+                              // Store account name for the order submission
+                              paymentAccountName: acc ? acc.account_name : ''
+                            }));
+                          }}
+                        >
+                          <option value="">— Select Payment Account —</option>
+                          {['Bank', 'Mobile Wallet', 'Cash'].map(type => {
+                            const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
+                            if (group.length === 0) return null;
+                            return (
+                              <optgroup key={type} label={type}>
+                                {group.map(acc => (
+                                  <option key={acc.id} value={acc.id}>
+                                    {acc.account_name}{acc.account_number ? ` — ${acc.account_number}` : ''}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })}
+                        </select>
+                      )}
+                    </div>
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Transaction Reference</label>
+                      <input type="text" className="psp-form-input" placeholder="e.g. TXN-123456"
+                        value={orderForm.paymentReference} onChange={e => setOrderForm(p => ({ ...p, paymentReference: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  {/* Auto-fill account details panel */}
+                  {orderForm.paymentMethod && (() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
+                    if (!acc) return null;
+                    return (
+                      <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '6px', border: '1.5px solid #4ade80', fontSize: '13px', color: '#166534', display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '4px' }}>
+                        <Wallet size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div>
+                          <div style={{ fontWeight: 700, marginBottom: '4px' }}>📋 Transfer Payment To:</div>
+                          <div><strong>Account Name:</strong> {acc.account_name}</div>
+                          {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
+                          {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
+                          {acc.branch && <div><strong>Branch:</strong> {acc.branch}</div>}
+                          <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d' }}>After payment, enter the transaction reference number above.</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Screenshot upload — same as printing file upload */}
+                  <div className="psp-form-group">
+                    <label className="psp-form-label"><Upload size={14} /> Payment Screenshot <span>(optional if reference given)</span></label>
+                    <div className={`psp-file-upload${orderFile ? ' has-file' : ''}`} onClick={() => fileRef.current?.click()}>
+                      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setOrderFile(e.target.files[0] || null)} />
+                      <Upload size={24} color={orderFile ? '#0D7C66' : '#94a3b8'} />
+                      <p style={{ margin: '8px 0 4px', fontWeight: 700, color: orderFile ? '#0D7C66' : '#475569', fontSize: 14 }}>
+                        {orderFile ? `✅ ${orderFile.name}` : 'Click to upload payment screenshot'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>PNG, JPG, JPEG accepted</p>
+                    </div>
+                  </div>
+
+                  {/* Special Instructions */}
+                  <div className="psp-form-group">
+                    <label className="psp-form-label">Special Instructions <span>(Optional)</span></label>
+                    <textarea className="psp-form-input" rows={2} placeholder="Any specific requirements…"
+                      value={orderForm.specialInstructions} onChange={e => setOrderForm(p => ({ ...p, specialInstructions: e.target.value }))}
+                      style={{ resize: 'vertical' }} />
+                  </div>
+
+                </div>
+
+                {/* Footer */}
+                <div className="psp-modal-footer">
+                  <button type="button" className="psp-cancel-btn" onClick={closeOrderModal} disabled={orderSubmitting}>Cancel</button>
+                  <button type="submit" className="psp-submit-btn" disabled={orderSubmitting || totalDays <= 0}>
+                    {orderSubmitting ? <><span className="psp-spinner" /> Submitting…</> : <><Tractor size={18} /> Submit Order</>}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       )}
 
       {viewImage && <PrescriptionViewer imageUrl={viewImage.url} onClose={handleCloseViewer} />}
+
+      <style>{`
+        /* ── MODAL / OVERLAY ─────────────────────────────── */
+        .psp-overlay {
+          position:fixed;top:0;left:0;right:0;bottom:0;
+          background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);
+          display:flex;align-items:flex-start;justify-content:center;
+          z-index:9999;padding:40px 20px;overflow-y:auto;
+        }
+        .psp-modal {
+          background:white;border-radius:0;width:100%;max-width:620px;
+          margin:auto;box-shadow:0 25px 60px rgba(0,0,0,0.3);
+          animation:psp-pop 0.3s ease;
+        }
+        @keyframes psp-pop {
+          from { opacity: 0; transform: translateY(20px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .psp-modal-header {
+          padding:24px 28px;border-bottom:1px solid #e2e8f0;
+          display:flex;align-items:center;justify-content:space-between;
+          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+        }
+        .psp-modal-title { margin:0;font-size:1.1rem;font-weight:800;color:#FFD700;display:flex;align-items:center;gap:10px; }
+        .psp-modal-subtitle { font-size:0.8rem;color:rgba(255,255,255,0.7);margin:4px 0 0; }
+        .psp-close-btn {
+          background:rgba(255,255,255,0.15);border:none;color:white;
+          cursor:pointer;display:flex;align-items:center;
+          padding:8px;border-radius:8px;transition:all 0.2s;
+        }
+        .psp-close-btn:hover { background:rgba(255,255,255,0.3); }
+        .psp-modal-body { padding:28px;display:flex;flex-direction:column;gap:18px; }
+        .psp-form-group { display:flex;flex-direction:column;gap:8px; }
+        .psp-form-label {
+          font-weight:700;font-size:0.85rem;color:#1e293b;
+          display:flex;align-items:center;gap:6px;
+        }
+        .psp-form-label span { font-weight:400;color:#94a3b8; }
+        .psp-form-input {
+          padding:12px 16px;border:2px solid #e2e8f0;width:100%;box-sizing:border-box;
+          border-radius:0;font-size:0.95rem;background:white;
+          color:#0f172a;transition:all 0.2s;font-family:inherit;outline:none;
+        }
+        .psp-form-input:focus { border-color:#0D7C66;box-shadow:0 0 0 3px rgba(13,124,102,0.1); }
+        .psp-form-input:disabled { background:#f8fafc;color:#64748b;cursor:not-allowed; }
+        .psp-form-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+        @media(max-width:500px){ .psp-form-row { grid-template-columns:1fr; } }
+        
+        .psp-section-divider {
+          font-size:0.75rem;font-weight:800;color:#1a2b4b;letter-spacing:1.5px;
+          text-transform:uppercase;padding:8px 0 4px;border-top:2px solid #e2e8f0;
+          margin-top:4px;display:flex;align-items:center;gap:8px;
+        }
+        .psp-section-divider::after { content:'';flex:1;height:1px;background:#e2e8f0; }
+        
+        .psp-file-upload {
+          border:2px dashed #cbd5e1;border-radius:0;padding:24px;
+          text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;
+        }
+        .psp-file-upload:hover { border-color:#0D7C66;background:#f0fdf4; }
+        .psp-file-upload.has-file { border-color:#0D7C66;background:#f0fdf4;border-style:solid; }
+        
+        .psp-price-summary {
+          background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+          border:2px solid #86efac;border-radius:0;padding:20px;
+        }
+        .psp-price-row { display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;color:#166534;padding:4px 0; }
+        .psp-price-total { font-size:1.3rem;font-weight:900;color:#15803d;border-top:2px solid #86efac;padding-top:12px;margin-top:8px; }
+        
+        .psp-modal-footer {
+          padding:20px 28px;border-top:1px solid #e2e8f0;
+          display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;
+        }
+        .psp-cancel-btn {
+          padding:12px 24px;background:white;border:2px solid #e2e8f0;
+          border-radius:0;color:#475569;font-weight:700;
+          cursor:pointer;transition:all 0.2s;font-family:inherit;
+        }
+        .psp-cancel-btn:hover { background:#f1f5f9; }
+        .psp-submit-btn {
+          padding:12px 28px;
+          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+          border:none;border-radius:0;color:white;
+          font-weight:800;cursor:pointer;display:flex;
+          align-items:center;gap:8px;transition:all 0.2s;
+          font-family:inherit;font-size:1rem;
+        }
+        .psp-submit-btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
+        .psp-submit-btn:disabled { opacity:0.6;cursor:not-allowed; }
+        .psp-spinner {
+          display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);
+          border-radius:50%;border-top-color:white;animation:spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        
+        .psp-error-box {
+          background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;
+          padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px;border-radius:0;
+        }
+        .psp-success-body { padding:48px 32px;text-align:center;display:flex;flex-direction:column;align-items:center; }
+        .psp-success-emoji { font-size:4rem;margin-bottom:16px;display:block;animation:psp-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275); }
+        .psp-success-title { font-size:1.6rem;font-weight:900;color:#0f172a;margin:0 0 8px; }
+        .psp-success-sub { color:#64748b;font-size:1rem;line-height:1.6;margin:0 0 24px; }
+        .psp-print-btn {
+          padding:12px 24px;background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+          border:none;border-radius:0;color:white;font-weight:800;
+          cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;font-family:inherit;
+        }
+        .psp-print-btn:hover { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
+      `}</style>
     </div>
   );
 };

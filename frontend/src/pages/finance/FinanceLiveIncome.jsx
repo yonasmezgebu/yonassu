@@ -12,6 +12,17 @@ const fmt = (n) => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionD
 const fmtDate = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtDay  = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 
+/* Returns a full URL for an uploaded file path */
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+  return `${base}/${path.replace(/^\//, '')}`;
+};
+
+/* Departments that collect physical cash vs digital payment proof */
+const CASH_DEPTS = ['Pharmacy', 'Sales'];
+
 const SALE_TYPE_COLOR = {
   ONLINE:   { bg: '#98FF98', color: '#1B5E20', label: 'Online' },
   'WALK-IN':{ bg: '#98FF98', color: '#1B5E20', label: 'Walk-In' },
@@ -108,13 +119,16 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const [detail,     setDetail]     = useState(null);
   const [error,      setError]      = useState(null);
 
-  // Cash-count reconciliation
+  // Cash-count reconciliation (for Pharmacy/Sales)
   const [cashInput,  setCashInput]  = useState('');
   const [approving,  setApproving]  = useState(false);
   const [mismatch,   setMismatch]   = useState(null); // { systemTotal, cashCount, difference }
   const [approved,   setApproved]   = useState(false);
   const [financeName, setFinanceName] = useState('');
   const [financeSignature, setFinanceSignature] = useState(null);
+
+  // Digital-payment verification checklist (for Car Rental / AgriRent / Printing)
+  const [verifyChecks, setVerifyChecks] = useState({ bankChecked: false, telebirrChecked: false, confirmedInPerson: false });
 
   const printRef = useRef(null);
 
@@ -124,6 +138,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
       const res = await api.get(`/finance-receivables/live-income/${submissionId}/detail`);
       setDetail(res.data);
       if (res.data?.systemTotal) {
+        // Always pre-fill cashInput with systemTotal.
+        // For digital-payment depts (Car Rental / AgriRent / Printing) this means
+        // reconciliation passes automatically — Finance just confirms the proof.
         setCashInput(res.data.systemTotal.toString());
       }
     } catch (e) {
@@ -394,10 +411,14 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 8 }}>Attached Payment Proof</div>
                         <img 
-                          src={`http://localhost:5000/${manualDetails.proofImagePath}`} 
+                          src={getImageUrl(manualDetails.proofImagePath)} 
                           alt="Payment Proof" 
                           style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 12, border: '2px solid #A5D6A7', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} 
                         />
+                        <a href={getImageUrl(manualDetails.proofImagePath)} target="_blank" rel="noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: '#0369a1', fontWeight: 600, textDecoration: 'none' }}>
+                          <Eye size={13} /> Open Full Image
+                        </a>
                       </div>
                     )}
                   </div>
@@ -557,119 +578,286 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
 
         </div>{/* end printRef */}
 
-        {/* ══ FINANCE CASH COUNT & RECONCILIATION (not printed) ══ */}
-        <div style={{ background: 'white', borderRadius: 16, border: '2px solid #A5D6A7', padding: '28px 36px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <DollarSign size={16} color="#FF9800" /> Finance Cash Count Verification
-          </h3>
-          <p style={{ fontSize: 13, color: '#424242', margin: '0 0 20px' }}>
-            Count the physical cash received from Pharmacy and enter the amount below. The system will compare it against the recorded transactions. They <strong>must match</strong> to approve.
-          </p>
+        {/* ══ DEPARTMENT-AWARE VERIFICATION SECTION (not printed) ══ */}
+        {(() => {
+          const isCashDept = CASH_DEPTS.includes(submission.department);
 
-          {/* Comparison row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'center', marginBottom: 20 }}>
-            <div style={{ background: '#f0f9ff', borderRadius: 12, padding: '18px 20px', border: '2px solid #bae6fd' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', marginBottom: 6 }}>📊 System Balance</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#1B5E20' }}>ETB {fmt(systemTotal)}</div>
-              <div style={{ fontSize: 11, color: '#424242', marginTop: 4 }}>{manualDetails ? 'From manual submission record' : `From ${transactionCount} recorded transactions`}</div>
-            </div>
+          /* ── DIGITAL PAYMENT VERIFICATION (Car Rental / AgriRent / Printing / etc.) ── */
+          if (!isCashDept) {
+            const proofUrl = getImageUrl(manualDetails?.proofImagePath || manualDetails?.payment_screenshot);
+            const anyCheckDone = verifyChecks.bankChecked || verifyChecks.telebirrChecked || verifyChecks.confirmedInPerson;
+            const readyToVerify = anyCheckDone && financeName && financeSignature && submission.status === 'Pending';
 
-            <div style={{ textAlign: 'center', color: '#6B8E23', fontSize: 20, fontWeight: 700 }}>VS</div>
+            return (
+              <div style={{ background: 'white', borderRadius: 16, border: '2px solid #3b82f6', padding: '28px 36px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1e40af', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle size={16} color="#3b82f6" /> Payment Proof Verification
+                </h3>
+                <p style={{ fontSize: 13, color: '#424242', margin: '0 0 20px' }}>
+                  Review the payment proof submitted by the customer. Confirm at least one verification step below, then sign and approve.
+                </p>
 
-            <div style={{ background: cashInput === '' ? '#F5F5F5' : matched ? '#98FF98' : over ? '#fffbeb' : '#fef2f2', borderRadius: 12, padding: '18px 20px', border: `2px solid ${cashInput === '' ? '#A5D6A7' : matched ? '#4CAF50' : over ? '#fde68a' : '#fecaca'}`, transition: 'all 0.3s' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 8 }}>💵 Physical Cash Counted</div>
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#424242' }}>ETB</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={cashInput}
-                  onChange={e => { setCashInput(e.target.value); setMismatch(null); setError(null); }}
-                  placeholder="0.00"
-                  style={{ width: '100%', padding: '10px 14px 10px 48px', border: `2px solid ${matched ? '#4CAF50' : cashInput ? '#FF9800' : '#A5D6A7'}`, borderRadius: 9, outline: 'none', fontSize: 20, fontWeight: 900, boxSizing: 'border-box', background: 'transparent', color: '#1B5E20' }}
-                />
+                {/* Amount summary */}
+                <div style={{ background: '#eff6ff', borderRadius: 12, padding: '18px 20px', border: '2px solid #bfdbfe', marginBottom: 24 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 6 }}>💰 Payment Amount to Verify</div>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: '#1e3a8a' }}>ETB {fmt(systemTotal)}</div>
+                  <div style={{ fontSize: 12, color: '#424242', marginTop: 4 }}>{submission.department} — {submission.reference_no || submission.description || '—'}</div>
+                </div>
+
+                {/* Proof image */}
+                {proofUrl ? (
+                  <div style={{ background: '#f0fdf4', borderRadius: 12, border: '2px solid #bbf7d0', padding: '20px', marginBottom: 24 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FileText size={14} /> Customer-Uploaded Payment Proof
+                    </div>
+                    <img
+                      src={proofUrl}
+                      alt="Payment Proof"
+                      style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 10, border: '2px solid #A5D6A7', boxShadow: '0 4px 10px rgba(0,0,0,0.12)', display: 'block' }}
+                      onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                    />
+                    <div style={{ display: 'none', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '16px', alignItems: 'center', gap: 8, color: '#991b1b', fontSize: 13 }}>
+                      <AlertTriangle size={16} /> Image failed to load. Use the link below to open it.
+                    </div>
+                    <a href={proofUrl} target="_blank" rel="noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: '#0369a1', fontWeight: 700, textDecoration: 'none', background: '#e0f2fe', padding: '6px 12px', borderRadius: 6 }}>
+                      <Eye size={13} /> Open Full-Size Image
+                    </a>
+                  </div>
+                ) : (
+                  <div style={{ background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a', padding: '16px 20px', marginBottom: 24, fontSize: 13, color: '#92400e' }}>
+                    <strong>⚠ No proof image uploaded.</strong> Verify the payment via bank statement or Telebirr app before approving.
+                  </div>
+                )}
+
+                {/* Payment reference */}
+                {(manualDetails?.paymentReference || manualDetails?.paymentMethod) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+                    {manualDetails.paymentMethod && (
+                      <div style={{ background: '#F5F5F5', borderRadius: 10, padding: '14px 16px', border: '1px solid #A5D6A7' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 4 }}>Payment Method</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#1B5E20' }}>{manualDetails.paymentMethod}</div>
+                      </div>
+                    )}
+                    {manualDetails.paymentReference && (
+                      <div style={{ background: '#F5F5F5', borderRadius: 10, padding: '14px 16px', border: '1px solid #A5D6A7' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 4 }}>Transaction Reference</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#228B22', fontFamily: 'monospace', letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Verification checklist */}
+                <div style={{ background: '#F5F5F5', borderRadius: 12, padding: '20px', marginBottom: 24, border: '1px solid #A5D6A7' }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#1B5E20', textTransform: 'uppercase', marginBottom: 14 }}>✅ Finance Verification Checklist — complete at least one:</div>
+                  {[
+                    { key: 'bankChecked',       label: '🏦 Checked CBE bank statement — payment found and confirmed' },
+                    { key: 'telebirrChecked',   label: '📱 Checked Telebirr app — payment found and confirmed' },
+                    { key: 'confirmedInPerson', label: '💵 Payment received in person / via office' },
+                  ].map(({ key, label }) => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 0', borderBottom: '1px solid #A5D6A7', fontSize: 13, fontWeight: 600, color: verifyChecks[key] ? '#1B5E20' : '#424242' }}>
+                      <input
+                        type="checkbox"
+                        checked={verifyChecks[key]}
+                        onChange={e => setVerifyChecks(p => ({ ...p, [key]: e.target.checked }))}
+                        style={{ width: 16, height: 16, accentColor: '#2E8B57', cursor: 'pointer' }}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+
+                {/* Error display */}
+                {error && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#991b1b', fontSize: 13 }}>
+                    <strong>Error:</strong> {error}
+                  </div>
+                )}
+
+                {/* Finance Signature */}
+                <div style={{ background: '#FFFFFF', borderRadius: 16, border: '2px solid #8D6E63', padding: '24px', marginBottom: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <PenTool size={16} color="#8D6E63" /> Finance Officer Signature
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Finance Officer Name *</label>
+                      <input
+                        value={financeName} onChange={e => setFinanceName(e.target.value)}
+                        placeholder="Enter Name"
+                        style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Signature *</label>
+                      <SigPad label="Finance Signature" onSave={setFinanceSignature} />
+                      {financeSignature && <div style={{ marginTop: 6, fontSize: 11, color: '#4CAF50', fontWeight: 'bold' }}>✓ Signature captured securely</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verify button */}
+                {submission.status !== 'Pending' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '16px', background: '#d1fae5', borderRadius: 12, border: '2px solid #4CAF50', color: '#065f46', fontWeight: 800, fontSize: 15 }}>
+                    <CheckCircle size={18} color="#2E8B57" /> Already Verified & Recorded
+                  </div>
+                ) : (
+                  <>
+                    {!anyCheckDone && (
+                      <p style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '10px 14px', borderRadius: 8, border: '1px solid #fde68a', marginBottom: 12 }}>
+                        ⚠ Please complete at least one verification checkbox above before approving.
+                      </p>
+                    )}
+                    {(!financeName || !financeSignature) && (
+                      <p style={{ fontSize: 12, color: '#1d4ed8', background: '#eff6ff', padding: '10px 14px', borderRadius: 8, border: '1px solid #bfdbfe', marginBottom: 12 }}>
+                        ✏ Finance Officer name and signature are required.
+                      </p>
+                    )}
+                    <button
+                      onClick={handleApprove}
+                      disabled={approving || !readyToVerify}
+                      style={{
+                        width: '100%', padding: '15px 20px', borderRadius: 12, border: 'none',
+                        cursor: !readyToVerify || approving ? 'not-allowed' : 'pointer',
+                        background: readyToVerify ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : '#cbd5e1',
+                        color: readyToVerify ? 'white' : '#64748b',
+                        fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                        boxShadow: readyToVerify ? '0 4px 14px rgba(37,99,235,.4)' : 'none',
+                        transition: 'all 0.3s', opacity: approving ? 0.7 : 1
+                      }} className="btn-3d"
+                    >
+                      {approving
+                        ? <><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Verifying & Recording...</>
+                        : <><CheckCircle size={18} /> ✅ Verify Payment &amp; Record to Receivables Book</>
+                      }
+                    </button>
+                    {readyToVerify && (
+                      <p style={{ textAlign: 'center', fontSize: 12, color: '#424242', marginTop: 8 }}>
+                        Approval will record ETB {fmt(systemTotal)} into the Receivables Book for {submission.department}.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
-              {cashInput !== '' && (
-                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: matched ? '#1B5E20' : over ? '#92400e' : '#F44336' }}>
-                  {matched ? '✅ Match confirmed!' : over ? `⚠️ Over by ETB ${fmt(Math.abs(diff))}` : `❌ Short by ETB ${fmt(Math.abs(diff))}`}
+            );
+          }
+
+          /* ── CASH DEPARTMENT VERIFICATION (Pharmacy / Sales) ── */
+          return (
+            <div style={{ background: 'white', borderRadius: 16, border: '2px solid #A5D6A7', padding: '28px 36px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <DollarSign size={16} color="#FF9800" /> Finance Cash Count Verification
+              </h3>
+              <p style={{ fontSize: 13, color: '#424242', margin: '0 0 20px' }}>
+                Count the physical cash received and enter the amount below. The system will compare it against the recorded transactions. They <strong>must match</strong> to approve.
+              </p>
+
+              {/* Comparison row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ background: '#f0f9ff', borderRadius: 12, padding: '18px 20px', border: '2px solid #bae6fd' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', marginBottom: 6 }}>📊 System Balance</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#1B5E20' }}>ETB {fmt(systemTotal)}</div>
+                  <div style={{ fontSize: 11, color: '#424242', marginTop: 4 }}>{manualDetails ? 'From manual submission record' : `From ${transactionCount} recorded transactions`}</div>
+                </div>
+
+                <div style={{ textAlign: 'center', color: '#6B8E23', fontSize: 20, fontWeight: 700 }}>VS</div>
+
+                <div style={{ background: cashInput === '' ? '#F5F5F5' : matched ? '#98FF98' : over ? '#fffbeb' : '#fef2f2', borderRadius: 12, padding: '18px 20px', border: `2px solid ${cashInput === '' ? '#A5D6A7' : matched ? '#4CAF50' : over ? '#fde68a' : '#fecaca'}`, transition: 'all 0.3s' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 8 }}>💵 Physical Cash Counted</div>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#424242' }}>ETB</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={cashInput}
+                      onChange={e => { setCashInput(e.target.value); setMismatch(null); setError(null); }}
+                      placeholder="0.00"
+                      style={{ width: '100%', padding: '10px 14px 10px 48px', border: `2px solid ${matched ? '#4CAF50' : cashInput ? '#FF9800' : '#A5D6A7'}`, borderRadius: 9, outline: 'none', fontSize: 20, fontWeight: 900, boxSizing: 'border-box', background: 'transparent', color: '#1B5E20' }}
+                    />
+                  </div>
+                  {cashInput !== '' && (
+                    <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: matched ? '#1B5E20' : over ? '#92400e' : '#F44336' }}>
+                      {matched ? '✅ Match confirmed!' : over ? `⚠️ Over by ETB ${fmt(Math.abs(diff))}` : `❌ Short by ETB ${fmt(Math.abs(diff))}`}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mismatch alert */}
+              {(mismatch || (error && error.includes('mismatch'))) && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <AlertTriangle size={18} color="#F44336" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#991b1b', fontSize: 14 }}>Reconciliation Failed — Mismatch Detected</div>
+                    <div style={{ color: '#b91c1c', fontSize: 13, marginTop: 4 }}>{error}</div>
+                    <div style={{ color: '#424242', fontSize: 12, marginTop: 6 }}>Please recount the physical cash and re-enter the correct amount before retrying.</div>
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Mismatch alert */}
-          {(mismatch || (error && error.includes('mismatch'))) && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <AlertTriangle size={18} color="#F44336" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <div style={{ fontWeight: 800, color: '#991b1b', fontSize: 14 }}>Reconciliation Failed — Mismatch Detected</div>
-                <div style={{ color: '#b91c1c', fontSize: 13, marginTop: 4 }}>{error}</div>
-                <div style={{ color: '#424242', fontSize: 12, marginTop: 6 }}>Please recount the physical cash and re-enter the correct amount before retrying.</div>
+              {/* Error (non-mismatch) */}
+              {error && !error.includes('mismatch') && !error.includes('count') && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#991b1b', fontSize: 13 }}>
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
+              {/* Finance Signature Verification */}
+              <div style={{ background: '#FFFFFF', borderRadius: 16, border: '2px solid #8D6E63', padding: '24px', marginBottom: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <PenTool size={16} color="#8D6E63" /> Finance Official Signature
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Finance Officer Name *</label>
+                    <input
+                      value={financeName} onChange={e => setFinanceName(e.target.value)}
+                      placeholder="Enter Name"
+                      style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Signature *</label>
+                    <SigPad label="Finance Signature" onSave={setFinanceSignature} />
+                    {financeSignature && <div style={{ marginTop: 6, fontSize: 11, color: '#4CAF50', fontWeight: 'bold' }}>✓ Signature captured securely</div>}
+                  </div>
+                </div>
               </div>
+
+              {/* Approve button */}
+              <button
+                onClick={handleApprove}
+                disabled={approving || cashInput === '' || submission.status !== 'Pending'}
+                style={{
+                  width: '100%', padding: '15px 20px', borderRadius: 12, border: 'none', cursor: cashInput === '' || approving ? 'not-allowed' : 'pointer',
+                  background: submission.status !== 'Pending' ? '#A5D6A7' : matched ? 'linear-gradient(135deg,#2E8B57,#2E8B57)' : cashInput === '' ? '#A5D6A7' : 'linear-gradient(135deg,#FF9800,#d97706)',
+                  color: cashInput === '' || submission.status !== 'Pending' ? '#6B8E23' : 'white',
+                  fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  boxShadow: matched && cashInput !== '' ? '0 4px 14px rgba(16,185,129,.4)' : 'none',
+                  transition: 'all 0.3s', opacity: approving ? 0.7 : 1
+                }} className="btn-3d"
+              >
+                {approving
+                  ? <><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Verifying &amp; Approving...</>
+                  : submission.status !== 'Pending'
+                  ? <><CheckCircle size={18} /> Already Approved</>
+                  : matched
+                  ? <><CheckCircle size={18} /> ✅ Cash Verified — Approve &amp; Record to Receivables Book</>
+                  : cashInput !== ''
+                  ? <><AlertTriangle size={18} /> Amounts Don't Match — Fix and Retry</>
+                  : <><DollarSign size={18} /> Enter Cash Count to Verify</>
+                }
+              </button>
+
+              {matched && (
+                <p style={{ textAlign: 'center', fontSize: 12, color: '#424242', marginTop: 8 }}>
+                  Cash count matches system balance perfectly. Approval will record ETB {fmt(systemTotal)} into the Receivables Book.
+                </p>
+              )}
             </div>
-          )}
-
-          {/* Error (non-mismatch) */}
-          {error && !error.includes('mismatch') && !error.includes('count') && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#991b1b', fontSize: 13 }}>
-              <strong>Error:</strong> {error}
-            </div>
-          )}
-
-          
-          {/* Finance Signature Verification */}
-          <div style={{ background: '#FFFFFF', borderRadius: 16, border: '2px solid #8D6E63', padding: '24px', marginBottom: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <PenTool size={16} color="#8D6E63" /> Finance Official Signature
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Finance Officer Name *</label>
-                <input 
-                  value={financeName} onChange={e => setFinanceName(e.target.value)}
-                  placeholder="Enter Name"
-                  style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14 }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Signature *</label>
-                <SigPad label="Finance Signature" onSave={setFinanceSignature} />
-                {financeSignature && <div style={{marginTop: 6, fontSize: 11, color: '#4CAF50', fontWeight: 'bold'}}>✓ Signature captured securely</div>}
-              </div>
-            </div>
-          </div>
-
-          {/* Approve button */}
-          <button
-            onClick={handleApprove}
-            disabled={approving || cashInput === '' || submission.status !== 'Pending'}
-            style={{
-              width: '100%', padding: '15px 20px', borderRadius: 12, border: 'none', cursor: cashInput === '' || approving ? 'not-allowed' : 'pointer',
-              background: submission.status !== 'Pending' ? '#A5D6A7' : matched ? 'linear-gradient(135deg,#2E8B57,#2E8B57)' : cashInput === '' ? '#A5D6A7' : 'linear-gradient(135deg,#FF9800,#d97706)',
-              color: cashInput === '' || submission.status !== 'Pending' ? '#6B8E23' : 'white',
-              fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: matched && cashInput !== '' ? '0 4px 14px rgba(16,185,129,.4)' : 'none',
-              transition: 'all 0.3s', opacity: approving ? 0.7 : 1
-            }} className="btn-3d"
-          >
-            {approving
-              ? <><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Verifying & Approving...</>
-              : submission.status !== 'Pending'
-              ? <><CheckCircle size={18} /> Already Approved</>
-              : matched
-              ? <><CheckCircle size={18} /> ✅ Cash Verified — Approve & Record to Receivables Book</>
-              : cashInput !== ''
-              ? <><AlertTriangle size={18} /> Amounts Don't Match — Fix and Retry</>
-              : <><DollarSign size={18} /> Enter Cash Count to Verify</>
-            }
-          </button>
-
-          {matched && (
-            <p style={{ textAlign: 'center', fontSize: 12, color: '#424242', marginTop: 8 }}>
-              Cash count matches system balance perfectly. Approval will record ETB {fmt(systemTotal)} into the Receivables Book.
-            </p>
-          )}
-        </div>
+          );
+        })()}
 
       </div>
       
@@ -994,28 +1182,38 @@ const FinanceLiveIncome = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingList.map((sub, idx) => (
-                    <tr key={sub.id} className='row-hover' style={{ borderBottom: '1px solid #A5D6A7' }}>
-                      <td style={{ padding: '13px 16px', color: '#6B8E23', fontWeight: 700 }}>{idx + 1}</td>
-                      <td style={{ padding: '13px 16px' }}>
-                        <span style={{ background: '#98FF98', color: '#1B5E20', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{sub.department}</span>
-                      </td>
-                      <td style={{ padding: '13px 16px', color: '#424242' }}>{sub.submitted_by}</td>
-                      <td style={{ padding: '13px 16px', color: '#424242', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.description || '—'}</td>
-                      <td style={{ padding: '13px 16px', fontFamily: 'monospace', color: '#228B22', fontSize: 12 }}>{sub.reference_no || '—'}</td>
-                      <td style={{ padding: '13px 16px', color: '#424242' }}>{new Date(sub.created_at).toLocaleDateString('en-GB')}</td>
-                      <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#1B5E20', fontSize: 14 }}>
-                        {fmt(sub.amount)}
-                      </td>
-                      <td style={{ padding: '13px 16px' }}>
-                        <button
-                          onClick={() => { setDetailId(sub.id); setView('detail'); }}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg,#2E8B57,#228B22)', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 2px 8px rgba(14,165,233,.3)' }}>
-                          <Eye size={13} /> Detail
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {pendingList.map((sub, idx) => {
+                    const isCash = CASH_DEPTS.includes(sub.department);
+                    const deptBg = isCash ? '#98FF98' : '#dbeafe';
+                    const deptColor = isCash ? '#1B5E20' : '#1d4ed8';
+                    const typePill = isCash
+                      ? { bg: '#d1fae5', color: '#065f46', label: '💵 Cash' }
+                      : { bg: '#dbeafe', color: '#1e40af', label: '📱 Digital' };
+                    return (
+                      <tr key={sub.id} className='row-hover' style={{ borderBottom: '1px solid #A5D6A7' }}>
+                        <td style={{ padding: '13px 16px', color: '#6B8E23', fontWeight: 700 }}>{idx + 1}</td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <span style={{ background: deptBg, color: deptColor, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{sub.department}</span>
+                          <br />
+                          <span style={{ background: typePill.bg, color: typePill.color, padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, marginTop: 4, display: 'inline-block' }}>{typePill.label}</span>
+                        </td>
+                        <td style={{ padding: '13px 16px', color: '#424242' }}>{sub.submitted_by}</td>
+                        <td style={{ padding: '13px 16px', color: '#424242', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.description || '—'}</td>
+                        <td style={{ padding: '13px 16px', fontFamily: 'monospace', color: '#228B22', fontSize: 12 }}>{sub.reference_no || '—'}</td>
+                        <td style={{ padding: '13px 16px', color: '#424242' }}>{new Date(sub.created_at).toLocaleDateString('en-GB')}</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#1B5E20', fontSize: 14 }}>
+                          {fmt(sub.amount)}
+                        </td>
+                        <td style={{ padding: '13px 16px' }}>
+                          <button
+                            onClick={() => { setDetailId(sub.id); setView('detail'); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isCash ? 'linear-gradient(135deg,#2E8B57,#228B22)' : 'linear-gradient(135deg,#1d4ed8,#2563eb)', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 2px 8px rgba(14,165,233,.3)' }}>
+                            <Eye size={13} /> {isCash ? 'Verify Cash' : 'Verify Proof'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr style={{ background: '#1B5E20' }}>

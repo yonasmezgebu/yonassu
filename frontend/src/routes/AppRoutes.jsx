@@ -14,6 +14,7 @@ const GlobalChatPage   = lazy(() => import('../pages/LandingPage/GlobalChatPage'
 const PharmacyHealthPage = lazy(() => import('../pages/LandingPage/PharmacyHealthPage'));
 const FarmingServicePage = lazy(() => import('../pages/LandingPage/FarmingServicePage'));
 const PrintingServicePage = lazy(() => import('../pages/LandingPage/PrintingServicePage'));
+const AgriRentCreateOrder = lazy(() => import('../pages/car-renting/manager/AgriRentCreateOrder'));
 const PrintingPublicTrack = lazy(() => import('../pages/printing/PrintingPublicTrack'));
 const RetailStorePage = lazy(() => import('../pages/LandingPage/RetailStorePage'));
 const GalleryPage        = lazy(() => import('../pages/LandingPage/GalleryPage'));
@@ -77,6 +78,7 @@ const AppRoutes = () => {
         <Route path="/printing/track/:orderNumber" element={<PrintingPublicTrack />} />
         <Route path="/services/pharmacy" element={<PharmacyHealthPage />} />
         <Route path="/services/farming" element={<FarmingServicePage />} />
+        <Route path="/services/farming/order" element={<AgriRentCreateOrder />} />
         <Route path="/services/retail" element={<RetailStorePage />} />
         <Route path="/fleet-gallery" element={<FleetGalleryPage />} />
         <Route path="/about"    element={<AboutPage />} />

@@ -280,6 +280,31 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
               </div>
             )}
             
+            {manualDetails.contractDetails && (
+              <div style={{ background: '#F5F5F5', padding: 20, borderRadius: 12, border: '1px solid #A5D6A7', marginBottom: 24 }}>
+                <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#1B5E20', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Building size={18} color="#2E8B57" /> Contract & Asset Summary
+                </h4>
+                {manualDetails.contractDetails.carName ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+                    <div><strong style={{ color: '#424242' }}>Vehicle:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.carName}</span></div>
+                    <div><strong style={{ color: '#424242' }}>Driver:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.driverName} ({manualDetails.contractDetails.driverLicense})</span></div>
+                    <div><strong style={{ color: '#424242' }}>Duration:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.totalDays} Days ({manualDetails.contractDetails.dates})</span></div>
+                    <div><strong style={{ color: '#424242' }}>Daily Rate:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>ETB {Number(manualDetails.contractDetails.dailyRate || 0).toLocaleString()}</span></div>
+                    <div><strong style={{ color: '#424242' }}>Rental Total:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>ETB {Number(manualDetails.contractDetails.rentalAmount || 0).toLocaleString()}</span></div>
+                    <div><strong style={{ color: '#424242' }}>Deposit:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>ETB {Number(manualDetails.contractDetails.securityDeposit || 0).toLocaleString()}</span></div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+                    <div><strong style={{ color: '#424242' }}>Location:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.location}</span></div>
+                    <div><strong style={{ color: '#424242' }}>Area:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.hectares} Hectares</span></div>
+                    <div><strong style={{ color: '#424242' }}>Operation:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.purpose}</span></div>
+                    <div><strong style={{ color: '#424242' }}>Duration:</strong> <span style={{ color: '#1B5E20', fontWeight: 700 }}>{manualDetails.contractDetails.days} Days ({manualDetails.contractDetails.dates})</span></div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {(manualDetails.paymentReference || manualDetails.proofImagePath) && (
               <div style={{ background: '#F5F5F5', padding: 20, borderRadius: 12, border: '1px solid #A5D6A7', marginBottom: 24 }}>
                 <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#1B5E20', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -332,7 +357,13 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
                       <div style={{ flex: 1, textAlign: 'center', background: '#ecfdf5', borderRadius: 12, padding: 10, border: '1px solid #4CAF50' }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#2E8B57', marginBottom: 8, textTransform: 'uppercase' }}>Verified & Approved By (Finance)</div>
                         <div style={{ height: 80, border: '1px solid #A5D6A7', borderRadius: 8, marginBottom: 8, overflow: 'hidden', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src={manualDetails.financeSignature} alt="Finance Signature" style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} />
+                          {typeof manualDetails.financeSignature === 'string' && manualDetails.financeSignature.length > 5 ? (
+                            <img src={manualDetails.financeSignature} alt="Finance Signature" style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} />
+                          ) : (
+                            <div style={{ fontFamily: '"Georgia", serif', fontStyle: 'italic', fontSize: 18, color: '#2E8B57', fontWeight: 700 }}>
+                              System Verified ✓
+                            </div>
+                          )}
                         </div>
                         <div style={{ borderTop: '1px solid #4CAF50', paddingTop: 8 }}>
                           <div style={{ fontSize: 14, fontWeight: 800, color: '#1B5E20' }}>{manualDetails.financeName || 'Finance Officer'}</div>

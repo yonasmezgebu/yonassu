@@ -110,13 +110,13 @@ export default function CustomerAllOrders() {
           }
         }).catch(() => {});
 
-      const farmingP = apiClient.get('/farming/orders/my-orders')
+      const farmingP = apiClient.get('/agrirent-orders/my-orders')
         .then(r => {
           if (r.status === 'success') {
             (r.data || []).forEach(o => results.push({
               id: `farm-${o.id}`, type: 'farming', typeLabel: 'AGRIRENT',
-              orderNumber: o.invoice_number, date: o.created_at, status: o.status,
-              amount: o.total_amount, description: `${o.delivery_type || ''} ${o.items?.length ? `(${o.items.length} items)` : ''}`,
+              orderNumber: o.order_number, date: o.created_at, status: o.status,
+              amount: o.total_amount, description: `${o.tractor_name || ''} - ${o.farming_purpose || ''}`,
               navPath: '/customer/farming-orders', color: '#22c55e',
             }));
           }

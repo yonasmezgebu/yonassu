@@ -52,6 +52,8 @@ import FinancePayrollPayments from './FinancePayrollPayments';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
+import FinanceVehicleAssets from './FinanceVehicleAssets';
+import FinanceTractorAssets from './FinanceTractorAssets';
 
 import styles from './FinanceDashboard.module.css';
 
@@ -87,6 +89,8 @@ const FinanceDashboard = () => {
         { label: 'General Store Valuation',      path: '/finance/general-store-assets', icon: 'package', color: '#228B22' },
         { label: 'Printing Machines Valuation',  path: '/finance/printing-machines-assets', icon: 'printer', color: '#2E8B57' },
         { label: 'Pharmacy Store & Stock',       path: '/finance/pharmacy-assets', icon: 'briefcase', color: '#6B8E23' },
+        { label: 'Vehicle & Rental Assets',      path: '/finance/vehicle-assets', icon: 'truck', color: '#1B5E20' },
+        { label: 'Tractor Assets',               path: '/finance/tractor-assets', icon: 'truck', color: '#8BC34A' },
       ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
@@ -110,6 +114,8 @@ const FinanceDashboard = () => {
             <Route path="general-store-assets" element={<FinancePrintingAssets />} />
             <Route path="printing-machines-assets" element={<FinancePrintingMachines />} />
             <Route path="pharmacy-assets" element={<FinancePharmacyAssets />} />
+            <Route path="vehicle-assets" element={<FinanceVehicleAssets />} />
+            <Route path="tractor-assets" element={<FinanceTractorAssets />} />
 
             {/* Cash Management */}
             <Route path="crv" element={<FinanceCRV />} />

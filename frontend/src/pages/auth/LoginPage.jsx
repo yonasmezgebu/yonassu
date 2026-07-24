@@ -50,6 +50,7 @@ const LoginPage = () => {
       else if (user.roles?.includes('HR Manager')) navigate('/hr');
       else if (user.roles?.includes('Board Member')) navigate('/board');
       else if (user.roles?.includes('Employee')) navigate('/employee');
+      else if (user.roles?.includes('Customer')) navigate('/customer');
       else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');

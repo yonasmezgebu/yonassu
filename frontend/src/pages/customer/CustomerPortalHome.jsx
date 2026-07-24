@@ -20,7 +20,7 @@ const CustomerPortalHome = ({ onPlaceOrder }) => {
         const [balRes, notifRes, farmRes, printRes, retailRes, rentalRes] = await Promise.all([
           customerService.getBalance(),
           customerService.getNotifications({ unreadOnly: true }),
-          apiClient.get('/farming/orders/my-orders').catch(() => ({ status: 'error', data: [] })),
+          apiClient.get('/agrirent-orders/my-orders').catch(() => ({ status: 'error', data: [] })),
           apiClient.get('/printing/customer/orders').catch(() => ({ status: 'error', data: { orders: [] } })),
           apiClient.get('/retail/orders/my-orders').catch(() => ({ status: 'error', data: [] })),
           apiClient.get('/rental-orders/my-orders').catch(() => ({ status: 'error', data: [] })),
@@ -31,7 +31,7 @@ const CustomerPortalHome = ({ onPlaceOrder }) => {
         const printing = printRes.status === 'success' ? (printRes.data?.orders || []).slice(0, 3) : [];
         const retail = retailRes.status === 'success' ? (retailRes.data || []).slice(0, 3) : [];
         const rentals = rentalRes.status === 'success' ? (rentalRes.data || []).slice(0, 3) : [];
-        const all = [...farming.map(o => ({ ...o, type: 'AgriRent', id: `farm-${o.id}` })),
+        const all = [...farming.map(o => ({ ...o, type: 'AgriRent', id: `farm-${o.id}`, invoice_number: o.order_number })),
                      ...printing.map(o => ({ ...o, type: 'Printing', id: `prt-${o.id}`, invoice_number: o.order_number })),
                      ...retail.map(o => ({ ...o, type: 'Retail', id: `ret-${o.id}`, invoice_number: o.invoice_number, total_amount: o.total_amount })),
                      ...rentals.map(o => ({ ...o, type: 'Car Rental', id: `rent-${o.id}`, invoice_number: o.orderNumber, total_amount: o.totalAmount }))];
