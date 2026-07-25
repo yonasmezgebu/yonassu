@@ -207,9 +207,11 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     const updated = await rentalOrderRepository.updateStatus(id, status, extraData);
 
-    // If approved, update car status to Booked
-    if (status === 'APPROVED') {
+    // If approved/active, update car status to Booked
+    if (['APPROVED', 'ON_TRIP', 'ACTIVE'].includes(status)) {
        await carRepository.update(order.carId, { availability: 'Booked' });
+    } else if (['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED'].includes(status)) {
+       await carRepository.update(order.carId, { availability: 'Available' });
     }
 
     res.status(200).json({
@@ -286,6 +288,139 @@ exports.uploadPaymentProof = async (req, res) => {
   } catch (error) {
     logger.error('Error uploading payment proof:', error);
     res.status(500).json({ status: 'error', message: 'Failed to upload payment proof' });
+  }
+};
+
+// ── MANAGER: Create a manual / walk-in car rental order ──────────────────────
+// Mirrors AgriRent createManualOrder — used by CarRentalCreateOrder.jsx
+exports.createManualOrder = async (req, res) => {
+  try {
+    const {
+      carId, customerName, customerPhone, customerEmail,
+      startDate, endDate, pickupLocation, notes,
+      paymentMethod, paymentReference,
+      driverName, driverLicense
+    } = req.body;
+
+    if (!customerName || !customerPhone) {
+      return res.status(400).json({ status: 'error', message: 'Customer name and phone are required' });
+    }
+    if (!startDate || !endDate) {
+      return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
+    }
+
+    // Handle payment proof file upload (field name: paymentProof)
+    let proofUrl = null;
+    if (req.file) {
+      proofUrl = `/uploads/receipts/${req.file.filename}`;
+    }
+
+    if (!paymentReference && !proofUrl) {
+      return res.status(400).json({ status: 'error', message: 'Either payment reference or screenshot is required' });
+    }
+
+    const pickup = new Date(startDate);
+    const returnDate = new Date(endDate);
+    const totalDays = Math.max(1, Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24)));
+
+    // Fetch car details
+    let dailyRate = 0;
+    let carName = '';
+    let licensePlate = '';
+    if (carId) {
+      const car = await db('cars').where({ id: parseInt(carId) }).first();
+      if (car) {
+        dailyRate = parseFloat(car.dailyRate || car.daily_rate || car.price_per_day || 0);
+        carName = `${car.brand || ''} ${car.model || ''}`.trim() || car.name || 'Car';
+        licensePlate = car.licensePlate || car.license_plate || '';
+      }
+    }
+
+    const rentalAmount  = dailyRate * totalDays;
+    const securityDeposit = 0; // manager-created orders may not require deposit
+    const totalAmount   = rentalAmount + securityDeposit;
+
+    const orderNumber = RentalOrder.generateOrderNumber();
+
+    const [orderId] = await db('rental_orders').insert({
+      car_id:           carId ? parseInt(carId) : null,
+      customer_name:    customerName,
+      customer_phone:   customerPhone,
+      customer_email:   customerEmail || null,
+      driver_name:      driverName || customerName,
+      driver_license:   driverLicense || null,
+      order_number:     orderNumber,
+      pickup_date:      pickup,
+      return_date:      returnDate,
+      total_days:       totalDays,
+      daily_rate:       dailyRate,
+      rental_amount:    rentalAmount,
+      security_deposit: securityDeposit,
+      total_amount:     totalAmount,
+      pickup_location:  pickupLocation || null,
+      special_requests: notes || null,
+      payment_method:   paymentMethod || 'Bank/Telebirr',
+      payment_reference: paymentReference || null,
+      payment_proof_url: proofUrl,
+      payment_status:   proofUrl || paymentReference ? 'PENDING_VERIFICATION' : 'UNPAID',
+      status:           'APPROVED', // manager-created = already approved
+      is_manual:        true,
+      approved_at:      new Date(),
+      created_at:       new Date(),
+      updated_at:       new Date()
+    });
+
+    // Auto-submit to Finance Live Income for payment verification
+    try {
+      await db('finance_income_submissions').insert({
+        department:   'Car Rental',
+        submitted_by: req.user.fullName || req.user.full_name || 'Car Renting Manager',
+        amount:       totalAmount,
+        reference_no: paymentReference || (proofUrl ? `CAR-PROOF-${orderNumber}` : `CAR-${orderNumber}`),
+        description:  `Car Rental Order ${orderNumber} – ${customerName}`,
+        status:       'Pending',
+        manual_details: JSON.stringify({
+          order_id:         String(orderId),
+          orderNumber,
+          paymentMethod:    paymentMethod || 'Bank/Telebirr',
+          paymentReference: paymentReference || null,
+          proofImagePath:   proofUrl,
+          amount:           totalAmount,
+          receivedFrom:     customerName,
+          // Car / booking details so Finance can see full context
+          carName,
+          licensePlate,
+          pickupDate:   startDate,
+          returnDate:   endDate,
+          totalDays,
+          dailyRate,
+          driverName:   driverName || customerName,
+          pickupLocation: pickupLocation || null
+        }),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+    } catch (err) {
+      logger.error('Failed to submit manual Car Rental to finance live income:', err.message);
+    }
+
+    // Notify Finance
+    try {
+      await notificationRepository.create({
+        roleTarget: 'Finance',
+        title: '🚗 New Car Rental — Payment Pending Verification',
+        message: `Order ${orderNumber} for ${customerName}. Amount: ETB ${totalAmount.toLocaleString()}. ${paymentReference ? 'Ref: ' + paymentReference : 'Screenshot uploaded.'}`
+      });
+    } catch (e) { /* non-fatal */ }
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Car Rental order created and sent to Finance for verification',
+      data: { id: orderId, orderNumber, totalAmount, totalDays }
+    });
+  } catch (error) {
+    logger.error('Error creating manual car rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to create order' });
   }
 };
 
@@ -452,11 +587,15 @@ exports.cancelOrder = async (req, res) => {
     const order = await rentalOrderRepository.findById(id);
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
     
-    if (order.customerId !== req.user.id && req.user.department_id !== 2) {
+    const isManager = req.user.roles && req.user.roles.some(r => ['Admin', 'CEO', 'Manager', 'Car Rental Manager'].includes(r));
+    if (order.customerId !== req.user.id && req.user.department_id !== 2 && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });
     }
 
-    if (['ACTIVE', 'COMPLETED', 'CLOSED', 'CANCELLED'].includes(order.status)) {
+    // Customers cannot cancel ACTIVE orders; managers can cancel any non-terminal order
+    const alreadyTerminal = ['COMPLETED', 'CLOSED', 'CANCELLED'].includes(order.status);
+    const customerBlockedActive = !isManager && order.status === 'ACTIVE';
+    if (alreadyTerminal || customerBlockedActive) {
       return res.status(400).json({ status: 'error', message: 'Order cannot be cancelled at this stage' });
     }
 
@@ -464,16 +603,34 @@ exports.cancelOrder = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Cancellation reason is required' });
     }
 
-    const updated = await rentalOrderRepository.update(id, { 
-      is_cancellation_requested: true,
-      cancellation_reason: reason
-    });
-
-    await notificationRepository.create({
-      roleTarget: 'MANAGER',
-      title: 'Cancellation Request',
-      message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`
-    });
+    let updated;
+    if (isManager) {
+      // Manager directly cancels the order
+      updated = await rentalOrderRepository.update(id, {
+        status: 'CANCELLED',
+        cancellation_reason: reason
+      });
+      // Release the car back to Available
+      if (order.carId) {
+        await carRepository.update(order.carId, { availability: 'Available' });
+      }
+      await notificationRepository.create({
+        userId: order.customerId,
+        title: 'Order Cancelled by Manager',
+        message: `Your rental order ${order.orderNumber} was cancelled by the manager. Reason: ${reason}`
+      });
+    } else {
+      // Customer requests a cancellation (manager must approve)
+      updated = await rentalOrderRepository.update(id, { 
+        is_cancellation_requested: true,
+        cancellation_reason: reason
+      });
+      await notificationRepository.create({
+        roleTarget: 'MANAGER',
+        title: 'Cancellation Request',
+        message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`
+      });
+    }
 
     res.status(200).json({ status: 'success', data: updated.toJSON() });
   } catch (error) {

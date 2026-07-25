@@ -21,7 +21,6 @@ import FinanceOutstandingReceivables from './FinanceOutstandingReceivables';
 import FinanceSuppliers from './FinanceSuppliers';
 import FinanceSupplierBills from './FinanceSupplierBills';
 import FinanceSupplierPayments from './FinanceSupplierPayments';
-import FinanceOutstandingPayables from './FinanceOutstandingPayables';
 
 // Procurement
 import FinanceProcurement from './FinanceProcurement';
@@ -47,8 +46,6 @@ import FinanceRejectedVouchers from './FinanceRejectedVouchers';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
 import PurchaseFlowDashboard from './PurchaseFlowDashboard';
-import FinanceApprovePay from './FinanceApprovePay';
-import FinancePayrollPayments from './FinancePayrollPayments';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
@@ -75,13 +72,6 @@ const FinanceDashboard = () => {
       children: [
         { label: 'Live Income',      path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
         { label: 'Receivables Book', path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
-      ] },
-    { type: 'divider' },
-    { label: 'Payables', icon: 'truck',
-      children: [
-        { label: 'Approve Funds & Pay', path: '/finance/flow2-funds',    icon: 'dollar-sign', color: '#059669' },
-        { label: 'Payables Book',       path: '/finance/outstanding-ap', icon: 'book-open',   color: '#ea580c' },
-        { label: 'Payroll Payments',    path: '/finance/payroll',        icon: 'banknote',    color: '#7c3aed' },
       ] },
     { type: 'divider' },
     { label: 'Assets', icon: 'package',
@@ -134,16 +124,11 @@ const FinanceDashboard = () => {
             <Route path="suppliers" element={<FinanceSuppliers />} />
             <Route path="supplier-bills" element={<FinanceSupplierBills />} />
             <Route path="supplier-payments" element={<FinanceSupplierPayments />} />
-            <Route path="outstanding-ap" element={<FinanceOutstandingPayables />} />
 
             {/* Procurement */}
             <Route path="procurement" element={<FinanceProcurement />} />
             
-            {/* Payables */}
-            <Route path="flow2-funds" element={<FinanceApprovePay />} />
-            <Route path="payroll"     element={<FinancePayrollPayments />} />
-            
-            {/* Flow 4 */}
+            {/* Live Income */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
 
             {/* Accounting */}

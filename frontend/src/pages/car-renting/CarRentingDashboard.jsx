@@ -13,13 +13,12 @@ import AgriRentCreateOrder from './manager/AgriRentCreateOrder';
 import AssetRegister from './manager/AssetRegister';
 import AddAsset from './manager/AddAsset';
 import Maintenance from './manager/Maintenance';
-import AssetUtilization from './manager/AssetUtilization';
+import FuelService from './manager/FuelService';
 import AvailabilityCalendar from './manager/AvailabilityCalendar';
-import AssetStatusHistory from './manager/AssetStatusHistory';
 import RentalReport from './manager/RentalReport';
 import RevenueReport from './manager/RevenueReport';
-import PerformanceReport from './manager/PerformanceReport';
 import CarRentingStoreRequest from './manager/CarRentingStoreRequest';
+import OverdueNotifier from './manager/OverdueNotifier';
 
 const CarRentingDashboard = () => {
   const menuItems = [
@@ -31,7 +30,6 @@ const CarRentingDashboard = () => {
         { label: 'Rental Order',     path: '/car-renting/manager/orders',      icon: 'clipboard',   color: '#0ea5e9' },
         { label: 'Agri Rent Order',  path: '/car-renting/manager/agri-orders', icon: 'leaf',        color: '#22c55e' },
         { label: 'Store Request',    path: '/car-renting/manager/store-request', icon: 'package',     color: '#f59e0b' },
-        { label: 'Audit Log',        path: '/car-renting/manager/history',     icon: 'shield',      color: '#64748b' },
       ]
     },
     { type: 'divider' },
@@ -57,13 +55,13 @@ const CarRentingDashboard = () => {
       children: [
         { label: 'Rental Report',      path: '/car-renting/manager/reports/rental',      icon: 'trending-up',  color: '#3b82f6' },
         { label: 'Revenue Report',     path: '/car-renting/manager/reports/revenue',     icon: 'dollar-sign',  color: '#10b981' },
-        { label: 'Performance Report', path: '/car-renting/manager/reports/performance', icon: 'bar-chart-2',  color: '#f59e0b' },
       ]
     }
   ];
 
   return (
     <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
+      <OverdueNotifier />
       <DashboardLayout menuItems={menuItems} title="Car & Agri Rental Dashboard">
         <Routes>
           {/* Dashboard */}
@@ -82,14 +80,12 @@ const CarRentingDashboard = () => {
           <Route path="manager/assets"         element={<AssetRegister />} />
           <Route path="manager/assets/new"   element={<AddAsset />} />
           <Route path="manager/maintenance"  element={<Maintenance />} />
-          <Route path="manager/utilization"  element={<AssetUtilization />} />
+          <Route path="manager/utilization"  element={<FuelService />} />
           <Route path="manager/calendar"     element={<AvailabilityCalendar />} />
-          <Route path="manager/history"      element={<AssetStatusHistory />} />
 
           {/* Reports */}
           <Route path="manager/reports/rental"      element={<RentalReport />} />
           <Route path="manager/reports/revenue"     element={<RevenueReport />} />
-          <Route path="manager/reports/performance" element={<PerformanceReport />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="manager/dashboard" replace />} />

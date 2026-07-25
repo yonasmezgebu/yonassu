@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { Truck, Leaf, ChevronUp, ChevronDown, Package, RefreshCw } from 'lucide-react';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
@@ -1043,21 +1044,40 @@ export const GSRegisterItem = () => {
 export const GSIssueItem = () => {
   const [materials, setMaterials] = useState([]);
   const [requests, setRequests]   = useState([]);
+  const [carRequests, setCarRequests] = useState([]);
+  const [carShipModal, setCarShipModal] = useState(null);
+  const [carShipQtys, setCarShipQtys] = useState({});
   const [form, setForm]           = useState({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null });
   const [saving, setSaving]       = useState(false);
   const [toast, setToast]         = useState(null);
   const [focused, setFocused]     = useState(null);
+  
+  // History State
+  const [allHistory, setAllHistory] = useState([]);
+  const [historyFilter, setHistoryFilter] = useState('All');
+  const [expandedRows, setExpandedRows] = useState({});
+  const [rowDetails, setRowDetails] = useState({});
+  const [rowDetailLoading, setRowDetailLoading] = useState({});
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 4500); };
 
   const load = useCallback(async () => {
     try {
-      const [rMat, rReq] = await Promise.all([
+      const [rMat, rReq, rCarReq] = await Promise.all([
         api.get('/api/v1/printing-assets/store/materials'),
-        api.get('/api/v1/printing-assets/material-requests').catch(() => ({ data: { data: [] } }))
+        api.get('/api/v1/printing-assets/material-requests').catch(() => ({ data: { data: [] } })),
+        api.get('/api/v1/car-renting/store-requests').catch(() => ({ data: { data: [] } }))
       ]);
       setMaterials(rMat.data.data || []);
       setRequests((rReq.data.data || []).filter(r => r.status === 'APPROVED'));
+      
+      const allCarAgri = rCarReq.data?.data || [];
+      setCarRequests(allCarAgri.filter(r => r.status === 'PENDING_STORE'));
+      
+      const hist = allCarAgri.filter(r => r.status !== 'PENDING_STORE');
+      hist.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setAllHistory(hist);
     } catch (err) {
       console.error('Error loading materials:', err);
       showToast('error', 'Failed to load materials from the store.');
@@ -1113,6 +1133,33 @@ export const GSIssueItem = () => {
     if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleShipCarRequest = async () => {
+    if (!carShipModal) return;
+    const shippedItems = (carShipModal.items || []).map(it => ({
+      id: it.id,
+      product_id: it.product_id,
+      quantity_shipped: parseInt(carShipQtys[it.id]) || 0,
+    })).filter(it => it.quantity_shipped > 0);
+
+    if (!shippedItems.length) {
+      showToast('error', 'Please set at least one shipped quantity');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.patch(`/api/v1/car-renting/store-requests/${carShipModal.id}/status`, {
+        status: 'SHIPPED',
+        items: shippedItems,
+      });
+      showToast('success', 'Car/Agri items shipped successfully! Inventory updated.');
+      setCarShipModal(null);
+      load();
+    } catch (e) {
+      showToast('error', e.response?.data?.message || 'Failed to ship');
+    }
+    setSaving(false);
+  };
+
   const S = (k) => ({
     width: '100%', padding: '16px 20px', fontSize: 16, fontWeight: 700,
     border: `3px solid ${focused === k ? G.forest : G.sage}`, borderRadius: 0,
@@ -1122,6 +1169,53 @@ export const GSIssueItem = () => {
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   });
 
+  const toggleRowDetail = async (id) => {
+    const isOpen = !!expandedRows[id];
+    if (isOpen) {
+      setExpandedRows(prev => ({ ...prev, [id]: false }));
+      return;
+    }
+    setExpandedRows(prev => ({ ...prev, [id]: true }));
+    if (!rowDetails[id]) {
+      setRowDetailLoading(prev => ({ ...prev, [id]: true }));
+      try {
+        const res = await api.get(`/api/v1/car-renting/store-requests/${id}`);
+        setRowDetails(prev => ({ ...prev, [id]: res.data?.data || res.data }));
+      } catch {
+        showToast('error', 'Failed to load detail');
+        setExpandedRows(prev => ({ ...prev, [id]: false }));
+      } finally {
+        setRowDetailLoading(prev => ({ ...prev, [id]: false }));
+      }
+    }
+  };
+
+  const filteredHistory = historyFilter === 'All'
+    ? allHistory
+    : historyFilter === 'Car Rental'
+      ? allHistory.filter(r => r.department === 'Car Rental' || !r.department)
+      : allHistory.filter(r => r.department === 'AgriRent');
+
+  const STATUS = {
+    PENDING_STORE:    { label: 'Pending Store',  color: '#f59e0b',  bg: '#FFF8E1' },
+    FORWARDED_TO_CEO: { label: 'With CEO',       color: '#3b82f6',  bg: '#E3F2FD' },
+    APPROVED:         { label: 'CEO Approved',   color: '#10b981',  bg: '#F1F8E9' },
+    REJECTED:         { label: 'Rejected',       color: '#ef4444',  bg: '#FFEBEE' },
+    SHIPPED:          { label: 'Shipped',        color: '#059669',  bg: '#E8F5E9' },
+    RECEIVED:         { label: 'Received',       color: '#065f46',  bg: '#E8F5E9' },
+  };
+
+  const StatusBadge = ({ status }) => {
+    const cfg = STATUS[status] || { label: status, color: G.darkGray, bg: '#f1f5f9' };
+    return (
+      <span style={{
+        background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.color}`,
+        padding: '4px 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+        letterSpacing: 0.5, borderRadius: 0, display: 'inline-block',
+      }}>{cfg.label}</span>
+    );
+  };
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh', width: '100%', background: `linear-gradient(160deg, #eafaea, #f0f9f0 50%, ${G.light})`, fontFamily: "'Inter',sans-serif", overflow: 'hidden' }}>
       <style>{`
@@ -1130,6 +1224,47 @@ export const GSIssueItem = () => {
       `}</style>
 
       <DecorPlants />
+
+      {/* Ship Confirm Modal for Car/Agri Requests */}
+      {carShipModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99990, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', maxWidth: 540, width: '100%', padding: 28, borderTop: `5px solid ${G.emerald}`, boxShadow: '6px 6px 0 rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 900, textTransform: 'uppercase', color: G.darkGray }}>Confirm Shipment</h3>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: G.darkGray }}>Enter the quantity to ship for each item. Inventory will be deducted automatically.</p>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20 }}>
+              <thead>
+                <tr style={{ background: G.dark }}>
+                  {['Product', 'Requested', 'Ship Qty'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', color: '#fff', fontWeight: 800, fontSize: 11, textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(carShipModal.items || []).map((it, i) => (
+                  <tr key={it.id} style={{ borderBottom: `1px solid ${G.sage}`, background: i % 2 === 0 ? '#fff' : `${G.sage}22` }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>{it.product_name}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 900, color: G.forest }}>{it.quantity_requested}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <input
+                        type="number" min="0" max={it.quantity_requested}
+                        value={carShipQtys[it.id] || 0}
+                        onChange={e => setCarShipQtys(prev => ({ ...prev, [it.id]: e.target.value }))}
+                        style={{ width: 70, padding: '6px 8px', border: `2px solid ${G.sage}`, fontWeight: 800, fontSize: 14, outline: 'none', borderRadius: 0, textAlign: 'center' }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button disabled={saving} onClick={() => setCarShipModal(null)} style={{ padding: '10px 20px', background: 'none', border: `2px solid ${G.darkGray}`, fontWeight: 800, fontSize: 13, cursor: 'pointer', textTransform: 'uppercase', borderRadius: 0 }}>Cancel</button>
+              <button disabled={saving} onClick={handleShipCarRequest} style={{ padding: '10px 20px', background: G.emerald, border: 'none', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `3px 3px 0 ${G.dark}`, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {saving ? 'Processing...' : 'Confirm Shipment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
       <div style={{ position: 'relative', zIndex: 1, padding: '0 0 60px 0' }}>
@@ -1161,6 +1296,41 @@ export const GSIssueItem = () => {
                     </div>
                     <button onClick={() => handlePrepareShip(r)} style={{ background: G.purple || '#7C3AED', color: '#fff', border: 'none', padding: '10px 20px', fontSize: 14, fontWeight: 900, cursor: 'pointer', borderRadius: 0, boxShadow: `4px 4px 0 #4C1D95`, textTransform: 'uppercase' }}>
                       📦 PREPARE SHIPMENT
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── CAR / AGRI RENTAL APPROVED REQUESTS ── */}
+        {carRequests.length > 0 && (
+          <div style={{ padding: '40px 40px 0 40px' }}>
+            <div style={{ background: '#fff', border: `4px solid ${G.sky}`, boxShadow: `8px 8px 0 ${G.dark}`, marginBottom: 0 }}>
+              <div style={{ background: `linear-gradient(90deg,${G.sky},#1565C0)`, padding: '16px 24px', display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 24 }}>🚚</span><span style={{ color: '#fff', fontWeight: 900, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Car & AgriRental Requests (Ready to Ship)</span>
+              </div>
+              <div style={{ padding: '20px 30px' }}>
+                {carRequests.map(r => (
+                  <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px', borderBottom:`2px solid ${G.sage}44`, flexWrap:'wrap', gap:12 }}>
+                    <div>
+                      <div style={{ fontWeight:900, color:G.dark, fontSize:15 }}>Request {r.request_number}</div>
+                      <div style={{ fontSize:12, color:G.olive, fontWeight:700 }}>Dept: {r.department || 'Car Rental'} | Items: {r.item_count} | Notes: {r.notes || 'None'}</div>
+                    </div>
+                    <button onClick={async () => {
+                      try {
+                        const res = await api.get(`/api/v1/car-renting/store-requests/${r.id}`);
+                        const data = res.data?.data || res.data;
+                        const qtys = {};
+                        (data.items || []).forEach(it => { qtys[it.id] = it.quantity_requested; });
+                        setCarShipQtys(qtys);
+                        setCarShipModal(data);
+                      } catch(e) {
+                        showToast('error', 'Failed to load request detail');
+                      }
+                    }} style={{ background: G.sky, color: '#fff', border: 'none', padding: '10px 20px', fontSize: 14, fontWeight: 900, cursor: 'pointer', borderRadius: 0, boxShadow: `4px 4px 0 #0D47A1`, textTransform: 'uppercase' }}>
+                      🚚 SHIP REQUEST
                     </button>
                   </div>
                 ))}
@@ -1233,6 +1403,164 @@ export const GSIssueItem = () => {
             </button>
           </div>
 
+          {/* ══ PAST REQUESTS (FLOW HISTORY) — CAR & AGRI RENTAL ══ */}
+          <div style={{ marginTop: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ borderLeft: `5px solid #0ea5e9`, paddingLeft: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: G.darkGray, textTransform: 'uppercase' }}>
+                Past Car & Agri Rental Requests (Flow History)
+              </h2>
+              <div style={{ fontSize: 12, color: G.darkGray, marginTop: 2, fontWeight: 600 }}>
+                {allHistory.length} total record{allHistory.length !== 1 ? 's' : ''} across departments
+              </div>
+            </div>
+            {/* Department Filter Buttons */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {['All', 'Car Rental', 'AgriRent'].map(f => {
+                const isActive = historyFilter === f;
+                const col = f === 'Car Rental' ? '#0ea5e9' : f === 'AgriRent' ? G.olive : G.darkGray;
+                const Icon = f === 'Car Rental' ? Truck : f === 'AgriRent' ? Leaf : null;
+                return (
+                  <button key={f} onClick={() => setHistoryFilter(f)} style={{
+                    padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                    background: isActive ? col : '#fff',
+                    color: isActive ? '#fff' : col,
+                    border: `2px solid ${isActive ? col : G.sage}`,
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    textTransform: 'uppercase', letterSpacing: 0.5,
+                    boxShadow: isActive ? `0 3px 8px ${col}40` : 'none',
+                  }}>
+                    {Icon && <Icon size={12} />}
+                    {f}
+                    <span style={{
+                      background: isActive ? 'rgba(255,255,255,0.3)' : col,
+                      color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, fontWeight: 900,
+                    }}>
+                      {f === 'All' ? allHistory.length : f === 'Car Rental'
+                        ? allHistory.filter(r => r.department === 'Car Rental' || !r.department).length
+                        : allHistory.filter(r => r.department === 'AgriRent').length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', border: `4px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}` }}>
+            {filteredHistory.length === 0 ? (
+              <div style={{ padding: 60, textAlign: 'center', color: G.darkGray }}>
+                <Package size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <div style={{ fontSize: 16, fontWeight: 800 }}>No history records{historyFilter !== 'All' ? ` for ${historyFilter}` : ''}</div>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: G.dark, color: '#fff' }}>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>#</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Request #</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Department</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Date</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Items</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.map((r, i) => {
+                    const isOpen = !!expandedRows[r.id];
+                    const det = rowDetails[r.id];
+                    const loadingDet = !!rowDetailLoading[r.id];
+                    const dept = r.department || 'Car Rental';
+                    const deptColor = dept === 'AgriRent' ? G.olive : '#0ea5e9';
+                    const DeptIcon = dept === 'AgriRent' ? Leaf : Truck;
+
+                    return (
+                      <React.Fragment key={r.id}>
+                        <tr style={{ borderBottom: isOpen ? 'none' : `1px solid ${G.sage}`, background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                          <td style={{ padding: '11px 14px', color: G.darkGray, fontWeight: 700 }}>{i + 1}</td>
+                          <td style={{ padding: '11px 14px', fontWeight: 900, color: G.forest, fontFamily: 'monospace', fontSize: 12 }}>{r.request_number}</td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <span style={{
+                              background: dept === 'AgriRent' ? '#f0fdf4' : '#e0f2fe',
+                              color: deptColor, border: `1.5px solid ${deptColor}`,
+                              padding: '3px 10px', fontSize: 11, fontWeight: 800,
+                              textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}>
+                              <DeptIcon size={11} />{dept}
+                            </span>
+                          </td>
+                          <td style={{ padding: '11px 14px', color: G.darkGray, fontWeight: 700 }}>{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <span style={{ background: '#e2e8f0', border: `1px solid #cbd5e1`, color: G.forest, padding: '3px 10px', fontWeight: 800, fontSize: 12 }}>{r.item_count || '—'}</span>
+                          </td>
+                          <td style={{ padding: '11px 14px' }}><StatusBadge status={r.status} /></td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <button onClick={() => toggleRowDetail(r.id)} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: 'none',
+                              border: `1.5px solid ${isOpen ? G.forest : '#0ea5e9'}`, color: isOpen ? G.forest : '#0ea5e9',
+                              fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', borderRadius: 0,
+                            }}>
+                              {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {isOpen ? 'View Less' : 'View More'}
+                            </button>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={7} style={{ padding: 0, borderBottom: `2px solid ${G.forest}` }}>
+                              <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${deptColor}`, padding: '18px 28px' }}>
+                                {loadingDet ? (
+                                  <div style={{ padding: '20px', textAlign: 'center', color: G.darkGray }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</div>
+                                ) : det ? (
+                                  <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+                                      {[
+                                        { label: 'Department', value: dept },
+                                        { label: 'Requested By', value: det.requester_name || '—' },
+                                        { label: 'CEO Approved By', value: det.approver_name || '—' },
+                                        { label: 'Store Handler', value: det.store_handler_name || '—' },
+                                      ].map(f => (
+                                        <div key={f.label} style={{ borderLeft: `3px solid ${G.sage}`, paddingLeft: 12 }}>
+                                          <div style={{ fontSize: 10, fontWeight: 800, color: G.darkGray, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
+                                          <div style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{f.value}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                      <thead>
+                                        <tr style={{ background: G.dark }}>
+                                          {['#', 'Product', 'Qty Requested', 'Qty Shipped', 'Status'].map(h => (
+                                            <th key={h} style={{ padding: '8px 12px', color: '#fff', fontWeight: 800, fontSize: 10, textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(det.items || []).map((it, idx) => (
+                                          <tr key={idx} style={{ borderBottom: `1px solid ${G.sage}`, background: '#fff' }}>
+                                            <td style={{ padding: '8px 12px', color: G.darkGray }}>{idx + 1}</td>
+                                            <td style={{ padding: '8px 12px', fontWeight: 800 }}>{it.product_name}</td>
+                                            <td style={{ padding: '8px 12px', fontWeight: 900, color: G.forest }}>{it.quantity_requested}</td>
+                                            <td style={{ padding: '8px 12px', fontWeight: 800, color: G.emerald }}>{it.quantity_shipped ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px' }}>
+                                              {it.quantity_shipped ? <span style={{ color: G.emerald, fontWeight: 800, fontSize: 10 }}>✓ SHIPPED</span> : <span style={{ color: G.darkGray, fontSize: 10 }}>—</span>}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </>
+                                ) : (
+                                  <div style={{ color: G.red, fontSize: 13, fontWeight: 700 }}>Failed to load details.</div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
       </div>

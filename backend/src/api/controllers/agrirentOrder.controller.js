@@ -390,9 +390,9 @@ exports.updateOrderStatus = async (req, res) => {
 
     // Update tractor availability
     if (order.tractor_id) {
-      if (status === 'active') {
+      if (['active', 'approved', 'confirmed'].includes(status)) {
         await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Booked' });
-      } else if (['completed', 'cancelled'].includes(status)) {
+      } else if (['completed', 'cancelled', 'rejected'].includes(status)) {
         await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Available' });
       }
     }

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  CreditCard, CheckCircle, Printer, DollarSign, User, FileText,
-  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, ArrowUpRight
+  CreditCard, CheckCircle, Printer, DollarSign, User, FileText, Clock,
+  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, ArrowUpRight, AlertCircle
 } from 'lucide-react';
 import api from '../../services/apiClient';
 
@@ -165,6 +165,9 @@ const PrintSigBlock = ({ label, name, sigImage }) => (
 
 /* ─── Main PV Form ───────────────────────────────────────────── */
 const FinancePV = () => {
+  const [activeTab, setActiveTab] = useState('pv'); // 'pv' | 'pending'
+
+  // ── PV Form state ──
   const [date, setDate]             = useState(new Date().toISOString().slice(0, 10));
   const [paidTo, setPaidTo]         = useState('');
   const [amount, setAmount]         = useState('');
@@ -193,12 +196,107 @@ const FinancePV = () => {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
 
+  // ── Linked maintenance source for a "Continue Payment" PV ──
+  const [maintSource, setMaintSource] = useState(null); // { rawId, asset, description, amount }
+
+  // ── Pending payments state ──
+  const [pendingList, setPendingList]   = useState([]);
+  const [pendingLoad, setPendingLoad]   = useState(false);
+  const [pendingErr, setPendingErr]     = useState(null);
+  const [processId, setProcessId]       = useState(null);
+
+  // ── Load count for badge (runs once on mount) ──
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const loadPending = useCallback(async () => {
+    setPendingLoad(true); setPendingErr(null);
+    try {
+      const [resMaint, resFuel] = await Promise.all([
+        api.get('/car-renting/maintenance/finance'),
+        api.get('/car-renting/fuel-service')
+      ]);
+      const allMaint = resMaint.data?.data || resMaint.data || [];
+      const allFuelRaw = resFuel.data?.data || resFuel.data || [];
+      
+      const allFuel = allFuelRaw.map(f => ({
+          ...f,
+          type: f.request_type,
+          isFuel: true,
+      }));
+      const all = [...allMaint, ...allFuel];
+
+      const filtered = all.filter(m =>
+        m.status === 'PENDING_FINANCE' || m.status === 'FINANCE_READY'
+      ).map(m => ({
+        id: m.isFuel ? `fs-${m.id}` : `maint-${m.id}`, rawId: m.id, source: m.isFuel ? 'Fuel & Service' : 'Fleet Maintenance',
+        description: m.description || m.type || 'Maintenance',
+        asset: m.asset_name,
+        amount: parseFloat((m.estimated_cost_cents / 100).toFixed(2)),
+        status: m.status,
+        date: m.scheduled_date || m.requested_date || m.created_at,
+        type: m.type,
+        priority: m.priority,
+        mechanic_name: m.mechanic_name || m.driver_name,
+        location: m.location,
+        notes: m.notes,
+        isFuel: !!m.isFuel
+      }));
+      setPendingList(filtered);
+      setPendingCount(filtered.length);
+    } catch (e) {
+      setPendingErr(e.message || 'Failed to load pending payments');
+    } finally {
+      setPendingLoad(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPending(); }, [loadPending]);
+
+  // ── Step 1: Finance CONFIRMS → sets FINANCE_READY, notifies Car Manager & CEO ──
+  const handleConfirm = async (item) => {
+    setProcessId(item.id);
+    try {
+      if (item.isFuel) {
+        await api.patch(`/car-renting/fuel-service/${item.rawId}/finance-approve`);
+      } else {
+        await api.patch(`/car-renting/maintenance/${item.rawId}/finance-approve`);
+      }
+      await loadPending();
+    } catch (e) {
+      setPendingErr(e.message || 'Failed to confirm payment');
+    } finally {
+      setProcessId(null);
+    }
+  };
+
+  // ── Step 2: "Continue Payment" → switch to PV tab pre-filled ──
+  const handleContinuePayment = (item) => {
+    // Pre-fill the PV form with all maintenance data
+    setDate(new Date().toISOString().slice(0, 10));
+    setPaidTo(item.asset || '');
+    setAmount(String(item.amount));
+    setAmountWords(`${item.amount.toLocaleString('en-US')} ETB Only`);
+    setDescription(`${item.source}: ${item.type || item.description} — ${item.asset}`);
+    setReferenceNo(item.isFuel ? `FS-${String(item.rawId).padStart(4, '0')}` : `MNT-${String(item.rawId).padStart(4, '0')}`);
+    setPaymentMethod('Cash');
+    // Clear bank/telebirr fields
+    setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
+    setTelebirrNumber(''); setTelebirrName('');
+    setPreparedBy(''); setCheckedBy(''); setReceiverName('');
+    setPreparedSig(null); setCheckedSig(null); setReceiverSig(null);
+    setSubmitted(null); setError(null);
+    // Store the source so submit knows to call maintenance-pay
+    setMaintSource({ rawId: item.rawId, asset: item.asset, description: item.description, amount: item.amount, isFuel: item.isFuel });
+    setActiveTab('pv');
+  };
+
   const handleAmountChange = (e) => {
     setAmount(e.target.value);
     const v = parseFloat(e.target.value);
     setAmountWords(isNaN(v) ? '' : `${v.toLocaleString('en-US')} ETB Only`);
   };
 
+  // ── Form Submit: if maintSource → call finance-pay for maintenance, else normal PV ──
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -214,10 +312,29 @@ const FinancePV = () => {
         checkedSignature:  checkedSig,
         receiverSignature: receiverSig,
       };
-      const res = await api.post('/finance-cash/pv', payload);
-      setSubmitted({ pvNumber: res.data?.data?.pvNumber, ...payload, amountWords });
+
+      let pvNumber;
+      if (maintSource) {
+        // Maintenance payment: hits the maintenance finance-pay endpoint
+        if (maintSource.isFuel) {
+          const res = await api.patch(`/car-renting/fuel-service/${maintSource.rawId}/finance-pay`, payload);
+          pvNumber = res.data?.data?.pvNumber || res.data?.pvNumber || `PV-FS-${maintSource.rawId}`;
+        } else {
+          const res = await api.patch(`/car-renting/maintenance/${maintSource.rawId}/finance-pay`, payload);
+          pvNumber = res.data?.data?.pvNumber || res.data?.pvNumber || `PV-MNT-${maintSource.rawId}`;
+        }
+        setMaintSource(null);
+        // Refresh pending list (item should disappear)
+        loadPending();
+      } else {
+        // Regular manual PV
+        const res = await api.post('/finance-cash/pv', payload);
+        pvNumber = res.data?.data?.pvNumber;
+      }
+
+      setSubmitted({ pvNumber, ...payload, amountWords });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to generate PV');
+      setError(err.message || 'Failed to generate Payment Voucher');
     } finally {
       setLoading(false);
     }
@@ -225,6 +342,7 @@ const FinancePV = () => {
 
   const resetForm = () => {
     setSubmitted(null);
+    setMaintSource(null);
     setAmount(''); setAmountWords(''); setReferenceNo('');
     setPaidTo(''); setDescription('');
     setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
@@ -256,108 +374,81 @@ const FinancePV = () => {
           border: '2px solid #0ea5e9', padding: 40, textAlign: 'center',
           boxShadow: '0 20px 25px -5px rgba(0,0,0,.12)', margin: '0 auto'
         }}>
-          <div style={{ background: '#e0f2fe', width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <CheckCircle size={48} color="#0ea5e9" />
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <CheckCircle size={36} color="#16a34a" />
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0c4a6e', margin: '0 0 8px' }}>PV Generated!</h2>
-          <p style={{ color: '#64748b', marginBottom: 24 }}>Recorded in cashbook as a payment.</p>
-
-          <div style={{ background: '#f0f9ff', padding: 20, borderRadius: 12, border: '1px dashed #7dd3fc', textAlign: 'left', marginBottom: 24 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: '#0369a1', textAlign: 'center', letterSpacing: 2, marginBottom: 14 }}>{submitted.pvNumber}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 14 }}>
-              <div><span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Date</span><b>{submitted.date}</b></div>
-              <div><span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Method</span><b>{submitted.paymentMethod}</b></div>
-              <div style={{ gridColumn: 'span 2' }}><span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Paid To</span><b>{submitted.paidTo}</b></div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Amount</span>
-                <span style={{ fontWeight: 800, color: '#0284c7', fontSize: 20 }}>ETB {parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
+          <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800, color: '#0f172a' }}>Payment Voucher Generated!</h2>
+          {submitted.pvNumber && (
+            <div style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>
+              PV Number: <strong style={{ color: '#0ea5e9' }}>{submitted.pvNumber}</strong>
             </div>
+          )}
+          <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24 }}>
+            <strong style={{ color: '#16a34a', fontSize: 20 }}>ETB {parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            <br />paid to <strong>{submitted.paidTo}</strong>
           </div>
-
-          {/* Signature preview */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', gap: 8, marginBottom: 28 }}>
-            {[
-              { label: 'Prepared By',       name: submitted.preparedBy,   sig: submitted.preparedSignature },
-              { label: 'Checked By',        name: submitted.checkedBy,    sig: submitted.checkedSignature },
-              { label: "Payee's Sig.",      name: submitted.receiverName, sig: submitted.receiverSignature },
-            ].map(({ label, name, sig }) => (
-              <div key={label} style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ height: 54, border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                  {sig
-                    ? <img src={sig} alt={label} style={{ maxHeight: 50, maxWidth: '100%', objectFit: 'contain' }} />
-                    : <span style={{ color: '#cbd5e1', fontSize: 10 }}>No sig</span>
-                  }
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>{name}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>{label}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={() => window.print()}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: 14 }}>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => window.print()} style={{ padding: '12px 24px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Printer size={16} /> Print PV
             </button>
-            <button onClick={resetForm}
-              style={{ flex: 1, padding: 12, background: '#0f172a', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+            <button onClick={resetForm} style={{ padding: '12px 24px', background: 'white', color: '#475569', border: '2px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 700 }}>
               New PV
             </button>
           </div>
         </div>
 
-        {/* ─── PRINT VIEW ─── */}
-        <div className="print-only" style={{ display: 'none', padding: '36px 48px', background: 'white', fontFamily: "'Times New Roman', serif" }}>
-          <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 20 }}>
-            <h1 style={{ fontSize: 26, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 3 }}>Sutana Enterprise</h1>
-            <h2 style={{ fontSize: 16, margin: 0, fontWeight: 'normal', color: '#333' }}>OFFICIAL PAYMENT VOUCHER (PV)</h2>
+        {/* Print-only PV document */}
+        <div className="print-only" style={{ display: 'none', maxWidth: 720, margin: '0 auto', fontFamily: 'Arial, sans-serif', padding: 20 }}>
+          <div style={{ textAlign: 'center', borderBottom: '3px double #333', paddingBottom: 12, marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: 1 }}>SUTANA TRADING</h2>
+            <h3 style={{ margin: '6px 0 0', fontSize: 16, fontWeight: 700 }}>PAYMENT VOUCHER</h3>
+            {submitted.pvNumber && <div style={{ fontSize: 13, marginTop: 4 }}>PV No: <b>{submitted.pvNumber}</b></div>}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, fontSize: 13 }}>
-            <div>
-              <b>Voucher No:</b> <span style={{ fontFamily: 'monospace', fontSize: 15 }}>{submitted.pvNumber}</span><br />
-              <b>Reference:</b> {submitted.referenceNo || 'N/A'}
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: '6px 0', width: '30%', fontWeight: 700, fontSize: 12 }}>Date:</td>
+                <td style={{ padding: '6px 8px', fontSize: 12 }}>{submitted.date}</td>
+                <td style={{ padding: '6px 0', width: '30%', fontWeight: 700, fontSize: 12 }}>Reference #:</td>
+                <td style={{ padding: '6px 8px', fontSize: 12 }}>{submitted.referenceNo || '—'}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '6px 0', fontWeight: 700, fontSize: 12 }}>Paid To:</td>
+                <td colSpan={3} style={{ padding: '6px 8px', fontSize: 12, fontWeight: 600 }}>{submitted.paidTo}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '6px 0', fontWeight: 700, fontSize: 12 }}>Amount (ETB):</td>
+                <td style={{ padding: '6px 8px', fontSize: 16, fontWeight: 900 }}>{parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td style={{ padding: '6px 0', fontWeight: 700, fontSize: 12 }}>In Words:</td>
+                <td style={{ padding: '6px 8px', fontSize: 12, fontStyle: 'italic' }}>{submitted.amountWords}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '6px 0', fontWeight: 700, fontSize: 12 }}>Description:</td>
+                <td colSpan={3} style={{ padding: '6px 8px', fontSize: 12 }}>{submitted.description}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '6px 0', fontWeight: 700, fontSize: 12 }}>Payment Method:</td>
+                <td colSpan={3} style={{ padding: '6px 8px', fontSize: 12 }}>{submitted.paymentMethod}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {submitted.paymentMethod === 'Bank' && submitted.bankDetails && (
+            <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 6, marginBottom: 12, fontSize: 12 }}>
+              <b>Bank Transfer Details</b> — Bank: {submitted.bankDetails.bankName} | A/C Holder: {submitted.bankDetails.accountHolder} | A/C #: {submitted.bankDetails.accountNumber} {submitted.bankDetails.chequeNo ? `| Cheque: ${submitted.bankDetails.chequeNo}` : ''}
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <b>Date:</b> {new Date(submitted.date).toLocaleDateString('en-GB')}<br />
-              <b>Payment Method:</b> {submitted.paymentMethod}
+          )}
+          {submitted.paymentMethod === 'Telebirr' && submitted.telebirrDetails && (
+            <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 6, marginBottom: 12, fontSize: 12 }}>
+              <b>Telebirr Details</b> — Mobile: {submitted.telebirrDetails.telebirrNumber} | Name: {submitted.telebirrDetails.fullName}
             </div>
-          </div>
-
-          <div style={{ lineHeight: 2.4, fontSize: 15, marginBottom: 24 }}>
-            <div><b>PAID TO:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 320 }}>{submitted.paidTo}</span></div>
-            <div><b>THE SUM OF:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 340, fontStyle: 'italic' }}>{submitted.amountWords}</span></div>
-            <div><b>BEING PAYMENT FOR:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 280 }}>{submitted.description}</span></div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-            <div style={{ padding: '12px 24px', border: '2px solid #000', fontSize: 26, fontWeight: 'bold' }}>
-              ETB {parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          )}
+          {submitted.paymentMethod === 'Cash' && (
+            <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 6, marginBottom: 12, fontSize: 12, textAlign: 'center', fontWeight: 700 }}>
+              By Cash
             </div>
-
-            {submitted.paymentMethod === 'Bank' && submitted.bankDetails && (
-              <div style={{ padding: '12px 16px', border: '1px solid #555', fontSize: 13, minWidth: 240 }}>
-                <b>Bank Details:</b><br />
-                Bank: {submitted.bankDetails.bankName}<br />
-                A/C Name: {submitted.bankDetails.accountHolder}<br />
-                A/C No: {submitted.bankDetails.accountNumber}
-                {submitted.bankDetails.chequeNo && <><br />Cheque No: {submitted.bankDetails.chequeNo}</>}
-              </div>
-            )}
-            {submitted.paymentMethod === 'Telebirr' && submitted.telebirrDetails && (
-              <div style={{ padding: '12px 16px', border: '1px solid #555', fontSize: 13, minWidth: 240 }}>
-                <b>Telebirr Details:</b><br />
-                Mobile: {submitted.telebirrDetails.telebirrNumber}<br />
-                Name: {submitted.telebirrDetails.fullName}
-              </div>
-            )}
-            {submitted.paymentMethod === 'Cash' && (
-              <div style={{ padding: '12px 24px', border: '1px solid #555', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
-                By Cash
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Signature row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 48 }}>
@@ -383,25 +474,192 @@ const FinancePV = () => {
   /* ─── FORM ─── */
   const card = { background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)', marginBottom: 24 };
 
+  // Status config for pending table
+  const statusConfig = {
+    PENDING_FINANCE: { bg: '#FFF3E0', color: '#E65100', label: 'CEO Confirmed — Awaiting Finance' },
+    FINANCE_READY:   { bg: '#E8F5E9', color: '#2E7D32', label: '✅ Finance Ready — Payment Set' },
+  };
+
   return (
     <div style={{ padding: 32, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ maxWidth: 840, margin: '0 auto 28px' }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 12, color: '#0f172a' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto 28px' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 12, color: '#0f172a' }}>
           <span style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', padding: 10, borderRadius: 12, display: 'flex', boxShadow: '0 4px 10px rgba(14,165,233,.3)' }}>
             <ArrowUpRight color="white" size={22} />
           </span>
-          Payment Voucher (PV)
+          Financial Management
+          {maintSource && (
+            <span style={{ fontSize: 12, background: '#fef3c7', color: '#b45309', padding: '4px 12px', borderRadius: 99, fontWeight: 600, border: '1px solid #fde68a' }}>
+              🔗 Filling PV from: {maintSource.asset}
+            </span>
+          )}
         </h1>
-        <p style={{ color: '#64748b', margin: '8px 0 0', fontSize: 14 }}>Fill out payment details, sign, and record it directly into the cashbook.</p>
+
+        {/* ── TWO TAB BUTTONS ── */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={() => setActiveTab('pv')}
+            style={{
+              flex: 1, padding: '14px 20px', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 15,
+              border: activeTab === 'pv' ? '2px solid #0ea5e9' : '2px solid #e2e8f0',
+              background: activeTab === 'pv' ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : 'white',
+              color: activeTab === 'pv' ? 'white' : '#475569',
+              boxShadow: activeTab === 'pv' ? '0 4px 14px rgba(14,165,233,.3)' : '0 1px 3px rgba(0,0,0,.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all .2s',
+            }}>
+            <FileText size={20} /> Payment Voucher (PV)
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            style={{
+              flex: 1, padding: '14px 20px', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 15,
+              border: activeTab === 'pending' ? '2px solid #f59e0b' : '2px solid #e2e8f0',
+              background: activeTab === 'pending' ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'white',
+              color: activeTab === 'pending' ? 'white' : '#475569',
+              boxShadow: activeTab === 'pending' ? '0 4px 14px rgba(245,158,11,.3)' : '0 1px 3px rgba(0,0,0,.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all .2s', position: 'relative',
+            }}>
+            <Clock size={20} /> Pending Payment
+            {pendingCount > 0 && (
+              <span style={{
+                background: activeTab === 'pending' ? 'white' : '#ef4444',
+                color: activeTab === 'pending' ? '#d97706' : 'white',
+                borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 13, fontWeight: 900, lineHeight: 1,
+                boxShadow: '0 2px 6px rgba(0,0,0,.25)',
+              }}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* ══ PENDING PAYMENT TAB ══ */}
+      {activeTab === 'pending' && (
+        <div style={{ maxWidth: 880, margin: '0 auto' }}>
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+            <div style={{ padding: '20px 28px', borderBottom: '1px solid #e2e8f0', background: '#fffbeb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Clock size={18} /> Pending Payments
+                  {pendingCount > 0 && (
+                    <span style={{ background: '#ef4444', color: 'white', borderRadius: 99, padding: '2px 10px', fontSize: 13, fontWeight: 900 }}>
+                      {pendingCount}
+                    </span>
+                  )}
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#a16207' }}>CEO-approved Fleet Maintenance &amp; Fuel/Service requests awaiting Finance confirmation &amp; payment.</p>
+              </div>
+              <button onClick={loadPending} style={{ padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#475569' }}>
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
+
+            {pendingErr && (
+              <div style={{ margin: 16, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <AlertCircle size={15} /> {pendingErr}
+              </div>
+            )}
+
+            {pendingLoad ? (
+              <div style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
+                <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />
+                Loading pending payments…
+              </div>
+            ) : pendingList.length === 0 ? (
+              <div style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
+                <CheckCircle size={40} style={{ marginBottom: 12, color: '#86efac', display: 'block', margin: '0 auto 12px' }} />
+                <p style={{ fontWeight: 600, fontSize: 15, color: '#475569', margin: 0 }}>No pending payments</p>
+                <p style={{ fontSize: 13, margin: '6px 0 0' }}>All CEO-approved payments have been processed.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11 }}>SOURCE</th>
+                      <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11 }}>ASSET / DESCRIPTION</th>
+                      <th style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: '#475569', fontSize: 11 }}>AMOUNT (ETB)</th>
+                      <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#475569', fontSize: 11 }}>STATUS</th>
+                      <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#475569', fontSize: 11 }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingList.map(item => {
+                      const sc = statusConfig[item.status] || { bg: '#f1f5f9', color: '#475569', label: item.status };
+                      return (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background .15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{ background: item.isFuel ? '#fef3c7' : '#e0f2fe', color: item.isFuel ? '#b45309' : '#0369a1', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{item.source}</span>
+                          </td>
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>{item.asset || '—'}</div>
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{item.description}</div>
+                            {item.priority && (
+                              <span style={{ fontSize: 10, background: item.priority === 'High' || item.priority === 'Urgent' ? '#fef2f2' : '#f0fdf4', color: item.priority === 'High' || item.priority === 'Urgent' ? '#dc2626' : '#16a34a', padding: '2px 7px', borderRadius: 4, fontWeight: 700, display: 'inline-block', marginTop: 4 }}>
+                                {item.priority} Priority
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 900, color: '#059669', fontSize: 18 }}>
+                            {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <span style={{ background: sc.bg, color: sc.color, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {sc.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            {item.status === 'PENDING_FINANCE' && (
+                              <button
+                                onClick={() => handleConfirm(item)}
+                                disabled={processId === item.id}
+                                style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#16a34a,#15803d)', border: 'none', color: 'white', borderRadius: 9, cursor: 'pointer', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 3px 8px rgba(22,163,74,.35)' }}>
+                                {processId === item.id ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={13} />}
+                                Confirm to CEO &amp; Manager
+                              </button>
+                            )}
+                            {item.status === 'FINANCE_READY' && (
+                              <button
+                                onClick={() => handleContinuePayment(item)}
+                                style={{ padding: '9px 20px', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', border: 'none', color: 'white', borderRadius: 9, cursor: 'pointer', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 3px 8px rgba(14,165,233,.35)' }}>
+                                <Banknote size={14} /> Continue Payment →
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {/* ══ PV FORM TAB ══ */}
+      {activeTab === 'pv' && (<>
+
+      {maintSource && (
+        <div style={{ maxWidth: 880, margin: '0 auto 16px', background: '#f0fdf4', border: '2px solid #86efac', color: '#15803d', padding: '14px 20px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600 }}>
+          <CheckCircle size={18} />
+          PV pre-filled from maintenance request for <strong>{maintSource.asset}</strong>. Fill signatures and click "Generate" to complete payment.
+          <button onClick={() => { setMaintSource(null); resetForm(); }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#15803d', fontSize: 12, textDecoration: 'underline' }}>Clear</button>
+        </div>
+      )}
+
       {error && (
-        <div style={{ maxWidth: 840, margin: '0 auto 16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '14px 18px', borderRadius: 10 }}>
+        <div style={{ maxWidth: 880, margin: '0 auto 16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '14px 18px', borderRadius: 10 }}>
           <b>Error:</b> {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: 840, margin: '0 auto' }}>
+      <form onSubmit={handleSubmit} style={{ maxWidth: 880, margin: '0 auto' }}>
 
         {/* General Information */}
         <div style={card}>
@@ -531,18 +789,23 @@ const FinancePV = () => {
 
         <button type="submit" disabled={loading} style={{
           width: '100%', padding: 16,
-          background: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+          background: maintSource
+            ? 'linear-gradient(135deg,#16a34a,#15803d)'
+            : 'linear-gradient(135deg,#0ea5e9,#0284c7)',
           color: 'white', border: 'none', borderRadius: 12,
           cursor: loading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700,
           display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
-          boxShadow: '0 4px 14px rgba(14,165,233,.4)', opacity: loading ? 0.7 : 1,
+          boxShadow: maintSource ? '0 4px 14px rgba(22,163,74,.4)' : '0 4px 14px rgba(14,165,233,.4)',
+          opacity: loading ? 0.7 : 1,
         }}>
           {loading ? <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={20} />}
-          {loading ? 'Processing...' : 'Generate Payment Voucher'}
+          {loading ? 'Processing...' : maintSource ? `Generate PV & Release Payment for ${maintSource.asset}` : 'Generate Payment Voucher'}
         </button>
       </form>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </>)}
+
     </div>
   );
 };

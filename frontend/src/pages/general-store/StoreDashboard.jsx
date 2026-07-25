@@ -13,6 +13,7 @@ import {
 } from './GeneralStoreOperations';
 
 import StoreReports from './StoreReports';
+import StoreCarRentingRequests from './StoreCarRentingRequests';
 
 import styles from './StoreDashboard.module.css';
 
@@ -35,7 +36,7 @@ const GeneralStoreDashboard = () => {
     {
       label: 'Monitoring & Reports', icon: 'shield',
       children: [
-        { label: 'Report',      path: '/general-store/reports',     icon: 'file-text', color: '#3b82f6' },
+        { label: 'Report',                path: '/general-store/reports',          icon: 'file-text', color: '#3b82f6' },
       ]
     },
   ];
@@ -52,8 +53,9 @@ const GeneralStoreDashboard = () => {
             <Route path="alerts"       element={<GSAlerts />} />
             <Route path="logs"         element={<GSLogs />} />
             <Route path="valuation"    element={<GSValuation />} />
-            <Route path="reports"      element={<StoreReports />} />
-            <Route path="*"            element={<Navigate to="overview" replace />} />
+            <Route path="reports"              element={<StoreReports />} />
+            <Route path="car-renting-requests" element={<StoreCarRentingRequests />} />
+            <Route path="*"                    element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
       </DashboardLayout>

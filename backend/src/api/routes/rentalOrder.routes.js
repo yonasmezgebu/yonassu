@@ -10,6 +10,10 @@ router.get('/my-orders', authenticate, rentalOrderController.getCustomerOrders);
 router.get('/search', authenticate, authorizeRoles(['Finance', 'Admin', 'CEO']), rentalOrderController.searchOrders);
 router.post('/:id/payment-proof', authenticate, uploads.singlePaymentProof.single('proof'), rentalOrderController.uploadPaymentProof);
 
+// Manager manual order creation (walk-in / phone-in)
+router.post('/manual', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), uploads.singlePaymentProof.single('paymentProof'), rentalOrderController.createManualOrder);
+
+
 // Manager routes
 router.get('/', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getAllOrders);
 router.get('/:id', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO', 'Finance', 'Finance Manager']), rentalOrderController.getOrderById);

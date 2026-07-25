@@ -18,7 +18,6 @@ import CEOPurchaseWorkflow from './CEOPurchaseWorkflow';
 // 15 New CEO Modules
 import CEOSales from './CEOSales';
 import CEOPurchase from './CEOPurchase';
-import CEOInventory from './CEOInventory';
 import CEOFinance from './CEOFinance';
 import CEOFinanceApprovals from './CEOFinanceApprovals';
 import CEOHR from './CEOHR';
@@ -32,8 +31,7 @@ import CEODirectDelivery from './CEODirectDelivery';
 import CEOTenderManager from './CEOTenderManager';
 import CEOFundApprovalsM9 from './CEOFundApprovalsM9';
 import CEOPrinting from './CEOPrinting';
-import CEOCarRental from './CEOCarRental';
-import CEOAgrirent from './CEOAgrirent';
+import CEOAgriAndCarRental from './CEOAgriAndCarRental';
 import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 import CEOApplicants from './CEOApplicants';
 
@@ -62,15 +60,13 @@ const CEODashboard = () => {
       children: [
         { label: 'Sales', path: '/ceo/sales', icon: 'trending-up', color: '#10b981' },
         { label: 'Purchase', path: '/ceo/purchase', icon: 'shopping-cart', color: '#3b82f6' },
-        { label: 'Inventory', path: '/ceo/inventory', icon: 'package', color: '#f59e0b', altActiveOn: ['/ceo/store-adjustments', '/ceo/store-counts', '/ceo/store-update-approvals', '/ceo/approvals/pending', '/ceo/approvals/approved', '/ceo/approvals/rejected'] },
         { label: 'Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
         { label: 'HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
         { label: 'Pharmacy', path: '/ceo/pharmacy-hub', icon: 'plus-circle', color: '#ef4444' },
         { label: 'Store', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
-        { label: 'Agrirent', path: '/ceo/agrirent', icon: 'home', color: '#65a30d' },
+        { label: 'Agri and Car Rental', path: '/ceo/agri-and-car-rental', icon: 'truck', color: '#0ea5e9' },
         { label: 'Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
         { label: 'Printing', path: '/ceo/printing', icon: 'printer', color: '#a855f7' },
-        { label: 'Car Rental', path: '/ceo/car-rental', icon: 'car', color: '#0ea5e9' },
       ]
     },
     { type: 'divider' },
@@ -104,7 +100,6 @@ const CEODashboard = () => {
             {/* 15 Modules */}
             <Route path="sales" element={<CEOSales />} />
             <Route path="purchase" element={<CEOPurchase />} />
-            <Route path="inventory" element={<CEOInventory />} />
             <Route path="finance" element={<CEOFinance />} />
             <Route path="hr" element={<CEOHR />} />
             <Route path="applicants" element={<CEOApplicants />} />
@@ -123,8 +118,7 @@ const CEODashboard = () => {
             <Route path="fund-approvals" element={<CEOFundApprovalsM9 />} />
             
             <Route path="printing" element={<CEOPrinting />} />
-            <Route path="car-rental" element={<CEOCarRental />} />
-            <Route path="agrirent" element={<CEOAgrirent />} />
+            <Route path="agri-and-car-rental" element={<CEOAgriAndCarRental />} />
 
             {/* 9 Additional Approval & Report Modules */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />

@@ -15,7 +15,7 @@ router.get('/live-income', authenticate, async (req, res) => {
     //    These may not have a finance_income_submissions record if they were created
     //    before the auto-sync code was added, so we union them here directly.
     const pendingRentals = await knex('rental_orders')
-      .where('payment_status', 'PENDING_VERIFICATION')
+      .whereIn('payment_status', ['PENDING_VERIFICATION', 'UNPAID', 'PENDING'])
       .whereNotIn(
         'id',
         // Avoid duplicating orders already in finance_income_submissions
@@ -69,7 +69,14 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
     // ── Handle synthetic 'rental-{n}' IDs (rental_orders without a submission record)
     if (String(id).startsWith('rental-')) {
       const rentalId = String(id).replace('rental-', '');
-      const order = await knex('rental_orders').where({ id: rentalId }).first();
+      const order = await knex('rental_orders as ro')
+        .leftJoin('cars as c', 'ro.car_id', 'c.id')
+        .where('ro.id', rentalId)
+        .select(
+          'ro.*',
+          'c.name as car_name'
+        )
+        .first();
       if (!order) return res.status(404).json({ success: false, message: 'Rental order not found' });
 
       const amount = parseFloat(order.additional_owed > 0 ? order.additional_owed : order.total_amount || 0);
@@ -93,7 +100,12 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
           pickupDate: order.pickup_date,
           returnDate: order.return_date,
           totalDays: order.total_days,
-          dailyRate: order.daily_rate
+          dailyRate: order.daily_rate,
+          carName: order.car_name || 'Car',
+          driverName: order.driver_name,
+          pickupLocation: order.pickup_location,
+          specialRequests: order.special_requests,
+          additionalOwed: order.additional_owed
         }),
         created_at: order.updated_at || order.created_at,
         updated_at: order.updated_at || order.created_at,
@@ -141,6 +153,42 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
           .where('sale_id', sale.id)
           .select('drug_name', 'quantity', 'unit_price', 'total_price');
         transactions.push({ ...sale, items });
+      }
+    }
+
+    // Enhance Car Rental with full order details
+    if (submission.department === 'Car Rental' && submission.manual_details) {
+      try {
+        const parsed = JSON.parse(submission.manual_details);
+        if (parsed.order_id) {
+          const rentalOrder = await knex('rental_orders as ro')
+            .leftJoin('cars as c', 'ro.car_id', 'c.id')
+            .where('ro.id', parseInt(parsed.order_id))
+            .select(
+              'ro.*',
+              'c.name as car_name'
+            )
+            .first();
+            
+          if (rentalOrder) {
+             const enrichedDetails = {
+               ...parsed,
+               carName: rentalOrder.car_name || 'Car',
+               pickupDate: rentalOrder.pickup_date,
+               returnDate: rentalOrder.return_date,
+               totalDays: rentalOrder.total_days,
+               dailyRate: rentalOrder.daily_rate,
+               driverName: rentalOrder.driver_name,
+               pickupLocation: rentalOrder.pickup_location,
+               specialRequests: rentalOrder.special_requests,
+               additionalOwed: rentalOrder.additional_owed,
+               orderNumber: rentalOrder.order_number
+             };
+             submission.manual_details = JSON.stringify(enrichedDetails);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse/fetch car rental details:', e);
       }
     }
 
@@ -220,14 +268,22 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       await knex.transaction(async trx => {
         const extraCharges = parseFloat(order.additional_owed || 0);
         const updateData = { verified_by_finance_at: knex.fn.now(), payment_status: 'PAID' };
+        
         if (order.status === 'APPROVED' || order.status === 'PENDING_APPROVAL' || order.status === 'PENDING_VERIFICATION') {
           updateData.status = 'CONFIRMED';
           updateData.verified_amount = systemTotal;
-        } else if (extraCharges > 0) {
+        } 
+        
+        if (extraCharges > 0) {
           const remaining = Math.max(0, extraCharges - systemTotal);
           updateData.additional_owed = remaining;
-          if (remaining > 0) updateData.payment_status = 'PARTIAL';
+          if (remaining > 0) {
+             updateData.payment_status = 'PARTIAL';
+          } else {
+             updateData.payment_status = 'PAID';
+          }
         }
+        
         await trx('rental_orders').where({ id: rentalId }).update(updateData);
 
         // Insert a real submission record so it shows as Approved in history
@@ -413,28 +469,33 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         try {
           const parsed = JSON.parse(submission.manual_details);
           if (parsed.order_id) {
+            const orderIdInt = parseInt(parsed.order_id);
             // Fetch order to check if we are paying initial or additional
-            const order = await trx('rental_orders').where({ id: parsed.order_id }).first();
+            const order = await trx('rental_orders').where({ id: orderIdInt }).first();
             if (order) {
               const extraCharges = parseFloat(order.additional_owed || 0);
               let updateData = {
-                verified_by_finance_at: knex.fn.now()
+                verified_by_finance_at: knex.fn.now(),
+                payment_status: 'PAID'
               };
 
-              if (order.status === 'APPROVED' || order.status === 'PENDING_APPROVAL') {
-                updateData.payment_status = 'PAID';
+              if (order.status === 'APPROVED' || order.status === 'PENDING_APPROVAL' || order.status === 'PENDING_VERIFICATION') {
                 updateData.status = 'CONFIRMED';
                 updateData.verified_amount = systemTotal;
-              } else if (extraCharges > 0) {
+              } 
+              
+              if (extraCharges > 0) {
                 const remaining = Math.max(0, extraCharges - systemTotal);
                 updateData.additional_owed = remaining;
-                if (remaining === 0) {
+                if (remaining > 0) {
+                  updateData.payment_status = 'PARTIAL';
+                } else {
                   updateData.payment_status = 'PAID';
                 }
               }
 
               await trx('rental_orders')
-                .where({ id: parsed.order_id })
+                .where({ id: orderIdInt })
                 .update(updateData);
                 
               // Log to bank_payments
@@ -472,6 +533,56 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Error approving income:', error);
     res.status(500).json({ success: false, message: 'Failed to approve income' });
+  }
+});
+// ── PUT /live-income/:id/reject — Finance rejects a submission ────
+router.put('/live-income/:id/reject', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+    }
+
+    // Handle synthetic rental-N IDs
+    if (String(id).startsWith('rental-')) {
+      const rentalId = String(id).replace('rental-', '');
+      const order = await knex('rental_orders').where({ id: rentalId }).first();
+      if (!order) return res.status(404).json({ success: false, message: 'Rental order not found' });
+      await knex('rental_orders').where({ id: rentalId }).update({
+        payment_status: 'REJECTED',
+        finance_notes: reason,
+        updated_at: knex.fn.now()
+      });
+      return res.json({ success: true, message: 'Payment rejected.' });
+    }
+
+    // Handle synthetic agrirent-N IDs
+    if (String(id).startsWith('agrirent-')) {
+      const agriId = String(id).replace('agrirent-', '');
+      await knex('agrirent_orders').where({ id: agriId }).update({
+        payment_status: 'REJECTED',
+        notes: reason,
+        updated_at: knex.fn.now()
+      });
+      return res.json({ success: true, message: 'Payment rejected.' });
+    }
+
+    // Standard submission
+    const submission = await knex('finance_income_submissions').where({ id }).first();
+    if (!submission) return res.status(404).json({ success: false, message: 'Submission not found' });
+    if (submission.status !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'Submission is already processed' });
+    }
+    await knex('finance_income_submissions').where({ id }).update({
+      status: 'Rejected',
+      rejection_reason: reason,
+      updated_at: knex.fn.now()
+    });
+    res.json({ success: true, message: 'Submission rejected.' });
+  } catch (error) {
+    console.error('Error rejecting income submission:', error);
+    res.status(500).json({ success: false, message: 'Failed to reject submission' });
   }
 });
 

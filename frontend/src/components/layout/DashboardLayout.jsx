@@ -860,7 +860,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       setPurchaseApprovedTenders([]);
     }
 
-    if (isCarRentingRoute) {
+    const hasAgriRole = user?.roles?.includes('Agri Rental Manager') || user?.roles?.includes('Admin') || user?.roles?.includes('CEO');
+    if (isCarRentingRoute && hasAgriRole) {
       apiClient.get('/agrirent-orders?status=pending').then(res => {
         if (res?.data?.data?.orders) {
           setAgriRentPending(res.data.data.orders.length);

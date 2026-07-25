@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Car, Package, Truck, CheckCircle, XCircle, Clock,
-  ChevronRight, AlertCircle, ArrowLeft, RefreshCw, X
+  ChevronRight, ChevronDown, ChevronUp, AlertCircle, ArrowLeft, RefreshCw, X
 } from 'lucide-react';
 
 /* ─── Axios instance ───────────────────────────────────────────────────────── */
@@ -82,10 +82,15 @@ export default function StoreCarRentingRequests() {
   const { toasts, toast, remove } = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('PENDING_STORE');
-  const [detail, setDetail] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('APPROVED');
+  const [detail, setDetail] = useState(null); // Used only for Ship Modal
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirm, setConfirm] = useState(null);
+
+  /* Row expansion state for history viewing */
+  const [expandedRows, setExpandedRows] = useState({});
+  const [rowDetails, setRowDetails] = useState({});
+  const [rowDetailLoading, setRowDetailLoading] = useState({});
 
   /* Ship modal state — qty per item */
   const [shipQtys, setShipQtys] = useState({});
@@ -103,6 +108,27 @@ export default function StoreCarRentingRequests() {
   }, [filterStatus]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  const toggleRowDetail = async (id) => {
+    const isOpen = !!expandedRows[id];
+    if (isOpen) {
+      setExpandedRows(prev => ({ ...prev, [id]: false }));
+      return;
+    }
+    setExpandedRows(prev => ({ ...prev, [id]: true }));
+    if (!rowDetails[id]) {
+      setRowDetailLoading(prev => ({ ...prev, [id]: true }));
+      try {
+        const res = await api.get(`/api/v1/car-renting/store-requests/${id}`);
+        setRowDetails(prev => ({ ...prev, [id]: res.data?.data || res.data }));
+      } catch {
+        toast('Failed to load detail', 'error');
+        setExpandedRows(prev => ({ ...prev, [id]: false }));
+      } finally {
+        setRowDetailLoading(prev => ({ ...prev, [id]: false }));
+      }
+    }
+  };
 
   const loadDetail = async (id) => {
     setDetailLoading(true);
@@ -147,7 +173,7 @@ export default function StoreCarRentingRequests() {
     }
   };
 
-  const statuses = ['PENDING_STORE', 'SHIPPED', 'RECEIVED', 'REJECTED'];
+  const statuses = ['APPROVED', 'SHIPPED', 'RECEIVED', 'REJECTED', 'PENDING_STORE'];
 
   return (
     <div style={{ minHeight: '100vh', background: C.light, fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray }}>
@@ -197,20 +223,15 @@ export default function StoreCarRentingRequests() {
       {/* Page Header */}
       <div style={{ background: C.dark, color: '#fff', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64, borderBottom: `4px solid ${C.forest}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {detail && (
-            <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: C.sage, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
-              <ArrowLeft size={16} /> Back
-            </button>
-          )}
           <div style={{ background: C.forest, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Car size={22} color="#fff" />
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              {detail ? `Request: ${detail.request_number}` : 'Car Rental Store Requests'}
+              Car Rental Store Requests
             </div>
             <div style={{ fontSize: 11, color: C.sage, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-              {detail ? 'Request Detail' : 'CEO-Approved Requests Awaiting Shipment'}
+              Review, Ship, and Track Request History
             </div>
           </div>
         </div>
@@ -221,74 +242,7 @@ export default function StoreCarRentingRequests() {
 
       <div style={{ padding: '28px 32px' }}>
 
-        {/* DETAIL VIEW */}
-        {detail ? (
-          <div>
-            {detailLoading ? (
-              <div style={{ textAlign: 'center', padding: 60, color: C.textSec }}>Loading...</div>
-            ) : (
-              <>
-                <div style={{ background: C.white, border: `2px solid ${C.midGray}`, borderTop: `4px solid ${C.emerald}`, padding: 24, marginBottom: 24 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-                    {[
-                      { label: 'Status', value: <StatusBadge status={detail.status} /> },
-                      { label: 'Requested By', value: detail.requester_name || '—' },
-                      { label: 'CEO Approved By', value: detail.approver_name || '—' },
-                      { label: 'Date', value: detail.created_at ? new Date(detail.created_at).toLocaleDateString('en-GB') : '—' },
-                    ].map(f => (
-                      <div key={f.label} style={{ borderLeft: `3px solid ${C.sage}`, paddingLeft: 12 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: C.textSec, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{f.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {detail.notes && <p style={{ margin: 0, fontSize: 13, color: C.textSec }}><strong>Notes:</strong> {detail.notes}</p>}
-                </div>
-
-                <SectionHeader>Requested Items</SectionHeader>
-                <div style={{ overflowX: 'auto', background: C.white, border: `2px solid ${C.midGray}`, marginBottom: 28 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: C.dark }}>
-                        {['#', 'Product', 'Qty Requested', 'In Stock', 'Qty Shipped', 'Status'].map(h => (
-                          <th key={h} style={{ padding: '12px 14px', color: '#fff', fontWeight: 800, fontSize: 11, textAlign: 'left', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(detail.items || []).map((it, i) => (
-                        <tr key={it.id || i} style={{ borderBottom: `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight }}>
-                          <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{i + 1}</td>
-                          <td style={{ padding: '11px 14px', fontWeight: 800, color: C.darkGray }}>{it.product_name || '—'}</td>
-                          <td style={{ padding: '11px 14px', fontWeight: 900, color: C.forest, fontSize: 15 }}>{it.quantity_requested}</td>
-                          <td style={{ padding: '11px 14px', fontWeight: 800, color: it.stock_quantity > it.quantity_requested ? C.emerald : C.red }}>{it.stock_quantity ?? '—'}</td>
-                          <td style={{ padding: '11px 14px', fontWeight: 800, color: it.quantity_shipped ? C.emerald : C.textSec }}>{it.quantity_shipped ?? '—'}</td>
-                          <td style={{ padding: '11px 14px' }}>
-                            {it.quantity_shipped ? (
-                              <span style={{ color: C.leaf, fontWeight: 800, fontSize: 11, textTransform: 'uppercase' }}>✓ Shipped</span>
-                            ) : (
-                              <span style={{ color: C.orange, fontWeight: 800, fontSize: 11, textTransform: 'uppercase' }}>Pending</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {detail.status === 'PENDING_STORE' && (
-                  <button
-                    onClick={() => setConfirm('ship')}
-                    style={{ padding: '12px 28px', background: C.emerald, border: 'none', color: '#fff', fontWeight: 900, fontSize: 14, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `4px 4px 0 ${C.dark}`, borderRadius: 0, display: 'inline-flex', alignItems: 'center', gap: 10, letterSpacing: 0.5 }}
-                  >
-                    <Truck size={18} /> Ship Items to Car Rental
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          /* LIST VIEW */
+          {/* LIST VIEW */}
           <>
             {/* Filter Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -335,47 +289,107 @@ export default function StoreCarRentingRequests() {
                     </tr>
                   </thead>
                   <tbody>
-                    {requests.map((r, i) => (
-                      <tr key={r.id}
-                        style={{ borderBottom: `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight, transition: 'background 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#E8F5E9'}
-                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.white : C.sageLight}
-                      >
-                        <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{i + 1}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: 900, color: C.forest, fontFamily: 'monospace' }}>{r.request_number}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: 700 }}>{r.requester_name || '—'}</td>
-                        <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : '—'}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <span style={{ background: C.sageLight, border: `1px solid ${C.sage}`, color: C.forest, padding: '3px 10px', fontWeight: 800, fontSize: 12 }}>{r.item_count ?? '—'}</span>
-                        </td>
-                        <td style={{ padding: '11px 14px', color: C.textSec }}>{r.approver_name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }}><StatusBadge status={r.status} /></td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <button
-                              onClick={() => loadDetail(r.id)}
-                              style={{ padding: '7px 14px', background: C.sky, border: 'none', color: '#fff', fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 5 }}
-                            >
-                              <ChevronRight size={13} /> View
-                            </button>
-                            {r.status === 'PENDING_STORE' && (
-                              <button
-                                onClick={() => { loadDetail(r.id); setTimeout(() => setConfirm('ship'), 600); }}
-                                style={{ padding: '7px 14px', background: C.emerald, border: 'none', color: '#fff', fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `2px 2px 0 ${C.dark}`, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 5 }}
-                              >
-                                <Truck size={13} /> Ship
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {requests.map((r, i) => {
+                      const isOpen = !!expandedRows[r.id];
+                      const det = rowDetails[r.id];
+                      const loadingDet = !!rowDetailLoading[r.id];
+
+                      return (
+                        <React.Fragment key={r.id}>
+                          <tr
+                            style={{ borderBottom: isOpen ? 'none' : `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight, transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#E8F5E9'}
+                            onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.white : C.sageLight}
+                          >
+                            <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{i + 1}</td>
+                            <td style={{ padding: '11px 14px', fontWeight: 900, color: C.forest, fontFamily: 'monospace' }}>{r.request_number}</td>
+                            <td style={{ padding: '11px 14px', fontWeight: 700 }}>{r.requester_name || '—'}</td>
+                            <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : '—'}</td>
+                            <td style={{ padding: '11px 14px' }}>
+                              <span style={{ background: C.sageLight, border: `1px solid ${C.sage}`, color: C.forest, padding: '3px 10px', fontWeight: 800, fontSize: 12 }}>{r.item_count ?? '—'}</span>
+                            </td>
+                            <td style={{ padding: '11px 14px', color: C.textSec }}>{r.approver_name || '—'}</td>
+                            <td style={{ padding: '11px 14px' }}><StatusBadge status={r.status} /></td>
+                            <td style={{ padding: '11px 14px' }}>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <button onClick={() => toggleRowDetail(r.id)} style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: 'none',
+                                  border: `1.5px solid ${isOpen ? C.forest : C.sky}`, color: isOpen ? C.forest : C.sky,
+                                  fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', borderRadius: 0,
+                                }}>
+                                  {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {isOpen ? 'View Less' : 'View More'}
+                                </button>
+                                {r.status === 'PENDING_STORE' && (
+                                  <button
+                                    onClick={() => { loadDetail(r.id); setTimeout(() => setConfirm('ship'), 300); }}
+                                    style={{ padding: '7px 14px', background: C.emerald, border: 'none', color: '#fff', fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `2px 2px 0 ${C.dark}`, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 5 }}
+                                  >
+                                    <Truck size={13} /> Ship
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded Detail Row */}
+                          {isOpen && (
+                            <tr>
+                              <td colSpan={8} style={{ padding: 0, borderBottom: `2px solid ${C.forest}` }}>
+                                <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${C.forest}`, padding: '18px 28px' }}>
+                                  {loadingDet ? (
+                                    <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading details...</div>
+                                  ) : det ? (
+                                    <>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+                                        {[
+                                          { label: 'Requested By', value: det.requester_name || '—' },
+                                          { label: 'CEO Approved By', value: det.approver_name || '—' },
+                                          { label: 'Store Handler', value: det.store_handler_name || '—' },
+                                        ].map(f => (
+                                          <div key={f.label} style={{ borderLeft: `3px solid ${C.sage}`, paddingLeft: 12 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.textSec, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray }}>{f.value}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                        <thead>
+                                          <tr style={{ background: C.dark }}>
+                                            {['#', 'Product', 'Qty Requested', 'Qty Shipped', 'Status'].map(h => (
+                                              <th key={h} style={{ padding: '8px 12px', color: '#fff', fontWeight: 800, fontSize: 10, textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {(det.items || []).map((it, idx) => (
+                                            <tr key={idx} style={{ borderBottom: `1px solid ${C.midGray}`, background: '#fff' }}>
+                                              <td style={{ padding: '8px 12px', color: C.textSec }}>{idx + 1}</td>
+                                              <td style={{ padding: '8px 12px', fontWeight: 800 }}>{it.product_name}</td>
+                                              <td style={{ padding: '8px 12px', fontWeight: 900, color: C.forest }}>{it.quantity_requested}</td>
+                                              <td style={{ padding: '8px 12px', fontWeight: 800, color: C.emerald }}>{it.quantity_shipped ?? '—'}</td>
+                                              <td style={{ padding: '8px 12px' }}>
+                                                {it.quantity_shipped ? <span style={{ color: C.emerald, fontWeight: 800, fontSize: 10 }}>✓ SHIPPED</span> : <span style={{ color: C.textSec, fontSize: 10 }}>—</span>}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </>
+                                  ) : (
+                                    <div style={{ color: C.red, fontSize: 13, fontWeight: 700 }}>Failed to load details.</div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </>
-        )}
       </div>
     </div>
   );

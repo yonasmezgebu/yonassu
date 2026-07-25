@@ -3,7 +3,7 @@ import {
   TrendingUp, CheckCircle, Printer, DollarSign, User, FileText,
   Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool,
   Trash2, List, ArrowLeft, Eye, AlertTriangle, XCircle, ShoppingCart,
-  Package, Phone, CreditCard, Hash, Clock, ChevronRight
+  Package, Phone, CreditCard, Hash, Clock, ChevronRight, Car
 } from 'lucide-react';
 import api from '../../services/apiClient';
 
@@ -129,6 +129,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
 
   // Digital-payment verification checklist (for Car Rental / AgriRent / Printing)
   const [verifyChecks, setVerifyChecks] = useState({ bankChecked: false, telebirrChecked: false, confirmedInPerson: false });
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectModal, setRejectModal] = useState(false); // show/hide reject reason modal
+  const [rejectReason, setRejectReason] = useState('');
 
   const printRef = useRef(null);
 
@@ -186,6 +189,21 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
       setError(msg);
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) return;
+    setRejecting(true); setError(null);
+    try {
+      await api.put(`/finance-receivables/live-income/${submissionId}/reject`, { reason: rejectReason.trim() });
+      setRejectModal(false);
+      setRejectReason('');
+      setTimeout(() => { onApproved(); }, 1200);
+    } catch (e) {
+      setError(e.message || 'Failed to reject submission');
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -282,6 +300,33 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   return (
     <div style={{ padding: '28px 32px', background: '#F5F5F5', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
 
+      {/* ── Reject Reason Modal ── */}
+      {rejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: '32px 36px', maxWidth: 440, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', fontFamily: "'Inter', sans-serif" }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: '#dc2626' }}>❌ Reject Submission</h3>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>Please provide a clear reason so the submitter can correct and resubmit.</p>
+            <textarea
+              autoFocus
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="e.g. Screenshot unclear, amount mismatch, wrong payment method..."
+              rows={4}
+              style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: '1.5px solid #e5e7eb', borderRadius: 8, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+            />
+            {error && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{error}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <button onClick={() => { setRejectModal(false); setRejectReason(''); }} style={{ padding: '9px 20px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: '#424242' }}>Cancel</button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectReason.trim() || rejecting}
+                style={{ padding: '9px 24px', background: rejectReason.trim() ? '#dc2626' : '#e5e7eb', color: rejectReason.trim() ? '#fff' : '#9ca3af', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: rejectReason.trim() ? 'pointer' : 'not-allowed' }}
+              >{rejecting ? 'Rejecting...' : 'Confirm Rejection'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -358,6 +403,50 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                     <div style={{ fontSize: 15, fontWeight: 800, color: '#2E8B57' }}>ETB {fmt(manualDetails.amount || systemTotal)}</div>
                   </div>
                 </div>
+
+                {/* ── Car Rental Details ── */}
+                {submission.department === 'Car Rental' && manualDetails.carName && (
+                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 12, border: '1px solid #cbd5e1', marginBottom: 24 }}>
+                    <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#0f172a', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Car size={18} color="#334155" /> Car Rental Order Details
+                    </h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Vehicle</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{manualDetails.carName}</div>
+                        {manualDetails.licensePlate && (
+                          <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>Plate: {manualDetails.licensePlate}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Rental Period</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                          {manualDetails.totalDays} Day{manualDetails.totalDays !== 1 ? 's' : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                          {fmtDate(manualDetails.pickupDate)} — {fmtDate(manualDetails.returnDate)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Driver</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{manualDetails.driverName || manualDetails.receivedFrom}</div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Rate & Fees</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{fmt(manualDetails.dailyRate)} ETB / day</div>
+                        {manualDetails.additionalOwed > 0 && (
+                          <div style={{ fontSize: 12, color: '#ef4444', marginTop: 2, fontWeight: 600 }}>
+                            Additional Owed: ETB {fmt(manualDetails.additionalOwed)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {manualDetails.paymentMethod === 'Bank' && manualDetails.bankDetails && (
                   <div style={{ background: '#f0f9ff', padding: 20, borderRadius: 12, border: '1px solid #bae6fd', marginBottom: 24 }}>
@@ -585,30 +674,123 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
           /* ── DIGITAL PAYMENT VERIFICATION (Car Rental / AgriRent / Printing / etc.) ── */
           if (!isCashDept) {
             const proofUrl = getImageUrl(manualDetails?.proofImagePath || manualDetails?.payment_screenshot);
+            const payMethod = (manualDetails?.paymentMethod || '').toLowerCase().trim();
+            const isCBE       = payMethod === 'cbe bank' || payMethod === 'cbe';
+            const isTelebirr  = payMethod === 'telebirr' || payMethod.includes('telebirr');
+            const isAwash     = payMethod.includes('awash');
+            const isCash      = payMethod === 'cash';
+            const isBank      = isCBE || isAwash || (!isTelebirr && !isCash && payMethod.includes('bank'));
+
             const anyCheckDone = verifyChecks.bankChecked || verifyChecks.telebirrChecked || verifyChecks.confirmedInPerson;
             const readyToVerify = anyCheckDone && financeName && financeSignature && submission.status === 'Pending';
 
             return (
               <div style={{ background: 'white', borderRadius: 16, border: '2px solid #3b82f6', padding: '28px 36px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
                 <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1e40af', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={16} color="#3b82f6" /> Payment Proof Verification
+                  <CheckCircle size={16} color="#3b82f6" /> Payment Verification
                 </h3>
                 <p style={{ fontSize: 13, color: '#424242', margin: '0 0 20px' }}>
-                  Review the payment proof submitted by the customer. Confirm at least one verification step below, then sign and approve.
+                  Review the payment submitted by the customer and verify using the steps below.
                 </p>
 
                 {/* Amount summary */}
                 <div style={{ background: '#eff6ff', borderRadius: 12, padding: '18px 20px', border: '2px solid #bfdbfe', marginBottom: 24 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 6 }}>💰 Payment Amount to Verify</div>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: '#1e3a8a' }}>ETB {fmt(systemTotal)}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 6 }}>💰 Amount to Verify</div>
+                  <div style={{ fontSize: 36, fontWeight: 900, color: '#1e3a8a' }}>ETB {fmt(systemTotal)}</div>
                   <div style={{ fontSize: 12, color: '#424242', marginTop: 4 }}>{submission.department} — {submission.reference_no || submission.description || '—'}</div>
                 </div>
+
+                {/* ── PAYMENT METHOD CARD: CBE Bank ── */}
+                {isCBE && (
+                  <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)', borderRadius: 14, padding: '22px 24px', marginBottom: 24, color: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 10px', fontSize: 20 }}>🏦</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15 }}>CBE Bank Transfer</div>
+                        <div style={{ fontSize: 12, opacity: 0.8 }}>Customer deposited to SUTANA's CBE account</div>
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '14px 18px', marginBottom: 14 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>SUTANA CBE Account Number</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 900, letterSpacing: 2 }}>1000675227776</div>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Account Holder: SUTANA Enterprise</div>
+                    </div>
+                    {manualDetails?.paymentReference && (
+                      <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '14px 18px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>Customer's Transaction Reference</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PAYMENT METHOD CARD: Telebirr ── */}
+                {isTelebirr && (
+                  <div style={{ background: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)', borderRadius: 14, padding: '22px 24px', marginBottom: 24, color: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 10px', fontSize: 20 }}>📱</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15 }}>Telebirr Payment</div>
+                        <div style={{ fontSize: 12, opacity: 0.8 }}>Customer sent to SUTANA's Telebirr wallet</div>
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '14px 18px', marginBottom: 14 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>SUTANA Telebirr Number</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 900, letterSpacing: 2 }}>0901407032</div>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>SUTANA WALLET</div>
+                    </div>
+                    {manualDetails?.paymentReference && (
+                      <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '14px 18px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>Customer's Transaction Reference</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PAYMENT METHOD CARD: Awash Bank ── */}
+                {isAwash && (
+                  <div style={{ background: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)', borderRadius: 14, padding: '22px 24px', marginBottom: 24, color: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '8px 10px', fontSize: 20 }}>🏦</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15 }}>Awash Bank Transfer</div>
+                        <div style={{ fontSize: 12, opacity: 0.8 }}>Customer deposited to SUTANA's Awash Bank account</div>
+                      </div>
+                    </div>
+                    {manualDetails?.paymentReference && (
+                      <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '14px 18px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, marginBottom: 4 }}>Customer's Transaction Reference</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PAYMENT METHOD CARD: Cash / Other ── */}
+                {!isCBE && !isTelebirr && !isAwash && (
+                  <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '18px 22px', marginBottom: 24, border: '1.5px solid #bbf7d0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 22 }}>💵</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: '#065f46' }}>{manualDetails?.paymentMethod || 'Payment'}</div>
+                        <div style={{ fontSize: 12, color: '#047857' }}>Confirm cash received or verify in person</div>
+                      </div>
+                    </div>
+                    {manualDetails?.paymentReference && (
+                      <div style={{ marginTop: 12, background: 'white', borderRadius: 8, padding: '10px 14px', border: '1px solid #a7f3d0' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#065f46', textTransform: 'uppercase', marginBottom: 2 }}>Reference</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 800, color: '#064e3b' }}>{manualDetails.paymentReference}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Proof image */}
                 {proofUrl ? (
                   <div style={{ background: '#f0fdf4', borderRadius: 12, border: '2px solid #bbf7d0', padding: '20px', marginBottom: 24 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <FileText size={14} /> Customer-Uploaded Payment Proof
+                      <FileText size={14} /> Customer Payment Screenshot
                     </div>
                     <img
                       src={proofUrl}
@@ -617,7 +799,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                       onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
                     />
                     <div style={{ display: 'none', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '16px', alignItems: 'center', gap: 8, color: '#991b1b', fontSize: 13 }}>
-                      <AlertTriangle size={16} /> Image failed to load. Use the link below to open it.
+                      <AlertTriangle size={16} /> Image failed to load.
                     </div>
                     <a href={proofUrl} target="_blank" rel="noreferrer"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: '#0369a1', fontWeight: 700, textDecoration: 'none', background: '#e0f2fe', padding: '6px 12px', borderRadius: 6 }}>
@@ -626,42 +808,27 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   </div>
                 ) : (
                   <div style={{ background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a', padding: '16px 20px', marginBottom: 24, fontSize: 13, color: '#92400e' }}>
-                    <strong>⚠ No proof image uploaded.</strong> Verify the payment via bank statement or Telebirr app before approving.
+                    <strong>⚠ No screenshot uploaded.</strong> Verify the payment in the bank app or Telebirr before approving.
                   </div>
                 )}
 
-                {/* Payment reference */}
-                {(manualDetails?.paymentReference || manualDetails?.paymentMethod) && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
-                    {manualDetails.paymentMethod && (
-                      <div style={{ background: '#F5F5F5', borderRadius: 10, padding: '14px 16px', border: '1px solid #A5D6A7' }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 4 }}>Payment Method</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#1B5E20' }}>{manualDetails.paymentMethod}</div>
-                      </div>
-                    )}
-                    {manualDetails.paymentReference && (
-                      <div style={{ background: '#F5F5F5', borderRadius: 10, padding: '14px 16px', border: '1px solid #A5D6A7' }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#424242', textTransform: 'uppercase', marginBottom: 4 }}>Transaction Reference</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#228B22', fontFamily: 'monospace', letterSpacing: 1 }}>{manualDetails.paymentReference}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Verification checklist */}
+                {/* ── VERIFICATION CHECKLIST (method-aware) ── */}
                 <div style={{ background: '#F5F5F5', borderRadius: 12, padding: '20px', marginBottom: 24, border: '1px solid #A5D6A7' }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#1B5E20', textTransform: 'uppercase', marginBottom: 14 }}>✅ Finance Verification Checklist — complete at least one:</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#1B5E20', textTransform: 'uppercase', marginBottom: 14 }}>✅ Finance Verification — confirm at least one:</div>
                   {[
-                    { key: 'bankChecked',       label: '🏦 Checked CBE bank statement — payment found and confirmed' },
-                    { key: 'telebirrChecked',   label: '📱 Checked Telebirr app — payment found and confirmed' },
-                    { key: 'confirmedInPerson', label: '💵 Payment received in person / via office' },
-                  ].map(({ key, label }) => (
-                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 0', borderBottom: '1px solid #A5D6A7', fontSize: 13, fontWeight: 600, color: verifyChecks[key] ? '#1B5E20' : '#424242' }}>
+                    isCBE      && { key: 'bankChecked',       label: '🏦 Logged into CBE Bank statement — found ETB ' + fmt(systemTotal) + ' transfer and confirmed' },
+                    isTelebirr && { key: 'telebirrChecked',   label: '📱 Checked Telebirr app — ETB ' + fmt(systemTotal) + ' payment found and confirmed' },
+                    isAwash    && { key: 'bankChecked',       label: '🏦 Checked Awash Bank statement — found ETB ' + fmt(systemTotal) + ' transfer and confirmed' },
+                    isCash     && { key: 'confirmedInPerson', label: '💵 Cash of ETB ' + fmt(systemTotal) + ' received and counted in person' },
+                    !isCBE && !isTelebirr && !isAwash && !isCash && { key: 'bankChecked', label: '🏦 Checked ' + (manualDetails?.paymentMethod || 'bank') + ' statement — payment confirmed' },
+                    !isCash    && { key: 'confirmedInPerson', label: '💵 Payment received and verified in person / office' },
+                  ].filter(Boolean).map(({ key, label }) => (
+                    <label key={key + label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 0', borderBottom: '1px solid #A5D6A7', fontSize: 13, fontWeight: 600, color: verifyChecks[key] ? '#1B5E20' : '#424242', lineHeight: 1.4 }}>
                       <input
                         type="checkbox"
                         checked={verifyChecks[key]}
                         onChange={e => setVerifyChecks(p => ({ ...p, [key]: e.target.checked }))}
-                        style={{ width: 16, height: 16, accentColor: '#2E8B57', cursor: 'pointer' }}
+                        style={{ width: 16, height: 16, accentColor: '#2E8B57', cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
                       />
                       {label}
                     </label>
@@ -718,18 +885,18 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                       onClick={handleApprove}
                       disabled={approving || !readyToVerify}
                       style={{
-                        width: '100%', padding: '15px 20px', borderRadius: 12, border: 'none',
+                        width: '100%', padding: '16px 20px', borderRadius: 12, border: 'none',
                         cursor: !readyToVerify || approving ? 'not-allowed' : 'pointer',
                         background: readyToVerify ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : '#cbd5e1',
                         color: readyToVerify ? 'white' : '#64748b',
-                        fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                        fontWeight: 800, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                         boxShadow: readyToVerify ? '0 4px 14px rgba(37,99,235,.4)' : 'none',
                         transition: 'all 0.3s', opacity: approving ? 0.7 : 1
                       }} className="btn-3d"
                     >
                       {approving
                         ? <><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Verifying & Recording...</>
-                        : <><CheckCircle size={18} /> ✅ Verify Payment &amp; Record to Receivables Book</>
+                        : <><CheckCircle size={18} /> ✅ Verify Payment & Record to Receivables Book</>
                       }
                     </button>
                     {readyToVerify && (
@@ -739,11 +906,32 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                     )}
                   </>
                 )}
+
+                {/* Reject button */}
+                {submission.status === 'Pending' && (
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      onClick={() => setRejectModal(true)}
+                      style={{
+                        width: '100%', padding: '13px 20px', borderRadius: 12, border: '2px solid #dc2626',
+                        background: 'white', color: '#dc2626', fontWeight: 800, fontSize: 14,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+                    >
+                      ❌ Reject with Reason
+                    </button>
+                  </div>
+                )}
+
               </div>
             );
           }
 
           /* ── CASH DEPARTMENT VERIFICATION (Pharmacy / Sales) ── */
+
           return (
             <div style={{ background: 'white', borderRadius: 16, border: '2px solid #A5D6A7', padding: '28px 36px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
               <h3 style={{ fontSize: 15, fontWeight: 800, color: '#1B5E20', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 8 }}>

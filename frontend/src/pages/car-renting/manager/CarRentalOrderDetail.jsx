@@ -108,6 +108,34 @@ const ToastContainer = ({ toasts, remove }) => (
   </div>
 );
 
+/* ─────────────── REASON MODAL ─────────────── */
+const ReasonModal = ({ title, placeholder, onConfirm, onClose }) => {
+  const [value, setValue] = useState('');
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: '32px 36px', maxWidth: 440, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', fontFamily: '"Inter", sans-serif' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: C.darkGray }}>{title}</h3>
+        <textarea
+          autoFocus
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          placeholder={placeholder || 'Enter reason...'}
+          rows={4}
+          style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: `1.5px solid ${C.midGray}`, borderRadius: 8, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: '9px 20px', border: `1px solid ${C.midGray}`, background: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: C.darkGray }}>Cancel</button>
+          <button
+            onClick={() => { if (value.trim()) { onConfirm(value.trim()); } }}
+            disabled={!value.trim()}
+            style={{ padding: '9px 24px', background: value.trim() ? C.darkGreen : C.midGray, color: value.trim() ? '#fff' : '#9E9E9E', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: value.trim() ? 'pointer' : 'not-allowed' }}
+          >Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─────────────── MAIN COMPONENT ─────────────── */
 const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const printRef = useRef();
@@ -116,6 +144,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const [error, setError]   = useState('');
   const [actLoading, setActLoading] = useState('');
   const { toasts, toast, remove } = useToasts();
+  const [modal, setModal] = useState(null); // { title, placeholder, onConfirm }
 
   const user = authService.getUser?.() || authService.getCurrentUser?.() || {};
   const userRoles = user.roles || (user.role ? [user.role] : []);
@@ -152,16 +181,26 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const handleApprove  = () => doAction('approve',  () => carService.updateRentalOrderStatus(orderId, { status: 'APPROVED' }),   'Order approved successfully.');
   const handleActivate = () => doAction('activate', () => carService.updateRentalOrderStatus(orderId, { status: 'ACTIVE' }),    'Order activated — car is now rented.');
   const handleComplete = () => doAction('complete', () => carService.updateRentalOrderStatus(orderId, { status: 'COMPLETED' }), 'Order marked as completed.');
-  const handleCancel   = () => {
-    const reason = window.prompt('Enter cancellation reason:');
-    if (!reason) return;
-    doAction('cancel', () => carService.cancelRentalOrder(orderId, reason), 'Order cancelled.');
+  const handleCancel = () => {
+    setModal({
+      title: '✕ Cancel Order — Enter Reason',
+      placeholder: 'e.g. Customer no-show, duplicate booking, vehicle issue...',
+      onConfirm: (reason) => {
+        setModal(null);
+        doAction('cancel', () => carService.cancelRentalOrder(orderId, reason), 'Order cancelled.');
+      }
+    });
   };
   const handleConfirmPayment = () => doAction('pay_confirm', () => carService.verifyPayment(orderId, { isVerified: true, verifiedAmount: order.totalAmount, notes: 'Confirmed from details' }), 'Payment confirmed.');
-  const handleRejectPayment  = () => {
-    const notes = window.prompt('Enter reason for rejecting payment:');
-    if (!notes) return;
-    doAction('pay_reject',  () => carService.verifyPayment(orderId, { isVerified: false, notes }), 'Payment rejected.');
+  const handleRejectPayment = () => {
+    setModal({
+      title: '✕ Reject Payment — Enter Reason',
+      placeholder: 'e.g. Screenshot invalid, amount mismatch, wrong reference...',
+      onConfirm: (notes) => {
+        setModal(null);
+        doAction('pay_reject', () => carService.verifyPayment(orderId, { isVerified: false, notes }), 'Payment rejected.');
+      }
+    });
   };
 
   const handlePrint = () => {
@@ -256,6 +295,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   return (
     <div style={{ minHeight: '100vh', background: '#F0F0F0', fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray }}>
       <ToastContainer toasts={toasts} remove={remove} />
+      {modal && <ReasonModal title={modal.title} placeholder={modal.placeholder} onConfirm={modal.onConfirm} onClose={() => setModal(null)} />}
 
       {/* ── TOP BAR ── */}
       <div style={{ background: C.darkGreen, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64, borderBottom: `3px solid ${C.earthBrown}`, flexWrap: 'wrap', gap: 10 }}>

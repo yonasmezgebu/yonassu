@@ -8,19 +8,42 @@ const OverdueNotifier = () => {
     let intervalId;
 
     const checkOverdueOrders = async () => {
-      try {
+      const now = new Date();
+      let overdueCars = [];
+      let overdueAgri = [];
+
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const isCarManager = user?.role === 'Car Renting Manager' || user?.role === 'Admin' || user?.role === 'CEO';
+      const isAgriManager = user?.role === 'Agri Rental Manager' || user?.role === 'Admin' || user?.role === 'CEO';
+
+      if (isCarManager) {
+        try {
         const { data: rentalData } = await axios.get('/rental-orders');
-        const { data: agriData } = await axios.get('/agrirent-orders?limit=100');
-
-        const now = new Date();
-
-        const overdueCars = (rentalData?.data || []).filter(order => 
+        overdueCars = (rentalData?.data || []).filter(order => 
           order.status === 'ACTIVE' && new Date(order.returnDate || order.return_date) < now
         );
+      } catch (err) {
+        // Silently ignore 403s (user doesn't have role), only log actual errors
+        if (err.response?.status !== 403) {
+          console.error('Failed to check rental overdue orders', err);
+        }
+      }
+      }
 
-        const overdueAgri = (agriData?.data?.orders || []).filter(order => 
+      if (isAgriManager) {
+        try {
+        const { data: agriData } = await axios.get('/agrirent-orders?limit=100');
+        overdueAgri = (agriData?.data?.orders || []).filter(order => 
           order.status === 'active' && new Date(order.end_date) < now
         );
+      } catch (err) {
+        // Silently ignore 403s (user doesn't have role)
+        if (err.response?.status !== 403) {
+          console.error('Failed to check agrirent overdue orders', err);
+        }
+      }
+      }
 
         overdueCars.forEach(order => {
           const endDate = new Date(order.returnDate || order.return_date).toLocaleDateString();
@@ -37,10 +60,6 @@ const OverdueNotifier = () => {
           window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: msg, type: 'warning' } }));
           sendBrowserNotification(title, msg, 'warning');
         });
-
-      } catch (err) {
-        console.error('Failed to check overdue orders', err);
-      }
     };
 
     const initialTimeout = setTimeout(() => {

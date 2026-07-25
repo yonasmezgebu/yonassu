@@ -1350,13 +1350,13 @@ exports.createStoreRequest = catchAsync(async (req, res) => {
     \`requested_by\` int NOT NULL,
     \`store_handler\` int DEFAULT NULL,
     \`approved_by\` int DEFAULT NULL,
-    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'PENDING_STORE',
+    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'FORWARDED_TO_CEO',
     \`rejection_reason\` text,
     \`notes\` text,
     \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP,
     \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
-  await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
+  try { await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
     \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     \`request_id\` int UNSIGNED NOT NULL,
     \`product_id\` int UNSIGNED NOT NULL,
@@ -1364,16 +1364,29 @@ exports.createStoreRequest = catchAsync(async (req, res) => {
     \`quantity_shipped\` int DEFAULT NULL,
     \`unit_price\` decimal(10,2) DEFAULT NULL,
     \`notes\` text,
-    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE,
-    FOREIGN KEY (\`product_id\`) REFERENCES \`farming_products\`(\`id\`)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
+    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`); } catch(e) {}
 
   const num = `FSR-${Date.now()}`;
   const [id] = await db('farming_store_requests').insert({
-    request_number: num, requested_by: req.user.id, notes: notes || null, status: 'PENDING_STORE'
+    request_number: num, requested_by: req.user.id, notes: notes || null, status: 'FORWARDED_TO_CEO'
   });
   const rows = items.map(i => ({ request_id: id, product_id: i.product_id, quantity_requested: i.quantity_requested }));
   await db('farming_store_request_items').insert(rows);
+
+  // Trigger CEO Notification
+  try {
+    await notificationRepository.create({
+      roleTarget: 'CEO',
+      title: 'New AgriRent Store Request',
+      message: `A new store request (${num}) requires your approval.`,
+      type: 'approval',
+      link: '/ceo/agri-and-car-rental'
+    });
+  } catch (e) {
+    console.error('Failed to notify CEO', e);
+  }
+
   const request = await db('farming_store_requests').where({ id }).first();
   res.status(201).json({ status: 'success', data: request });
 });
@@ -1386,13 +1399,13 @@ exports.getStoreRequests = catchAsync(async (req, res) => {
     \`requested_by\` int NOT NULL,
     \`store_handler\` int DEFAULT NULL,
     \`approved_by\` int DEFAULT NULL,
-    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'PENDING_STORE',
+    \`status\` enum('PENDING_STORE','FORWARDED_TO_CEO','APPROVED','REJECTED','SHIPPED','RECEIVED') DEFAULT 'FORWARDED_TO_CEO',
     \`rejection_reason\` text,
     \`notes\` text,
     \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP,
     \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
-  await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
+  try { await db.raw(`CREATE TABLE IF NOT EXISTS \`farming_store_request_items\` (
     \`id\` int UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     \`request_id\` int UNSIGNED NOT NULL,
     \`product_id\` int UNSIGNED NOT NULL,
@@ -1400,27 +1413,31 @@ exports.getStoreRequests = catchAsync(async (req, res) => {
     \`quantity_shipped\` int DEFAULT NULL,
     \`unit_price\` decimal(10,2) DEFAULT NULL,
     \`notes\` text,
-    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE,
-    FOREIGN KEY (\`product_id\`) REFERENCES \`farming_products\`(\`id\`)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`);
+    FOREIGN KEY (\`request_id\`) REFERENCES \`farming_store_requests\`(\`id\`) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8`); } catch(e) {}
   // fix existing tables that were created with only id column
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`request_number\` varchar(50) NOT NULL UNIQUE'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`requested_by\` int NOT NULL'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`store_handler\` int DEFAULT NULL'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`approved_by\` int DEFAULT NULL'); } catch (e) {}
-  try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`status\` enum(\'PENDING_STORE\',\'FORWARDED_TO_CEO\',\'APPROVED\',\'REJECTED\',\'SHIPPED\',\'RECEIVED\') DEFAULT \'PENDING_STORE\''); } catch (e) {}
+  try { await db.raw('ALTER TABLE \`farming_store_requests\` MODIFY \`status\` enum(\'PENDING_STORE\',\'FORWARDED_TO_CEO\',\'APPROVED\',\'REJECTED\',\'SHIPPED\',\'RECEIVED\') DEFAULT \'FORWARDED_TO_CEO\''); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`rejection_reason\` text'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`notes\` text'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`created_at\` timestamp DEFAULT CURRENT_TIMESTAMP'); } catch (e) {}
   try { await db.raw('ALTER TABLE \`farming_store_requests\` ADD \`updated_at\` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'); } catch (e) {}
+  // check if items table exists before using COUNT subquery
+  let itemsTableExists = false;
+  try { await db.raw('SELECT 1 FROM farming_store_request_items LIMIT 1'); itemsTableExists = true; } catch(e) {}
+  const selectCols = [
+    'farming_store_requests.*',
+    'req_user.full_name as requester_name',
+    'store_user.full_name as store_handler_name',
+    'ceo_user.full_name as approver_name'
+  ];
+  if (itemsTableExists) selectCols.push(db.raw('(SELECT COUNT(*) FROM farming_store_request_items WHERE request_id = farming_store_requests.id) as item_count'));
+  else selectCols.push(db.raw('0 as item_count'));
   let q = db('farming_store_requests')
-    .select(
-      'farming_store_requests.*',
-      'req_user.full_name as requester_name',
-      'store_user.full_name as store_handler_name',
-      'ceo_user.full_name as approver_name',
-      db.raw('(SELECT COUNT(*) FROM farming_store_request_items WHERE request_id = farming_store_requests.id) as item_count')
-    )
+    .select(...selectCols)
     .leftJoin('users as req_user', 'farming_store_requests.requested_by', 'req_user.id')
     .leftJoin('users as store_user', 'farming_store_requests.store_handler', 'store_user.id')
     .leftJoin('users as ceo_user', 'farming_store_requests.approved_by', 'ceo_user.id');
@@ -1438,10 +1455,18 @@ exports.getStoreRequestDetail = catchAsync(async (req, res) => {
     .leftJoin('users as ceo_user', 'farming_store_requests.approved_by', 'ceo_user.id')
     .where('farming_store_requests.id', id).first();
   if (!request) throw new AppError('Request not found', 404);
-  const items = await db('farming_store_request_items')
-    .select('farming_store_request_items.*', 'farming_products.name as product_name', 'farming_products.stock_quantity')
-    .leftJoin('farming_products', 'farming_store_request_items.product_id', 'farming_products.id')
-    .where('farming_store_request_items.request_id', id);
+  let items = [];
+  try {
+    items = await db('farming_store_request_items')
+      .select('farming_store_request_items.*', 'farming_products.name as product_name', 'farming_products.stock_quantity')
+      .leftJoin('farming_products', 'farming_store_request_items.product_id', 'farming_products.id')
+      .where('farming_store_request_items.request_id', id);
+  } catch (e) {
+    // farming_products table may not exist yet — return items without product names
+    try {
+      items = await db('farming_store_request_items').where({ request_id: id });
+    } catch (e2) { items = []; }
+  }
   res.json({ status: 'success', data: { ...request, items } });
 });
 
