@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n) => Number(n || 0).toLocaleString();
@@ -47,11 +46,11 @@ const SalesOverview = () => {
       setError(null);
       // apiClient interceptor already returns response.data
       // so 'res' here is the backend body: { status: 'success', data: {...} }
-      const res = await pharmacyService.getDashboardStats();
+      const res = await salesService.getTodaySummary();
       const payload = res?.data || res || {};
       setStats({
-        todaySales: payload.todaySales ?? 0,
-        todaySalesCount: payload.todaySalesCount ?? 0,
+        todaySales: payload.total_revenue ?? payload.todaySales ?? 0,
+        todaySalesCount: payload.transaction_count ?? payload.todaySalesCount ?? 0,
         lowStockAlerts: payload.lowStockAlerts ?? [],
         expiredList: payload.expiredList ?? [],
         categoryBreakdown: payload.categoryBreakdown ?? [],

@@ -455,7 +455,7 @@ exports.createFuelService = catchAsync(async (req, res) => {
     current_mileage: req.body.current_mileage,
     location: req.body.location,
     notes: req.body.notes,
-    reported_by: req.user ? req.user.name : 'Manager',
+    reported_by: req.body.reported_by || (req.user ? req.user.name : 'Manager'),
     status: 'PENDING_CEO'
   };
 

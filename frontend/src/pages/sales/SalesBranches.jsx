@@ -4,8 +4,7 @@ import {
   User, Hash, CheckCircle, XCircle, Loader2, Save, RotateCcw,
   ShieldCheck, Zap, AlertTriangle
 } from 'lucide-react';
-import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
+import apiClient from '../../services/apiClient';
 
 // ─── accent colour ──────────────────────────────────────────────────
 const C   = '#B9B979';            // primary accent
@@ -219,8 +218,9 @@ const SalesBranches = () => {
   const fetchBranches = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await pharmacyService.getBranches();
-      if (res.status === 'success') setBranches(res.data);
+      const res = await apiClient.get('/retail/branches');
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setBranches(list);
     } catch { showMsg('error', 'Failed to load branches'); }
     finally { setLoading(false); }
   }, []);
@@ -251,8 +251,8 @@ const SalesBranches = () => {
     if (!formData.name.trim()) { showMsg('error', 'Branch name is required'); return; }
     setSaving(true);
     try {
-      if (editing) { await pharmacyService.updateBranch(editing, formData); showMsg('success', 'Branch updated!'); }
-      else         { await pharmacyService.createBranch(formData);          showMsg('success', 'Branch created!'); }
+      if (editing) { await apiClient.put(`/retail/branches/${editing}`, formData); showMsg('success', 'Branch updated!'); }
+      else         { await apiClient.post('/retail/branches', formData);           showMsg('success', 'Branch created!'); }
       handleCancel(); fetchBranches();
     } catch (err) { showMsg('error', err.response?.data?.message || 'Failed to save branch'); }
     finally { setSaving(false); }
@@ -261,7 +261,7 @@ const SalesBranches = () => {
   const handleDelete = id => setConfirmDel(id);
   const confirmDelete = async () => {
     try {
-      await pharmacyService.deleteBranch(confirmDel);
+      await apiClient.delete(`/retail/branches/${confirmDel}`);
       showMsg('success', 'Branch deleted');
       fetchBranches();
     } catch { showMsg('error', 'Failed to delete branch'); }

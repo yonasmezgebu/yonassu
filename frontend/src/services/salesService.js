@@ -111,5 +111,11 @@ const salesService = {
 
   /* Online order collection */
   collectOnlineOrder: async (data) => apiClient.post('/pos/collect-online-order', data),
+  /* Retail Publisher / Store Admin */
+  getRetailCategories: async () => apiClient.get('/retail/categories'),
+  getRetailProducts: async (params) => apiClient.get('/retail/products', { params }),
+  createRetailProduct: async (formData) => apiClient.post('/retail/products', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  updateRetailProduct: async (id, formData) => apiClient.put(`/retail/products/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteRetailProduct: async (id) => apiClient.delete(`/retail/products/${id}`),
 };
 export default salesService;

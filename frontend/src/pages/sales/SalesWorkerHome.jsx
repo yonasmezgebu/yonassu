@@ -38,13 +38,11 @@ const SalesWorkerHome = () => {
   const fetchStats = useCallback(async () => {
     try {
       setRefreshing(true);
-      // apiClient interceptor already returns response.data
-      // so 'res' here is the backend body: { status: 'success', data: {...} }
-      const res = await api.get('/pharmacy/dashboard');
+      const res = await api.get('/pos/reports/today-summary');
       const payload = res?.data || res || {};
       setStats({
-        todaySales: payload.todaySales ?? 0,
-        todaySalesCount: payload.todaySalesCount ?? 0,
+        todaySales: payload.total_revenue ?? payload.todaySales ?? 0,
+        todaySalesCount: payload.transaction_count ?? payload.todaySalesCount ?? 0,
         lowStockAlerts: payload.lowStockAlerts ?? [],
         expiredList: payload.expiredList ?? [],
         categoryBreakdown: payload.categoryBreakdown ?? [],

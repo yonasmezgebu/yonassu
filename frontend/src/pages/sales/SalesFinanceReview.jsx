@@ -6,7 +6,7 @@ import {
   Zap, DollarSign, Users, ShieldCheck, ArrowLeft, ArrowRight
 } from 'lucide-react';
 import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
+
 
 const BG   = '#46D17A';
 const C    = '#1A5C38';  // Deep forest green on bright green bg
@@ -311,9 +311,9 @@ export default function SalesFinanceReview() {
   const loadReports = useCallback(async () => {
     setLoadingList(true);
     try {
-      const res  = await pharmacyService.getReports();
-      const data = res?.data?.data || res?.data || [];
-      setReports(Array.isArray(data) ? data.filter(r => r.status === 'PENDING') : []);
+      const res  = await apiClient.get('/pos/handover/pending');
+      const data = Array.isArray(res) ? res : res?.data || [];
+      setReports(data);
     } catch { showMsg('error','Failed to load reports'); }
     finally { setLoadingList(false); }
   }, []);
@@ -324,8 +324,8 @@ export default function SalesFinanceReview() {
     setSelectedId(id); setStep(1); setDecision(null); setReason(''); setShowReject(false);
     setLoadingRep(true);
     try {
-      const res = await pharmacyService.getReportById(id);
-      setReport(res?.data?.data || res?.data || res);
+      const res = await apiClient.get(`/pos/handover/${id}`);
+      setReport(res?.data || res);
     } catch { showMsg('error','Failed to load report details'); setReport(null); }
     finally { setLoadingRep(false); }
   };
@@ -334,7 +334,7 @@ export default function SalesFinanceReview() {
     if (!approve && !reason.trim()) return;
     setDeciding(true);
     try {
-      await pharmacyService.financeDecision(selectedId, {
+      await apiClient.post(`/pos/handover/${selectedId}/verify`, {
         decision: approve ? 'APPROVED' : 'REJECTED',
         finance_notes: reason
       });

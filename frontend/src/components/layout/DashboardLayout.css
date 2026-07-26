@@ -177,9 +177,8 @@ body {
 }
 
 .dash-nav-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--sidebar-text-hover);
-  border-left: 3px solid var(--dodger);
 }
 
 .dash-nav-item.active:hover {
@@ -319,9 +318,8 @@ body {
 }
 
 .dash-nav-subitem:hover {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.05);
-  border-left: 3px solid var(--dodger);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .dash-nav-subitem.active:hover {

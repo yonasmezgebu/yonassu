@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
+
 
 const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 const resolvePhoto = (url) => {
@@ -461,7 +461,7 @@ const SalesStaff = () => {
       const [workersRes, unassignedRes, branchesRes] = await Promise.all([
         apiClient.get('/users/sales-workers'),
         apiClient.get('/users/unassigned-employees'),
-        pharmacyService.getBranches()
+        apiClient.get('/retail/branches')
       ]);
       setWorkers(parseData(workersRes));
       setUnassigned(parseData(unassignedRes));

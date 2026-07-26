@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Layers, RefreshCw, Plus, Loader2, CheckCircle, XCircle, AlertTriangle, Search, Package, Send, Clock, Image as ImageIcon, Edit3, Building, GitBranch } from 'lucide-react';
 import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
 import apiClient from '../../services/apiClient';
 import infoSound from '../../assets/notification/info.mp3';
 import { useAuth } from '../../hooks/useAuth';
@@ -112,74 +111,57 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
     setLoading(true);
     setError('');
     try {
-      const raw = await pharmacyService.getAllProducts();
-      const list = Array.isArray(raw) ? raw : raw?.data || raw?.products || [];
+      const raw = await salesService.getRetailProducts({ limit: 1000 });
+      const list = Array.isArray(raw) ? raw : raw?.data?.products || raw?.data || [];
       setproducts(list.map(p => ({
         id: p.id, name: p.name, category: p.category_name || p.category || 'Uncategorized',
-        price: parseFloat(p.price || 0), stock: parseInt(p.stock_quantity || 0),
-        reorder: parseInt(p.reorder_level || 10), image: p.product_image || p.cover_image || null,
-        strength: p.strength, unit: p.unit
+        price: parseFloat(p.selling_price || p.price || 0), stock: parseInt(p.stock_quantity || 0),
+        reorder: parseInt(p.reorder_level || 10), image: p.product_image || null
       })));
 
-      // Only managers can fetch CEO approval requests
+      // Pending stock adjustment requests
       if (isManager) {
         try {
-          const reqRaw = await pharmacyService.getManagerRequests();
+          const reqRaw = await apiClient.get('/retail/stock-adjustments?status=PENDING');
           const reqList = Array.isArray(reqRaw) ? reqRaw : reqRaw?.data || [];
-          setPendingReqs(reqList.filter(r => r.status === 'PENDING'));
+          setPendingReqs(reqList);
         } catch (reqErr) {
-          console.warn('Could not load manager requests', reqErr);
+          console.warn('Could not load stock adjustment requests', reqErr);
         }
       }
 
-      try {
-        const settingRes = await pharmacyService.getWorkerAdjustStockSetting();
-        setWorkerCanAdjust(settingRes?.data?.enabled ?? false);
-      } catch (err) {
-        console.error('Failed to load worker adjust setting', err);
-      }
+      // Worker adjust setting — default to true for retail
+      setWorkerCanAdjust(true);
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || 'Failed to load sales stock');
+      setError(e?.response?.data?.message || e?.message || 'Failed to load retail stock');
       setproducts([]);
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); loadBranchStock(); }, []);
+  useEffect(() => { loadData(); }, []);
 
   const playSound = () => {
     try { const a = new Audio(infoSound); a.play(); } catch {}
   };
 
   const handleToggleWorkerAdjust = async () => {
-    setTogglingSetting(true);
-    try {
-      const newValue = !workerCanAdjust;
-      await pharmacyService.updateWorkerAdjustStockSetting(newValue);
-      setWorkerCanAdjust(newValue);
-      setMsg({ type: 'success', text: `Worker adjusting/assigning is now ${newValue ? 'ENABLED' : 'DISABLED'}.` });
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update setting' });
-    } finally {
-      setTogglingSetting(false);
-      setTimeout(() => setMsg({ type: '', text: '' }), 3000);
-    }
+    // No specific endpoint for retail worker adjust setting
+    setWorkerCanAdjust(prev => !prev);
   };
 
   const doRequest = async () => {
     if (!adjusting || !adjQty || !adjReason.trim()) return;
     setSaving(true);
     try {
-      await pharmacyService.createManagerRequest({
-        product_name: adjusting.name,
+      await apiClient.post('/retail/stock-adjustments', {
         product_id: adjusting.id,
-        product_image: adjusting.image,
-        request_type: 'QUANTITY',
+        product_name: adjusting.name,
         current_value: adjusting.stock,
         requested_value: parseInt(adjQty),
         reason: adjReason.trim()
       });
       setPendingReqs(prev => [...prev, { product_id: adjusting.id, status: 'PENDING' }]);
-      setMsg({ type: 'success', text: `Request sent to CEO for ${adjusting.name} — awaiting approval` });
+      setMsg({ type: 'success', text: `Request sent for ${adjusting.name} — awaiting approval` });
       playSound();
       setAdjusting(null); setAdjQty(''); setAdjReason('');
     } catch (e) {

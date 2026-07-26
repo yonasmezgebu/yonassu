@@ -933,9 +933,15 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     if (qs !== undefined) {
       return (location.pathname + location.search) === path;
     }
-    if (location.pathname.startsWith(p + '/') || location.pathname === p) return true;
+    // Exact match OR it is a direct child segment (e.g. /sales/pos/123 but NOT /sales/pos-something)
+    const segments = location.pathname.split('/');
+    const pSegments = p.split('/');
+    const exactOrChild =
+      location.pathname === p ||
+      (location.pathname.startsWith(p + '/') && segments.length === pSegments.length + 1);
+    if (exactOrChild) return true;
     if (item?.altActiveOn) {
-      return item.altActiveOn.some(ap => location.pathname.startsWith(ap + '/') || location.pathname === ap);
+      return item.altActiveOn.some(ap => location.pathname === ap || location.pathname.startsWith(ap + '/'));
     }
     return false;
   };

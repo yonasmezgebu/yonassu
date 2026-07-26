@@ -21,18 +21,16 @@ const getCartForUser = async (userId) => {
 exports.getProducts = catchAsync(async (req, res) => {
   const { category_id, search, page = 1, limit = 30 } = req.query;
   const offset = (page - 1) * limit;
-  let query = db('products as p')
+  let query = db('retail_products as p')
     .select(
       'p.id', 'p.name', 'p.sku',
-      db.raw('p.selling_price as price'),
+      'p.price',
       'p.category_id', 'p.product_image', 'p.description',
       'p.stock_quantity', 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
     )
-    .leftJoin('product_categories as pc', 'p.category_id', 'pc.id')
-    .where('p.business_unit', 'retail')
-    .where('p.is_active', true)
-    .whereNull('p.deleted_at');
+    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id')
+    .where('p.is_active', true);
   if (category_id) query = query.andWhere('p.category_id', category_id);
   if (search) {
     query = query.andWhere(q => {
@@ -47,27 +45,23 @@ exports.getProducts = catchAsync(async (req, res) => {
 });
 
 exports.getProductById = catchAsync(async (req, res) => {
-  const product = await db('products as p')
+  const product = await db('retail_products as p')
     .select(
       'p.id', 'p.name', 'p.sku',
-      db.raw('p.selling_price as price'),
+      'p.price',
       'p.category_id', 'p.product_image', 'p.description',
       'p.stock_quantity', 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
     )
-    .leftJoin('product_categories as pc', 'p.category_id', 'pc.id')
+    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id')
     .where('p.id', req.params.id)
-    .where('p.business_unit', 'retail')
     .first();
   if (!product) throw new AppError('Product not found', 404);
   res.json({ status: 'success', data: product });
 });
 
 exports.getCategories = catchAsync(async (req, res) => {
-  const categories = await db('product_categories')
-    .where(function () {
-      this.where('business_unit', 'retail').orWhere('business_unit', 'all');
-    })
+  const categories = await db('retail_categories')
     .where('is_active', true)
     .orderBy('name');
   res.json({ status: 'success', data: categories });

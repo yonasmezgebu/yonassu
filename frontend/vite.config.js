@@ -15,7 +15,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['recharts', 'lodash', 'socket.io-client']
+    include: ['recharts', 'lodash', 'socket.io-client', 'react-signature-canvas']
   }
 })
 

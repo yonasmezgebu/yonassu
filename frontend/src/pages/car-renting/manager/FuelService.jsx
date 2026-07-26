@@ -284,21 +284,21 @@ const FuelService = () => {
                       </div>
 
                       {selectedAssetData && (
-                          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '24px', backgroundColor: '#FAFAFA', border: `1px solid ${colors.border}`, padding: '16px' }}>
-                              <div style={{ width: '150px', height: '100px', backgroundColor: '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '24px', backgroundColor: colors.sage, border: `1px solid ${colors.brown}`, padding: '16px', borderRadius: '0px' }}>
+                              <div style={{ width: '150px', height: '100px', backgroundColor: colors.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: `1px solid ${colors.brown}` }}>
                                   {(selectedAssetData.image1 || selectedAssetData.image2) ? (
                                       <img src={`http://localhost:5000${selectedAssetData.image1 || selectedAssetData.image2}`} alt={selectedAssetData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
                                   ) : (
-                                      <span style={{ color: '#9E9E9E', fontSize: '12px' }}>No Image</span>
+                                      <span style={{ color: colors.text, fontSize: '12px' }}>No Image</span>
                                   )}
                               </div>
                               <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                   <div>
-                                      <div style={{ fontSize: '12px', color: '#757575', fontWeight: 'bold' }}>ASSET NAME</div>
+                                      <div style={{ fontSize: '12px', color: colors.header, fontWeight: 'bold' }}>ASSET NAME</div>
                                       <div style={{ color: colors.text }}>{selectedAssetData.name}</div>
                                   </div>
                                   <div>
-                                      <div style={{ fontSize: '12px', color: '#757575', fontWeight: 'bold' }}>TYPE</div>
+                                      <div style={{ fontSize: '12px', color: colors.header, fontWeight: 'bold' }}>TYPE</div>
                                       <div style={{ color: colors.text, textTransform: 'capitalize' }}>{selectedAssetData.asset_type}</div>
                                   </div>
                               </div>
@@ -368,6 +368,11 @@ const FuelService = () => {
                       <div>
                           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>Date *</label>
                           <input required type="date" style={sharpStyles.input} value={formData.requested_date} onChange={(e) => setFormData({...formData, requested_date: e.target.value})} />
+                      </div>
+
+                      <div>
+                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>Notes</label>
+                          <textarea rows={3} style={sharpStyles.input} value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Any additional notes..."></textarea>
                       </div>
 
                       <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '24px', borderTop: `1px solid ${colors.border}`, paddingTop: 24, flexWrap: 'wrap' }}>

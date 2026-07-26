@@ -4,7 +4,7 @@ import {
   DollarSign, CreditCard, ShoppingCart, Zap, RefreshCw, BarChart2
 } from 'lucide-react';
 import salesService from '../../services/salesService';
-import pharmacyService from '../../services/pharmacyService';
+import apiClient from '../../services/apiClient';
 
 const BG  = '#D2CEC3'; // Requested by user
 const C   = '#795548'; // Rich Mocha
@@ -143,24 +143,9 @@ export default function SalesCEOReport() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch all reports
-      const res = await pharmacyService.getReports();
-      const allReports = res?.data?.data || res?.data || [];
-      
-      // 2. Filter for selected date
-      const daysReports = allReports.filter(r => r.report_date && r.report_date.startsWith(date));
-      
-      // 3. For each report, fetch details to get branches and payments
-      const fullDetails = await Promise.all(
-        daysReports.map(async (r) => {
-          try {
-            const detailRes = await pharmacyService.getReportById(r.id);
-            return detailRes?.data?.data || detailRes?.data || r;
-          } catch(e) { return r; }
-        })
-      );
-      
-      setReportsData(fullDetails);
+      const res = await apiClient.get(`/pos/reports/combined-daily?date=${date}`);
+      const allReports = Array.isArray(res) ? res : res?.data || [];
+      setReportsData(allReports);
     } catch(e) {
       console.error(e);
       setReportsData([]);
