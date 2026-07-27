@@ -1,0 +1,3 @@
+AppError: Sale not found
+    at D:\SUTANA\backend\src\api\controllers\pos.controller.js:1001:20
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
