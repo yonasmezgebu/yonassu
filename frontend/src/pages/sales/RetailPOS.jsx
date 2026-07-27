@@ -12,6 +12,121 @@ import {
 } from 'lucide-react';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
+
+// ─── AuditRow: Expandable transaction detail row in audit trail ───────────────
+function AuditRow({ log, idx }) {
+  const [open, setOpen] = useState(false);
+  const time = new Date(log.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const payMethod = log.payment_method_name || log.action || '—';
+  const saleType = log.sale_type ? log.sale_type.replace('_', ' ').toUpperCase() : 'WALK-IN';
+
+  return (
+    <div style={{ borderBottom: '1px solid #F1F5F9', marginBottom: 0 }}>
+      {/* Transaction Row */}
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'grid', gridTemplateColumns: '80px 1fr 110px 130px 80px',
+          alignItems: 'center', padding: '10px 4px', cursor: 'pointer',
+          background: open ? '#F0FDF4' : (idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'),
+          transition: 'background 0.15s'
+        }}
+      >
+        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{time}</div>
+        <div>
+          <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
+            {log.recipient || log.invoice_number || `Sale #${log.sale_id}`}
+          </div>
+          <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{saleType} · {payMethod}</div>
+        </div>
+        <div>
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+            background: '#D1FAE5', color: '#065F46'
+          }}>SUBMITTED</span>
+        </div>
+        <div style={{ fontWeight: 800, color: '#059669', fontSize: 14, textAlign: 'right' }}>
+          {parseFloat(log.amount || 0).toFixed(2)} ETB
+        </div>
+        <div style={{ textAlign: 'center', color: '#94A3B8' }}>
+          {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        </div>
+      </div>
+
+      {/* Expanded Detail */}
+      {open && (
+        <div style={{ padding: '12px 16px 16px', background: '#F8FAFC', borderTop: '1px dashed #E2E8F0' }}>
+          {/* Info Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+            {[
+              { label: 'Invoice', value: log.invoice_number || `#${log.sale_id}` },
+              { label: 'Payment Method', value: log.payment_method_name || '—' },
+              { label: 'Cashier', value: log.cashier_name || '—' },
+              { label: 'Sale Type', value: saleType },
+              { label: 'Ref / TxnID', value: log.payment_reference || '—' },
+              { label: 'Status', value: log.status_name || 'Completed' },
+            ].map((item, i) => (
+              <div key={i}>
+                <div style={{ fontSize: 10, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B' }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Payment Notes */}
+          {log.payment_notes && (
+            <div style={{ fontSize: 11, color: '#475569', background: '#EFF6FF', padding: '6px 10px', marginBottom: 12, borderLeft: '3px solid #2563EB' }}>
+              {log.payment_notes}
+            </div>
+          )}
+
+          {/* Items */}
+          {log.items && log.items.length > 0 ? (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Items</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                    <th style={{ padding: '4px 0', textAlign: 'left', color: '#64748B', fontWeight: 600 }}>Product</th>
+                    <th style={{ padding: '4px 0', textAlign: 'center', color: '#64748B', fontWeight: 600 }}>Qty</th>
+                    <th style={{ padding: '4px 0', textAlign: 'right', color: '#64748B', fontWeight: 600 }}>Unit Price</th>
+                    <th style={{ padding: '4px 0', textAlign: 'right', color: '#64748B', fontWeight: 600 }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {log.items.map((it, i) => {
+                    const qty = parseFloat(it.quantity) || 0;
+                    const price = parseFloat(it.unit_price) || 0;
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #F8FAFC' }}>
+                        <td style={{ padding: '5px 0', color: '#1E293B', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
+                        <td style={{ padding: '5px 0', textAlign: 'center', color: '#475569' }}>{qty}</td>
+                        <td style={{ padding: '5px 0', textAlign: 'right', color: '#475569' }}>{price.toFixed(2)} ETB</td>
+                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{(qty * price).toFixed(2)} ETB</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '1px solid #E2E8F0' }}>
+                    <td colSpan={3} style={{ padding: '5px 0', fontWeight: 700, color: '#1E293B', textAlign: 'right' }}>Total</td>
+                    <td style={{ padding: '5px 0', fontWeight: 800, color: '#059669', textAlign: 'right' }}>
+                      {parseFloat(log.amount || 0).toFixed(2)} ETB
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>No item details available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash', icon: <DollarSign size={16} /> },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: <CreditCard size={16} /> },
@@ -52,6 +167,9 @@ export default function RetailPOS() {
   const [payerName, setPayerName] = useState('');
   const [payerPhone, setPayerPhone] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('PAID');
+  const [txnId, setTxnId] = useState('');
+  const [txnScreenshot, setTxnScreenshot] = useState(null);
+  const [cashRecipientName, setCashRecipientName] = useState('');
 
   const [financeAccounts, setFinanceAccounts] = useState([]);
 
@@ -75,6 +193,8 @@ export default function RetailPOS() {
   const [orderRequestId, setOrderRequestId] = useState(null);
   const [activeOnlineOrder, setActiveOnlineOrder] = useState(null);
   const [completedSale, setCompletedSale] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [workers, setWorkers] = useState([]);
 
   const addToCart = (item) => {
     const existing = posCart.find(c => c.id === item.id);
@@ -117,20 +237,29 @@ export default function RetailPOS() {
             payment: {
               method: posPaymentMethod,
               amount: posCartTotal,
-              recipient_name: payerName || recipientName,
+              status: 'PAID',
+              recipient_name: cashRecipientName || payerName || recipientName,
               recipient_phone: payerPhone || recipientPhone,
-              status: paymentStatus || 'PAID',
-              ...(posPaymentMethod === 'BANK_TRANSFER' && { bank_name: bankName, account_holder: accountHolder, account_number: accountNumber }),
-              ...(posPaymentMethod === 'TELBIR' && { telbir_number: telbirNumber }),
+              ...(posPaymentMethod === 'BANK_TRANSFER' && {
+                bank_name: bankName,
+                account_holder: accountHolder,
+                account_number: accountNumber,
+                transaction_id: txnId,
+              }),
+              ...(posPaymentMethod === 'TELBIR' && {
+                telbir_number: telbirNumber,
+                transaction_id: txnId,
+              }),
             }
           };
-          const invoiceReq = await apiClient.post('/pos/checkout', payload);
+          const invoiceReq = await apiClient.post('/pos/checkout-retail', payload);
           setOrderRequestId(null);
           
           setCompletedSale({
-            invoice_number: invoiceReq.data?.invoice_number || 'POS-' + Math.floor(Math.random()*10000),
+            invoice_number: invoiceReq.data?.data?.invoice_number || 'POS-' + Math.floor(Math.random()*10000),
             total_amount: posCartTotal,
             payment_method: posPaymentMethod,
+            recipient_name: cashRecipientName || payerName || recipientName,
             items: saleItems.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.unit_price }))
           });
         
@@ -291,45 +420,71 @@ export default function RetailPOS() {
   };
 
   const loadSales = async () => {
-    try { const res = await apiClient.get('/pos/transactions'); if (res.status === 'success') setSales(res.data || []); } catch (e) { console.error(e); }
+    try {
+      const res = await apiClient.get('/pos/sales');
+      if (res.status === 'success') {
+        const data = res.data;
+        const txList = data?.sales || (Array.isArray(data) ? data : []);
+        setSales(txList);
+      }
+    } catch (e) { console.error(e); }
   };
 
   const viewSaleDetail = async (sale) => {
-    setDetail(sale);
+    try {
+      const res = await apiClient.get(`/pos/sales/${sale.id}`);
+      if (res.status === 'success') {
+        setDetail({ ...res.data.sale, items: res.data.items });
+      } else {
+        setDetail(sale);
+      }
+    } catch (e) {
+      setDetail(sale);
+    }
     setTab('detail');
   };
 
   const loadAuditTrail = async () => {
-    // POS might not have an audit trail route currently
-    setAuditTrail([]);
+    try {
+      const res = await apiClient.get('/pos/audit-trail');
+      if (res.status === 'success') {
+        const data = res.data;
+        setAuditTrail(Array.isArray(data) ? data : (data?.audits || data?.items || []));
+      }
+    } catch (e) { console.error(e); }
   };
 
   const loadPendingOrders = async () => {
     setLoadingPendingOrders(true);
     try {
-      const res = await apiClient.get('/sales/requests/pending');
-      const rawData = res.data?.data || res.data || [];
-      const mappedOrders = rawData.map(req => ({
-        id: req.id,
-        sale_code: req.request_number,
-        customer_name: req.customer_name,
-        customer_phone: req.customer_phone,
-        order_ref: req.request_number,
-        created_at: req.requested_at,
-        total_amount: req.total_amount,
-        items: [{
-          product_id: req.medication_id,
-          product_name: req.medication_name,
-          unit_price: req.price_per_unit || (req.total_amount / (req.quantity || 1)),
-          quantity: req.quantity,
-          line_total: req.total_amount
-        }]
-      }));
-      setPendingOrders(mappedOrders);
+      const res = await apiClient.get('/pos/orders/pending');
+      if (res.status === 'success') {
+        const rawData = res.data?.orders || res.data || [];
+        setPendingOrders(Array.isArray(rawData) ? rawData : []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoadingPendingOrders(false);
+    }
+  };
+
+  const handleVoidSale = async (sale) => {
+    const reason = window.prompt(`Are you sure you want to void transaction ${sale.invoice_number || sale.id}?\nPlease enter a reason:`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      toast.error('A reason is required to void a transaction.');
+      return;
+    }
+    try {
+      setLoading(true);
+      await salesService.voidSale(sale.id, { reason });
+      toast.success(`Transaction ${sale.invoice_number || sale.id} voided. Stock returned.`);
+      loadSales(); // refresh list
+    } catch (e) {
+      toast.error('Failed to void transaction: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -357,7 +512,7 @@ export default function RetailPOS() {
     setPaymentAmount(parseFloat(order.total_amount || 0).toFixed(2));
     setPaymentStatus('PAID');
     setPosPaymentMethod('CASH');
-    setTab('walkin');
+    setTab('retail-walkin');
     setShowCart(true);
   };
 
@@ -389,7 +544,7 @@ export default function RetailPOS() {
     const payload = {
       sale_type: saleType,
       items: validItems.map(row => ({
-        product_id: row.product_id || undefined,
+        product_id: row.product_id || null,
         product_name: row.product_name,
         quantity: parseFloat(row.quantity),
         unit_price: parseFloat(row.unit_price),
@@ -414,7 +569,7 @@ export default function RetailPOS() {
 
     setLoading(true);
     try {
-      const res = await apiClient.post('/pos/checkout', payload);
+      const res = await apiClient.post('/pos/checkout-retail', payload);
       if (res.status === 'success') {
         showToast('Sale recorded successfully', 'success');
         playSound('success');
@@ -445,6 +600,10 @@ export default function RetailPOS() {
     setSaleType('WALK-IN');
     setActiveOnlineOrder(null);
     setOrderRequestId(null);
+    setTxnId('');
+    setTxnScreenshot(null);
+    setCashRecipientName('');
+    setPosPaymentMethod('');
   };
 
   return (
@@ -568,7 +727,7 @@ export default function RetailPOS() {
                 textTransform: 'uppercase',
                 lineHeight: 1
               }}>
-                Sales
+                Retail Sales
               </h1>
               {/* Teal Counter Bubble */}
               <div style={{
@@ -623,7 +782,7 @@ export default function RetailPOS() {
               <div style={{
                 padding: 0
               }}>
-                <button className="btn-3d" onClick={() => { setShowAudit(false); setTab('walkin'); resetForm(); }}>
+                <button className="btn-3d" onClick={() => { setShowAudit(false); setTab('retail-walkin'); resetForm(); }}>
                   <span style={{ fontSize: '1.5rem', fontWeight: 300, lineHeight: 1 }}>+</span> New Sale
                 </button>
               </div>
@@ -641,10 +800,10 @@ export default function RetailPOS() {
             overflow: 'hidden'
           }}>
             {[
-              { key: 'walkin',  icon: ShoppingCart, label: 'WALK-IN' },
-              { key: 'online',  icon: Smartphone,   label: 'ONLINE' },
-              { key: 'list',    icon: List,         label: 'SALES' },
-              { key: 'audit',   icon: History,      label: 'AUDIT TRAIL' },
+              { key: 'retail-walkin',  icon: ShoppingCart, label: 'WALK-IN SALE' },
+              { key: 'retail-online',  icon: Smartphone,   label: 'ONLINE ORDER' },
+              { key: 'list',    icon: List,         label: 'TRANSACTIONS' },
+              { key: 'audit',   icon: History,      label: 'AUDIT LOG' },
             ].map((t, idx, arr) => {
               const active = t.key === 'audit' ? showAudit : (tab === t.key && !showAudit);
               const TabIcon = t.icon;
@@ -653,12 +812,12 @@ export default function RetailPOS() {
                   key={t.key}
                   onClick={() => {
                     if (t.key === 'audit') {
-                      setShowAudit(true); setTab('walkin'); loadAuditTrail();
+                      setShowAudit(true); setTab('retail-walkin'); loadAuditTrail();
                     } else {
                       setShowAudit(false); setTab(t.key);
-                      if (t.key === 'walkin') setShowCart(false);
+                      if (t.key === 'retail-walkin') setShowCart(false);
                       if (t.key === 'list') loadSales();
-                      if (t.key === 'online') loadPendingOrders();
+                      if (t.key === 'retail-online') loadPendingOrders();
                     }
                   }}
                   style={{
@@ -709,7 +868,7 @@ export default function RetailPOS() {
                   <span>{t.label}</span>
 
                   {/* Cart badge on Walk-In tab */}
-                  {t.key === 'walkin' && (
+                  {t.key === 'retail-walkin' && (
                     <div
                       onClick={(e) => { e.stopPropagation(); setShowCart(c => !c); }}
                       title="Open Cart"
@@ -735,7 +894,7 @@ export default function RetailPOS() {
                   )}
 
                   {/* Notification badge on ONLINE tab */}
-                  {t.key === 'online' && pendingOrders.length > 0 && (
+                  {t.key === 'retail-online' && pendingOrders.length > 0 && (
                     <div
                       title={`${pendingOrders.length} Pending Orders`}
                       style={{
@@ -755,6 +914,24 @@ export default function RetailPOS() {
                       {pendingOrders.length}
                     </div>
                   )}
+
+                  {t.key === 'retail-online' && pendingOrders.length === 0 && (
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginLeft: 8,
+                        background: '#f1f5f9',
+                        color: '#64748b',
+                        borderRadius: 0,
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        border: '1px solid #cbd5e1',
+                      }}
+                    >
+                      No Order
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -767,7 +944,7 @@ export default function RetailPOS() {
 
 
       {/* WALK-IN TAB */}
-      {tab === 'walkin' && !showAudit && (
+      {tab === 'retail-walkin' && !showAudit && (
         <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: 24, minHeight: '600px' }}>
           {!showCart ? (
               <div className="pos-grid">
@@ -965,14 +1142,20 @@ export default function RetailPOS() {
                            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
                              <DollarSign size={16} color="#D97706" /> Cash Payment
                            </h3>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                              <div>
                                <label style={labelStyle}>Amount Received *</label>
                                <input type="number" step="0.01" min="0" value={paymentAmount}
                                  onChange={e => setPaymentAmount(e.target.value)} style={inputStyle()} />
-                              </div>
-                            </div>
-                          </div>
+                             </div>
+                             <div>
+                               <label style={labelStyle}>Recipient Name *</label>
+                               <input type="text" value={cashRecipientName}
+                                 onChange={e => setCashRecipientName(e.target.value)}
+                                 placeholder="Name of person receiving cash" style={inputStyle()} />
+                             </div>
+                           </div>
+                         </div>
                        )}
 
                        {/* Payment Detail Fields — BANK TRANSFER */}
@@ -1023,7 +1206,19 @@ export default function RetailPOS() {
                                <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
                                  placeholder="Phone" style={inputStyle()} />
                              </div>
-                          </div>
+                             <div>
+                               <label style={labelStyle}>Transaction ID *</label>
+                               <input type="text" value={txnId} onChange={e => setTxnId(e.target.value)}
+                                 placeholder="Bank transaction reference ID" style={inputStyle()} />
+                             </div>
+                             <div style={{ gridColumn: '1 / -1' }}>
+                               <label style={labelStyle}>Screenshot / Payment Proof</label>
+                               <input type="file" accept="image/*"
+                                 onChange={e => setTxnScreenshot(e.target.files[0])}
+                                 style={{ ...inputStyle(), padding: '6px 10px', cursor: 'pointer' }} />
+                               {txnScreenshot && <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>✓ {txnScreenshot.name}</div>}
+                             </div>
+                           </div>
                          </div>
                        )}
 
@@ -1069,37 +1264,38 @@ export default function RetailPOS() {
                                <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
                                  placeholder="Phone" style={inputStyle()} />
                              </div>
-                          </div>
+                             <div>
+                               <label style={labelStyle}>Transaction ID *</label>
+                               <input type="text" value={txnId} onChange={e => setTxnId(e.target.value)}
+                                 placeholder="Telebirr transaction reference ID" style={inputStyle()} />
+                             </div>
+                             <div style={{ gridColumn: '1 / -1' }}>
+                               <label style={labelStyle}>Screenshot / Payment Proof</label>
+                               <input type="file" accept="image/*"
+                                 onChange={e => setTxnScreenshot(e.target.files[0])}
+                                 style={{ ...inputStyle(), padding: '6px 10px', cursor: 'pointer' }} />
+                               {txnScreenshot && <div style={{ fontSize: 11, color: '#7C3AED', marginTop: 4 }}>✓ {txnScreenshot.name}</div>}
+                             </div>
+                           </div>
                          </div>
                        )}
 
-                       {/* Payment Status Buttons A14 */}
-                       <div style={{ marginBottom: 20 }}>
-                         <label style={labelStyle}>Payment Status (A14) *</label>
-                         <div style={{ display: 'flex', gap: 12 }}>
-                           <button type="button" onClick={() => setPaymentStatus('PAID')}
-                             style={{
-                               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                               padding: '14px 24px', borderRadius: 0, border: `2px solid ${paymentStatus === 'PAID' ? '#059669' : '#E2E8F0'}`,
-                               background: paymentStatus === 'PAID' ? '#D1FAE5' : 'white',
-                               color: paymentStatus === 'PAID' ? '#065F46' : '#475569',
-                               fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                               boxShadow: paymentStatus === 'PAID' ? '0 2px 8px rgba(5,150,105,0.2)' : 'none',
-                             }}>
-                             <CheckCircle size={20} /> PAID
-                           </button>
-                           <button type="button" onClick={() => setPaymentStatus('CASHOUT')}
-                             style={{
-                               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                               padding: '14px 24px', borderRadius: 0, border: `2px solid ${paymentStatus === 'CASHOUT' ? '#D97706' : '#E2E8F0'}`,
-                               background: paymentStatus === 'CASHOUT' ? '#FEF3C7' : 'white',
-                               color: paymentStatus === 'CASHOUT' ? '#92400E' : '#475569',
-                               fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                               boxShadow: paymentStatus === 'CASHOUT' ? '0 2px 8px rgba(217,119,6,0.2)' : 'none',
-                             }}>
-                             <Banknote size={20} /> CASHOUT
-                           </button>
-                         </div>
+                       {/* Payment Status — Paid checkbox */}
+                       <div style={{ marginBottom: 20, padding: '14px 18px', background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 14 }}>
+                         <input
+                           type="checkbox"
+                           id="paidCheckbox"
+                           checked={paymentStatus === 'PAID'}
+                           onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
+                           style={{ width: 20, height: 20, cursor: 'pointer', accentColor: '#059669' }}
+                         />
+                         <label htmlFor="paidCheckbox" style={{ fontWeight: 700, fontSize: 15, color: '#065f46', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                           <CheckCircle size={18} color={paymentStatus === 'PAID' ? '#059669' : '#94a3b8'} />
+                           Mark as Paid
+                         </label>
+                         {paymentStatus !== 'PAID' && (
+                           <span style={{ fontSize: 12, color: '#b91c1c', fontWeight: 600 }}>⚠️ Please confirm payment before recording</span>
+                         )}
                        </div>
 
                        {/* Submit */}
@@ -1122,11 +1318,9 @@ export default function RetailPOS() {
                     <h3 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, color: '#0f172a' }}>Transaction Complete!</h3>
                     {completedSale && (
                       <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 0, padding: '12px 24px', marginBottom: 20, width: '100%', maxWidth: 400 }}>
-                        <div style={{ fontWeight: 800, color: '#059669', fontSize: 16, marginBottom: 4 }}>Receipt: {completedSale.receipt_no}</div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Branch: <strong>{completedSale.branch}</strong></div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Cashier: <strong>{completedSale.worker}</strong></div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Customer: <strong>{completedSale.recipient_name}</strong></div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#059669', marginTop: 8 }}>Total: {completedSale.total.toFixed(2)} ETB</div>
+                        <div style={{ fontWeight: 800, color: '#059669', fontSize: 16, marginBottom: 4 }}>Receipt: {completedSale.invoice_number}</div>
+                        <div style={{ fontSize: 13, color: '#374151' }}>Customer: <strong>{completedSale.recipient_name || 'Walk-In'}</strong></div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#059669', marginTop: 8 }}>Total: {(completedSale.total_amount || 0).toFixed(2)} ETB</div>
                       </div>
                     )}
                     <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>Inventory updated. CRV and Model 22 generated.</p>
@@ -1152,80 +1346,114 @@ export default function RetailPOS() {
 
       {/* SALES LIST TAB */}
       {tab === 'list' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-             <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 24px' }}>📋 All Sales</h2>
+        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          {/* Header */}
+          <div style={{ padding: '24px 32px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <div>
+               <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                 <List size={24} color="#059669" /> Unsubmitted Sales
+               </h2>
+               <p style={{ margin: 0, fontSize: 14, color: '#64748B' }}>Sales waiting to be submitted to Finance for the audit log.</p>
+             </div>
+             {sales.length > 0 && (
+               <button
+                 onClick={() => setShowSubmitConfirm(true)}
+                 style={{
+                   padding: '12px 24px', background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                   color: 'white', border: 'none', borderRadius: '4px', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                   display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 12px rgba(5,150,105,0.25)'
+                 }}
+               >
+                 <CheckCircle size={18} /> Submit to Finance ({sales.length})
+               </button>
+             )}
+          </div>
+          
+          <div style={{ padding: '24px 32px' }}>
              {sales.length === 0 ? (
-               <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
-                  <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
-                  <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No sales recorded</h3>
+               <div style={{ textAlign: 'center', padding: '80px 24px', background: '#F8FAFC', border: '2px dashed #CBD5E1', borderRadius: '8px' }}>
+                  <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+                  <h3 style={{ fontWeight: 800, color: '#1E293B', marginBottom: 8, fontSize: 20 }}>All Caught Up!</h3>
+                  <p style={{ color: '#64748B', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
+                    There are no unsubmitted sales. Any completed sales have already been moved to the Audit Log.
+                  </p>
                </div>
              ) : (
-               <div style={{ overflowX: 'auto' }}>
-                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 0, overflow: 'hidden', minWidth: 600 }}>
+               <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800, background: 'white' }}>
                     <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={thStyle}>Receipt No</th>
-                        <th style={thStyle}>Date</th>
-                        <th style={thStyle}>Type</th>
-                        <th style={thStyle}>Branch</th>
-                        <th style={thStyle}>Worker</th>
-                        <th style={thStyle}>Payment</th>
-                        <th style={thStyle}>Total Amount</th>
-                        <th style={thStyle}>Actions</th>
+                      <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #E2E8F0' }}>
+                        <th style={{...thStyle, color: '#334155'}}>Receipt No</th>
+                        <th style={{...thStyle, color: '#334155'}}>Date</th>
+                        <th style={{...thStyle, color: '#334155'}}>Type</th>
+                        <th style={{...thStyle, color: '#334155'}}>Customer</th>
+                        <th style={{...thStyle, color: '#334155'}}>Cashier</th>
+                        <th style={{...thStyle, color: '#334155'}}>Payment</th>
+                        <th style={{...thStyle, color: '#334155', textAlign: 'right'}}>Total Amount</th>
+                        <th style={{...thStyle, color: '#334155', textAlign: 'center'}}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sales.map(sale => {
-                        // Fallback: resolve branch and worker names from local state if join didn't return them
-                        const resolvedBranch = sale.branch_name ||
-                          branches.find(b => String(b.id) === String(sale.branch_id))?.name ||
-                          (sale.branch_id ? `Branch #${sale.branch_id}` : '—');
-                        const resolvedWorker = sale.worker_name ||
-                          workers.find(w => String(w.id) === String(sale.worker_id))?.name ||
-                          (sale.worker_id ? `Worker #${sale.worker_id}` : '—');
+                      {sales.map((sale, idx) => {
+                        const isEven = idx % 2 === 0;
+                        const dateStr = sale.sale_date ? new Date(sale.sale_date).toLocaleString() : 'N/A';
+                        
                         return (
-                        <tr key={sale.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                           <td style={tdStyle}><strong style={{ color: '#2563eb', fontFamily: 'monospace' }}>{sale.receipt_no || sale.sale_no || `REC-${sale.id}`}</strong></td>
-                           <td style={tdStyle}>{new Date(sale.created_at).toLocaleString()}</td>
+                        <tr key={sale.id} style={{ borderBottom: '1px solid #F1F5F9', background: isEven ? '#FFFFFF' : '#FAFAFA', transition: 'background 0.2s' }}>
+                           <td style={tdStyle}><strong style={{ color: '#0F172A', fontWeight: 700 }}>{sale.invoice_number || `REC-${sale.id}`}</strong></td>
+                           <td style={{...tdStyle, color: '#475569'}}>{dateStr}</td>
                            <td style={tdStyle}>
                              <span style={{
-                               background: sale.sale_type === 'ONLINE' ? 'rgba(124,58,237,0.1)' : 'rgba(5,150,105,0.1)',
-                               color: sale.sale_type === 'ONLINE' ? '#7c3aed' : '#065f46',
-                               padding: '3px 10px', borderRadius: 0, fontSize: 11, fontWeight: 800
-                             }}>{sale.sale_type === 'ONLINE' ? '🌐 ONLINE' : '🛒 WALK-IN'}</span>
-                           </td>
-                           <td style={tdStyle}>
-                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                               <span style={{ background: '#dbeafe', color: '#1d4ed8', borderRadius: 0, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{resolvedBranch}</span>
+                               background: sale.sale_type === 'ONLINE' ? '#F3E8FF' : '#D1FAE5',
+                               color: sale.sale_type === 'ONLINE' ? '#7E22CE' : '#047857',
+                               padding: '4px 10px', borderRadius: '12px', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4
+                             }}>
+                               {sale.sale_type === 'ONLINE' ? <><Smartphone size={12}/> ONLINE</> : <><ShoppingCart size={12}/> WALK-IN</>}
                              </span>
                            </td>
                            <td style={tdStyle}>
-                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                               <span style={{ background: '#fef9c3', color: '#854d0e', borderRadius: 0, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{resolvedWorker}</span>
+                             <div style={{ fontWeight: 600, color: '#334155' }}>{sale.customer_name || 'Walk-in Customer'}</div>
+                             {sale.customer_phone && <div style={{ fontSize: 11, color: '#94A3B8' }}>{sale.customer_phone}</div>}
+                           </td>
+                           <td style={tdStyle}>
+                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F1F5F9', color: '#475569', borderRadius: '4px', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
+                               <User size={12} /> {sale.cashier_name || 'Retail Staff'}
                              </span>
                            </td>
                            <td style={tdStyle}>
                              <span style={{
-                               background: '#F1F5F9', color: '#475569', padding: '3px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600
-                             }}>{sale.payment_method || 'CASH'}</span>
+                               background: '#F8FAFC', color: '#334155', padding: '4px 10px', borderRadius: '4px', fontSize: 12, fontWeight: 700, border: '1px solid #E2E8F0'
+                             }}>
+                               {sale.payment_method_name || 'CASH'}
+                             </span>
                            </td>
-                           <td style={{ ...tdStyle, fontWeight: 700, color: '#059669' }}>{parseFloat(sale.total_amount || 0).toFixed(2)} ETB</td>
-                           <td style={tdStyle}>
-                             <button onClick={() => viewSaleDetail(sale)} style={{ padding: '6px 14px', background: '#e0e7ff', color: '#4338ca', border: 'none', borderRadius: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>View</button>
+                           <td style={{...tdStyle, textAlign: 'right'}}>
+                             <strong style={{ color: '#059669', fontSize: 14 }}>{parseFloat(sale.total_amount || 0).toLocaleString()} ETB</strong>
+                           </td>
+                           <td style={{...tdStyle, textAlign: 'center'}}>
+                              <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                                <button
+                                  onClick={() => viewSaleDetail(sale)}
+                                  style={{ background: '#EFF6FF', color: '#2563EB', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.2s' }}
+                                  onMouseOver={e => e.currentTarget.style.background = '#DBEAFE'}
+                                  onMouseOut={e => e.currentTarget.style.background = '#EFF6FF'}
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => handleVoidSale(sale)}
+                                  style={{ background: '#FEF2F2', color: '#DC2626', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.2s' }}
+                                  onMouseOver={e => e.currentTarget.style.background = '#FEE2E2'}
+                                  onMouseOut={e => e.currentTarget.style.background = '#FEF2F2'}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                            </td>
                         </tr>
                         );
                       })}
                     </tbody>
-                    <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: 800 }}>
-                      <tr>
-                        <td colSpan="6" style={{ ...tdStyle, textAlign: 'right', fontSize: 14 }}>TOTAL TRANSACTIONS: {sales.length}</td>
-                        <td colSpan="2" style={{ ...tdStyle, fontSize: 15, color: '#059669' }}>
-                          {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
-                        </td>
-                      </tr>
-                    </tfoot>
                  </table>
                </div>
              )}
@@ -1246,8 +1474,10 @@ export default function RetailPOS() {
                    }}
                  >
                    <CheckCircle size={18} />
-                   {loading ? 'Submitting...' : 'Submit to Manager'}
-                 </button>
+                   <span style={{ fontSize: 13, fontWeight: 700 }}>
+                    {loading ? 'Submitting...' : 'Submit to Finance'}
+                  </span>
+                </button>
                </div>
              )}
           </div>
@@ -1255,7 +1485,7 @@ export default function RetailPOS() {
       )}
 
       {/* ONLINE TAB */}
-      {tab === 'online' && !showAudit && (
+      {tab === 'retail-online' && !showAudit && (
         <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <div style={{ padding: '24px 28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -1317,143 +1547,184 @@ export default function RetailPOS() {
       )}
 
       {/* AUDIT TRAIL TAB */}
-      {showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>📜 Audit Trail</h2>
-              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 14px', borderRadius: 0, border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                Close Audit Trail
+      {showAudit && (() => {
+        // Group audit entries by date (day of submission)
+        const grouped = auditTrail.reduce((acc, log) => {
+          const day = new Date(log.created_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+          if (!acc[day]) acc[day] = [];
+          acc[day].push(log);
+          return acc;
+        }, {});
+        const days = Object.keys(grouped);
+
+        return (
+          <div style={{ background: 'white', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '2px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                📜 Retail Audit Trail
+                <span style={{ fontSize: 12, fontWeight: 600, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 10px', borderRadius: 20 }}>
+                  {auditTrail.length} records
+                </span>
+              </h2>
+              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 16px', border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                ✕ Close
               </button>
             </div>
-            
-            {auditTrail.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
-                <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
-                <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No pending audit logs</h3>
-                <p style={{ fontSize: 13 }}>All audit logs have been submitted or none exist.</p>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 0, overflow: 'hidden', minWidth: 600 }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Action</th>
-                      <th style={thStyle}>Details</th>
-                      <th style={thStyle}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditTrail.map((log) => (
-                      <tr key={log.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.2s' }}>
-                        <td style={tdStyle}>{new Date(log.created_at).toLocaleString()}</td>
-                        <td style={{ ...tdStyle, fontWeight: 700, color: log.action === 'RETURN' ? '#e11d48' : '#059669' }}>
-                          {log.action}
-                        </td>
-                        <td style={tdStyle}>{log.recipient}</td>
-                        <td style={{ ...tdStyle, fontWeight: 700, color: parseFloat(log.amount) < 0 ? '#e11d48' : '#1E293B' }}>
-                          {parseFloat(log.amount || 0).toFixed(2)} ETB
-                        </td>
-                      </tr>
+
+            <div style={{ padding: '20px 24px' }}>
+              {auditTrail.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
+                  <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
+                  <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No audit records yet</h3>
+                  <p style={{ fontSize: 13 }}>Records appear here after submitting daily sales to Finance.</p>
+                </div>
+              ) : days.map((day) => {
+                const entries = grouped[day];
+                const dayTotal = entries.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                const txCount = entries.length;
+                return (
+                  <div key={day} style={{ marginBottom: 28 }}>
+                    {/* Date Group Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid #E2E8F0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 8, height: 8, background: '#059669', borderRadius: '50%' }} />
+                        <span style={{ fontWeight: 800, fontSize: 14, color: '#1E293B' }}>{day}</span>
+                        <span style={{ fontSize: 12, color: '#64748B', background: '#F1F5F9', padding: '2px 8px', borderRadius: 10 }}>
+                          {txCount} transaction{txCount !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 11, color: '#64748B', marginBottom: 2 }}>Accumulated Total</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#059669' }}>{dayTotal.toFixed(2)} ETB</div>
+                      </div>
+                    </div>
+
+                    {/* Each Transaction */}
+                    {entries.map((log, idx) => (
+                      <AuditRow key={log.id} log={log} idx={idx} />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
 
       {/* DETAIL TAB */}
       {tab === 'detail' && detail && (
         <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Eye size={16} color="#059669" /> Sale Detail
+          {/* Header */}
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '2px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC' }}>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+              <Eye size={16} color="#059669" /> Sale Detail — {detail.invoice_number || `#${detail.id}`}
             </h3>
-            <button className="btn-3d" onClick={() => setTab('list')}
-              >
-              Back to List
-            </button>
+            <button className="btn-3d" onClick={() => setTab('list')}>← Back to List</button>
           </div>
+
           <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-              <div style={{ background: '#F8FAFC', borderRadius: 0, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Sale #</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>{detail.sale_no || detail.id}</div>
+            {/* Top summary cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'Invoice', value: detail.invoice_number || `#${detail.id}` },
+                { label: 'Sale Type', value: (detail.sale_type || '—').replace('_', ' ').toUpperCase() },
+                { label: 'Cashier', value: detail.cashier_name || '—' },
+                { label: 'Total Amount', value: `${parseFloat(detail.total_amount || 0).toFixed(2)} ETB`, green: true },
+              ].map((card, i) => (
+                <div key={i} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{card.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: card.green ? '#059669' : '#1E293B', wordBreak: 'break-all' }}>{card.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Payment + Recipient */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              {/* Recipient */}
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: 16 }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <User size={14} color="#059669" /> Recipient / Customer
+                </h4>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
+                  {detail.customer_name || (detail.notes && detail.notes.match(/Recipient: ([^|]+)/)?.[1]?.trim()) || 'Walk-In Customer'}
+                </div>
+                <div style={{ fontSize: 12, color: '#374151' }}>
+                  {detail.customer_phone || ''}
+                </div>
+                {detail.notes && detail.notes.includes('Recipient:') && (
+                  <div style={{ fontSize: 12, color: '#059669', marginTop: 4 }}>
+                    {detail.notes}
+                  </div>
+                )}
               </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 0, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Type</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>{detail.sale_type || '—'}</div>
-              </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 0, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Total Amount</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#059669' }}>
-                  {parseFloat(detail.payment?.amount || detail.total_amount || 0).toFixed(2)} ETB
+
+              {/* Payment */}
+              <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: 16 }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <DollarSign size={14} color="#2563EB" /> Payment Info
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 13, color: '#1E293B' }}>
+                    <strong>Method:</strong> {detail.payment_method_name || '—'}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#1E293B' }}>
+                    <strong>Amount Paid:</strong> {parseFloat(detail.amount_paid || detail.total_amount || 0).toFixed(2)} ETB
+                  </div>
+                  {detail.payment_reference && (
+                    <div style={{ fontSize: 12, color: '#374151' }}>
+                      <strong>Ref / TxnID:</strong> {detail.payment_reference}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 4 }}>
+                    <span style={{
+                      background: detail.status_name === 'Completed' ? '#D1FAE5' : '#FEF3C7',
+                      color: detail.status_name === 'Completed' ? '#065F46' : '#92400E',
+                      padding: '2px 10px', fontSize: 11, fontWeight: 700, borderRadius: 20
+                    }}>{detail.status_name || 'Completed'}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div style={{ background: '#F8FAFC', borderRadius: 0, padding: 16, border: '1px solid #E2E8F0' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <User size={14} color="#059669" /> Recipient
-                </h4>
-                <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{detail.payment?.recipient_name || detail.recipient_name || '—'}</strong></div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>{detail.payment?.recipient_phone || ''}</div>
-              </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 0, padding: 16, border: '1px solid #E2E8F0' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <DollarSign size={14} color="#059669" /> Payment
-                </h4>
-                <div style={{ fontSize: 13, marginBottom: 4 }}>
-                  <strong>Method:</strong> {detail.payment?.method || '—'}
-                </div>
-                <div style={{ fontSize: 13, marginBottom: 4 }}>
-                  <strong>Status:</strong>{' '}
-                  <span style={{
-                    background: detail.payment?.status === 'PAID' ? '#D1FAE5' : '#FEF3C7',
-                    color: detail.payment?.status === 'PAID' ? '#065F46' : '#92400E',
-                    padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600,
-                  }}>{detail.payment?.status || '—'}</span>
-                </div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>
-                  {detail.payment?.bank_name && <div>Bank: {detail.payment.bank_name}</div>}
-                  {detail.payment?.account_holder && <div>Account: {detail.payment.account_holder}</div>}
-                  {detail.payment?.telbir_number && <div>Telbir: {detail.payment.telbir_number}</div>}
-                  {detail.payment?.branch_name && <div>Branch: {detail.payment.branch_name}</div>}
-                  {detail.payment?.worker_name && <div>Worker: {detail.payment.worker_name}</div>}
-                </div>
-              </div>
-            </div>
-
+            {/* Items Table */}
             <div style={{ marginTop: 20 }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B' }}>Items</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
+              <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Items Purchased</h4>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th style={{ ...thStyle, width: '50%' }}>product</th>
-                    <th style={{ ...thStyle, textAlign: 'center' }}>Qty</th>
-                    <th style={{ ...thStyle, textAlign: 'center' }}>Unit Price</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
+                  <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                    <th style={{ padding: '8px 0', textAlign: 'left', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Product</th>
+                    <th style={{ padding: '8px 0', textAlign: 'center', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Qty</th>
+                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Unit Price</th>
+                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(detail.items || [detail]).map((it, idx) => {
-                    const itemQty = parseFloat(it.quantity) || 0;
-                    const itemPrice = parseFloat(it.unit_price) || 0;
-                    const itemTotal = itemQty * itemPrice;
+                  {(detail.items && detail.items.length > 0) ? detail.items.map((it, idx) => {
+                    const qty = parseFloat(it.quantity) || 0;
+                    const price = parseFloat(it.unit_price) || 0;
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={tdStyle}>{it.product_name}</td>
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{itemQty}</td>
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{itemPrice.toFixed(2)} ETB</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>{itemTotal.toFixed(2)} ETB</td>
+                        <td style={{ padding: '10px 0', color: '#1E293B', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'center', color: '#475569' }}>{qty}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', color: '#475569' }}>{price.toFixed(2)} ETB</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{(qty * price).toFixed(2)} ETB</td>
                       </tr>
                     );
-                  })}
+                  }) : (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8' }}>No items found</td>
+                    </tr>
+                  )}
                 </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '2px solid #E2E8F0' }}>
+                    <td colSpan={3} style={{ padding: '10px 0', fontWeight: 700, color: '#1E293B', textAlign: 'right' }}>Grand Total</td>
+                    <td style={{ padding: '10px 0', fontWeight: 800, color: '#059669', textAlign: 'right', fontSize: 15 }}>
+                      {parseFloat(detail.total_amount || 0).toFixed(2)} ETB
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -1491,11 +1762,13 @@ export default function RetailPOS() {
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    await apiClient.post('/sales/submit-daily', {});
+                    await apiClient.post('/pos/sales/submit-daily', {});
                     setShowSubmitConfirm(false);
-                    submitNotification('Sales Submitted', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to the Sales Manager.`);
-                    showToast('✅ Full day data submitted to Manager', 'success');
-                    loadSales();
+                    submitNotification('Sales Submitted to Finance', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to Finance.`);
+                    showToast('✅ Submitted to Finance — transactions moved to Audit', 'success');
+                    // Clear the transactions list and reload audit trail
+                    setSales([]);
+                    await loadAuditTrail();
                   } catch (err) {
                     setShowSubmitConfirm(false);
                     showToast(err.message || 'Failed to submit data', 'error');

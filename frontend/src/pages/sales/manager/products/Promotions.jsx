@@ -49,7 +49,7 @@ const Promotions = () => {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0' }}>Promotions & Discounts</h1>
           <p style={{ color: '#64748b', margin: 0 }}>Manage scheduled and active pricing promotions.</p>
         </div>
-        <button style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Plus size={16} /> New Promotion
         </button>
       </div>

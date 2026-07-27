@@ -107,10 +107,10 @@ const CustomerManagement = () => {
       </div>
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', width: '100%', maxWidth: '420px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: 0, width: '100%', maxWidth: '420px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>New Customer</h3>
             {errorMsg && (
-              <div style={{ padding: '10px', marginBottom: '16px', background: '#fee2e2', color: '#b91c1c', borderRadius: '4px', fontSize: '14px' }}>
+              <div style={{ padding: '10px', marginBottom: '16px', background: '#fee2e2', color: '#b91c1c', borderRadius: 0, fontSize: '14px' }}>
                 {errorMsg}
               </div>
             )}
@@ -122,7 +122,7 @@ const CustomerManagement = () => {
                   required 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: 0 }}
                 />
               </div>
               <div style={{ marginBottom: '16px' }}>
@@ -133,7 +133,7 @@ const CustomerManagement = () => {
                   title="Phone must start with 09 and be 10 digits long"
                   value={formData.phone} 
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: 0 }}
                 />
               </div>
               <div style={{ marginBottom: '24px' }}>
@@ -142,12 +142,12 @@ const CustomerManagement = () => {
                   type="email" 
                   value={formData.email} 
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: 0 }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: '#e2e8f0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: '#e2e8f0', border: 'none', borderRadius: 0, cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={submitting} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}>
                   {submitting ? 'Creating...' : 'Create Customer'}
                 </button>
               </div>

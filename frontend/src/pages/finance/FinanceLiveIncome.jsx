@@ -21,7 +21,7 @@ const getImageUrl = (path) => {
 };
 
 /* Departments that collect physical cash vs digital payment proof */
-const CASH_DEPTS = ['Pharmacy', 'Sales'];
+const CASH_DEPTS = ['Pharmacy', 'Sales', 'Retail'];
 
 const SALE_TYPE_COLOR = {
   ONLINE:   { bg: '#98FF98', color: '#1B5E20', label: 'Online' },
@@ -109,7 +109,7 @@ const PrintSigBlock = ({ label, name, sigImage }) => (
   </div>
 );
 
-const DEPARTMENTS = ['Sales', 'Pharmacy', 'Printing', 'Car Rental', 'Agrirent', 'Tender', 'Other'];
+const DEPARTMENTS = ['Sales', 'Pharmacy', 'Retail', 'Printing', 'Car Rental', 'Agrirent', 'Tender', 'Other'];
 
 /* ═══════════════════════════════════════════════════════════════ */
 /*  DETAIL PAGE                                                    */

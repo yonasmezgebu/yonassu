@@ -276,7 +276,7 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
         .section-title { font-size: 13px; font-weight: bold; color: #1e293b; margin: 22px 0 8px; border-left: 5px solid #10b981; padding-left: 10px; }
         .section-divider { border: none; border-top: 3px solid #0f172a; margin: 24px 0; }
         .summary-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 14px; }
-        .sum-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; text-align: center; border-top: 3px solid #1e293b; }
+        .sum-card { border: 1px solid #e5e7eb; border-radius: 0; padding: 8px; text-align: center; border-top: 3px solid #1e293b; }
         .sum-label { font-size: 8px; color: #6b7280; margin-bottom: 4px; }
         .sum-val { font-size: 11px; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -285,8 +285,8 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
         tr:nth-child(even) td { background: #f8fafc; }
         tfoot td { background: #1e293b !important; color: white; font-weight: bold; font-size: 9px; padding: 5px 7px; }
         .num { text-align: right; font-family: monospace; }
-        .badge { padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 8px; }
-        .status { padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 600; }
+        .badge { padding: 2px 6px; border-radius: 0; font-weight: 600; font-size: 8px; }
+        .status { padding: 2px 6px; border-radius: 0; font-size: 8px; font-weight: 600; }
         .ok { background: #dcfce7; color: #166534; }
         .pend { background: #fef3c7; color: #92400e; }
         .open { color: #10b981; font-weight: 700; }
@@ -440,23 +440,23 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
 
   const s = {
     page: { padding: '1.5rem', fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', minHeight: '100%', color: '#0f172a' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem', background: '#fff', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem', background: '#fff', padding: '1.5rem', borderRadius: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.03)' },
     title: { fontSize: '1.75rem', fontWeight: 800, margin: 0, background: 'linear-gradient(90deg, #1e293b, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.5px' },
     subtitle: { fontSize: '0.85rem', color: '#64748b', margin: '4px 0 0', fontWeight: 500 },
-    controls: { display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.5)' },
-    input: { padding: '10px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff', transition: 'all 0.2s', outline: 'none' },
-    printBtn: { padding: '10px 24px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'all 0.2s' },
-    card: { background: '#fff', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,.04)', overflow: 'hidden', border: '1px solid #f1f5f9' },
+    controls: { display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: 0, border: '1px solid rgba(255,255,255,0.5)' },
+    input: { padding: '10px 16px', borderRadius: 0, border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff', transition: 'all 0.2s', outline: 'none' },
+    printBtn: { padding: '10px 24px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'all 0.2s' },
+    card: { background: '#fff', borderRadius: 0, boxShadow: '0 10px 30px rgba(0,0,0,.04)', overflow: 'hidden', border: '1px solid #f1f5f9' },
     summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: '1rem', marginBottom: '1.5rem' },
-    sumCard: (color) => ({ background: '#fff', border: '1px solid #e2e8f0', borderTop: `4px solid ${color}`, borderRadius: '12px', padding: '1rem 1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', transition: 'transform 0.2s' }),
+    sumCard: (color) => ({ background: '#fff', border: '1px solid #e2e8f0', borderTop: `4px solid ${color}`, borderRadius: 0, padding: '1rem 1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', transition: 'transform 0.2s' }),
     sumLabel: { fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' },
     sumVal: { fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '6px', letterSpacing: '-0.5px' },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { background: '#0f172a', color: '#fff', padding: '14px 16px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '0.5px' },
     td: { padding: '12px 16px', borderBottom: '1px solid #f1f5f9', fontSize: '0.9rem', color: '#334155', verticalAlign: 'middle' },
-    badge: (color) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }),
-    expandBtn: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', padding: '4px 12px', fontSize: '0.85rem', color: '#475569', fontWeight: 600, transition: 'all 0.2s' },
-    statusBadge: (st) => ({ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, background: st === 'OPEN' ? '#dbeafe' : st === 'VERIFIED' ? '#dcfce7' : st === 'CLOSED' ? '#f1f5f9' : '#fef3c7', color: st === 'OPEN' ? '#1d4ed8' : st === 'VERIFIED' ? '#166534' : st === 'CLOSED' ? '#475569' : '#92400e', textTransform: 'uppercase' }),
+    badge: (color) => ({ display: 'inline-block', padding: '4px 10px', borderRadius: 0, fontSize: '0.75rem', fontWeight: 700, background: color + '20', color, border: `1px solid ${color}40` }),
+    expandBtn: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 0, cursor: 'pointer', padding: '4px 12px', fontSize: '0.85rem', color: '#475569', fontWeight: 600, transition: 'all 0.2s' },
+    statusBadge: (st) => ({ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: 0, fontSize: '0.75rem', fontWeight: 700, background: st === 'OPEN' ? '#dbeafe' : st === 'VERIFIED' ? '#dcfce7' : st === 'CLOSED' ? '#f1f5f9' : '#fef3c7', color: st === 'OPEN' ? '#1d4ed8' : st === 'VERIFIED' ? '#166534' : st === 'CLOSED' ? '#475569' : '#92400e', textTransform: 'uppercase' }),
     hr: { border: 'none', borderTop: '3px solid #0f172a', margin: '2rem 0' },
     sectionTitle: { fontSize: '1.15rem', fontWeight: 800, color: '#1e293b', margin: '0 0 1rem', borderLeft: '5px solid #10b981', paddingLeft: '12px' },
   };
@@ -491,8 +491,8 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
       {/* Controls */}
       <div style={s.controls}>
         {currentShiftOnly && currentShift && (
-          <span style={{ fontSize: '0.85rem', padding: '4px 12px', background: '#dbeafe', borderRadius: 6, color: '#1e40af', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse 1.5s infinite', display: 'inline-block' }} />
+          <span style={{ fontSize: '0.85rem', padding: '4px 12px', background: '#dbeafe', borderRadius: 0, color: '#1e40af', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 0, background: '#10b981', animation: 'pulse 1.5s infinite', display: 'inline-block' }} />
             Shift #{currentShift.id} — {fmtDuration(currentShift.opened_at, null, now)}
           </span>
         )}
@@ -564,7 +564,7 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
                       <td style={s.td}><span style={s.badge(sale.sale_type === 'online' ? '#8b5cf6' : '#10b981')}>{sale.sale_type === 'online' ? 'Online' : 'Walk-in'}</span></td>
                       <td style={s.td}><span style={s.badge(PAYMENT_COLORS[sale.payment_method_name] || '#6b7280')}>{sale.payment_method_name || '—'}</span></td>
                       <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>{fmt(sale.total_amount)}</td>
-                      <td style={s.td}><span style={s.statusBadge(sale.status === 'Completed' ? 'VERIFIED' : (sale.status === 'Voided' || sale.status === 'Void' ? 'REJECTED' : 'OPEN'))}>{(sale.status !== 'Completed' && sale.status !== 'Voided' && sale.status !== 'Void') && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}{sale.status || 'Completed'}</span></td>
+                      <td style={s.td}><span style={s.statusBadge(sale.status === 'Completed' ? 'VERIFIED' : (sale.status === 'Voided' || sale.status === 'Void' ? 'REJECTED' : 'OPEN'))}>{(sale.status !== 'Completed' && sale.status !== 'Voided' && sale.status !== 'Void') && <span style={{ width: 8, height: 8, borderRadius: 0, background: '#f59e0b', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}{sale.status || 'Completed'}</span></td>
                     </tr>
                     {expandedSale === sale.id && (
                       <tr>
@@ -650,7 +650,7 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
                     <td style={s.td}>{sh.closed_at ? fmtDate(sh.closed_at) : <span style={{ color: '#10b981', fontWeight: 700 }}>Still Open</span>}</td>
                     <td style={{ ...s.td, fontWeight: 600, color: '#7c3aed' }}>
                       {fmtDuration(sh.opened_at, sh.closed_at, now)}
-                      {!sh.closed_at && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10b981', marginLeft: 6, animation: 'pulse 1.5s infinite', verticalAlign: 'middle' }} />}
+                      {!sh.closed_at && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 0, background: '#10b981', marginLeft: 6, animation: 'pulse 1.5s infinite', verticalAlign: 'middle' }} />}
                     </td>
                     <td style={{ ...s.td, textAlign: 'right', fontFamily: 'monospace' }}>{fmt(sh.opening_float)} ETB</td>
                     <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>{fmt(parseFloat(sh.opening_float || 0) + parseFloat(sh.total_sales || 0))} ETB</td>
@@ -658,7 +658,7 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
                     <td style={{ ...s.td, textAlign: 'right', fontFamily: 'monospace', color: '#10b981' }}>{fmt(sh.cash_collected)} ETB</td>
                     <td style={{ ...s.td, textAlign: 'right', fontFamily: 'monospace', color: '#3b82f6' }}>{fmt(sh.telebirr_collected)} ETB</td>
                     <td style={{ ...s.td, textAlign: 'right', fontFamily: 'monospace', color: '#8b5cf6' }}>{fmt(sh.transfer_collected)} ETB</td>
-                    <td style={s.td}><span style={s.statusBadge(sh.status)}>{sh.status === 'OPEN' && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}{sh.status}</span></td>
+                    <td style={s.td}><span style={s.statusBadge(sh.status)}>{sh.status === 'OPEN' && <span style={{ width: 8, height: 8, borderRadius: 0, background: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}{sh.status}</span></td>
                     {canVerify && (
                       <td style={s.td}>
                         {sh.status === 'CLOSED' ? (
@@ -666,12 +666,12 @@ export default function CashierAuditLog({ source, currentShiftOnly }) {
                             <button
                               onClick={() => handleVerifyShift(sh.id, 'VERIFIED', sh)}
                               disabled={verifying === sh.id}
-                              style={{ padding: '4px 10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, opacity: verifying === sh.id ? 0.6 : 1 }}
+                              style={{ padding: '4px 10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, opacity: verifying === sh.id ? 0.6 : 1 }}
                             >Verify</button>
                             <button
                               onClick={() => handleVerifyShift(sh.id, 'REJECTED', sh)}
                               disabled={verifying === sh.id}
-                              style={{ padding: '4px 10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, opacity: verifying === sh.id ? 0.6 : 1 }}
+                              style={{ padding: '4px 10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, opacity: verifying === sh.id ? 0.6 : 1 }}
                             >Reject</button>
                           </div>
                         ) : <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>—</span>}

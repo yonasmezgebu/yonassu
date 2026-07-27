@@ -13,8 +13,8 @@ const CREAM  = '#FDF9CC';   // pale yellow-cream
 const DARK   = '#1A3025';   // deep forest green (text / borders)
 const MID    = '#2D5440';   // medium green (header bg)
 const ACCENT = '#5BAD7F';   // vibrant green (highlights)
-const GOLD   = '#D4A843';
-const GOLD2  = '#9A701E';
+const GOLD   = '#8BC34A';
+const GOLD2  = '#6B8E23';
 
 const LOOK_AHEAD_DAYS = 90;
 

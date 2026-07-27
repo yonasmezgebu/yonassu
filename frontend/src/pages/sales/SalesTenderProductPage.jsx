@@ -5,7 +5,7 @@ import { Megaphone, Package, Upload, X, CheckCircle, AlertCircle, Edit3, Trash2,
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
-const inputS = { width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' };
+const inputS = { width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 0, fontSize: 13, boxSizing: 'border-box' };
 
 const Field = ({ label, required, children }) => (
   <div style={{ marginBottom: '1rem' }}>
@@ -17,7 +17,7 @@ const Field = ({ label, required, children }) => (
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
   return (
-    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 10, background: type === 'success' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${type === 'success' ? '#bbf7d0' : '#fecaca'}`, borderRadius: 10, padding: '12px 18px', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', maxWidth: 400 }}>
+    <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 10, background: type === 'success' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${type === 'success' ? '#bbf7d0' : '#fecaca'}`, borderRadius: 0, padding: '12px 18px', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', maxWidth: 400 }}>
       {type === 'success' ? <CheckCircle size={18} color="#16a34a" /> : <AlertCircle size={18} color="#dc2626" />}
       <span style={{ fontSize: 13, color: type === 'success' ? '#166534' : '#991b1b', flex: 1 }}>{message}</span>
       <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}><X size={14} /></button>
@@ -26,7 +26,7 @@ const Toast = ({ message, type, onClose }) => {
 };
 
 const btn = (bg, label, icon, onClick, disabled) => (
-  <button onClick={onClick} disabled={disabled} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: bg, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, opacity: disabled ? 0.6 : 1 }}>
+  <button onClick={onClick} disabled={disabled} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: bg, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 0, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, opacity: disabled ? 0.6 : 1 }}>
     {icon}{label}
   </button>
 );
@@ -38,8 +38,8 @@ const TenderThumbnail = ({ attachments }) => {
     try { images = JSON.parse(attachments).filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f)); } catch(e) {}
   }
   const src = idx < images.length ? `${API_ORIGIN}/uploads/tenders/${images[idx]}` : null;
-  if (!src) return <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={16} color="#cbd5e1" /></div>;
-  return <img src={src} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6 }} onError={() => setIdx(i => i + 1)} />;
+  if (!src) return <div style={{ width: 36, height: 36, borderRadius: 0, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={16} color="#cbd5e1" /></div>;
+  return <img src={src} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 0 }} onError={() => setIdx(i => i + 1)} />;
 };
 
 const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
@@ -281,7 +281,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
       (!tSearch || [t.title, t.reference_number, t.category, t.item_name, t.status].some(f => f && f.toLowerCase().includes(tSearch.toLowerCase())))
     );
     return (
-      <div style={{ background: 'white', borderRadius: 12, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+      <div style={{ background: 'white', borderRadius: 0, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>Manage Tenders</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -296,7 +296,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
               <option value="draft">Draft</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <button onClick={() => { fetchTenders(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
+            <button onClick={() => { fetchTenders(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 0, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
               <RefreshCw size={14} /> Refresh
             </button>
           </div>
@@ -324,7 +324,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
                     <td style={{ padding: '10px 8px', color: '#334155' }}>{parseFloat(t.starting_bid_price).toLocaleString()}</td>
                     <td style={{ padding: '10px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{t.deadline ? new Date(t.deadline).toLocaleDateString() : '—'}</td>
                     <td style={{ padding: '10px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : '#991b1b' }}>{t.status}</span>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : '#991b1b' }}>{t.status}</span>
                     </td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', gap: 4 }}>
@@ -357,7 +357,7 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
             {bidsLoading ? (
               <p style={{ fontSize: 13, color: '#64748b' }}>Loading bids...</p>
             ) : bids.length === 0 ? (
-              <p style={{ fontSize: 13, color: '#94a3b8', padding: '1rem', background: '#f8fafc', borderRadius: 8 }}>No bids received for this tender yet.</p>
+              <p style={{ fontSize: 13, color: '#94a3b8', padding: '1rem', background: '#f8fafc', borderRadius: 0 }}>No bids received for this tender yet.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -392,7 +392,7 @@ SUTANA EMS`)}`;
                         <td style={{ padding: '8px', color: '#475569' }}>{b.quantity_requested}</td>
                         <td style={{ padding: '8px', fontWeight: 600, color: '#0f172a' }}>{parseFloat(b.total_bid_value).toLocaleString()}</td>
                         <td style={{ padding: '8px' }}>
-                          <span style={{ padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 700, textTransform: 'capitalize', background: b.status === 'awarded' ? '#dcfce7' : b.status === 'disqualified' ? '#fee2e2' : '#f1f5f9', color: b.status === 'awarded' ? '#166534' : b.status === 'disqualified' ? '#991b1b' : '#475569' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 10, fontWeight: 700, textTransform: 'capitalize', background: b.status === 'awarded' ? '#dcfce7' : b.status === 'disqualified' ? '#fee2e2' : '#f1f5f9', color: b.status === 'awarded' ? '#166534' : b.status === 'disqualified' ? '#991b1b' : '#475569' }}>
                             {b.status.replace('_', ' ')}
                           </span>
                         </td>
@@ -422,7 +422,7 @@ SUTANA EMS`)}`;
   const renderProductManage = () => {
     const filtered = products.filter(p => !pSearch || [p.name, p.sku, p.category_name].some(f => f && f.toLowerCase().includes(pSearch.toLowerCase())));
     return (
-      <div style={{ background: 'white', borderRadius: 12, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+      <div style={{ background: 'white', borderRadius: 0, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>Manage Retail Products</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -430,7 +430,7 @@ SUTANA EMS`)}`;
               <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input placeholder="Search..." value={pSearch} onChange={e => setPSearch(e.target.value)} style={{ ...inputS, paddingLeft: 30, width: 200, fontSize: 12 }} />
             </div>
-            <button onClick={() => { fetchProducts(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
+            <button onClick={() => { fetchProducts(); }} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 0, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
               <RefreshCw size={14} /> Refresh
             </button>
           </div>
@@ -449,7 +449,7 @@ SUTANA EMS`)}`;
                 {filtered.map(p => (
                   <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '10px 8px' }}>
-                      {p.product_image ? <img src={p.product_image.startsWith('http') ? p.product_image : `${API_ORIGIN}${p.product_image}`} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6 }} /> : <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9' }} />}
+                      {p.product_image ? <img src={p.product_image.startsWith('http') ? p.product_image : `${API_ORIGIN}${p.product_image}`} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 0 }} /> : <div style={{ width: 36, height: 36, borderRadius: 0, background: '#f1f5f9' }} />}
                     </td>
                     <td style={{ padding: '10px 8px', fontWeight: 600, color: '#0f172a', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</td>
                     <td style={{ padding: '10px 8px', color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>{p.sku}</td>
@@ -457,7 +457,7 @@ SUTANA EMS`)}`;
                     <td style={{ padding: '10px 8px', color: '#334155' }}>{parseFloat(p.price || p.selling_price || 0).toLocaleString()}</td>
                     <td style={{ padding: '10px 8px', color: '#334155' }}>{p.stock_quantity ?? '—'}</td>
                     <td style={{ padding: '10px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: p.is_active ? '#dcfce7' : '#fee2e2', color: p.is_active ? '#166534' : '#991b1b' }}>{p.is_active ? 'Active' : 'Inactive'}</span>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, background: p.is_active ? '#dcfce7' : '#fee2e2', color: p.is_active ? '#166534' : '#991b1b' }}>{p.is_active ? 'Active' : 'Inactive'}</span>
                     </td>
                     <td style={{ padding: '10px 8px' }}>
                       <div style={{ display: 'flex', gap: 4 }}>
@@ -502,10 +502,10 @@ SUTANA EMS`)}`;
       )}
 
       {tab === 'tender' && subtab === 'create' && (
-        <form onSubmit={handleTenderSubmit} encType="multipart/form-data" style={{ background: 'white', borderRadius: 12, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+        <form onSubmit={handleTenderSubmit} encType="multipart/form-data" style={{ background: 'white', borderRadius: 0, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 1rem' }}>{editingTender ? 'Edit Tender' : 'Post New Tender for Public Sale'}</h3>
           {editingTender && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', padding: '8px 12px', background: '#f0fdf4', borderRadius: 8, fontSize: 12, color: '#166534' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', padding: '8px 12px', background: '#f0fdf4', borderRadius: 0, fontSize: 12, color: '#166534' }}>
               <CheckCircle size={14} /> Editing: {editingTender.reference_number} — {editingTender.title}
               <button type="button" onClick={resetTenderForm} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#059669', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}>Cancel</button>
             </div>
@@ -538,7 +538,7 @@ SUTANA EMS`)}`;
           </Field>
           <Field label="Attachments (PDF, JPG, PNG — max 5 files)">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => tenderRef.current?.click()} disabled={tenderFiles.length >= 5} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 8, cursor: tenderFiles.length >= 5 ? 'not-allowed' : 'pointer', fontSize: 12, color: tenderFiles.length >= 5 ? '#94a3b8' : '#475569' }}>
+              <button type="button" onClick={() => tenderRef.current?.click()} disabled={tenderFiles.length >= 5} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 0, cursor: tenderFiles.length >= 5 ? 'not-allowed' : 'pointer', fontSize: 12, color: tenderFiles.length >= 5 ? '#94a3b8' : '#475569' }}>
                 <Upload size={14} /> {tenderFiles.length >= 5 ? 'Max files reached' : 'Upload Files'}
               </button>
               <input ref={tenderRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif" onChange={handleTenderFileChange} style={{ display: 'none' }} />
@@ -547,7 +547,7 @@ SUTANA EMS`)}`;
             {tenderPreviews.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                 {tenderPreviews.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 6, padding: '6px 10px', border: '1px solid #e2e8f0', fontSize: 12 }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 0, padding: '6px 10px', border: '1px solid #e2e8f0', fontSize: 12 }}>
                     <span style={{ color: '#374151' }}>{f.name}</span>
                     <button type="button" onClick={() => removeTenderFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex' }}><X size={12} /></button>
                   </div>
@@ -555,7 +555,7 @@ SUTANA EMS`)}`;
               </div>
             )}
           </Field>
-          <button type="submit" disabled={saving} style={{ width: '100%', background: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontSize: 14, opacity: saving ? 0.7 : 1 }}>
+          <button type="submit" disabled={saving} style={{ width: '100%', background: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: 0, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontSize: 14, opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving...' : editingTender ? 'Update Tender' : 'Post Tender'}
           </button>
         </form>
@@ -564,10 +564,10 @@ SUTANA EMS`)}`;
       {tab === 'tender' && subtab === 'manage' && renderTenderManage()}
 
       {tab === 'product' && subtab === 'create' && (
-        <form onSubmit={handleProductSubmit} encType="multipart/form-data" style={{ background: 'white', borderRadius: 12, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+        <form onSubmit={handleProductSubmit} encType="multipart/form-data" style={{ background: 'white', borderRadius: 0, padding: '1.5rem', border: '1px solid #e2e8f0' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 1rem' }}>{editingProduct ? 'Edit Retail Product' : 'Add New Retail Product'}</h3>
           {editingProduct && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', padding: '8px 12px', background: '#f0fdf4', borderRadius: 8, fontSize: 12, color: '#166534' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', padding: '8px 12px', background: '#f0fdf4', borderRadius: 0, fontSize: 12, color: '#166534' }}>
               <CheckCircle size={14} /> Editing: {editingProduct.name} ({editingProduct.sku})
               <button type="button" onClick={resetProductForm} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#059669', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}>Cancel</button>
             </div>
@@ -599,7 +599,7 @@ SUTANA EMS`)}`;
             </Field>
             <Field label="Product Image">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => prodRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
+                <button type="button" onClick={() => prodRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 0, cursor: 'pointer', fontSize: 12, color: '#475569' }}>
                   <Upload size={14} /> {productPreview ? 'Change Image' : 'Upload Image'}
                 </button>
                 <input ref={prodRef} type="file" accept="image/*" onChange={handleProductImageChange} style={{ display: 'none' }} />
@@ -607,8 +607,8 @@ SUTANA EMS`)}`;
               </div>
               {(productPreview || editingProduct?.product_image) && (
                 <div style={{ position: 'relative', display: 'inline-block', marginTop: 8 }}>
-                  <img src={productPreview || (editingProduct?.product_image?.startsWith('http') ? editingProduct.product_image : `${API_ORIGIN}${editingProduct?.product_image}`)} alt="preview" style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                  <button type="button" onClick={() => { setProductImage(null); setProductPreview(null); }} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
+                  <img src={productPreview || (editingProduct?.product_image?.startsWith('http') ? editingProduct.product_image : `${API_ORIGIN}${editingProduct?.product_image}`)} alt="preview" style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 0, border: '1px solid #e2e8f0' }} />
+                  <button type="button" onClick={() => { setProductImage(null); setProductPreview(null); }} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', border: 'none', borderRadius: 0, width: 20, height: 20, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
                 </div>
               )}
             </Field>
@@ -616,7 +616,7 @@ SUTANA EMS`)}`;
           <Field label="Description">
             <textarea style={{ ...inputS, resize: 'vertical' }} rows={2} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} placeholder="Short product description..." />
           </Field>
-          <button type="submit" disabled={saving} style={{ width: '100%', background: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: 8, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontSize: 14, opacity: saving ? 0.7 : 1 }}>
+          <button type="submit" disabled={saving} style={{ width: '100%', background: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: 0, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontSize: 14, opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving...' : editingProduct ? 'Update Product' : 'Add Product'}
           </button>
         </form>

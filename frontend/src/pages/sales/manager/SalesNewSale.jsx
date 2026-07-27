@@ -67,7 +67,7 @@ const SalesNewSale = () => {
       </div>
 
       {error && (
-        <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '24px', fontWeight: '500' }}>
+        <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 0, marginBottom: '24px', fontWeight: '500' }}>
           {error}
         </div>
       )}
@@ -76,7 +76,7 @@ const SalesNewSale = () => {
         
         {/* Left Column: Lines */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 20px 0' }}>Line Items</h2>
             <SalesLineItemEditor lines={lines} setLines={setLines} />
           </div>
@@ -85,7 +85,7 @@ const SalesNewSale = () => {
         {/* Right Column: Details & Summary */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 20px 0' }}>Transaction Details</h2>
             
             <div style={{ marginBottom: '16px' }}>
@@ -93,7 +93,7 @@ const SalesNewSale = () => {
               <select 
                 value={selectedCustomerId} 
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                 required
               >
                 <option value="">Select Customer...</option>
@@ -108,7 +108,7 @@ const SalesNewSale = () => {
               <select 
                 value={paymentType} 
                 onChange={(e) => setPaymentType(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
               >
                 <option value="cash">Cash</option>
                 <option value="credit">Credit</option>
@@ -127,13 +127,13 @@ const SalesNewSale = () => {
                   value={amountReceivedCents ? amountReceivedCents / 100 : ''}
                   onChange={(e) => setAmountReceivedCents(Math.round(parseFloat(e.target.value || 0) * 100))}
                   placeholder="Leave empty for full amount"
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                 />
               </div>
             )}
           </div>
 
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 20px 0' }}>Summary</h2>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '14px', color: '#475569' }}>
@@ -149,7 +149,7 @@ const SalesNewSale = () => {
                   step="0.01"
                   value={discountCents ? discountCents / 100 : ''}
                   onChange={(e) => setDiscountCents(Math.round(parseFloat(e.target.value || 0) * 100))}
-                  style={{ width: '100px', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}
+                  style={{ width: '100px', padding: '6px', borderRadius: 0, border: '1px solid #cbd5e1', textAlign: 'right' }}
               />
             </div>
 
@@ -168,7 +168,7 @@ const SalesNewSale = () => {
 
             <button 
               type="submit"
-              style={{ width: '100%', padding: '14px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '16px', cursor: 'pointer', marginTop: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+              style={{ width: '100%', padding: '14px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', fontSize: '16px', cursor: 'pointer', marginTop: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
             >
               Complete Sale
             </button>

@@ -37,11 +37,18 @@ apiClient.interceptors.response.use(
       return Promise.reject(new Error('Cannot connect to server. Please check your connection.'));
     }
     if (error.response.status === 401 && !window.location.pathname.includes('/login')) {
-      // Only treat exact '/' or specific paths as public, not everything that starts with '/'
-      const publicPaths = ['/services/', '/pharmacy-portal', '/health', '/about', '/contact'];
-      const isPublicPage = window.location.pathname === '/' || publicPaths.some(p => window.location.pathname.startsWith(p));
-      if (isPublicPage) {
-        // Silently fail — public page, user is not logged in, that's ok
+      // Public pages where 401 is expected (e.g. checking cart while not logged in)
+      // Only suppress for pure public-only API URLs, not the full page path
+      const requestUrl = error.config?.url || '';
+      const isPublicApiCall = (
+        requestUrl.includes('/retail/products') ||
+        requestUrl.includes('/retail/categories') ||
+        requestUrl.includes('/retail/track-order') ||
+        requestUrl.includes('/pharmacy/products') ||
+        requestUrl.includes('/pharmacy/categories')
+      );
+      if (isPublicApiCall) {
+        // Silently fail — public API, user not logged in, that's fine
         return Promise.reject(new Error('Unauthenticated'));
       }
       localStorage.removeItem('token');

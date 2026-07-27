@@ -36,7 +36,7 @@ const SalesStatusBadge = ({ status }) => {
       color: text,
       border: `1px solid ${border}`,
       padding: '2px 8px',
-      borderRadius: '9999px',
+      borderRadius: 0,
       fontSize: '0.75rem',
       fontWeight: '600',
       textTransform: 'capitalize',

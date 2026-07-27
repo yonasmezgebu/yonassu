@@ -45,7 +45,7 @@ const SalesHistory = () => {
       label: 'Actions',
       field: 'id',
       render: () => (
-        <button style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+        <button style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 0, fontSize: '12px', cursor: 'pointer' }}>
           View Receipt
         </button>
       )

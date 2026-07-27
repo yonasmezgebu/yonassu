@@ -6,7 +6,7 @@ import {
 import salesService from '../../services/salesService';
 import apiClient from '../../services/apiClient';
 
-const BG  = '#D2CEC3'; // Requested by user
+const BG  = '#F5F5F5'; // Requested by user
 const C   = '#795548'; // Rich Mocha
 const CD  = '#4E342E'; // Deep Espresso
 const CDX = '#3E2723'; // Darkest Brown
@@ -19,7 +19,7 @@ const CSS = `
   @keyframes laserSweep { 0%{left:-150%} 100%{left:150%} }
   @keyframes colorBlink { 
     0%   { color: #E07B54; filter: drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform: scale(1) rotate(0deg); } 
-    25%  { color: #D4A843; filter: drop-shadow(0 0 10px rgba(212,168,67,0.8)); transform: scale(1.15) rotate(10deg); } 
+    25%  { color: #8BC34A; filter: drop-shadow(0 0 10px rgba(212,168,67,0.8)); transform: scale(1.15) rotate(10deg); } 
     50%  { color: #5BAD8A; filter: drop-shadow(0 0 14px rgba(91,173,138,1)); transform: scale(1.3) rotate(-10deg); } 
     75%  { color: #4FA3C3; filter: drop-shadow(0 0 10px rgba(79,163,195,0.8)); transform: scale(1.15) rotate(5deg); } 
     100% { color: #E07B54; filter: drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform: scale(1) rotate(0deg); } 
@@ -124,7 +124,7 @@ const CSS = `
   .ceo-branch-row:hover { background: rgba(90,111,154,.04); }
 
   .ceo-badge {
-    padding: 6px 14px; border-radius: 99px; font-weight: 900; font-size: 11px;
+    padding: 6px 14px; border-radius: 0; font-weight: 900; font-size: 11px;
     text-transform: uppercase; letter-spacing: .06em; display: inline-flex; align-items: center; gap: 6px;
     box-shadow: 0 3px 0 rgba(0,0,0,.1), inset 0 1px 0 rgba(255,255,255,.5);
   }
@@ -251,11 +251,11 @@ export default function SalesCEOReport() {
           <input type="date" value={date} onChange={e=>setDate(e.target.value)}
             style={{padding:'10px 14px', border:`2px solid ${C}`, background:'white',
               fontWeight:800, color:'#0d2244', outline:'none', fontFamily:'Inter', fontSize:14,
-              boxShadow:`0 4px 0 ${CD},0 6px 14px rgba(0,40,80,.1)`, borderRadius:0}}/>
+              boxShadow:`0 4px 0 ${CD},0 6px 14px rgba(0,40,80,.1)`, borderRadius: 0}}/>
           <button onClick={loadData} disabled={loading}
             style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
               padding:'10px 20px', fontWeight:900, fontSize:13, cursor:loading?'not-allowed':'pointer',
-              letterSpacing:'.08em', textTransform:'uppercase', borderRadius:12,
+              letterSpacing:'.08em', textTransform:'uppercase', borderRadius: 0,
               background:`linear-gradient(135deg, #fff, ${BG})`, color:CD, border:`2px solid ${C}`,
               boxShadow:`0 4px 0 ${CD}, 0 6px 12px rgba(69,88,128,.15), inset 0 2px 0 rgba(255,255,255,1)` }}>
             <RefreshCw size={15} style={{animation:loading?'spin 1s linear infinite':'none'}}/> Refresh
@@ -315,11 +315,11 @@ export default function SalesCEOReport() {
                   <div style={{ color:C, opacity:.65 }}><CreditCard size={24}/></div>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div style={{ background:'rgba(16,185,129,.1)', padding:'10px 14px', border:'1px solid rgba(16,185,129,.2)', borderRadius:8 }}>
+                  <div style={{ background:'rgba(16,185,129,.1)', padding:'10px 14px', border:'1px solid rgba(16,185,129,.2)', borderRadius: 0 }}>
                     <div style={{ fontSize:10, fontWeight:800, color:'#047857', marginBottom:4 }}>CASH COLLECTED</div>
                     <div style={{ fontSize:16, fontWeight:900, color:'#064e3b' }}>{combinedCash.toLocaleString()}</div>
                   </div>
-                  <div style={{ background:'rgba(59,130,246,.1)', padding:'10px 14px', border:'1px solid rgba(59,130,246,.2)', borderRadius:8 }}>
+                  <div style={{ background:'rgba(59,130,246,.1)', padding:'10px 14px', border:'1px solid rgba(59,130,246,.2)', borderRadius: 0 }}>
                     <div style={{ fontSize:10, fontWeight:800, color:'#1d4ed8', marginBottom:4 }}>BANK / MOBILE</div>
                     <div style={{ fontSize:16, fontWeight:900, color:'#1e3a8a' }}>{combinedBank.toLocaleString()}</div>
                   </div>

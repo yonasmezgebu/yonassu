@@ -65,7 +65,7 @@ const SalesCreditCustomers = () => {
               backgroundColor: row.outstanding_cents === 0 ? '#f1f5f9' : '#3b82f6', 
               color: row.outstanding_cents === 0 ? '#94a3b8' : 'white', 
               border: 'none', 
-              borderRadius: '4px', 
+              borderRadius: 0, 
               fontSize: '12px', 
               cursor: row.outstanding_cents === 0 ? 'not-allowed' : 'pointer' 
           }}

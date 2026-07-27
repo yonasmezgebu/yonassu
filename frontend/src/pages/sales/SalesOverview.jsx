@@ -11,7 +11,7 @@ import salesService from '../../services/salesService';
 const fmt = (n) => Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
-const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#D4A843', '#4A90C4', '#58B09C'];
+const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#8BC34A', '#4A90C4', '#58B09C'];
 
 const CategoryBar = ({ value, max, color }) => (
   <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
@@ -75,7 +75,7 @@ const SalesOverview = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, background: '#E0EFF3', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ padding: 40, background: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <style>{`@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.9)} }`}</style>
         <Zap size={48} style={{ color: '#4FA3C3', marginBottom: 20, animation: 'pulse 1.5s ease-in-out infinite' }} />
         <div style={{ fontSize: 20, color: '#0d3349', fontWeight: 800 }}>Loading Dashboard...</div>
@@ -85,10 +85,10 @@ const SalesOverview = () => {
 
   if (error) {
     return (
-      <div style={{ padding: 40, background: '#E0EFF3', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <div style={{ padding: 40, background: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <AlertTriangle size={56} color="#ef4444" />
         <div style={{ fontSize: 20, color: '#dc2626', fontWeight: 800 }}>{error}</div>
-        <button onClick={() => fetchData(true)} style={{ padding: '14px 32px', background: '#0d3349', color: 'white', border: 'none', borderRadius: 16, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
+        <button onClick={() => fetchData(true)} style={{ padding: '14px 32px', background: '#0d3349', color: 'white', border: 'none', borderRadius: 0, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
           Try Again
         </button>
       </div>
@@ -105,26 +105,26 @@ const SalesOverview = () => {
   const maxValue = Math.max(...catBreakdown.map(c => Number(c.total_value || 0)), 1);
 
   return (
-    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E0EFF3', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#F5F5F5', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
         @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
         @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-        @keyframes colorBlink { 0% { color:#E07B54; filter:drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform:scale(1) rotate(0deg); } 25% { color:#D4A843; filter:drop-shadow(0 0 10px rgba(212,168,67,0.8)); transform:scale(1.15) rotate(10deg); } 50% { color:#5BAD8A; filter:drop-shadow(0 0 14px rgba(91,173,138,1)); transform:scale(1.3) rotate(-10deg); } 75% { color:#4FA3C3; filter:drop-shadow(0 0 10px rgba(79,163,195,0.8)); transform:scale(1.15) rotate(5deg); } 100% { color:#E07B54; filter:drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform:scale(1) rotate(0deg); } }
+        @keyframes colorBlink { 0% { color:#E07B54; filter:drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px rgba(212,168,67,0.8)); transform:scale(1.15) rotate(10deg); } 50% { color:#5BAD8A; filter:drop-shadow(0 0 14px rgba(91,173,138,1)); transform:scale(1.3) rotate(-10deg); } 75% { color:#4FA3C3; filter:drop-shadow(0 0 10px rgba(79,163,195,0.8)); transform:scale(1.15) rotate(5deg); } 100% { color:#E07B54; filter:drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform:scale(1) rotate(0deg); } }
         .blink-star { animation: colorBlink 2.5s infinite ease-in-out; }
         
         /* 3D Header Styles */
         .artistic-3d-title { font-size:3rem; font-weight:900; color:#0d3349; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #4FA3C3, 5px 5px 0 #4FA3C3, 6px 6px 0 #2d7da0, 7px 7px 0 #2d7da0, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
         .artistic-3d-subtitle { font-size:1rem; color:#4A7A9B; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-        .btn-3d { background:linear-gradient(135deg, #ffffff, #e0eff3); color:#0d3349; border:2px solid #4FA3C3; border-radius:14px; padding:10px 24px; font-weight:900; font-size:14px; cursor:pointer; box-shadow:0px 5px 0px #4FA3C3, 0px 8px 15px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); transition:all 0.1s cubic-bezier(0.4, 0, 0.2, 1); display:inline-flex; align-items:center; justify-content:center; gap:8px; text-transform:uppercase; letter-spacing:1.5px; margin:0; }
+        .btn-3d { background:linear-gradient(135deg, #ffffff, #F5F5F5); color:#0d3349; border:2px solid #4FA3C3; border-radius: 0; padding:10px 24px; font-weight:900; font-size:14px; cursor:pointer; box-shadow:0px 5px 0px #4FA3C3, 0px 8px 15px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); transition:all 0.1s cubic-bezier(0.4, 0, 0.2, 1); display:inline-flex; align-items:center; justify-content:center; gap:8px; text-transform:uppercase; letter-spacing:1.5px; margin:0; }
         .btn-3d:active { transform:translateY(6px); box-shadow:0px 0px 0px #4FA3C3, 0px 2px 5px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); }
         .btn-3d:hover { filter:brightness(1.05); }
         .btn-text-3d { text-shadow:1px 1px 0px rgba(255,255,255,0.8); }
 
         .d-card { 
           --hover-color: #4FA3C3;
-          position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
+          position:relative; overflow:hidden; background-color:white; border-radius: 0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
           background-image:
             linear-gradient(to right, var(--hover-color), var(--hover-color)),
             linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
@@ -139,7 +139,7 @@ const SalesOverview = () => {
         .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
         .d-card-no-hover { 
           --hover-color: #4FA3C3;
-          position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
+          position:relative; overflow:hidden; background:white; border-radius: 0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
           background-image:
             linear-gradient(to right, var(--hover-color), var(--hover-color)),
             linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
@@ -152,26 +152,26 @@ const SalesOverview = () => {
         .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
         .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
         .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-        .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(224,239,243,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
+        .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(245,245,245,0.5); border-radius: 0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
         .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
         .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
         .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-        .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px 120px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
+        .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px 120px; gap:12px; align-items:center; padding:11px 14px; border-radius: 0; transition:background 0.2s; cursor:pointer; }
         .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
         .cat-row:hover { background:rgba(224,239,243,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
         .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-        .grand-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px 120px; gap:12px; align-items:center; padding:14px; border-radius:0; background:rgba(79,163,195,0.12); border:1.5px solid rgba(79,163,195,0.3); margin-top:8px; cursor:pointer; transition:all 0.3s; }
+        .grand-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px 120px; gap:12px; align-items:center; padding:14px; border-radius: 0; background:rgba(79,163,195,0.12); border:1.5px solid rgba(79,163,195,0.3); margin-top:8px; cursor:pointer; transition:all 0.3s; }
         .grand-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(79,163,195,0.4), rgba(79,163,195,0.4), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
         .grand-row:hover { background:rgba(79,163,195,0.25); box-shadow:0 4px 12px rgba(0,80,120,0.1); }
         .grand-row:hover::before { animation: laserSweep 0.7s ease-in-out; }
-        .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(224,239,243,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
+        .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius: 0; background:rgba(224,239,243,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
         .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(212,168,67,0.3), rgba(212,168,67,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
         .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(212,168,67,0.4); }
         .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
         .qa-card { 
           --hover-color: #20C997;
           --base-top: transparent;
-          position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
+          position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius: 0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
           background-image:
             linear-gradient(to right, var(--hover-color), var(--hover-color)),
             linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
@@ -213,7 +213,7 @@ const SalesOverview = () => {
         {/* Revenue Hero */}
         <div className="d-card" onClick={() => navigate('/sales-list')}
           style={{ background: 'linear-gradient(135deg,#4FA3C3 0%,#2d7da0 100%)', color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: 0, background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
             <TrendingUp size={30} color="white" />
           </div>
@@ -304,7 +304,7 @@ const SalesOverview = () => {
           {/* Top Selling */}
           <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <Star size={18} color="#D4A843" />
+              <Star size={18} color="#8BC34A" />
               <span style={{ fontSize: 15, fontWeight: 900, color: '#0d3349' }}>Top Sales Today</span>
             </div>
             {topSelling.length === 0 ? (

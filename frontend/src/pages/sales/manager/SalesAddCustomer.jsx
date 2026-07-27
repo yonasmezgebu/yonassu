@@ -37,7 +37,7 @@ const SalesAddCustomer = () => {
         <p style={{ color: '#64748b', margin: 0 }}>Register a new customer profile.</p>
       </div>
 
-      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', maxWidth: '800px' }}>
+      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0', maxWidth: '800px' }}>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
           <div style={{ gridColumn: '1 / -1' }}>
@@ -88,8 +88,8 @@ const SalesAddCustomer = () => {
           )}
 
           <div style={{ gridColumn: '1 / -1', marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <button type="button" onClick={() => navigate('/sales/manager/customers')} style={{ padding: '10px 20px', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}>Create Customer</button>
+            <button type="button" onClick={() => navigate('/sales/manager/customers')} style={{ padding: '10px 20px', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', cursor: 'pointer' }}>Create Customer</button>
           </div>
 
         </form>
@@ -99,6 +99,6 @@ const SalesAddCustomer = () => {
 };
 
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' };
-const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' };
 
 export default SalesAddCustomer;

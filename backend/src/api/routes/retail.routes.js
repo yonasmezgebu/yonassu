@@ -63,4 +63,19 @@ router.post('/finance/void', ...managerAuth, retailController.approveVoid);
 // Admin: categories
 router.post('/categories', ...managerAuth, retailController.createCategory);
 
+
+
+// --- New Retail POS routes ---
+router.post('/checkout-direct', authenticate, authorizeRoles(cashierRoles), retailController.checkoutDirect);
+router.get('/pos/sales', authenticate, authorizeRoles(cashierRoles), retailController.getRetailSales);
+router.post('/pos/sales/submit-daily', authenticate, authorizeRoles(cashierRoles), retailController.submitDailyRetail);
+router.get('/pos/submission/:ref', authenticate, authorizeRoles(cashierRoles), retailController.getSubmissionDetails);
+router.get('/pos/audit-trail', authenticate, authorizeRoles(cashierRoles), retailController.getRetailAuditTrail);
+router.get('/pos/orders/pending', authenticate, authorizeRoles(cashierRoles), retailController.getPendingRetailOrders);
+
+
+router.patch('/orders/:id/status', authenticate, authorizeRoles(cashierRoles), retailController.updateOrderStatus);
+
+
+
 module.exports = router;

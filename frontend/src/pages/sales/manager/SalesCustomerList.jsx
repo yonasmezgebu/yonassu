@@ -23,7 +23,7 @@ const SalesCustomerList = () => {
       sortable: true,
       render: (row) => (
         <span style={{
-          padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: '600',
+          padding: '2px 8px', borderRadius: 0, fontSize: '12px', fontWeight: '600',
           backgroundColor: row.type === 'walk_in' ? '#f1f5f9' : row.type === 'credit' ? '#dbeafe' : '#fef3c7',
           color: row.type === 'walk_in' ? '#475569' : row.type === 'credit' ? '#1e40af' : '#92400e',
           textTransform: 'capitalize'
@@ -49,7 +49,7 @@ const SalesCustomerList = () => {
         </div>
         <button 
           onClick={() => navigate('/sales/manager/customers/new')}
-          style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+          style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', cursor: 'pointer' }}
         >
           + Add Customer
         </button>

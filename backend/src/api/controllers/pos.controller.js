@@ -521,7 +521,10 @@ exports.getSalesHistory = catchAsync(async (req, res) => {
       'ss.status_name as status',
       'u.full_name as cashier_name',
       'pm.name as payment_method_name'
-    );
+    )
+    .where(function() {
+      this.where('ps.is_submitted', false).orWhereNull('ps.is_submitted');
+    });
   if (startDate && endDate) {
     query = query.whereBetween('ps.sale_date', [startDate, endDate]);
   }
@@ -775,15 +778,21 @@ exports.getSaleById = catchAsync(async (req, res) => {
       'ss.status_name as status_name',
       'pm.name as payment_method_name'
     )
-    .where('ps.id', saleId)
+    .where(function() {
+      if (isNaN(saleId)) {
+        this.where('ps.invoice_number', saleId);
+      } else {
+        this.where('ps.id', saleId);
+      }
+    })
     .first();
   if (!sale) {
     throw new AppError('Sale not found', 404);
   }
   const items = await db('pos_items as pi')
-    .leftJoin('products as p', 'pi.product_id', 'p.id')
-    .select('pi.*', db.raw('COALESCE(p.name, CONCAT("Product #", pi.product_id)) as product_name'), 'p.sku')
-    .where('pi.sale_id', saleId);
+    .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
+    .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'), 'p.sku')
+    .where('pi.sale_id', sale.id);
   res.json({
     status: 'success',
     data: { sale, items }
@@ -800,15 +809,21 @@ exports.getReceipt = catchAsync(async (req, res) => {
       'c.phone as customer_phone',
       'u.full_name as cashier_name'
     )
-    .where('ps.id', saleId)
+    .where(function() {
+      if (isNaN(saleId)) {
+        this.where('ps.invoice_number', saleId);
+      } else {
+        this.where('ps.id', saleId);
+      }
+    })
     .first();
   if (!sale) {
     throw new AppError('Sale not found', 404);
   }
   const items = await db('pos_items as pi')
-    .leftJoin('products as p', 'pi.product_id', 'p.id')
-    .select('pi.*', db.raw('COALESCE(p.name, CONCAT("Product #", pi.product_id)) as product_name'))
-    .where('pi.sale_id', saleId);
+    .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
+    .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'))
+    .where('pi.sale_id', sale.id);
   const paymentMethod = await db('payment_methods').where('id', sale.payment_method_id).select('name').first();
   res.json({
     status: 'success',
@@ -841,7 +856,8 @@ exports.voidSale = catchAsync(async (req, res) => {
   if (!sale) {
     throw new AppError('Sale not found', 404);
   }
-  if (sale.status !== 'Completed') {
+  const completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
+  if (sale.status_id !== completedStatus.id) {
     throw new AppError('Sale cannot be voided in its current status', 400);
   }
   const voidedStatus = await db('sale_statuses').where('status_code', 'voided').first();
@@ -877,7 +893,7 @@ exports.voidSale = catchAsync(async (req, res) => {
           created_at: db.fn.now()
         });
       } else {
-        await trx('products').where('id', item.product_id).increment('stock_quantity', item.quantity);
+        await trx('retail_products').where('id', item.product_id).increment('stock_quantity', item.quantity);
       }
     }
   });
@@ -2073,3 +2089,192 @@ exports.exportAuditExcel = catchAsync(async (req, res) => {
   await workbook.xlsx.write(res);
   res.end();
 });
+const { transaction: dbTransaction } = require('../../config/database');
+exports.getAuditTrail = catchAsync(async (req, res) => {
+  // Get all audit trail entries with full sale info per transaction
+  const trail = await db('pos_audit_trail as at')
+    .leftJoin('users as u', 'at.cashier_id', 'u.id')
+    .leftJoin('pos_sales as ps', 'at.sale_id', 'ps.id')
+    .leftJoin('payment_methods as pm', 'ps.payment_method_id', 'pm.id')
+    .leftJoin('sale_statuses as ss', 'ps.status_id', 'ss.id')
+    .select(
+      'at.*',
+      'u.full_name as cashier_name',
+      'ps.invoice_number',
+      'ps.total_amount as sale_total',
+      'ps.sale_type',
+      'ps.payment_reference',
+      'ps.notes as payment_notes',
+      'pm.name as payment_method_name',
+      'ss.status_name'
+    )
+    .orderBy('at.created_at', 'desc')
+    .limit(200);
+
+  // For each audit row that has a sale_id, fetch its items
+  const enriched = await Promise.all(trail.map(async (t) => {
+    let items = [];
+    if (t.sale_id) {
+      items = await db('pos_items as pi')
+        .leftJoin('retail_products as p', 'pi.product_id', 'p.id')
+        .select('pi.*', db.raw('COALESCE(p.name, pi.source, CONCAT("Product #", pi.product_id)) as product_name'))
+        .where('pi.sale_id', t.sale_id);
+    }
+    return { ...t, items };
+  }));
+
+  res.json({ status: 'success', data: enriched });
+});
+
+exports.submitDaily = catchAsync(async (req, res) => {
+  const unsubmitted = await db('pos_sales')
+    .where(function() {
+      this.where('is_submitted', false).orWhereNull('is_submitted');
+    });
+
+  if (unsubmitted.length === 0) {
+    return res.status(400).json({ status: 'error', message: 'No pending sales to submit' });
+  }
+
+  const totalTransactions = unsubmitted.length;
+  const totalAmount = unsubmitted.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
+
+  let cashierId = req.user ? req.user.id : (unsubmitted[0].cashier_id || 1);
+  let cashierName = req.user ? (req.user.full_name || req.user.fullName || 'Retail Staff') : 'Retail Staff';
+
+  await dbTransaction(async (trx) => {
+    // Insert one audit row per sale transaction for full traceability
+    for (const sale of unsubmitted) {
+      await trx('pos_audit_trail').insert({
+        cashier_id: cashierId,
+        sale_id: sale.id,
+        action: 'DAILY_SUBMIT',
+        recipient: sale.invoice_number || `Sale #${sale.id}`,
+        amount: parseFloat(sale.total_amount || 0),
+        created_at: db.fn.now()
+      });
+    }
+
+    // Mark sales as submitted
+    await trx('pos_sales')
+      .where(function() {
+        this.where('is_submitted', false).orWhereNull('is_submitted');
+      })
+      .update({ is_submitted: true });
+
+    // Send to Finance Live Income for Receivables Book
+    const refNo = `RETAIL-${Date.now().toString().slice(-6)}`;
+    await trx('finance_income_submissions').insert({
+      department: 'Retail Sales',
+      submitted_by: cashierName,
+      amount: totalAmount,
+      reference_no: refNo,
+      description: `Daily Retail Sales - ${totalTransactions} transactions`,
+      status: 'Pending',
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+  });
+
+  res.json({
+    status: 'success',
+    data: { message: 'Daily sales submitted successfully', totalTransactions, totalAmount }
+  });
+});
+
+
+exports.checkoutRetail = catchAsync(async (req, res) => {
+  const { sale_type, items, payment } = req.body;
+  if (!items || items.length === 0) throw new AppError('Cart is empty', 400);
+
+  let subtotal = 0;
+  for (const item of items) {
+    subtotal += (item.quantity || 0) * (item.unit_price || 0);
+  }
+
+  const invoiceNumber = await generateInvoiceNumber();
+  let paymentMethodId = 1; // Default Cash
+  if (payment?.method === 'BANK_TRANSFER') paymentMethodId = 3;
+  if (payment?.method === 'TELBIR') paymentMethodId = 4;
+
+  let completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
+  if (!completedStatus) {
+    const [id] = await db('sale_statuses').insert({ status_code: 'completed', status_name: 'Completed' });
+    completedStatus = { id };
+  }
+
+  // Build a payment reference that includes transaction_id for bank/telebirr
+  const paymentRef = payment?.transaction_id
+    || payment?.recipient_phone
+    || payment?.account_number
+    || payment?.telbir_number
+    || null;
+
+  // Build notes with recipient/sender name for audit visibility
+  const paymentNotes = [
+    payment?.recipient_name ? `Recipient: ${payment.recipient_name}` : null,
+    payment?.bank_name ? `Bank: ${payment.bank_name}` : null,
+    payment?.account_holder ? `Holder: ${payment.account_holder}` : null,
+    payment?.transaction_id ? `TxnID: ${payment.transaction_id}` : null,
+    payment?.telbir_number ? `Telebirr: ${payment.telbir_number}` : null,
+  ].filter(Boolean).join(' | ');
+
+  const result = await dbTransaction(async (trx) => {
+    const [saleId] = await trx('pos_sales').insert({
+      invoice_number: invoiceNumber,
+      subtotal: subtotal,
+      total_amount: subtotal,
+      payment_method_id: paymentMethodId,
+      amount_paid: payment?.amount || subtotal,
+      cashier_id: req.user.id,
+      sale_date: db.fn.now(),
+      status_id: completedStatus.id,
+      sale_type: (sale_type || 'walk_in').toLowerCase().replace('-', '_'),
+      payment_reference: paymentRef,
+      notes: paymentNotes || null,
+      is_submitted: false
+    });
+
+    for (const item of items) {
+      if (!item.product_id && !item.product_name) continue;
+      if (!item.product_id) {
+        // Manually typed item — store in notes only, no DB item row since product_id is NOT NULL
+        continue;
+      }
+      const itemSubtotal = item.quantity * item.unit_price;
+      await trx('pos_items').insert({
+        sale_id: saleId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: itemSubtotal,
+        total: itemSubtotal,
+        source: item.product_name || 'retail'
+      });
+      // Deduct inventory
+      await trx('retail_products').where('id', item.product_id).decrement('stock_quantity', item.quantity);
+    }
+    return { id: saleId, invoice_number: invoiceNumber };
+  });
+
+  res.status(201).json({ status: 'success', data: result });
+});
+
+
+exports.getPendingRetailOrders = catchAsync(async (req, res) => {
+  const orders = await db('retail_orders as ro')
+    .leftJoin('users as c', 'ro.customer_id', 'c.id')
+    .select('ro.*', 'c.full_name as customer_name', 'c.phone as customer_phone')
+    .whereIn('ro.status', ['PROCESSING', 'PENDING'])
+    .orderBy('ro.created_at', 'desc');
+
+  for (const order of orders) {
+    order.items = await db('retail_order_items as roi')
+      .join('retail_products as p', 'roi.product_id', 'p.id')
+      .select('roi.*', 'p.name as product_name')
+      .where('roi.order_id', order.id);
+  }
+
+  res.json({ status: 'success', data: orders });
+});
+

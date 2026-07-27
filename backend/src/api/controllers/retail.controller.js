@@ -98,10 +98,15 @@ exports.addToCart = catchAsync(async (req, res) => {
   const existing = await db('retail_cart_items').where({ user_id: req.user.id, product_id }).first();
   if (existing) {
     const newQty = existing.quantity + parseInt(quantity);
-    if (newQty > product.stock_quantity) throw new AppError(`Only ${product.stock_quantity} available`, 400);
+    // Only enforce stock limit when stock_quantity is actually tracked (not null)
+    if (product.stock_quantity !== null && product.stock_quantity !== undefined && newQty > product.stock_quantity) {
+      throw new AppError(`Only ${product.stock_quantity} in stock`, 400);
+    }
     await db('retail_cart_items').where({ id: existing.id }).update({ quantity: newQty });
   } else {
-    if (parseInt(quantity) > product.stock_quantity) throw new AppError(`Only ${product.stock_quantity} available`, 400);
+    if (product.stock_quantity !== null && product.stock_quantity !== undefined && parseInt(quantity) > product.stock_quantity) {
+      throw new AppError(`Only ${product.stock_quantity} in stock`, 400);
+    }
     await db('retail_cart_items').insert({ user_id: req.user.id, product_id, quantity: parseInt(quantity) });
   }
   const items = await getCartForUser(req.user.id);
@@ -129,9 +134,15 @@ exports.clearCart = catchAsync(async (req, res) => {
 });
 
 exports.placeOrder = catchAsync(async (req, res) => {
-  const { delivery_type, delivery_address, delivery_fee = 0, notes } = req.body;
+  const { delivery_type, delivery_address, delivery_fee = 0, notes,
+          customer_name, customer_phone, customer_email } = req.body;
   const cartItems = await getCartForUser(req.user.id);
   if (cartItems.length === 0) throw new AppError('Cart is empty', 400);
+
+  // Resolve customer info: prefer form fields, fall back to user profile
+  const resolvedName  = customer_name  || req.user.full_name || req.user.fullName || null;
+  const resolvedPhone = customer_phone || req.user.phone     || null;
+  const resolvedEmail = customer_email || req.user.email     || null;
 
   const subtotal = cartItems.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
   const tax = subtotal * 0.15; // 15% VAT
@@ -139,11 +150,17 @@ exports.placeOrder = catchAsync(async (req, res) => {
 
   const result = await transaction(async (trx) => {
     for (const item of cartItems) {
-      const updated = await trx('retail_products')
-        .where({ id: item.product_id })
-        .where('stock_quantity', '>=', item.quantity)
-        .decrement('stock_quantity', item.quantity);
-      if (!updated) throw new AppError(`Insufficient stock for "${item.name}"`, 400);
+      // Check if this product tracks stock (stock_quantity IS NOT NULL)
+      const product = await trx('retail_products').where({ id: item.product_id }).first();
+      if (product && product.stock_quantity !== null && product.stock_quantity !== undefined) {
+        if (product.stock_quantity < item.quantity) {
+          throw new AppError(`Insufficient stock for "${item.name}". Available: ${product.stock_quantity}`, 400);
+        }
+        await trx('retail_products')
+          .where({ id: item.product_id })
+          .decrement('stock_quantity', item.quantity);
+      }
+      // If stock_quantity is NULL, treat as unlimited — no deduction needed
     }
 
     const invoice_number = await generateOrderNumber('RET');
@@ -154,6 +171,9 @@ exports.placeOrder = catchAsync(async (req, res) => {
       delivery_type: delivery_type || 'pickup',
       delivery_address: delivery_address || null,
       notes: notes || null,
+      customer_name:  resolvedName,
+      customer_phone: resolvedPhone,
+      customer_email: resolvedEmail,
       created_at: db.fn.now(), updated_at: db.fn.now()
     });
 
@@ -538,3 +558,149 @@ exports.createCategory = catchAsync(async (req, res) => {
   const cat = await db('retail_categories').where({ id }).first();
   res.status(201).json({ status: 'success', data: cat });
 });
+
+
+exports.checkoutDirect = catchAsync(async (req, res) => {
+  const { sale_type, subtotal, discount, total_amount, payment_method, customer_id, received_by, sender_name, sender_phone, transaction_id, items } = req.body;
+  if (!items || !items.length) throw new AppError('Cart is empty', 400);
+
+  // Generate unique sale number from retail_transactions (NOT printing_orders)
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const prefix = 'RET';
+  const lastSale = await db('retail_transactions')
+    .where('invoice_number', 'like', `${prefix}-${dateStr}-%`)
+    .orderBy('invoice_number', 'desc')
+    .first();
+  let counter = 1;
+  if (lastSale) {
+    const parts = lastSale.invoice_number.split('-');
+    const lastSeq = parseInt(parts[parts.length - 1]);
+    if (!isNaN(lastSeq)) counter = lastSeq + 1;
+  }
+  const sale_no = `${prefix}-${dateStr}-${counter.toString().padStart(4, '0')}`;
+
+  await db.transaction(async (trx) => {
+    const [transactionId] = await trx('retail_transactions').insert({
+      invoice_number: sale_no, shift_id: null, sale_type: sale_type || 'WALK-IN', subtotal, discount_amount: discount || 0, total_amount, payment_method,
+      customer_phone: sender_phone, received_by, sender_name, sender_phone, transaction_id, is_submitted: false
+    });
+
+    for (const item of items) {
+      await trx('retail_transaction_items').insert({
+        transaction_id: transactionId, product_id: item.product_id, quantity: item.quantity,
+        unit_price: item.unit_price, line_total: item.line_total
+      });
+      await trx('retail_products').where({ id: item.product_id }).decrement('stock_quantity', item.quantity);
+    }
+  });
+
+  res.status(201).json({ status: 'success', data: { sale_no } });
+});
+
+exports.getRetailSales = catchAsync(async (req, res) => {
+  const sales = await db('retail_transactions').orderBy('created_at', 'desc').limit(100);
+  res.json({ status: 'success', data: sales });
+});
+
+exports.getSubmissionDetails = catchAsync(async (req, res) => {
+  const { ref } = req.params;
+  const transactions = await db('retail_transactions').where({ submission_ref: ref }).orderBy('created_at', 'asc');
+  
+  // also fetch items
+  for(let t of transactions) {
+    t.items = await db('retail_transaction_items as rti')
+      .join('retail_products as p', 'rti.product_id', 'p.id')
+      .where('rti.transaction_id', t.id)
+      .select('p.name', 'rti.quantity', 'rti.unit_price', 'rti.line_total');
+  }
+
+  res.json({ status: 'success', data: transactions });
+});
+
+exports.submitDailyRetail = catchAsync(async (req, res) => {
+  // Fetch ALL unsubmitted retail transactions (both WALK-IN and ONLINE)
+  const unsubmitted = await db('retail_transactions').where({ is_submitted: false });
+  if (unsubmitted.length === 0) throw new AppError('No unsubmitted retail sales to submit', 400);
+
+  const totalAmount = unsubmitted.reduce((sum, s) => sum + Number(s.total_amount), 0);
+  const cashierName = req.user.full_name || req.user.name || req.user.email || 'Retail Cashier';
+  const dateStr = new Date().toLocaleDateString('en-GB');
+  const sub_no = 'RET-SUB-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Date.now().toString().slice(-4);
+
+  await db.transaction(async (trx) => {
+    // 1. Write audit trail entry
+    await trx('retail_audit_trail').insert({
+      cashier_id: req.user.id,
+      action: 'Submitted to Finance',
+      recipient: 'Finance Dept',
+      amount: totalAmount,
+      notes: `${unsubmitted.length} transaction(s) — ${dateStr} — Ref: ${sub_no}`
+    });
+
+    // 2. Submit to Finance Live Income (shared table, Retail dept)
+    await trx('finance_income_submissions').insert({
+      reference_no: sub_no,
+      department: 'Retail',
+      submitted_by: cashierName,
+      amount: totalAmount,
+      status: 'Pending',
+      description: `Retail daily sales submission — ${unsubmitted.length} transaction(s) on ${dateStr}`
+    });
+
+    // 3. Mark all as submitted and set submission_ref
+    await trx('retail_transactions').where({ is_submitted: false }).update({ 
+      is_submitted: true,
+      submission_ref: sub_no 
+    });
+  });
+
+  res.json({
+    status: 'success',
+    message: 'Submitted successfully to Finance',
+    totalTransactions: unsubmitted.length,
+    totalAmount
+  });
+});
+
+exports.getRetailAuditTrail = catchAsync(async (req, res) => {
+  const trail = await db('retail_audit_trail as rt')
+    .leftJoin('users as u', 'rt.cashier_id', 'u.id')
+    .select('rt.*', 'u.full_name as cashier_name')
+    .orderBy('rt.created_at', 'desc');
+  res.json({ status: 'success', data: trail });
+});
+
+exports.getPendingRetailOrders = catchAsync(async (req, res) => {
+  const orders = await db('retail_orders as ro')
+    .leftJoin('users as c', 'ro.customer_id', 'c.id')
+    .select(
+      'ro.*',
+      // Use stored snapshot first, fall back to live user profile
+      db.raw('COALESCE(ro.customer_name,  c.full_name) as customer_name'),
+      db.raw('COALESCE(ro.customer_phone, c.phone)     as customer_phone'),
+      db.raw('COALESCE(ro.customer_email, c.email)     as customer_email')
+    )
+    .whereIn('ro.status', ['PROCESSING', 'PENDING'])
+    .orderBy('ro.created_at', 'desc');
+
+  for (const order of orders) {
+    order.items = await db('retail_order_items as roi')
+      .join('retail_products as p', 'roi.product_id', 'p.id')
+      .select('roi.*', 'p.name as product_name', 'p.product_image')
+      .where('roi.order_id', order.id);
+  }
+
+  res.json({ status: 'success', data: orders });
+});
+
+
+exports.updateOrderStatus = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const allowed = ['PROCESSING', 'PACKING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+  if (!allowed.includes(status)) throw new AppError(`Invalid status. Must be one of: ${allowed.join(', ')}`, 400);
+  const updated = await db('retail_orders').where({ id }).update({ status, updated_at: db.fn.now() });
+  if (!updated) throw new AppError('Order not found', 404);
+  res.json({ status: 'success', message: 'Order status updated' });
+});
+

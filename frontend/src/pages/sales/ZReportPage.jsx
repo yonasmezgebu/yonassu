@@ -51,7 +51,7 @@ const ZReportPage = () => {
         </div>
         <div>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem' }}
+            style={{ padding: '8px 14px', borderRadius: 0, border: '1px solid #d1d5db', fontSize: '0.875rem' }}
           />
         </div>
       </div>
@@ -181,7 +181,7 @@ const ZReportPage = () => {
                 { label: 'Refunds', value: `-${formatCurrency(s.totalRefundAmount || 0)}`, color: '#dc2626' },
                 { label: 'Net Revenue', value: formatCurrency((s.totalRevenue || 0) - (s.totalRefundAmount || 0)), color: '#0f172a', bold: true },
               ].map(i => (
-                <div key={i.label} style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+                <div key={i.label} style={{ padding: '16px', background: '#f8fafc', borderRadius: 0 }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>{i.label}</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: i.bold ? 800 : 600, color: i.color }}>{i.value}</div>
                 </div>

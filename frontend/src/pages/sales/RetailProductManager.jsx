@@ -177,7 +177,7 @@ const RetailProductManager = () => {
           onClick={openAddModal}
           style={{
             background: COLORS.primary, color: '#fff', border: 'none', padding: '10px 20px', 
-            borderRadius: 8, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+            borderRadius: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
             cursor: 'pointer', boxShadow: '0 4px 6px rgba(34,139,34,0.2)', transition: 'transform 0.2s'
           }}
           onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -189,7 +189,7 @@ const RetailProductManager = () => {
 
       {msg.text && (
         <div style={{
-          padding: 12, marginBottom: 20, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8,
+          padding: 12, marginBottom: 20, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 8,
           background: msg.type === 'success' ? '#e8f5e9' : '#ffebee',
           color: msg.type === 'success' ? COLORS.success : '#d32f2f',
           borderLeft: `4px solid ${msg.type === 'success' ? COLORS.success : '#d32f2f'}`

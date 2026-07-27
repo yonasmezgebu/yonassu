@@ -15,7 +15,7 @@ const ApprovalQueueCard = ({ request, onProcess }) => {
   };
 
   return (
-    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
         <div>
           <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>{request.request_number}</span>
@@ -50,23 +50,23 @@ const ApprovalQueueCard = ({ request, onProcess }) => {
              placeholder="Rejection reason (required if rejecting)..."
              value={reason}
              onChange={(e) => setReason(e.target.value)}
-             style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '12px', boxSizing: 'border-box' }}
+             style={{ width: '100%', padding: '8px 12px', borderRadius: 0, border: '1px solid #cbd5e1', marginBottom: '12px', boxSizing: 'border-box' }}
            />
            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-             <button onClick={() => handleAction('rejected')} style={{ padding: '8px 16px', backgroundColor: 'white', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>Reject</button>
-             <button onClick={() => handleAction('approved')} style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>Approve</button>
+             <button onClick={() => handleAction('rejected')} style={{ padding: '8px 16px', backgroundColor: 'white', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 0, cursor: 'pointer', fontWeight: '500' }}>Reject</button>
+             <button onClick={() => handleAction('approved')} style={{ padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: '500' }}>Approve</button>
            </div>
         </div>
       )}
 
       {request.status === 'rejected' && request.rejection_reason && (
-        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b', fontSize: '14px' }}>
+        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 0, color: '#991b1b', fontSize: '14px' }}>
           <strong>Reason for rejection:</strong> {request.rejection_reason}
         </div>
       )}
 
       {request.status === 'approved' && request.stamp_id && (
-        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 0, color: '#166534', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span><strong>Approved By:</strong> {request.decided_by}</span>
           <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#15803d' }}>Stamp: {request.stamp_id}</span>
         </div>

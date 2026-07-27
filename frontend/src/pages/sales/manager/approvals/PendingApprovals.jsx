@@ -32,7 +32,7 @@ const PendingApprovals = () => {
 
       <div style={{ maxWidth: '800px' }}>
         {requests.length === 0 ? (
-          <div style={{ padding: '32px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
+          <div style={{ padding: '32px', textAlign: 'center', backgroundColor: 'white', borderRadius: 0, border: '1px solid #e2e8f0', color: '#64748b' }}>
             No pending approval requests at this time.
           </div>
         ) : (

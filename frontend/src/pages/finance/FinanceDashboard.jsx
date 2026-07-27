@@ -70,8 +70,8 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Receivables', icon: 'users',
       children: [
-        { label: 'Live Income',      path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
-        { label: 'Receivables Book', path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
+        { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
+        { label: 'Receivables Book',             path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
       ] },
     { type: 'divider' },
     { label: 'Assets', icon: 'package',

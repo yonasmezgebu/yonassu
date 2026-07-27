@@ -8,7 +8,7 @@ import {
 import salesService from '../../services/salesService';
 
 
-const BG   = '#46D17A';
+const BG   = '#228B22';
 const C    = '#1A5C38';  // Deep forest green on bright green bg
 const CD   = '#145030';
 const CDX  = '#0C3520';

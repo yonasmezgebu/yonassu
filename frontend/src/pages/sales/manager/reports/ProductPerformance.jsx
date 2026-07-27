@@ -60,12 +60,12 @@ const ProductPerformance = () => {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0' }}>Product Performance</h1>
           <p style={{ color: '#64748b', margin: 0 }}>Sales volume, margins, and inventory movement.</p>
         </div>
-        <button style={{ padding: '10px 16px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button style={{ padding: '10px 16px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Download size={16} /> Export PDF
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', backgroundColor: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', backgroundColor: 'white', padding: '16px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={inputStyle} />
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={inputStyle} />
         <select value={department} onChange={e => setDepartment(e.target.value)} style={inputStyle}>
@@ -81,7 +81,7 @@ const ProductPerformance = () => {
       </div>
       
       {data.metrics.missingCostFlags && (
-          <div style={{ padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', borderRadius: '8px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', borderRadius: 0, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={20} />
               Some products sold in this period are missing Cost Price data. Profit totals exclude these products to prevent false margins.
           </div>
@@ -94,7 +94,7 @@ const ProductPerformance = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Top 10 by Revenue</h3>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                 {data.advanced.topByRevenue.map((p, i) => (
@@ -109,7 +109,7 @@ const ProductPerformance = () => {
             </ul>
         </div>
         
-        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Low Performers (Bottom Quartile)</h3>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                 {data.advanced.lowPerformers.map((p, i) => (
@@ -119,8 +119,8 @@ const ProductPerformance = () => {
                             <div style={{ color: '#64748b', fontSize: '12px' }}>Rev: {p.revenue/100}</div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={() => handleReorder(p.key)} style={{ padding: '6px 12px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Reorder</button>
-                            <button onClick={() => handleDiscontinue(p.key)} style={{ padding: '6px 12px', backgroundColor: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Discontinue</button>
+                            <button onClick={() => handleReorder(p.key)} style={{ padding: '6px 12px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 0, fontSize: '12px', cursor: 'pointer' }}>Reorder</button>
+                            <button onClick={() => handleDiscontinue(p.key)} style={{ padding: '6px 12px', backgroundColor: '#fef2f2', color: '#ef4444', border: 'none', borderRadius: 0, fontSize: '12px', cursor: 'pointer' }}>Discontinue</button>
                         </div>
                     </li>
                 ))}
@@ -133,12 +133,12 @@ const ProductPerformance = () => {
 };
 
 const StatCard = ({ title, value, color = '#0f172a' }) => (
-  <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+  <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
     <h3 style={{ fontSize: '14px', color: '#64748b', margin: '0 0 8px 0', fontWeight: '500' }}>{title}</h3>
     <div style={{ fontSize: '24px', fontWeight: '700', color }}>{value}</div>
   </div>
 );
 
-const inputStyle = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' };
+const inputStyle = { padding: '8px 12px', borderRadius: 0, border: '1px solid #cbd5e1' };
 
 export default ProductPerformance;

@@ -71,13 +71,13 @@ const RetailWorkerProductManager = () => {
         background: '#f8fafc', padding: 24, fontFamily: "'Inter', sans-serif"
       }}>
         <div style={{
-          background: 'white', borderRadius: 20, border: '2px solid #fecaca',
+          background: 'white', borderRadius: 0, border: '2px solid #fecaca',
           boxShadow: '0 8px 40px rgba(220,38,38,0.10)', padding: '48px 56px',
           textAlign: 'center', maxWidth: 480
         }}>
           {/* Red lock icon */}
           <div style={{
-            width: 80, height: 80, borderRadius: '50%',
+            width: 80, height: 80, borderRadius: 0,
             background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 24px', border: '2px solid #fecaca'
@@ -87,7 +87,7 @@ const RetailWorkerProductManager = () => {
 
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: '#fef2f2', color: '#dc2626', borderRadius: 20,
+            background: '#fef2f2', color: '#dc2626', borderRadius: 0,
             padding: '4px 14px', fontSize: 12, fontWeight: 700, marginBottom: 16,
             border: '1px solid #fecaca'
           }}>
@@ -104,7 +104,7 @@ const RetailWorkerProductManager = () => {
           </p>
 
           <div style={{
-            background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a',
+            background: '#fffbeb', borderRadius: 0, border: '1px solid #fde68a',
             padding: '14px 20px', textAlign: 'left'
           }}>
             <p style={{ margin: 0, fontSize: 13, color: '#92400e', fontWeight: 600 }}>

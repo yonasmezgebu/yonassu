@@ -39,7 +39,7 @@ const SalesManagerHandover = () => {
   return (
     <div style={{padding:'1.5rem 2rem'}}>
       <h2>Shift & Handover Management</h2>
-      {msg && <p style={{padding:'1rem',background:msg.includes('failed')?'#fee2e2':'#d1fae5',borderRadius:'8px',margin:'1rem 0'}}>{msg}</p>}
+      {msg && <p style={{padding:'1rem',background:msg.includes('failed')?'#fee2e2':'#d1fae5',borderRadius: 0,margin:'1rem 0'}}>{msg}</p>}
 
       <h3>Open Shifts ({shifts.length})</h3>
       <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'2rem'}}>
@@ -100,7 +100,7 @@ const SalesManagerHandover = () => {
 
 const th = { padding:'0.75rem',fontSize:'0.8rem',color:'#6b7280',fontWeight:600 };
 const td = { padding:'0.75rem',fontSize:'0.875rem' };
-const btnGreen = { background:'#059669',color:'#fff',border:'none',padding:'4px 12px',borderRadius:'4px',cursor:'pointer',fontSize:'0.8rem' };
-const btnRed = { background:'#dc2626',color:'#fff',border:'none',padding:'4px 12px',borderRadius:'4px',cursor:'pointer',fontSize:'0.8rem' };
+const btnGreen = { background:'#059669',color:'#fff',border:'none',padding:'4px 12px',borderRadius: 0,cursor:'pointer',fontSize:'0.8rem' };
+const btnRed = { background:'#dc2626',color:'#fff',border:'none',padding:'4px 12px',borderRadius: 0,cursor:'pointer',fontSize:'0.8rem' };
 
 export default SalesManagerHandover;

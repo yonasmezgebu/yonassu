@@ -51,7 +51,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
   }
 
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: 0, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
       
       {/* Table */}
       <div style={{ overflowX: 'auto' }}>
@@ -80,7 +80,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
                         min="1" 
                         value={line.qty} 
                         onChange={(e) => handleQtyChange(line.id, e.target.value)}
-                        style={{ width: '60px', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                        style={{ width: '60px', padding: '6px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                     />
                 </td>
                 <td style={{ padding: '12px 16px', color: '#1e293b', fontWeight: '600', textAlign: 'right' }}>
@@ -105,7 +105,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
                 <select 
                   value={selectedProductId} 
                   onChange={(e) => setSelectedProductId(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  style={{ width: '100%', padding: '8px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                 >
                   <option value="">Select a product...</option>
                   {products.map(p => (
@@ -124,7 +124,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
                   placeholder="0.00"
                   value={discountCents ? discountCents / 100 : ''} 
                   onChange={(e) => setDiscountCents(Math.round(parseFloat(e.target.value || 0) * 100))}
-                  style={{ width: '80px', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  style={{ width: '80px', padding: '8px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                 />
               </td>
               <td style={{ padding: '12px 16px' }}>
@@ -133,7 +133,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
                   min="1" 
                   value={qty} 
                   onChange={(e) => setQty(e.target.value)}
-                  style={{ width: '60px', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  style={{ width: '60px', padding: '8px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                 />
               </td>
               <td style={{ padding: '12px 16px', textAlign: 'right', color: '#64748b' }}>
@@ -150,7 +150,7 @@ const SalesLineItemEditor = ({ lines, setLines }) => {
                     backgroundColor: selectedProductId ? '#3b82f6' : '#94a3b8', 
                     color: 'white', 
                     border: 'none', 
-                    borderRadius: '4px', 
+                    borderRadius: 0, 
                     padding: '6px 10px', 
                     cursor: selectedProductId ? 'pointer' : 'not-allowed',
                     display: 'flex',

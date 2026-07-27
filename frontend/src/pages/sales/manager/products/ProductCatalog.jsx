@@ -35,7 +35,7 @@ const ProductCatalog = () => {
     { 
       label: 'Type', 
       field: 'is_service',
-      render: (row) => <span style={{ fontSize: '12px', padding: '2px 6px', backgroundColor: row.is_service ? '#e0e7ff' : '#f1f5f9', color: row.is_service ? '#4338ca' : '#475569', borderRadius: '4px' }}>{row.is_service ? 'Service' : 'Product'}</span>
+      render: (row) => <span style={{ fontSize: '12px', padding: '2px 6px', backgroundColor: row.is_service ? '#e0e7ff' : '#f1f5f9', color: row.is_service ? '#4338ca' : '#475569', borderRadius: 0 }}>{row.is_service ? 'Service' : 'Product'}</span>
     },
     { 
       label: 'Status', 

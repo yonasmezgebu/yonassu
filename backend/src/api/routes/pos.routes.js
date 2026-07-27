@@ -91,8 +91,7 @@ const voidSaleValidation = [
 ];
 const saleIdParamValidation = [
   param('saleId')
-    .isInt().withMessage('Sale ID must be a valid integer')
-    .toInt()
+    .notEmpty().withMessage('Sale ID or Invoice Number is required')
 ];
 router.get(
   '/products',
@@ -187,6 +186,16 @@ router.post(
   validate,
   limiters.checkout,
   POSController.checkout
+);
+router.get(
+  '/audit-trail',
+  authenticate,
+  POSController.getAuditTrail
+);
+router.post(
+  '/sales/submit-daily',
+  authenticate,
+  POSController.submitDaily
 );
 router.get(
   '/customers',
@@ -440,5 +449,8 @@ router.post('/collect-online-order', authenticate, authorize(['pos:create']),
   body('amountPaid').optional().isFloat({ min: 0 }),
   validate, POSController.collectOnlineOrder
 );
+
+router.post('/checkout-retail', authenticate, authorize(['pos:create']), POSController.checkoutRetail);
+router.get('/orders/pending', authenticate, authorize(['pos:read']), POSController.getPendingRetailOrders);
 
 module.exports = router;

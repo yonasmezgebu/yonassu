@@ -11,7 +11,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div style={{
-        backgroundColor: 'white', borderRadius: '12px', width: '100%', maxWidth: '400px',
+        backgroundColor: 'white', borderRadius: 0, width: '100%', maxWidth: '400px',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
       }}>
         <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -26,16 +26,16 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
         <div style={{ padding: '20px' }}>
           <p style={{ margin: 0, color: '#4b5563', fontSize: '14px', lineHeight: '1.5' }}>{message}</p>
         </div>
-        <div style={{ padding: '16px 20px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb', borderRadius: '0 0 12px 12px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+        <div style={{ padding: '16px 20px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb', borderRadius: 0, display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button onClick={onClose} style={{
             padding: '8px 16px', border: '1px solid #d1d5db', backgroundColor: 'white',
-            color: '#374151', borderRadius: '6px', fontWeight: '500', cursor: 'pointer'
+            color: '#374151', borderRadius: 0, fontWeight: '500', cursor: 'pointer'
           }}>
             Cancel
           </button>
           <button onClick={() => { onConfirm(); onClose(); }} style={{
             padding: '8px 16px', border: 'none', backgroundColor: type === 'danger' ? '#ef4444' : '#3b82f6',
-            color: 'white', borderRadius: '6px', fontWeight: '500', cursor: 'pointer'
+            color: 'white', borderRadius: 0, fontWeight: '500', cursor: 'pointer'
           }}>
             {confirmText}
           </button>

@@ -1,15 +1,29 @@
 const { db } = require('../config/database');
+
+// Table map: which table and column to check for each invoice prefix
+const PREFIX_TABLE_MAP = {
+  RET: { table: 'retail_orders',   col: 'invoice_number' },
+  POS: { table: 'pos_sales',       col: 'invoice_number' },
+  PRT: { table: 'printing_orders', col: 'order_number' },
+  QT:  { table: 'printing_orders', col: 'order_number' },
+  RCP: { table: 'printing_orders', col: 'order_number' },
+  PAY: { table: 'printing_orders', col: 'order_number' },
+};
+
 const generateOrderNumber = async (prefix = 'PRT') => {
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  // Determine next sequence from DB
-  const lastOrder = await db('printing_orders')
-    .where('order_number', 'like', `${prefix}-${dateStr}-%`)
-    .orderBy('order_number', 'desc')
+
+  const { table, col } = PREFIX_TABLE_MAP[prefix] || { table: 'printing_orders', col: 'order_number' };
+
+  const lastOrder = await db(table)
+    .where(col, 'like', `${prefix}-${dateStr}-%`)
+    .orderBy(col, 'desc')
     .first();
+
   let counter = 1;
   if (lastOrder) {
-    const parts = lastOrder.order_number.split('-');
+    const parts = (lastOrder[col] || '').split('-');
     const lastSeq = parseInt(parts[parts.length - 1]);
     if (!isNaN(lastSeq)) counter = lastSeq + 1;
   }

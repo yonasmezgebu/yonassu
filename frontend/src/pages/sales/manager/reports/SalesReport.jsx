@@ -54,16 +54,16 @@ const SalesReport = () => {
           <p style={{ color: '#64748b', margin: 0 }}>Aggregate sales performance across all branches.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={handleSchedule} style={{ padding: '10px 16px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={handleSchedule} style={{ padding: '10px 16px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <CalendarClock size={16} /> Schedule
           </button>
-          <button onClick={handleExport} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={handleExport} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Download size={16} /> Export PDF
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', backgroundColor: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', backgroundColor: 'white', padding: '16px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={inputStyle} />
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={inputStyle} />
         <select value={department} onChange={e => setDepartment(e.target.value)} style={inputStyle}>
@@ -88,7 +88,7 @@ const SalesReport = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
            <h3 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Monthly Trend</h3>
            {/* Placeholder for Recharts BarChart */}
            <div style={{ height: '300px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
@@ -97,14 +97,14 @@ const SalesReport = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
                 <h3 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>By Department</h3>
                 <div style={{ height: '200px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
                     [ PieChart rendered with data.groupings.department ]
                 </div>
             </div>
             
-            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
                 <h3 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Top Products by Revenue</h3>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                     {data.topProducts.map((p, i) => (
@@ -123,12 +123,12 @@ const SalesReport = () => {
 };
 
 const StatCard = ({ title, value, color = '#0f172a' }) => (
-  <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+  <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
     <h3 style={{ fontSize: '14px', color: '#64748b', margin: '0 0 8px 0', fontWeight: '500' }}>{title}</h3>
     <div style={{ fontSize: '24px', fontWeight: '700', color }}>{value}</div>
   </div>
 );
 
-const inputStyle = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' };
+const inputStyle = { padding: '8px 12px', borderRadius: 0, border: '1px solid #cbd5e1' };
 
 export default SalesReport;

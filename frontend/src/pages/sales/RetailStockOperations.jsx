@@ -11,12 +11,12 @@ import SalesWorkerExpiringProducts from './SalesWorkerExpiringProducts';
 import ExpiredproductReport        from './ExpiredproductReport';
 
 /* ─── colour tokens ─────────────────────────────────────── */
-const LIME  = '#E5FBAD';   // light lime green
-const PEACH = '#FEFACE';   // light peach
-const DARK  = '#2A3F08';   // deep olive text / borders
-const MID   = '#50760F';   // mid olive accent
-const GOLD  = '#D4A843';
-const GOLD2 = '#9A701E';
+const LIME  = '#A5D6A7';   // light lime green
+const PEACH = '#F5F5F5';   // light peach
+const DARK  = '#1B5E20';   // deep olive text / borders
+const MID   = '#1B5E20';   // mid olive accent
+const GOLD  = '#8BC34A';
+const GOLD2 = '#6B8E23';
 
 /* ─── tab definitions ───────────────────────────────────── */
 const TABS = [

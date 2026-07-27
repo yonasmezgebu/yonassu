@@ -41,7 +41,7 @@ const SalesCustomerStatement = () => {
       </div>
 
       {/* Filter Form */}
-      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', marginBottom: '24px' }}>
         <form onSubmit={generateStatement} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: '1', minWidth: '200px' }}>
             <label style={labelStyle}>Select Customer</label>
@@ -65,7 +65,7 @@ const SalesCustomerStatement = () => {
             <label style={labelStyle}>Date To</label>
             <input type="date" style={inputStyle} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
-          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', height: '42px' }}>
+          <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', cursor: 'pointer', height: '42px' }}>
             Generate
           </button>
         </form>
@@ -73,7 +73,7 @@ const SalesCustomerStatement = () => {
 
       {/* Statement Results */}
       {statement && (
-        <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', borderBottom: '2px solid #f1f5f9', paddingBottom: '24px' }}>
             <div>
@@ -86,7 +86,7 @@ const SalesCustomerStatement = () => {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-               <button onClick={printStatement} style={{ padding: '8px 16px', backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <button onClick={printStatement} style={{ padding: '8px 16px', backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 0, fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                  <FileText size={16} /> Print / PDF
                </button>
                <div style={{ marginTop: '16px', fontSize: '14px', color: '#64748b' }}>Closing Balance</div>
@@ -138,6 +138,6 @@ const SalesCustomerStatement = () => {
 };
 
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' };
-const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box', height: '42px' };
+const inputStyle = { width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box', height: '42px' };
 
 export default SalesCustomerStatement;

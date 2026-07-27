@@ -70,7 +70,7 @@ const OutstandingPayments = () => {
       render: (row) => (
         <button 
           onClick={() => navigate('/sales/manager/payments/new')} 
-          style={{ padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+          style={{ padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontSize: '12px', cursor: 'pointer' }}
         >
           Mark as Paid
         </button>

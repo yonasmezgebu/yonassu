@@ -21,7 +21,7 @@ const SHARED_CSS = `
 
   .b-card {
     --hc:${C};
-    position:relative;overflow:hidden;background:white;border-radius:0;
+    position:relative;overflow:hidden;background:white;border-radius: 0;
     box-shadow:0 2px 14px rgba(0,80,0,0.07);
     transition:background-size .4s,box-shadow .4s;animation:fadeUp .5s ease both;
     background-image:linear-gradient(to right,var(--hc),var(--hc)),
@@ -48,7 +48,7 @@ const SHARED_CSS = `
     padding:11px 22px;font-weight:900;font-size:14px;cursor:pointer;
     letter-spacing:.08em;text-transform:uppercase;
     background:linear-gradient(135deg,#fff,#f5f5dc);color:#3a3a00;
-    border:2px solid ${C};border-radius:14px;
+    border:2px solid ${C};border-radius: 0;
     box-shadow:0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1);
     transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
   }
@@ -61,7 +61,7 @@ const SHARED_CSS = `
     padding:12px 28px;font-weight:900;font-size:15px;cursor:pointer;
     letter-spacing:.12em;text-transform:uppercase;
     background:linear-gradient(135deg,${C},${CD});color:white;
-    border:2px solid ${CD};border-radius:14px;
+    border:2px solid ${CD};border-radius: 0;
     box-shadow:0 5px 0 #5c5c22,0 8px 15px rgba(92,92,34,.28),inset 0 2px 0 rgba(255,255,255,.2);
     transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
   }
@@ -73,7 +73,7 @@ const SHARED_CSS = `
   .b-row:hover { background:rgba(185,185,121,.08);transform:translateX(3px); }
 
   .b-input {
-    width:100%;padding:12px 12px 12px 38px;border:2px solid #e9e9d0;border-radius:10px;
+    width:100%;padding:12px 12px 12px 38px;border:2px solid #e9e9d0;border-radius: 0;
     font-size:14px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;
     transition:border-color .2s,box-shadow .2s;
   }
@@ -81,8 +81,8 @@ const SHARED_CSS = `
 
   .b-label { display:block;font-size:11px;font-weight:900;color:#6b6b3a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em; }
 
-  .b-badge-active   { padding:4px 12px;border-radius:99px;font-size:11px;font-weight:900;background:#f0f0d8;color:#5c5c22;display:inline-flex;align-items:center;gap:5px; }
-  .b-badge-inactive { padding:4px 12px;border-radius:99px;font-size:11px;font-weight:900;background:#f5f5f5;color:#888;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-active   { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#f0f0d8;color:#5c5c22;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-inactive { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#f5f5f5;color:#888;display:inline-flex;align-items:center;gap:5px; }
 
   .artistic-title {
     font-size:2.8rem;font-weight:900;color:#2a2a00;letter-spacing:-.02em;
@@ -99,13 +99,13 @@ const SHARED_CSS = `
 // ─── Confirm delete modal ────────────────────────────────────────────
 const ConfirmModal = ({ text, onConfirm, onCancel }) => (
   <div style={{ position:'fixed',inset:0,background:'rgba(42,42,0,.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,animation:'fadeIn .2s ease' }}>
-    <div style={{ background:'white',padding:'32px 40px',borderRadius:24,boxShadow:'0 20px 40px rgba(0,0,0,.2)',maxWidth:420,animation:'fadeUp .3s ease' }}>
+    <div style={{ background:'white',padding:'32px 40px',borderRadius: 0,boxShadow:'0 20px 40px rgba(0,0,0,.2)',maxWidth:420,animation:'fadeUp .3s ease' }}>
       <AlertTriangle size={36} color={C} style={{ marginBottom:14 }} />
       <h2 style={{ margin:'0 0 12px',fontSize:20,fontWeight:900,color:'#2a2a00' }}>Are you sure?</h2>
       <p style={{ margin:'0 0 24px',fontSize:14,color:'#6b6b3a',lineHeight:1.6 }}>{text}</p>
       <div style={{ display:'flex',gap:12,justifyContent:'flex-end' }}>
-        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius:12,border:'2px solid #e9e9d0',background:'transparent',color:'#888',fontWeight:800,cursor:'pointer' }}>Cancel</button>
-        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius:12,border:'none',background:'#e11d48',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(225,29,72,.3)' }}>Delete</button>
+        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius: 0,border:'2px solid #e9e9d0',background:'transparent',color:'#888',fontWeight:800,cursor:'pointer' }}>Cancel</button>
+        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius: 0,border:'none',background:'#e11d48',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(225,29,72,.3)' }}>Delete</button>
       </div>
     </div>
   </div>
@@ -113,7 +113,7 @@ const ConfirmModal = ({ text, onConfirm, onCancel }) => (
 
 // ─── Inline Toast ────────────────────────────────────────────────────
 const Toast = ({ msg }) => msg?.text ? (
-  <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 22px',borderRadius:14,
+  <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 22px',borderRadius: 0,
     background: msg.type==='success' ? '#f0f0d8' : '#fef2f2',
     border:`2px solid ${msg.type==='success' ? C : '#fca5a5'}`,
     color: msg.type==='success' ? '#3a3a00' : '#991b1b',
@@ -148,7 +148,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
   <div className="b-card" style={{ padding:24,animationDelay:`${idx*0.07}s` }}>
     <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16 }}>
       <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:48,height:48,borderRadius:14,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(185,185,121,.45)`,flexShrink:0 }}>
+        <div style={{ width:48,height:48,borderRadius: 0,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(185,185,121,.45)`,flexShrink:0 }}>
           <Building2 size={24} color="white" />
         </div>
         <div>
@@ -173,7 +173,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
       <button onClick={() => onEdit(b)} style={{
         flex:1,padding:'10px 12px',
         background:`linear-gradient(135deg,#fafad2,#f5f5c0)`,color:CD,
-        border:`2px solid ${C}`,borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:12,
+        border:`2px solid ${C}`,borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
         display:'flex',alignItems:'center',justifyContent:'center',gap:6,
         boxShadow:`0 3px 0 ${CD}`,transition:'all .1s'
       }}
@@ -186,7 +186,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
       <button onClick={() => onDelete(b.id)} style={{
         flex:1,padding:'10px 12px',
         background:'linear-gradient(135deg,#fff5f5,#fee2e2)',color:'#e11d48',
-        border:'2px solid #fca5a5',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:12,
+        border:'2px solid #fca5a5',borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
         display:'flex',alignItems:'center',justifyContent:'center',gap:6,
         boxShadow:'0 3px 0 #fca5a5',transition:'all .1s'
       }}
@@ -289,7 +289,7 @@ const SalesBranches = () => {
           <button onClick={fetchBranches} style={{
             display:'inline-flex',alignItems:'center',gap:8,padding:'11px 22px',
             background:'linear-gradient(135deg,#fff,#f5f5dc)',color:'#3a3a00',
-            border:`2px solid ${C}`,borderRadius:14,fontWeight:900,fontSize:14,cursor:'pointer',
+            border:`2px solid ${C}`,borderRadius: 0,fontWeight:900,fontSize:14,cursor:'pointer',
             letterSpacing:'.08em',textTransform:'uppercase',
             boxShadow:`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`,
             transition:'all .1s',fontFamily:"'Inter',sans-serif"
@@ -308,15 +308,15 @@ const SalesBranches = () => {
       </div>
 
       {/* ── INFO BAR ── */}
-      <div style={{ background:'rgba(255,255,255,.55)',border:'2px solid rgba(255,255,255,1)',borderRadius:16,padding:'18px 28px',marginBottom:24,display:'flex',gap:16,alignItems:'center',boxShadow:'0 10px 30px rgba(0,80,0,.04)',animation:'fadeUp .4s ease' }}>
-        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius:'50%',boxShadow:`0 4px 12px rgba(185,185,121,.45)`,flexShrink:0 }}>
+      <div style={{ background:'rgba(255,255,255,.55)',border:'2px solid rgba(255,255,255,1)',borderRadius: 0,padding:'18px 28px',marginBottom:24,display:'flex',gap:16,alignItems:'center',boxShadow:'0 10px 30px rgba(0,80,0,.04)',animation:'fadeUp .4s ease' }}>
+        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius: 0,boxShadow:`0 4px 12px rgba(185,185,121,.45)`,flexShrink:0 }}>
           <ShieldCheck size={22}/>
         </div>
         <div>
           <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:900,color:'#2a2a00',textTransform:'uppercase',letterSpacing:'.05em' }}>Manage Your Branch Network</h3>
           <p style={{ margin:0,fontSize:13,color:'#8a8a50',fontWeight:600 }}>
             Add, edit, or remove sales locations. Each branch has its own contact details and working hours.
-            <span style={{ marginLeft:10,padding:'2px 10px',borderRadius:99,background:CL,color:CD,fontWeight:800,fontSize:12 }}>
+            <span style={{ marginLeft:10,padding:'2px 10px',borderRadius: 0,background:CL,color:CD,fontWeight:800,fontSize:12 }}>
               {branches.length} {branches.length===1?'Branch':'Branches'}
             </span>
           </p>
@@ -326,7 +326,7 @@ const SalesBranches = () => {
       {/* ── FORM ── */}
       {showForm && (
         <div className="b-card" style={{ padding:28,marginBottom:28,animationDelay:'0s',overflow:'visible' }}>
-          <div style={{ padding:'18px 28px',background:`linear-gradient(135deg,${C},${CD})`,color:'white',display:'flex',alignItems:'center',gap:12,margin:'-28px -28px 24px',borderRadius:'0 0 0 0' }}>
+          <div style={{ padding:'18px 28px',background:`linear-gradient(135deg,${C},${CD})`,color:'white',display:'flex',alignItems:'center',gap:12,margin:'-28px -28px 24px',borderRadius: 0 }}>
             {editing ? <Edit3 size={20}/> : <Plus size={20}/>}
             <span style={{ fontSize:16,fontWeight:900,letterSpacing:'.05em',textTransform:'uppercase' }}>
               {editing ? 'Edit Branch' : 'New Branch'}

@@ -99,7 +99,7 @@ const SalesQuotations = () => {
 };
 
 const btnStyle = (color) => ({
-  padding: '4px 8px', backgroundColor: color, color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer'
+  padding: '4px 8px', backgroundColor: color, color: 'white', border: 'none', borderRadius: 0, fontSize: '12px', cursor: 'pointer'
 });
 
 export default SalesQuotations;

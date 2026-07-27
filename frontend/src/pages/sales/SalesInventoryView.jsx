@@ -177,7 +177,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
   });
 
   return (
-    <div style={hideHeader ? { fontFamily: "'Inter','Segoe UI',sans-serif" } : { padding: 28, fontFamily: "'Inter',sans-serif", color: '#1e293b', minHeight: '100vh', background: '#E5FBAD' }}>
+    <div style={hideHeader ? { fontFamily: "'Inter','Segoe UI',sans-serif" } : { padding: 28, fontFamily: "'Inter',sans-serif", color: '#1e293b', minHeight: '100vh', background: '#A5D6A7' }}>
       <style>{`
         @keyframes spin{100%{transform:rotate(360deg);}}
         @keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -190,7 +190,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
       `}</style>
 
       {msg.text && (
-        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', borderRadius: 12, background: msg.type === 'success' ? '#d1fae5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#6ee7b7' : '#fecaca'}`, color: msg.type === 'success' ? '#065f46' : '#991b1b', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', animation: 'fadeSlide 0.3s ease-out' }}>
+        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', borderRadius: 0, background: msg.type === 'success' ? '#d1fae5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#6ee7b7' : '#fecaca'}`, color: msg.type === 'success' ? '#065f46' : '#991b1b', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', animation: 'fadeSlide 0.3s ease-out' }}>
           {msg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
           {msg.text}
         </div>
@@ -199,7 +199,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
       {!hideHeader && (
         <div style={{ marginBottom: 28, animation: 'fadeSlide 0.4s ease-out' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#2563eb,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 0, background: 'linear-gradient(135deg,#2563eb,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
               <Layers size={24} color="white" />
             </div>
             <div>
@@ -211,33 +211,33 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
       )}
 
       {filterMode === 'low-stock' && (
-        <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#92400e' }}>
+        <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 0, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600, color: '#92400e' }}>
           <AlertTriangle size={18} />
           Showing low-stock items only
           <span style={{ marginLeft: 'auto', cursor: 'pointer', color: '#2563eb', fontWeight: 700 }} onClick={() => { setFilterMode(''); window.history.replaceState({}, '', '/sales-stock'); }}>Clear filter</span>
         </div>
       )}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: '#2A3F08', borderBottom: '3px solid #D4A843' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', padding: '12px 16px', background: '#1B5E20', borderBottom: '3px solid #8BC34A' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
-          <Search size={16} color="#E5FBAD" style={{ position: 'absolute', left: 12, top: 11, pointerEvents: 'none' }} />
+          <Search size={16} color="#A5D6A7" style={{ position: 'absolute', left: 12, top: 11, pointerEvents: 'none' }} />
           <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '9px 14px 9px 38px', border: '2px solid #D4A843', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#3D5B0B', color: '#E5FBAD', fontWeight: 600 }} />
+            style={{ width: '100%', padding: '9px 14px 9px 38px', border: '2px solid #8BC34A', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#2E8B57', color: '#A5D6A7', fontWeight: 600 }} />
         </div>
         <button onClick={() => navigate(`${basePath}/products`)}
           className="inv-action-btn"
-          style={{ padding: '9px 18px', background: '#E5FBAD', color: '#2A3F08', border: '2px solid #9A701E', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, cursor: 'pointer', fontSize: 12, textTransform: 'uppercase', letterSpacing: '1px', boxShadow: '3px 3px 0 #9A701E' }}>
+          style={{ padding: '9px 18px', background: '#A5D6A7', color: '#1B5E20', border: '2px solid #6B8E23', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, cursor: 'pointer', fontSize: 12, textTransform: 'uppercase', letterSpacing: '1px', boxShadow: '3px 3px 0 #6B8E23' }}>
           <Package size={14} /> Products
         </button>
 
         {isManager && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: workerCanAdjust ? '#E5FBAD' : '#FEFACE', border: `2px solid ${workerCanAdjust ? '#2A3F08' : '#dc2626'}`, transition: 'all 0.3s', boxShadow: workerCanAdjust ? '3px 3px 0 #2A3F08' : '3px 3px 0 #dc2626' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: workerCanAdjust ? '#A5D6A7' : '#F5F5F5', border: `2px solid ${workerCanAdjust ? '#1B5E20' : '#dc2626'}`, transition: 'all 0.3s', boxShadow: workerCanAdjust ? '3px 3px 0 #1B5E20' : '3px 3px 0 #dc2626' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 10, fontWeight: 800, color: workerCanAdjust ? '#2A3F08' : '#991b1b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Worker Adjust</span>
-              <span style={{ fontSize: 10, color: workerCanAdjust ? '#2A3F08' : '#dc2626', fontWeight: 700 }}>{workerCanAdjust ? '✓ ON' : '✗ OFF'}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: workerCanAdjust ? '#1B5E20' : '#991b1b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Worker Adjust</span>
+              <span style={{ fontSize: 10, color: workerCanAdjust ? '#1B5E20' : '#dc2626', fontWeight: 700 }}>{workerCanAdjust ? '✓ ON' : '✗ OFF'}</span>
             </div>
             <button onClick={handleToggleWorkerAdjust} disabled={togglingSetting}
-              style={{ width: 48, height: 24, border: `2px solid ${workerCanAdjust ? '#2A3F08' : '#dc2626'}`, cursor: togglingSetting ? 'not-allowed' : 'pointer', background: workerCanAdjust ? '#2A3F08' : '#fecaca', position: 'relative', padding: 0, outline: 'none' }}>
-              <span style={{ display: 'block', width: 16, height: 16, background: workerCanAdjust ? '#E5FBAD' : '#dc2626', position: 'absolute', top: 2, left: workerCanAdjust ? 26 : 2, transition: 'left 0.25s ease' }} />
+              style={{ width: 48, height: 24, border: `2px solid ${workerCanAdjust ? '#1B5E20' : '#dc2626'}`, cursor: togglingSetting ? 'not-allowed' : 'pointer', background: workerCanAdjust ? '#1B5E20' : '#fecaca', position: 'relative', padding: 0, outline: 'none' }}>
+              <span style={{ display: 'block', width: 16, height: 16, background: workerCanAdjust ? '#A5D6A7' : '#dc2626', position: 'absolute', top: 2, left: workerCanAdjust ? 26 : 2, transition: 'left 0.25s ease' }} />
               {togglingSetting && <Loader2 size={11} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'spin 1s linear infinite', color: 'white' }} />}
             </button>
           </div>
@@ -252,12 +252,12 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
         </div>
       )}
 
-      <div style={{ background: '#FEFACE', border: 0, overflow: 'hidden', animation: 'fadeSlide 0.5s ease-out' }}>
-        <div style={{ padding: '12px 18px', borderBottom: '3px solid #2A3F08', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2A3F08' }}>
-          <span style={{ fontWeight: 800, color: '#E5FBAD', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>
+      <div style={{ background: '#F5F5F5', border: 0, overflow: 'hidden', animation: 'fadeSlide 0.5s ease-out' }}>
+        <div style={{ padding: '12px 18px', borderBottom: '3px solid #1B5E20', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1B5E20' }}>
+          <span style={{ fontWeight: 800, color: '#A5D6A7', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>
             <span style={{ animation: 'blink 1.6s ease-in-out infinite', color: '#4ade80' }}><Package size={16} /></span> Stock Levels
           </span>
-          <span style={{ fontSize: 12, color: '#D4A843', fontWeight: 700, letterSpacing: '1px' }}>
+          <span style={{ fontSize: 12, color: '#8BC34A', fontWeight: 700, letterSpacing: '1px' }}>
             {loading ? <><Loader2 size={13} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 5 }} />Loading...</> : `${filtered.length} ITEMS`}
           </span>
         </div>
@@ -266,37 +266,37 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
             <thead>
               <tr>
                 {['Image','product Name','Category','Current Stock','Reorder Lvl','Action'].map((h,i) => (
-                  <th key={i} style={{ padding: '10px 14px', textAlign: i === 5 ? 'center' : 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E5FBAD', borderBottom: '3px solid #D4A843', background: '#3D5B0B', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={i} style={{ padding: '10px 14px', textAlign: i === 5 ? 'center' : 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center', background: '#FEFACE' }}>
-                  <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#2A3F08' }} />
-                  <p style={{ color: '#2A3F08', margin: '12px 0 0', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', fontSize: 12 }}>Loading stock...</p>
+                <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center', background: '#F5F5F5' }}>
+                  <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#1B5E20' }} />
+                  <p style={{ color: '#1B5E20', margin: '12px 0 0', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', fontSize: 12 }}>Loading stock...</p>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center', background: '#FEFACE' }}>
-                  <Package size={40} style={{ color: '#2A3F08', marginBottom: 12, opacity: .35 }} />
-                  <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: '#2A3F08', textTransform: 'uppercase', letterSpacing: '1px' }}>No stock items found</p>
+                <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center', background: '#F5F5F5' }}>
+                  <Package size={40} style={{ color: '#1B5E20', marginBottom: 12, opacity: .35 }} />
+                  <p style={{ fontSize: 14, fontWeight: 800, margin: '0 0 4px', color: '#1B5E20', textTransform: 'uppercase', letterSpacing: '1px' }}>No stock items found</p>
                 </td></tr>
               ) : filtered.map((product, idx) => {
                 const stockStatus = product.stock <= 0 ? 'out' : product.stock < product.reorder ? 'low' : 'ok';
-                const rowBg = stockStatus === 'out' ? '#fee2e2' : stockStatus === 'low' ? '#fef9c3' : idx % 2 === 0 ? '#FEFACE' : '#E5FBAD';
+                const rowBg = stockStatus === 'out' ? '#fee2e2' : stockStatus === 'low' ? '#fef9c3' : idx % 2 === 0 ? '#F5F5F5' : '#A5D6A7';
                 const hasPending = isPending(product.id);
                 return (
                   <tr key={product.id} className="inv-row"
-                    style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#E5FBAD' : '#FEFACE'}`, background: rowBg, transition: 'background .2s', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
+                    style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#A5D6A7' : '#F5F5F5'}`, background: rowBg, transition: 'background .2s', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
                     <td style={{ padding: '10px 14px' }}>
                       {product.image ? (
                         <img src={`http://localhost:5000${product.image}`} alt={product.name}
-                          style={{ width: 42, height: 42, objectFit: 'cover', border: `2px solid #2A3F08`, display: 'block' }}
+                          style={{ width: 42, height: 42, objectFit: 'cover', border: `2px solid #1B5E20`, display: 'block' }}
                           onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                         />
                       ) : null}
-                      <div style={{ width: 42, height: 42, background: '#E5FBAD', border: '2px solid #2A3F08', display: product.image ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <ImageIcon size={17} color="#2A3F08" />
+                      <div style={{ width: 42, height: 42, background: '#A5D6A7', border: '2px solid #1B5E20', display: product.image ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ImageIcon size={17} color="#1B5E20" />
                       </div>
                     </td>
                     <td style={{ padding: '11px 14px', fontWeight: 800, color: '#1e293b', fontSize: 13 }}>
@@ -304,7 +304,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                       {stockStatus !== 'ok' && <AlertTriangle size={12} style={{ marginLeft: 5, color: stockStatus === 'out' ? '#dc2626' : '#d97706', verticalAlign: 'middle', animation: 'blink 1s ease-in-out infinite' }} />}
                     </td>
                     <td style={{ padding: '11px 14px' }}>
-                      <span style={{ padding: '3px 9px', background: '#2A3F08', color: '#E5FBAD', fontSize: 11, fontWeight: 700, letterSpacing: '0.5px' }}>{product.category}</span>
+                      <span style={{ padding: '3px 9px', background: '#1B5E20', color: '#A5D6A7', fontSize: 11, fontWeight: 700, letterSpacing: '0.5px' }}>{product.category}</span>
                     </td>
                     <td style={{ padding: '11px 14px', fontWeight: 900, fontSize: 17, color: stockStatus === 'out' ? '#dc2626' : stockStatus === 'low' ? '#d97706' : '#16a34a', borderLeft: `3px solid ${stockStatus === 'out' ? '#dc2626' : stockStatus === 'low' ? '#fbbf24' : '#4ade80'}` }}>{product.stock}</td>
                     <td style={{ padding: '11px 14px', color: '#64748b', fontWeight: 600, fontSize: 13 }}>{product.reorder}</td>
@@ -317,21 +317,21 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <input type="number" value={adjQty} onChange={e => setAdjQty(e.target.value)} placeholder="New qty"
-                              style={{ width: 76, padding: '5px 7px', border: '2px solid #2A3F08', fontSize: 13, textAlign: 'center', outline: 'none', background: '#E5FBAD', fontWeight: 700 }} />
+                              style={{ width: 76, padding: '5px 7px', border: '2px solid #1B5E20', fontSize: 13, textAlign: 'center', outline: 'none', background: '#A5D6A7', fontWeight: 700 }} />
                             <button onClick={doRequest} disabled={saving || !adjQty || !adjReason.trim()} className="inv-action-btn"
-                              style={{ padding: '5px 10px', background: saving ? '#e2e8f0' : '#2A3F08', color: saving ? '#94a3b8' : '#E5FBAD', border: `2px solid #2A3F08`, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3, boxShadow: '2px 2px 0 #D4A843', textTransform: 'uppercase' }}>
+                              style={{ padding: '5px 10px', background: saving ? '#e2e8f0' : '#1B5E20', color: saving ? '#94a3b8' : '#A5D6A7', border: `2px solid #1B5E20`, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3, boxShadow: '2px 2px 0 #8BC34A', textTransform: 'uppercase' }}>
                               {saving ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={11} />} Apply
                             </button>
                             <button onClick={() => setAdjusting(null)} disabled={saving}
-                              style={{ padding: '5px 8px', background: '#FEFACE', color: '#991b1b', border: '2px solid #dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 800, boxShadow: '2px 2px 0 #dc2626' }}>✕</button>
+                              style={{ padding: '5px 8px', background: '#F5F5F5', color: '#991b1b', border: '2px solid #dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 800, boxShadow: '2px 2px 0 #dc2626' }}>✕</button>
                           </div>
                           <input type="text" value={adjReason} onChange={e => setAdjReason(e.target.value)} placeholder="Reason for CEO..."
-                            style={{ width: 190, padding: '5px 8px', border: '2px solid #2A3F08', fontSize: 11, outline: 'none', background: '#E5FBAD', fontWeight: 600 }} />
+                            style={{ width: 190, padding: '5px 8px', border: '2px solid #1B5E20', fontSize: 11, outline: 'none', background: '#A5D6A7', fontWeight: 600 }} />
                         </div>
                       ) : (
                         (isManager || workerCanAdjust) ? (
                           <button onClick={() => { setAdjusting(product); setAdjQty(String(product.stock)); setAdjReason(''); }} className="inv-action-btn"
-                            style={{ padding: '6px 14px', background: '#D4A843', color: '#2A3F08', border: '2px solid #9A701E', cursor: 'pointer', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '3px 3px 0 #9A701E', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            style={{ padding: '6px 14px', background: '#8BC34A', color: '#1B5E20', border: '2px solid #6B8E23', cursor: 'pointer', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '3px 3px 0 #6B8E23', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             <Edit3 size={12} /> Adjust
                           </button>
                         ) : (
@@ -350,26 +350,26 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
       </div>
 
       {/* ── Branch Stock Overview ── */}
-      <div style={{ background: '#FEFACE', border: 0, overflow: 'hidden', animation: 'fadeSlide 0.5s ease-out', marginTop: 3, borderTop: '4px solid #D4A843' }}>
-        <div style={{ padding: '12px 18px', borderBottom: '3px solid #2A3F08', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2A3F08' }}>
-          <span style={{ fontWeight: 800, color: '#E5FBAD', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>
+      <div style={{ background: '#F5F5F5', border: 0, overflow: 'hidden', animation: 'fadeSlide 0.5s ease-out', marginTop: 3, borderTop: '4px solid #8BC34A' }}>
+        <div style={{ padding: '12px 18px', borderBottom: '3px solid #1B5E20', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1B5E20' }}>
+          <span style={{ fontWeight: 800, color: '#A5D6A7', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>
             <span style={{ animation: 'blink 2s ease-in-out infinite', color: '#fbbf24' }}><GitBranch size={16} /></span> Branch Stock Overview
           </span>
-          <span style={{ fontSize: 11, color: '#D4A843', fontWeight: 700 }}>{branchStockLoading ? 'Loading...' : `${branches.length} branches`}</span>
+          <span style={{ fontSize: 11, color: '#8BC34A', fontWeight: 700 }}>{branchStockLoading ? 'Loading...' : `${branches.length} branches`}</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E5FBAD', borderBottom: '3px solid #D4A843', background: '#3D5B0B', whiteSpace: 'nowrap' }}>product</th>
-                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E5FBAD', borderBottom: '3px solid #D4A843', background: '#3D5B0B', whiteSpace: 'nowrap' }}>Strength</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>product</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>Strength</th>
                 {branches.map(b => (
-                  <th key={b.id} style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D4A843', borderBottom: '3px solid #D4A843', background: '#3D5B0B', whiteSpace: 'nowrap' }}>
+                  <th key={b.id} style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8BC34A', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>
                     <Building size={12} style={{ verticalAlign: 'middle', marginRight: 3 }} />{b.name}
                   </th>
                 ))}
-                <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E5FBAD', borderBottom: '3px solid #D4A843', background: '#50760F', whiteSpace: 'nowrap' }}>Unassigned</th>
-                <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E5FBAD', borderBottom: '3px solid #D4A843', background: '#2A3F08', whiteSpace: 'nowrap' }}>Total Stock</th>
+                <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#1B5E20', whiteSpace: 'nowrap' }}>Unassigned</th>
+                <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#1B5E20', whiteSpace: 'nowrap' }}>Total Stock</th>
               </tr>
             </thead>
             <tbody>
@@ -388,7 +388,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                 const branchTotal = Object.values(itemBranchData).reduce((s, q) => s + q, 0);
                 const unassigned = Math.max(0, product.stock - branchTotal);
                 return (
-                  <tr key={product.id} className="inv-row" style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#E5FBAD' : '#FEFACE'}`, background: idx % 2 === 0 ? '#FEFACE' : '#E5FBAD', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
+                  <tr key={product.id} className="inv-row" style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#A5D6A7' : '#F5F5F5'}`, background: idx % 2 === 0 ? '#F5F5F5' : '#A5D6A7', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
                     <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{product.name}</td>
                     <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 13 }}>{product.strength ? `${product.strength}${product.unit ? ' ' + product.unit : ''}` : '-'}</td>
                     {branches.map(b => {
@@ -405,9 +405,9 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                                 <input type="number" min={0} value={cellQty} onChange={e => setCellQty(parseInt(e.target.value) || 0)}
                                   style={{ width: 60, padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 0, fontSize: 12, textAlign: 'center', outline: 'none' }} />
                                  <button onClick={() => handleAssignCell(product.id, b.id, cellQty)} className="inv-action-btn"
-                                   style={{ padding: '4px 9px', background: '#2A3F08', color: '#E5FBAD', border: '2px solid #D4A843', cursor: 'pointer', fontSize: 11, fontWeight: 800, boxShadow: '2px 2px 0 #D4A843' }}>Save</button>
+                                   style={{ padding: '4px 9px', background: '#1B5E20', color: '#A5D6A7', border: '2px solid #8BC34A', cursor: 'pointer', fontSize: 11, fontWeight: 800, boxShadow: '2px 2px 0 #8BC34A' }}>Save</button>
                                  <button onClick={() => { setAssigningCell(null); setSourceBranchId(null); }}
-                                   style={{ padding: '4px 8px', background: '#FEFACE', color: '#dc2626', border: '2px solid #dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>✕</button>
+                                   style={{ padding: '4px 8px', background: '#F5F5F5', color: '#dc2626', border: '2px solid #dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>✕</button>
                               </div>
                               {srcBranches.length > 0 && unassigned === 0 && (
                                 <select value={sourceBranchId || ''} onChange={e => setSourceBranchId(parseInt(e.target.value) || null)}
@@ -427,7 +427,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                               <span style={{ fontWeight: 800, fontSize: 15, color: '#16a34a' }}>{qty}</span>
                               {(isManager || workerCanAdjust) && (
                                 <button onClick={() => handleUnassignCell(product.id, b.id)}
-                                  style={{ padding: '2px 6px', background: '#FEFACE', color: '#dc2626', border: '2px solid #fecaca', cursor: 'pointer', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Remove from branch">×</button>
+                                  style={{ padding: '2px 6px', background: '#F5F5F5', color: '#dc2626', border: '2px solid #fecaca', cursor: 'pointer', fontSize: 10, fontWeight: 800, lineHeight: 1 }} title="Remove from branch">×</button>
                               )}
                             </div>
                           ) : (
@@ -437,7 +437,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                                 setSourceBranchId(null);
                                 setCellQty(Math.min(100, unassigned > 0 ? unassigned : product.stock));
                               }} className="inv-action-btn"
-                                style={{ padding: '4px 10px', background: '#E5FBAD', color: '#2A3F08', border: '2px dashed #2A3F08', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>
+                                style={{ padding: '4px 10px', background: '#A5D6A7', color: '#1B5E20', border: '2px dashed #1B5E20', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>
                                 + Assign
                               </button>
                             ) : (

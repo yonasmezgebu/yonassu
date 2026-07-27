@@ -28,7 +28,7 @@ const SalesManagerDashboard = () => {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>Today's Sales</span>
             <Activity size={20} color="#3b82f6" />
@@ -36,7 +36,7 @@ const SalesManagerDashboard = () => {
           <CurrencyDisplay amountCents={summary.todaySalesCents} style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }} />
         </div>
 
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>MTD Revenue</span>
             <TrendingUp size={20} color="#10b981" />
@@ -47,7 +47,7 @@ const SalesManagerDashboard = () => {
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>Outstanding Credit</span>
             <CreditCard size={20} color="#ef4444" />
@@ -55,7 +55,7 @@ const SalesManagerDashboard = () => {
           <CurrencyDisplay amountCents={summary.outstandingCreditCents} style={{ fontSize: '28px', fontWeight: '700', color: '#dc2626' }} />
         </div>
 
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: 0, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ color: '#64748b', fontSize: '14px', fontWeight: '500' }}>Pending Orders</span>
             <Clock size={20} color="#f59e0b" />
@@ -66,7 +66,7 @@ const SalesManagerDashboard = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
         {/* Monthly Target Progress */}
-        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
              <Target size={20} color="#8b5cf6" /> Sales Target (MTD)
            </h2>
@@ -75,7 +75,7 @@ const SalesManagerDashboard = () => {
                <span color="#475569">Achieved: <CurrencyDisplay amountCents={summary.salesTarget.achievedCents} /></span>
                <span color="#64748b">Target: <CurrencyDisplay amountCents={summary.salesTarget.targetCents} /></span>
              </div>
-             <div style={{ height: '12px', backgroundColor: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
+             <div style={{ height: '12px', backgroundColor: '#f1f5f9', borderRadius: 0, overflow: 'hidden' }}>
                 <div style={{ 
                   height: '100%', 
                   backgroundColor: '#8b5cf6', 
@@ -87,7 +87,7 @@ const SalesManagerDashboard = () => {
         </div>
 
         {/* Top Products */}
-        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: 0, border: '1px solid #e2e8f0' }}>
            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
              <Package size={20} color="#0ea5e9" /> Top Products Today
            </h2>

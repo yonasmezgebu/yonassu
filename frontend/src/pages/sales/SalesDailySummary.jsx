@@ -104,7 +104,7 @@ const CSS = `
   .ds-btn-ghost {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     padding: 11px 22px; font-weight: 900; font-size: 13px; cursor: pointer;
-    letter-spacing: .08em; text-transform: uppercase; border-radius: 13px;
+    letter-spacing: .08em; text-transform: uppercase; border-radius: 0;
     background: linear-gradient(135deg, #fff, ${BG}); color: ${CD}; border: 2px solid ${C};
     box-shadow: 0 5px 0 ${CD}, 0 8px 14px rgba(0,40,80,.13), inset 0 2px 0 rgba(255,255,255,1);
     transition: all .1s; font-family: 'Inter', sans-serif;
@@ -116,7 +116,7 @@ const CSS = `
   .ds-btn-submit {
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     padding: 15px 28px; font-weight: 900; font-size: 15px; cursor: pointer;
-    letter-spacing: .1em; text-transform: uppercase; border-radius: 13px;
+    letter-spacing: .1em; text-transform: uppercase; border-radius: 0;
     background: linear-gradient(135deg, #10b981, #059669); color: white; border: 2px solid #047857;
     box-shadow: 0 6px 0 #064e3b, 0 10px 20px rgba(6,78,59,.28), inset 0 2px 0 rgba(255,255,255,.18);
     transition: all .1s; font-family: 'Inter', sans-serif; width: 100%;
@@ -139,7 +139,7 @@ const CSS = `
 
   /* ── Avatar ── */
   .ds-av {
-    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 0; flex-shrink: 0;
     background: linear-gradient(135deg, ${C}, ${CD}); color: white;
     display: flex; align-items: center; justify-content: center;
     font-weight: 900; font-size: 14px;
@@ -154,7 +154,7 @@ const CSS = `
     background: linear-gradient(135deg, rgba(90,111,154,.14), rgba(90,111,154,.05));
     color: ${CD}; border: 1px solid rgba(90,111,154,.28);
     box-shadow: 0 2px 0 rgba(90,111,154,.18), inset 0 1px 0 rgba(255,255,255,.9);
-    border-radius: 99px;
+    border-radius: 0;
   }
 
   /* ── Title ── */
@@ -171,7 +171,7 @@ const Toast = ({ msg }) => msg?.text ? (
   <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'13px 22px',fontWeight:700,fontSize:14,
     background:msg.type==='success'?'#f0fdf4':'#fef2f2',border:`2px solid ${msg.type==='success'?'#10b981':'#ef4444'}`,
     color:msg.type==='success'?'#064e3b':'#991b1b',display:'flex',alignItems:'center',gap:10,
-    boxShadow:'0 6px 16px rgba(0,0,0,.12)',animation:'fadeUp .3s ease',borderRadius:0,
+    boxShadow:'0 6px 16px rgba(0,0,0,.12)',animation:'fadeUp .3s ease',borderRadius: 0,
   }}>
     {msg.type==='success'?<CheckCircle size={18}/>:<XCircle size={18}/>}
     {msg.text}
@@ -261,7 +261,7 @@ export default function SalesDailySummary() {
           <input type="date" value={date} onChange={e=>setDate(e.target.value)}
             style={{padding:'10px 14px',border:`2px solid ${C}`,background:'white',
               fontWeight:800,color:'#0d2244',outline:'none',fontFamily:'Inter',fontSize:14,
-              boxShadow:`0 4px 0 ${CD},0 6px 14px rgba(0,40,80,.1)`,borderRadius:0}}/>
+              boxShadow:`0 4px 0 ${CD},0 6px 14px rgba(0,40,80,.1)`,borderRadius: 0}}/>
           <button className="ds-btn-ghost" onClick={load} disabled={loading}
             onMouseDown={e=>{e.currentTarget.style.transform='translateY(5px)';e.currentTarget.style.boxShadow='none';}}
             onMouseUp={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 14px rgba(0,40,80,.13),inset 0 2px 0 rgba(255,255,255,1)`;}}
@@ -276,7 +276,7 @@ export default function SalesDailySummary() {
       <div style={{margin:'0 32px 22px',background:'rgba(255,255,255,.6)',border:'2px solid rgba(255,255,255,1)',
         padding:'18px 24px',display:'flex',gap:14,alignItems:'center',
         boxShadow:'0 4px 18px rgba(0,40,80,.06)',animation:'fadeUp .4s ease'}}>
-        <div style={{background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius:'50%',
+        <div style={{background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius: 0,
           boxShadow:`0 5px 0 ${CDX},0 8px 16px rgba(90,111,154,.4)`,flexShrink:0}}>
           <FileText size={22}/>
         </div>
@@ -353,7 +353,7 @@ export default function SalesDailySummary() {
                           {Object.entries(d.methods).map(([m,v])=>(
                             <span key={m} style={{fontSize:11,fontWeight:700,background:'rgba(90,111,154,.1)',color:CD,
                               padding:'4px 9px',border:'1px solid rgba(90,111,154,.22)',
-                              boxShadow:'0 2px 0 rgba(90,111,154,.14),inset 0 1px 0 rgba(255,255,255,.8)',borderRadius:6}}>
+                              boxShadow:'0 2px 0 rgba(90,111,154,.14),inset 0 1px 0 rgba(255,255,255,.8)',borderRadius: 0}}>
                               {m}: {v.toLocaleString()}
                             </span>
                           ))}
@@ -381,7 +381,7 @@ export default function SalesDailySummary() {
                       <tr key={i} className="ds-tr">
                         <td className="ds-td">
                           <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <div style={{width:11,height:11,borderRadius:'50%',background:pCol[m]||C,boxShadow:`0 2px 6px ${pCol[m]||C}88`}}/>
+                            <div style={{width:11,height:11,borderRadius: 0,background:pCol[m]||C,boxShadow:`0 2px 6px ${pCol[m]||C}88`}}/>
                             <strong style={{textTransform:'uppercase',color:'#0d2244'}}>{m}</strong>
                           </div>
                         </td>
@@ -398,7 +398,7 @@ export default function SalesDailySummary() {
                           textTransform:'uppercase',letterSpacing:'.05em',
                           border:`1px solid ${isMatch?'#86efac':'#fca5a5'}`,
                           boxShadow:`0 3px 0 ${isMatch?'#4ade8044':'#f8717144'},inset 0 1px 0 rgba(255,255,255,.8)`,
-                          display:'inline-block',borderRadius:99}}>
+                          display:'inline-block',borderRadius: 0}}>
                           {isMatch?'MATCH':'MISMATCH'}
                         </span>
                       </td>
@@ -431,7 +431,7 @@ export default function SalesDailySummary() {
                 {/* Submit panel */}
                 <div className="ds-card" style={{padding:24,background:'rgba(255,255,255,.75)',border:'2px solid rgba(255,255,255,1)',flex:1}}>
                   <div style={{display:'flex',gap:12,alignItems:'center',marginBottom:12}}>
-                    <div style={{background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:13,borderRadius:'50%',
+                    <div style={{background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:13,borderRadius: 0,
                       boxShadow:`0 5px 0 ${CDX},0 8px 16px rgba(90,111,154,.4)`}}>
                       <Send size={20}/>
                     </div>
@@ -468,7 +468,7 @@ export default function SalesDailySummary() {
                       <tr key={i} className="ds-tr">
                         <td className="ds-td">
                           <code style={{background:'rgba(90,111,154,.1)',padding:'4px 9px',fontSize:12,color:CD,
-                            border:'1px solid rgba(90,111,154,.2)',boxShadow:'0 2px 0 rgba(90,111,154,.1)',borderRadius:6}}>
+                            border:'1px solid rgba(90,111,154,.2)',boxShadow:'0 2px 0 rgba(90,111,154,.1)',borderRadius: 0}}>
                             {s.receipt_no||`#${s.id}`}
                           </code>
                         </td>
@@ -477,7 +477,7 @@ export default function SalesDailySummary() {
                         <td className="ds-td">
                           <span style={{background:`${pCol[s.payment_method||'CASH']}1a`,color:pCol[s.payment_method||'CASH']||C,
                             padding:'4px 10px',fontWeight:800,fontSize:11,textTransform:'uppercase',
-                            border:`1px solid ${pCol[s.payment_method||'CASH']||C}44`,borderRadius:99,
+                            border:`1px solid ${pCol[s.payment_method||'CASH']||C}44`,borderRadius: 0,
                             boxShadow:`0 2px 0 ${pCol[s.payment_method||'CASH']||C}33`,display:'inline-block'}}>
                             {s.payment_method||'CASH'}
                           </span>

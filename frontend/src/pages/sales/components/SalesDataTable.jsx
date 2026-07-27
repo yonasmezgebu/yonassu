@@ -55,7 +55,7 @@ const SalesDataTable = ({ columns, data, keyField = 'id', onRowClick = null, sea
   );
 
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: 0, border: '1px solid #e2e8f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
       {/* Toolbar */}
       <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
@@ -67,7 +67,7 @@ const SalesDataTable = ({ columns, data, keyField = 'id', onRowClick = null, sea
               placeholder={`Search...`}
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: 0, border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
         )}
@@ -76,7 +76,7 @@ const SalesDataTable = ({ columns, data, keyField = 'id', onRowClick = null, sea
            <select 
              value={itemsPerPage} 
              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-             style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '13px' }}
+             style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '13px' }}
            >
              <option value={10}>10</option>
              <option value={25}>25</option>
@@ -154,7 +154,7 @@ const SalesDataTable = ({ columns, data, keyField = 'id', onRowClick = null, sea
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              style={{ padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0', backgroundColor: currentPage === 1 ? '#f1f5f9' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', color: currentPage === 1 ? '#cbd5e1' : '#475569' }}
+              style={{ padding: '6px', borderRadius: 0, border: '1px solid #e2e8f0', backgroundColor: currentPage === 1 ? '#f1f5f9' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', color: currentPage === 1 ? '#cbd5e1' : '#475569' }}
             >
               <ChevronLeft size={16} />
             </button>
@@ -164,7 +164,7 @@ const SalesDataTable = ({ columns, data, keyField = 'id', onRowClick = null, sea
             <button 
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              style={{ padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0', backgroundColor: currentPage === totalPages ? '#f1f5f9' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', color: currentPage === totalPages ? '#cbd5e1' : '#475569' }}
+              style={{ padding: '6px', borderRadius: 0, border: '1px solid #e2e8f0', backgroundColor: currentPage === totalPages ? '#f1f5f9' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', color: currentPage === totalPages ? '#cbd5e1' : '#475569' }}
             >
               <ChevronRight size={16} />
             </button>

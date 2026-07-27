@@ -77,7 +77,7 @@ export default function ExpiredproductReport({ hideHeader = false }) {
       {!hideHeader && (
         <div style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #e11d48, #be123c)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(225,29,72,0.3)' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 0, background: 'linear-gradient(135deg, #e11d48, #be123c)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(225,29,72,0.3)' }}>
               <AlertTriangle size={20} color="white" />
             </div>
             <div>
@@ -104,8 +104,8 @@ export default function ExpiredproductReport({ hideHeader = false }) {
       )}
 
       {/* Summary Banner */}
-      <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', padding: '16px 20px', borderRadius: 12, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ background: '#ffe4e6', padding: 10, borderRadius: '50%' }}>
+      <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', padding: '16px 20px', borderRadius: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ background: '#ffe4e6', padding: 10, borderRadius: 0 }}>
           <AlertTriangle color="#e11d48" size={24} />
         </div>
         <div>
@@ -115,7 +115,7 @@ export default function ExpiredproductReport({ hideHeader = false }) {
       </div>
 
       {/* Filters Bar */}
-      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', padding: '16px 20px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: 'white', borderRadius: 0, border: '1px solid #e2e8f0', padding: '16px 20px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
         <label style={labelStyle}>Search Expired Items</label>
         <div style={{ position: 'relative' }}>
           <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
@@ -129,7 +129,7 @@ export default function ExpiredproductReport({ hideHeader = false }) {
       </div>
 
       {/* Table */}
-      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: 'white', borderRadius: 0, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
@@ -158,7 +158,7 @@ export default function ExpiredproductReport({ hideHeader = false }) {
                 >
                   <td style={td}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 6, background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 0, background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {item.image ? (
                           <>
                             <img src={`http://localhost:5000${item.image}`} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
@@ -175,7 +175,7 @@ export default function ExpiredproductReport({ hideHeader = false }) {
                     </div>
                   </td>
                   <td style={{ ...td, color: '#475569' }}>
-                    <span style={{ padding: '3px 8px', background: '#f1f5f9', borderRadius: 4, fontSize: 11 }}>
+                    <span style={{ padding: '3px 8px', background: '#f1f5f9', borderRadius: 0, fontSize: 11 }}>
                       {item.category_name || 'Uncategorized'}
                     </span>
                   </td>
@@ -193,17 +193,17 @@ export default function ExpiredproductReport({ hideHeader = false }) {
                       background: '#fee2e2',
                       color: '#991b1b',
                       border: '1px solid #fca5a5',
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, display: 'inline-block'
+                      padding: '4px 10px', borderRadius: 0, fontSize: 11, fontWeight: 700, display: 'inline-block'
                     }}>
                       {item.daysExpired} Days
                     </span>
                   </td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleNotifyManager(item)} style={{ padding: '6px 12px', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                      <button onClick={() => handleNotifyManager(item)} style={{ padding: '6px 12px', background: 'white', color: '#64748b', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                         <Bell size={12} /> Notify
                       </button>
-                      <button onClick={() => handleMoveToQuarantine(item)} style={{ padding: '6px 12px', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 4px rgba(225,29,72,0.1)' }}>
+                      <button onClick={() => handleMoveToQuarantine(item)} style={{ padding: '6px 12px', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', borderRadius: 0, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 4px rgba(225,29,72,0.1)' }}>
                         <Trash2 size={12} /> Quarantine
                       </button>
                     </div>
@@ -218,8 +218,8 @@ export default function ExpiredproductReport({ hideHeader = false }) {
   );
 }
 
-const topBtnStyle = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#475569', fontSize: 12, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
+const topBtnStyle = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 0, cursor: 'pointer', color: '#475569', fontSize: 12, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
 const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 };
-const inputStyle = { width: '100%', padding: '9px 12px 9px 32px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
+const inputStyle = { width: '100%', padding: '9px 12px 9px 32px', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 13, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
 const th = { padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
 const td = { padding: '14px 16px', color: '#1e293b', verticalAlign: 'middle' };

@@ -15,7 +15,7 @@ const resolvePhoto = (url) => {
   return `${BACKEND_URL}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
-const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#D4A843', '#4A90C4', '#58B09C'];
+const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#8BC34A', '#4A90C4', '#58B09C'];
 
 const Avatar = ({ name, photo, size = 40 }) => {
   const [err, setErr] = useState(false);
@@ -23,7 +23,7 @@ const Avatar = ({ name, photo, size = 40 }) => {
   const bg = COLORS[((name || '?').charCodeAt(0) - 65) % COLORS.length] || '#4FA3C3';
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%', overflow: 'hidden',
+      width: size, height: size, borderRadius: 0, overflow: 'hidden',
       background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0, fontSize: size * 0.4, fontWeight: 800, color: 'white',
       border: '2px solid rgba(255,255,255,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
@@ -44,7 +44,7 @@ const SubRolePill = ({ role }) => {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '3px 10px', borderRadius: 999, fontSize: 11,
+      padding: '3px 10px', borderRadius: 0, fontSize: 11,
       fontWeight: 800, background: s.bg, color: s.color,
       border: `1px solid ${s.color}33`
     }}>{s.label}</span>
@@ -59,7 +59,7 @@ const StatusPill = ({ status }) => {
   };
   const s = map[status] || map.Pending;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, background: s.bg, color: s.color }}>{s.label}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 0, fontSize: 11, fontWeight: 800, background: s.bg, color: s.color }}>{s.label}</span>
   );
 };
 
@@ -71,7 +71,7 @@ const PriorityPill = ({ pri }) => {
   };
   const s = map[pri] || map.Low;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, background: s.bg, color: s.color }}>{s.label}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 0, fontSize: 11, fontWeight: 800, background: s.bg, color: s.color }}>{s.label}</span>
   );
 };
 
@@ -87,12 +87,12 @@ const SHARED_CSS = `
     text-shadow:1px 1px 0 #fff,2px 2px 0 #fff,3px 3px 0 #fff,4px 4px 0 #4FA3C3,5px 5px 0 #4FA3C3,6px 6px 0 #2d7da0,7px 7px 0 #2d7da0,8px 8px 15px rgba(0,0,0,0.2);
     margin:0;display:flex;align-items:center;gap:12px;line-height:1.1 }
   .artistic-3d-subtitle { font-size:0.95rem;color:#4A7A9B;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:0.15em;margin:0;text-shadow:1px 1px 0px rgba(255,255,255,0.9) }
-  .btn-3d { background:linear-gradient(135deg,#ffffff,#e0eff3);color:#0d3349;border:2px solid #4FA3C3;border-radius:14px;padding:10px 24px;font-weight:900;font-size:14px;cursor:pointer;
+  .btn-3d { background:linear-gradient(135deg,#ffffff,#F5F5F5);color:#0d3349;border:2px solid #4FA3C3;border-radius: 0;padding:10px 24px;font-weight:900;font-size:14px;cursor:pointer;
     box-shadow:0px 5px 0px #4FA3C3,0px 8px 15px rgba(0,80,120,0.15),inset 0px 2px 0px rgba(255,255,255,1);
     transition:all 0.1s;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-transform:uppercase;letter-spacing:1.5px }
   .btn-3d:active { transform:translateY(6px);box-shadow:0px 0px 0px #4FA3C3,0px 2px 5px rgba(0,80,120,0.15) }
   .btn-3d:hover  { filter:brightness(1.05) }
-  .btn-3d-primary { background:linear-gradient(135deg,#4FA3C3,#2d7da0);color:white;border:2px solid #2d7da0;border-radius:14px;padding:10px 24px;font-weight:900;font-size:14px;cursor:pointer;
+  .btn-3d-primary { background:linear-gradient(135deg,#4FA3C3,#2d7da0);color:white;border:2px solid #2d7da0;border-radius: 0;padding:10px 24px;font-weight:900;font-size:14px;cursor:pointer;
     box-shadow:0px 5px 0px #1e5a78,0px 8px 15px rgba(0,80,120,0.25),inset 0px 2px 0px rgba(255,255,255,0.2);
     transition:all 0.1s;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-transform:uppercase;letter-spacing:1.5px }
   .btn-3d-primary:active { transform:translateY(6px);box-shadow:0px 0px 0px #1e5a78 }
@@ -100,7 +100,7 @@ const SHARED_CSS = `
 
   .d-card {
     --hover-color:#4FA3C3;
-    position:relative;overflow:hidden;background-color:white;border-radius:0;padding:26px;
+    position:relative;overflow:hidden;background-color:white;border-radius: 0;padding:26px;
     box-shadow:0 2px 14px rgba(0,80,120,0.08);transition:background-size 0.4s cubic-bezier(.4,0,.2,1),box-shadow 0.4s,transform 0.4s;
     animation:fadeUp 0.5s ease both;border:none;cursor:pointer;
     background-image:linear-gradient(to right,var(--hover-color),var(--hover-color)),linear-gradient(to bottom,var(--hover-color),var(--hover-color)),linear-gradient(to left,var(--hover-color),var(--hover-color)),linear-gradient(to top,var(--hover-color),var(--hover-color));
@@ -113,7 +113,7 @@ const SHARED_CSS = `
 
   .d-card-no-hover {
     --hover-color:#4FA3C3;
-    position:relative;overflow:hidden;background:white;border-radius:0;padding:26px;
+    position:relative;overflow:hidden;background:white;border-radius: 0;padding:26px;
     box-shadow:0 2px 14px rgba(0,80,120,0.08);transition:background-size 0.4s,box-shadow 0.4s;animation:fadeUp 0.5s ease both;
     background-image:linear-gradient(to right,var(--hover-color),var(--hover-color)),linear-gradient(to bottom,var(--hover-color),var(--hover-color)),linear-gradient(to left,var(--hover-color),var(--hover-color)),linear-gradient(to top,var(--hover-color),var(--hover-color));
     background-position:0 0,100% 0,100% 100%,0 100%;background-repeat:no-repeat;background-size:0% 4px,4px 0%,0% 4px,4px 0% }
@@ -131,17 +131,17 @@ const SHARED_CSS = `
   .staff-row::before { content:'';position:absolute;top:0;left:-150%;width:100%;height:100%;
     background:linear-gradient(90deg,transparent,rgba(79,163,195,0.15),rgba(91,173,138,0.15),transparent);
     transform:skewX(-25deg);pointer-events:none;z-index:1 }
-  .staff-row:hover { background:rgba(224,239,243,0.55);transform:translateX(3px) }
+  .staff-row:hover { background:rgba(245,245,245,0.55);transform:translateX(3px) }
   .staff-row:hover::before { animation:laserSweep 0.7s ease-out }
 
-  .staff-th { padding:12px 16px;background:rgba(224,239,243,0.7);color:#4A7A9B;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;text-align:left;white-space:nowrap;border-bottom:2px solid rgba(79,163,195,0.25) }
+  .staff-th { padding:12px 16px;background:rgba(245,245,245,0.7);color:#4A7A9B;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;text-align:left;white-space:nowrap;border-bottom:2px solid rgba(79,163,195,0.25) }
   .staff-td { padding:14px 16px;color:#1e4d6b;font-size:13px;vertical-align:middle }
 
-  .action-btn { padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;border:none;
+  .action-btn { padding:6px 14px;border-radius: 0;font-size:12px;font-weight:800;cursor:pointer;border:none;
     transition:all 0.2s;letter-spacing:0.03em;display:inline-flex;align-items:center;gap:5px }
   .action-btn:hover { transform:translateY(-1px);filter:brightness(1.08) }
 
-  .task-card { position:relative;overflow:hidden;background:rgba(224,239,243,0.4);border-radius:0;padding:16px;
+  .task-card { position:relative;overflow:hidden;background:rgba(245,245,245,0.4);border-radius: 0;padding:16px;
     border-bottom:1px solid rgba(79,163,195,0.12);transition:background 0.2s }
   .task-card::before { content:'';position:absolute;top:0;left:-150%;width:100%;height:100%;
     background:linear-gradient(90deg,transparent,rgba(79,163,195,0.2),transparent);
@@ -151,10 +151,10 @@ const SHARED_CSS = `
 
   .modal-overlay { position:fixed;inset:0;background:rgba(13,51,73,0.65);backdrop-filter:blur(4px);
     display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeUp 0.2s ease }
-  .modal-box { background:white;border-radius:0;width:100%;box-shadow:0 25px 60px rgba(0,0,0,0.35);
+  .modal-box { background:white;border-radius: 0;width:100%;box-shadow:0 25px 60px rgba(0,0,0,0.35);
     border-top:4px solid #4FA3C3;overflow:hidden }
 
-  .inp-field { width:100%;padding:10px 14px;border-radius:0;border:1.5px solid rgba(79,163,195,0.3);
+  .inp-field { width:100%;padding:10px 14px;border-radius: 0;border:1.5px solid rgba(79,163,195,0.3);
     font-size:14px;box-sizing:border-box;background:#f7fbfd;color:#0d3349;font-weight:600;outline:none;
     transition:border-color 0.2s,box-shadow 0.2s }
   .inp-field:focus { border-color:#4FA3C3;box-shadow:0 0 0 3px rgba(79,163,195,0.15);background:white }
@@ -208,7 +208,7 @@ const AssignModal = ({ branches, unassigned, preSelectedWorker, onClose, onSucce
               Assign the <strong>Sales Worker</strong> role with branch &amp; sub-role
             </p>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', width: 36, height: 36, borderRadius: 0, cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={20} />
           </button>
         </div>
@@ -335,7 +335,7 @@ const TaskModal = ({ worker, tasks, onClose, onRefresh }) => {
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', width: 36, height: 36, borderRadius: 0, cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={20} />
           </button>
         </div>
@@ -391,7 +391,7 @@ const TaskModal = ({ worker, tasks, onClose, onRefresh }) => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxHeight: '55vh', overflowY: 'auto' }}>
               {tasks.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9DBDCE', background: 'rgba(224,239,243,0.4)' }}>
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9DBDCE', background: 'rgba(245,245,245,0.4)' }}>
                   <ClipboardList size={36} style={{ opacity: 0.4, marginBottom: 10 }} /><br />
                   <span style={{ fontSize: 13, fontWeight: 700 }}>No tasks yet</span>
                 </div>
@@ -516,14 +516,14 @@ const SalesStaff = () => {
 
   const stats = [
     { label: 'Total Workers',    value: workers.length,   icon: <Users size={22} />,    color: '#4FA3C3', bg: 'rgba(79,163,195,0.12)',  delay: '0.05s' },
-    { label: 'Cashiers',         value: workers.filter(w => w.sub_role === 'Cashier').length, icon: <UserCheck size={22} />, color: '#D4A843', bg: 'rgba(212,168,67,0.12)', delay: '0.1s' },
+    { label: 'Cashiers',         value: workers.filter(w => w.sub_role === 'Cashier').length, icon: <UserCheck size={22} />, color: '#8BC34A', bg: 'rgba(212,168,67,0.12)', delay: '0.1s' },
     { label: 'Branches Active',  value: branches.length,  icon: <Building2 size={22} />, color: '#5BAD8A', bg: 'rgba(91,173,138,0.12)', delay: '0.15s' },
     { label: 'Unassigned Staff', value: unassigned.length, icon: <UserX size={22} />,   color: '#E07B54', bg: 'rgba(224,123,84,0.12)', delay: '0.2s' },
   ];
 
   if (loading && workers.length === 0) {
     return (
-      <div style={{ padding: 40, background: '#E0EFF3', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ padding: 40, background: '#F5F5F5', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <style>{SHARED_CSS}</style>
         <Zap size={48} style={{ color: '#4FA3C3', marginBottom: 20, animation: 'pulse 1.5s ease-in-out infinite' }} />
         <div style={{ fontSize: 20, color: '#0d3349', fontWeight: 800 }}>Loading Staff Data...</div>
@@ -532,7 +532,7 @@ const SalesStaff = () => {
   }
 
   return (
-    <div style={{ padding: '0', minHeight: 'calc(100vh - 64px)', background: '#E0EFF3', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ padding: '0', minHeight: 'calc(100vh - 64px)', background: '#F5F5F5', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <style>{SHARED_CSS}</style>
 
       {/* ── HEADER ── */}
@@ -624,7 +624,7 @@ const SalesStaff = () => {
         </div>
 
         {filteredWorkers.length === 0 ? (
-          <div style={{ padding: '80px 0', textAlign: 'center', color: '#9DBDCE', background: 'rgba(224,239,243,0.3)' }}>
+          <div style={{ padding: '80px 0', textAlign: 'center', color: '#9DBDCE', background: 'rgba(245,245,245,0.3)' }}>
             <Users size={56} style={{ opacity: 0.3, marginBottom: 16 }} />
             <div style={{ fontSize: 18, fontWeight: 800, color: '#4A7A9B', marginBottom: 6 }}>
               {workers.length === 0 ? 'No workers assigned yet' : 'No workers match filters'}
@@ -643,9 +643,9 @@ const SalesStaff = () => {
                   {/* Name */}
                   <div className="staff-td">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 42, height: 42, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: 'white', flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 0, background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: 'white', flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                         {w.profile_photo
-                          ? <img src={resolvePhoto(w.profile_photo)} alt={w.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={e => e.target.style.display = 'none'} />
+                          ? <img src={resolvePhoto(w.profile_photo)} alt={w.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0 }} onError={e => e.target.style.display = 'none'} />
                           : (w.full_name || '?')[0].toUpperCase()}
                       </div>
                       <div style={{ fontWeight: 800, color: '#0d3349', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.full_name}</div>
@@ -707,7 +707,7 @@ const SalesStaff = () => {
 
         {/* Footer count */}
         {filteredWorkers.length > 0 && (
-          <div style={{ padding: '12px 18px', background: 'rgba(224,239,243,0.5)', borderTop: '2px solid rgba(79,163,195,0.2)', fontSize: 11, fontWeight: 800, color: '#7DA8C0', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ padding: '12px 18px', background: 'rgba(245,245,245,0.5)', borderTop: '2px solid rgba(79,163,195,0.2)', fontSize: 11, fontWeight: 800, color: '#7DA8C0', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', justifyContent: 'space-between' }}>
             <span>Showing {filteredWorkers.length} of {workers.length} workers</span>
             <span>{branches.length} active branches</span>
           </div>
@@ -730,7 +730,7 @@ const SalesStaff = () => {
         <div className="modal-overlay">
           <div className="modal-box" style={{ maxWidth: 420 }}>
             <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#E07B54,#b85a38)', color: 'white', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: '50%' }}>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 0 }}>
                 <AlertTriangle size={22} />
               </div>
               <div>

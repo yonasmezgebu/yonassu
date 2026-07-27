@@ -99,14 +99,14 @@ const SalesDashboard = () => {
           margin: '-32px -32px -32px -32px',
           padding: 0,
           background:
-            location.pathname.includes('/sales/ceo-report')     ? '#F1BE91' :
-            location.pathname.includes('/sales/finance-review') ? '#46D17A' :
+            location.pathname.includes('/sales/ceo-report')     ? '#A5D6A7' :
+            location.pathname.includes('/sales/finance-review') ? '#228B22' :
             (
               location.pathname.includes('/sales/store-inventory') ||
               location.pathname.includes('/sales/stock-operations') ||
               location.pathname.includes('/sales/expiry-management') ||
               location.pathname.includes('/sales/product-manager')
-            ) ? '#50760F' :
+            ) ? '#1B5E20' :
             '#D5DCF0',
           minHeight: '100vh',
           boxSizing: 'border-box',

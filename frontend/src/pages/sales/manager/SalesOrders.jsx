@@ -66,7 +66,7 @@ const SalesOrders = () => {
           {(row.status === 'pending' || row.status === 'processing') && (
             <button 
               onClick={() => handleCancel(row.id)} 
-              style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+              style={{ padding: '4px 8px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: 0, fontSize: '12px', cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -88,20 +88,20 @@ const SalesOrders = () => {
       {/* Custom Cancel Modal with Reason Input */}
       {modalState.isOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '400px', padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: 0, width: '400px', padding: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Cancel Order</h3>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>Reason for cancellation:</label>
               <textarea 
                 value={modalState.reason}
                 onChange={(e) => setModalState({ ...modalState, reason: e.target.value })}
-                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', minHeight: '80px', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '8px', borderRadius: 0, border: '1px solid #cbd5e1', minHeight: '80px', boxSizing: 'border-box' }}
                 required
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button onClick={() => setModalState({ isOpen: false })} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
-              <button onClick={() => { confirmCancel(); setModalState({ isOpen: false }); }} style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Confirm Cancel</button>
+              <button onClick={() => setModalState({ isOpen: false })} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer' }}>Close</button>
+              <button onClick={() => { confirmCancel(); setModalState({ isOpen: false }); }} style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: 0, cursor: 'pointer' }}>Confirm Cancel</button>
             </div>
           </div>
         </div>

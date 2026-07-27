@@ -61,9 +61,9 @@ const ReceivePayment = () => {
         <p style={{ color: '#64748b', margin: 0 }}>Record a new payment from a customer.</p>
       </div>
 
-      <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '12px', border: '1px solid #e2e8f0', maxWidth: '600px' }}>
+      <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: 0, border: '1px solid #e2e8f0', maxWidth: '600px' }}>
         
-        {error && <div style={{ padding: '12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '24px' }}>{error}</div>}
+        {error && <div style={{ padding: '12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: 0, marginBottom: '24px' }}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
@@ -112,7 +112,7 @@ const ReceivePayment = () => {
           </div>
 
           {method === 'bank' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: 0 }}>
                <div>
                   <label style={labelStyle}>Bank Name</label>
                   <input type="text" style={inputStyle} value={bankName} onChange={(e) => setBankName(e.target.value)} required />
@@ -125,14 +125,14 @@ const ReceivePayment = () => {
           )}
 
           {method === 'telbir' && (
-            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px' }}>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: 0 }}>
                <label style={labelStyle}>TeleBirr Phone Number</label>
                <input type="text" style={inputStyle} value={telbirNumber} onChange={(e) => setTelbirNumber(e.target.value)} required />
             </div>
           )}
 
           <div style={{ marginTop: '16px' }}>
-            <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '16px', cursor: 'pointer' }}>
+            <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', fontSize: '16px', cursor: 'pointer' }}>
               Record Payment
             </button>
           </div>
@@ -143,7 +143,7 @@ const ReceivePayment = () => {
 };
 
 const labelStyle = { display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' };
-const inputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' };
 
 const formatCents = (cents) => new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB' }).format(cents / 100);
 

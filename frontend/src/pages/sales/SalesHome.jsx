@@ -112,24 +112,24 @@ const SalesHome = () => {
       <div className="card" style={{ padding: '24px', marginTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>🖨️ Printing Orders</h3>
-          <button onClick={() => navigate('/printing/orders')} style={{ background: 'none', border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
+          <button onClick={() => navigate('/printing/orders')} style={{ background: 'none', border: '1px solid #e2e8f0', padding: '6px 14px', borderRadius: 0, cursor: 'pointer', fontSize: '0.85rem' }}>
             View All →
           </button>
         </div>
         <div className="saleshome-print-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-          <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+          <div style={{ background: '#f0f9ff', padding: '12px', borderRadius: 0, textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>This Month Revenue</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{formatCurrency(printingStats?.monthlyRevenue?.[0]?.revenue || 0)}</div>
           </div>
-          <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+          <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: 0, textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Pending Orders</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{printingStats?.pendingOrders ?? 0}</div>
           </div>
-          <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+          <div style={{ background: '#fffbeb', padding: '12px', borderRadius: 0, textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Past Due</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#dc2626' }}>{printingStats?.pastDueOrders ?? 0}</div>
           </div>
-          <div style={{ background: '#f5f3ff', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
+          <div style={{ background: '#f5f3ff', padding: '12px', borderRadius: 0, textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Total Orders</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{printingStats?.totalOrders ?? 0}</div>
           </div>
@@ -153,7 +153,7 @@ const SalesHome = () => {
                   <td style={{ padding: '0.75rem 0' }}>{order.customer_name}</td>
                   <td style={{ padding: '0.75rem 0' }}>{order.product_type}</td>
                   <td style={{ padding: '0.75rem 0', fontWeight: 600 }}>{formatCurrency(order.total_price)}</td>
-                  <td style={{ padding: '0.75rem 0' }}><span style={{ padding: '2px 8px', borderRadius: '4px', background: order.status_code === 'delivered' ? '#dcfce7' : order.status_code === 'in_progress' ? '#dbeafe' : '#fef3c7', fontSize: '0.8rem' }}>{order.status_name}</span></td>
+                  <td style={{ padding: '0.75rem 0' }}><span style={{ padding: '2px 8px', borderRadius: 0, background: order.status_code === 'delivered' ? '#dcfce7' : order.status_code === 'in_progress' ? '#dbeafe' : '#fef3c7', fontSize: '0.8rem' }}>{order.status_name}</span></td>
                 </tr>
               ))}
             </tbody>

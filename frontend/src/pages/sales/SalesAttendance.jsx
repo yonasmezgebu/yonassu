@@ -9,7 +9,7 @@ const resolvePhoto = (url) => {
   return `${BACKEND_URL}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
-const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#D4A843', '#4A90C4', '#58B09C'];
+const COLORS = ['#4FA3C3', '#5BAD8A', '#E07B54', '#9B72CF', '#8BC34A', '#4A90C4', '#58B09C'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const getWeekDates = () => {
@@ -33,7 +33,7 @@ const SHARED_CSS = `
     margin:0;display:flex;align-items:center;gap:12px;line-height:1.1 }
   .artistic-3d-subtitle { font-size:0.95rem;color:#4A7A9B;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:0.15em;margin:0;text-shadow:1px 1px 0px rgba(255,255,255,0.9) }
   
-  .btn-3d-primary { background:linear-gradient(135deg,#4FA3C3,#2d7da0);color:white;border:2px solid #2d7da0;border-radius:14px;padding:12px 28px;font-weight:900;font-size:15px;cursor:pointer;
+  .btn-3d-primary { background:linear-gradient(135deg,#4FA3C3,#2d7da0);color:white;border:2px solid #2d7da0;border-radius: 0;padding:12px 28px;font-weight:900;font-size:15px;cursor:pointer;
     box-shadow:0px 5px 0px #1e5a78,0px 8px 15px rgba(0,80,120,0.25),inset 0px 2px 0px rgba(255,255,255,0.2);
     transition:all 0.1s;display:inline-flex;align-items:center;justify-content:center;gap:10px;text-transform:uppercase;letter-spacing:1.5px }
   .btn-3d-primary:active:not(:disabled) { transform:translateY(6px);box-shadow:0px 0px 0px #1e5a78 }
@@ -42,20 +42,20 @@ const SHARED_CSS = `
 
   .d-card-no-hover {
     --hover-color:#4FA3C3;
-    position:relative;overflow:hidden;background:white;border-radius:0;
+    position:relative;overflow:hidden;background:white;border-radius: 0;
     box-shadow:0 2px 14px rgba(0,80,120,0.08);transition:background-size 0.4s,box-shadow 0.4s;animation:fadeUp 0.5s ease both;
     background-image:linear-gradient(to right,var(--hover-color),var(--hover-color)),linear-gradient(to bottom,var(--hover-color),var(--hover-color)),linear-gradient(to left,var(--hover-color),var(--hover-color)),linear-gradient(to top,var(--hover-color),var(--hover-color));
     background-position:0 0,100% 0,100% 100%,0 100%;background-repeat:no-repeat;background-size:0% 4px,4px 0%,0% 4px,4px 0% }
   .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12),0 0 14px var(--hover-color);background-size:100% 4px,4px 100%,100% 4px,4px 100% }
 
   .att-grid { display: grid; grid-template-columns: 2fr repeat(7, 1fr) 0.8fr 0.8fr; border-bottom: 2px solid rgba(79,163,195,0.2); }
-  .att-grid-header { background: rgba(224,239,243,0.7); font-weight: 900; font-size: 11px; text-transform: uppercase; color: #4A7A9B; letter-spacing: 0.05em; }
+  .att-grid-header { background: rgba(245,245,245,0.7); font-weight: 900; font-size: 11px; text-transform: uppercase; color: #4A7A9B; letter-spacing: 0.05em; }
   .att-cell { padding: 14px 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(79,163,195,0.1); }
   .att-cell.left { justify-content: flex-start; padding-left: 24px; }
   .att-row { transition: background 0.2s; border-bottom: 1px solid rgba(79,163,195,0.1); }
-  .att-row:hover { background: rgba(224,239,243,0.3); }
+  .att-row:hover { background: rgba(245,245,245,0.3); }
   
-  .att-input { width: 44px; height: 44px; text-align: center; font-size: 18px; font-weight: 900; border-radius: 8px; border: 2px solid transparent; background: rgba(0,0,0,0.03); color: #0d3349; transition: all 0.2s; outline: none; font-family: 'Inter', sans-serif; text-transform: uppercase; }
+  .att-input { width: 44px; height: 44px; text-align: center; font-size: 18px; font-weight: 900; border-radius: 0; border: 2px solid transparent; background: rgba(0,0,0,0.03); color: #0d3349; transition: all 0.2s; outline: none; font-family: 'Inter', sans-serif; text-transform: uppercase; }
   .att-input:focus { border-color: #4FA3C3; background: white; box-shadow: 0 4px 12px rgba(79,163,195,0.2); }
   .att-input.present { color: #5BAD8A; background: rgba(91,173,138,0.1); border-color: rgba(91,173,138,0.3); }
   .att-input.absent { color: #E07B54; background: rgba(224,123,84,0.1); border-color: rgba(224,123,84,0.3); }
@@ -137,7 +137,7 @@ export default function SalesAttendance() {
   };
 
   return (
-    <div style={{ padding: '0', minHeight: 'calc(100vh - 64px)', background: '#E0EFF3', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ padding: '0', minHeight: 'calc(100vh - 64px)', background: '#F5F5F5', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <style>{SHARED_CSS}</style>
 
       {/* ── HEADER ── */}
@@ -157,10 +157,10 @@ export default function SalesAttendance() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '11px 22px',
-              background: 'linear-gradient(135deg, #ffffff, #e0eff3)',
+              background: 'linear-gradient(135deg, #ffffff, #F5F5F5)',
               color: '#0d3349',
               border: '2px solid #4FA3C3',
-              borderRadius: 14,
+              borderRadius: 0,
               fontWeight: 900, fontSize: 14,
               cursor: 'pointer',
               letterSpacing: '0.08em',
@@ -179,8 +179,8 @@ export default function SalesAttendance() {
       </div>
 
       {/* ── INFO ALERT ── */}
-      <div style={{ background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(255,255,255,1)', borderRadius: 16, padding: '20px 28px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'flex-start', boxShadow: '0 10px 30px rgba(0,80,120,0.05)', animation: 'fadeUp 0.4s ease' }}>
-        <div style={{ background: '#4FA3C3', color: 'white', padding: 12, borderRadius: '50%', boxShadow: '0 4px 12px rgba(79,163,195,0.4)' }}>
+      <div style={{ background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(255,255,255,1)', borderRadius: 0, padding: '20px 28px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'flex-start', boxShadow: '0 10px 30px rgba(0,80,120,0.05)', animation: 'fadeUp 0.4s ease' }}>
+        <div style={{ background: '#4FA3C3', color: 'white', padding: 12, borderRadius: 0, boxShadow: '0 4px 12px rgba(79,163,195,0.4)' }}>
           <ShieldCheck size={24} />
         </div>
         <div>
@@ -199,7 +199,7 @@ export default function SalesAttendance() {
             <Users size={24} />
             <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Weekly Sheet</span>
           </div>
-          <div style={{ fontWeight: 800, fontSize: 14, background: 'rgba(255,255,255,0.15)', padding: '6px 16px', borderRadius: 20 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, background: 'rgba(255,255,255,0.15)', padding: '6px 16px', borderRadius: 0 }}>
             Week of {weekDates[0]}
           </div>
         </div>
@@ -232,8 +232,8 @@ export default function SalesAttendance() {
                 <div key={w.id} className="att-grid att-row" style={{ animationDelay: `${0.05 * idx}s` }}>
                   <div className="att-cell left">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'white', flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                        {w.profile_photo ? <img src={resolvePhoto(w.profile_photo)} alt={w.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={e => e.target.style.display = 'none'} /> : (w.full_name || '?')[0].toUpperCase()}
+                      <div style={{ width: 36, height: 36, borderRadius: 0, background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'white', flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                        {w.profile_photo ? <img src={resolvePhoto(w.profile_photo)} alt={w.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 0 }} onError={e => e.target.style.display = 'none'} /> : (w.full_name || '?')[0].toUpperCase()}
                       </div>
                       <div>
                         <div style={{ fontWeight: 900, color: '#0d3349', fontSize: 14 }}>{w.full_name}</div>
@@ -280,7 +280,7 @@ export default function SalesAttendance() {
         
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           {message && (
-             <div style={{ padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, 
+             <div style={{ padding: '10px 16px', borderRadius: 0, fontSize: 13, fontWeight: 700, 
                 background: message.type === 'success' ? '#dcfce7' : '#fee2e2', 
                 color: message.type === 'success' ? '#166534' : '#991b1b',
                 animation: 'fadeUp 0.3s ease' }}>
@@ -305,12 +305,12 @@ export default function SalesAttendance() {
       {/* ── CUSTOM CONFIRM MODAL ── */}
       {showConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(13,51,73,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, animation: 'fadeIn 0.2s ease' }}>
-          <div style={{ background: 'white', padding: '32px 40px', borderRadius: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.2)', maxWidth: 450, animation: 'fadeUp 0.3s ease' }}>
+          <div style={{ background: 'white', padding: '32px 40px', borderRadius: 0, boxShadow: '0 20px 40px rgba(0,0,0,0.2)', maxWidth: 450, animation: 'fadeUp 0.3s ease' }}>
             <h2 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 900, color: '#0d3349' }}>Confirm Submission</h2>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: '#4A7A9B', lineHeight: 1.6 }}>Are you sure you want to submit this weekly attendance report to HR? Once submitted, it will be permanently locked and you will not be able to edit it.</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowConfirm(false)} style={{ padding: '10px 20px', borderRadius: 12, border: '2px solid #cbd5e1', background: 'transparent', color: '#64748b', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={confirmSubmitToHR} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: '#5BAD8A', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 12px rgba(91,173,138,0.3)' }}>Yes, Submit</button>
+              <button onClick={() => setShowConfirm(false)} style={{ padding: '10px 20px', borderRadius: 0, border: '2px solid #cbd5e1', background: 'transparent', color: '#64748b', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={confirmSubmitToHR} style={{ padding: '10px 20px', borderRadius: 0, border: 'none', background: '#5BAD8A', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 12px rgba(91,173,138,0.3)' }}>Yes, Submit</button>
             </div>
           </div>
         </div>

@@ -156,6 +156,28 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
       }
     }
 
+    // For Retail dept — fetch submitted retail_transactions
+    if (submission.department === 'Retail') {
+      const retailSales = await knex('retail_transactions as rt')
+        .leftJoin('users as u', 'rt.received_by', 'u.id')
+        .where('rt.is_submitted', true)
+        .select(
+          'rt.id', 'rt.invoice_number as receipt_no', 'rt.sale_type',
+          'rt.total_amount', 'rt.payment_method', 'rt.created_at',
+          'rt.sender_name as recipient_name', 'rt.sender_phone as recipient_phone',
+          'u.full_name as worker_name'
+        )
+        .orderBy('rt.created_at', 'asc');
+
+      for (const sale of retailSales) {
+        const items = await knex('retail_transaction_items as rti')
+          .join('retail_products as p', 'rti.product_id', 'p.id')
+          .where('rti.transaction_id', sale.id)
+          .select('p.name as drug_name', 'rti.quantity', 'rti.unit_price', 'rti.line_total as total_price');
+        transactions.push({ ...sale, items });
+      }
+    }
+
     // Enhance Car Rental with full order details
     if (submission.department === 'Car Rental' && submission.manual_details) {
       try {

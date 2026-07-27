@@ -41,7 +41,7 @@ const PriceList = () => {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px 0' }}>Price List</h1>
           <p style={{ color: '#64748b', margin: 0 }}>Current standard and wholesale pricing for all active items.</p>
         </div>
-        <button style={{ padding: '10px 20px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button style={{ padding: '10px 20px', backgroundColor: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 0, fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Download size={16} /> Export PDF
         </button>
       </div>

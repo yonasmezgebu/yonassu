@@ -74,7 +74,7 @@ const SalesReturns = () => {
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+          style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, fontWeight: '600', cursor: 'pointer' }}
         >
           + New Return
         </button>
@@ -85,7 +85,7 @@ const SalesReturns = () => {
       {/* New Return Modal */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '500px', padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: 0, width: '500px', padding: '24px' }}>
             <h3 style={{ margin: '0 0 16px 0' }}>Process New Return</h3>
             
             {error && <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '14px' }}>{error}</div>}
@@ -96,7 +96,7 @@ const SalesReturns = () => {
                 <select 
                   value={newReturn.source_sale_id} 
                   onChange={(e) => setNewReturn({ ...newReturn, source_sale_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                   required
                 >
                   <option value="">Select a sale...</option>
@@ -111,7 +111,7 @@ const SalesReturns = () => {
                 <select 
                   value={newReturn.reason} 
                   onChange={(e) => setNewReturn({ ...newReturn, reason: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1' }}
                 >
                   <option value="damaged">Damaged</option>
                   <option value="wrong_item">Wrong Item</option>
@@ -128,14 +128,14 @@ const SalesReturns = () => {
                   step="0.01"
                   value={newReturn.refund_amount}
                   onChange={(e) => setNewReturn({ ...newReturn, refund_amount: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 0, border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                   required
                 />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'white' }}>Cancel</button>
-                <button type="submit" style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>Submit Return</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer', backgroundColor: 'white' }}>Cancel</button>
+                <button type="submit" style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: '500' }}>Submit Return</button>
               </div>
             </form>
           </div>
