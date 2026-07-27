@@ -1,5 +1,8 @@
 const { db } = require('../../config/database');
+const transaction = db.transaction.bind(db);
 const { catchAsync } = require('../../utils/catchAsync');
+const AppError = require('../../utils/AppError');
+const { audit } = require('../../utils/logger');
 const posService = require('../../services/pos.service');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const { sendEmail } = require('../../services/email.service');
@@ -522,6 +525,7 @@ exports.getSalesHistory = catchAsync(async (req, res) => {
       'u.full_name as cashier_name',
       'pm.name as payment_method_name'
     )
+    .whereNull('ps.deleted_at')   // exclude cancelled/returned sales
     .where(function() {
       this.where('ps.is_submitted', false).orWhereNull('ps.is_submitted');
     });
@@ -980,109 +984,184 @@ exports.getSaleItems = catchAsync(async (req, res) => {
 });
 
 exports.processReturn = catchAsync(async (req, res) => {
-  const { saleId, items, refundMethod = 'original', notes } = req.body;
+  let { saleId, items, refundMethod = 'cash', notes } = req.body;
+
+  // ── Inline validation ──────────────────────────────────────────────────────
+  if (!saleId) throw new AppError('Sale ID is required', 400);
+  saleId = parseInt(saleId, 10);
+  if (isNaN(saleId)) throw new AppError('Sale ID must be a valid number', 400);
+  if (!Array.isArray(items) || items.length === 0) throw new AppError('At least one item is required', 400);
+  const validItems = items.filter(i => parseInt(i.quantity, 10) >= 1);
+  if (validItems.length === 0) throw new AppError('All return quantities must be at least 1', 400);
+  items = validItems.map(i => ({ ...i, quantity: parseInt(i.quantity, 10) }));
+  // ──────────────────────────────────────────────────────────────────────────
+
   const userId = req.user.id;
   const ip = req.ip;
   const sale = await db('pos_sales').where('id', saleId).first();
   if (!sale) throw new AppError('Sale not found', 404);
   if (sale.status_id === 2) throw new AppError('Cannot return a voided sale', 400);
+
+  // Normalize refundMethod from frontend values (CASH, BANK_TRANSFER, TELBIR) to lowercase
+  const refundMethodNorm = (refundMethod || 'cash').toLowerCase();
+
   let totalRefund = 0;
   const returnItems = [];
   for (const returnItem of items) {
+    // Frontend sends productId = pos_items.id (the row id), so treat as itemId first
+    const itemId = returnItem.itemId || returnItem.productId;
     const originalItem = await db('pos_items')
-      .where('id', returnItem.itemId || 0)
+      .where('id', itemId)
       .where('sale_id', saleId)
       .first();
     if (!originalItem) {
+      // Fallback: try product_id column
       const productInSale = await db('pos_items')
         .where('sale_id', saleId)
         .where('product_id', returnItem.productId)
         .first();
-      if (!productInSale) throw new AppError(`Product ${returnItem.productId} not found in sale ${saleId}`, 400);
+      if (!productInSale) throw new AppError(`Item ${itemId} not found in sale ${saleId}`, 400);
       const refundAmount = productInSale.unit_price * returnItem.quantity;
       totalRefund += refundAmount;
       returnItems.push({
         product_id: productInSale.product_id,
+        product_name: productInSale.source || productInSale.product_name || null,
         quantity: returnItem.quantity,
         unit_price: productInSale.unit_price,
         refund_amount: refundAmount,
-        reason_code: returnItem.reasonCode || 'customer_return'
+        reason_code: returnItem.reasonCode || returnItem.condition || 'customer_return'
       });
     } else {
       if (returnItem.quantity > originalItem.quantity) {
         throw new AppError(`Return quantity exceeds original quantity for item`, 400);
       }
-      const refundAmount = (originalItem.unit_price / originalItem.quantity) * returnItem.quantity;
+      const refundAmount = originalItem.unit_price * returnItem.quantity;
       totalRefund += refundAmount;
       returnItems.push({
         product_id: originalItem.product_id,
+        product_name: originalItem.source || null,
         quantity: returnItem.quantity,
         unit_price: originalItem.unit_price,
         refund_amount: refundAmount,
-        reason_code: returnItem.reasonCode || 'customer_return'
+        reason_code: returnItem.reasonCode || returnItem.condition || 'customer_return'
       });
     }
   }
-  const refundMethodResolved = refundMethod === 'original'
-    ? 'original'
-    : refundMethod;
   const returnNumber = 'RET-' + Date.now();
-  const result = await transaction(async (trx) => {
-    const [returnId] = await trx('pos_returns').insert({
-      return_number: returnNumber,
-      sale_id: saleId,
-      customer_id: sale.customer_id,
-      total_refund: totalRefund,
-      refund_method: refundMethodResolved,
-      reason: notes || 'Customer return',
-      processed_by: userId,
-      status: 'completed',
-      created_at: trx.fn.now()
-    });
-    for (const ri of returnItems) {
-      await trx('pos_return_items').insert({
-        return_id: returnId,
-        product_id: ri.product_id,
-        quantity: ri.quantity,
-        unit_price: ri.unit_price,
-        refund_amount: ri.refund_amount,
-        reason_code: ri.reason_code
+
+  try {
+    await db.transaction(async (trx) => {
+      // ── 1. Create the return record ────────────────────────────────────────
+      const [returnId] = await trx('pos_returns').insert({
+        return_number: returnNumber,
+        sale_id: saleId,
+        customer_id: sale.customer_id || null,
+        total_refund: totalRefund,
+        refund_method: refundMethodNorm,
+        reason: notes || 'Cancelled by operator',
+        processed_by: userId,
+        status: 'completed',
+        created_at: trx.fn.now()
       });
-      const currentStock = await trx('inventory')
-        .where('product_id', ri.product_id)
-        .first();
-      if (currentStock) {
-        const newQuantity = currentStock.quantity + ri.quantity;
-        await trx('inventory')
-          .where('product_id', ri.product_id)
-          .update({ quantity: newQuantity, last_updated: trx.fn.now() });
-        await trx('inventory_movements').insert({
-          product_id: ri.product_id,
-          transaction_type: 'Return',
-          quantity_change: ri.quantity,
-          quantity_before: currentStock.quantity,
-          quantity_after: newQuantity,
-          reference_type: 'Return',
-          reference_id: returnId,
-          reason: `Return from sale ${sale.invoice_number}: ${ri.reason_code}`,
-          performed_by: userId,
-          created_at: trx.fn.now()
+
+      // ── 2. Record each return item ─────────────────────────────────────────
+      for (const ri of returnItems) {
+        await trx('pos_return_items').insert({
+          return_id: returnId,
+          product_id: ri.product_id || null,
+          product_name: ri.product_name || null,
+          quantity: ri.quantity,
+          unit_price: ri.unit_price,
+          refund_amount: ri.refund_amount,
+          reason_code: ri.reason_code
         });
+
+        // ── 3. Restore stock (retail_products first, fallback to inventory) ──
+        if (ri.product_id) {
+          const retailProduct = await trx('retail_products')
+            .where('id', ri.product_id)
+            .first();
+
+          if (retailProduct) {
+            await trx('retail_products')
+              .where('id', ri.product_id)
+              .increment('stock_quantity', ri.quantity);
+          } else {
+            const currentStock = await trx('inventory')
+              .where('product_id', ri.product_id)
+              .first();
+            if (currentStock) {
+              const newQty = currentStock.quantity + ri.quantity;
+              await trx('inventory')
+                .where('product_id', ri.product_id)
+                .update({ quantity: newQty, last_updated: trx.fn.now() });
+              // Record the inventory movement for traceability
+              await trx('inventory_movements').insert({
+                product_id: ri.product_id,
+                transaction_type: 'Return',
+                quantity_change: ri.quantity,
+                quantity_before: currentStock.quantity,
+                quantity_after: newQty,
+                reference_type: 'Return',
+                reference_id: returnId,
+                reason: `Cancelled sale ${sale.invoice_number} — stock restored`,
+                performed_by: userId,
+                created_at: trx.fn.now()
+              });
+            }
+          }
+        }
       }
-    }
-    const refundedStatus = await trx('sale_statuses').where('status_code', 'refunded').first();
-    if (refundedStatus) {
-      await trx('pos_sales').where('id', saleId).update({ status_id: refundedStatus.id });
-    }
-    return returnId;
+
+      // ── 4. Cancel the original sale ────────────────────────────────────────
+      // Mark as refunded (status_id=4), soft-delete (deleted_at), and block
+      // from finance submission (is_submitted=0) so it never appears in finance.
+      await trx('pos_sales').where('id', saleId).update({
+        status_id: 4,          // refunded
+        is_submitted: 0,       // block finance submission
+        deleted_at: trx.fn.now(),  // soft-delete → disappears from active transactions
+        void_reason: `Cancelled: ${notes || 'Returned by operator'} — Ref: ${returnNumber}`,
+        voided_by: userId
+      });
+
+      return returnId;
+    });
+  } catch (err) {
+    // Full rollback happened automatically — nothing was written to DB.
+    throw new AppError(`Return failed and was rolled back: ${err.message}`, 500);
+  }
+
+  // ── 5. Audit log — action=SALE_CANCELLED, zero financial value ─────────────
+  // The audit records this happened, but carries no financial amount so it
+  // does not appear as income or expense in any finance report.
+  audit('SALE_CANCELLED', userId, {
+    ip,
+    resource: 'pos_sales',
+    resourceId: saleId,
+    afterState: {
+      invoice_number: sale.invoice_number,
+      return_number: returnNumber,
+      action: 'CANCELLED',
+      refund_method: refundMethodNorm,
+      amount_returned: totalRefund,
+      finance_value: 0,     // explicitly zero — no financial effect
+      submitted_to_finance: false,
+      cancelled_by: userId,
+      reason: notes || 'Cancelled by operator'
+    },
+    status: 'cancelled'
   });
-  await audit('RETURN_PROCESSED', result, {
-    ip, details: { returnNumber, saleId, totalRefund, itemsCount: items.length }
-  });
-  res.status(201).json({
+
+  res.status(200).json({
     status: 'success',
-    message: 'Return processed successfully',
-    data: { returnId: result, returnNumber, totalRefund }
+    message: `Sale ${sale.invoice_number} cancelled and removed from transactions`,
+    data: {
+      returnNumber,
+      invoiceNumber: sale.invoice_number,
+      totalRefunded: totalRefund,
+      refundMethod: refundMethodNorm,
+      financeSubmitted: false
+    }
   });
 });
 
@@ -2108,6 +2187,7 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
       'pm.name as payment_method_name',
       'ss.status_name'
     )
+    .whereNull('ps.deleted_at')   // exclude cancelled/returned sales from audit view
     .orderBy('at.created_at', 'desc')
     .limit(200);
 
@@ -2128,6 +2208,7 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
 
 exports.submitDaily = catchAsync(async (req, res) => {
   const unsubmitted = await db('pos_sales')
+    .whereNull('deleted_at')   // NEVER submit cancelled/returned sales to finance
     .where(function() {
       this.where('is_submitted', false).orWhereNull('is_submitted');
     });

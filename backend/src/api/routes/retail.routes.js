@@ -78,4 +78,17 @@ router.patch('/orders/:id/status', authenticate, authorizeRoles(cashierRoles), r
 
 
 
+
+// --- Retail Branches ---
+router.get('/branches', authenticate, authorizeRoles(managerRoles), retailController.getBranches);
+router.post('/branches', authenticate, authorizeRoles(managerRoles), retailController.createBranch);
+router.put('/branches/:id', authenticate, authorizeRoles(managerRoles), retailController.updateBranch);
+router.delete('/branches/:id', authenticate, authorizeRoles(managerRoles), retailController.deleteBranch);
+
+// --- Retail Store Inventory (general_store_materials dept=Sales) ---
+router.get('/store-inventory',       authenticate, authorizeRoles(managerRoles), retailController.getStoreInventory);
+router.post('/store-inventory',      authenticate, authorizeRoles(managerRoles), retailController.registerStoreItem);
+router.put('/store-inventory/:id',   authenticate, authorizeRoles(managerRoles), retailController.updateStoreItem);
+router.delete('/store-inventory/:id',authenticate, authorizeRoles(managerRoles), retailController.deleteStoreItem);
+
 module.exports = router;

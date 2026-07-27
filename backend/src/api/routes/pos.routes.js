@@ -291,16 +291,6 @@ router.get(
 );
 
 // === RETURN / REFUND ROUTES ===
-const returnValidation = [
-  body('saleId').notEmpty().isInt().withMessage('Sale ID is required'),
-  body('items').isArray({ min: 1 }).withMessage('At least one item is required for return'),
-  body('items.*.productId').isInt(),
-  body('items.*.quantity').isInt({ min: 1 }),
-  body('items.*.reasonCode').optional().isString(),
-  body('refundMethod').optional().isIn(['original', 'cash', 'store_credit']),
-  body('notes').optional().isString()
-];
-
 router.get(
   '/sales/:saleId/items',
   authenticate,
@@ -314,8 +304,6 @@ router.post(
   '/returns',
   authenticate,
   authorize(['pos:create']),
-  returnValidation,
-  validate,
   POSController.processReturn
 );
 

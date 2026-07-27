@@ -704,3 +704,108 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Order status updated' });
 });
 
+
+// ── Branches (Retail) ────────────────────────────────────────────────────────
+exports.getBranches = catchAsync(async (req, res) => {
+  const branches = await db('retail_branches').orderBy('id', 'asc');
+  res.json({ status: 'success', data: branches });
+});
+
+exports.createBranch = catchAsync(async (req, res) => {
+  const [id] = await db('retail_branches').insert(req.body);
+  const branch = await db('retail_branches').where({ id }).first();
+  res.status(201).json({ status: 'success', data: branch });
+});
+
+exports.updateBranch = catchAsync(async (req, res) => {
+  await db('retail_branches').where({ id: req.params.id }).update(req.body);
+  const branch = await db('retail_branches').where({ id: req.params.id }).first();
+  res.json({ status: 'success', data: branch });
+});
+
+exports.deleteBranch = catchAsync(async (req, res) => {
+  await db('retail_branches').where({ id: req.params.id }).del();
+  res.status(204).send();
+});
+
+// ── Retail Store Inventory (from general_store_materials, dept = 'Sales') ────
+exports.getStoreInventory = catchAsync(async (req, res) => {
+  const { search } = req.query;
+  let query = db('general_store_materials')
+    .where('department', 'Sales')
+    .orderBy('id', 'desc');
+  if (search) {
+    query = query.andWhere(q =>
+      q.where('material_name', 'like', `%${search}%`)
+       .orWhere('material_id', 'like', `%${search}%`)
+    );
+  }
+  const rows = await query;
+  const data = rows.map(r => ({
+    ...r,
+    id:              r.id,
+    product_id:      r.id,
+    name:            r.material_name,
+    product_name:    r.material_name,
+    stock_quantity:  parseFloat(r.quantity_in_store) || 0,
+    unit:            r.unit,
+    product_unit:    r.unit,
+    category:        r.category,
+    product_category: r.category,
+    unit_value:      parseFloat(r.unit_value) || 0,
+    total_value:     parseFloat(r.total_value) || 0,
+    reorder_level:   parseInt(r.reorder_level) || 10,
+    material_id:     r.material_id,
+  }));
+  res.json({ status: 'success', data });
+});
+
+exports.registerStoreItem = catchAsync(async (req, res) => {
+  const { material_name, category, unit, quantity_in_store, unit_value, reorder_level } = req.body;
+  if (!material_name) throw new AppError('material_name is required', 400);
+  const last = await db('general_store_materials').max('id as maxId').first();
+  const next = ((last && last.maxId) || 0) + 1;
+  const material_id = `RTLMAT-${String(next).padStart(3, '0')}`;
+  const qty   = parseFloat(quantity_in_store) || 0;
+  const price = parseFloat(unit_value) || 0;
+  const total = qty * price;
+  const reorder = parseInt(reorder_level) || 10;
+  const [id] = await db('general_store_materials').insert({
+    material_id, material_name,
+    category:        category || 'Other',
+    unit:            unit || 'pcs',
+    quantity_in_store: qty,
+    unit_value:      price,
+    total_value:     total,
+    reorder_level:   reorder,
+    department:      'Sales',
+    registered_by:   (req.user && req.user.fullName) || 'Sales Manager',
+    date_registered: new Date().toISOString().split('T')[0],
+  });
+  const row = await db('general_store_materials').where({ id }).first();
+  res.status(201).json({ status: 'success', data: row });
+});
+
+exports.updateStoreItem = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { material_name, category, unit, quantity_in_store, unit_value, reorder_level } = req.body;
+  const qty   = parseFloat(quantity_in_store) || 0;
+  const price = parseFloat(unit_value) || 0;
+  const total = qty * price;
+  await db('general_store_materials').where({ id, department: 'Sales' }).update({
+    material_name, category, unit,
+    quantity_in_store: qty,
+    unit_value: price,
+    total_value: total,
+    reorder_level: parseInt(reorder_level) || 10,
+    updated_at: db.fn.now(),
+  });
+  const row = await db('general_store_materials').where({ id }).first();
+  res.json({ status: 'success', data: row });
+});
+
+exports.deleteStoreItem = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  await db('general_store_materials').where({ id, department: 'Sales' }).del();
+  res.status(204).send();
+});
