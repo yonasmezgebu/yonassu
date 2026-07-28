@@ -809,3 +809,93 @@ exports.deleteStoreItem = catchAsync(async (req, res) => {
   await db('general_store_materials').where({ id, department: 'Sales' }).del();
   res.status(204).send();
 });
+
+// ── Retail Store Requests ──────────────────────────────────────────────────
+exports.getStoreRequests = catchAsync(async (req, res) => {
+  const requests = await db('sales_store_requests')
+    .select('sales_store_requests.*', 'general_store_materials.material_name as product_name')
+    .leftJoin('general_store_materials', 'sales_store_requests.material_id', 'general_store_materials.id')
+    .orderBy('sales_store_requests.id', 'desc');
+  // Map fields to what the frontend expects
+  const data = requests.map(r => ({
+    ...r,
+    shipped_qty: r.quantity_shipped
+  }));
+  res.json({ status: 'success', data });
+});
+
+exports.createStoreRequest = catchAsync(async (req, res) => {
+  const { product_id, requested_qty, urgency, signature } = req.body;
+  if (!product_id || !requested_qty) throw new AppError('product_id and requested_qty are required', 400);
+
+  const request_code = `RSR-${Math.floor(1000 + Math.random() * 9000)}-${Date.now()}`;
+  
+  const [id] = await db('sales_store_requests').insert({
+    request_code,
+    material_id: product_id,
+    quantity_requested: requested_qty,
+    department: 'Sales',
+    created_by_name: (req.user && req.user.fullName) || 'Sales Manager',
+    status: 'Pending',
+    signature: signature || null
+  });
+  const row = await db('sales_store_requests').where({ id }).first();
+  res.status(201).json({ status: 'success', data: row });
+});
+
+exports.receiveStoreRequest = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { received_qty } = req.body;
+  
+  const reqRow = await db('sales_store_requests').where({ id }).first();
+  if (!reqRow) throw new AppError('Request not found', 404);
+  
+  await db('sales_store_requests').where({ id }).update({
+    status: 'Received',
+    updated_at: db.fn.now()
+  });
+
+  res.json({ status: 'success', message: 'Request received' });
+});
+
+exports.getBranchInventory = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const inventory = await db('retail_branch_products')
+    .leftJoin('retail_products', 'retail_branch_products.product_id', 'retail_products.id')
+    .where('retail_branch_products.branch_id', id)
+    .select(
+      'retail_branch_products.id',
+      'retail_branch_products.branch_id',
+      'retail_branch_products.product_id',
+      'retail_branch_products.quantity',
+      'retail_products.name as product_name',
+      'retail_products.stock_quantity as main_stock'
+    );
+  res.json({ status: 'success', data: inventory });
+});
+
+exports.setBranchProductQuantity = catchAsync(async (req, res) => {
+  const { branch_id, product_id, quantity, transfer_from_branch_id } = req.body;
+  if (!branch_id || !product_id) throw new AppError('branch_id and product_id are required', 400);
+
+  const qty = parseInt(quantity) || 0;
+
+  // We could implement branch-to-branch transfer logic using transfer_from_branch_id here 
+  // but for now just setting quantity directly as it was in pharmacy.
+  
+  const existing = await db('retail_branch_products').where({ branch_id, product_id }).first();
+  if (existing) {
+    await db('retail_branch_products')
+      .where({ branch_id, product_id })
+      .update({ quantity: qty, updated_at: db.fn.now() });
+  } else {
+    await db('retail_branch_products').insert({
+      branch_id, product_id, quantity: qty
+    });
+  }
+
+  // Also deduct from main store inventory if we are transferring from main store? 
+  // The user just wanted to copy the existing pharmacy logic, which is setting the quantity.
+  
+  res.json({ status: 'success', message: 'Product quantity updated for branch' });
+});

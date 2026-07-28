@@ -65,14 +65,50 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
   });
 
   const hrEmployees = await q.select('e.*', 'd.name as dept_name', 'p.name as position_title', 'u.profile_photo as user_photo').orderBy('e.full_name');
-  const hrIds = new Set(hrEmployees.map(e => e.employee_id));
+  
+  // Tag them
+  const results = hrEmployees.map(emp => ({ ...emp, _source: 'hr_employees' }));
+
+  // ── 2. Fetch unregistered users from the users table ────────────────────
+  if (!dept_id && !status) {
+    const hrEmails = new Set(hrEmployees.map(e => e.personal_email).filter(Boolean));
+    const hrIds = new Set(hrEmployees.map(e => e.employee_id).filter(Boolean));
+    
+    let uq = db('users');
+    if (search) {
+      uq = uq.where(function() {
+        this.where('full_name', 'like', `%${search}%`)
+            .orWhere('username', 'like', `%${search}%`)
+            .orWhere('email', 'like', `%${search}%`);
+      });
+    }
+    
+    const allUsers = await uq.select('*');
+    const unregistered = allUsers.filter(u => !hrEmails.has(u.email) && !hrIds.has(u.id));
+    
+    unregistered.forEach(u => {
+      results.push({
+        _source: 'users_table',
+        employee_id: u.id,
+        full_name: u.full_name || u.username,
+        personal_email: u.email,
+        personal_phone: u.phone_number,
+        dept_name: 'Unregistered',
+        position_title: u.role || 'N/A',
+        employment_status: 'Pending Registration',
+        user_photo: u.profile_photo,
+        gender: '',
+        hire_date: u.created_at,
+      });
+    });
+  }
 
   // Prevent browser caching — force fresh response every time
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 
-  res.json({ status: 'success', data: hrEmployees, total: hrEmployees.length });
+  res.json({ status: 'success', data: results, total: results.length });
 });
 
 exports.getETPEmployee = catchAsync(async (req, res) => {

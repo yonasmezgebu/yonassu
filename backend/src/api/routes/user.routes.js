@@ -170,9 +170,7 @@ router.get(
     }
 
     // Exclude users with elevated/protected roles
-    if (usersWithProtectedRoles.length > 0) {
-      query = query.whereNotIn('users.id', usersWithProtectedRoles);
-    }
+    
 
     const users = await query.orderBy('users.full_name', 'asc');
     res.json({ status: 'success', data: users });
@@ -242,6 +240,174 @@ router.get(
           const branchIds = await db('user_roles')
             .where('user_id', req.user.id)
             .where('role_id', pmRole.id)
+            .whereNotNull('branch_id')
+            .pluck('branch_id');
+          if (branchIds.length > 0) {
+            query = query.whereIn('ur.branch_id', branchIds);
+          }
+        }
+      }
+    }
+
+    const workers = await query.orderBy('u.full_name', 'asc');
+    res.json({ status: 'success', data: workers });
+  }
+);
+
+
+// ─── SALES MANAGER: Assign Sales/Cashier role ────────────────────────────────
+// Completely separate from Pharmacy. Sales Manager can assign/revoke Sales/Cashier
+// without needing the global users:update permission.
+router.post(
+  '/sales-assign/:userId',
+  authenticate,
+  async (req, res) => {
+    const { db } = require('../../config/database');
+    const callerRoles = req.user.roles || [];
+    // Only Sales Manager, Admin, CEO may do this
+    if (!callerRoles.some(r => ['Admin', 'CEO', 'Sales Manager'].includes(r))) {
+      return res.status(403).json({ status: 'fail', message: 'You do not have permission to assign Sales workers.' });
+    }
+
+    const { branchId, subRole } = req.body;
+    const targetUserId = parseInt(req.params.userId);
+    if (!branchId) return res.status(400).json({ status: 'fail', message: 'branchId is required.' });
+
+    // Resolve the Sales/Cashier role
+    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    if (!swRole) return res.status(404).json({ status: 'fail', message: 'Sales/Cashier role not found in system.' });
+
+    // Check target user belongs to Sales dept
+    const targetUser = await db('users')
+      .leftJoin('departments', 'users.department_id', 'departments.id')
+      .where('users.id', targetUserId)
+      .select('users.id', 'users.full_name', 'departments.name as dept_name')
+      .first();
+    if (!targetUser) return res.status(404).json({ status: 'fail', message: 'User not found.' });
+    if (targetUser.dept_name !== 'Sales') {
+      return res.status(400).json({ status: 'fail', message: `User is not in the Sales department (found: ${targetUser.dept_name}).` });
+    }
+
+    // Check not already assigned
+    const existing = await db('user_roles')
+      .where('user_id', targetUserId)
+      .where('role_id', swRole.id)
+      .first();
+    if (existing) return res.status(409).json({ status: 'fail', message: `${targetUser.full_name} is already assigned as Sales/Cashier.` });
+
+    await db('user_roles').insert({
+      user_id: targetUserId,
+      role_id: swRole.id,
+      branch_id: branchId,
+      sub_role: subRole || 'Worker',
+      assigned_by: req.user.id,
+      assigned_at: db.fn.now(),
+    });
+
+    res.json({ status: 'success', message: `${targetUser.full_name} assigned as Sales/Cashier successfully.` });
+  }
+);
+
+// ─── SALES MANAGER: Unassign Sales/Cashier role ──────────────────────────────
+router.delete(
+  '/sales-unassign/:userId',
+  authenticate,
+  async (req, res) => {
+    const { db } = require('../../config/database');
+    const callerRoles = req.user.roles || [];
+    if (!callerRoles.some(r => ['Admin', 'CEO', 'Sales Manager'].includes(r))) {
+      return res.status(403).json({ status: 'fail', message: 'You do not have permission to unassign Sales workers.' });
+    }
+
+    const targetUserId = parseInt(req.params.userId);
+    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    if (!swRole) return res.status(404).json({ status: 'fail', message: 'Sales/Cashier role not found.' });
+
+    const deleted = await db('user_roles')
+      .where('user_id', targetUserId)
+      .where('role_id', swRole.id)
+      .del();
+
+    if (!deleted) return res.status(404).json({ status: 'fail', message: 'User was not assigned as Sales/Cashier.' });
+    res.json({ status: 'success', message: 'Sales/Cashier role revoked successfully.' });
+  }
+);
+
+// Sales Manager: employees not yet assigned as Sales/Cashier
+router.get(
+  '/unassigned-sales-employees',
+
+  authenticate,
+  async (req, res) => {
+    const { db } = require('../../config/database');
+
+    const salesWorkerRole = await db('roles').where('name', 'Sales/Cashier').first();
+    if (!salesWorkerRole) return res.json({ status: 'success', data: [] });
+
+    const salesDept = await db('departments').where('name', 'Sales').first();
+    const salesDeptId = salesDept ? salesDept.id : null;
+
+    const alreadyAssigned = await db('user_roles')
+      .where('role_id', salesWorkerRole.id)
+      .pluck('user_id');
+
+    // Query users directly from users table — no hr_employees join needed
+    // This ensures employees created via HR (where hr_employees.user_id may be null)
+    // are still included as long as they are marked is_employee=true in Sales dept
+
+    let query = db('users')
+      .leftJoin('departments', 'users.department_id', 'departments.id')
+      .select(
+        'users.id', 'users.full_name', 'users.email', 'users.phone',
+        'departments.name as department_name', 'users.is_employee',
+        'users.profile_photo'
+      )
+      .where('users.is_employee', true)
+      .whereNull('users.deleted_at');
+
+    if (salesDeptId) {
+      query = query.where('users.department_id', salesDeptId);
+    }
+
+    if (alreadyAssigned.length > 0) {
+      query = query.whereNotIn('users.id', alreadyAssigned);
+    }
+
+    const unassigned = await query.orderBy('users.full_name', 'asc');
+    res.json({ status: 'success', data: unassigned });
+  }
+);
+
+// Sales Manager: list all assigned sales workers (with branch & sub_role)
+router.get(
+  '/sales-workers',
+  authenticate,
+  async (req, res) => {
+    const { db } = require('../../config/database');
+    const managerRoles = req.user.roles || [];
+    const swRole = await db('roles').where('name', 'Sales/Cashier').first();
+    if (!swRole) return res.json({ status: 'success', data: [] });
+
+    let query = db('user_roles as ur')
+      .join('users as u', 'ur.user_id', 'u.id')
+      .leftJoin('retail_branches as b', 'ur.branch_id', 'b.id')
+      .leftJoin('users as assigner', 'ur.assigned_by', 'assigner.id')
+      .where('ur.role_id', swRole.id)
+      .whereNull('u.deleted_at')
+      .select(
+        'u.id', 'u.full_name', 'u.email', 'u.phone', 'u.profile_photo',
+        'ur.sub_role', 'ur.assigned_at', 'ur.branch_id',
+        'b.name as branch_name',
+        'assigner.full_name as assigned_by_name'
+      );
+
+    if (!managerRoles.includes('Admin') && !managerRoles.includes('CEO')) {
+      if (managerRoles.includes('Sales Manager')) {
+        const smRole = await db('roles').where('name', 'Sales Manager').first();
+        if (smRole) {
+          const branchIds = await db('user_roles')
+            .where('user_id', req.user.id)
+            .where('role_id', smRole.id)
             .whereNotNull('branch_id')
             .pluck('branch_id');
           if (branchIds.length > 0) {

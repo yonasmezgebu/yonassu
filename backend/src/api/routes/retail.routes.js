@@ -84,11 +84,18 @@ router.get('/branches', authenticate, authorizeRoles(managerRoles), retailContro
 router.post('/branches', authenticate, authorizeRoles(managerRoles), retailController.createBranch);
 router.put('/branches/:id', authenticate, authorizeRoles(managerRoles), retailController.updateBranch);
 router.delete('/branches/:id', authenticate, authorizeRoles(managerRoles), retailController.deleteBranch);
+router.get('/branch-inventory/:id', authenticate, authorizeRoles(managerRoles), retailController.getBranchInventory);
+router.put('/branch-products/set-quantity', authenticate, authorizeRoles(managerRoles), retailController.setBranchProductQuantity);
 
 // --- Retail Store Inventory (general_store_materials dept=Sales) ---
 router.get('/store-inventory',       authenticate, authorizeRoles(managerRoles), retailController.getStoreInventory);
 router.post('/store-inventory',      authenticate, authorizeRoles(managerRoles), retailController.registerStoreItem);
 router.put('/store-inventory/:id',   authenticate, authorizeRoles(managerRoles), retailController.updateStoreItem);
 router.delete('/store-inventory/:id',authenticate, authorizeRoles(managerRoles), retailController.deleteStoreItem);
+
+// --- Retail Store Requests (isolated from pharmacy transfer_requests) ---
+router.get('/store-requests',          authenticate, authorizeRoles(managerRoles), retailController.getStoreRequests);
+router.post('/store-requests',         authenticate, authorizeRoles(managerRoles), retailController.createStoreRequest);
+router.patch('/store-requests/:id/receive', authenticate, authorizeRoles(managerRoles), retailController.receiveStoreRequest);
 
 module.exports = router;

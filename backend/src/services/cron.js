@@ -36,81 +36,38 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
-// ─── Tender Auto-Close Job — Runs every minute ───────────────────────────
-// Per SRS Flow 2 Section 6: Tender closing MUST be server-side, not client-triggered.
+// ─── Tender Deadline Notification Job — Runs every minute ───────────────────────────
 const notificationService = require('./notification.service');
 
 cron.schedule('* * * * *', async () => {
   try {
-    // Find all OPEN tenders whose closing_at has passed
+    // Find all 'open' tenders whose deadline has passed and haven't been notified yet
     const expiredTenders = await db('tenders')
-      .where('status', 'OPEN')
+      .where('status', 'open')
+      .where('deadline_notified', false)
       .where('deadline', '<=', new Date());
 
     if (expiredTenders.length === 0) return;
 
     for (const tender of expiredTenders) {
-      // Count valid bids
-      const validBids = await db('bids')
-        .where({ tender_id: tender.id, is_valid: true })
-        .orderBy('total_cost', 'asc');
+      // Mark as notified so we don't spam
+      await db('tenders').where({ id: tender.id }).update({ deadline_notified: true, updated_at: db.fn.now() });
 
-      if (validBids.length === 0) {
-        // No valid bids → EXPIRED
-        await db('tenders').where({ id: tender.id }).update({ status: 'EXPIRED', updated_at: new Date() });
-        await db('audit_logs').insert({
-          entity_type: 'tenders',
-          entity_id: tender.id,
-          action: 'AUTO_EXPIRE',
-          actor_id: 0, // system
-          before_state: JSON.stringify({ status: 'OPEN' }),
-          after_state: JSON.stringify({ status: 'EXPIRED' }),
-        });
+      await notificationService.sendNotification('CEO', null, {
+        type: 'TENDER_DEADLINE_REACHED',
+        title: 'Tender Deadline Reached',
+        message: `Tender ${tender.reference_number || tender.id} has reached its deadline. Please review the bids and manually close or extend it.`,
+        related_entity_id: tender.id,
+      });
 
-        await notificationService.sendNotification('CEO', null, {
-          type: 'TENDER_EXPIRED',
-          title: 'Tender Expired — No Valid Bids',
-          message: `Tender ${tender.tender_code} closed with no valid bids. It must be reissued.`,
-          related_entity_id: tender.id,
-          link: `/ceo/purchase-flow/tenders/${tender.id}`,
-        });
-        await notificationService.sendNotification('Purchase Manager', null, {
-          type: 'TENDER_EXPIRED',
-          title: 'Tender Expired',
-          message: `Tender ${tender.tender_code} expired with no valid bids. Please reissue a new tender.`,
-          related_entity_id: tender.id,
-          link: `/purchase/tenders/${tender.id}`,
-        });
-      } else {
-        // Has valid bids → CLOSED, bids are already sorted low-to-high at read time
-        await db('tenders').where({ id: tender.id }).update({ status: 'CLOSED', updated_at: new Date() });
-        await db('audit_logs').insert({
-          entity_type: 'tenders',
-          entity_id: tender.id,
-          action: 'AUTO_CLOSE',
-          actor_id: 0,
-          before_state: JSON.stringify({ status: 'OPEN' }),
-          after_state: JSON.stringify({ status: 'CLOSED', valid_bid_count: validBids.length }),
-        });
-
-        const lowestBid = validBids[0];
-        await notificationService.sendNotification('CEO', null, {
-          type: 'TENDER_CLOSED',
-          title: 'Tender Closed — Awaiting Award Decision',
-          message: `Tender ${tender.tender_code} has closed with ${validBids.length} valid bid(s). Lowest bid: ETB ${lowestBid.total_cost}. Please review and award.`,
-          related_entity_id: tender.id,
-          link: `/ceo/purchase-flow/tenders/${tender.id}`,
-        });
-        await notificationService.sendNotification('Purchase Manager', null, {
-          type: 'TENDER_CLOSED',
-          title: 'Tender Closed',
-          message: `Tender ${tender.tender_code} has closed with ${validBids.length} valid bid(s). Awaiting CEO award decision.`,
-          related_entity_id: tender.id,
-          link: `/purchase/tenders/${tender.id}`,
-        });
-      }
+      await notificationService.sendNotification('Sales Manager', null, {
+        type: 'TENDER_DEADLINE_REACHED',
+        title: 'Tender Deadline Reached',
+        message: `Tender ${tender.reference_number || tender.id} has reached its deadline. Please review the bids and manually close or extend it.`,
+        related_entity_id: tender.id,
+      });
     }
   } catch (error) {
-    console.error('Error in tender auto-close cron job:', error);
+    console.error('Error in tender deadline notification job:', error);
   }
 });

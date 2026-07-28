@@ -12,7 +12,7 @@ const genRef = async () => {
 
 exports.listPublic = catchAsync(async (req, res) => {
   const { status, category, search } = req.query;
-  let q = db('tenders').whereIn('status', ['open', 'closed', 'awarded', 'cancelled']);
+  let q = db('tenders').whereIn('status', ['open', 'closed', 'awarded', 'cancelled']).where('is_hidden', false);
   if (status) q = q.where('status', status);
   if (category) q = q.where('category', category);
   if (search) q = q.where(function() { this.where('title', 'like', `%${search}%`).orWhere('description', 'like', `%${search}%`); });
@@ -38,18 +38,28 @@ exports.getInternal = catchAsync(async (req, res) => {
 });
 
 exports.create = catchAsync(async (req, res) => {
-  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, attachments } = req.body;
-  if (!title || !description || quantity === undefined || starting_bid_price === undefined || !deadline || !terms_conditions) {
-    throw AppError.badRequest('Title, description, quantity, starting price, deadline, and terms are required');
+  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, attachments, items } = req.body;
+  
+  if (!title || !description || !deadline || !terms_conditions) {
+    throw AppError.badRequest('Title, description, deadline, and terms are required');
   }
+
+  // If items array is not provided, enforce single-product fields
+  if (!items && (quantity === undefined || starting_bid_price === undefined)) {
+    throw AppError.badRequest('Quantity and starting price are required for single-item tenders');
+  }
+
   const files = req.files ? req.files.map(f => f.filename) : [];
   const ref = await genRef();
   const [id] = await db('tenders').insert({
     reference_number: ref, title, description, category: category || null,
-    item_name: item_name || null, quantity, starting_bid_price,
+    item_name: item_name || null, 
+    quantity: quantity || 1, 
+    starting_bid_price: starting_bid_price || 0,
     deadline: new Date(deadline), terms_conditions,
     status: 'open', created_by: req.user.id,
     attachments: files.length ? JSON.stringify(files) : null,
+    items: items ? items : null
   });
   const tender = await db('tenders').where('id', id).first();
   res.status(201).json({ status: 'success', data: tender });
@@ -58,10 +68,10 @@ exports.create = catchAsync(async (req, res) => {
 exports.update = catchAsync(async (req, res) => {
   const tender = await db('tenders').where('id', req.params.id).first();
   if (!tender) throw AppError.notFound('Tender not found');
-  if (['awarded', 'cancelled'].includes(tender.status)) {
-    throw AppError.badRequest('Cannot edit an awarded or cancelled tender');
+  if (tender.status === 'awarded') {
+    throw AppError.badRequest('Cannot edit an awarded tender');
   }
-  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions } = req.body;
+  const { title, description, category, item_name, quantity, starting_bid_price, deadline, terms_conditions, items } = req.body;
   const updates = {};
   if (title !== undefined && title !== '') updates.title = title;
   if (description !== undefined && description !== '') updates.description = description;
@@ -69,20 +79,43 @@ exports.update = catchAsync(async (req, res) => {
   if (item_name !== undefined) updates.item_name = item_name || null;
   if (quantity !== undefined && quantity !== '') updates.quantity = quantity;
   if (starting_bid_price !== undefined && starting_bid_price !== '') updates.starting_bid_price = starting_bid_price;
-  if (deadline !== undefined && deadline !== '') {
-    const parsedDate = new Date(deadline);
-    if (!isNaN(parsedDate.getTime())) updates.deadline = parsedDate;
-  }
+  if (deadline !== undefined && deadline !== '') updates.deadline = new Date(deadline);
   if (terms_conditions !== undefined && terms_conditions !== '') updates.terms_conditions = terms_conditions;
+  if (items !== undefined) updates.items = items;
   // Handle file attachments if provided
   if (req.files && req.files.length > 0) {
     const newFiles = req.files.map(f => f.filename);
-    const existingFiles = tender.attachments ? JSON.parse(tender.attachments) : [];
-    updates.attachments = JSON.stringify([...existingFiles, ...newFiles]);
+    const replace = req.body.replace_attachments === 'true';
+    if (replace) {
+      // Delete old files from disk
+      const path = require('path');
+      const fs = require('fs');
+      const oldFiles = tender.attachments ? JSON.parse(tender.attachments) : [];
+      for (const oldFile of oldFiles) {
+        const fullPath = path.join(__dirname, '../../../../uploads/tenders', oldFile);
+        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+      }
+      updates.attachments = JSON.stringify(newFiles);
+    } else {
+      const existingFiles = tender.attachments ? JSON.parse(tender.attachments) : [];
+      updates.attachments = JSON.stringify([...existingFiles, ...newFiles]);
+    }
   }
   if (Object.keys(updates).length === 0) {
     return res.json({ status: 'success', data: tender });
   }
+
+  // If the tender was closed or cancelled, automatically reopen it if the deadline is in the future
+  const newDeadline = updates.deadline || tender.deadline;
+  if (newDeadline && new Date(newDeadline).getTime() > Date.now()) {
+    if (['closed', 'cancelled'].includes(tender.status)) {
+      updates.status = 'open';
+      updates.cancellation_reason = null;
+    }
+    // Always clear the notification flag if the deadline is in the future
+    updates.deadline_notified = false;
+  }
+
   updates.updated_at = db.fn.now();
   await db('tenders').where('id', req.params.id).update(updates);
   const updated = await db('tenders').where('id', req.params.id).first();
@@ -121,7 +154,8 @@ exports.approve = catchAsync(async (req, res) => {
 exports.close = catchAsync(async (req, res) => {
   const tender = await db('tenders').where('id', req.params.id).first();
   if (!tender) throw AppError.notFound('Tender not found');
-  if (tender.status !== 'open') throw AppError.badRequest('Only open tenders can be closed');
+  const closeable = ['open', 'draft', 'pending_approval'];
+  if (!closeable.includes(tender.status)) throw AppError.badRequest('Tender cannot be closed from its current status');
   await db('tenders').where('id', req.params.id).update({ status: 'closed', updated_at: db.fn.now() });
   res.json({ status: 'success', message: 'Tender closed' });
 });
@@ -131,8 +165,18 @@ exports.extend = catchAsync(async (req, res) => {
   if (!deadline) throw AppError.badRequest('New deadline is required');
   const tender = await db('tenders').where('id', req.params.id).first();
   if (!tender) throw AppError.notFound('Tender not found');
-  if (tender.status !== 'open') throw AppError.badRequest('Only open tenders can be extended');
-  await db('tenders').where('id', req.params.id).update({ deadline: new Date(deadline), updated_at: db.fn.now() });
+  if (['awarded'].includes(tender.status)) throw AppError.badRequest('Cannot extend an awarded tender');
+  
+  const updates = { deadline: new Date(deadline), updated_at: db.fn.now() };
+  if (new Date(deadline).getTime() > Date.now()) {
+    updates.deadline_notified = false;
+    if (['closed', 'cancelled'].includes(tender.status)) {
+      updates.status = 'open';
+      updates.cancellation_reason = null;
+    }
+  }
+  
+  await db('tenders').where('id', req.params.id).update(updates);
   res.json({ status: 'success', message: 'Deadline extended' });
 });
 
@@ -151,10 +195,18 @@ exports.cancel = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Tender cancelled' });
 });
 
+exports.toggleHidden = catchAsync(async (req, res) => {
+  const tender = await db('tenders').where('id', req.params.id).first();
+  if (!tender) throw AppError.notFound('Tender not found');
+  const newValue = !tender.is_hidden;
+  await db('tenders').where('id', req.params.id).update({ is_hidden: newValue, updated_at: db.fn.now() });
+  res.json({ status: 'success', is_hidden: newValue, message: newValue ? 'Tender hidden from public' : 'Tender visible to public' });
+});
+
 exports.delete = catchAsync(async (req, res) => {
   const tender = await db('tenders').where('id', req.params.id).first();
   if (!tender) throw AppError.notFound('Tender not found');
-  if (tender.status === 'awarded') throw AppError.badRequest('Cannot delete an awarded tender');
+  
   await db('bids').where('tender_id', req.params.id).del();
   await db('tenders').where('id', req.params.id).del();
   res.json({ status: 'success', message: 'Tender deleted' });

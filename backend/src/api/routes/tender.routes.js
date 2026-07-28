@@ -48,6 +48,7 @@ router.put('/:id/approve', authorizeRoles(['Admin', 'CEO']), tenderController.ap
 router.put('/:id/close', tenderController.close);
 router.put('/:id/extend', tenderController.extend);
 router.put('/:id/cancel', tenderController.cancel);
+router.put('/:id/toggle-hidden', tenderController.toggleHidden);
 router.get('/:tenderId/bids', bidController.listBids);
 router.put('/:tenderId/award', bidController.award);
 router.put('/bids/:bidId/evaluate', bidController.addEvaluation);
