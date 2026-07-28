@@ -52,10 +52,6 @@ const RegularMarketPage = lazy(() => import('../pages/LandingPage/RegularMarketP
 const SalesDashboard = lazy(() => import('../pages/sales/SalesDashboard'));
 const UnauthorizedPage  = lazy(() => import('../pages/auth/Unauthorized'));
 const NotFoundPage = lazy(() => import('../pages/shared/NotFoundPage'));
-
-// Flow 2 New Roles
-// const MarketDashboard = lazy(() => import('../pages/market/MarketDashboard'));
-// const SupplierDashboard = lazy(() => import('../pages/supplier/SupplierDashboard'));
 const Loader = () => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -213,17 +209,6 @@ const AppRoutes = () => {
           </RoleBasedRoute>
         } />
 
-        {/* Flow 2 New Roles */}
-        {/* <Route path="/market/*" element={
-          <RoleBasedRoute role={['Market Team', 'Admin', 'CEO']}>
-            <MarketDashboard />
-          </RoleBasedRoute>
-        } />
-        <Route path="/supplier/*" element={
-          <RoleBasedRoute role={['Supplier', 'Admin']}>
-            <SupplierDashboard />
-          </RoleBasedRoute>
-        } /> */}
         {}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

@@ -144,7 +144,6 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
                 <label style={labelStyle}>Warehouse</label>
                 <select name="warehouse" value={formData.warehouse} onChange={handleChange} style={inputStyle}>
                   <option value="Main Store">Main Store</option>
-                  <option value="Pharmacy">Pharmacy</option>
                 </select>
               </div>
               <div style={fieldGroupStyle}>

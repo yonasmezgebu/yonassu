@@ -218,17 +218,19 @@ export default function RetailStoreInventory() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // apiClient interceptor returns response.data already, so invRes = { status, data:[...] }
       const [invRes, reqRes] = await Promise.all([
-        apiClient.get('/sales/store-inventory'),
-        apiClient.get('/transfer-requests'),
+        apiClient.get('/retail/store-inventory'),
+        apiClient.get('/retail/store-requests'),
       ]);
-      const invData = invRes?.data?.data || invRes?.data || invRes || [];
-      const reqData = reqRes?.data?.data || reqRes?.data || reqRes || [];
+      const invData = invRes?.data || invRes || [];
+      const reqData = reqRes?.data || reqRes || [];
       setStoreStock(Array.isArray(invData) ? invData : []);
       setMyRequests(Array.isArray(reqData) ? reqData : []);
-    } catch { setMsg({ type:'error', text:'Failed to load data.' }); }
+    } catch (e) { setMsg({ type:'error', text: e?.message || 'Failed to load data.' }); }
     finally { setLoading(false); }
   };
+
   useEffect(() => { loadData(); }, []);
 
   const handleRefresh = async () => {
@@ -248,7 +250,7 @@ export default function RetailStoreInventory() {
     if (!savedSig) return showMsg('Please draw and SAVE your signature before submitting','error');
     setSubmittingReq(true);
     try {
-      await apiClient.post('/transfer-requests', {
+      await apiClient.post('/retail/store-requests', {
         product_id: reqModal.item.product_id || reqModal.item.id,
         requested_qty: qty, urgency: reqModal.urgency, signature: savedSig,
       });
@@ -267,7 +269,7 @@ export default function RetailStoreInventory() {
     if (isNaN(qty) || qty < 0) return showMsg('Please enter a valid quantity','error');
     setSubmittingReceive(true);
     try {
-      await apiClient.patch(`/transfer-requests/${receiveModal.req.id}/receive`, { received_qty:qty });
+      await apiClient.patch(`/retail/store-requests/${receiveModal.req.id}/receive`, { received_qty:qty });
       const isMatch = qty === Number(receiveModal.req.shipped_qty);
       if (isMatch) {
         showMsg(`✅ ${qty} units of "${receiveModal.req.product_name}" received & added to Sales stock!`,'success');

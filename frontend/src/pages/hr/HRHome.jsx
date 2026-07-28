@@ -1,680 +1,398 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import hrService from '../../services/hrService';
-import { formatNumber } from '../../utils/formatters';
-import {
-  Users, UserCheck, Umbrella, Building2, AlertCircle,
-  CheckCircle2, ChevronRight, TrendingUp, Clock, Briefcase,
-  FileText, Bell, DollarSign, ArrowUpRight, Zap, Star,
-  Activity, Calendar, Shield
-} from 'lucide-react';
 
-/* ─── Keyframe injection ─── */
-const STYLE = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* ─── Color Palette ─────────────────────────────────────────────────────── */
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
+  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
+  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
+  orange: '#FF9800', red: '#F44336', purple: '#7C3AED', blue: '#3b82f6'
+};
 
-@keyframes hrFadeUp {
-  from { opacity: 0; transform: translateY(28px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes hrSlideIn {
-  from { opacity: 0; transform: translateX(-20px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes hrScaleIn {
-  from { opacity: 0; transform: scale(0.88); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes hrPulse {
-  0%,100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: .7; transform: scale(1.15); }
-}
-@keyframes hrShimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-@keyframes hrCountUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes hrWelcomeFadeIn {
-  0%   { opacity: 0; transform: translateY(16px) scale(0.97); filter: blur(4px); }
-  100% { opacity: 1; transform: translateY(0px) scale(1);    filter: blur(0px); }
-}
-@keyframes hrWelcomeFadeOut {
-  0%   { opacity: 1; transform: translateY(0px) scale(1);    filter: blur(0px); }
-  100% { opacity: 0; transform: translateY(-16px) scale(0.97); filter: blur(4px); }
-}
-@keyframes hrCursorBlink {
-  0%,100% { opacity: 1; }
-  50%      { opacity: 0; }
-}
-@keyframes hrGlowPulse {
-  0%,100% { text-shadow: 0 0 20px rgba(165,180,252,0.4), 0 0 40px rgba(129,140,248,0.2); }
-  50%      { text-shadow: 0 0 40px rgba(165,180,252,0.8), 0 0 80px rgba(129,140,248,0.5); }
-}
-@keyframes hrOrbit {
-  0%   { transform: rotate(0deg)   translateX(60px) rotate(0deg); }
-  100% { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
-}
-@keyframes hrFloat {
-  0%,100% { transform: translateY(0px); }
-  50%      { transform: translateY(-8px); }
-}
-@keyframes hrGlow {
-  0%,100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
-  50%      { box-shadow: 0 0 40px rgba(99,102,241,0.6); }
-}
-@keyframes hrProgressFill {
-  from { width: 0%; }
-  to   { width: var(--target-w); }
-}
-@keyframes hrBarGrow {
-  from { height: 0%; }
-  to   { height: var(--target-h); }
-}
-@keyframes hrSparkle {
-  0%   { transform: scale(0) rotate(0deg); opacity: 0; }
-  50%  { transform: scale(1) rotate(180deg); opacity: 1; }
-  100% { transform: scale(0) rotate(360deg); opacity: 0; }
-}
-@keyframes hrBounce {
-  0%,100% { transform: translateY(0); }
-  40%      { transform: translateY(-6px); }
-  60%      { transform: translateY(-3px); }
-}
-.hr-stat-card:hover { transform: translateY(-5px) !important; box-shadow: 0 20px 60px rgba(0,0,0,0.12) !important; }
-.hr-stat-card { transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1) !important; }
-.hr-quick-link:hover { transform: translateY(-4px) scale(1.03) !important; }
-.hr-quick-link { transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1) !important; }
-.hr-dept-pill:hover { transform: scale(1.06) !important; filter: brightness(1.05) !important; }
-.hr-dept-pill { transition: all 0.25s ease !important; }
-.hr-welcome-in  { animation: hrWelcomeFadeIn  0.7s cubic-bezier(0.22,1,0.36,1) both !important; }
-.hr-welcome-out { animation: hrWelcomeFadeOut 0.5s cubic-bezier(0.55,0,0.45,1) both !important; }
-.hr-welcome-glow { animation: hrGlowPulse 3s ease-in-out infinite !important; }
-.hr-action-row:hover { background: #f0f9ff !important; border-color: #38bdf8 !important; transform: translateX(4px) !important; }
-.hr-action-row { transition: all 0.2s ease !important; }
-`;
+const COLORS_ARR = [G.forest, G.orange, G.sky, G.purple, G.emerald, G.brown, G.blue];
 
-/* ─── Welcome text cycle with fade-in / fade-out ─── */
-const WELCOME_PHRASES = [
-  'Welcome to your portal!',
-  'Ready to manage your team?',
-  'Your HR hub awaits.',
-  "Let's make today count!",
-];
+/* ─── Global Animations ─────────────────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
+    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    
+    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
+    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
+    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+    
+    /* 3D Header Styles */
+    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
+    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
+    .btn-3d { background:linear-gradient(135deg, #ffffff, #e6f2eb); color:#1B5E20; border:2px solid #228B22; border-radius:14px; padding:10px 24px; font-weight:900; font-size:14px; cursor:pointer; box-shadow:0px 5px 0px #228B22, 0px 8px 15px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); transition:all 0.1s cubic-bezier(0.4, 0, 0.2, 1); display:inline-flex; align-items:center; justify-content:center; gap:8px; text-transform:uppercase; letter-spacing:1.5px; margin:0; }
+    .btn-3d:active { transform:translateY(6px); box-shadow:0px 0px 0px #228B22, 0px 2px 5px rgba(0,80,120,0.15), inset 0px 2px 0px rgba(255,255,255,1); }
+    .btn-3d:hover { filter:brightness(1.05); }
+    .btn-text-3d { text-shadow:1px 1px 0px rgba(255,255,255,0.8); }
 
-function WelcomeText() {
-  const [idx, setIdx] = useState(0);
-  const [phase, setPhase] = useState('in'); // 'in' | 'hold' | 'out'
-
-  useEffect(() => {
-    let timer;
-    if (phase === 'in') {
-      // After fade-in (0.7s) → hold for 2.8s
-      timer = setTimeout(() => setPhase('hold'), 700);
-    } else if (phase === 'hold') {
-      timer = setTimeout(() => setPhase('out'), 2800);
-    } else if (phase === 'out') {
-      // After fade-out (0.5s) → advance to next phrase
-      timer = setTimeout(() => {
-        setIdx(i => (i + 1) % WELCOME_PHRASES.length);
-        setPhase('in');
-      }, 500);
+    .d-card { 
+      --hover-color: #2E8B57;
+      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
     }
-    return () => clearTimeout(timer);
-  }, [phase]);
+    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
+    
+    .d-card-no-hover { 
+      --hover-color: #228B22;
+      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
+    
+    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
+    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
+    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
+    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
+    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
+    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .qa-card { 
+      --hover-color: #2E8B57;
+      --base-top: transparent;
+      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color)),
+        linear-gradient(to right, var(--base-top), var(--base-top));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+    }
+    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
+    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+  `}</style>
+);
 
-  const cls = phase === 'out' ? 'hr-welcome-out' : 'hr-welcome-in';
+const DecorPlants = () => (
+  <>
+    <GlobalStyles />
+    {[
+      { e:'🍃', sz:55, op:0.22, top:'1%',    left:'0.5%'  },
+      { e:'🌿', sz:48, op:0.18, top:'0%',    right:'0.5%' },
+      { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
+      { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
+    ].map((p,i) => (
+      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation:`floatLeaf ${9+i*1.5}s ease-in-out infinite`, animationDelay:`${i*1.2}s`, zIndex:0 }}>{p.e}</span>
+    ))}
+  </>
+);
 
-  return (
-    <span
-      key={idx}
-      className={`hr-welcome-glow ${cls}`}
-      style={{
-        display: 'inline-block',
-        background: 'linear-gradient(90deg, #a5b4fc, #818cf8, #c4b5fd, #f0abfc)',
-        backgroundSize: '200% auto',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-      }}
-    >
-      {WELCOME_PHRASES[idx]}
-      <span
-        style={{
-          display: 'inline-block',
-          width: 3,
-          height: '0.85em',
-          background: '#a5b4fc',
-          marginLeft: 4,
-          verticalAlign: 'middle',
-          borderRadius: 2,
-          animation: 'hrCursorBlink 1.1s step-end infinite',
-        }}
-      />
-    </span>
-  );
-}
-
-/* ─── Animated number counter ─── */
-function AnimatedNumber({ target, duration = 1200, prefix = '', suffix = '' }) {
-  const [current, setCurrent] = useState(0);
-  const rafRef = useRef(null);
-  useEffect(() => {
-    const start = Date.now();
-    const step = () => {
-      const elapsed = Date.now() - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCurrent(Math.round(target * eased));
-      if (progress < 1) rafRef.current = requestAnimationFrame(step);
-    };
-    rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, duration]);
-  return <span>{prefix}{current.toLocaleString()}{suffix}</span>;
-}
-
-/* ─── Circular progress ring ─── */
-function RingProgress({ pct, size = 80, stroke = 7, color = '#6366f1' }) {
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const [dash, setDash] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setDash((pct / 100) * circ), 300);
-    return () => clearTimeout(t);
-  }, [pct, circ]);
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={circ - dash}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)' }}
-      />
-    </svg>
-  );
-}
-
-/* ─── Mini sparkline bar chart ─── */
-function SparkBars({ data = [40,65,50,80,60,90,70], color = '#6366f1' }) {
-  const max = Math.max(...data);
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 36 }}>
-      {data.map((v, i) => (
-        <div key={i} style={{
-          flex: 1, background: color, borderRadius: 3,
-          height: `${(v / max) * 100}%`,
-          opacity: i === data.length - 1 ? 1 : 0.45 + (i / data.length) * 0.4,
-          animation: `hrBarGrow 0.6s ease ${i * 0.08}s both`,
-          '--target-h': `${(v / max) * 100}%`,
-        }} />
-      ))}
-    </div>
-  );
-}
+const CategoryBar = ({ value, max, color }) => (
+  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
+    <div style={{
+      height: '100%', borderRadius: 0, background: color,
+      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
+      transition: 'width 1.2s ease'
+    }} />
+  </div>
+);
 
 const HRHome = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
   const [summary, setSummary] = useState(null);
   const [activities, setActivities] = useState([]);
   const [pendingLeaves, setPendingLeaves] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [visible, setVisible] = useState(false);
+  
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [summaryRes, activitiesRes, leavesRes] = await Promise.all([
-          hrService.getSummary().catch(() => null),
-          hrService.getTodayActivities().catch(() => null),
-          hrService.getLeaveRequests({ status: 'pending' }).catch(() => null)
-        ]);
-        setSummary(summaryRes?.data || summaryRes || {});
-        const actData = activitiesRes?.data || activitiesRes || {};
-        const logs = actData.logs || [];
-        setActivities(logs.map((log, i) => ({
-          id: log.record_id || i,
-          text: `${log.action_type === 'CLOCK_IN' ? 'Clocked in' : 'Clocked out'} — ${log.employee_id}`,
-          time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: log.action_type === 'CLOCK_IN' ? 'hire' : 'leave'
-        })).slice(0, 6));
-        const lvData = leavesRes?.data?.leaves || leavesRes?.leaves || [];
-        setPendingLeaves(lvData);
-      } catch (err) {
-        console.error('Failed to fetch HR dashboard data:', err);
-      } finally {
-        setLoading(false);
-        setTimeout(() => setVisible(true), 80);
-      }
-    };
-    fetchDashboardData();
+    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a' }}>
-        <style>{STYLE}</style>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', border: '4px solid rgba(99,102,241,0.3)', borderTopColor: '#6366f1', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
-          <p style={{ color: '#94a3b8', fontWeight: 600, fontSize: 15, fontFamily: 'Inter,sans-serif' }}>Loading Dashboard…</p>
-        </div>
-      </div>
-    );
-  }
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [summaryRes, activitiesRes, leavesRes] = await Promise.all([
+        hrService.getSummary().catch(() => null),
+        hrService.getTodayActivities().catch(() => null),
+        hrService.getLeaveRequests({ status: 'pending' }).catch(() => null)
+      ]);
+      setSummary(summaryRes?.data || summaryRes || {});
+      const actData = activitiesRes?.data || activitiesRes || {};
+      const logs = actData.logs || [];
+      setActivities(logs.map((log, i) => ({
+        id: log.record_id || i,
+        action_type: log.action_type === 'CLOCK_IN' ? 'Clock In' : 'Clock Out',
+        employee_id: log.employee_id,
+        time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: log.action_type === 'CLOCK_IN' ? 'hire' : 'leave',
+        date_time: log.timestamp
+      })).slice(0, 6));
+      const lvData = leavesRes?.data?.leaves || leavesRes?.leaves || [];
+      setPendingLeaves(lvData);
+    } catch (err) {
+      console.error('Failed to fetch HR dashboard data:', err);
+    }
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const nav = (path) => { navigate(path); };
 
   const data = summary || {};
   const activeCount   = parseInt(data.activeEmployees) || 0;
   const presentCount  = parseInt(data.presentToday)   || 0;
   const attendanceRate = activeCount > 0 ? Math.round((presentCount / activeCount) * 100) : 0;
   const onLeaveCount  = parseInt(data.onLeaveCount)   || 0;
-  const totalDepts    = (data.departmentBreakdown || []).length || 0;
+  
+  const deptBreakdown = data.departmentBreakdown || [];
+  const totalDepts    = deptBreakdown.length || 0;
   const pendingCount  = parseInt(data.pendingLeaves)  || pendingLeaves.length;
   const firstName = user?.fullName?.split(' ')[0] || user?.full_name?.split(' ')[0] || 'Manager';
-
-  const deptColors = [
-    { bg: 'linear-gradient(135deg,#6366f1,#818cf8)', light: 'rgba(99,102,241,0.15)' },
-    { bg: 'linear-gradient(135deg,#10b981,#34d399)', light: 'rgba(16,185,129,0.15)' },
-    { bg: 'linear-gradient(135deg,#f59e0b,#fbbf24)', light: 'rgba(245,158,11,0.15)' },
-    { bg: 'linear-gradient(135deg,#ef4444,#f87171)', light: 'rgba(239,68,68,0.15)' },
-    { bg: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', light: 'rgba(139,92,246,0.15)' },
-    { bg: 'linear-gradient(135deg,#06b6d4,#22d3ee)', light: 'rgba(6,182,212,0.15)' },
-    { bg: 'linear-gradient(135deg,#ec4899,#f472b6)', light: 'rgba(236,72,153,0.15)' },
-  ];
-
-  const quickLinks = [
-    { label: 'Employees',    icon: Users,       path: '/hr/employees',       grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', glow: 'rgba(99,102,241,0.4)'  },
-    { label: 'Payroll',      icon: DollarSign,  path: '/hr/monthly-payroll', grad: 'linear-gradient(135deg,#10b981,#059669)', glow: 'rgba(16,185,129,0.4)'  },
-    { label: 'Deductions',   icon: Shield,      path: '/hr/deductions',      grad: 'linear-gradient(135deg,#f59e0b,#d97706)', glow: 'rgba(245,158,11,0.4)'  },
-    { label: 'Salary List',  icon: FileText,    path: '/hr/salary-list',     grad: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', glow: 'rgba(139,92,246,0.4)'  },
-    { label: 'Policies',     icon: Briefcase,   path: '/hr/hr-policies',     grad: 'linear-gradient(135deg,#06b6d4,#0891b2)', glow: 'rgba(6,182,212,0.4)'   },
-    { label: 'Announcements',icon: Bell,        path: '/hr/announcements',   grad: 'linear-gradient(135deg,#ec4899,#db2777)', glow: 'rgba(236,72,153,0.4)'  },
-  ];
+  
+  const maxDeptCount = Math.max(...deptBreakdown.map(d => d.count), 1);
 
   return (
-    <div style={{ background: '#f1f5f9', minHeight: '100vh', fontFamily: "'Inter',sans-serif", overflowX: 'hidden' }}>
-      <style>{STYLE}</style>
-
-      {/* ══════════════════════════════════════════
-          HERO BANNER
-      ══════════════════════════════════════════ */}
-      <div style={{
-        position: 'relative',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 35%, #312e81 65%, #4f46e5 100%)',
-        padding: '48px 40px 80px',
-        overflow: 'hidden',
-        animation: visible ? 'hrFadeUp 0.6s ease both' : 'none',
-      }}>
-        {/* Grid texture */}
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize:'40px 40px', pointerEvents:'none' }} />
-
-        {/* Glowing orbs */}
-        <div style={{ position:'absolute', top:-80, right:-60, width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(139,92,246,0.35) 0%,transparent 70%)', pointerEvents:'none', animation:'hrFloat 6s ease-in-out infinite' }} />
-        <div style={{ position:'absolute', bottom:-100, left:100, width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle,rgba(99,102,241,0.25) 0%,transparent 70%)', pointerEvents:'none', animation:'hrFloat 8s ease-in-out 2s infinite' }} />
-        <div style={{ position:'absolute', top:30, left:'40%', width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle,rgba(236,72,153,0.15) 0%,transparent 70%)', pointerEvents:'none', animation:'hrFloat 7s ease-in-out 1s infinite' }} />
-
-        <div style={{ position:'relative', zIndex:1, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:24 }}>
-          <div style={{ animation: visible ? 'hrSlideIn 0.6s ease 0.1s both' : 'none' }}>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.12)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:20, padding:'5px 16px', marginBottom:16, backdropFilter:'blur(8px)' }}>
-              <span style={{ width:7, height:7, borderRadius:'50%', background:'#a5f3fc', display:'inline-block', boxShadow:'0 0 8px #a5f3fc', animation:'hrPulse 2s ease-in-out infinite' }} />
-              <span style={{ color:'#e0f2fe', fontSize:12, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase' }}>HR Command Center</span>
-            </div>
-            <h1 style={{ margin:'0 0 10px', fontSize:42, fontWeight:900, color:'#fff', letterSpacing:'-0.04em', lineHeight:1.2 }}>
-              <WelcomeText />
-              <br/>
-              <span style={{ fontSize:28, fontWeight:600, color:'rgba(255,255,255,0.6)', letterSpacing:'-0.01em' }}>
-                Hi, <span style={{ color:'#fff', fontWeight:800 }}>{firstName}</span> 👋
-              </span>
-            </h1>
-            <p style={{ margin:0, color:'rgba(196,181,253,0.85)', fontSize:16, fontWeight:400 }}>
-              {new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
-            </p>
-          </div>
-
-          {/* Hero stats chips */}
-          <div style={{ display:'flex', gap:16, flexWrap:'wrap', animation: visible ? 'hrFadeUp 0.6s ease 0.25s both' : 'none' }}>
-            {[
-              { label:'Total Staff',   val: activeCount,    icon:'👥', bg:'rgba(99,102,241,0.3)'  },
-              { label:'Present Today', val: presentCount,   icon:'✅', bg:'rgba(16,185,129,0.3)'  },
-              { label:'On Leave',      val: onLeaveCount,   icon:'🌴', bg:'rgba(245,158,11,0.3)'  },
-              { label:'Pending',       val: pendingCount,   icon:'⏳', bg:'rgba(239,68,68,0.3)'   },
-            ].map((chip, i) => (
-              <div key={i} style={{ background: chip.bg, backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:16, padding:'14px 20px', minWidth:110, animation: visible ? `hrScaleIn 0.5s ease ${0.15 + i * 0.08}s both` : 'none' }}>
-                <div style={{ fontSize:22, marginBottom:4 }}>{chip.icon}</div>
-                <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1 }}>
-                  <AnimatedNumber target={chip.val} duration={1000 + i * 150} />
-                </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', fontWeight:600, marginTop:3, textTransform:'uppercase', letterSpacing:'0.06em' }}>{chip.label}</div>
-              </div>
-            ))}
-          </div>
+    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
+      <DecorPlants />
+      {/* ── HEADER ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
+        <div style={{ justifySelf: 'start' }}>
+          <h1 className="artistic-3d-title">
+            HR Command. <span className="blink-star">🌿</span>
+          </h1>
+        </div>
+        <div style={{ justifySelf: 'center' }}>
+          <p className="artistic-3d-subtitle">
+            Universal HR Hub · It&apos;s {timeString}
+          </p>
+        </div>
+        <div style={{ justifySelf: 'end' }}>
+          <button onClick={load} className="btn-3d" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+            <span className="btn-text-3d">Sync</span>
+          </button>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          MAIN CONTENT (pulled up over hero)
-      ══════════════════════════════════════════ */}
-      <div style={{ padding:'0 32px 48px', marginTop:'-44px', position:'relative', zIndex:2 }}>
+      {/* ── ROW 1: KPI HERO CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
 
-        {/* ── STAT CARDS ROW ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:20, marginBottom:32 }}>
-
-          {/* Card 1 – Total Employees */}
-          <div className="hr-stat-card" onClick={() => navigate('/hr/employees')}
-            style={{ background:'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)', borderRadius:24, padding:28, cursor:'pointer', boxShadow:'0 8px 32px rgba(99,102,241,0.35)', position:'relative', overflow:'hidden', animation: visible ? 'hrFadeUp 0.5s ease 0.3s both' : 'none' }}>
-            <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }} />
-            <div style={{ position:'absolute', bottom:-30, left:-10, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)' }} />
-            <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-                <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Users size={24} color="#fff" />
-                </div>
-                <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:8, padding:'4px 10px', display:'flex', alignItems:'center', gap:4 }}>
-                  <TrendingUp size={12} color="#a5f3fc" />
-                  <span style={{ color:'#a5f3fc', fontSize:11, fontWeight:700 }}>Active</span>
-                </div>
-              </div>
-              <div style={{ fontSize:40, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:6 }}>
-                <AnimatedNumber target={activeCount} duration={1200} />
-              </div>
-              <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, fontWeight:600 }}>Total Employees</div>
-              <SparkBars data={[55,62,58,70,65,80,activeCount > 0 ? 100 : 70]} color="rgba(255,255,255,0.6)" />
-            </div>
+        {/* Health Score Hero */}
+        <div className="d-card" onClick={() => nav('/hr/employees')}
+          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
+          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
+            <span style={{ fontSize: 24 }}>⭐</span>
           </div>
-
-          {/* Card 2 – Attendance */}
-          <div className="hr-stat-card"
-            style={{ background:'linear-gradient(135deg,#10b981 0%,#059669 100%)', borderRadius:24, padding:28, boxShadow:'0 8px 32px rgba(16,185,129,0.35)', position:'relative', overflow:'hidden', animation: visible ? 'hrFadeUp 0.5s ease 0.38s both' : 'none' }}>
-            <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }} />
-            <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-                <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <UserCheck size={24} color="#fff" />
-                </div>
-                <div style={{ position:'relative' }}>
-                  <RingProgress pct={attendanceRate} size={64} stroke={6} color="rgba(255,255,255,0.9)" />
-                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
-                    {attendanceRate}%
-                  </div>
-                </div>
-              </div>
-              <div style={{ fontSize:40, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:6 }}>
-                <AnimatedNumber target={presentCount} duration={1100} suffix=" staff" />
-              </div>
-              <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, fontWeight:600 }}>Present Today</div>
-              <div style={{ marginTop:14, height:5, background:'rgba(255,255,255,0.2)', borderRadius:10, overflow:'hidden' }}>
-                <div style={{ height:'100%', borderRadius:10, background:'rgba(255,255,255,0.9)', width:`${attendanceRate}%`, transition:'width 1.4s cubic-bezier(0.4,0,0.2,1) 0.5s' }} />
-              </div>
-            </div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Workforce Health Score</div>
+          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
+            {attendanceRate}<span style={{ fontSize: '1.5rem', opacity: 0.75, marginLeft: 6 }}>%</span>
           </div>
-
-          {/* Card 3 – On Leave */}
-          <div className="hr-stat-card"
-            style={{ background:'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)', borderRadius:24, padding:28, boxShadow:'0 8px 32px rgba(245,158,11,0.35)', position:'relative', overflow:'hidden', animation: visible ? 'hrFadeUp 0.5s ease 0.46s both' : 'none' }}>
-            <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }} />
-            <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-                <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Umbrella size={24} color="#fff" />
-                </div>
-                <span style={{ fontSize:28 }}>🌴</span>
-              </div>
-              <div style={{ fontSize:40, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:6 }}>
-                <AnimatedNumber target={onLeaveCount} duration={1000} />
-              </div>
-              <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, fontWeight:600 }}>On Leave Today</div>
-              <div style={{ marginTop:10, color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:600 }}>
-                Across {totalDepts} department{totalDepts !== 1 ? 's' : ''}
-              </div>
-              <SparkBars data={[30,45,35,50,42,55,onLeaveCount > 0 ? 80 : 40]} color="rgba(255,255,255,0.6)" />
-            </div>
-          </div>
-
-          {/* Card 4 – Pending Approvals */}
-          <div className="hr-stat-card" onClick={() => navigate('/hr/employee-info')}
-            style={{ background:'linear-gradient(135deg,#ef4444 0%,#dc2626 100%)', borderRadius:24, padding:28, cursor:'pointer', boxShadow:'0 8px 32px rgba(239,68,68,0.35)', position:'relative', overflow:'hidden', animation: visible ? 'hrFadeUp 0.5s ease 0.54s both' : 'none' }}>
-            <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }} />
-            {pendingCount > 0 && (
-              <div style={{ position:'absolute', top:16, right:16, width:10, height:10, borderRadius:'50%', background:'#fef08a', boxShadow:'0 0 12px #fef08a', animation:'hrPulse 1.5s ease-in-out infinite' }} />
-            )}
-            <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-                <div style={{ width:48, height:48, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <AlertCircle size={24} color="#fff" />
-                </div>
-                <ArrowUpRight size={20} color="rgba(255,255,255,0.7)" />
-              </div>
-              <div style={{ fontSize:40, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:6 }}>
-                <AnimatedNumber target={pendingCount} duration={900} />
-              </div>
-              <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, fontWeight:600 }}>Pending Approvals</div>
-              <div style={{ marginTop:10, color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:600 }}>
-                {pendingCount > 0 ? '⚡ Requires your attention' : '✅ All caught up!'}
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+            <span>👋</span> Hello, {firstName} - Today's Attendance Rate
           </div>
         </div>
 
-        {/* ── QUICK NAVIGATION LINKS ── */}
-        <div style={{ background:'#fff', borderRadius:24, padding:'28px 32px', marginBottom:28, boxShadow:'0 4px 24px rgba(0,0,0,0.05)', animation: visible ? 'hrFadeUp 0.5s ease 0.6s both' : 'none' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-            <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:'#1e293b', display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <Zap size={16} color="#fff" />
-              </div>
-              Quick Access
-            </h2>
-            <span style={{ fontSize:12, color:'#94a3b8', fontWeight:600 }}>All HR Sections</span>
+        {/* Total Staff */}
+        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/hr/employees')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Total Staff</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>👥</span></div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:16 }}>
-            {quickLinks.map((ql, i) => {
-              const Icon = ql.icon;
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{activeCount.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Employees on payroll</div>
+        </div>
+
+        {/* Present Today */}
+        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/hr/todays-activities')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Present Today</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>✅</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{presentCount.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently clocked in</div>
+        </div>
+
+        {/* Pending Approvals */}
+        <div className="d-card" style={{ animationDelay: '0.2s', background: pendingCount > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/hr/employee-info')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: pendingCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Pending Approvals</span>
+            <div style={{ background: pendingCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{pendingCount > 0 ? '⚠️' : '✅'}</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: pendingCount > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{pendingCount}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>{pendingCount > 0 ? 'Requires attention' : 'All caught up!'}</div>
+        </div>
+      </div>
+
+      {/* ── ROW 2: DEPARTMENT BREAKDOWN + ACTIVITY FEED ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+
+        {/* Department Breakdown */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <span style={{ fontSize:18 }}>🏢</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Department Headcount</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Across {totalDepts} departments</span>
+          </div>
+          {/* Sub-KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+            {[
+              { label: 'Active Depts',  val: totalDepts,   icon: '🏢', c: G.forest },
+              { label: 'Total Payroll', val: activeCount,  icon: '👥', c: G.orange },
+              { label: 'On Leave',      val: onLeaveCount, icon: '🌴', c: G.sky    },
+              { label: 'Leave Requests',val: pendingCount, icon: '⏳', c: G.purple },
+            ].map(k => (
+              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
+                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Header row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+            {['Department', '', 'Count', '%'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+            ))}
+          </div>
+          {deptBreakdown.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '28px 0', color: G.olive, fontSize: 13 }}>No department data yet</div>
+          ) : deptBreakdown.map((row, i) => {
+            const c = COLORS_ARR[i % COLORS_ARR.length];
+            const pct = activeCount > 0 ? Math.round((row.count / activeCount) * 100) : 0;
+            return (
+              <div key={row.department} className="cat-row" onClick={() => nav('/hr/employees')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.department}</span>
+                </div>
+                <CategoryBar value={row.count} max={maxDeptCount} color={c} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{row.count}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.emerald, textAlign: 'right' }}>{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Recent Activity Feed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize:18 }}>📜</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Live Activity</span>
+            </div>
+            {activities.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
+                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No logs yet
+              </div>
+            ) : activities.map((l, i) => {
+              const c = l.type === 'hire' ? G.emerald : G.orange;
+              const icon = l.type === 'hire' ? '👋' : '🚶';
               return (
-                <div key={i} className="hr-quick-link" onClick={() => navigate(ql.path)}
-                  style={{ background: ql.grad, borderRadius:18, padding:'20px 16px', cursor:'pointer', textAlign:'center', boxShadow:`0 6px 20px ${ql.glow}`, animation: visible ? `hrScaleIn 0.4s ease ${0.65 + i * 0.07}s both` : 'none', position:'relative', overflow:'hidden' }}>
-                  <div style={{ position:'absolute', top:-15, right:-15, width:70, height:70, borderRadius:'50%', background:'rgba(255,255,255,0.1)' }} />
-                  <div style={{ width:44, height:44, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                    <Icon size={22} color="#fff" />
+                <div key={l.id} className="top-row" onClick={() => nav('/hr/todays-activities')}>
+                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#fff' }}>{ql.label}</div>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {l.action_type}: {l.employee_id}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                    {l.time}
+                  </span>
                 </div>
               );
             })}
           </div>
         </div>
+      </div>
 
-        {/* ── LOWER GRID ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr', gap:24 }}>
+      {/* ── ROW 3: LOW STOCK ALERTS + QUICK ACTIONS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
 
-          {/* LEFT: Departments + Pending Leaves */}
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-
-            {/* Department Breakdown */}
-            <div style={{ background:'#fff', borderRadius:24, padding:'28px 32px', boxShadow:'0 4px 24px rgba(0,0,0,0.05)', animation: visible ? 'hrFadeUp 0.5s ease 0.7s both' : 'none' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-                <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:'#1e293b', display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Building2 size={16} color="#fff" />
-                  </div>
-                  Department Headcount
-                </h2>
-                <button onClick={() => navigate('/hr/employees')}
-                  style={{ background:'#eff6ff', border:'none', color:'#4f46e5', fontWeight:700, fontSize:13, cursor:'pointer', padding:'7px 14px', borderRadius:10, display:'flex', alignItems:'center', gap:5, transition:'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background='#e0e7ff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background='#eff6ff'; }}>
-                  View All <ArrowUpRight size={14} />
-                </button>
+        {/* HR Alerts */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
+          {[
+            { label: `${pendingCount} Pending Requests`, sub: `Leaves awaiting approval`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/hr/employee-info' },
+            { label: `${onLeaveCount} Staff on Leave`, sub: 'Currently not in office', icon: '🌴', bg: '#FFFBEB', c: '#f59e0b', path: '/hr/employee-info' }
+          ].map(row => (
+            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
+              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
               </div>
-
-              {data.departmentBreakdown && data.departmentBreakdown.length > 0 ? (
-                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {data.departmentBreakdown.map((dept, idx) => {
-                    const dc = deptColors[idx % deptColors.length];
-                    const pct = activeCount > 0 ? Math.round((dept.count / activeCount) * 100) : 0;
-                    return (
-                      <div key={idx} className="hr-dept-pill"
-                        style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', background:'#f8fafc', borderRadius:14, cursor:'default', animation: visible ? `hrSlideIn 0.4s ease ${0.75 + idx * 0.06}s both` : 'none' }}>
-                        <div style={{ width:42, height:42, borderRadius:12, background: dc.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 12px ${dc.light}` }}>
-                          <Building2 size={18} color="#fff" />
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                            <span style={{ fontWeight:700, color:'#1e293b', fontSize:14 }}>{dept.department}</span>
-                            <span style={{ fontWeight:800, color:'#1e293b', fontSize:15 }}>{dept.count}</span>
-                          </div>
-                          <div style={{ height:6, background:'#e2e8f0', borderRadius:10, overflow:'hidden' }}>
-                            <div style={{ height:'100%', borderRadius:10, background: dc.bg, width:`${pct}%`, transition:`width 1.2s cubic-bezier(0.4,0,0.2,1) ${0.8 + idx * 0.1}s` }} />
-                          </div>
-                        </div>
-                        <span style={{ fontSize:12, fontWeight:700, color:'#64748b', flexShrink:0 }}>{pct}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ textAlign:'center', padding:'32px', color:'#94a3b8', fontSize:14, background:'#f8fafc', borderRadius:16 }}>
-                  No department data available yet.
-                </div>
-              )}
+              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
             </div>
-
-            {/* Pending Leave Requests */}
-            <div style={{ background:'#fff', borderRadius:24, padding:'28px 32px', boxShadow:'0 4px 24px rgba(0,0,0,0.05)', animation: visible ? 'hrFadeUp 0.5s ease 0.8s both' : 'none' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-                <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:'#1e293b', display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#f59e0b,#d97706)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <AlertCircle size={16} color="#fff" />
-                  </div>
-                  Leave Requests
-                  {pendingCount > 0 && (
-                    <span style={{ background:'#fee2e2', color:'#dc2626', fontSize:11, fontWeight:800, padding:'3px 10px', borderRadius:20, animation:'hrPulse 2s ease-in-out infinite' }}>
-                      {pendingCount} Pending
-                    </span>
-                  )}
-                </h2>
-                <button onClick={() => navigate('/hr/employee-info')}
-                  style={{ background:'#fff7ed', border:'none', color:'#d97706', fontWeight:700, fontSize:13, cursor:'pointer', padding:'7px 14px', borderRadius:10, display:'flex', alignItems:'center', gap:5 }}>
-                  View All <ChevronRight size={14} />
-                </button>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {pendingLeaves.length > 0 ? pendingLeaves.slice(0, 5).map((item, i) => (
-                  <div key={i} className="hr-action-row"
-                    onClick={() => navigate('/hr/employee-info')}
-                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 18px', border:'1px solid #e2e8f0', borderRadius:14, cursor:'pointer', background:'#fff', animation: visible ? `hrSlideIn 0.4s ease ${0.85 + i * 0.07}s both` : 'none' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:'#fef3c7', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <Calendar size={16} color="#d97706" />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight:700, color:'#1e293b', fontSize:14 }}>Leave Request — {item.employee_id}</div>
-                        <div style={{ fontSize:12, color:'#94a3b8', fontWeight:500, marginTop:2 }}>
-                          {new Date(item.start_date || new Date()).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ background:'#fef3c7', color:'#d97706', padding:'5px 12px', borderRadius:20, fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em' }}>Pending</span>
-                      <ChevronRight size={16} color="#cbd5e1" />
-                    </div>
-                  </div>
-                )) : (
-                  <div style={{ textAlign:'center', padding:'28px', background:'#f0fdf4', borderRadius:16, border:'1px dashed #86efac' }}>
-                    <CheckCircle2 size={32} color="#22c55e" style={{ marginBottom:10 }} />
-                    <p style={{ margin:0, fontWeight:700, color:'#166534', fontSize:14 }}>All caught up! No pending requests.</p>
-                  </div>
-                )}
-              </div>
+          ))}
+          {/* Pending leaves mini-list */}
+          {pendingLeaves.slice(0,3).map((item, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:`1px solid ${G.sage}44` }}>
+              <span style={{ fontSize:12, fontWeight:800, color:G.orange, minWidth:28 }}>{item.employee_id}</span>
+              <span style={{ fontSize:12, fontWeight:700, color:G.dark, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>Leave Request</span>
+              <span style={{ fontSize:10, color:G.olive }}>{new Date(item.start_date || new Date()).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* RIGHT: Activity Feed + Stats Summary */}
-          <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-
-            {/* Activity Timeline */}
-            <div style={{ background:'#fff', borderRadius:24, padding:'28px', boxShadow:'0 4px 24px rgba(0,0,0,0.05)', flex:1, animation: visible ? 'hrFadeUp 0.5s ease 0.75s both' : 'none' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-                <h2 style={{ margin:0, fontSize:18, fontWeight:800, color:'#1e293b', display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#8b5cf6,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Activity size={16} color="#fff" />
-                  </div>
-                  Live Activity
-                </h2>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ width:8, height:8, borderRadius:'50%', background:'#10b981', display:'inline-block', animation:'hrPulse 1.5s ease-in-out infinite' }} />
-                  <span style={{ fontSize:11, fontWeight:700, color:'#10b981' }}>LIVE</span>
+        {/* Quick Actions */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {[
+              { label: 'Employees',      sub: 'Directory',     icon: '👥', bg: '#E6F2EB', color: G.forest,  href: '/hr/employees' },
+              { label: 'Payroll',        sub: 'Monthly',       icon: '💵', bg: '#E8F9F1', color: G.emerald, href: '/hr/monthly-payroll' },
+              { label: 'Deductions',     sub: 'Manage',        icon: '🛡️', bg: '#F1F8E9', color: G.olive,   href: '/hr/deductions' },
+              { label: 'Salary List',    sub: 'Records',       icon: '📄', bg: '#FFF3E0', color: G.orange,  href: '/hr/salary-list' },
+              { label: 'HR Policies',    sub: 'View rules',    icon: '💼', bg: '#E1F5FE', color: G.sky,     href: '/hr/hr-policies' },
+              { label: 'Announcements',  sub: 'Broadcast',     icon: '🔔', bg: '#F3E5F5', color: G.purple,  href: '/hr/announcements' },
+              { label: 'Requests',       sub: 'Pending items', icon: '⏳', bg: '#EFEBE9', color: G.brown,   href: '/hr/employee-info' }
+            ].map((a, i) => (
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
+                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
+                  <span style={{ fontSize:22 }}>{a.icon}</span>
                 </div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
               </div>
-
-              <div style={{ display:'flex', flexDirection:'column', gap:0, position:'relative' }}>
-                <div style={{ position:'absolute', left:19, top:0, bottom:0, width:2, background:'linear-gradient(to bottom, #6366f1, transparent)', opacity:0.2, borderRadius:2 }} />
-                {activities.length > 0 ? activities.map((act, idx) => {
-                  const isIn = act.type === 'hire';
-                  const color = isIn ? '#10b981' : '#f59e0b';
-                  const bg = isIn ? '#dcfce7' : '#fef3c7';
-                  return (
-                    <div key={act.id} style={{ display:'flex', gap:14, position:'relative', zIndex:1, paddingBottom: idx < activities.length - 1 ? 20 : 0, animation: visible ? `hrSlideIn 0.4s ease ${0.8 + idx * 0.08}s both` : 'none' }}>
-                      <div style={{ width:38, height:38, borderRadius:'50%', background: bg, border:`3px solid #fff`, boxShadow:'0 2px 8px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <Clock size={15} color={color} />
-                      </div>
-                      <div style={{ paddingTop:8, flex:1, minWidth:0 }}>
-                        <p style={{ margin:'0 0 3px', fontSize:13, fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{act.text}</p>
-                        <span style={{ fontSize:11, color:'#94a3b8', fontWeight:600 }}>{act.time}</span>
-                      </div>
-                      <div style={{ paddingTop:8, flexShrink:0 }}>
-                        <span style={{ fontSize:10, fontWeight:800, color: color, background: bg, padding:'3px 8px', borderRadius:8, textTransform:'uppercase', letterSpacing:'0.04em' }}>
-                          {isIn ? 'In' : 'Out'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div style={{ textAlign:'center', padding:'32px 0', color:'#94a3b8', fontSize:13 }}>
-                    <Clock size={28} color="#cbd5e1" style={{ marginBottom:10 }} />
-                    <p style={{ margin:0, fontWeight:600 }}>No activity recorded today.</p>
-                  </div>
-                )}
-              </div>
-
-              <button onClick={() => navigate('/hr/todays-activities')}
-                style={{ width:'100%', marginTop:20, padding:'13px', background:'linear-gradient(135deg,#f8fafc,#f1f5f9)', border:'1px solid #e2e8f0', borderRadius:12, color:'#475569', fontWeight:700, cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background='linear-gradient(135deg,#eff6ff,#e0e7ff)'; e.currentTarget.style.color='#4f46e5'; e.currentTarget.style.borderColor='#c7d2fe'; }}
-                onMouseLeave={e => { e.currentTarget.style.background='linear-gradient(135deg,#f8fafc,#f1f5f9)'; e.currentTarget.style.color='#475569'; e.currentTarget.style.borderColor='#e2e8f0'; }}>
-                Full Activity Log <ArrowUpRight size={14} />
-              </button>
-            </div>
-
-            {/* Summary Stats panel */}
-            <div style={{ background:'linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#312e81 100%)', borderRadius:24, padding:'28px', boxShadow:'0 8px 32px rgba(15,23,42,0.3)', position:'relative', overflow:'hidden', animation: visible ? 'hrFadeUp 0.5s ease 0.9s both' : 'none' }}>
-              <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(99,102,241,0.2)', pointerEvents:'none', animation:'hrFloat 5s ease-in-out infinite' }} />
-              <div style={{ position:'relative', zIndex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-                  <Star size={18} color="#fbbf24" />
-                  <span style={{ fontSize:14, fontWeight:800, color:'#fff', letterSpacing:'0.02em' }}>Workforce Health Score</span>
-                </div>
-                <div style={{ fontSize:54, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:6 }}>
-                  <AnimatedNumber target={attendanceRate} duration={1300} suffix="%" />
-                </div>
-                <div style={{ color:'rgba(165,180,252,0.8)', fontSize:13, fontWeight:600, marginBottom:20 }}>
-                  Today's Attendance Rate
-                </div>
-                {[
-                  { label:'Depts Active', val: totalDepts,   color:'#a5b4fc' },
-                  { label:'On Payroll',   val: activeCount,  color:'#6ee7b7' },
-                  { label:'On Leave',     val: onLeaveCount, color:'#fcd34d' },
-                ].map((s, i) => (
-                  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-                    <span style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600 }}>{s.label}</span>
-                    <span style={{ fontSize:18, fontWeight:800, color: s.color }}>
-                      <AnimatedNumber target={s.val} duration={1100 + i * 100} />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>

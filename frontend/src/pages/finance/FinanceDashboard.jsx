@@ -12,9 +12,6 @@ import FinanceCashBook from './FinanceCashBook';
 import FinanceBankAccounts from './FinanceBankAccounts';
 
 // Receivables
-import FinanceCustomers from './FinanceCustomers';
-import FinanceCustomerInvoices from './FinanceCustomerInvoices';
-import FinanceCustomerPayments from './FinanceCustomerPayments';
 import FinanceOutstandingReceivables from './FinanceOutstandingReceivables';
 
 // Payables
@@ -25,13 +22,6 @@ import FinanceSupplierPayments from './FinanceSupplierPayments';
 // Procurement
 import FinanceProcurement from './FinanceProcurement';
 
-// Accounting
-import ChartOfAccounts from './ChartOfAccounts';
-import FinanceJournalEntries from './FinanceJournalEntries';
-import FinanceGeneralLedger from './FinanceGeneralLedger';
-import FinanceTrialBalance from './FinanceTrialBalance';
-import FinanceFiscalPeriods from './FinanceFiscalPeriods';
-
 // Reports
 import FinanceCashFlow from './FinanceCashFlow';
 import FinanceProfitLoss from './FinanceProfitLoss';
@@ -39,13 +29,7 @@ import FinanceBalanceSheet from './FinanceBalanceSheet';
 import FinanceIncomeExpense from './FinanceIncomeExpense';
 import FinanceReportsHub from './FinanceReportsHub';
 
-// Approvals
-import FinancePendingVouchers from './FinancePendingVouchers';
-import FinanceApprovedVouchers from './FinanceApprovedVouchers';
-import FinanceRejectedVouchers from './FinanceRejectedVouchers';
-
 import FinanceLiveIncome from './FinanceLiveIncome';
-import PurchaseFlowDashboard from './PurchaseFlowDashboard';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
@@ -115,9 +99,6 @@ const FinanceDashboard = () => {
             <Route path="bank-accounts" element={<FinanceBankAccounts />} />
 
             {/* Receivables */}
-            <Route path="customers" element={<FinanceCustomers />} />
-            <Route path="customer-invoices" element={<FinanceCustomerInvoices />} />
-            <Route path="customer-payments" element={<FinanceCustomerPayments />} />
             <Route path="outstanding-ar" element={<FinanceOutstandingReceivables />} />
 
             {/* Payables */}
@@ -131,24 +112,12 @@ const FinanceDashboard = () => {
             {/* Live Income */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
 
-            {/* Accounting */}
-            <Route path="coa" element={<ChartOfAccounts />} />
-            <Route path="journal" element={<FinanceJournalEntries />} />
-            <Route path="ledger" element={<FinanceGeneralLedger />} />
-            <Route path="trial-balance" element={<FinanceTrialBalance />} />
-            <Route path="fiscal-periods" element={<FinanceFiscalPeriods />} />
-
             {/* Reports */}
             <Route path="cash-flow" element={<FinanceCashFlow />} />
             <Route path="profit-loss" element={<FinanceProfitLoss />} />
             <Route path="balance-sheet" element={<FinanceBalanceSheet />} />
             <Route path="income-expense" element={<FinanceIncomeExpense />} />
             <Route path="reports-hub" element={<FinanceReportsHub />} />
-
-            {/* Approvals */}
-            <Route path="pending-vouchers" element={<FinancePendingVouchers />} />
-            <Route path="approved-vouchers" element={<FinanceApprovedVouchers />} />
-            <Route path="rejected-vouchers" element={<FinanceRejectedVouchers />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>

@@ -135,6 +135,7 @@ const TractorRegister = () => {
     visibility: 'internal'
   });
   const [images, setImages] = useState({ image1: null, image2: null, image3: null });
+  const [existingImages, setExistingImages] = useState({ image1: null, image2: null, image3: null });
 
 
 
@@ -171,6 +172,7 @@ const TractorRegister = () => {
   const resetForm = () => {
     setFormData({ name: '', dailyRate: '', transmission: 'Manual', fuelType: 'Diesel', tractorType: '', description: '', availability: 'Available', visibility: 'internal' });
     setImages({ image1: null, image2: null, image3: null });
+    setExistingImages({ image1: null, image2: null, image3: null });
   };
 
   const handleInputChange = e => {
@@ -240,6 +242,7 @@ const TractorRegister = () => {
       tractorType: tractor.tractorType, description: tractor.description, availability: tractor.availability,
     });
     setImages({ image1: null, image2: null, image3: null });
+    setExistingImages({ image1: tractor.image1, image2: tractor.image2, image3: tractor.image3 });
     setIsFormOpen(true);
   };
 
@@ -441,21 +444,34 @@ const TractorRegister = () => {
                 <div style={{ marginBottom: 24 }}>
                   <label style={{ ...lbl, marginBottom: 10 }}>Machine Photos (up to 3)</label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }} className="fm-grid">
-                    {[1, 2, 3].map(num => (
-                      <label key={num} style={{
-                        border: `2px dashed ${images[`image${num}`] ? G.leaf : G.sage}`,
-                        padding: '20px 12px', textAlign: 'center', cursor: 'pointer',
-                        background: images[`image${num}`] ? '#E8F5E9' : G.white,
-                        transition: 'all .2s',
-                      }}>
-                        <ImageIcon size={22} color={images[`image${num}`] ? G.forest : G.sage} />
-                        <div style={{ fontSize: 12, color: images[`image${num}`] ? G.forest : G.sage, marginTop: 8, fontWeight: 700 }}>
-                          {images[`image${num}`] ? images[`image${num}`].name : `Photo ${num}`}
-                        </div>
-                        <input type="file" style={{ display: 'none' }} accept="image/*"
-                          onChange={e => handleImageChange(e, `image${num}`)} />
-                      </label>
-                    ))}
+                    {[1, 2, 3].map(num => {
+                      const hasNew = !!images[`image${num}`];
+                      const hasExisting = !!existingImages[`image${num}`];
+                      const hasImg = hasNew || hasExisting;
+                      return (
+                        <label key={num} style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          border: `2px dashed ${hasImg ? G.leaf : G.sage}`,
+                          padding: '12px', textAlign: 'center', cursor: 'pointer',
+                          background: hasImg ? '#E8F5E9' : G.white,
+                          transition: 'all .2s',
+                          overflow: 'hidden'
+                        }}>
+                          {hasNew ? (
+                            <ImageIcon size={22} color={G.forest} />
+                          ) : hasExisting ? (
+                            <img src={getImageUrl(existingImages[`image${num}`])} alt="img" style={{ width: 40, height: 40, objectFit: 'cover' }} />
+                          ) : (
+                            <ImageIcon size={22} color={G.sage} />
+                          )}
+                          <div style={{ fontSize: 12, color: hasImg ? G.forest : G.sage, marginTop: 8, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                            {hasNew ? images[`image${num}`].name : hasExisting ? 'Current Image' : `Photo ${num}`}
+                          </div>
+                          <input type="file" style={{ display: 'none' }} accept="image/*"
+                            onChange={e => handleImageChange(e, `image${num}`)} />
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -561,7 +577,7 @@ const TractorRegister = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{ width: 46, height: 46, background: G.sage, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {tractor.image1
-                                    ? <img src={getImageUrl(tractor.image1)} alt={tractor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ? <img src={getImageUrl(tractor.image1)} alt={tractor.name} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
                                     : <Tractor size={20} color={G.dark} />}
                                 </div>
                                 <div>

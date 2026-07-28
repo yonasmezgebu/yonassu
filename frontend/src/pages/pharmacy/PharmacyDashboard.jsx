@@ -50,14 +50,12 @@ import PharmacyHealthPublisher from './PharmacyHealthPublisher';
 
 // Sales & Ops Imports
 import PharmacyStaff from './PharmacyStaff';
-
-import PharmacyAttendance from './PharmacyAttendance';
 import PharmacyDailySummary from './PharmacyDailySummary';
 
 const PharmacyDashboard = () => {
   const location = useLocation();
   const FULL_BLEED = [
-    '/pharmacy/staff', '/pharmacy/attendance', '/pharmacy/branches', 
+    '/pharmacy/staff', '/pharmacy/branches', 
     '/pharmacy/daily-summary', '/pharmacy/finance-review', '/pharmacy/ceo-report', 
     '/pharmacy/store-inventory', '/pharmacy/stock-operations', 
     '/pharmacy/procurement-requests', '/pharmacy/stock-adjustment', 
@@ -85,7 +83,6 @@ const PharmacyDashboard = () => {
     { label: 'Staff', icon: 'users',
       children: [
         { label: 'Staff Mgmt',      path: '/pharmacy/staff',          icon: 'settings' },
-        { label: 'Attendance',      path: '/pharmacy/attendance',     icon: 'clock' },
         { label: 'Branches',        path: '/pharmacy/branches',       icon: 'building',  color: '#f59e0b' },
       ] },
     { type: 'divider' },
@@ -160,7 +157,6 @@ const PharmacyDashboard = () => {
 
             {/* Sales & Ops Routes */}
             <Route path="staff"         element={<PharmacyStaff />} />
-            <Route path="attendance"    element={<PharmacyAttendance />} />
             <Route path="ceo-report"    element={<CEOReport />} />
             <Route path="finance-review" element={<PharmacyFinanceReview />} />
             <Route path="daily-summary" element={<PharmacyDailySummary />} />

@@ -10,7 +10,7 @@ const G = {
   orange: '#FF9800', red: '#F44336', purple: '#7C3AED',
 };
 
-const DEPARTMENTS = ['Printing', 'Car Rental', 'AgriRent', 'Sales', 'Retail', 'IT', 'Maintenance'];
+const DEPARTMENTS = ['Printing', 'Car Rental', 'AgriRent', 'IT', 'Maintenance'];
 const CATEGORIES  = ['Paper', 'Ink', 'Toner', 'Fuel', 'Lubricant/Oil', 'Spare Parts', 'Tires', 'Cleaning', 'Stationery', 'Chemical', 'Other'];
 
 const api = axios.create();
@@ -212,7 +212,12 @@ export const GSHome = () => {
       ]);
       if (rStats.status === 'fulfilled') setStats(rStats.value.data.data || null);
       if (rLogs.status  === 'fulfilled') setLogs((rLogs.value.data.data || []).slice(0, 8));
-      if (rMats.status  === 'fulfilled') setMats(rMats.value.data.data || []);
+      if (rMats.status  === 'fulfilled') {
+        const allMats = rMats.value.data.data || [];
+        // Exclude Sales/Retail — those belong to the Sales Manager dashboard
+        setMats(allMats.filter(m => m.department !== 'Sales' && m.department !== 'Retail'));
+      }
+
     } catch {}
     setRefreshing(false);
   }, []);
@@ -499,7 +504,9 @@ export const GSInventory = () => {
       const params = {};
       if (dept) params.department = dept;
       const r = await api.get('/api/v1/printing-assets/store/materials', { params });
-      setItems(r.data.data || []);
+      // Exclude Sales/Retail items — those are managed in the Sales Manager dashboard
+      const all = r.data.data || [];
+      setItems(all.filter(i => i.department !== 'Sales' && i.department !== 'Retail'));
     } catch { setItems([]); }
     setLoading(false);
   }, [dept]);

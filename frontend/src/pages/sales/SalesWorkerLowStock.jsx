@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import apiClient from '../../services/apiClient';
+import salesService from '../../services/salesService';
 import { useToast } from '../../components/Toast';
 import { AlertTriangle, Search, RefreshCw, Download, Printer, Bell, ShoppingBag, Package, TrendingDown } from 'lucide-react';
-import { receiveNotification } from '../../utils/pharmacyNotifications';
 
 export default function SalesWorkerLowStock({ hideHeader = false, refreshTrigger = 0 }) {
   const { showToast, ToastContainer } = useToast();
@@ -14,9 +13,10 @@ export default function SalesWorkerLowStock({ hideHeader = false, refreshTrigger
   const fetchStock = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/sales/products/all');
+      const res = await salesService.getRetailProducts({ limit: 1000 });
+      const itemsList = Array.isArray(res) ? res : res?.data?.products || res?.data || [];
       
-      const lowStockItems = (res?.data || res || []).map(item => {
+      const lowStockItems = itemsList.map(item => {
         const qty = parseInt(item.stock_quantity) || 0;
         const reorder = parseInt(item.reorder_level) || 0;
         let status = 'In Stock';
@@ -28,14 +28,14 @@ export default function SalesWorkerLowStock({ hideHeader = false, refreshTrigger
           status,
           qty,
           reorder,
-          price: parseFloat(item.price) || 0,
+          price: parseFloat(item.price || item.selling_price) || 0,
         };
       }).filter(item => item.status === 'Low Stock' || item.status === 'Out of Stock');
       
       setStock(lowStockItems);
       
       if (lowStockItems.length > 0) {
-        receiveNotification('⚠️ Low Stock Alert', 'Reorder Required - Please review low stock items.');
+        showToast('Low Stock Alert: Please review low stock items.', 'warning');
       }
     } catch (e) {
       showToast('Failed to load low stock items', 'error');
@@ -50,8 +50,7 @@ export default function SalesWorkerLowStock({ hideHeader = false, refreshTrigger
   const filtered = stock.filter(item => {
     return !search
       || (item.name || '').toLowerCase().includes(search.toLowerCase())
-      || (item.generic_name || '').toLowerCase().includes(search.toLowerCase())
-      || (item.category_name || '').toLowerCase().includes(search.toLowerCase());
+      || (item.category_name || item.category || '').toLowerCase().includes(search.toLowerCase());
   });
 
   const handleNotifyManager = (item) => {
@@ -165,7 +164,7 @@ export default function SalesWorkerLowStock({ hideHeader = false, refreshTrigger
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.name}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{item.generic_name || 'No generic name'}</div>
+
                       </div>
                     </div>
                   </td>

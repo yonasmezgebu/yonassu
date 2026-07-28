@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from '../../services/apiClient';
-import { Megaphone, Package, Upload, X, CheckCircle, AlertCircle, Edit3, Trash2, RefreshCw, Search, Phone, Mail } from 'lucide-react';
+import { Megaphone, Package, Upload, X, CheckCircle, AlertCircle, Edit3, Trash2, RefreshCw, Search, Phone, Mail, PlusCircle } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
@@ -57,6 +57,9 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
   const [tenderPreviews, setTenderPreviews] = useState([]);
   const [editingTender, setEditingTender] = useState(null);
   const tenderRef = useRef(null);
+
+  const [postType, setPostType] = useState('single');
+  const [tenderItems, setTenderItems] = useState([{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
 
   const [productForm, setProductForm] = useState({ name: '', sku: '', category_id: '', description: '', price: '', cost_price: '', stock_quantity: '0', reorder_level: '10' });
   const [productImage, setProductImage] = useState(null);
@@ -122,6 +125,8 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
     setTenderFiles([]);
     setTenderPreviews([]);
     setEditingTender(null);
+    setPostType('single');
+    setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
   };
 
   const handleTenderSubmit = async (e) => {
@@ -130,7 +135,14 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
     try {
       const fd = new FormData();
       Object.entries(tenderForm).forEach(([k, v]) => fd.append(k, v));
-      tenderFiles.forEach(f => fd.append('attachments', f));
+      
+      if (postType === 'multiple') {
+        fd.append('items', JSON.stringify(tenderItems));
+      } else {
+        tenderFiles.forEach(f => fd.append('attachments', f));
+        if (editingTender && tenderFiles.length > 0) fd.append('replace_attachments', 'true');
+      }
+
       if (editingTender) {
         await axios.put(`/tenders/${editingTender.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         notify('Tender updated successfully!');
@@ -159,6 +171,20 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
           item_name: t.item_name || '', quantity: t.quantity || '', starting_bid_price: t.starting_bid_price || '',
           deadline, terms_conditions: t.terms_conditions || ''
         });
+        
+        let parsedItems = [];
+        try {
+          parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []);
+        } catch (_) {}
+        
+        if (parsedItems.length > 0) {
+          setPostType('multiple');
+          setTenderItems(parsedItems.map(i => ({ ...i, id: i.id || Date.now() + Math.random() })));
+        } else {
+          setPostType('single');
+          setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
+        }
+        
         setEditingTender(t);
         setTab('tender');
         setSubtab('create');
@@ -484,9 +510,12 @@ SUTANA EMS`)}`;
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Sales &amp; Product Management</h2>
           <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 1.5rem' }}>Post and manage tenders and retail store products.</p>
 
-          <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0' }}>
-            <button onClick={() => { setTab('tender'); setSubtab('create'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: tab === 'tender' && subtab === 'create' ? '#059669' : '#64748b', borderBottom: tab === 'tender' && subtab === 'create' ? '2px solid #059669' : '2px solid transparent', marginBottom: -2 }}>
-              <Megaphone size={16} /> Post Tender
+          <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0', flexWrap: 'wrap' }}>
+            <button onClick={() => { setTab('tender'); setSubtab('create'); setPostType('single'); resetTenderForm(); setPostType('single'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: tab === 'tender' && subtab === 'create' && postType === 'single' ? '#059669' : '#64748b', borderBottom: tab === 'tender' && subtab === 'create' && postType === 'single' ? '2px solid #059669' : '2px solid transparent', marginBottom: -2 }}>
+              <Megaphone size={16} /> Post Tender (Single)
+            </button>
+            <button onClick={() => { setTab('tender'); setSubtab('create'); setPostType('multiple'); resetTenderForm(); setPostType('multiple'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: tab === 'tender' && subtab === 'create' && postType === 'multiple' ? '#059669' : '#64748b', borderBottom: tab === 'tender' && subtab === 'create' && postType === 'multiple' ? '2px solid #059669' : '2px solid transparent', marginBottom: -2 }}>
+              <Megaphone size={16} /> Post Tender (Multiple)
             </button>
             <button onClick={() => { setTab('tender'); setSubtab('manage'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: tab === 'tender' && subtab === 'manage' ? '#059669' : '#64748b', borderBottom: tab === 'tender' && subtab === 'manage' ? '2px solid #059669' : '2px solid transparent', marginBottom: -2 }}>
               <Package size={16} /> Manage Tenders
@@ -517,44 +546,108 @@ SUTANA EMS`)}`;
             <Field label="Category">
               <input style={inputS} value={tenderForm.category} onChange={e => setTenderForm({ ...tenderForm, category: e.target.value })} placeholder="e.g. Construction, Supplies" />
             </Field>
-            <Field label="Item Name">
-              <input style={inputS} value={tenderForm.item_name} onChange={e => setTenderForm({ ...tenderForm, item_name: e.target.value })} placeholder="e.g. Office Desks" />
-            </Field>
-            <Field label="Quantity" required>
-              <input style={inputS} type="number" min="1" required value={tenderForm.quantity} onChange={e => setTenderForm({ ...tenderForm, quantity: e.target.value })} placeholder="e.g. 50" />
-            </Field>
-            <Field label="Starting Bid Price (ETB)" required>
-              <input style={inputS} type="number" step="0.01" min="0" required value={tenderForm.starting_bid_price} onChange={e => setTenderForm({ ...tenderForm, starting_bid_price: e.target.value })} placeholder="e.g. 50000" />
-            </Field>
+
+            {postType === 'single' && (
+              <>
+                <Field label="Item Name">
+                  <input style={inputS} value={tenderForm.item_name} onChange={e => setTenderForm({ ...tenderForm, item_name: e.target.value })} placeholder="e.g. Office Desks" />
+                </Field>
+                <Field label="Quantity" required>
+                  <input style={inputS} type="number" min="1" required={postType === 'single'} value={tenderForm.quantity} onChange={e => setTenderForm({ ...tenderForm, quantity: e.target.value })} placeholder="e.g. 50" />
+                </Field>
+                <Field label="Starting Bid Price (ETB)" required>
+                  <input style={inputS} type="number" step="0.01" min="0" required={postType === 'single'} value={tenderForm.starting_bid_price} onChange={e => setTenderForm({ ...tenderForm, starting_bid_price: e.target.value })} placeholder="e.g. 50000" />
+                </Field>
+              </>
+            )}
+
             <Field label="Deadline" required>
               <input style={inputS} type="datetime-local" required value={tenderForm.deadline} onChange={e => setTenderForm({ ...tenderForm, deadline: e.target.value })} />
             </Field>
           </div>
+
           <Field label="Description" required>
             <textarea style={{ ...inputS, resize: 'vertical' }} rows={3} required value={tenderForm.description} onChange={e => setTenderForm({ ...tenderForm, description: e.target.value })} placeholder="Detailed description of the tender..." />
           </Field>
           <Field label="Terms &amp; Conditions" required>
             <textarea style={{ ...inputS, resize: 'vertical' }} rows={3} required value={tenderForm.terms_conditions} onChange={e => setTenderForm({ ...tenderForm, terms_conditions: e.target.value })} placeholder="Payment terms, delivery requirements, etc." />
           </Field>
-          <Field label="Attachments (PDF, JPG, PNG — max 5 files)">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => tenderRef.current?.click()} disabled={tenderFiles.length >= 5} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 0, cursor: tenderFiles.length >= 5 ? 'not-allowed' : 'pointer', fontSize: 12, color: tenderFiles.length >= 5 ? '#94a3b8' : '#475569' }}>
-                <Upload size={14} /> {tenderFiles.length >= 5 ? 'Max files reached' : 'Upload Files'}
-              </button>
-              <input ref={tenderRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif" onChange={handleTenderFileChange} style={{ display: 'none' }} />
-              <span style={{ fontSize: 11, color: '#94a3b8' }}>{tenderFiles.length}/5 files</span>
-            </div>
-            {tenderPreviews.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                {tenderPreviews.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 0, padding: '6px 10px', border: '1px solid #e2e8f0', fontSize: 12 }}>
-                    <span style={{ color: '#374151' }}>{f.name}</span>
-                    <button type="button" onClick={() => removeTenderFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex' }}><X size={12} /></button>
-                  </div>
-                ))}
+
+          {postType === 'single' ? (
+            <Field label="Attachments (PDF, JPG, PNG — max 5 files)">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => tenderRef.current?.click()} disabled={tenderFiles.length >= 5} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', border: '1.5px dashed #cbd5e1', padding: '9px 14px', borderRadius: 0, cursor: tenderFiles.length >= 5 ? 'not-allowed' : 'pointer', fontSize: 12, color: tenderFiles.length >= 5 ? '#94a3b8' : '#475569' }}>
+                  <Upload size={14} /> {tenderFiles.length >= 5 ? 'Max files reached' : 'Upload Files'}
+                </button>
+                <input ref={tenderRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif" onChange={handleTenderFileChange} style={{ display: 'none' }} />
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>{tenderFiles.length}/5 files</span>
               </div>
-            )}
-          </Field>
+              {tenderPreviews.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                  {tenderPreviews.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 0, padding: '6px 10px', border: '1px solid #e2e8f0', fontSize: 12 }}>
+                      <span style={{ color: '#374151' }}>{f.name}</span>
+                      <button type="button" onClick={() => removeTenderFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0, display: 'flex' }}><X size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Field>
+          ) : (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Tender Items (Smart Table)</label>
+              <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#94a3b8' }}>Set a start price for each item. Customers will submit their purchase price on the public page.</p>
+              <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                  <thead>
+                    <tr style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', textAlign: 'left' }}>
+                      {['No', 'Object Type', 'Unit', 'Quantity', 'Start Price (Birr)', 'Bid / Obj (Birr)', 'Bid / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
+                        <th key={i} style={{ padding: '12px 14px', color: i <= 4 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 5 && i <= 9 ? 'italic' : 'normal' }}>
+                          {h}{i >= 5 && i <= 9 ? ' ← customer fills' : ''}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tenderItems.map((item, index) => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#94a3b8' }}>{index + 1}</td>
+                        <td style={{ padding: '8px' }}>
+                          <input required value={item.objectType} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, objectType: e.target.value } : i))} style={{ width: '100%', minWidth: '160px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="e.g. Laptop" />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <input required value={item.unit} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, unit: e.target.value } : i))} style={{ width: '80px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} placeholder="Pcs" />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <input type="number" min="1" required value={item.quantity} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, quantity: e.target.value } : i))} style={{ width: '80px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} />
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <input type="number" min="0" required value={item.startPrice || ''} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, startPrice: e.target.value } : i))} style={{ width: '100px', padding: '8px', border: '2px solid #059669', borderRadius: '6px', fontSize: '13px', background: '#f0fdf4' }} placeholder="0.00" />
+                        </td>
+                        {[...Array(5)].map((_, ci) => (
+                          <td key={ci} style={{ padding: '8px', background: '#f8fafc' }}>
+                            <input disabled style={{ width: '80px', padding: '8px', background: 'transparent', border: '1px dashed #cbd5e1', borderRadius: '6px', cursor: 'not-allowed', fontSize: '13px' }} placeholder="—" />
+                          </td>
+                        ))}
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          {tenderItems.length > 1 && (
+                            <button type="button" onClick={() => setTenderItems(tenderItems.filter(i => i.id !== item.id))} style={{ background: 'none', color: '#ef4444', border: 'none', padding: '4px', cursor: 'pointer' }}>
+                              <X size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-start' }}>
+                <button type="button" onClick={() => setTenderItems([...tenderItems, { id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }])} style={{ padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                  <PlusCircle size={14} /> Add Item
+                </button>
+              </div>
+            </div>
+          )}
           <button type="submit" disabled={saving} style={{ width: '100%', background: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: 0, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontSize: 14, opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving...' : editingTender ? 'Update Tender' : 'Post Tender'}
           </button>

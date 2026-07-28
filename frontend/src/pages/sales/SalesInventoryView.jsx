@@ -24,8 +24,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
   const [saving, setSaving] = useState(false);
   const [sentOk, setSentOk] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
-  const [pendingReqs, setPendingReqs] = useState([]);
-  const [branchInventory, setBranchInventory] = useState([]);
+  const [branchInventory, setBranchInventory] = useState({});
   const [branches, setBranches] = useState([]);
   const [branchStockLoading, setBranchStockLoading] = useState(false);
   const [assigningCell, setAssigningCell] = useState(null); // { product_id, branch_id }
@@ -36,25 +35,36 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [togglingSetting, setTogglingSetting] = useState(false);
 
+  // Re-run branch load when auth resolves (isManager may be false on first render)
+  useEffect(() => {
+    if (isManager) loadBranchStock();
+  }, [isManager]);
+
   useEffect(() => {
     if (refreshTrigger > 0) {
       loadData();
-      loadBranchStock();
+      if (isManager) loadBranchStock();
     }
   }, [refreshTrigger]);
 
   const loadBranchStock = async () => {
-    if (!isManager) return; // workers don't need branch assignment view
     setBranchStockLoading(true);
     try {
-      const branchesRes = await apiClient.get('/sales/branches');
-      // apiClient already unwraps response.data, so branchesRes IS the data
-      const branchList = Array.isArray(branchesRes) ? branchesRes : branchesRes?.data || [];
+      const branchesRes = await apiClient.get('/retail/branches');
+      // apiClient interceptor returns response.data = { status, data:[...] }
+      const branchList = Array.isArray(branchesRes?.data)
+        ? branchesRes.data
+        : Array.isArray(branchesRes)
+          ? branchesRes
+          : [];
       setBranches(branchList);
-      
-      const invPromises = branchList.map(b => apiClient.get(`/sales/branch-inventory/${b.id}`).catch(() => ({ data: [] })));
+
+      const invPromises = branchList.map(b =>
+        apiClient.get(`/retail/branch-inventory/${b.id}`)
+          .catch(() => ({ status: 'success', data: [] }))
+      );
       const results = await Promise.all(invPromises);
-      
+
       const productMap = {};
       const addInv = (branchId, items) => {
         for (const item of items) {
@@ -62,12 +72,13 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
           productMap[item.product_id].branches[branchId] = item.quantity;
         }
       };
-      
+
       branchList.forEach((b, i) => {
-        const inv = Array.isArray(results[i].data) ? results[i].data : results[i].data?.data || [];
+        // results[i] is already the server JSON body { status, data: [...] }
+        const inv = Array.isArray(results[i]?.data) ? results[i].data : [];
         addInv(b.id, inv);
       });
-      
+
       setBranchInventory(productMap);
     } catch (e) { console.error('Branch stock load error:', e.message); }
     finally { setBranchStockLoading(false); }
@@ -77,7 +88,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
     try {
       const body = { branch_id, product_id, quantity: qty };
       if (sourceBranchId) body.transfer_from_branch_id = sourceBranchId;
-      const resp = await apiClient.put('/sales/branch-products/set-quantity', body);
+      const resp = await apiClient.put('/retail/branch-products/set-quantity', body);
       const msgText = resp?.data?.message || 'product quantity updated';
       setMsg({ type: 'success', text: msgText });
       setAssigningCell(null);
@@ -96,7 +107,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
 
   const handleUnassignCell = async (product_id, branch_id) => {
     try {
-      await apiClient.put('/sales/branch-products/set-quantity', {
+      await apiClient.put('/retail/branch-products/set-quantity', {
         branch_id, product_id, quantity: 0
       });
       setMsg({ type: 'success', text: 'product removed from branch' });
@@ -119,16 +130,8 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
         reorder: parseInt(p.reorder_level || 10), image: p.product_image || null
       })));
 
-      // Pending stock adjustment requests
-      if (isManager) {
-        try {
-          const reqRaw = await apiClient.get('/retail/stock-adjustments?status=PENDING');
-          const reqList = Array.isArray(reqRaw) ? reqRaw : reqRaw?.data || [];
-          setPendingReqs(reqList);
-        } catch (reqErr) {
-          console.warn('Could not load stock adjustment requests', reqErr);
-        }
-      }
+      // Pending stock adjustment requests are handled in Pharmacy, not in Retail Sales.
+      // We removed the fetch to avoid 404 errors.
 
       // Worker adjust setting — default to true for retail
       setWorkerCanAdjust(true);
@@ -153,23 +156,20 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
     if (!adjusting || !adjQty || !adjReason.trim()) return;
     setSaving(true);
     try {
-      await apiClient.post('/retail/stock-adjustments', {
-        product_id: adjusting.id,
-        product_name: adjusting.name,
-        current_value: adjusting.stock,
-        requested_value: parseInt(adjQty),
+      await apiClient.put(`/retail/products/${adjusting.id}/stock`, {
+        quantity: parseInt(adjQty),
+        operation: 'set',
         reason: adjReason.trim()
       });
-      setPendingReqs(prev => [...prev, { product_id: adjusting.id, status: 'PENDING' }]);
-      setMsg({ type: 'success', text: `Request sent for ${adjusting.name} — awaiting approval` });
+      // Update local state directly since it's approved immediately for retail
+      setproducts(prev => prev.map(p => p.id === adjusting.id ? { ...p, stock: parseInt(adjQty) } : p));
+      setMsg({ type: 'success', text: `Stock updated for ${adjusting.name}` });
       playSound();
       setAdjusting(null); setAdjQty(''); setAdjReason('');
     } catch (e) {
-      setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to send request' });
+      setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to update stock' });
     } finally { setSaving(false); setTimeout(() => setMsg({ type: '', text: '' }), 3000); }
   };
-
-  const isPending = (productId) => pendingReqs.some(r => Number(r.product_id) === Number(productId));
 
   const filtered = products.filter(d => {
     if (filterMode === 'low-stock' && d.stock > d.reorder) return false;
@@ -204,7 +204,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
             </div>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>Sales Stock</h1>
-              <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: 14 }}>Current sales stock — {products.length} items | {pendingReqs.length} pending CEO requests</p>
+              <p style={{ color: '#64748b', margin: '2px 0 0 0', fontSize: 14 }}>Current sales stock — {products.length} items</p>
             </div>
           </div>
         </div>
@@ -223,12 +223,6 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
           <input type="text" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)}
             style={{ width: '100%', padding: '9px 14px 9px 38px', border: '2px solid #8BC34A', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#2E8B57', color: '#A5D6A7', fontWeight: 600 }} />
         </div>
-        <button onClick={() => navigate(`${basePath}/products`)}
-          className="inv-action-btn"
-          style={{ padding: '9px 18px', background: '#A5D6A7', color: '#1B5E20', border: '2px solid #6B8E23', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, cursor: 'pointer', fontSize: 12, textTransform: 'uppercase', letterSpacing: '1px', boxShadow: '3px 3px 0 #6B8E23' }}>
-          <Package size={14} /> Products
-        </button>
-
         {isManager && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: workerCanAdjust ? '#A5D6A7' : '#F5F5F5', border: `2px solid ${workerCanAdjust ? '#1B5E20' : '#dc2626'}`, transition: 'all 0.3s', boxShadow: workerCanAdjust ? '3px 3px 0 #1B5E20' : '3px 3px 0 #dc2626' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -284,7 +278,6 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
               ) : filtered.map((product, idx) => {
                 const stockStatus = product.stock <= 0 ? 'out' : product.stock < product.reorder ? 'low' : 'ok';
                 const rowBg = stockStatus === 'out' ? '#fee2e2' : stockStatus === 'low' ? '#fef9c3' : idx % 2 === 0 ? '#F5F5F5' : '#A5D6A7';
-                const hasPending = isPending(product.id);
                 return (
                   <tr key={product.id} className="inv-row"
                     style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#A5D6A7' : '#F5F5F5'}`, background: rowBg, transition: 'background .2s', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
@@ -309,11 +302,7 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                     <td style={{ padding: '11px 14px', fontWeight: 900, fontSize: 17, color: stockStatus === 'out' ? '#dc2626' : stockStatus === 'low' ? '#d97706' : '#16a34a', borderLeft: `3px solid ${stockStatus === 'out' ? '#dc2626' : stockStatus === 'low' ? '#fbbf24' : '#4ade80'}` }}>{product.stock}</td>
                     <td style={{ padding: '11px 14px', color: '#64748b', fontWeight: 600, fontSize: 13 }}>{product.reorder}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      {hasPending ? (
-                        <span style={{ padding: '5px 12px', background: '#fef9c3', color: '#854d0e', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, border: '2px solid #fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px', animation: 'blink 1.5s ease-in-out infinite' }}>
-                          <Clock size={12} /> CEO Review
-                        </span>
-                      ) : adjusting?.id === product.id ? (
+                      {adjusting?.id === product.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <input type="number" value={adjQty} onChange={e => setAdjQty(e.target.value)} placeholder="New qty"
@@ -361,8 +350,8 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>product</th>
-                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>Strength</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>Product</th>
+                <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A5D6A7', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>Quantity</th>
                 {branches.map(b => (
                   <th key={b.id} style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8BC34A', borderBottom: '3px solid #8BC34A', background: '#2E8B57', whiteSpace: 'nowrap' }}>
                     <Building size={12} style={{ verticalAlign: 'middle', marginRight: 3 }} />{b.name}
@@ -374,11 +363,11 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
             </thead>
             <tbody>
               {branchStockLoading ? (
-                <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center' }}>
+                <tr><td colSpan={branches.length + 3} style={{ padding: '40px 24px', textAlign: 'center' }}>
                   <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#f59e0b' }} />
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                <tr><td colSpan={branches.length + 3} style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8' }}>
                   <GitBranch size={36} style={{ color: '#fde68a', marginBottom: 8 }} />
                   <p style={{ fontWeight: 700, margin: '0 0 4px' }}>No branch stock data</p>
                   <p style={{ margin: 0, fontSize: 13 }}>Assign products to branches in Stock Transfer to see distribution</p>
@@ -390,7 +379,6 @@ const SalesStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 })
                 return (
                   <tr key={product.id} className="inv-row" style={{ borderBottom: `2px solid ${idx % 2 === 0 ? '#A5D6A7' : '#F5F5F5'}`, background: idx % 2 === 0 ? '#F5F5F5' : '#A5D6A7', animation: `rowIn 0.28s ease-out ${idx * 0.025}s both` }}>
                     <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{product.name}</td>
-                    <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 13 }}>{product.strength ? `${product.strength}${product.unit ? ' ' + product.unit : ''}` : '-'}</td>
                     {branches.map(b => {
                       const qty = itemBranchData[b.id] || 0;
                       const isEditing = assigningCell?.product_id === product.id && assigningCell?.branch_id === b.id;

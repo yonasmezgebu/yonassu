@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import apiClient from '../../services/apiClient';
+import salesService from '../../services/salesService';
 import { useToast } from '../../components/Toast';
 import { Clock, Search, RefreshCw, Download, Printer, Bell, Package, Calendar } from 'lucide-react';
 
@@ -12,13 +12,14 @@ export default function SalesWorkerExpiringProducts({ hideHeader = false, refres
   const fetchStock = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/sales/products/all');
+      const res = await salesService.getRetailProducts({ limit: 1000 });
+      const itemsList = Array.isArray(res) ? res : res?.data?.products || res?.data || [];
       
       const now = new Date();
       now.setHours(0,0,0,0);
       const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-      const expiringItems = (res?.data || res || []).map(item => {
+      const expiringItems = itemsList.map(item => {
         const qty = parseInt(item.stock_quantity) || 0;
         let daysLeft = null;
         let isExpiring = false;
@@ -54,8 +55,7 @@ export default function SalesWorkerExpiringProducts({ hideHeader = false, refres
   const filtered = stock.filter(item => {
     return !search
       || (item.name || '').toLowerCase().includes(search.toLowerCase())
-      || (item.generic_name || '').toLowerCase().includes(search.toLowerCase())
-      || (item.category_name || '').toLowerCase().includes(search.toLowerCase());
+      || (item.category_name || item.category || '').toLowerCase().includes(search.toLowerCase());
   });
 
   const handleNotifyManager = (item) => {
@@ -163,7 +163,7 @@ export default function SalesWorkerExpiringProducts({ hideHeader = false, refres
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.name}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>{item.generic_name || 'No generic name'}</div>
+
                       </div>
                     </div>
                   </td>

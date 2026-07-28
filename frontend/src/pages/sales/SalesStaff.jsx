@@ -181,12 +181,9 @@ const AssignModal = ({ branches, unassigned, preSelectedWorker, onClose, onSucce
     if (!selectedBranchId) { setError('Please select a branch.'); return; }
     setLoading(true);
     try {
-      const rolesRes = await apiClient.get('/users/roles');
-      const roles = rolesRes?.data?.roles || rolesRes?.data?.data || [];
-      const pwRole = roles.find(r => r.name === 'Sales Worker');
-      if (!pwRole) throw new Error('Sales Worker role not found.');
-      await apiClient.post(`/users/${selectedUserId}/roles`, {
-        roleId: pwRole.id, branchId: parseInt(selectedBranchId), subRole: selectedSubRole
+      await apiClient.post(`/users/sales-assign/${selectedUserId}`, {
+        branchId: parseInt(selectedBranchId),
+        subRole: selectedSubRole
       });
       onSuccess(`${selectedUser?.full_name || 'User'} assigned as Sales ${selectedSubRole} successfully.`);
       onClose();
@@ -460,7 +457,7 @@ const SalesStaff = () => {
     try {
       const [workersRes, unassignedRes, branchesRes] = await Promise.all([
         apiClient.get('/users/sales-workers'),
-        apiClient.get('/users/unassigned-employees'),
+        apiClient.get('/users/unassigned-sales-employees'),
         apiClient.get('/retail/branches')
       ]);
       setWorkers(parseData(workersRes));
@@ -495,7 +492,7 @@ const SalesStaff = () => {
     if (!confirmUnassign) return;
     setLoading(true);
     try {
-      await apiClient.delete('/users/' + confirmUnassign.id + '/roles/20');
+      await apiClient.delete(`/users/sales-unassign/${confirmUnassign.id}`);
       setConfirmUnassign(null);
       handleSuccess(`${confirmUnassign.full_name} unassigned successfully`);
     } catch (err) {

@@ -8,17 +8,17 @@ import SalesOverview from './SalesOverview';
 
 import RetailPOS from './RetailPOS';
 import ReturnsPage from './ReturnsPage';
-import RetailProductManager from './RetailProductManager';
+
 import RetailStoreInventory from './RetailStoreInventory';
 import RetailStockOperations from './RetailStockOperations';
-import RetailExpiryManagement from './RetailExpiryManagement';
+
 import SalesStaff from './SalesStaff';
-import SalesAttendance from './SalesAttendance';
-import SalesBranches from './SalesBranches';
+import RetailBranches from './RetailBranches';
 import SalesCEOReport from './SalesCEOReport';
 import SalesFinanceReview from './SalesFinanceReview';
 
 import CashierAuditLog from './CashierAuditLog';
+import TenderManagePage from '../admin/TenderManagePage';
 
 // We import these directly if needed
 // import ProcurementRequests from '../procurement/ProcurementRequests';
@@ -31,13 +31,12 @@ export const WorkerAuthContext = createContext();
 const SalesDashboard = () => {
   const location = useLocation();
   const FULL_BLEED = [
-    '/sales/staff', '/sales/attendance', '/sales/branches', 
+    '/sales/staff', '/sales/branches', 
     '/sales/finance-review', '/sales/ceo-report', 
-    '/sales/store-inventory', '/sales/stock-operations', 
-    '/sales/procurement-requests', 
-    '/sales/expiry-management', '/sales/health-publisher',
-    '/sales/worker-home', '/sales/sales', '/sales/sales-return',
-
+    '/sales/store-inventory', '/sales/stock-operations',
+    '/sales/procurement-requests',
+    '/sales/sales', '/sales/sales-return',
+    '/sales/bids',
   ];
   const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
   const hideBackButton = ['/sales/overview', '/sales'].includes(location.pathname) || isFullBleed;
@@ -52,7 +51,6 @@ const SalesDashboard = () => {
       children: [
         { label: '🛒 New Sale (POS)',    path: '/sales/pos',              icon: 'shopping-cart', color: '#059669' },
         { label: 'Sales Return',         path: '/sales/sales-return',     icon: 'rotate-ccw' },
-        { label: '🌐 Retail Publisher',  path: '/sales/product-manager', icon: 'globe',          color: '#228B22' },
       ]
     },
     { type: 'divider' },
@@ -62,9 +60,8 @@ const SalesDashboard = () => {
     // ── Inventory ──
     { label: 'Inventory', icon: 'package',
       children: [
-        { label: 'Store Inventory',   path: '/sales/store-inventory',  icon: 'database',       color: '#0891b2' },
-        { label: 'Stock Operations',  path: '/sales/stock-operations', icon: 'package',        color: '#3b82f6' },
-        { label: 'Expiry Management', path: '/sales/expiry-management',icon: 'alert-triangle', color: '#ef4444' },
+        { label: 'Store Inventory',  path: '/sales/store-inventory',  icon: 'database', color: '#0891b2' },
+        { label: 'Stock Operations', path: '/sales/stock-operations', icon: 'package',  color: '#3b82f6' },
       ]
     },
     { type: 'divider' },
@@ -73,8 +70,8 @@ const SalesDashboard = () => {
     { label: 'Staff & Ops', icon: 'users',
       children: [
         { label: 'Staff Management', path: '/sales/staff',      icon: 'settings' },
-        { label: 'Attendance',       path: '/sales/attendance', icon: 'clock' },
         { label: 'Branches',         path: '/sales/branches',   icon: 'building', color: '#f59e0b' },
+        { label: 'Bids',             path: '/sales/bids',       icon: 'award', color: '#059669' },
       ]
     },
     { type: 'divider' },
@@ -101,11 +98,10 @@ const SalesDashboard = () => {
           background:
             location.pathname.includes('/sales/ceo-report')     ? '#A5D6A7' :
             location.pathname.includes('/sales/finance-review') ? '#228B22' :
+            location.pathname.includes('/sales/bids')           ? '#F5F5F5' :
             (
               location.pathname.includes('/sales/store-inventory') ||
-              location.pathname.includes('/sales/stock-operations') ||
-              location.pathname.includes('/sales/expiry-management') ||
-              location.pathname.includes('/sales/product-manager')
+              location.pathname.includes('/sales/stock-operations')
             ) ? '#1B5E20' :
             '#D5DCF0',
           minHeight: '100vh',
@@ -126,13 +122,11 @@ const SalesDashboard = () => {
             {/* Inventory */}
             <Route path="store-inventory"  element={<RetailStoreInventory />} />
             <Route path="stock-operations" element={<RetailStockOperations />} />
-            <Route path="expiry-management" element={<RetailExpiryManagement />} />
-            <Route path="product-manager" element={<RetailProductManager />} />
 
             {/* Staff */}
             <Route path="staff"         element={<SalesStaff />} />
-            <Route path="attendance"    element={<SalesAttendance />} />
-            <Route path="branches"   element={<SalesBranches />} />
+            <Route path="branches"   element={<RetailBranches />} />
+            <Route path="bids"       element={<TenderManagePage />} />
 
             {/* Reports */}
             <Route path="ceo-report"    element={<SalesCEOReport />} />

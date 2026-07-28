@@ -1,14 +1,91 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from '../../services/apiClient';
+import confetti from 'canvas-confetti';
+import clumpSound from '../../assets/notification/clump.mp3';
 import {
   Calendar, Clock, Tag, FileText, ArrowLeft, CheckCircle, XCircle,
   AlertCircle, User, Lock, Flame, Award, Building2, Package,
-  ChevronRight, Star, TrendingUp, ExternalLink
+  ChevronRight, Star, TrendingUp, ExternalLink, X,
+  PartyPopper, Trophy, Sparkles, Gift, Rocket, Sparkle
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+
+/* ─── Celebration Modal ─── */
+const CelebrationModal = ({ onClose }) => {
+  useEffect(() => {
+    // Play clump sound
+    try { const a = new Audio(clumpSound); a.volume = 0.8; a.play(); } catch (e) {}
+    // Burst confetti from both sides
+    const end = Date.now() + 4000;
+    const colors = ['#fbbf24','#f59e0b','#10b981','#3b82f6','#a855f7','#ef4444','#ec4899'];
+    (function frame() {
+      confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors, zIndex: 10000 });
+      confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors, zIndex: 10000 });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+    return () => confetti.reset();
+  }, []);
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24, backdropFilter: 'blur(6px)'
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'white', borderRadius: 24, padding: '48px 36px',
+        maxWidth: 480, width: '100%', textAlign: 'center',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        animation: 'fadeUp 0.4s both'
+      }}>
+        {/* Icons row */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+          <PartyPopper size={34} color="#fbbf24" />
+          <Trophy size={40} color="#f59e0b" />
+          <PartyPopper size={34} color="#fbbf24" style={{ transform: 'scaleX(-1)' }} />
+        </div>
+
+        <h2 style={{
+          fontSize: 32, fontWeight: 900, margin: '0 0 10px',
+          background: 'linear-gradient(135deg, #fbbf24, #f59e0b, #10b981)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+        }}>Bid Submitted!</h2>
+
+        <p style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
+          Congratulations! 🎉
+        </p>
+        <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, margin: '0 0 28px' }}>
+          Your bid has been successfully received by <strong style={{ color: '#0f172a' }}>SUTANA</strong>.<br/>
+          Our Sales team will review all bids after the deadline and contact the winner.
+        </p>
+
+        {/* Floating icons */}
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginBottom: 28 }}>
+          {[<PartyPopper size={26} color="#ec4899" />, <Sparkles size={26} color="#f59e0b" />,
+            <Star size={26} color="#fbbf24" />, <Sparkle size={26} color="#3b82f6" />,
+            <Gift size={26} color="#10b981" />].map((icon, i) => (
+            <span key={i} style={{ animation: `fadeUp 0.5s ${i * 0.1}s both`, display: 'inline-flex' }}>{icon}</span>
+          ))}
+        </div>
+
+        <button onClick={onClose} style={{
+          padding: '13px 44px',
+          background: 'linear-gradient(135deg, #059669, #10b981)',
+          color: 'white', border: 'none', borderRadius: 50,
+          fontWeight: 700, fontSize: 16, cursor: 'pointer',
+          boxShadow: '0 6px 20px rgba(5,150,105,0.35)',
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          fontFamily: 'inherit', transition: 'transform 0.15s'
+        }}>
+          <Rocket size={18} /> Awesome, Close!
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -398,7 +475,10 @@ export default () => {
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ bid_price_per_unit: '', quantity_requested: 1, proposed_pickup_date: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [itemBids, setItemBids] = useState({});
 
   const [winner, setWinner] = useState(null);
 
@@ -458,6 +538,34 @@ export default () => {
         setMessage({ type: 'success', text: res.message || '🎉 Bid submitted successfully!' });
         const r = await axios.get(`/tenders/${tender.id}/my-bid`);
         if (r.status === 'success') setMyBid(r.data);
+        setShowCelebration(true);
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Submission failed. Please try again.' });
+    }
+    finally { setSubmitting(false); }
+  };
+
+  const handleMultiItemBidSubmit = async (e, items) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setMessage(null);
+    const itemsWithBids = items.map((item, idx) => ({
+      ...item,
+      bidPriceBirr: itemBids[`birr_${idx}`] || '',
+      bidPriceCent: itemBids[`cent_${idx}`] || '',
+    }));
+    try {
+      const res = await axios.post(`/tenders/${tender.id}/bid`, {
+        notes: itemBids.notes || '',
+        proposed_pickup_date: itemBids.proposed_pickup_date || '',
+        items: JSON.stringify(itemsWithBids),
+        bid_price_per_unit: 0,
+        quantity_requested: items.length,
+      });
+      if (res.status === 'success') {
+        setMessage({ type: 'success', text: '🎉 Your bid has been submitted successfully!' });
+        setShowCelebration(true);
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.message || 'Submission failed. Please try again.' });
@@ -476,6 +584,9 @@ export default () => {
     <div className="td-root">
       <style>{STYLES}</style>
       <PublicNav />
+
+      {/* 🎉 Celebration Modal */}
+      {showCelebration && <CelebrationModal onClose={() => setShowCelebration(false)} />}
 
       {loading ? (
         <div style={{ maxWidth: 1280, margin: '40px auto', padding: '0 24px' }}>
@@ -542,20 +653,38 @@ export default () => {
               <div className="td-content">
                 {/* Stats */}
                 <div className="td-stats-grid">
-                  {tender.item_name && (
-                    <div className="td-stat-box">
-                      <div className="td-stat-label">Item</div>
-                      <div className="td-stat-value" style={{ fontSize: 14 }}>{tender.item_name}</div>
-                    </div>
-                  )}
-                  <div className="td-stat-box">
-                    <div className="td-stat-label">Quantity</div>
-                    <div className="td-stat-value">{tender.quantity}</div>
-                  </div>
-                  <div className="td-stat-box">
-                    <div className="td-stat-label">Starting Price</div>
-                    <div className="td-stat-value green">{parseFloat(tender.starting_bid_price).toLocaleString()}</div>
-                  </div>
+                  {(() => {
+                    let parsedItems = [];
+                    try { parsedItems = typeof tender.items === 'string' ? JSON.parse(tender.items) : (tender.items || []); } catch(_){}
+                    if (parsedItems.length > 0) {
+                      return (
+                        <div className="td-stat-box" style={{ gridColumn: '1 / -1' }}>
+                          <div className="td-stat-label">Tender Type</div>
+                          <div className="td-stat-value" style={{ fontSize: 14, color: '#0f172a' }}>
+                            📦 Multi-Item Tender &mdash; {parsedItems.length} item{parsedItems.length !== 1 ? 's' : ''} (see table below)
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <>
+                        {tender.item_name && (
+                          <div className="td-stat-box">
+                            <div className="td-stat-label">Item</div>
+                            <div className="td-stat-value" style={{ fontSize: 14 }}>{tender.item_name}</div>
+                          </div>
+                        )}
+                        <div className="td-stat-box">
+                          <div className="td-stat-label">Quantity</div>
+                          <div className="td-stat-value">{tender.quantity}</div>
+                        </div>
+                        <div className="td-stat-box">
+                          <div className="td-stat-label">Starting Price</div>
+                          <div className="td-stat-value green">{parseFloat(tender.starting_bid_price || 0).toLocaleString()}</div>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="td-stat-box">
                     <div className="td-stat-label">Deadline</div>
                     <div className="td-stat-value" style={{ fontSize: 13 }}>
@@ -575,11 +704,118 @@ export default () => {
                   </div>
                 )}
 
+
                 {/* Description */}
                 <div className="td-section">
                   <h3 className="td-section-title"><FileText size={16} color="#059669" /> Description</h3>
                   <p className="td-section-body">{tender.description}</p>
                 </div>
+
+                {/* Items Table (for multiple-product tenders) */}
+                {(() => {
+                  let items = [];
+                  try { items = typeof tender.items === 'string' ? JSON.parse(tender.items) : (tender.items || []); } catch(_){}
+                  if (!items.length) return null;
+                  return (
+                    <div className="td-section">
+                      <h3 className="td-section-title"><Package size={16} color="#059669" /> Tender Items — Fill Your Bid Price ({items.length} items)</h3>
+                      {isOpen && user && (
+                        <p style={{ margin: '0 0 14px', fontSize: 13, color: '#64748b', background: '#f0fdf4', padding: '10px 14px', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                          📝 Enter your bid price for each item below, then click <strong>Submit Multi-Item Bid</strong>.
+                        </p>
+                      )}
+                      <form onSubmit={e => handleMultiItemBidSubmit(e, items)}>
+                        <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)' }}>
+                                {['No', 'Item / Object Type', 'Unit', 'Qty', 'Start Price (ETB)', 'Your Bid / Unit (Birr)', 'Your Bid / Unit (Cent)', 'Total'].map((h, i) => (
+                                  <th key={i} style={{ padding: '12px 14px', color: i >= 4 ? '#94a3b8' : 'white', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: i >= 3 ? 'right' : 'left', fontStyle: i >= 5 ? 'italic' : 'normal' }}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((item, idx) => {
+                                const birr = parseFloat(itemBids[`birr_${idx}`] || 0);
+                                const cent = parseFloat(itemBids[`cent_${idx}`] || 0);
+                                const totalBirr = (birr + cent / 100) * parseFloat(item.quantity || 1);
+                                return (
+                                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#94a3b8' }}>{idx + 1}</td>
+                                    <td style={{ padding: '10px 14px', fontWeight: 600, color: '#0f172a' }}>{item.objectType || item.object_type || '—'}</td>
+                                    <td style={{ padding: '10px 14px', color: '#475569' }}>{item.unit || '—'}</td>
+                                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{item.quantity}</td>
+                                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
+                                      {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : '—'}
+                                    </td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                                      {isOpen && user ? (
+                                        <input
+                                          type="number" min="0" step="0.01"
+                                          value={itemBids[`birr_${idx}`] || ''}
+                                          onChange={e => setItemBids(prev => ({ ...prev, [`birr_${idx}`]: e.target.value }))}
+                                          placeholder="0"
+                                          style={{ width: '90px', padding: '7px 10px', border: '2px solid #059669', borderRadius: 6, fontSize: 13, textAlign: 'right', background: '#f0fdf4', outline: 'none' }}
+                                        />
+                                      ) : <span style={{ color: '#94a3b8' }}>—</span>}
+                                    </td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                                      {isOpen && user ? (
+                                        <input
+                                          type="number" min="0" max="99" step="1"
+                                          value={itemBids[`cent_${idx}`] || ''}
+                                          onChange={e => setItemBids(prev => ({ ...prev, [`cent_${idx}`]: e.target.value }))}
+                                          placeholder="0"
+                                          style={{ width: '70px', padding: '7px 10px', border: '2px solid #0ea5e9', borderRadius: 6, fontSize: 13, textAlign: 'right', background: '#f0f9ff', outline: 'none' }}
+                                        />
+                                      ) : <span style={{ color: '#94a3b8' }}>—</span>}
+                                    </td>
+                                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: totalBirr > 0 ? '#059669' : '#94a3b8' }}>
+                                      {totalBirr > 0 ? totalBirr.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ETB' : '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {isOpen && user && (
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Proposed Pickup Date</label>
+                                <input type="date" value={itemBids.proposed_pickup_date || ''} onChange={e => setItemBids(p => ({ ...p, proposed_pickup_date: e.target.value }))}
+                                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Notes / Cover Letter</label>
+                                <input value={itemBids.notes || ''} onChange={e => setItemBids(p => ({ ...p, notes: e.target.value }))}
+                                  placeholder="Describe your offer..."
+                                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+                              </div>
+                            </div>
+                            {message && (
+                              <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}`, color: message.type === 'success' ? '#166534' : '#991b1b', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {message.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />} {message.text}
+                              </div>
+                            )}
+                            <button type="submit" disabled={submitting} style={{ marginTop: 16, width: '100%', background: 'linear-gradient(135deg,#059669,#047857)', color: 'white', border: 'none', borderRadius: 10, padding: '14px', fontWeight: 700, fontSize: 15, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' }}>
+                              {submitting ? '⏳ Submitting...' : <><Award size={18} /> Submit Multi-Item Bid</>}
+                            </button>
+                          </>
+                        )}
+                        {!user && isOpen && (
+                          <div style={{ marginTop: 14, padding: '14px 18px', background: '#fafafa', border: '1px solid #e2e8f0', borderRadius: 10, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
+                            <Lock size={16} style={{ marginBottom: 6 }} /> <strong>Sign in</strong> to submit your bid on these items.
+                          </div>
+                        )}
+                      </form>
+                    </div>
+                  );
+                })()}
 
                 {/* Terms */}
                 <div className="td-section">
@@ -593,9 +829,9 @@ export default () => {
                     <h3 className="td-section-title"><Star size={16} color="#059669" /> Attachments ({images.length} image{images.length !== 1 ? 's' : ''})</h3>
                     <div className="td-images-grid">
                       {images.map((f, i) => (
-                        <a key={i} href={`${API_ORIGIN}/uploads/tenders/${f}`} target="_blank" rel="noopener noreferrer">
+                        <div key={i} onClick={() => setSelectedImage(`${API_ORIGIN}/uploads/tenders/${f}`)} style={{ cursor: 'pointer' }}>
                           <img className="td-img-thumb" src={`${API_ORIGIN}/uploads/tenders/${f}`} alt={`Attachment ${i + 1}`} />
-                        </a>
+                        </div>
                       ))}
                     </div>
                     {docs.length > 0 && (
@@ -811,6 +1047,40 @@ export default () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+            backdropFilter: 'blur(5px)'
+          }}
+          onClick={() => setSelectedImage(null)}
+        >
+          <button 
+            style={{
+              position: 'absolute', top: 24, right: 24, background: 'rgba(255, 255, 255, 0.1)', 
+              border: 'none', color: 'white', padding: 8, borderRadius: '50%', cursor: 'pointer', 
+              display: 'flex', transition: 'background 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+            onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            onClick={() => setSelectedImage(null)}
+          >
+            <X size={28} />
+          </button>
+          <img 
+            src={selectedImage} 
+            alt="Fullscreen Attachment" 
+            style={{
+              maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)', borderRadius: 12
+            }} 
+            onClick={e => e.stopPropagation()} 
+          />
+        </div>
       )}
     </div>
   );

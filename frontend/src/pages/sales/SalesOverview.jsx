@@ -356,14 +356,12 @@ const SalesOverview = () => {
           <div style={{ fontSize: 15, fontWeight: 900, color: '#0d3349', marginBottom: 16 }}>⚡ Quick Operations</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { label: 'POS Terminal', sub: 'New sale', icon: <ShoppingCart size={24} />, bg: '#E8F9F1', color: '#5BAD8A', path: '/sales/pos' },
-              { label: 'product Catalog', sub: 'Browse meds', icon: <Stethoscope size={24} />, bg: '#EDE9FE', color: '#8B5CF6', path: '/sales/products' },
-              { label: 'Stock Ops', sub: 'Manage stock', icon: <Package size={24} />, bg: '#E8F4F9', color: '#4FA3C3', path: '/sales/stock-operations' },
-              { label: 'Reports Hub', sub: 'Analytics', icon: <BarChart2 size={24} />, bg: '#F1F5F9', color: '#475569', path: '/sales/reports-hub' },
-              { label: 'Procurement', sub: 'Orders', icon: <FileText size={24} />, bg: '#FEF3C7', color: '#D97706', path: '/sales/procurement-requests' },
-              { label: 'Staff', sub: 'Team mgmt', icon: <Users size={24} />, bg: '#FDE8F3', color: '#EC4899', path: '/sales/staff' },
-              { label: 'Expiry Mgmt', sub: 'Review dates', icon: <Clock size={24} />, bg: '#FFEDD5', color: '#f97316', path: '/sales/expiry-management' },
-              { label: 'Finance', sub: 'Review & approve', icon: <DollarSign size={24} />, bg: '#ECFDF5', color: '#059669', path: '/sales/finance-review' },
+              { label: 'POS Terminal',    sub: 'New sale',         icon: <ShoppingCart size={24} />, bg: '#E8F9F1', color: '#5BAD8A', path: '/sales/pos' },
+              { label: 'Stock Ops',       sub: 'Manage stock',     icon: <Package size={24} />,      bg: '#E8F4F9', color: '#4FA3C3', path: '/sales/stock-operations' },
+              { label: 'Store Inventory', sub: 'View stock',        icon: <BarChart2 size={24} />,    bg: '#F1F5F9', color: '#475569', path: '/sales/store-inventory' },
+              { label: 'Procurement',     sub: 'Orders',           icon: <FileText size={24} />,     bg: '#FEF3C7', color: '#D97706', path: '/sales/procurement-requests' },
+              { label: 'Staff',           sub: 'Team mgmt',        icon: <Users size={24} />,        bg: '#FDE8F3', color: '#EC4899', path: '/sales/staff' },
+              { label: 'Finance',         sub: 'Review & approve', icon: <DollarSign size={24} />,   bg: '#ECFDF5', color: '#059669', path: '/sales/finance-review' },
             ].map((a, i) => (
               <div key={a.label} className="qa-card" onClick={() => navigate(a.path)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
                 <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>

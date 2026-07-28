@@ -39,7 +39,6 @@ import PurchaseReportOutstanding from './PurchaseReportOutstanding';
 import PurchaseReportMonthly from './PurchaseReportMonthly';
 
 // Flow 2
-import PurchaseFlowDashboard from './PurchaseFlowDashboard';
 import PurchaseApprovedRequests from './PurchaseApprovedRequests';
 import PurchaseHome from './PurchaseHome';
 

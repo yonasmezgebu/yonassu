@@ -29,10 +29,8 @@ import CEOStoreRequisitions from './CEOStoreRequisitions';
 import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
 import CEODirectDelivery from './CEODirectDelivery';
 import CEOTenderManager from './CEOTenderManager';
-import CEOFundApprovalsM9 from './CEOFundApprovalsM9';
 import CEOPrinting from './CEOPrinting';
 import CEOAgriAndCarRental from './CEOAgriAndCarRental';
-import PharmacyStockTransfer from '../pharmacy/PharmacyStockTransfer';
 import CEOApplicants from './CEOApplicants';
 
 // 9 Additional Approval & Report Modules
@@ -45,10 +43,6 @@ import CEOSalesReport from './CEOSalesReport';
 import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
 import CEOAuditReport from './CEOAuditReport';
-
-// Flow 1 & 2
-import TransferDashboard from '../CEO/TransferDashboard';
-import PurchaseFlowDashboard from './PurchaseFlowDashboard';
 
 import styles from './CEODashboard.module.css';
 
@@ -115,7 +109,6 @@ const CEODashboard = () => {
             <Route path="store-requisitions" element={<CEOStoreRequisitions />} />
             
             <Route path="tenders" element={<CEOTenderManager />} />
-            <Route path="fund-approvals" element={<CEOFundApprovalsM9 />} />
             
             <Route path="printing" element={<CEOPrinting />} />
             <Route path="agri-and-car-rental" element={<CEOAgriAndCarRental />} />
@@ -143,12 +136,6 @@ const CEODashboard = () => {
             <Route path="report-approvals" element={<ReportApprovals />} />
             <Route path="risk"      element={<CEORisk />} />
             <Route path="budget-workflow" element={<CEOPurchaseWorkflow />} />
-
-            {/* Flow 1 & 2 */}
-            <Route path="flow1-transfers" element={<TransferDashboard user={{ role: 'CEO' }} />} />
-            <Route path="flow2-purchase" element={<PurchaseFlowDashboard user={{ role: 'CEO' }} />} />
-            
-            <Route path="branch-transfers" element={<PharmacyStockTransfer />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>

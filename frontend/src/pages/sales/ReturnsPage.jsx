@@ -23,14 +23,16 @@ const ReturnsPage = () => {
     try {
       const res = await apiClient.get(`/pos/sales/${searchSale.trim()}`);
       if (res?.status === 'success' && res?.data) {
-        const saleData = res.data;
+        // Backend returns { sale: {...}, items: [...] }
+        const saleData = res.data.sale || res.data;
+        const saleItems = res.data.items || saleData.items || [];
         if (saleData.sale_type === 'CANCELED' || saleData.sale_type === 'RETURNED') {
           setError('This sale has already been fully canceled or returned.');
           setSaleFound(null);
         } else {
-          setSaleFound(saleData);
+          setSaleFound({ ...saleData, items: saleItems });
           // Initialize return items state based on sale items
-          const initialReturnItems = (saleData.items || []).map(item => ({
+          const initialReturnItems = saleItems.map(item => ({
             id: item.id,
             name: item.product_name,
             originalQty: item.quantity,
@@ -86,7 +88,8 @@ const ReturnsPage = () => {
       const payload = {
         saleId: saleFound.id,
         items: returnItems.filter(i => i.returnQty > 0).map(i => ({
-          productId: i.id,
+          itemId: i.id,          // pos_items.id — row in the sale
+          productId: i.id,       // fallback (same)
           quantity: i.returnQty,
           reasonCode: i.condition
         })),

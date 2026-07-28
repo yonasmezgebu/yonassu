@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Package, TrendingDown, Clock, AlertTriangle, RefreshCw, Box,
-  Activity, Zap, Layers, FlaskConical
+  Package, TrendingDown, Clock, AlertTriangle, RefreshCw,
+  Activity, Zap, Layers
 } from 'lucide-react';
 
 import SalesInventoryView    from './SalesInventoryView';
@@ -114,8 +114,7 @@ export default function RetailStockOperations() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {[
               { icon: <Zap size={13}/>, label: 'LIVE DATA', color: '#4ade80' },
-              { icon: <Layers size={13}/>, label: 'STOCK OPS', color: GOLD },
-              { icon: <FlaskConical size={13}/>, label: 'PHARMACY', color: '#38bdf8' },
+              { icon: <Layers size={13}/>, label: 'RETAIL OPS', color: GOLD },
             ].map((p, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 5,

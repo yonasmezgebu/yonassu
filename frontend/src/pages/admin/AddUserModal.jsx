@@ -255,12 +255,35 @@ const AddUserModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
             value={formData.roleIds.length > 0 ? formData.roleIds[0] : ''} 
             onChange={handleRoleChange}
             required
-            style={{ width: '100%', padding: '0.5rem', marginTop: '0.25rem', borderRadius: '4px', border: '1px solid #ddd' }}
+            disabled={!formData.departmentId}
+            style={{ width: '100%', padding: '0.5rem', marginTop: '0.25rem', borderRadius: '4px', border: '1px solid #ddd', background: !formData.departmentId ? '#f3f4f6' : 'white' }}
           >
-            <option value="">Select Role</option>
-            {rolesList.map(role => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
+            <option value="">{formData.departmentId ? 'Select Role' : 'Select Department First'}</option>
+            {(() => {
+              if (!formData.departmentId) return null;
+              const deptId = Number(formData.departmentId);
+              const filteredRoles = rolesList.filter(role => {
+                const name = role.name.toLowerCase();
+                switch (deptId) {
+                  case 1: return name.includes('admin') || name.includes('hr manager');
+                  case 2: return name.includes('ceo') || name.includes('board');
+                  case 3: return name.includes('finance') || name.includes('accountant') || name === 'cashier'; 
+                  case 4: return name.includes('printing');
+                  case 5: return name.includes('purchase');
+                  case 6: return name.includes('sales');
+                  case 7: return name.includes('store keeper') && !name.includes('pharmacy');
+                  case 8: return name.includes('customer');
+                  case 9: return name.includes('farm');
+                  case 10: return name.includes('pharmacy');
+                  case 11: return name.includes('car rent');
+                  case 12: return name === 'employee';
+                  default: return true;
+                }
+              });
+              return filteredRoles.map(role => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ));
+            })()}
           </select>
         </div>
         <div className="form-group mb-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

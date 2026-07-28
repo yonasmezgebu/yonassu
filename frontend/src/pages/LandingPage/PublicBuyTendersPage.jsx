@@ -19,6 +19,116 @@ const STYLES = `
   100% { transform: scale(1.05); opacity: 0.85; }
 }
 
+/* ===== LASER BANNER ===== */
+@keyframes laserSweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 300% 0; }
+}
+@keyframes laserBeam1 {
+  0%   { transform: rotate(-30deg) translateX(-120%); opacity: 0; }
+  20%  { opacity: 0.7; }
+  80%  { opacity: 0.7; }
+  100% { transform: rotate(-30deg) translateX(220%); opacity: 0; }
+}
+@keyframes laserBeam2 {
+  0%   { transform: rotate(25deg) translateX(120%); opacity: 0; }
+  20%  { opacity: 0.5; }
+  80%  { opacity: 0.5; }
+  100% { transform: rotate(25deg) translateX(-220%); opacity: 0; }
+}
+@keyframes laserBeam3 {
+  0%   { transform: rotate(-15deg) translateX(-180%); opacity: 0; }
+  30%  { opacity: 0.4; }
+  70%  { opacity: 0.4; }
+  100% { transform: rotate(-15deg) translateX(220%); opacity: 0; }
+}
+@keyframes textFadeIn {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.97); }
+  20%  { opacity: 1; transform: translateY(0) scale(1); }
+  75%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.97); }
+}
+.laser-banner {
+  position: relative;
+  background: linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 40%, #0a0a1a 100%);
+  overflow: hidden;
+  padding: 48px 24px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-top: -32px;
+}
+.laser-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(0,220,255,0.12) 20%,
+    rgba(160,0,255,0.18) 35%, rgba(255,0,128,0.12) 50%,
+    rgba(0,255,128,0.15) 65%, rgba(0,180,255,0.12) 80%, transparent 100%);
+  background-size: 300% 100%;
+  animation: laserSweep 4s linear infinite;
+}
+.laser-beam {
+  position: absolute;
+  top: 0; left: 50%;
+  width: 3px;
+  height: 300px;
+  border-radius: 3px;
+  transform-origin: top center;
+  pointer-events: none;
+}
+.laser-beam-1 {
+  background: linear-gradient(to bottom, rgba(0,220,255,0.9), rgba(0,220,255,0));
+  animation: laserBeam1 3.5s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(0,220,255,0.8), 0 0 24px rgba(0,220,255,0.4);
+}
+.laser-beam-2 {
+  background: linear-gradient(to bottom, rgba(200,0,255,0.9), rgba(200,0,255,0));
+  animation: laserBeam2 4.2s ease-in-out infinite 0.8s;
+  box-shadow: 0 0 12px rgba(200,0,255,0.8), 0 0 24px rgba(200,0,255,0.4);
+}
+.laser-beam-3 {
+  background: linear-gradient(to bottom, rgba(0,255,128,0.8), rgba(0,255,128,0));
+  animation: laserBeam3 5s ease-in-out infinite 1.6s;
+  box-shadow: 0 0 10px rgba(0,255,128,0.7), 0 0 20px rgba(0,255,128,0.3);
+}
+.laser-beam-4 {
+  background: linear-gradient(to bottom, rgba(255,200,0,0.8), rgba(255,200,0,0));
+  animation: laserBeam1 4.8s ease-in-out infinite 2.4s;
+  box-shadow: 0 0 10px rgba(255,200,0,0.7), 0 0 20px rgba(255,200,0,0.3);
+}
+.laser-text-wrap {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+.laser-text {
+  font-size: clamp(16px, 2.5vw, 24px);
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  line-height: 1.3;
+  background: linear-gradient(90deg, #00dcff, #c800ff, #ff0080, #00ff80, #ffc800, #00dcff);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: textFadeIn 4s ease-in-out, laserSweep 3s linear infinite;
+  text-shadow: none;
+}
+.laser-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 8px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+
 .tender-hero-wrap {
   width: 100%;
   position: relative;
@@ -406,6 +516,55 @@ const STYLES = `
 .btd-disclaimer strong { color: #78350f; }
 `;
 
+// ===========================
+// Laser Banner Component
+// ===========================
+const LASER_PHRASES = [
+  "Find the best tenders.",
+  "Submit competitive offers.",
+  "Expand your business.",
+  "Transparent. Fast. Reliable.",
+  "Trusted by buyers across Ethiopia.",
+  "Bid on open tenders today.",
+];
+
+const LaserBanner = () => {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const cycle = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setPhraseIdx(i => (i + 1) % LASER_PHRASES.length);
+        setVisible(true);
+      }, 500);
+    }, 3500);
+    return () => clearInterval(cycle);
+  }, []);
+
+  return (
+    <div className="laser-banner">
+      {/* Laser beams */}
+      <div className="laser-beam laser-beam-1" />
+      <div className="laser-beam laser-beam-2" />
+      <div className="laser-beam laser-beam-3" />
+      <div className="laser-beam laser-beam-4" />
+
+      <div className="laser-text-wrap">
+        <div className="laser-text" style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.97)',
+          transition: 'opacity 0.5s ease, transform 0.5s ease',
+        }}>
+          {LASER_PHRASES[phraseIdx]}
+        </div>
+        <div className="laser-sub">SUTANA Smart Tenders & Procurement</div>
+      </div>
+    </div>
+  );
+};
+
 const Countdown = ({ deadline }) => {
   const [remaining, setRemaining] = useState('');
   useEffect(() => {
@@ -429,6 +588,10 @@ const TenderCard = ({ t, onClick, index }) => {
   const [imgIdx, setImgIdx] = useState(0);
   const isOpen = t.status === 'open';
   const imgSrc = imgIdx < images.length ? `${API_ORIGIN}/uploads/tenders/${images[imgIdx]}` : null;
+  
+  let parsedItems = [];
+  try { parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch(_){}
+  const isMultiple = parsedItems.length > 0;
 
   return (
     <div
@@ -436,12 +599,13 @@ const TenderCard = ({ t, onClick, index }) => {
       onClick={onClick}
       style={{ animationDelay: `${index * 0.05}s` }}
     >
-      {imgSrc
-        ? <img className="tender-card-thumb" src={imgSrc} alt={t.title} loading="lazy" onError={() => setImgIdx(i => i + 1)} />
-        : <div className="tender-card-thumb-placeholder">
-            <TrendingUp size={40} color="#cbd5e1" />
-          </div>
-      }
+      {!isMultiple && (
+        imgSrc
+          ? <img className="tender-card-thumb" src={imgSrc} alt={t.title} loading="lazy" onError={() => setImgIdx(i => i + 1)} />
+          : <div className="tender-card-thumb-placeholder">
+              <TrendingUp size={40} color="#cbd5e1" />
+            </div>
+      )}
       <div className="tender-card-body">
         <div className="tender-card-toprow">
           <span className="tender-ref">{t.reference_number}</span>
@@ -453,20 +617,45 @@ const TenderCard = ({ t, onClick, index }) => {
         <h3 className="tender-card-title">{t.title}</h3>
         {t.description && <p className="tender-card-desc">{t.description}</p>}
 
-        <div className="tender-card-meta">
-          {t.item_name && (
-            <span className="meta-item"><Tag size={12} />{t.item_name} × {t.quantity}</span>
-          )}
-          <span className="meta-item"><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
-          {t.deadline && (
-            <span className="meta-item"><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>
-          )}
-          <span className="meta-price">
-            {parseFloat(t.starting_bid_price).toLocaleString()} ETB
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#059669' }}>
-            View Details <ArrowRight size={13} />
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 16 }}>
+          <div className="tender-card-meta" style={{ marginTop: 0, flex: 1 }}>
+            {(() => {
+              let parsedItems = [];
+              try { parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch(_){}
+              if (parsedItems.length > 0) {
+                return (
+                  <span className="meta-item" style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: 'white', padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+                    📦 {parsedItems.length} Items (Smart Table)
+                  </span>
+                );
+              }
+              if (t.item_name) {
+                return <span className="meta-item"><Tag size={12} />{t.item_name} × {t.quantity}</span>;
+              }
+              return null;
+            })()}
+            <span className="meta-item"><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
+            {t.deadline && (
+              <span className="meta-item"><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>
+            )}
+            {(() => {
+              let parsedItems = [];
+              try { parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch(_){}
+              if (parsedItems.length > 0) return null; // no price for multi-item tenders
+              return (
+                <span className="meta-price">
+                  {parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB
+                </span>
+              );
+            })()}
+          </div>
+          <button style={{ 
+            background: '#059669', color: 'white', border: 'none', borderRadius: '8px', 
+            padding: '8px 16px', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px',
+            cursor: 'pointer', transition: 'background 0.2s', whiteSpace: 'nowrap', marginLeft: 12
+          }}>
+            View Details <ArrowRight size={14} />
+          </button>
         </div>
       </div>
     </div>
@@ -477,8 +666,6 @@ export default () => {
   const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('open');
-  const [search, setSearch] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
 
   const FAQS = [
@@ -512,25 +699,8 @@ export default () => {
     load();
   }, []);
 
-  const filtered = tenders.filter(t => {
-    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return t.title?.toLowerCase().includes(q)
-        || t.reference_number?.toLowerCase().includes(q)
-        || t.item_name?.toLowerCase().includes(q)
-        || t.category?.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const filtered = tenders.filter(t => t.status === 'open');
 
-  const counts = {
-    all: tenders.length,
-    open: tenders.filter(t => t.status === 'open').length,
-    closed: tenders.filter(t => t.status === 'closed').length,
-    awarded: tenders.filter(t => t.status === 'awarded').length,
-    cancelled: tenders.filter(t => t.status === 'cancelled').length,
-  };
 
   return (
     <div className="tender-page-root" style={{ overflowX: 'hidden' }}>
@@ -547,70 +717,52 @@ export default () => {
         </div>
       </div>
 
-      {/* ─── Sticky Filters ─── */}
-      <div className="tender-filters-bar">
-        <div className="tender-filters-inner">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'open', label: '🔥 Open' },
-            { key: 'closed', label: 'Closed' },
-            { key: 'awarded', label: 'Awarded' },
-            { key: 'cancelled', label: 'Cancelled' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              className={`status-pill${statusFilter === key ? ' active' : ''}`}
-              onClick={() => setStatusFilter(key)}
-            >
-              {label} {counts[key] > 0 && <span style={{ background: statusFilter === key ? 'rgba(255,255,255,0.25)' : '#e2e8f0', padding: '1px 6px', borderRadius: 10, marginLeft: 4, fontSize: 11 }}>{counts[key]}</span>}
-            </button>
-          ))}
-          <div className="search-bar" style={{ marginLeft: 'auto' }}>
-            <Search size={15} color="#94a3b8" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search tenders..."
-            />
-          </div>
-        </div>
-      </div>
-
       {/* ─── Main Content ─── */}
-      <div className="tender-main-layout">
-        <div className="tender-results-header">
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-              {statusFilter === 'all' ? 'All Tenders' : `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Tenders`}
-            </h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''} found</p>
-          </div>
-          {statusFilter === 'open' && (
+      {loading ? (
+        <div className="tender-main-layout">
+          {[1, 2, 3, 4].map(i => <div key={i} className="card-shimmer" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{
+          maxWidth: 560, margin: '48px auto', padding: '32px 28px',
+          background: 'white', borderRadius: 16, textAlign: 'center',
+          border: '1.5px dashed #d1fae5', boxShadow: '0 4px 24px rgba(5,150,105,0.07)'
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+            No Open Tenders Right Now
+          </h3>
+          <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.7 }}>
+            New tenders are posted regularly. Check back soon or{' '}
+            <a href="/contact" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>
+              contact us
+            </a>{' '}to be notified when a new one opens.
+          </p>
+        </div>
+      ) : (
+        <div className="tender-main-layout">
+          <LaserBanner />
+          <div className="tender-results-header" style={{ marginTop: '32px' }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                Open Tenders
+              </h2>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontSize: 13, fontWeight: 600 }}>
               <Flame size={14} /> Live bidding open
             </div>
-          )}
-        </div>
-
-        {loading ? (
-          [1, 2, 3, 4].map(i => <div key={i} className="card-shimmer" />)
-        ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📋</div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#64748b', margin: '0 0 8px' }}>No tenders found</h3>
-            <p style={{ fontSize: 14 }}>Try a different filter or check back later.</p>
           </div>
-        ) : (
-          filtered.map((t, i) => (
+          {filtered.map((t, i) => (
             <TenderCard
               key={t.id}
               t={t}
               index={i}
               onClick={() => navigate(`/tenders/${t.id}`)}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* ─── How Tender Works ─── */}
       <div className="btd-how-wrap btd-section">
