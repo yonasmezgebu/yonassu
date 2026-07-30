@@ -2359,3 +2359,19 @@ exports.getPendingRetailOrders = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: orders });
 });
 
+exports.deleteRetailOrder = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await db('retail_orders').where({ id }).first();
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  // Hard delete items first (due to foreign keys)
+  await db('retail_order_items').where({ order_id: id }).del();
+  
+  // Hard delete the order
+  await db('retail_orders').where({ id }).del();
+
+  res.json({ status: 'success', message: 'Order completely deleted' });
+});
+

@@ -440,5 +440,6 @@ router.post('/collect-online-order', authenticate, authorize(['pos:create']),
 
 router.post('/checkout-retail', authenticate, authorize(['pos:create']), POSController.checkoutRetail);
 router.get('/orders/pending', authenticate, authorize(['pos:read']), POSController.getPendingRetailOrders);
+router.delete('/orders/:id', authenticate, authorize(['pos:update']), POSController.deleteRetailOrder);
 
 module.exports = router;

@@ -82,5 +82,6 @@ router.use('/transfer-requests', require('./transferRequest.routes'));
 router.use('/applications', applicationsRoutes);
 router.use('/printing-assets', require('./printingAssets.routes'));
 router.use('/pharmacy-inventory', require('./pharmacyInventory.routes'));
+router.use('/store-sales-requests', require('./storeSalesRequest.routes'));
 
 module.exports = router;

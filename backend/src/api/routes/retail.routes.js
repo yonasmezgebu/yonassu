@@ -39,7 +39,14 @@ router.get('/pos/transactions', ...cashierAuth, retailController.getTransactions
 router.put('/products/:id/stock', ...cashierAuth, retailController.updateStock);
 router.post('/products', ...cashierAuth, uploads.singleProductImage.single('product_image'), retailController.createProduct);
 router.put('/products/:id', ...cashierAuth, uploads.singleProductImage.single('product_image'), retailController.updateProduct);
+router.post('/products/:id/partial-adjust', ...cashierAuth, retailController.partialAdjustProduct);
 router.delete('/products/:id', ...cashierAuth, retailController.deleteProduct);
+
+// Product update requests (CEO Approval Flow)
+router.post('/products/:id/update-request', ...cashierAuth, retailController.createProductUpdateRequest);
+router.get('/update-requests', ...cashierAuth, retailController.getProductUpdateRequests);
+router.post('/update-requests/:id/approve', authenticate, authorizeRoles(['CEO', 'Admin']), retailController.approveProductUpdateRequest);
+router.post('/update-requests/:id/reject', authenticate, authorizeRoles(['CEO', 'Admin']), retailController.rejectProductUpdateRequest);
 
 // ── Inventory (Admin, CEO) ────────────────────────────────────
 router.get('/inventory', ...cashierAuth, retailController.getInventory);

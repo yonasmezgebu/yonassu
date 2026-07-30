@@ -33,6 +33,7 @@ router.get('/public/:id', tenderController.getPublic);
 // Customer (authenticated)
 router.get('/my-bids', authenticate, bidController.getMyBids);
 router.post('/:tenderId/bid', authenticate, bidController.submitBid);
+router.put('/:tenderId/bid', authenticate, bidController.updateMyBid);
 router.get('/:tenderId/my-bid', authenticate, bidController.getMyBid);
 router.get('/:tenderId/winner', authenticate, bidController.getWinner);
 
@@ -50,8 +51,12 @@ router.put('/:id/extend', tenderController.extend);
 router.put('/:id/cancel', tenderController.cancel);
 router.put('/:id/toggle-hidden', tenderController.toggleHidden);
 router.get('/:tenderId/bids', bidController.listBids);
+router.post('/:tenderId/bids/forward', authorizeRoles(['Sales Manager', 'Admin']), bidController.forwardToCeo);
+router.post('/:tenderId/bids/ceo-approve', authorizeRoles(['CEO', 'Admin']), bidController.ceoApprove);
 router.put('/:tenderId/award', bidController.award);
 router.put('/bids/:bidId/evaluate', bidController.addEvaluation);
 router.put('/bids/:bidId/disqualify', bidController.disqualify);
+router.put('/bids/:bidId/mark-opened', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markOpened);
+router.put('/bids/:bidId/mark-sent', authenticate, authorizeRoles(['Sales Manager', 'Admin']), bidController.markEmailSent);
 
 module.exports = router;

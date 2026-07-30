@@ -1,20 +1,16 @@
-const knex = require('knex');
-const config = require('./src/config/env');
-const db = knex({
-  client: 'mysql2',
-  connection: {
-    host: config.database.host,
-    port: config.database.port,
-    user: config.database.user,
-    password: config.database.password,
-    database: config.database.database
+const { db } = require('./src/config/database');
+async function test() {
+  try {
+    const rows = await db.raw("SHOW COLUMNS FROM tenders LIKE 'status'");
+    console.log('TENDERS STATUS ENUM:', JSON.stringify(rows[0][0]));
+    const brows = await db.raw("SHOW COLUMNS FROM bids LIKE 'status'");
+    console.log('BIDS STATUS ENUM:', JSON.stringify(brows[0][0]));
+    const bcrows = await db.raw("SHOW COLUMNS FROM bids LIKE 'ceo_approval_status'");
+    console.log('BIDS CEO_APPROVAL_STATUS ENUM:', JSON.stringify(bcrows[0][0]));
+  } catch(e) {
+    console.error('ERROR:', e.message);
+  } finally {
+    await db.destroy();
   }
-});
-
-db.raw('SHOW COLUMNS FROM car_renting_maintenance').then(res => {
-  console.log(res[0]);
-  process.exit(0);
-}).catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+}
+test();

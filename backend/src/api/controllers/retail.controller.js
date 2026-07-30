@@ -19,7 +19,7 @@ const getCartForUser = async (userId) => {
 // =============================================================
 
 exports.getProducts = catchAsync(async (req, res) => {
-  const { category_id, search, page = 1, limit = 30 } = req.query;
+  const { category_id, search, page = 1, limit = 30, include_inactive } = req.query;
   const offset = (page - 1) * limit;
   let query = db('retail_products as p')
     .select(
@@ -29,8 +29,11 @@ exports.getProducts = catchAsync(async (req, res) => {
       'p.stock_quantity', 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
     )
-    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id')
-    .where('p.is_active', true);
+    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id');
+  // Only filter active unless manager requests all
+  if (!include_inactive || include_inactive === 'false') {
+    query = query.where('p.is_active', true);
+  }
   if (category_id) query = query.andWhere('p.category_id', category_id);
   if (search) {
     query = query.andWhere(q => {
@@ -344,7 +347,7 @@ exports.updateStock = catchAsync(async (req, res) => {
 });
 
 exports.createProduct = catchAsync(async (req, res) => {
-  const { name, sku, category_id, description, price, cost_price, stock_quantity, reorder_level } = req.body;
+  const { name, sku, category_id, description, price, cost_price, stock_quantity, reorder_level, expiry_date } = req.body;
   if (!name || !sku || !price) throw new AppError('Name, SKU, and price are required', 400);
   const existing = await db('retail_products').where({ sku }).first();
   if (existing) throw new AppError('SKU already exists', 400);
@@ -352,6 +355,7 @@ exports.createProduct = catchAsync(async (req, res) => {
     name, sku, category_id: category_id || null, description: description || null,
     price: parseFloat(price), cost_price: parseFloat(cost_price || 0),
     stock_quantity: parseInt(stock_quantity || 0), reorder_level: parseInt(reorder_level || 10),
+    expiry_date: expiry_date || null,
     product_image: imgUrl(req.file), is_active: true,
     created_at: db.fn.now(), updated_at: db.fn.now()
   });
@@ -361,6 +365,7 @@ exports.createProduct = catchAsync(async (req, res) => {
       name, sku, description: description || null,
       selling_price: parseFloat(price), unit_id: 1,
       stock_quantity: parseInt(stock_quantity || 0), reorder_level: parseInt(reorder_level || 10),
+      expiry_date: expiry_date || null,
       product_image: imgUrl(req.file), business_unit: 'retail', is_active: true,
       created_at: db.fn.now()
     };
@@ -436,10 +441,19 @@ exports.deleteProduct = catchAsync(async (req, res) => {
   const { id } = req.params;
   const product = await db('retail_products').where({ id }).first();
   if (!product) throw new AppError('Product not found', 404);
-  await db('retail_products').where({ id }).del();
-  try { await db('products').where({ sku: product.sku, business_unit: 'retail' }).del(); } catch (_) {}
-  res.json({ status: 'success', message: 'Product deleted' });
+
+  try {
+    await db('retail_products').where({ id }).del();
+    try { await db('products').where({ sku: product.sku, business_unit: 'retail' }).del(); } catch (_) {}
+    res.json({ status: 'success', message: 'Product deleted' });
+  } catch (err) {
+    if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED' || err.message.includes('foreign key constraint fails')) {
+      throw new AppError('Cannot delete product because it has associated sales or orders. Please deactivate it or edit it instead.', 400);
+    }
+    throw err;
+  }
 });
+
 
 // =============================================================
 // RETAIL MANAGER Endpoints
@@ -753,6 +767,8 @@ exports.getStoreInventory = catchAsync(async (req, res) => {
     category:        r.category,
     product_category: r.category,
     unit_value:      parseFloat(r.unit_value) || 0,
+    unit_price:      parseFloat(r.unit_value) || 0,
+    price:           parseFloat(r.unit_value) || 0,
     total_value:     parseFloat(r.total_value) || 0,
     reorder_level:   parseInt(r.reorder_level) || 10,
     material_id:     r.material_id,
@@ -880,10 +896,20 @@ exports.setBranchProductQuantity = catchAsync(async (req, res) => {
 
   const qty = parseInt(quantity) || 0;
 
-  // We could implement branch-to-branch transfer logic using transfer_from_branch_id here 
-  // but for now just setting quantity directly as it was in pharmacy.
-  
   const existing = await db('retail_branch_products').where({ branch_id, product_id }).first();
+  const currentQty = existing ? existing.quantity : 0;
+  const difference = qty - currentQty;
+
+  if (difference > 0 && transfer_from_branch_id) {
+    const source = await db('retail_branch_products').where({ branch_id: transfer_from_branch_id, product_id }).first();
+    if (!source || source.quantity < difference) {
+      throw new AppError('Source branch does not have enough stock to transfer', 400);
+    }
+    await db('retail_branch_products')
+      .where({ branch_id: transfer_from_branch_id, product_id })
+      .update({ quantity: source.quantity - difference, updated_at: db.fn.now() });
+  }
+
   if (existing) {
     await db('retail_branch_products')
       .where({ branch_id, product_id })
@@ -894,8 +920,167 @@ exports.setBranchProductQuantity = catchAsync(async (req, res) => {
     });
   }
 
-  // Also deduct from main store inventory if we are transferring from main store? 
-  // The user just wanted to copy the existing pharmacy logic, which is setting the quantity.
+  res.json({ status: 'success', message: 'Product stock updated for branch' });
+});
+
+// =============================================================
+// RETAIL PRODUCT UPDATE REQUESTS (CEO APPROVAL FLOW)
+// =============================================================
+
+exports.partialAdjustProduct = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const product = await db('retail_products').where({ id }).first();
+  if (!product) throw new AppError('Product not found', 404);
+
+  const { name, category_id, expiry_date, price, stock } = req.body;
+
+  let immediateUpdates = {};
+  let pendingUpdates = {};
+
+  // Immediate: name, category_id, expiry_date
+  if (name !== undefined && name !== product.name) immediateUpdates.name = name;
+  if (category_id !== undefined && category_id !== product.category_id) immediateUpdates.category_id = category_id || null;
+  // Format dates for comparison (Y-M-D)
+  const dOld = product.expiry_date ? new Date(product.expiry_date).toISOString().split('T')[0] : null;
+  const dNew = expiry_date ? new Date(expiry_date).toISOString().split('T')[0] : null;
+  if (expiry_date !== undefined && dOld !== dNew) {
+    immediateUpdates.expiry_date = expiry_date || null;
+  }
+
+  // Pending: price, stock
+  if (price !== undefined && parseFloat(price) !== parseFloat(product.price)) pendingUpdates.price = parseFloat(price);
+  if (stock !== undefined && parseInt(stock) !== parseInt(product.stock_quantity)) pendingUpdates.stock = parseInt(stock);
+
+  // Apply immediate updates
+  if (Object.keys(immediateUpdates).length > 0) {
+    immediateUpdates.updated_at = db.fn.now();
+    await db('retail_products').where({ id }).update(immediateUpdates);
+    
+    // Sync to global products
+    try {
+      const gUpdates = { ...immediateUpdates };
+      if (gUpdates.expiry_date === '') gUpdates.expiry_date = null;
+      await db('products').where({ sku: product.sku, business_unit: 'retail' }).update(gUpdates);
+    } catch (_) {}
+  }
+
+  // Apply pending updates via request
+  if (Object.keys(pendingUpdates).length > 0) {
+    await db('retail_update_requests').insert({
+      product_id: id,
+      requested_by: req.user ? req.user.id : null,
+      old_data: JSON.stringify(product),
+      new_data: JSON.stringify(pendingUpdates),
+      status: 'PENDING'
+    });
+  }
+
+  let msg = 'Product details updated successfully.';
+  if (Object.keys(pendingUpdates).length > 0 && Object.keys(immediateUpdates).length > 0) {
+    msg = 'Basic details updated immediately. Price/Stock changes sent to CEO for approval.';
+  } else if (Object.keys(pendingUpdates).length > 0) {
+    msg = 'Price/Stock changes sent to CEO for approval.';
+  }
+
+  res.json({ status: 'success', message: msg });
+});
+
+
+exports.createProductUpdateRequest = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const product = await db('retail_products').where({ id }).first();
+  if (!product) throw new AppError('Product not found', 404);
+
+  const newData = req.body;
+  if (!newData || Object.keys(newData).length === 0) {
+    throw new AppError('No update data provided', 400);
+  }
+
+  // Create the request
+  const [reqId] = await db('retail_update_requests').insert({
+    product_id: id,
+    requested_by: req.user ? req.user.id : null,
+    old_data: JSON.stringify(product),
+    new_data: JSON.stringify(newData),
+    status: 'PENDING'
+  });
+
+  const request = await db('retail_update_requests').where({ id: reqId }).first();
+  res.status(201).json({ status: 'success', message: 'Update request sent to CEO', data: request });
+});
+
+exports.getProductUpdateRequests = catchAsync(async (req, res) => {
+  const { status } = req.query;
+  let query = db('retail_update_requests')
+    .select('retail_update_requests.*', 'retail_products.name as product_name', 'retail_products.sku as product_sku')
+    .join('retail_products', 'retail_update_requests.product_id', 'retail_products.id');
+
+  if (status) {
+    query = query.where('retail_update_requests.status', status.toUpperCase());
+  }
+
+  const requests = await query.orderBy('retail_update_requests.created_at', 'desc');
+
+  // Parse JSON data for frontend convenience
+  const parsedRequests = requests.map(r => {
+    try { r.old_data = typeof r.old_data === 'string' ? JSON.parse(r.old_data) : r.old_data; } catch(e){}
+    try { r.new_data = typeof r.new_data === 'string' ? JSON.parse(r.new_data) : r.new_data; } catch(e){}
+    return r;
+  });
+
+  res.json({ status: 'success', data: parsedRequests });
+});
+
+exports.approveProductUpdateRequest = catchAsync(async (req, res) => {
+  const { id } = req.params;
   
-  res.json({ status: 'success', message: 'Product quantity updated for branch' });
+  // Use transaction to ensure both request status and product update succeed
+  await transaction(async (trx) => {
+    const request = await trx('retail_update_requests').where({ id }).first();
+    if (!request) throw new AppError('Request not found', 404);
+    if (request.status !== 'PENDING') throw new AppError('Request is not pending', 400);
+
+    const newData = typeof request.new_data === 'string' ? JSON.parse(request.new_data) : request.new_data;
+
+    // Build the update payload for retail_products
+    const updates = {};
+    if (newData.name !== undefined) updates.name = newData.name;
+    if (newData.category_id !== undefined) updates.category_id = newData.category_id || null;
+    if (newData.price !== undefined) updates.price = parseFloat(newData.price);
+    if (newData.stock !== undefined) updates.stock_quantity = parseInt(newData.stock);
+    if (newData.reorder !== undefined) updates.reorder_level = parseInt(newData.reorder);
+    
+    if (Object.keys(updates).length > 0) {
+      updates.updated_at = trx.fn.now();
+      await trx('retail_products').where({ id: request.product_id }).update(updates);
+    }
+
+    // Mark request as approved
+    await trx('retail_update_requests').where({ id }).update({
+      status: 'APPROVED',
+      approved_by: req.user ? req.user.id : null,
+      approved_at: trx.fn.now(),
+      updated_at: trx.fn.now()
+    });
+  });
+
+  res.json({ status: 'success', message: 'Product update approved and applied' });
+});
+
+exports.rejectProductUpdateRequest = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  if (!reason) throw new AppError('Rejection reason is required', 400);
+
+  const request = await db('retail_update_requests').where({ id }).first();
+  if (!request) throw new AppError('Request not found', 404);
+  if (request.status !== 'PENDING') throw new AppError('Request is not pending', 400);
+
+  await db('retail_update_requests').where({ id }).update({
+    status: 'REJECTED',
+    rejection_reason: reason,
+    updated_at: db.fn.now()
+  });
+
+  res.json({ status: 'success', message: 'Product update rejected' });
 });
