@@ -1221,7 +1221,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         </header>
         )}
         {/* Page Content stretched 100% */}
-        <div className="dash-content" style={{ width: '100%', overflowX: 'hidden', ...(noPadding ? { padding: 0, background: '#ffffff', display: 'flex', flexDirection: 'column' } : {}) }}>
+        <div className={`dash-content${noPadding ? ' no-padding' : ''}`} style={{ width: '100%', overflowX: 'hidden', ...(noPadding ? { padding: 0, margin: 0, background: 'transparent', display: 'flex', flexDirection: 'column' } : {}) }}>
           {pageNotifs.length > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '12px',

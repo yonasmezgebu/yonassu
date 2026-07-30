@@ -624,6 +624,12 @@ body {
   box-sizing: border-box;
 }
 
+/* Full-bleed pages (e.g. POS) */
+.dash-content.no-padding {
+  padding: 0;
+  margin: 0;
+}
+
 /* ── Mobile Overlay ── */
 .dash-mobile-overlay {
   position: fixed;
@@ -770,6 +776,10 @@ body {
 @media (max-width: 640px) {
   .dash-content {
     padding: 1rem;
+  }
+
+  .dash-content.no-padding {
+    padding: 0;
   }
 
   .dash-user-info {

@@ -30,7 +30,6 @@ const FinanceDashboard  = lazy(() => import('../pages/finance/FinanceDashboard')
 const PurchaseDashboard = lazy(() => import('../pages/purchase/PurchaseDashboard'));
 const PharmacyStoreDashboard = lazy(() => import('../pages/pharmacy-store/StoreDashboard'));
 const GeneralStoreDashboard = lazy(() => import('../pages/general-store/StoreDashboard'));
-const StoreManagementDashboard = lazy(() => import('../pages/pharmacy-store/StoreManagementDashboard')); // Keeping this for legacy if needed, or remove later
 const PrintingManagerDashboard = lazy(() => import('../pages/printing/PrintingDashboard'));
 const CustomerDashboard = lazy(() => import('../pages/customer/CustomerPortal.jsx'));
 const PharmacyDashboard = lazy(() => import('../pages/pharmacy/PharmacyDashboard'));
@@ -141,11 +140,6 @@ const AppRoutes = () => {
         <Route path="/general-store/*" element={
           <RoleBasedRoute role={['General Store Keeper', 'CEO']}>
             <GeneralStoreDashboard />
-          </RoleBasedRoute>
-        } />
-        <Route path="/store-management/*" element={
-          <RoleBasedRoute role={['Pharmacy Store Keeper', 'General Store Keeper', 'CEO']}>
-            <StoreManagementDashboard />
           </RoleBasedRoute>
         } />
         <Route path="/printing-manager/*" element={

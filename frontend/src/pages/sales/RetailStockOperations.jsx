@@ -147,42 +147,6 @@ export default function RetailStockOperations() {
         </div>
       </div>
 
-      {/* ══ TAB BAR ═════════════════════════════════════════ */}
-      <div style={{
-        background: DARK, borderBottom: `4px solid ${GOLD2}`,
-        padding: '0 24px', display: 'flex', gap: 0,
-        animation: 'slideIn .35s ease'
-      }}>
-        {TABS.map(({ id, label, Icon, blinkColor }) => {
-          const active = tab === id;
-          return (
-            <button
-              key={id}
-              onClick={() => handleTabChange(id)}
-              className={`tab-btn${active ? ' tab-active' : ''}`}
-              style={{
-                flex: 1, padding: '13px 16px',
-                border: 'none', borderBottom: active ? `4px solid ${GOLD}` : '4px solid transparent',
-                background: active ? GOLD : 'transparent',
-                color: active ? DARK : 'rgba(229,251,173,.65)',
-                fontWeight: 800, fontSize: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                textTransform: 'uppercase', letterSpacing: '0.07em',
-                boxShadow: active ? `inset 0 -4px 0 ${GOLD2}` : 'none',
-              }}
-            >
-              <span style={active
-                ? { color: DARK }
-                : { animation: `blink ${1.8}s ease-in-out infinite`, color: blinkColor }
-              }>
-                <Icon size={15} />
-              </span>
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
       {/* ══ CONTENT AREA ════════════════════════════════════ */}
       <div style={{ padding: '0 0 32px' }}>
         <div style={{
@@ -193,10 +157,7 @@ export default function RetailStockOperations() {
           boxShadow: `6px 6px 0 rgba(42,63,8,.18)`,
           animation: 'fadeUp .4s ease'
         }}>
-          {tab === 'current'  && <SalesInventoryView  hideHeader={true} themeColors={{ LIME, PEACH, DARK, GOLD, GOLD2 }} refreshTrigger={refreshTrigger} />}
-          {tab === 'low'      && <SalesWorkerLowStock        hideHeader={true} refreshTrigger={refreshTrigger} />}
-          {tab === 'expiring' && <SalesWorkerExpiringProducts hideHeader={true} refreshTrigger={refreshTrigger} />}
-          {tab === 'expired'  && <ExpiredproductReport              hideHeader={true} refreshTrigger={refreshTrigger} />}
+          <SalesInventoryView hideHeader={true} themeColors={{ LIME, PEACH, DARK, GOLD, GOLD2 }} refreshTrigger={refreshTrigger} hideWorkerAdjust={true} />
         </div>
       </div>
     </div>

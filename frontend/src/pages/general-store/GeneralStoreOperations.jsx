@@ -214,8 +214,8 @@ export const GSHome = () => {
       if (rLogs.status  === 'fulfilled') setLogs((rLogs.value.data.data || []).slice(0, 8));
       if (rMats.status  === 'fulfilled') {
         const allMats = rMats.value.data.data || [];
-        // Exclude Sales/Retail — those belong to the Sales Manager dashboard
-        setMats(allMats.filter(m => m.department !== 'Sales' && m.department !== 'Retail'));
+        // Show all departments including Sales/Retail
+        setMats(allMats);
       }
 
     } catch {}
@@ -504,9 +504,9 @@ export const GSInventory = () => {
       const params = {};
       if (dept) params.department = dept;
       const r = await api.get('/api/v1/printing-assets/store/materials', { params });
-      // Exclude Sales/Retail items — those are managed in the Sales Manager dashboard
+      // Show all departments including Sales/Retail
       const all = r.data.data || [];
-      setItems(all.filter(i => i.department !== 'Sales' && i.department !== 'Retail'));
+      setItems(all);
     } catch { setItems([]); }
     setLoading(false);
   }, [dept]);

@@ -402,34 +402,71 @@ function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, on
   const canCancel = !['awarded', 'cancelled'].includes(tender.status);
   const isHidden = !!tender.is_hidden;
 
+  const isMultiple = tender.items != null && tender.items !== '' && tender.items !== 'null';
+
+  const getDisplayPrice = () => {
+    if (tender.items && tender.items !== 'null' && tender.items !== '') {
+      try {
+        const parsed = typeof tender.items === 'string' ? JSON.parse(tender.items) : tender.items;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const total = parsed.reduce((sum, it) => sum + (parseFloat(it.startPrice || 0) * parseFloat(it.quantity || 1)), 0);
+          if (total > 0) return `ETB ${total.toLocaleString()}`;
+          return 'Multiple Items';
+        }
+      } catch (e) {}
+    }
+    return `ETB ${parseFloat(tender.starting_bid_price || 0).toLocaleString()}`;
+  };
+
   return (
     <div className={`tm-card${selected ? ' selected' : ''}`} onClick={onClick}>
       {/* Image section */}
-      <div className="tm-card-img">
-        {imgSrc ? (
-          <img src={imgSrc} alt={tender.title} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-        ) : null}
-        <div className="placeholder" style={{ display: imgSrc ? 'none' : 'flex' }}>
-          <ImageIcon size={36} />
-          <span style={{ fontSize: 11 }}>No Image</span>
+      {isMultiple ? (
+        <div style={{ position: 'relative', height: 44, borderBottom: '1px solid #f1f5f9' }}>
+          {/* Status badge */}
+          <span className="status-badge" style={{
+            ...st, position: 'absolute', top: 12, left: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+          }}>
+            {st.label}
+          </span>
+          {/* Hidden badge */}
+          {isHidden && (
+            <span style={{
+              position: 'absolute', top: 12, right: 16,
+              background: '#424242', color: '#fff',
+              fontSize: 10, fontWeight: 700, padding: '2px 7px',
+              letterSpacing: 0.5,
+            }}>HIDDEN</span>
+          )}
         </div>
-        {/* Status badge */}
-        <span className="status-badge" style={{
-          ...st, position: 'absolute', top: 8, left: 8,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-        }}>
-          {st.label}
-        </span>
-        {/* Hidden badge */}
-        {isHidden && (
-          <span style={{
-            position: 'absolute', top: 8, right: 8,
-            background: '#424242', color: '#fff',
-            fontSize: 10, fontWeight: 700, padding: '2px 7px',
-            letterSpacing: 0.5,
-          }}>HIDDEN</span>
-        )}
-      </div>
+      ) : (
+        <div className="tm-card-img">
+          {imgSrc ? (
+            <img src={imgSrc} alt={tender.title} onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+          ) : null}
+          <div className="placeholder" style={{ display: imgSrc ? 'none' : 'flex' }}>
+            <ImageIcon size={36} />
+            <span style={{ fontSize: 11 }}>No Image</span>
+          </div>
+          {/* Status badge */}
+          <span className="status-badge" style={{
+            ...st, position: 'absolute', top: 8, left: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+          }}>
+            {st.label}
+          </span>
+          {/* Hidden badge */}
+          {isHidden && (
+            <span style={{
+              position: 'absolute', top: 8, right: 8,
+              background: '#424242', color: '#fff',
+              fontSize: 10, fontWeight: 700, padding: '2px 7px',
+              letterSpacing: 0.5,
+            }}>HIDDEN</span>
+          )}
+        </div>
+      )}
 
       {/* Body */}
       <div className="tm-card-body">
@@ -437,7 +474,7 @@ function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, on
         <div className="tm-card-title">{tender.title}</div>
         {tender.item_name && <div className="tm-card-item">📦 {tender.item_name}{tender.quantity ? ` × ${tender.quantity}` : ''}</div>}
         <div className="tm-card-meta">
-          <div className="tm-card-price">ETB {parseFloat(tender.starting_bid_price || 0).toLocaleString()}</div>
+          <div className="tm-card-price">{getDisplayPrice()}</div>
           {tender.deadline && (
             <div className="tm-card-deadline">
               <Calendar size={11} />
@@ -513,7 +550,7 @@ export default function TenderManagePage() {
   });
   const [postType, setPostType] = useState('single');
   const [tenderItems, setTenderItems] = useState([
-    { id: Date.now(), objectType: '', unit: '', quantity: 1 }
+    { id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }
   ]);
   const [editId, setEditId] = useState(null);
   const [files, setFiles] = useState([null, null, null, null, null]);
@@ -521,12 +558,13 @@ export default function TenderManagePage() {
   const [saving, setSaving] = useState(false);
 
   /* Award & extend */
-  const [selectedBids, setSelectedBids] = useState([]);
+
   const [extendDate, setExtendDate] = useState('');
 
   /* Modals */
   const [deleteModal, setDeleteModal] = useState(null);
   const [disqModal, setDisqModal] = useState(null);
+  const [detailModalBid, setDetailModalBid] = useState(null);
   const [disqReason, setDisqReason] = useState('');
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -549,7 +587,7 @@ export default function TenderManagePage() {
   };
 
   const handleSelect = async (t) => {
-    setSelectedTender(t); setSelectedBids([]); setExtendDate('');
+    setSelectedTender(t); setExtendDate('');
     await fetchBids(t.id);
   };
 
@@ -559,7 +597,7 @@ export default function TenderManagePage() {
     setForm({ title: '', description: '', category: '', item_name: '', quantity: '', starting_bid_price: '', deadline: '', terms_conditions: '' });
     setFiles([null, null, null, null, null]); setExistingFiles([]); 
     setPostType('single');
-    setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
+    setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
     setTab('form');
   };
 
@@ -583,12 +621,13 @@ export default function TenderManagePage() {
       parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []);
     } catch (_) {}
     
-    if (parsedItems.length > 0) {
+    const isMultiple = t.items != null && t.items !== '' && t.items !== 'null';
+    if (isMultiple) {
       setPostType('multiple');
-      setTenderItems(parsedItems.map(i => ({ ...i, id: i.id || Date.now() + Math.random() })));
+      setTenderItems(parsedItems.length > 0 ? parsedItems.map(i => ({ ...i, id: i.id || Date.now() + Math.random() })) : [{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
     } else {
       setPostType('single');
-      setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
+      setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }]);
     }
     
     setTab('form');
@@ -689,18 +728,42 @@ export default function TenderManagePage() {
     } catch (err) { notify('error', err.message); }
   };
 
-  const handleEvaluate = async (bidId, field, value) => {
-    try { const r = await axios.put(`/tenders/bids/${bidId}/evaluate`, { [field]: value }); if (r.status === 'success') { notify('info', 'Evaluation updated'); await fetchBids(selectedTender.id); } }
-    catch (err) { notify('error', err.message); }
+  const handleOpenBidDetail = async (bid) => {
+    setDetailModalBid(bid);
+    if (!bid.opened_at) {
+      try {
+        await axios.put(`/tenders/bids/${bid.id}/mark-opened`);
+        await fetchBids(selectedTender.id);
+      } catch (err) {}
+    }
   };
 
-  const handleAward = async () => {
-    if (!selectedBids.length) { notify('warning', 'Select at least one bid to award'); return; }
+  const handleMarkEmailSent = async (bidId) => {
     try {
-      const r = await axios.put(`/tenders/${selectedTender.id}/award`, { bid_ids: selectedBids });
-      if (r.status === 'success') { notify('success', r.message || 'Bid(s) awarded'); fetchTenders(); setSelectedTender(null); setSelectedBids([]); }
+      await axios.put(`/tenders/bids/${bidId}/mark-sent`);
+      notify('success', 'Marked as Sent');
+      await fetchBids(selectedTender.id);
     } catch (err) { notify('error', err.message); }
   };
+
+
+
+
+
+
+  const handleForwardToCeo = async () => {
+    if (!selectedTender) return;
+    try {
+      const r = await axios.post(`/tenders/${selectedTender.id}/bids/forward`, {});
+      if (r.status === 'success') {
+        notify('success', '📨 Bids forwarded to CEO for approval!');
+        await fetchBids(selectedTender.id);
+        await fetchTenders();
+        setSelectedTender(prev => ({ ...prev, status: 'awaiting_ceo_approval' }));
+      }
+    } catch (err) { notify('error', err.message || 'Failed to forward'); }
+  };
+
 
   /* ── Filter & Search ── */
   const STATUS_FILTERS = ['all', 'open', 'closed', 'awarded', 'cancelled', 'pending_approval'];
@@ -771,6 +834,34 @@ export default function TenderManagePage() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => { setDisqModal(null); setDisqReason(''); }}>Back</button>
               <button className="btn btn-red" disabled={!disqReason} onClick={handleDisqualify}><X size={14} /> Disqualify</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailModalBid && (
+        <div className="tm-modal-overlay" onClick={() => setDetailModalBid(null)}>
+          <div className="tm-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '100%', padding: 30, borderRadius: 12, background: C.white }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: C.darkGreen, marginBottom: 20, borderBottom: `2px solid ${C.sage}`, paddingBottom: 10 }}>Bid Details</h3>
+            
+            <div style={{ display: 'grid', gap: 12, fontSize: 14 }}>
+              <div><strong>Competitor Name:</strong> {detailModalBid.bidder_full_name || detailModalBid.customer_name}</div>
+              <div><strong>Email:</strong> {detailModalBid.bidder_email || detailModalBid.customer_email}</div>
+              <div><strong>Phone:</strong> {detailModalBid.bidder_phone || 'N/A'}</div>
+              <div><strong>Total Value:</strong> ETB {parseFloat(detailModalBid.total_bid_value || 0).toLocaleString()}</div>
+              <div><strong>Submit Date (Save Date):</strong> {new Date(detailModalBid.submitted_at).toLocaleString()}</div>
+              <div><strong>Open Date:</strong> {detailModalBid.opened_at ? new Date(detailModalBid.opened_at).toLocaleString() : 'Just Opened'}</div>
+              <div>
+                <strong>Digital Signature:</strong>
+                <div style={{ marginTop: 8, padding: '12px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 24, color: '#0f172a' }}>
+                  {detailModalBid.digital_signature || 'No Signature'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24, textAlign: 'right' }}>
+              <button className="btn btn-ghost" onClick={() => setDetailModalBid(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -888,11 +979,18 @@ export default function TenderManagePage() {
                           </button>
                         </div>
                       )}
-                      {/* Award */}
-                      {['closed', 'open'].includes(selectedTender.status) && (
-                        <button className="btn btn-primary btn-sm" disabled={!selectedBids.length} onClick={handleAward}>
-                          <Award size={13} /> Award ({selectedBids.length})
+                      {/* Submit to CEO */}
+                      {['closed', 'open'].includes(selectedTender.status) && bids.some(b => b.status === 'submitted' || b.status === 'pending' || b.status === 'under_review') && (
+                        <button className="btn btn-primary btn-sm" style={{ background: '#7c3aed', border: 'none' }} onClick={handleForwardToCeo}>
+                          <Award size={13} /> Submit to CEO
                         </button>
+                      )}
+                      
+                      {/* Waiting for CEO */}
+                      {['awaiting_ceo_approval', 'pending_approval'].includes(selectedTender.status) && (
+                        <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, padding: '0 8px' }}>
+                          <Clock size={12} /> Waiting for CEO Approval
+                        </span>
                       )}
                       {/* Cancel */}
                       {['draft', 'open', 'closed'].includes(selectedTender.status) && (
@@ -911,117 +1009,191 @@ export default function TenderManagePage() {
                       <div style={{ textAlign: 'center', padding: '30px 0', color: '#aaa', fontSize: 13 }}>
                         No bids submitted yet for this tender.
                       </div>
-                    ) : (
-                      <table className="bids-table">
-                        <thead>
-                          <tr>
-                            {selectedTender.status !== 'awarded' && (
-                              <th style={{ width: 36 }}>
-                                <input type="checkbox"
-                                  onChange={e => setSelectedBids(e.target.checked ? bids.filter(b => b.status !== 'disqualified').map(b => b.id) : [])}
-                                  checked={selectedBids.length > 0 && selectedBids.length === bids.filter(b => b.status !== 'disqualified').length}
-                                />
-                              </th>
-                            )}
-                            <th>Image</th>
-                            <th>Bidder</th>
-                            <th style={{ textAlign: 'right' }}>Price/Unit</th>
-                            <th style={{ textAlign: 'right' }}>Qty</th>
-                            <th style={{ textAlign: 'right' }}>Total</th>
-                            <th>Status</th>
-                            <th>Evaluation</th>
-                            <th style={{ textAlign: 'center' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bids.map(b => {
-                            const bst = BID_STATUS_CFG[b.status] || { bg: '#eee', color: '#666' };
-                            /* bid image */
-                            let bidImg = null;
-                            try {
-                              const atts = typeof b.attachments === 'string' ? JSON.parse(b.attachments) : b.attachments;
-                              if (Array.isArray(atts) && atts.length > 0) {
-                                const images = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a));
-                                if (images.length > 0) {
-                                  const imgAtt = images[images.length - 1]; // Use the newest one
-                                  const baseUrl = API_BASE.replace('/api/v1', '');
-                                  bidImg = `${baseUrl}/uploads/tenders/${imgAtt.split('/').pop()}`;
-                                }
-                              }
-                            } catch (_) {}
+                    ) : (() => {
+                      // Determine if multi-product tender
+                      let tenderItems = [];
+                      try { tenderItems = typeof selectedTender.items === 'string' ? JSON.parse(selectedTender.items) : (selectedTender.items || []); } catch (_) {}
+                      const isMultiProduct = tenderItems.length > 0;
 
-                            return (
-                              <tr key={b.id} className={b.status === 'disqualified' ? 'disqualified' : b.status === 'awarded' ? 'awarded' : ''}>
-                                {selectedTender.status !== 'awarded' && (
-                                  <td>
-                                    <input type="checkbox"
-                                      checked={selectedBids.includes(b.id)}
-                                      disabled={b.status === 'disqualified'}
-                                      onChange={e => setSelectedBids(prev => e.target.checked ? [...prev, b.id] : prev.filter(x => x !== b.id))}
-                                    />
+                      if (isMultiProduct) {
+                        // Group bids per product, rank by highest bid for that product
+                        return (
+                          <div>
+                            <div style={{ padding: '10px 16px', background: '#f0fdf4', borderBottom: '2px solid #bbf7d0', fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                              📦 Multi-Product Tender — Bids grouped by product, ranked highest to lowest
+                            </div>
+                            {tenderItems.map((item, itemIdx) => {
+                              // For each product, find which bids contain a price for it
+                              const productBids = bids.map(bid => {
+                                let bidItems = [];
+                                try { bidItems = typeof bid.items === 'string' ? JSON.parse(bid.items) : (bid.items || []); } catch (_) {}
+                                const matched = bidItems.find((bi, i) => i === itemIdx || bi.objectType === item.objectType);
+                                const bidPrice = matched ? (parseFloat(matched.bidPriceBirr || 0) + parseFloat(matched.bidPriceCent || 0) / 100) : 0;
+                                return { ...bid, productBidPrice: bidPrice, productBidItem: matched };
+                              }).filter(b => b.productBidPrice > 0).sort((a, b2) => b2.productBidPrice - a.productBidPrice);
+
+                              return (
+                                <div key={itemIdx} style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                                  <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: 'white', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>#{itemIdx + 1} — {item.objectType || '—'} ({item.unit}, qty {item.quantity})</span>
+                                    <span style={{ fontSize: 11, opacity: 0.7 }}>Start Price: {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : '—'} | {productBids.length} bid(s)</span>
+                                  </div>
+                                  {productBids.length === 0 ? (
+                                    <div style={{ padding: '12px 16px', color: '#aaa', fontSize: 12 }}>No bids for this product yet.</div>
+                                  ) : (
+                                      <table className="bids-table" style={{ margin: 0 }}>
+                                        <thead>
+                                          <tr>
+                                            <th>Rank</th>
+                                            <th>Competitor Name</th>
+                                            <th>Contact (Email/Phone)</th>
+                                            <th>Save Date</th>
+                                            <th>Open Date</th>
+                                            <th style={{ textAlign: 'right' }}>Bid Price (ETB)</th>
+                                            <th>Status</th>
+                                            <th>CEO Approval</th>
+                                            <th style={{ textAlign: 'center' }}>Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {productBids.map((b, rank) => {
+                                            const bst = BID_STATUS_CFG[b.status] || { bg: '#eee', color: '#666' };
+                                            return (
+                                              <tr key={b.id} style={{ background: rank === 0 ? '#f0fdf4' : undefined }}>
+                                                <td>
+                                                  <span style={{ fontWeight: 800, fontSize: 15, color: rank === 0 ? '#059669' : '#94a3b8' }}>
+                                                    {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
+                                                  </span>
+                                                  {rank === 0 && <span style={{ marginLeft: 6, fontSize: 10, background: '#dcfce7', color: '#166534', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>SUGGESTED</span>}
+                                                </td>
+                                                <td>
+                                                  <div style={{ fontWeight: 700, color: C.darkGreen }}>{b.bidder_full_name || b.customer_name || `User #${b.customer_id}`}</div>
+                                                </td>
+                                                <td>
+                                                  <div style={{ fontSize: 11, color: '#888' }}>{b.bidder_email || b.customer_email}</div>
+                                                  <div style={{ fontSize: 11, color: '#555' }}>{b.bidder_phone || 'N/A'}</div>
+                                                </td>
+                                                <td style={{ fontSize: 12 }}>{new Date(b.submitted_at).toLocaleString()}</td>
+                                                <td style={{ fontSize: 12 }}>{b.opened_at ? new Date(b.opened_at).toLocaleString() : 'Unopened'}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 800, color: rank === 0 ? '#059669' : C.darkGray }}>
+                                                  {b.productBidPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB
+                                                </td>
+                                                <td><span className="status-badge" style={{ ...bst }}>{(b.status || '').replace(/_/g, ' ')}</span></td>
+                                                <td>
+                                                  <span style={{ fontSize: 11, fontWeight: 700, color: b.ceo_approval_status === 'approved' ? '#059669' : b.ceo_approval_status === 'rejected' ? '#dc2626' : '#94a3b8' }}>
+                                                    {b.ceo_approval_status === 'approved' ? '✅ Approved' : b.ceo_approval_status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                                                  </span>
+                                                </td>
+                                                <td>
+                                                  <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+                                                    <button className="btn-icon" title="View Details" onClick={() => handleOpenBidDetail(b)}>
+                                                      <Eye size={13} color="#1565C0" />
+                                                    </button>
+                                                    {b.status === 'awarded' && (
+                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                        <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${b.bidder_email || b.customer_email}&su=Award Notification - ${selectedTender.title}&body=Dear ${b.bidder_full_name || b.customer_name},%0D%0A%0D%0AWe are delighted to officially notify you that your company has been awarded the contract for the tender "${selectedTender.title}".%0D%0A%0D%0AAfter a thorough evaluation process, your bid was selected as the most competitive and suitable for our requirements. We appreciate the time and effort your team invested in preparing your proposal.%0D%0A%0D%0APlease contact our procurement office at your earliest convenience to discuss the contract signing, delivery schedules, and the next steps for finalizing this agreement.%0D%0A%0D%0AWe look forward to a successful collaboration.%0D%0A%0D%0ABest regards,%0D%0ASutana Enterprise Management System`} target="_blank" rel="noreferrer" style={{ fontSize: 10, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, textDecoration: 'none', textAlign: 'center' }}>
+                                                          Email
+                                                        </a>
+                                                        <button onClick={() => handleMarkEmailSent(b.id)} style={{ fontSize: 10, background: b.notification_sent ? '#10b981' : '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                                                          {b.notification_sent ? 'Sent' : 'Mark Sent'}
+                                                        </button>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+
+                      // Single product — flat ranked list
+                      const rankedBids = [...bids].sort((a, b2) => parseFloat(b2.total_bid_value || 0) - parseFloat(a.total_bid_value || 0));
+                      return (
+                        <table className="bids-table">
+                          <thead>
+                            <tr>
+
+                              <th>Rank</th>
+                              <th>Competitor Name</th>
+                              <th>Contact (Email/Phone)</th>
+                              <th>Save Date</th>
+                              <th>Open Date</th>
+                              <th style={{ textAlign: 'right' }}>Price/Unit</th>
+                              <th style={{ textAlign: 'right' }}>Total</th>
+                              <th>Status</th>
+                              <th>CEO Approval</th>
+                              <th style={{ textAlign: 'center' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rankedBids.map((b, rank) => {
+                              const bst = BID_STATUS_CFG[b.status] || { bg: '#eee', color: '#666' };
+                              return (
+                                <tr key={b.id} style={{ background: rank === 0 ? '#f0fdf4' : undefined }} className={b.status === 'disqualified' ? 'disqualified' : b.status === 'awarded' ? 'awarded' : ''}>
+
+                                  <td style={{ fontWeight: 800, fontSize: 16, textAlign: 'center' }}>
+                                    {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
+                                    {rank === 0 && <div style={{ fontSize: 9, background: '#dcfce7', color: '#166534', padding: '1px 4px', borderRadius: 3, fontWeight: 700, marginTop: 2 }}>SUGGESTED</div>}
                                   </td>
-                                )}
-                                {/* Image */}
-                                <td>
-                                  <div className="bid-img">
-                                    {bidImg ? (
-                                      <img src={bidImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                    ) : null}
-                                    <div style={{ display: bidImg ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                                      <ImageIcon size={18} color={C.sage} />
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ fontWeight: 700, color: C.darkGreen }}>{b.customer_name || `User #${b.customer_id}`}</div>
-                                  <div style={{ fontSize: 11, color: '#888' }}>{b.customer_email}</div>
-                                </td>
-                                <td style={{ textAlign: 'right', fontWeight: 700, color: C.forestGreen }}>
-                                  {parseFloat(b.bid_price_per_unit || 0).toLocaleString()}
-                                </td>
-                                <td style={{ textAlign: 'right', color: '#666' }}>{b.quantity_requested}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                                  {parseFloat(b.total_bid_value || 0).toLocaleString()}
-                                </td>
-                                <td>
-                                  <span className="status-badge" style={{ ...bst }}>
-                                    {(b.status || '').replace(/_/g, ' ')}
-                                  </span>
-                                </td>
-                                <td>
-                                  <select value={b.evaluation_label || ''} onChange={e => handleEvaluate(b.id, 'evaluation_label', e.target.value)}
-                                    style={{ padding: '6px 8px', border: `2px solid ${C.sage}`, borderRadius: 0, fontSize: 12, background: C.white, width: '100%', color: C.darkGray, outline: 'none' }}>
-                                    <option value="">— Evaluate —</option>
-                                    <option value="shortlisted">Shortlisted</option>
-                                    <option value="highest">Highest</option>
-                                    <option value="lowest">Lowest</option>
-                                    <option value="disqualified">Disqualified</option>
-                                  </select>
-                                </td>
-                                {/* Actions */}
-                                <td>
-                                  <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
-                                    {/* View bid details */}
-                                    <button className="btn-icon" title="View Details"
-                                      onClick={() => notify('info', `Bidder: ${b.customer_name || 'Unknown'} | Amount: ETB ${parseFloat(b.total_bid_value||0).toLocaleString()}`)}>
-                                      <Eye size={13} color="#1565C0" />
-                                    </button>
-                                    {/* Disqualify */}
-                                    {b.status !== 'disqualified' && b.status !== 'awarded' && (
-                                      <button className="btn-icon danger" title="Disqualify"
-                                        onClick={() => { setDisqModal(b.id); setDisqReason(''); }}>
-                                        <X size={13} />
+                                  <td>
+                                    <div style={{ fontWeight: 700, color: C.darkGreen }}>{b.bidder_full_name || b.customer_name || `User #${b.customer_id}`}</div>
+                                  </td>
+                                  <td>
+                                    <div style={{ fontSize: 11, color: '#888' }}>{b.bidder_email || b.customer_email}</div>
+                                    <div style={{ fontSize: 11, color: '#555' }}>{b.bidder_phone || 'N/A'}</div>
+                                  </td>
+                                  <td style={{ fontSize: 12 }}>{new Date(b.submitted_at).toLocaleString()}</td>
+                                  <td style={{ fontSize: 12 }}>{b.opened_at ? new Date(b.opened_at).toLocaleString() : 'Unopened'}</td>
+                                  <td style={{ textAlign: 'right', fontWeight: 700, color: rank === 0 ? '#059669' : C.forestGreen }}>
+                                    {parseFloat(b.bid_price_per_unit || 0).toLocaleString()}
+                                  </td>
+                                  <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                    {parseFloat(b.total_bid_value || 0).toLocaleString()}
+                                  </td>
+                                  <td><span className="status-badge" style={{ ...bst }}>{(b.status || '').replace(/_/g, ' ')}</span></td>
+                                  <td>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: b.ceo_approval_status === 'approved' ? '#059669' : b.ceo_approval_status === 'rejected' ? '#dc2626' : '#94a3b8' }}>
+                                      {b.ceo_approval_status === 'approved' ? '✅ Approved' : b.ceo_approval_status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+                                      <button className="btn-icon" title="View Details" onClick={() => handleOpenBidDetail(b)}>
+                                        <Eye size={13} color="#1565C0" />
                                       </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    )}
+                                      {b.status !== 'disqualified' && b.status !== 'awarded' && (
+                                        <button className="btn-icon danger" title="Disqualify"
+                                          onClick={() => { setDisqModal(b.id); setDisqReason(''); }}>
+                                          <X size={13} />
+                                        </button>
+                                      )}
+                                      {b.status === 'awarded' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                          <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${b.bidder_email || b.customer_email}&su=Award Notification - ${selectedTender.title}&body=Dear ${b.bidder_full_name || b.customer_name},%0D%0A%0D%0AWe are delighted to officially notify you that your company has been awarded the contract for the tender "${selectedTender.title}".%0D%0A%0D%0AAfter a thorough evaluation process, your bid was selected as the most competitive and suitable for our requirements. We appreciate the time and effort your team invested in preparing your proposal.%0D%0A%0D%0APlease contact our procurement office at your earliest convenience to discuss the contract signing, delivery schedules, and the next steps for finalizing this agreement.%0D%0A%0D%0AWe look forward to a successful collaboration.%0D%0A%0D%0ABest regards,%0D%0ASutana Enterprise Management System`} target="_blank" rel="noreferrer" style={{ fontSize: 10, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, textDecoration: 'none', textAlign: 'center' }}>
+                                            Email
+                                          </a>
+                                          <button onClick={() => handleMarkEmailSent(b.id)} style={{ fontSize: 10, background: b.notification_sent ? '#10b981' : '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                                            {b.notification_sent ? 'Sent' : 'Mark Sent'}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1112,14 +1284,14 @@ export default function TenderManagePage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <label style={{ margin: 0 }}>Tender Items (Smart Table)</label>
                     </div>
-                    <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#94a3b8' }}>Define items. Suppliers will fill in pricing on the public page.</p>
+                    <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#94a3b8' }}>Set a start price for each item. Competitors will submit their bid price on the public page.</p>
                     <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
                         <thead>
                           <tr style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', textAlign: 'left' }}>
-                            {['No', 'Object Type', 'Unit', 'Quantity', 'Price / Obj (Birr)', 'Price / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
-                              <th key={i} style={{ padding: '12px 14px', color: i < 4 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 4 && i <= 8 ? 'italic' : 'normal' }}>
-                                {h}{i >= 4 && i <= 8 ? ' ← supplier fills' : ''}
+                            {['No', 'Object Type', 'Unit', 'Quantity', 'Start Price (Birr)', 'Bid / Obj (Birr)', 'Bid / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
+                              <th key={i} style={{ padding: '12px 14px', color: i <= 4 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 5 && i <= 9 ? 'italic' : 'normal' }}>
+                                {h}{i >= 5 && i <= 9 ? ' ← competitor fills' : ''}
                               </th>
                             ))}
                           </tr>
@@ -1136,6 +1308,9 @@ export default function TenderManagePage() {
                               </td>
                               <td style={{ padding: '8px' }}>
                                 <input type="number" min="1" required value={item.quantity} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, quantity: e.target.value } : i))} style={{ width: '80px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px' }} />
+                              </td>
+                              <td style={{ padding: '8px' }}>
+                                <input type="number" min="0" step="0.01" required value={item.startPrice || ''} onChange={e => setTenderItems(tenderItems.map(i => i.id === item.id ? { ...i, startPrice: e.target.value } : i))} style={{ width: '110px', padding: '8px', border: '2px solid #3b82f6', borderRadius: '6px', fontSize: '13px', background: '#eff6ff' }} placeholder="0.00" />
                               </td>
                               {[...Array(5)].map((_, ci) => (
                                 <td key={ci} style={{ padding: '8px', background: '#f8fafc' }}>
@@ -1155,7 +1330,7 @@ export default function TenderManagePage() {
                       </table>
                     </div>
                     <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-start' }}>
-                      <button type="button" onClick={() => setTenderItems([...tenderItems, { id: Date.now(), objectType: '', unit: '', quantity: 1 }])} style={{ padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                      <button type="button" onClick={() => setTenderItems([...tenderItems, { id: Date.now(), objectType: '', unit: '', quantity: 1, startPrice: '' }])} style={{ padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
                         <PlusCircle size={14} /> Add Item
                       </button>
                     </div>

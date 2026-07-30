@@ -391,6 +391,25 @@ const STYLES = `
 }
 .td-signin-btn.outline:hover { background: #f8fafc; border-color: #059669; color: #059669; }
 
+.td-multi-login {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 18px;
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+}
+.td-multi-login:hover {
+  border-color: #fbbf24;
+  color: #d97706; /* gold */
+  background: #fffbeb;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+}
 .td-meta-card {
   background: white;
   border-radius: 16px;
@@ -473,7 +492,7 @@ export default () => {
   const [myBid, setMyBid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ bid_price_per_unit: '', quantity_requested: 1, proposed_pickup_date: '', notes: '' });
+  const [form, setForm] = useState({ bid_price_per_unit: '', quantity_requested: '', proposed_pickup_date: '', notes: '', bidder_full_name: '', bidder_email: '', bidder_phone: '', digital_signature: '' });
   const [submitting, setSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [message, setMessage] = useState(null);
@@ -516,29 +535,64 @@ export default () => {
   }, [user, tender]);
 
   useEffect(() => {
+    const stored = user || {};
     if (myBid) {
       setForm({
         bid_price_per_unit: myBid.bid_price_per_unit || '',
         quantity_requested: myBid.quantity_requested || 1,
         proposed_pickup_date: myBid.proposed_pickup_date ? myBid.proposed_pickup_date.slice(0, 10) : '',
         notes: myBid.notes || '',
+        bidder_full_name: myBid.bidder_full_name || stored.full_name || '',
+        bidder_email: myBid.bidder_email || stored.email || '',
+        bidder_phone: myBid.bidder_phone || stored.phone || '',
+        digital_signature: myBid.digital_signature || '',
       });
     } else if (tender) {
-      setForm(f => ({ ...f, bid_price_per_unit: tender.starting_bid_price || '' }));
+      setForm(f => ({ ...f,
+        bid_price_per_unit: tender.starting_bid_price || '',
+        quantity_requested: tender.quantity || 1,
+        bidder_full_name: f.bidder_full_name || stored.full_name || '',
+        bidder_email: f.bidder_email || stored.email || '',
+        bidder_phone: f.bidder_phone || stored.phone || '',
+        digital_signature: f.digital_signature || '',
+      }));
     }
-  }, [myBid, tender]);
+
+    if (myBid && myBid.items) {
+      try {
+        const parsed = typeof myBid.items === 'string' ? JSON.parse(myBid.items) : myBid.items;
+        const initialItemBids = {
+          notes: myBid.notes || '',
+          proposed_pickup_date: myBid.proposed_pickup_date ? myBid.proposed_pickup_date.slice(0, 10) : ''
+        };
+        parsed.forEach((it, idx) => {
+          initialItemBids[`birr_${idx}`] = it.bidPriceBirr || '';
+          initialItemBids[`cent_${idx}`] = it.bidPriceCent || '';
+        });
+        setItemBids(initialItemBids);
+      } catch (e) {}
+    }
+  }, [myBid, tender, user]);
 
   const handleBidSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return; // block double-click
     setSubmitting(true);
     setMessage(null);
     try {
-      const res = await axios.post(`/tenders/${tender.id}/bid`, form);
+      let res;
+      if (myBid) {
+        // Update existing bid via PUT
+        res = await axios.put(`/tenders/${tender.id}/bid`, form);
+      } else {
+        // New bid via POST
+        res = await axios.post(`/tenders/${tender.id}/bid`, form);
+      }
       if (res.status === 'success') {
-        setMessage({ type: 'success', text: res.message || '🎉 Bid submitted successfully!' });
+        setMessage({ type: 'success', text: res.message || (myBid ? '✅ Bid updated successfully!' : '🎉 Bid submitted successfully!') });
         const r = await axios.get(`/tenders/${tender.id}/my-bid`);
         if (r.status === 'success') setMyBid(r.data);
-        setShowCelebration(true);
+        if (!myBid) setShowCelebration(true);
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.message || 'Submission failed. Please try again.' });
@@ -548,24 +602,61 @@ export default () => {
 
   const handleMultiItemBidSubmit = async (e, items) => {
     e.preventDefault();
+    if (submitting) return; // block double-click
     setSubmitting(true);
     setMessage(null);
-    const itemsWithBids = items.map((item, idx) => ({
-      ...item,
-      bidPriceBirr: itemBids[`birr_${idx}`] || '',
-      bidPriceCent: itemBids[`cent_${idx}`] || '',
-    }));
+    const itemsWithBids = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const birrStr = itemBids[`birr_${i}`] || '';
+      const centStr = itemBids[`cent_${i}`] || '';
+      const start = parseFloat(item.startPrice || 0);
+
+      if (birrStr || centStr) {
+        const totalBid = parseFloat(birrStr || 0) + (parseFloat(centStr || 0) / 100);
+        if (totalBid < start) {
+          setMessage({ type: 'error', text: `❌ Item #${i + 1} ("${item.objectType || 'Item'}") bid of ${totalBid.toLocaleString()} ETB is below the minimum start price of ${start.toLocaleString()} ETB.` });
+          setSubmitting(false);
+          return;
+        }
+      } else if (start > 0) {
+        setMessage({ type: 'error', text: `❌ Please enter a bid price for Item #${i + 1} ("${item.objectType || 'Item'}"). Minimum is ${start.toLocaleString()} ETB.` });
+        setSubmitting(false);
+        return;
+      }
+
+      itemsWithBids.push({
+        ...item,
+        bidPriceBirr: birrStr,
+        bidPriceCent: centStr,
+      });
+    }
+
     try {
-      const res = await axios.post(`/tenders/${tender.id}/bid`, {
+      const payload = {
         notes: itemBids.notes || '',
         proposed_pickup_date: itemBids.proposed_pickup_date || '',
         items: JSON.stringify(itemsWithBids),
         bid_price_per_unit: 0,
         quantity_requested: items.length,
-      });
+        bidder_full_name: form.bidder_full_name,
+        bidder_email: form.bidder_email,
+        bidder_phone: form.bidder_phone,
+        digital_signature: form.digital_signature,
+      };
+      
+      let res;
+      if (myBid) {
+        res = await axios.put(`/tenders/${tender.id}/bid`, payload);
+      } else {
+        res = await axios.post(`/tenders/${tender.id}/bid`, payload);
+      }
+      
       if (res.status === 'success') {
-        setMessage({ type: 'success', text: '🎉 Your bid has been submitted successfully!' });
-        setShowCelebration(true);
+        setMessage({ type: 'success', text: res.message || (myBid ? '✅ Bid updated successfully!' : '🎉 Your bid has been submitted successfully!') });
+        const r = await axios.get(`/tenders/${tender.id}/my-bid`);
+        if (r.status === 'success') setMyBid(r.data);
+        if (!myBid) setShowCelebration(true);
       }
     } catch (err) {
       setMessage({ type: 'error', text: err.message || 'Submission failed. Please try again.' });
@@ -574,6 +665,7 @@ export default () => {
   };
 
   const isOpen = tender?.status === 'open' && new Date(tender.deadline) > new Date();
+  const isMultiTender = !!(tender?.items && tender.items !== '' && tender.items !== 'null');
   const attachments = tender?.attachments ? (() => { try { return JSON.parse(tender.attachments); } catch { return []; } })() : [];
   const images = attachments.filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f));
   const docs = attachments.filter(f => !/\.(jpg|jpeg|png|gif|webp)$/i.test(f));
@@ -638,7 +730,7 @@ export default () => {
           </div>
 
           {/* ─── Main Layout ─── */}
-          <div className="td-layout">
+          <div className="td-layout" style={isMultiTender ? { gridTemplateColumns: '1fr', maxWidth: '100%', padding: '32px 40px 80px' } : {}}>
             {/* Left Column */}
             <div className="td-main-card">
               {coverImg && (
@@ -753,11 +845,13 @@ export default () => {
                                     <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                                       {isOpen && user ? (
                                         <input
-                                          type="number" min="0" step="0.01"
+                                          type="number" step="0.01"
+                                          min={item.startPrice ? parseFloat(item.startPrice) : 0}
+                                          required
                                           value={itemBids[`birr_${idx}`] || ''}
                                           onChange={e => setItemBids(prev => ({ ...prev, [`birr_${idx}`]: e.target.value }))}
-                                          placeholder="0"
-                                          style={{ width: '90px', padding: '7px 10px', border: '2px solid #059669', borderRadius: 6, fontSize: 13, textAlign: 'right', background: '#f0fdf4', outline: 'none' }}
+                                          placeholder={item.startPrice ? `Min: ${parseFloat(item.startPrice).toLocaleString()}` : '0'}
+                                          style={{ width: '110px', padding: '7px 10px', border: `2px solid ${itemBids[`birr_${idx}`] && parseFloat(itemBids[`birr_${idx}`]) < parseFloat(item.startPrice || 0) ? '#ef4444' : '#059669'}`, borderRadius: 6, fontSize: 13, textAlign: 'right', background: '#f0fdf4', outline: 'none' }}
                                         />
                                       ) : <span style={{ color: '#94a3b8' }}>—</span>}
                                     </td>
@@ -784,7 +878,49 @@ export default () => {
 
                         {isOpen && user && (
                           <>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+                            <div style={{ marginTop: '24px' }}>
+                              <h4 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>Competitor Details</h4>
+                              
+                              <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                                  Competitor Name (Fill Part) <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input required type="text"
+                                  placeholder="Enter company / person name"
+                                  style={{ width: '100%', padding: '12px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '15px' }}
+                                  value={form.bidder_full_name}
+                                  onChange={e => setForm(f => ({ ...f, bidder_full_name: e.target.value }))}
+                                />
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Email Address</label>
+                                  <input type="email" placeholder="example@email.com"
+                                    style={{ width: '100%', padding: '12px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '15px' }}
+                                    value={form.bidder_email} onChange={e => setForm(f => ({ ...f, bidder_email: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Phone Number</label>
+                                  <input type="tel" placeholder="0900000000"
+                                    style={{ width: '100%', padding: '12px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '15px' }}
+                                    value={form.bidder_phone} onChange={e => setForm(f => ({ ...f, bidder_phone: e.target.value }))} />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+                                  Digital Signature <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input required type="text"
+                                  placeholder="Type your signature..."
+                                  style={{ width: '100%', padding: '12px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '18px', fontFamily: '"Caveat", "Dancing Script", cursive' }}
+                                  value={form.digital_signature}
+                                  onChange={e => setForm(f => ({ ...f, digital_signature: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                               <div>
                                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Proposed Pickup Date</label>
                                 <input type="date" value={itemBids.proposed_pickup_date || ''} onChange={e => setItemBids(p => ({ ...p, proposed_pickup_date: e.target.value }))}
@@ -808,9 +944,9 @@ export default () => {
                           </>
                         )}
                         {!user && isOpen && (
-                          <div style={{ marginTop: 14, padding: '14px 18px', background: '#fafafa', border: '1px solid #e2e8f0', borderRadius: 10, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
-                            <Lock size={16} style={{ marginBottom: 6 }} /> <strong>Sign in</strong> to submit your bid on these items.
-                          </div>
+                          <Link to={`/login?redirect=/tenders/${tender.id}`} className="td-multi-login">
+                            <Lock size={16} style={{ marginBottom: 4 }} /> <strong style={{ color: 'inherit' }}>Sign in</strong> to submit your bid on these items.
+                          </Link>
                         )}
                       </form>
                     </div>
@@ -866,6 +1002,7 @@ export default () => {
 
             {/* Right Sidebar */}
             <div className="td-sidebar">
+              {!isMultiTender && (<>
               {/* Meta Info */}
               <div className="td-meta-card">
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -907,7 +1044,7 @@ export default () => {
                           <CheckCircle size={14} /> Your current bid
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 900, color: '#059669' }}>{parseFloat(myBid.bid_price_per_unit).toLocaleString()} ETB/unit</div>
-                        <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>Qty: {myBid.quantity_requested} | Total: {parseFloat(myBid.total_bid_value || myBid.bid_price_per_unit * myBid.quantity_requested).toLocaleString()} ETB</div>
+                        <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>Total: {parseFloat(myBid.total_bid_value || myBid.bid_price_per_unit * (tender.quantity || 1)).toLocaleString()} ETB</div>
                       </div>
                     )}
 
@@ -919,6 +1056,33 @@ export default () => {
                     )}
 
                     <form onSubmit={handleBidSubmit}>
+                      {/* Contact Info */}
+                      <div style={{ marginBottom: 14 }}>
+                        <label className="td-label">Full Name *</label>
+                        <input className="td-input" required type="text"
+                          value={form.bidder_full_name}
+                          onChange={e => setForm(f => ({ ...f, bidder_full_name: e.target.value }))}
+                          placeholder="Your full name"
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+                        <div>
+                          <label className="td-label">Email *</label>
+                          <input className="td-input" required type="email"
+                            value={form.bidder_email}
+                            onChange={e => setForm(f => ({ ...f, bidder_email: e.target.value }))}
+                            placeholder="your@email.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="td-label">Phone *</label>
+                          <input className="td-input" required type="tel"
+                            value={form.bidder_phone}
+                            onChange={e => setForm(f => ({ ...f, bidder_phone: e.target.value }))}
+                            placeholder="+251..."
+                          />
+                        </div>
+                      </div>
                       <div style={{ marginBottom: 14 }}>
                         <label className="td-label">Bid Price (ETB/unit) *</label>
                         <input className="td-input" required type="number" step="0.01" min={tender.starting_bid_price}
@@ -926,18 +1090,6 @@ export default () => {
                           onChange={e => setForm(f => ({ ...f, bid_price_per_unit: e.target.value }))}
                           placeholder={`Min: ${parseFloat(tender.starting_bid_price).toLocaleString()} ETB`}
                         />
-                      </div>
-                      <div style={{ marginBottom: 14 }}>
-                        <label className="td-label">Quantity *</label>
-                        <input className="td-input" required type="number" min="1" max={tender.quantity}
-                          value={form.quantity_requested}
-                          onChange={e => setForm(f => ({ ...f, quantity_requested: e.target.value }))}
-                        />
-                        {form.bid_price_per_unit && form.quantity_requested && (
-                          <div style={{ fontSize: 12, color: '#059669', fontWeight: 700, marginTop: 4 }}>
-                            Total: {(parseFloat(form.bid_price_per_unit) * parseInt(form.quantity_requested)).toLocaleString()} ETB
-                          </div>
-                        )}
                       </div>
                       <div style={{ marginBottom: 14 }}>
                         <label className="td-label">Proposed Pickup Date</label>
@@ -952,6 +1104,17 @@ export default () => {
                           placeholder="Describe your offer, qualifications, delivery terms..."
                           style={{ resize: 'vertical' }}
                         />
+                      </div>
+                      <div style={{ marginBottom: 18 }}>
+                        <label className="td-label">Digital Signature *</label>
+                        <input className="td-input" required type="text"
+                          value={form.digital_signature}
+                          onChange={e => setForm(f => ({ ...f, digital_signature: e.target.value }))}
+                          placeholder="Type your full name as signature"
+                        />
+                        <div style={{ marginTop: 6, padding: '10px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 22, color: '#0f172a' }}>
+                          {form.digital_signature || <span style={{ color: '#cbd5e1', fontFamily: 'sans-serif', fontSize: 13 }}>Signature preview will appear here</span>}
+                        </div>
                       </div>
                       <button type="submit" className="td-submit-btn" disabled={submitting}>
                         {submitting ? '⏳ Submitting...' : myBid ? <><CheckCircle size={16} /> Update My Bid</> : <><Award size={16} /> Submit Bid</>}
@@ -1007,6 +1170,8 @@ export default () => {
                   </div>
                 </div>
               )}
+
+              </>)}
 
               {/* Tender Closed Notice */}
               {!isOpen && tender.status !== 'open' && (

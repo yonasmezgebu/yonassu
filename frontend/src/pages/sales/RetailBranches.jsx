@@ -7,9 +7,9 @@ import {
 import apiClient from '../../services/apiClient';
 
 // ─── accent colour ──────────────────────────────────────────────────
-const C   = '#B9B979';            // primary accent
-const CD  = '#8f8f47';            // darker shade (shadow depth)
-const CL  = 'rgba(185,185,121,0.15)'; // light tint
+const C   = '#228B22';            // Forest Green
+const CD  = '#1B5E20';            // Dark Green
+const CL  = 'rgba(34, 139, 34, 0.15)'; // light tint
 
 const SHARED_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -73,26 +73,24 @@ const SHARED_CSS = `
   .b-row:hover { background:rgba(185,185,121,.08);transform:translateX(3px); }
 
   .b-input {
-    width:100%;padding:12px 12px 12px 38px;border:2px solid #e9e9d0;border-radius: 0;
+    width:100%;padding:12px 12px 12px 38px;border:2px solid #8D6E63;border-radius: 0;
     font-size:14px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;
     transition:border-color .2s,box-shadow .2s;
   }
-  .b-input:focus { border-color:${C};box-shadow:0 0 0 3px ${CL}; }
+  .b-input:focus { border-color:#2E8B57;box-shadow:none; }
 
   .b-label { display:block;font-size:11px;font-weight:900;color:#6b6b3a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em; }
 
-  .b-badge-active   { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#f0f0d8;color:#5c5c22;display:inline-flex;align-items:center;gap:5px; }
-  .b-badge-inactive { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#f5f5f5;color:#888;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-active   { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#4CAF50;color:white;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-inactive { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#F5F5F5;color:#424242;border:2px dashed #8D6E63;display:inline-flex;align-items:center;gap:5px; }
 
   .artistic-title {
-    font-size:2.8rem;font-weight:900;color:#2a2a00;letter-spacing:-.02em;
-    text-shadow:1px 1px 0 #fff,2px 2px 0 #fff,3px 3px 0 ${C},4px 4px 0 ${C},5px 5px 0 ${CD},6px 6px 0 ${CD},7px 7px 15px rgba(0,0,0,.2);
+    font-size:2.8rem;font-weight:900;color:#1B5E20;letter-spacing:-.02em;
     margin:0;display:flex;align-items:center;gap:12px;line-height:1.1;
   }
   .artistic-subtitle {
-    font-size:.95rem;color:#8a8a50;font-weight:800;text-align:center;
+    font-size:.95rem;color:#424242;font-weight:800;text-align:center;
     text-transform:uppercase;letter-spacing:.15em;margin:0;
-    text-shadow:1px 1px 0 rgba(255,255,255,.9);
   }
 `;
 
@@ -101,11 +99,11 @@ const ConfirmModal = ({ text, onConfirm, onCancel }) => (
   <div style={{ position:'fixed',inset:0,background:'rgba(42,42,0,.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,animation:'fadeIn .2s ease' }}>
     <div style={{ background:'white',padding:'32px 40px',borderRadius: 0,boxShadow:'0 20px 40px rgba(0,0,0,.2)',maxWidth:420,animation:'fadeUp .3s ease' }}>
       <AlertTriangle size={36} color={C} style={{ marginBottom:14 }} />
-      <h2 style={{ margin:'0 0 12px',fontSize:20,fontWeight:900,color:'#2a2a00' }}>Are you sure?</h2>
-      <p style={{ margin:'0 0 24px',fontSize:14,color:'#6b6b3a',lineHeight:1.6 }}>{text}</p>
+      <h2 style={{ margin:'0 0 12px',fontSize:20,fontWeight:900,color:'#1B5E20' }}>Are you sure?</h2>
+      <p style={{ margin:'0 0 24px',fontSize:14,color:'#424242',lineHeight:1.6 }}>{text}</p>
       <div style={{ display:'flex',gap:12,justifyContent:'flex-end' }}>
-        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius: 0,border:'2px solid #e9e9d0',background:'transparent',color:'#888',fontWeight:800,cursor:'pointer' }}>Cancel</button>
-        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius: 0,border:'none',background:'#e11d48',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(225,29,72,.3)' }}>Delete</button>
+        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius: 0,border:'2px solid #8D6E63',background:'transparent',color:'#424242',fontWeight:800,cursor:'pointer' }}>Cancel</button>
+        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius: 0,border:'none',background:'#F44336',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(244,67,54,.3)' }}>Delete</button>
       </div>
     </div>
   </div>
@@ -114,9 +112,9 @@ const ConfirmModal = ({ text, onConfirm, onCancel }) => (
 // ─── Inline Toast ────────────────────────────────────────────────────
 const Toast = ({ msg }) => msg?.text ? (
   <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 22px',borderRadius: 0,
-    background: msg.type==='success' ? '#f0f0d8' : '#fef2f2',
-    border:`2px solid ${msg.type==='success' ? C : '#fca5a5'}`,
-    color: msg.type==='success' ? '#3a3a00' : '#991b1b',
+    background: msg.type==='success' ? '#E8F5E9' : '#FFEBEE',
+    border:`2px solid ${msg.type==='success' ? '#4CAF50' : '#F44336'}`,
+    color: msg.type==='success' ? '#1B5E20' : '#B71C1C',
     fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:10,
     boxShadow:`0 8px 24px rgba(0,0,0,.12)`,animation:'fadeUp .3s ease'
   }}>
@@ -125,10 +123,9 @@ const Toast = ({ msg }) => msg?.text ? (
   </div>
 ) : null;
 
-// ─── Field helper ────────────────────────────────────────────────────
 const Field = ({ label, icon: Icon, name, value, onChange, placeholder, required, type='text', rows }) => (
   <div>
-    <label className="b-label">{label}{required && <span style={{ color:'#e11d48',marginLeft:3 }}>*</span>}</label>
+    <label className="b-label">{label}{required && <span style={{ color:'#F44336',marginLeft:3 }}>*</span>}</label>
     <div style={{ position:'relative' }}>
       <Icon size={15} style={{ position:'absolute',left:12,top:14,color:C,opacity:.8 }} />
       {rows ? (
@@ -148,11 +145,11 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
   <div className="b-card" style={{ padding:24,animationDelay:`${idx*0.07}s` }}>
     <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16 }}>
       <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:48,height:48,borderRadius: 0,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(185,185,121,.45)`,flexShrink:0 }}>
+        <div style={{ width:48,height:48,borderRadius: 0,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(34,139,34,.45)`,flexShrink:0 }}>
           <Building2 size={24} color="white" />
         </div>
         <div>
-          <h3 style={{ fontSize:16,fontWeight:900,margin:0,color:'#2a2a00' }}>{b.name}</h3>
+          <h3 style={{ fontSize:16,fontWeight:900,margin:0,color:'#1B5E20' }}>{b.name}</h3>
           {b.code && <span style={{ fontSize:12,color:C,fontWeight:800,fontFamily:'monospace' }}>#{b.code}</span>}
         </div>
       </div>
@@ -162,7 +159,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
       </span>
     </div>
 
-    <div style={{ display:'flex',flexDirection:'column',gap:8,fontSize:13,color:'#6b6b3a' }}>
+    <div style={{ display:'flex',flexDirection:'column',gap:8,fontSize:13,color:'#424242' }}>
       {b.phone        && <div style={{ display:'flex',alignItems:'center',gap:8 }}><Phone   size={14} color={C} />{b.phone}</div>}
       {b.manager_name && <div style={{ display:'flex',alignItems:'center',gap:8 }}><User    size={14} color={C} />{b.manager_name}</div>}
       {b.working_hours&& <div style={{ display:'flex',alignItems:'center',gap:8 }}><Clock   size={14} color={C} />{b.working_hours}</div>}
@@ -172,7 +169,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
     <div style={{ display:'flex',gap:10,marginTop:18,paddingTop:14,borderTop:`1px solid ${CL}` }}>
       <button onClick={() => onEdit(b)} style={{
         flex:1,padding:'10px 12px',
-        background:`linear-gradient(135deg,#fafad2,#f5f5c0)`,color:CD,
+        background:`linear-gradient(135deg,#A5D6A7,#F5F5F5)`,color:CD,
         border:`2px solid ${C}`,borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
         display:'flex',alignItems:'center',justifyContent:'center',gap:6,
         boxShadow:`0 3px 0 ${CD}`,transition:'all .1s'
@@ -185,14 +182,14 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
       </button>
       <button onClick={() => onDelete(b.id)} style={{
         flex:1,padding:'10px 12px',
-        background:'linear-gradient(135deg,#fff5f5,#fee2e2)',color:'#e11d48',
-        border:'2px solid #fca5a5',borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
+        background:'linear-gradient(135deg,#FFEBEE,#FFFFFF)',color:'#F44336',
+        border:'2px solid #F44336',borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
         display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-        boxShadow:'0 3px 0 #fca5a5',transition:'all .1s'
+        boxShadow:'0 3px 0 #F44336',transition:'all .1s'
       }}
         onMouseDown={e => { e.currentTarget.style.transform='translateY(3px)'; e.currentTarget.style.boxShadow='0 0 0 transparent'; }}
-        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #fca5a5'; }}
-        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #fca5a5'; }}
+        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #F44336'; }}
+        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #F44336'; }}
       >
         <Trash2 size={13}/> Delete
       </button>
@@ -270,7 +267,7 @@ const RetailBranches = () => {
 
   // ── render ──────────────────────────────────────────────────────────
   return (
-    <div style={{ padding:0,minHeight:'calc(100vh - 64px)',background:'#EFEFD9',fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ padding:0,margin:0,boxSizing:'border-box',width:'100%',minHeight:'100vh',background:'#F5F5F5',fontFamily:"'Inter','Segoe UI',sans-serif" }}>
       <style>{SHARED_CSS}</style>
       <Toast msg={msg} />
       {confirmDel && <ConfirmModal text="Delete this branch? This action cannot be undone." onConfirm={confirmDelete} onCancel={() => setConfirmDel(null)} />}
@@ -288,15 +285,15 @@ const RetailBranches = () => {
         <div style={{ justifySelf:'end',display:'flex',gap:12 }}>
           <button onClick={fetchBranches} style={{
             display:'inline-flex',alignItems:'center',gap:8,padding:'11px 22px',
-            background:'linear-gradient(135deg,#fff,#f5f5dc)',color:'#3a3a00',
+            background:'linear-gradient(135deg,#FFFFFF,#F5F5F5)',color:'#1B5E20',
             border:`2px solid ${C}`,borderRadius: 0,fontWeight:900,fontSize:14,cursor:'pointer',
             letterSpacing:'.08em',textTransform:'uppercase',
-            boxShadow:`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`,
+            boxShadow:`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`,
             transition:'all .1s',fontFamily:"'Inter',sans-serif"
           }}
             onMouseDown={e=>{e.currentTarget.style.transform='translateY(5px)';e.currentTarget.style.boxShadow=`0 0 0 ${CD}`;}}
-            onMouseUp={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
+            onMouseUp={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
           >
             <RotateCcw size={16}/> Refresh
           </button>
@@ -309,12 +306,12 @@ const RetailBranches = () => {
 
       {/* ── INFO BAR ── */}
       <div style={{ background:'rgba(255,255,255,.55)',border:'2px solid rgba(255,255,255,1)',borderRadius: 0,padding:'18px 28px',marginBottom:24,display:'flex',gap:16,alignItems:'center',boxShadow:'0 10px 30px rgba(0,80,0,.04)',animation:'fadeUp .4s ease' }}>
-        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius: 0,boxShadow:`0 4px 12px rgba(185,185,121,.45)`,flexShrink:0 }}>
+        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius: 0,boxShadow:`0 4px 12px rgba(34,139,34,.45)`,flexShrink:0 }}>
           <ShieldCheck size={22}/>
         </div>
         <div>
-          <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:900,color:'#2a2a00',textTransform:'uppercase',letterSpacing:'.05em' }}>Manage Your Branch Network</h3>
-          <p style={{ margin:0,fontSize:13,color:'#8a8a50',fontWeight:600 }}>
+          <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:900,color:'#1B5E20',textTransform:'uppercase',letterSpacing:'.05em' }}>Manage Your Branch Network</h3>
+          <p style={{ margin:0,fontSize:13,color:'#424242',fontWeight:600 }}>
             Add, edit, or remove sales locations. Each branch has its own contact details and working hours.
             <span style={{ marginLeft:10,padding:'2px 10px',borderRadius: 0,background:CL,color:CD,fontWeight:800,fontSize:12 }}>
               {branches.length} {branches.length===1?'Branch':'Branches'}
@@ -342,8 +339,8 @@ const RetailBranches = () => {
               <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
                 <label style={{ display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'12px 0',userSelect:'none' }}>
                   <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleChange}
-                    style={{ width:18,height:18,accentColor:C,cursor:'pointer' }}/>
-                  <span style={{ fontSize:14,fontWeight:800,color:'#3a3a00' }}>Active Branch</span>
+                    style={{ width:18,height:18,accentColor:C,cursor:'pointer', borderRadius: 0 }}/>
+                  <span style={{ fontSize:14,fontWeight:800,color:'#424242' }}>Active Branch</span>
                 </label>
               </div>
               <div style={{ gridColumn:'1 / -1' }}>
@@ -368,13 +365,13 @@ const RetailBranches = () => {
       {loading ? (
         <div style={{ padding:'80px 20px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center' }}>
           <Zap size={40} style={{ color:C,marginBottom:16,animation:'pulse 1.5s ease-in-out infinite' }}/>
-          <div style={{ fontSize:18,color:'#2a2a00',fontWeight:900 }}>Loading Branches...</div>
+          <div style={{ fontSize:18,color:'#1B5E20',fontWeight:900 }}>Loading Branches...</div>
         </div>
       ) : branches.length === 0 ? (
         <div className="b-card" style={{ padding:'80px 24px',textAlign:'center' }}>
           <Building2 size={56} style={{ color:C,opacity:.4,marginBottom:16 }}/>
-          <h3 style={{ fontSize:18,fontWeight:900,color:'#6b6b3a',margin:'0 0 6px' }}>No Branches Yet</h3>
-          <p style={{ color:'#a0a07a',fontSize:14,margin:0 }}>Click <strong>Add Branch</strong> to register your first sales location.</p>
+          <h3 style={{ fontSize:18,fontWeight:900,color:'#1B5E20',margin:'0 0 6px' }}>No Branches Yet</h3>
+          <p style={{ color:'#424242',fontSize:14,margin:0 }}>Click <strong>Add Branch</strong> to register your first sales location.</p>
         </div>
       ) : (
         <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:20 }}>

@@ -294,6 +294,20 @@ const TenderCard = ({ t, onClick, index }) => {
   const isOpen = t.status === 'open';
   const imgSrc = imgIdx < images.length ? `${API_ORIGIN}/uploads/tenders/${images[imgIdx]}` : null;
 
+  const getDisplayPrice = () => {
+    if (t.items && t.items !== 'null' && t.items !== '') {
+      try {
+        const parsed = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const total = parsed.reduce((sum, it) => sum + (parseFloat(it.startPrice || 0) * parseFloat(it.quantity || 1)), 0);
+          if (total > 0) return `${total.toLocaleString()} ETB`;
+          return 'Multiple Items';
+        }
+      } catch (e) {}
+    }
+    return `${parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB`;
+  };
+
   return (
     <div
       className="tender-card-h"
@@ -326,7 +340,7 @@ const TenderCard = ({ t, onClick, index }) => {
             <span className="meta-item"><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>
           )}
           <span className="meta-price">
-            {parseFloat(t.starting_bid_price).toLocaleString()} ETB
+            {getDisplayPrice()}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#059669' }}>
             View Details <ArrowRight size={13} />

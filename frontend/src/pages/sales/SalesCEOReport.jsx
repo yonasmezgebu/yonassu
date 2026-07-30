@@ -138,6 +138,11 @@ export default function SalesCEOReport() {
   const [date, setDate] = useState(today);
   const [loading, setLoading] = useState(true);
   const [reportsData, setReportsData] = useState([]);
+  const [activeTab, setActiveTab] = useState('sales'); // 'sales' | 'products'
+  const [updateRequests, setUpdateRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   
   // For CEO, we want to fetch all reports for this date, and gather their branches.
   const loadData = useCallback(async () => {
@@ -154,7 +159,51 @@ export default function SalesCEOReport() {
     }
   }, [date]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const loadUpdateRequests = useCallback(async () => {
+    setLoadingRequests(true);
+    try {
+      const res = await apiClient.get('/retail/update-requests?status=pending');
+      setUpdateRequests(res?.data?.data || res?.data || []);
+    } catch(e) {
+      console.error(e);
+      setUpdateRequests([]);
+    } finally {
+      setLoadingRequests(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'sales') {
+      loadData();
+    } else {
+      loadUpdateRequests();
+    }
+  }, [activeTab, loadData, loadUpdateRequests]);
+
+  const handleApprove = async (id) => {
+    if (!window.confirm("Approve this product update?")) return;
+    try {
+      await apiClient.post(`/retail/update-requests/${id}/approve`);
+      loadUpdateRequests();
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Failed to approve request');
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!rejectReason.trim()) {
+      alert("Please enter a rejection reason");
+      return;
+    }
+    try {
+      await apiClient.post(`/retail/update-requests/${id}/reject`, { reason: rejectReason.trim() });
+      setRejectId(null);
+      setRejectReason('');
+      loadUpdateRequests();
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Failed to reject request');
+    }
+  };
 
   // Aggregate Data
   let combinedTotalApproved = 0;
@@ -263,9 +312,76 @@ export default function SalesCEOReport() {
         </div>
       </div>
 
+      <div style={{ padding: '0 32px 20px', display: 'flex', gap: 10 }}>
+        <button onClick={() => setActiveTab('sales')}
+          style={{ padding: '8px 20px', background: activeTab === 'sales' ? '#2E8B57' : '#F5F5F5', color: activeTab === 'sales' ? '#FFF' : '#333', border: `2px solid ${activeTab === 'sales' ? '#1B5E20' : '#DDD'}`, cursor: 'pointer', fontWeight: 800 }}>
+          Daily Sales
+        </button>
+        <button onClick={() => setActiveTab('products')}
+          style={{ padding: '8px 20px', background: activeTab === 'products' ? '#2E8B57' : '#F5F5F5', color: activeTab === 'products' ? '#FFF' : '#333', border: `2px solid ${activeTab === 'products' ? '#1B5E20' : '#DDD'}`, cursor: 'pointer', fontWeight: 800 }}>
+          Product Update Requests
+        </button>
+      </div>
+
       <div style={{ padding:'0 32px', display:'flex', flexDirection:'column', gap:22 }}>
         
-        {loading ? (
+        {activeTab === 'products' ? (
+          <div className="ceo-card" style={{ padding: 0 }}>
+            <div className="ceo-card-head" style={{ padding: '16px 20px' }}>
+              <ShoppingCart size={18} />
+              <span>Pending Product Updates</span>
+            </div>
+            {loadingRequests ? (
+               <div style={{ padding:'40px 0', textAlign:'center', fontWeight:800 }}>Loading requests...</div>
+            ) : updateRequests.length === 0 ? (
+               <div style={{ padding:'40px 0', textAlign:'center', fontWeight:800, color:'#666' }}>No pending requests.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F5F5F5', borderBottom: '2px solid #DDD' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Product</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Changes</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Requested By</th>
+                    <th style={{ padding: '12px', textAlign: 'center', fontSize: 12 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {updateRequests.map(req => {
+                    const oldD = req.old_data || {};
+                    const newD = req.new_data || {};
+                    return (
+                      <tr key={req.id} style={{ borderBottom: '1px solid #EEE' }}>
+                        <td style={{ padding: '12px', fontWeight: 800, fontSize: 14 }}>{req.product_name} <br/><span style={{ fontSize:11, color:'#666' }}>{req.product_sku}</span></td>
+                        <td style={{ padding: '12px', fontSize: 13 }}>
+                          {newD.price !== undefined && newD.price !== oldD.price && <div><b style={{ color:'#8D6E63' }}>Price:</b> <s style={{ color:'#F44336' }}>{oldD.price}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.price} ETB</span></div>}
+                          {newD.stock !== undefined && newD.stock !== oldD.stock && <div><b style={{ color:'#8D6E63' }}>Stock:</b> <s style={{ color:'#F44336' }}>{oldD.stock}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.stock}</span></div>}
+                          {newD.reorder !== undefined && newD.reorder !== oldD.reorder_level && <div><b style={{ color:'#8D6E63' }}>Reorder:</b> <s style={{ color:'#F44336' }}>{oldD.reorder_level}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.reorder}</span></div>}
+                        </td>
+                        <td style={{ padding: '12px', fontSize: 13, fontWeight:600 }}>Sales Manager</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {rejectId === req.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
+                              <input type="text" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Reason for rejection..." style={{ padding: '6px', fontSize: 12, border: '1px solid #DDD', width: 200 }} />
+                              <div style={{ display: 'flex', gap: 5 }}>
+                                <button onClick={() => handleReject(req.id)} style={{ padding: '5px 10px', background: '#F44336', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}>Confirm Reject</button>
+                                <button onClick={() => { setRejectId(null); setRejectReason(''); }} style={{ padding: '5px 10px', background: '#EEE', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}>Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <button onClick={() => handleApprove(req.id)} style={{ padding: '6px 12px', background: '#2E8B57', color: 'white', border: '2px solid #1B5E20', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}><CheckCircle size={12} style={{ verticalAlign:'middle', marginRight:4 }}/> Approve</button>
+                              <button onClick={() => setRejectId(req.id)} style={{ padding: '6px 12px', background: '#FFF', color: '#F44336', border: '2px solid #F44336', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}><XCircle size={12} style={{ verticalAlign:'middle', marginRight:4 }}/> Reject</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : loading ? (
           <div style={{ padding:'80px 0', textAlign:'center' }}>
             <Zap size={44} color={C} style={{ animation:'pulse 1.5s ease-in-out infinite', margin:'0 auto 14px', display:'block' }}/>
             <div style={{ fontWeight:800, color:'#0d2244', fontSize:18 }}>Compiling CEO Dashboard...</div>

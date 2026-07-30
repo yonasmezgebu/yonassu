@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
+import ImportStoreProductModal from './ImportStoreProductModal';
 
 // ─── AuditRow: Expandable transaction detail row in audit trail ───────────────
 function AuditRow({ log, idx }) {
@@ -144,7 +145,7 @@ export default function RetailPOS() {
   const { user } = useAuth();
   const { showToast, ToastContainer } = useToast();
   const location = useLocation();
-  const [tab, setTab] = useState('walkin');
+  const [tab, setTab] = useState('retail-walkin');
   const [sales, setSales] = useState([]);
   const [detail, setDetail] = useState(null);
   const [auditTrail, setAuditTrail] = useState([]);
@@ -153,6 +154,7 @@ export default function RetailPOS() {
   const [productSuggestions, setproductSuggestions] = useState([]);
   const [showproductDropdown, setShowproductDropdown] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const [saleType, setSaleType] = useState('WALK-IN');
   const [items, setItems] = useState([{ ...EMPTY_ITEM }]);
@@ -195,6 +197,11 @@ export default function RetailPOS() {
   const [completedSale, setCompletedSale] = useState(null);
   const [branches, setBranches] = useState([]);
   const [workers, setWorkers] = useState([]);
+
+  // Void modal state
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [voidSaleTarget, setVoidSaleTarget] = useState(null);
+  const [voidReason, setVoidReason] = useState('');
 
   const addToCart = (item) => {
     const existing = posCart.find(c => c.id === item.id);
@@ -469,20 +476,26 @@ export default function RetailPOS() {
     }
   };
 
-  const handleVoidSale = async (sale) => {
-    const reason = window.prompt(`Are you sure you want to void transaction ${sale.invoice_number || sale.id}?\nPlease enter a reason:`);
-    if (reason === null) return;
-    if (!reason.trim()) {
-      toast.error('A reason is required to void a transaction.');
+  const handleVoidSaleInit = (sale) => {
+    setVoidSaleTarget(sale);
+    setVoidReason('');
+    setShowVoidModal(true);
+  };
+
+  const confirmVoidSale = async () => {
+    if (!voidReason.trim()) {
+      showToast('A reason is required to void a transaction.', 'error');
       return;
     }
     try {
       setLoading(true);
-      await salesService.voidSale(sale.id, { reason });
-      toast.success(`Transaction ${sale.invoice_number || sale.id} voided. Stock returned.`);
+      await salesService.voidSale(voidSaleTarget.id, { reason: voidReason });
+      showToast(`Transaction ${voidSaleTarget.invoice_number || voidSaleTarget.id} voided. Stock returned.`, 'success');
+      setShowVoidModal(false);
+      setVoidSaleTarget(null);
       loadSales(); // refresh list
     } catch (e) {
-      toast.error('Failed to void transaction: ' + (e.response?.data?.message || e.message));
+      showToast('Failed to void transaction: ' + (e.response?.data?.message || e.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -608,7 +621,7 @@ export default function RetailPOS() {
 
   return (
     <>
-    <div style={{ margin: 0, padding: '24px', minHeight: 'calc(100vh - 72px)', background: 'var(--bg-page)', width: '100%', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ margin: 0, padding: 0, minHeight: 'calc(100vh - 72px)', background: 'var(--bg-page)', width: '100%', boxSizing: 'border-box', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         :root {
           --primary: #228B22;
@@ -659,7 +672,7 @@ export default function RetailPOS() {
           margin-top: 0;
         }
 
-        .rsp-card { background: var(--bg-main); border-radius: 0; overflow: hidden; border: 1px solid var(--earth); box-shadow: 2px 2px 0px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; animation: fadeUp 0.4s both; }
+        .rsp-card { background: var(--bg-main); border-radius: 0; overflow: hidden; border: none; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; animation: fadeUp 0.4s both; }
         .rsp-card:hover { transform: translateY(-3px); box-shadow: 4px 4px 0px rgba(0,0,0,0.15); border-color: var(--primary); }
         .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; background: var(--bg-page); display: flex; align-items: center; justify-content: center; }
         .rsp-card-img { width: 100%; height: 100%; object-fit: cover; }
@@ -667,7 +680,7 @@ export default function RetailPOS() {
         .rsp-card-oos { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
         .rsp-card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; }
         .rsp-card-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
-        .rsp-card-desc { font-size: 12px; color: #666; margin: 0 0 8px; border-left: 2px solid var(--sage); padding-left: 6px; }
+        .rsp-card-desc { font-size: 12px; color: #424242; margin: 0 0 8px; border-left: 3px solid var(--sage); padding-left: 6px; white-space: pre-wrap; overflow-wrap: break-word; display: block; }
         .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
         .rsp-price { font-size: 16px; font-weight: 800; color: var(--primary); }
         
@@ -676,15 +689,17 @@ export default function RetailPOS() {
         .rsp-add-btn:active:not(:disabled) { transform: translateY(3px); border-bottom-width: 0px; margin-top: 3px; }
         
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border: 1px solid var(--earth); }
-        th { background: var(--header); color: white; padding: 12px; text-align: left; font-weight: 600; font-size: 14px; border-bottom: 2px solid var(--earth); }
-        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 14px; color: var(--text-main); }
-        tr:nth-child(even) { background-color: #f9fdf9; }
-        tr:hover { background-color: var(--sage); color: var(--header); cursor: pointer; transition: background 0.2s; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border: none; }
+        th { background: var(--header); color: white; padding: 12px; text-align: left; font-weight: 600; font-size: 14px; border-bottom: 3px solid var(--primary); border-right: 1px solid var(--earth); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th { background: var(--header); color: white; padding: 12px; text-align: left; font-weight: 600; font-size: 14px; }
+        td { padding: 12px; font-size: 14px; color: var(--text-main); }
+        tr:nth-child(even) { background-color: var(--sage); color: var(--text-main); }
+        tr:hover { background-color: var(--accent); color: var(--text-main); cursor: pointer; transition: background 0.2s; }
         
         /* Modern Inputs */
         input, select, textarea {
-          border: 1px solid var(--earth);
+          border: 2px solid var(--earth);
           padding: 10px;
           border-radius: 0;
           font-family: inherit;
@@ -704,100 +719,89 @@ export default function RetailPOS() {
       `}</style>
       <ToastContainer />
 
-      {/* ── PREMIUM HEADER ── */}
+      {/* ── NATURE THEME HEADER ── */}
       <div style={{
         width: '100%',
-        background: 'linear-gradient(180deg, #f5f3ee 0%, #ece9e0 100%)',
-        borderBottom: '2px solid var(--earth)', background: 'var(--bg-main)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+        background: 'var(--header)',
       }}>
-        <div style={{ padding: '32px 48px 0' }}>
-
-          {/* ── Top Row: Title + Buttons ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-            {/* Left: Title + Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <h1 style={{
-                fontFamily: "'Playfair Display', 'Georgia', serif",
-                fontSize: '3rem',
-                fontWeight: 700,
-                color: '#1a1a2e',
-                margin: 0,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                lineHeight: 1
-              }}>
-                Retail Sales
-              </h1>
-              {/* Teal Counter Bubble */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                width: 76, height: 76, borderRadius: 0,
-                background: 'radial-gradient(circle at 35% 35%, #a7f3d0, #2dd4bf)',
-                boxShadow: 'inset 0 3px 6px rgba(255,255,255,0.7), inset 0 -3px 6px rgba(0,0,0,0.12), 0 8px 20px rgba(45,212,191,0.4)',
-                border: '2px solid rgba(255,255,255,0.6)',
-                color: '#065f46',
-                lineHeight: 1,
-                flexShrink: 0
-              }}>
-                <span style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>{sales.length}</span>
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>sales</span>
-              </div>
+        <div style={{ padding: '0 32px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          
+          {/* Left: Icon + Title + Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {/* Leaf Icon */}
+            <div style={{
+              width: 44, height: 44, background: 'rgba(255,255,255,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.5rem', flexShrink: 0
+            }}>
+              🌿
             </div>
-
-            {/* Right: Refresh + New Sale */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {/* Metallic Refresh Button */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <button className="btn-3d" onClick={handleRefreshAll} disabled={refreshing}>
-                  <div style={{
-                    width: 50, height: 50, borderRadius: 0,
-                    background: refreshing
-                      ? 'linear-gradient(145deg, #a0a0a4 0%, #c8c8cc 100%)'
-                      : 'linear-gradient(145deg, #e8e8ea 0%, #b0b0b4 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.35), 0 1px 2px rgba(255,255,255,0.6)'
-                  }}>
-                    <RefreshCw
-                      size={22}
-                      color={refreshing ? '#059669' : '#3f3f46'}
-                      strokeWidth={2.5}
-                      style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}}
-                    />
-                  </div>
-                </button>
-                <span style={{
-                  fontSize: '0.72rem',
-                  color: refreshing ? '#059669' : '#71717a',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  transition: 'color 0.2s'
-                }}>
-                  {refreshing ? 'Loading...' : 'Refresh'}
-                </span>
-              </div>
-
-              {/* Glossy New Sale Button */}
-              <div style={{
-                padding: 0
-              }}>
-                <button className="btn-3d" onClick={() => { setShowAudit(false); setTab('retail-walkin'); resetForm(); }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 300, lineHeight: 1 }}>+</span> New Sale
-                </button>
-              </div>
+            {/* Title */}
+            <h1 style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '1.3rem',
+              fontWeight: 900,
+              color: '#FFFFFF',
+              margin: 0,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              lineHeight: 1,
+              textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+            }}>
+              Retail Sales — POS
+            </h1>
+            {/* Sales Counter — no border, just a subtle pill */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              width: 52, height: 52,
+              background: 'rgba(139,195,74,0.25)',
+              color: 'white',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}>
+              <span style={{ fontSize: '1.4rem', fontWeight: 900, lineHeight: 1 }}>{sales.length}</span>
+              <span style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2, opacity: 0.85 }}>SALES</span>
             </div>
           </div>
+
+          {/* Right: Refresh + New Sale — vertically centered in header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshing}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '9px 16px',
+                background: 'rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.9)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 0,
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: 13,
+                letterSpacing: '0.02em',
+                transition: 'all 0.2s'
+              }}
+            >
+              <RefreshCw size={15} strokeWidth={2.5} style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              className="btn-3d"
+              onClick={() => { setShowAudit(false); setTab('retail-walkin'); resetForm(); }}
+              style={{ fontSize: 13, padding: '9px 20px', letterSpacing: '0.02em' }}
+            >
+              <span style={{ fontSize: '1rem', fontWeight: 300 }}>+</span> New Sale
+            </button>
+          </div>
+
+        </div>
 
           {/* ── Tabs Bar ── */}
           <div style={{
             display: 'flex',
-            background: 'linear-gradient(180deg, #e8e4da 0%, #f0ede4 100%)',
+            background: 'var(--primary)',
             borderRadius: 0,
-            border: '1px solid #cbc6bb',
-            borderBottom: 'none',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 -2px 6px rgba(0,0,0,0.02)',
-            overflow: 'hidden'
           }}>
             {[
               { key: 'retail-walkin',  icon: ShoppingCart, label: 'WALK-IN SALE' },
@@ -822,48 +826,24 @@ export default function RetailPOS() {
                   }}
                   style={{
                     flex: 1,
-                    padding: '16px 20px',
+                    padding: '14px 16px',
                     border: 'none',
-                    borderRight: idx < arr.length - 1 && !active ? '1px solid #cbc6bb' : 'none',
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     position: 'relative',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: active
-                      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05))'
-                      : 'transparent',
-                    color: active ? '#047857' : '#78716c',
-                    fontWeight: active ? 800 : 700,
-                    fontSize: '0.875rem',
+                    transition: 'background 0.2s',
+                    background: active ? 'var(--header)' : 'transparent',
+                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+                    fontWeight: active ? 800 : 600,
+                    fontSize: '0.8rem',
                     letterSpacing: '0.06em',
-                    boxShadow: active 
-                      ? 'inset 0 3px 0 #059669, 0 0 24px rgba(16,185,129,0.15)' 
-                      : 'none',
-                    transform: active ? 'scale(1.02)' : 'scale(1)',
-                    zIndex: active ? 10 : 1,
                     borderRadius: 0,
                   }}
                 >
-                  {/* Glowing Top Line */}
-                  {active && (
-                    <div style={{
-                      position: 'absolute', top: 0, left: '10%', right: '10%',
-                      height: 4,
-                      background: 'linear-gradient(90deg, transparent, #34d399, transparent)',
-                      boxShadow: '0 2px 14px rgba(52,211,153,0.9), 0 0 8px rgba(16,185,129,0.6)',
-                      borderRadius: 0,
-                    }} />
-                  )}
-                  
-                  <TabIcon 
-                    size={18} 
-                    color={active ? '#059669' : '#a8a29e'} 
-                    strokeWidth={active ? 2.5 : 2} 
-                    style={{ 
-                      transition: 'all 0.3s', 
-                      transform: active ? 'scale(1.1)' : 'scale(1)',
-                      filter: active ? 'drop-shadow(0 2px 4px rgba(5,150,105,0.4))' : 'none'
-                    }} 
+                  <TabIcon
+                    size={16}
+                    color={active ? '#8BC34A' : 'rgba(255,255,255,0.75)'}
+                    strokeWidth={active ? 2.5 : 2}
                   />
                   <span>{t.label}</span>
 
@@ -874,21 +854,17 @@ export default function RetailPOS() {
                       title="Open Cart"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4,
-                        marginLeft: 8,
-                        background: posCart.length > 0 ? 'linear-gradient(135deg, #10b981, #059669)' : '#e2e8f0',
-                        color: posCart.length > 0 ? '#fff' : '#78716c',
+                        marginLeft: 6,
+                        background: posCart.length > 0 ? '#8BC34A' : 'rgba(255,255,255,0.2)',
+                        color: 'white',
                         borderRadius: 0,
-                        padding: '3px 10px 3px 7px',
-                        fontSize: 12,
+                        padding: '2px 8px',
+                        fontSize: 11,
                         fontWeight: 800,
-                        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         cursor: 'pointer',
-                        boxShadow: posCart.length > 0 ? '0 4px 12px rgba(5,150,105,0.4)' : 'none',
-                        border: posCart.length > 0 ? '1px solid #047857' : '1px solid #cbd5e1',
-                        transform: posCart.length > 0 && active ? 'scale(1.05)' : 'scale(1)'
                       }}
                     >
-                      <ShoppingCart size={13} strokeWidth={2.5} />
+                      <ShoppingCart size={12} strokeWidth={2.5} />
                       <span>{posCart.length}</span>
                     </div>
                   )}
@@ -899,16 +875,13 @@ export default function RetailPOS() {
                       title={`${pendingOrders.length} Pending Orders`}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginLeft: 8,
-                        background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                        marginLeft: 6,
+                        background: '#F44336',
                         color: '#fff',
                         borderRadius: 0,
                         padding: '2px 8px',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 800,
-                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-                        border: '1px solid #b91c1c',
-                        animation: 'pulse 2s infinite'
                       }}
                     >
                       {pendingOrders.length}
@@ -919,14 +892,13 @@ export default function RetailPOS() {
                     <div
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginLeft: 8,
-                        background: '#f1f5f9',
-                        color: '#64748b',
+                        marginLeft: 6,
+                        background: 'rgba(255,255,255,0.15)',
+                        color: 'rgba(255,255,255,0.7)',
                         borderRadius: 0,
                         padding: '2px 8px',
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 600,
-                        border: '1px solid #cbd5e1',
                       }}
                     >
                       No Order
@@ -936,18 +908,27 @@ export default function RetailPOS() {
               );
             })}
           </div>
-        </div>
       </div>
 
       {/* Content */}
-      <div style={{ padding: '24px 48px', background: 'var(--bg-page)', width: '100%', minHeight: 'calc(100vh - 230px)' }}>
+      <div style={{ padding: '24px 32px', background: 'var(--bg-page)', width: '100%', boxSizing: 'border-box', minHeight: 'calc(100vh - 200px)' }}>
 
-
-      {/* WALK-IN TAB */}
       {tab === 'retail-walkin' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: 24, minHeight: '600px' }}>
+        <div style={{ background: 'white', overflow: 'hidden', padding: 24, minHeight: '600px' }}>
           {!showCart ? (
-              <div className="pos-grid">
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h2 style={{ margin: 0, fontSize: 18, color: 'var(--text-main)' }}>Retail Products</h2>
+                  <button
+                    onClick={() => setShowImportModal(true)}
+                    className="btn-3d"
+                    style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Package size={16} />
+                    Import from Store
+                  </button>
+                </div>
+                <div className="pos-grid">
                 {/* Product Grid */}
                 {products
                   .filter(i => !navSearch || (i.name && i.name.toLowerCase().includes(navSearch.toLowerCase())))
@@ -964,7 +945,7 @@ export default function RetailPOS() {
                     };
                     
                     return (
-                      <div key={item.id} className="rsp-card" style={{ animationDelay: idx * 0.04 + 's', borderColor: inCart ? '#059669' : '', boxShadow: inCart ? '0 8px 24px rgba(5,150,105,0.2)' : '' }}>
+                      <div key={item.id} className="rsp-card" style={{ animationDelay: idx * 0.04 + 's' }}>
                         <div className="rsp-card-img-wrap">
                           {(() => {
                             const imgs = [item.product_image, item.product_image, item.cover_image].filter(Boolean);
@@ -973,7 +954,7 @@ export default function RetailPOS() {
                             if (uniqueImgs.length === 1) return <img src={imgSrc(uniqueImgs[0])} className="rsp-card-img" alt={item.name} />;
                             return (
                               <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-                                <img src={imgSrc(uniqueImgs[0])} className="rsp-card-img" alt={item.name} style={{ width: '50%', borderRight: '1px solid #e4e6ea' }} />
+                                <img src={imgSrc(uniqueImgs[0])} className="rsp-card-img" alt={item.name} style={{ width: '50%' }} />
                                 <img src={imgSrc(uniqueImgs[1])} className="rsp-card-img" alt={item.name} style={{ width: '50%' }} />
                               </div>
                             );
@@ -991,18 +972,9 @@ export default function RetailPOS() {
                           
                           {item.description && (
                             <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                              <p className="rsp-card-desc" style={expandedCards[item.id] ? { WebkitLineClamp: 'unset' } : {}}>
+                              <p className="rsp-card-desc">
                                 {item.description}
                               </p>
-                              {item.description.length > 80 && (
-                                <button 
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setExpandedCards(prev => ({...prev, [item.id]: !prev[item.id]})); }}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', justifyContent: 'center', color: '#94a3b8' }}
-                                >
-                                  <ChevronDown size={14} style={{ transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                                </button>
-                              )}
                             </div>
                           )}
                           
@@ -1026,11 +998,12 @@ export default function RetailPOS() {
                   })
                 }
               </div>
+              </>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>🛍️ Cart & Checkout</h2>
-                 <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} style={{ padding: '10px 20px', borderRadius: 0, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                 <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} style={{ padding: '10px 20px', borderRadius: 0, background: 'white', cursor: 'pointer', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                    ← Back to Products
                  </button>
                </div>
@@ -1046,7 +1019,6 @@ export default function RetailPOS() {
                    justifyContent: 'space-between',
                    gap: 20,
                    boxShadow: '0 8px 24px rgba(5,150,105,0.25)',
-                   border: '1px solid rgba(52,211,153,0.3)',
                  }}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                      <div style={{
@@ -1080,20 +1052,20 @@ export default function RetailPOS() {
                {posStep === 1 || posStep === 2 || posStep === 3 ? (
                  <>
                    {/* Items List */}
-                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
-                     <div style={{ padding: '16px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#1e293b' }}>Cart Items ({posCart.length})</div>
+                   <div style={{ borderRadius: 0, overflow: 'hidden' }}>
+                     <div style={{ padding: '16px 20px', background: '#f8fafc', fontWeight: 700, color: '#1e293b' }}>Cart Items ({posCart.length})</div>
                      <div style={{ padding: '0 20px', maxHeight: '400px', overflowY: 'auto' }}>
                        {posCart.length === 0 ? (
                          <div style={{ padding: '40px 0', textAlign: 'center', color: '#94a3b8' }}>Cart is empty</div>
                        ) : (
                          posCart.map(item => (
-                           <div key={item.id} style={{ padding: '16px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                           <div key={item.id} style={{ padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                              <div>
                                <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{item.name}</div>
                                <div style={{ fontSize: 12, color: '#64748b' }}>{item.price} ETB each</div>
                              </div>
                              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 0, padding: 4 }}>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', borderRadius: 0, padding: 4 }}>
                                  <button onClick={() => updateQty(item.id, item.qty - 1)} style={{ border: 'none', background: 'white', borderRadius: 0, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}><Minus size={14}/></button>
                                  <span style={{ fontWeight: 700, width: 30, textAlign: 'center' }}>{item.qty}</span>
                                  <button onClick={() => updateQty(item.id, item.qty + 1)} style={{ border: 'none', background: 'white', borderRadius: 0, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}><Plus size={14}/></button>
@@ -1106,8 +1078,8 @@ export default function RetailPOS() {
                        )}
                      </div>
                      {posCart.length > 0 && (
-                       <div style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                         <button onClick={() => setPosCart([])} style={{ background: 'none', border: '1px solid #fecaca', color: '#b91c1c', padding: '8px 16px', borderRadius: 0, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><X size={16}/> Clear Cart</button>
+                       <div style={{ padding: '16px 20px', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                         <button onClick={() => setPosCart([])} style={{ background: 'none', border: 'none', color: '#b91c1c', padding: '8px 16px', borderRadius: 0, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><X size={16}/> Clear Cart</button>
                          <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Total: <span style={{ color: '#059669' }}>{posCartTotal.toFixed(2)} ETB</span></div>
                        </div>
                      )}
@@ -1124,7 +1096,6 @@ export default function RetailPOS() {
                            {PAYMENT_METHODS.map(pm => (
                              <label key={pm.value} style={{
                                display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
-                               border: `2px solid ${posPaymentMethod === pm.value ? '#059669' : '#E2E8F0'}`,
                                borderRadius: 0, cursor: 'pointer', background: posPaymentMethod === pm.value ? '#ECFDF5' : 'white',
                                fontWeight: 600, fontSize: 13, color: posPaymentMethod === pm.value ? '#065F46' : '#475569',
                              }}>
@@ -1138,7 +1109,7 @@ export default function RetailPOS() {
 
                        {/* Payment Detail Fields — CASH */}
                        {posPaymentMethod === 'CASH' && (
-                         <div style={{ marginBottom: 20, background: '#FFFBEB', borderRadius: 0, padding: 16, border: '1px solid #FDE68A' }}>
+                         <div style={{ marginBottom: 20, background: '#FFFBEB', borderRadius: 0, padding: 16 }}>
                            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
                              <DollarSign size={16} color="#D97706" /> Cash Payment
                            </h3>
@@ -1160,7 +1131,7 @@ export default function RetailPOS() {
 
                        {/* Payment Detail Fields — BANK TRANSFER */}
                        {posPaymentMethod === 'BANK_TRANSFER' && (
-                         <div style={{ marginBottom: 20, background: '#EFF6FF', borderRadius: 0, padding: 16, border: '1px solid #BFDBFE' }}>
+                         <div style={{ marginBottom: 20, background: '#EFF6FF', borderRadius: 0, padding: 16 }}>
                            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 6 }}>
                              <CreditCard size={16} color="#2563EB" /> Bank Transfer Payment
                            </h3>
@@ -1224,7 +1195,7 @@ export default function RetailPOS() {
 
                        {/* Payment Detail Fields — TELBIR */}
                        {posPaymentMethod === 'TELBIR' && (
-                         <div style={{ marginBottom: 20, background: '#F5F3FF', borderRadius: 0, padding: 16, border: '1px solid #DDD6FE' }}>
+                         <div style={{ marginBottom: 20, background: '#F5F3FF', borderRadius: 0, padding: 16 }}>
                            <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#6D28D9', display: 'flex', alignItems: 'center', gap: 6 }}>
                              <Smartphone size={16} color="#7C3AED" /> Telbir Payment
                            </h3>
@@ -1281,7 +1252,7 @@ export default function RetailPOS() {
                        )}
 
                        {/* Payment Status — Paid checkbox */}
-                       <div style={{ marginBottom: 20, padding: '14px 18px', background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 14 }}>
+                       <div style={{ marginBottom: 20, padding: '14px 18px', background: '#f0fdf4', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 14 }}>
                          <input
                            type="checkbox"
                            id="paidCheckbox"
@@ -1317,7 +1288,7 @@ export default function RetailPOS() {
                     <CheckCircle size={80} color='#10b981' style={{ marginBottom: 20 }} />
                     <h3 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, color: '#0f172a' }}>Transaction Complete!</h3>
                     {completedSale && (
-                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 0, padding: '12px 24px', marginBottom: 20, width: '100%', maxWidth: 400 }}>
+                      <div style={{ background: '#f0fdf4', borderRadius: 0, padding: '12px 24px', marginBottom: 20, width: '100%', maxWidth: 400 }}>
                         <div style={{ fontWeight: 800, color: '#059669', fontSize: 16, marginBottom: 4 }}>Receipt: {completedSale.invoice_number}</div>
                         <div style={{ fontSize: 13, color: '#374151' }}>Customer: <strong>{completedSale.recipient_name || 'Walk-In'}</strong></div>
                         <div style={{ fontSize: 15, fontWeight: 800, color: '#059669', marginTop: 8 }}>Total: {(completedSale.total_amount || 0).toFixed(2)} ETB</div>
@@ -1346,9 +1317,9 @@ export default function RetailPOS() {
 
       {/* SALES LIST TAB */}
       {tab === 'list' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           {/* Header */}
-          <div style={{ padding: '24px 32px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '24px 32px', background: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
              <div>
                <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
                  <List size={24} color="#059669" /> Unsubmitted Sales
@@ -1371,7 +1342,7 @@ export default function RetailPOS() {
           
           <div style={{ padding: '24px 32px' }}>
              {sales.length === 0 ? (
-               <div style={{ textAlign: 'center', padding: '80px 24px', background: '#F8FAFC', border: '2px dashed #CBD5E1', borderRadius: '8px' }}>
+               <div style={{ textAlign: 'center', padding: '80px 24px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
                   <h3 style={{ fontWeight: 800, color: '#1E293B', marginBottom: 8, fontSize: 20 }}>All Caught Up!</h3>
                   <p style={{ color: '#64748B', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
@@ -1379,10 +1350,10 @@ export default function RetailPOS() {
                   </p>
                </div>
              ) : (
-               <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+               <div style={{ overflowX: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800, background: 'white' }}>
                     <thead>
-                      <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #E2E8F0' }}>
+                      <tr style={{ background: '#F1F5F9' }}>
                         <th style={{...thStyle, color: '#334155'}}>Receipt No</th>
                         <th style={{...thStyle, color: '#334155'}}>Date</th>
                         <th style={{...thStyle, color: '#334155'}}>Type</th>
@@ -1399,7 +1370,7 @@ export default function RetailPOS() {
                         const dateStr = sale.sale_date ? new Date(sale.sale_date).toLocaleString() : 'N/A';
                         
                         return (
-                        <tr key={sale.id} style={{ borderBottom: '1px solid #F1F5F9', background: isEven ? '#FFFFFF' : '#FAFAFA', transition: 'background 0.2s' }}>
+                        <tr key={sale.id} style={{ background: isEven ? '#FFFFFF' : '#FAFAFA', transition: 'background 0.2s' }}>
                            <td style={tdStyle}><strong style={{ color: '#0F172A', fontWeight: 700 }}>{sale.invoice_number || `REC-${sale.id}`}</strong></td>
                            <td style={{...tdStyle, color: '#475569'}}>{dateStr}</td>
                            <td style={tdStyle}>
@@ -1422,7 +1393,7 @@ export default function RetailPOS() {
                            </td>
                            <td style={tdStyle}>
                              <span style={{
-                               background: '#F8FAFC', color: '#334155', padding: '4px 10px', borderRadius: '4px', fontSize: 12, fontWeight: 700, border: '1px solid #E2E8F0'
+                               background: '#F8FAFC', color: '#334155', padding: '4px 10px', borderRadius: '4px', fontSize: 12, fontWeight: 700
                              }}>
                                {sale.payment_method_name || 'CASH'}
                              </span>
@@ -1441,7 +1412,7 @@ export default function RetailPOS() {
                                   View
                                 </button>
                                 <button
-                                  onClick={() => handleVoidSale(sale)}
+                                  onClick={() => handleVoidSaleInit(sale)}
                                   style={{ background: '#FEF2F2', color: '#DC2626', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.2s' }}
                                   onMouseOver={e => e.currentTarget.style.background = '#FEE2E2'}
                                   onMouseOut={e => e.currentTarget.style.background = '#FEF2F2'}
@@ -1459,7 +1430,7 @@ export default function RetailPOS() {
              )}
 
              {sales.length > 0 && (
-               <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#f8fafc', borderRadius: 0, border: '1px solid #e2e8f0' }}>
+               <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#f8fafc', borderRadius: 0 }}>
                  <div style={{ fontSize: 13, color: '#64748b' }}>
                     <strong style={{ color: '#0f172a' }}>{sales.length}</strong> transactions · <strong style={{ color: '#059669' }}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
                  </div>
@@ -1486,11 +1457,11 @@ export default function RetailPOS() {
 
       {/* ONLINE TAB */}
       {tab === 'retail-online' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <div style={{ padding: '24px 28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>📦 Pending Online Orders</h2>
-              <button onClick={loadPendingOrders} disabled={loadingPendingOrders} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 0, cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
+              <button onClick={loadPendingOrders} disabled={loadingPendingOrders} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 0, cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
                 {loadingPendingOrders ? 'Refreshing...' : '🔄 Refresh'}
               </button>
             </div>
@@ -1506,7 +1477,7 @@ export default function RetailPOS() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
                 {pendingOrders.map(order => (
-                  <div key={order.id} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 0, padding: 16, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div key={order.id} style={{ background: '#f8fafc', borderRadius: 0, padding: 16, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                       <span style={{ fontWeight: 800, color: '#2563eb', fontSize: 15, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
                       <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 0, }}>ONLINE</span>
@@ -1518,7 +1489,7 @@ export default function RetailPOS() {
                     {order.order_ref && (
                       <div style={{ fontSize: 12, color: '#7c3aed', marginBottom: 8 }}>📋 Rx: {order.order_ref}</div>
                     )}
-                    <div style={{ marginBottom: 12, background: 'white', padding: '8px 12px', borderRadius: 0, border: '1px solid #f1f5f9' }}>
+                    <div style={{ marginBottom: 12, background: 'white', padding: '8px 12px', borderRadius: 0 }}>
                       {(order.items || []).map(item => (
                         <div key={item.id || item.product_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569', padding: '3px 0' }}>
                           <span>💊 {item.product_name} × {item.quantity}</span>
@@ -1526,7 +1497,7 @@ export default function RetailPOS() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
                       <div>
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
                         <div style={{ fontWeight: 800, fontSize: 17, color: '#059669', marginTop: 2 }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
@@ -1558,7 +1529,7 @@ export default function RetailPOS() {
         const days = Object.keys(grouped);
 
         return (
-          <div style={{ background: 'white', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+          <div style={{ background: 'white', overflow: 'hidden' }}>
             <div style={{ padding: '18px 24px', borderBottom: '2px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC' }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                 📜 Retail Audit Trail
@@ -1566,7 +1537,7 @@ export default function RetailPOS() {
                   {auditTrail.length} records
                 </span>
               </h2>
-              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 16px', border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 16px', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                 ✕ Close
               </button>
             </div>
@@ -1614,7 +1585,7 @@ export default function RetailPOS() {
 
       {/* DETAIL TAB */}
       {tab === 'detail' && detail && (
-        <div style={{ background: 'white', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ padding: '1rem 1.25rem', borderBottom: '2px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC' }}>
             <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
@@ -1632,7 +1603,7 @@ export default function RetailPOS() {
                 { label: 'Cashier', value: detail.cashier_name || '—' },
                 { label: 'Total Amount', value: `${parseFloat(detail.total_amount || 0).toFixed(2)} ETB`, green: true },
               ].map((card, i) => (
-                <div key={i} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '10px 14px' }}>
+                <div key={i} style={{ background: '#F8FAFC', padding: '10px 14px' }}>
                   <div style={{ fontSize: 10, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{card.label}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: card.green ? '#059669' : '#1E293B', wordBreak: 'break-all' }}>{card.value}</div>
                 </div>
@@ -1642,7 +1613,7 @@ export default function RetailPOS() {
             {/* Payment + Recipient */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
               {/* Recipient */}
-              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: 16 }}>
+              <div style={{ background: '#F0FDF4', padding: 16 }}>
                 <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                   <User size={14} color="#059669" /> Recipient / Customer
                 </h4>
@@ -1660,7 +1631,7 @@ export default function RetailPOS() {
               </div>
 
               {/* Payment */}
-              <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: 16 }}>
+              <div style={{ background: '#EFF6FF', padding: 16 }}>
                 <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                   <DollarSign size={14} color="#2563EB" /> Payment Info
                 </h4>
@@ -1786,18 +1757,62 @@ export default function RetailPOS() {
           </div>
         </div>
       )}
+
+      {/* Void Modal */}
+      {showVoidModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', border: 'none', width: 400, borderRadius: 0, padding: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '16px 24px', background: 'var(--header)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--primary)' }}>
+              <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><XCircle size={18} /> Void Transaction</h3>
+              <button onClick={() => setShowVoidModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20}/></button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <p style={{ margin: '0 0 16px', color: 'var(--text-main)', fontSize: 14 }}>
+                Are you sure you want to void transaction <strong>{voidSaleTarget?.invoice_number || voidSaleTarget?.id}</strong>?
+                <br/><br/>
+                Stock will be returned. This action cannot be undone.
+              </p>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-main)', margin: '0 0 6px' }}>Reason for Voiding *</label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Enter void reason..."
+                style={{ width: '100%', height: 80, padding: 10, border: '1px solid #E2E8F0', borderRadius: 0, fontSize: 13, resize: 'vertical' }}
+              />
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button onClick={() => setShowVoidModal(false)} style={{ flex: 1, padding: 12, border: '1px solid #E2E8F0', background: '#F5F5F5', color: 'var(--text-main)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={confirmVoidSale} disabled={loading} style={{ flex: 1, padding: 12, border: 'none', background: '#F44336', color: 'white', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+                  {loading ? 'Voiding...' : 'Confirm Void'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <ImportStoreProductModal 
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={() => {
+            setShowImportModal(false);
+            showToast('Product successfully imported to retail POS!', 'success');
+            loadProducts();
+          }}
+        />
+      )}
     </>
   );
 }
 
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-const inputStyle = () => ({ width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 0, fontSize: 13, boxSizing: 'border-box', outline: 'none' });
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const tdStyle = { padding: '12px 14px', color: '#1E293B' };
+const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: '#1B5E20', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
+const inputStyle = () => ({ width: '100%', padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 0, fontSize: 13, boxSizing: 'border-box', outline: 'none', background: '#fff', color: '#424242' });
+const thStyle = { padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#FFFFFF', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', background: '#1B5E20', borderRight: '1px solid #8D6E63' };
+const tdStyle = { padding: '12px 14px', color: '#424242', borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' };
 const tabBtn = (active) => ({
-  background: active ? '#059669' : 'white',
-  color: active ? 'white' : '#475569',
+  background: active ? '#228B22' : 'white',
+  color: active ? 'white' : '#424242',
   border: active ? 'none' : '1px solid #E2E8F0',
   borderRadius: 0, padding: '8px 14px', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 600 : 400,
+  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 700 : 400,
 });

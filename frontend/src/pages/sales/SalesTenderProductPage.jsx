@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from '../../services/apiClient';
-import { Megaphone, Package, Upload, X, CheckCircle, AlertCircle, Edit3, Trash2, RefreshCw, Search, Phone, Mail, PlusCircle } from 'lucide-react';
+import { Megaphone, Package, Upload, X, CheckCircle, AlertCircle, Edit3, Trash2, RefreshCw, Search, Phone, Mail, PlusCircle, Send } from 'lucide-react';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
@@ -236,6 +236,55 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
     }
   };
 
+  const handleCloseTender = async (tenderId) => {
+    if (!window.confirm('End (close) bidding for this tender now?')) return;
+    try {
+      const res = await axios.put(`/tenders/${tenderId}/close`);
+      if (res.status === 'success') {
+        notify('Tender closed — bidding has ended.');
+        fetchTenders();
+        if (selectedTenderForBids?.id === tenderId) {
+          setSelectedTenderForBids(prev => ({ ...prev, status: 'closed' }));
+        }
+      }
+    } catch (err) {
+      notify(err?.response?.data?.message || 'Failed to close tender', 'error');
+    }
+  };
+
+  const handleForwardToCeo = async (tenderId) => {
+    if (!window.confirm('Forward bids for this tender to the CEO for approval?')) return;
+    try {
+      const res = await axios.post(`/tenders/${tenderId}/bids/forward`);
+      if (res.status === 'success') {
+        notify('✅ Bids forwarded to CEO for approval!');
+        fetchTenders();
+        if (selectedTenderForBids?.id === tenderId) fetchBids(tenderId);
+      }
+    } catch (err) {
+      notify(err?.response?.data?.message || 'Failed to forward to CEO', 'error');
+    }
+  };
+
+  const handleFinalizeAward = async (tender) => {
+    if (!window.confirm('Finalize and award the sale to all CEO-approved bidders?')) return;
+    try {
+      const bidsRes = await axios.get(`/tenders/${tender.id}/bids`);
+      const allBids = bidsRes.data || [];
+      const approvedBidIds = allBids.filter(b => b.ceo_approval_status === 'approved').map(b => b.id);
+      if (!approvedBidIds.length) { notify('No CEO-approved bids found.', 'error'); return; }
+      const res = await axios.put(`/tenders/${tender.id}/award`, { bid_ids: approvedBidIds });
+      if (res.status === 'success') {
+        notify('🏆 Sale finalized! Winners have been awarded.');
+        fetchTenders();
+        if (selectedTenderForBids?.id === tender.id) fetchBids(tender.id);
+      }
+    } catch (err) {
+      notify(err?.response?.data?.message || 'Failed to finalize award', 'error');
+    }
+  };
+
+
   const handleProductImageChange = (e) => {
     const file = e.target.files[0];
     if (file) { setProductImage(file); setProductPreview(URL.createObjectURL(file)); }
@@ -334,32 +383,37 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  {['Image', 'Ref #', 'Title', 'Category', 'Item', 'Price (ETB)', 'Deadline', 'Status', 'Actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '10px 8px', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>)}
+                  {['Ref #', 'Title', 'Category', 'Item / Type', 'Price (ETB)', 'Deadline', 'Status', 'Actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '10px 8px', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '10px 8px' }}>
-                      <TenderThumbnail attachments={t.attachments} />
-                    </td>
-                    <td style={{ padding: '10px 8px', fontWeight: 600, color: '#0f172a' }}>{t.reference_number}</td>
-                    <td style={{ padding: '10px 8px', color: '#334155', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</td>
+                    <td style={{ padding: '10px 8px', fontWeight: 600, color: '#7c3aed', fontFamily: 'monospace' }}>{t.reference_number}</td>
+                    <td style={{ padding: '10px 8px', color: '#334155', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</td>
                     <td style={{ padding: '10px 8px', color: '#64748b' }}>{t.category || '—'}</td>
-                    <td style={{ padding: '10px 8px', color: '#64748b' }}>{t.item_name || '—'}</td>
-                    <td style={{ padding: '10px 8px', color: '#334155' }}>{parseFloat(t.starting_bid_price).toLocaleString()}</td>
+                    <td style={{ padding: '10px 8px', color: '#64748b' }}>
+                      {(() => {
+                        let items = [];
+                        try { items = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch (_) {}
+                        return items.length > 0 ? `📦 Multi (${items.length} items)` : (t.item_name || '—');
+                      })()}
+                    </td>
+                    <td style={{ padding: '10px 8px', color: '#334155' }}>{parseFloat(t.starting_bid_price || 0).toLocaleString()}</td>
                     <td style={{ padding: '10px 8px', color: '#64748b', whiteSpace: 'nowrap' }}>{t.deadline ? new Date(t.deadline).toLocaleDateString() : '—'}</td>
                     <td style={{ padding: '10px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : '#991b1b' }}>{t.status}</span>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', background: t.status === 'open' ? '#dcfce7' : t.status === 'closed' ? '#fef3c7' : t.status === 'draft' ? '#e0e7ff' : t.status === 'awarded' ? '#f0fdf4' : t.status === 'awaiting_ceo_approval' ? '#fff7ed' : '#fee2e2', color: t.status === 'open' ? '#166534' : t.status === 'closed' ? '#92400e' : t.status === 'draft' ? '#3730a3' : t.status === 'awarded' ? '#065f46' : t.status === 'awaiting_ceo_approval' ? '#c2410c' : '#991b1b' }}>{t.status.replace(/_/g, ' ')}</span>
                     </td>
                     <td style={{ padding: '10px 8px' }}>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {btn('#059669', 'Edit', <Edit3 size={12} />, () => editTender(t))}
-                        {btn('#3b82f6', 'Bid Competitors', <Search size={12} />, () => {
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {['open', 'draft', 'closed'].includes(t.status) && btn('#059669', 'Edit', <Edit3 size={12} />, () => editTender(t))}
+                        {btn('#3b82f6', 'View Bids', <Search size={12} />, () => {
                           setSelectedTenderForBids(t);
                           fetchBids(t.id);
                         })}
-                        {btn('#ef4444', 'Delete', <Trash2 size={12} />, () => deleteTender(t.id))}
+                        {['open', 'draft'].includes(t.status) && btn('#f59e0b', 'End Bids', <X size={12} />, () => handleCloseTender(t.id))}
+                        {['closed', 'open'].includes(t.status) && btn('#7c3aed', 'Fwd CEO', <Send size={12} />, () => handleForwardToCeo(t.id))}
+                        {['draft', 'closed', 'open'].includes(t.status) && btn('#dc2626', 'Delete', <Trash2 size={12} />, () => deleteTender(t.id))}
                       </div>
                     </td>
                   </tr>
@@ -371,74 +425,201 @@ const SalesTenderProductPage = ({ initialTab, initialSubtab, hideHeader }) => {
 
         {selectedTenderForBids && (
           <div style={{ marginTop: '2rem', borderTop: '2px solid #e2e8f0', paddingTop: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: 8 }}>
               <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>
                 Bids for: {selectedTenderForBids.title} ({selectedTenderForBids.reference_number})
+                <span style={{ marginLeft: 10, padding: '2px 8px', textTransform: 'uppercase', background: selectedTenderForBids.status === 'open' ? '#dcfce7' : selectedTenderForBids.status === 'closed' ? '#fef3c7' : selectedTenderForBids.status === 'awaiting_ceo_approval' ? '#fff7ed' : '#f0fdf4', color: selectedTenderForBids.status === 'open' ? '#166534' : selectedTenderForBids.status === 'closed' ? '#92400e' : selectedTenderForBids.status === 'awaiting_ceo_approval' ? '#c2410c' : '#065f46', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>{selectedTenderForBids.status.replace(/_/g, ' ')}</span>
               </h4>
-              <button onClick={() => setSelectedTenderForBids(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {['open', 'draft'].includes(selectedTenderForBids.status) && (
+                  <button onClick={() => handleCloseTender(selectedTenderForBids.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    <X size={13} /> End Bidding
+                  </button>
+                )}
+                {['closed', 'open'].includes(selectedTenderForBids.status) && (
+                  <button onClick={() => handleForwardToCeo(selectedTenderForBids.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#7c3aed', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    <Send size={13} /> Forward to CEO
+                  </button>
+                )}
+                {['closed', 'open'].includes(selectedTenderForBids.status) && bids.some(b => b.ceo_approval_status === 'approved') && (
+                  <button onClick={() => handleFinalizeAward(selectedTenderForBids)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#059669', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    <CheckCircle size={13} /> Finalize Sale (Award Approved)
+                  </button>
+                )}
+                <button onClick={() => setSelectedTenderForBids(null)} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', padding: '5px 10px', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                  <X size={14} /> Close
+                </button>
+              </div>
             </div>
             
             {bidsLoading ? (
               <p style={{ fontSize: 13, color: '#64748b' }}>Loading bids...</p>
             ) : bids.length === 0 ? (
               <p style={{ fontSize: 13, color: '#94a3b8', padding: '1rem', background: '#f8fafc', borderRadius: 0 }}>No bids received for this tender yet.</p>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
-                      {['Customer', 'Bid Price (ETB)', 'Qty', 'Total Value', 'Status', 'Notify'].map(h => <th key={h} style={{ textAlign: 'left', padding: '8px', color: '#64748b', fontWeight: 600 }}>{h}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bids.map(b => {
-                      const mailtoHref = `mailto:${b.customer_email}?subject=${encodeURIComponent(`Congratulations! Your bid on ${selectedTenderForBids.reference_number} has been awarded`)}&body=${encodeURIComponent(`Dear ${b.customer_name},
+            ) : (() => {
+              let tItems = [];
+              try { tItems = typeof selectedTenderForBids.items === 'string' ? JSON.parse(selectedTenderForBids.items) : (selectedTenderForBids.items || []); } catch (_) {}
+              const isMulti = tItems.length > 0;
 
-CONGRATULATIONS! Your bid has been awarded.
+              if (isMulti) {
+                return tItems.map((item, itemIdx) => {
+                  const productBids = bids
+                    .map(bid => {
+                      let bidItems = [];
+                      try { bidItems = typeof bid.items === 'string' ? JSON.parse(bid.items) : (bid.items || []); } catch (_) {}
+                      const matched = bidItems.find((bi, i) => i === itemIdx || bi.objectType === item.objectType);
+                      const bidPrice = matched ? (parseFloat(matched.bidPriceBirr || 0) + parseFloat(matched.bidPriceCent || 0) / 100) : 0;
+                      return { ...bid, productBidPrice: bidPrice };
+                    })
+                    .filter(b => b.productBidPrice > 0)
+                    .reduce((acc, curr) => acc.some(b => b.customer_id === curr.customer_id) ? acc : [...acc, curr], [])
+                    .sort((a, b2) => b2.productBidPrice - a.productBidPrice);
 
-Tender: ${selectedTenderForBids.title} (${selectedTenderForBids.reference_number})
-Bid Price: ${parseFloat(b.bid_price_per_unit).toLocaleString()} ETB/unit
-Quantity: ${b.quantity_requested}
-Total Value: ${parseFloat(b.total_bid_value).toLocaleString()} ETB
+                  return (
+                    <div key={itemIdx} style={{ marginBottom: 32, border: '1px solid #e2e8f0', background: 'white' }}>
+                      <div style={{ background: '#f8fafc', color: '#0f172a', padding: '12px 16px', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        <div>
+                          <div style={{ textTransform: 'uppercase', fontSize: 13 }}>ITEM #{itemIdx + 1} — {item.objectType} (Qty: {item.quantity} {item.unit})</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#059669', marginTop: 4 }}>Start Price: {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : '—'}</div>
+                        </div>
+                        {productBids.length > 0 && (
+                          <div style={{ display: 'flex', gap: 20 }}>
+                            {[
+                              { label: 'Lowest', value: Math.min(...productBids.map(b => b.productBidPrice)), col: '#059669' },
+                              { label: 'Average', value: productBids.reduce((a, b) => a + b.productBidPrice, 0) / productBids.length, col: '#0f172a' },
+                              { label: 'Highest', value: Math.max(...productBids.map(b => b.productBidPrice)), col: '#ea580c' }
+                            ].map(m => (
+                              <div key={m.label} style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2, textTransform: 'uppercase', fontWeight: 700 }}>{m.label}</div>
+                                <div style={{ color: m.col, fontWeight: 700, fontSize: 14 }}>{m.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {productBids.length === 0 ? (
+                        <div style={{ padding: '20px', color: '#94a3b8', fontSize: 13, fontWeight: 600 }}>No valid bids for this item.</div>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                          <thead style={{ background: 'white' }}>
+                            <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                              {['Rank', 'Bidder', 'Bid Price (ETB)', 'Status', 'CEO Decision', 'Action'].map(h => (
+                                <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: 'left' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {productBids.map((b, rank) => (
+                              <tr key={b.id} style={{ borderBottom: '1px solid #f1f5f9', background: rank === 0 ? '#f0fdf4' : 'white' }}>
+                                <td style={{ padding: '10px 12px', fontWeight: 700, fontSize: 13, color: rank === 0 ? '#059669' : '#64748b' }}>{rank + 1}</td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ fontWeight: 700, color: '#0f172a' }}>{b.customer_name || `User #${b.customer_id}`}</div>
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_email}</div>
+                                  {b.customer_phone && <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_phone}</div>}
+                                </td>
+                                <td style={{ padding: '10px 12px', fontWeight: 700, color: rank === 0 ? '#059669' : '#334155', fontSize: 14 }}>{b.productBidPrice.toLocaleString()}</td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>{b.status.replace(/_/g, ' ')}</span>
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {b.ceo_approval_status === 'approved' ? (
+                                    <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>✓ APPROVED</span>
+                                  ) : b.ceo_approval_status === 'rejected' ? (
+                                    <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>✕ REJECTED</span>
+                                  ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>PENDING</span>}
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  {b.status === 'awarded' ? (
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                      {b.customer_phone && React.cloneElement(btn('#3b82f6', 'Phone', <Phone size={12} />, null), { onClick: () => window.location.href = `tel:${b.customer_phone}`, type: 'button' })}
+                                    </div>
+                                  ) : b.status !== 'disqualified' && selectedTenderForBids.status !== 'closed' && selectedTenderForBids.status !== 'awarded' ? (
+                                    btn('#059669', 'Award', <CheckCircle size={12} />, () => handleAwardBid(b.id))
+                                  ) : null}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  );
+                });
+              }
 
-Please contact SUTANA EMS for further details.
+              // Single product — deduplicate by customer_id, filter zero-price rows
+              const ranked = [...bids]
+                .filter(b => parseFloat(b.total_bid_value || 0) > 0)
+                .reduce((acc, curr) => acc.some(b => b.customer_id === curr.customer_id) ? acc : [...acc, curr], [])
+                .sort((a, b2) => parseFloat(b2.total_bid_value || 0) - parseFloat(a.total_bid_value || 0));
 
-Best regards,
-SUTANA EMS`)}`;
-                      return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '8px' }}>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{b.customer_name || `User #${b.customer_id}`}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_email}</div>
-                          {b.customer_phone && <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_phone}</div>}
-                        </td>
-                        <td style={{ padding: '8px', fontWeight: 600, color: '#059669' }}>{parseFloat(b.bid_price_per_unit).toLocaleString()}</td>
-                        <td style={{ padding: '8px', color: '#475569' }}>{b.quantity_requested}</td>
-                        <td style={{ padding: '8px', fontWeight: 600, color: '#0f172a' }}>{parseFloat(b.total_bid_value).toLocaleString()}</td>
-                        <td style={{ padding: '8px' }}>
-                          <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 10, fontWeight: 700, textTransform: 'capitalize', background: b.status === 'awarded' ? '#dcfce7' : b.status === 'disqualified' ? '#fee2e2' : '#f1f5f9', color: b.status === 'awarded' ? '#166534' : b.status === 'disqualified' ? '#991b1b' : '#475569' }}>
-                            {b.status.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px' }}>
-                          {b.status === 'awarded' ? (
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              {b.customer_phone && React.cloneElement(btn('#3b82f6', 'Phone', <Phone size={12} />, null), { onClick: () => window.location.href = `tel:${b.customer_phone}`, type: 'button' })}
-                              {React.cloneElement(btn('#ea580c', 'Email', <Mail size={12} />, null), { onClick: () => window.location.href = mailtoHref, type: 'button' })}
-                            </div>
-                          ) : b.status !== 'disqualified' && selectedTenderForBids.status !== 'closed' && selectedTenderForBids.status !== 'awarded' ? (
-                            btn('#059669', 'Award', <CheckCircle size={12} />, () => handleAwardBid(b.id))
-                          ) : null}
-                        </td>
+              return (
+                <div style={{ border: '1px solid #e2e8f0', background: 'white' }}>
+                  <div style={{ background: '#f8fafc', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{ranked.length} competitor(s)</div>
+                    {ranked.length > 0 && (
+                      <div style={{ display: 'flex', gap: 20 }}>
+                        {[
+                          { label: 'Lowest', value: Math.min(...ranked.map(b => parseFloat(b.total_bid_value || 0))), col: '#059669' },
+                          { label: 'Average', value: ranked.reduce((a, b) => a + parseFloat(b.total_bid_value || 0), 0) / ranked.length, col: '#0f172a' },
+                          { label: 'Highest', value: Math.max(...ranked.map(b => parseFloat(b.total_bid_value || 0))), col: '#ea580c' }
+                        ].map(m => (
+                          <div key={m.label} style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2, textTransform: 'uppercase', fontWeight: 700 }}>{m.label}</div>
+                            <div style={{ color: m.col, fontWeight: 700, fontSize: 14 }}>{m.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: 'white', borderBottom: '2px solid #e2e8f0' }}>
+                        {['Rank', 'Bidder', 'Price/Unit (ETB)', 'Qty', 'Total (ETB)', 'Status', 'CEO', 'Action'].map((h, i) => (
+                          <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: i >= 2 && i <= 4 ? 'right' : 'left' }}>{h}</th>
+                        ))}
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {ranked.length === 0 ? (
+                        <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>No bids received yet.</td></tr>
+                      ) : ranked.map((b, rank) => (
+                        <tr key={b.id} style={{ borderBottom: '1px solid #f1f5f9', background: rank === 0 ? '#f0fdf4' : 'white' }}>
+                          <td style={{ padding: '10px 12px', fontWeight: 700, fontSize: 13, color: rank === 0 ? '#059669' : '#64748b' }}>{rank + 1}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a' }}>{b.customer_name || `User #${b.customer_id}`}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_email}</div>
+                            {b.customer_phone && <div style={{ fontSize: 11, color: '#64748b' }}>{b.customer_phone}</div>}
+                          </td>
+                          <td style={{ padding: '10px 12px', fontWeight: 700, color: rank === 0 ? '#059669' : '#334155', textAlign: 'right' }}>{parseFloat(b.bid_price_per_unit || 0).toLocaleString()}</td>
+                          <td style={{ padding: '10px 12px', color: '#475569', fontWeight: 600, textAlign: 'right' }}>{b.quantity_requested}</td>
+                          <td style={{ padding: '10px 12px', fontWeight: 700, color: rank === 0 ? '#059669' : '#0f172a', textAlign: 'right', fontSize: 14 }}>{parseFloat(b.total_bid_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>{b.status.replace(/_/g, ' ')}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {b.ceo_approval_status === 'approved' ? (
+                              <span style={{ color: '#059669', fontWeight: 700, fontSize: 11 }}>✓ APPROVED</span>
+                            ) : b.ceo_approval_status === 'rejected' ? (
+                              <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11 }}>✕ REJECTED</span>
+                            ) : <span style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>PENDING</span>}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {b.status === 'awarded' ? (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                {b.customer_phone && React.cloneElement(btn('#3b82f6', 'Phone', <Phone size={12} />, null), { onClick: () => window.location.href = `tel:${b.customer_phone}`, type: 'button' })}
+                              </div>
+                            ) : b.status !== 'disqualified' && selectedTenderForBids.status !== 'closed' && selectedTenderForBids.status !== 'awarded' ? (
+                              btn('#059669', 'Award', <CheckCircle size={12} />, () => handleAwardBid(b.id))
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

@@ -643,8 +643,8 @@ This is an official award notification from SUTANA's procurement system.
             <div style={{ marginBottom: '28px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px' }}>Tender Items (Smart Table)</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Define items and start price. Competitors will fill in their bid pricing on the public page.</p>
+                  <h3 style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px' }}>Tender Items</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Define items to procure. Suppliers will fill in their pricing on the public page.</p>
                 </div>
               </div>
 
@@ -652,9 +652,9 @@ This is an official award notification from SUTANA's procurement system.
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
                   <thead>
                     <tr style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', textAlign: 'left' }}>
-                      {['No', 'Object Type', 'Unit', 'Quantity', 'Start Price (Birr)', 'Bid / Obj (Birr)', 'Bid / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
-                        <th key={i} style={{ padding: '12px 14px', color: i <= 4 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 5 && i <= 9 ? 'italic' : 'normal' }}>
-                          {h}{i >= 5 && i <= 9 ? ' ← competitor fills' : ''}
+                      {['No', 'Object Type', 'Unit', 'Quantity', 'Bid / Obj (Birr)', 'Bid / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
+                        <th key={i} style={{ padding: '12px 14px', color: i <= 3 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 4 && i <= 8 ? 'italic' : 'normal' }}>
+                          {h}{i >= 4 && i <= 8 ? ' ← supplier fills' : ''}
                         </th>
                       ))}
                     </tr>
@@ -678,11 +678,7 @@ This is an official award notification from SUTANA's procurement system.
                             onChange={e => handleItemChange(item.id, 'quantity', e.target.value)}
                             style={{ ...inputStyle, width: '80px' }} />
                         </td>
-                        <td style={{ padding: '8px' }}>
-                          <input type="number" min="0" step="0.01" required value={item.startPrice || ''}
-                            onChange={e => handleItemChange(item.id, 'startPrice', e.target.value)}
-                            style={{ ...inputStyle, width: '110px', border: '2px solid #3b82f6', background: '#eff6ff' }} placeholder="0.00" />
-                        </td>
+
                         {[...Array(5)].map((_, ci) => (
                           <td key={ci} style={{ padding: '8px', background: '#f8fafc' }}>
                             <input disabled style={{ ...inputStyle, background: 'transparent', border: '1px dashed #cbd5e1', cursor: 'not-allowed', width: '80px' }} placeholder="—" />

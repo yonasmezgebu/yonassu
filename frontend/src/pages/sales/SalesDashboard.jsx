@@ -2,7 +2,6 @@ import React, { createContext, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import BackButton from '../../components/pharmacy/BackButton';
 
 import SalesOverview from './SalesOverview';
 
@@ -12,13 +11,13 @@ import ReturnsPage from './ReturnsPage';
 import RetailStoreInventory from './RetailStoreInventory';
 import RetailStockOperations from './RetailStockOperations';
 
-import SalesStaff from './SalesStaff';
 import RetailBranches from './RetailBranches';
 import SalesCEOReport from './SalesCEOReport';
 import SalesFinanceReview from './SalesFinanceReview';
 
 import CashierAuditLog from './CashierAuditLog';
 import TenderManagePage from '../admin/TenderManagePage';
+import SalesProductAdjust from './SalesProductAdjust';
 
 // We import these directly if needed
 // import ProcurementRequests from '../procurement/ProcurementRequests';
@@ -37,8 +36,11 @@ const SalesDashboard = () => {
     '/sales/procurement-requests',
     '/sales/sales', '/sales/sales-return',
     '/sales/bids',
+    '/sales/pos',
+    '/sales/inventory/adjust',
   ];
   const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
+  const isNoPaddingPage = location.pathname.includes('/sales/pos') || location.pathname.includes('/sales/sales-return') || location.pathname.includes('/sales/store-inventory');
   const hideBackButton = ['/sales/overview', '/sales'].includes(location.pathname) || isFullBleed;
 
   const menuItems = [
@@ -69,7 +71,6 @@ const SalesDashboard = () => {
     // ── Staff ──
     { label: 'Staff & Ops', icon: 'users',
       children: [
-        { label: 'Staff Management', path: '/sales/staff',      icon: 'settings' },
         { label: 'Branches',         path: '/sales/branches',   icon: 'building', color: '#f59e0b' },
         { label: 'Bids',             path: '/sales/bids',       icon: 'award', color: '#059669' },
       ]
@@ -91,23 +92,23 @@ const SalesDashboard = () => {
   return (
     <WorkerAuthContext.Provider value={{ hasManagerPermission, setHasManagerPermission }}>
     <div>
-      <DashboardLayout menuItems={menuItems} title="Sales Manager Dashboard">
+    <DashboardLayout menuItems={menuItems} title="Sales Manager Dashboard" noPadding={isNoPaddingPage}>
         <div style={isFullBleed ? {
-          margin: '-32px -32px -32px -32px',
+          margin: isNoPaddingPage ? 0 : '-32px',
           padding: 0,
           background:
-            location.pathname.includes('/sales/ceo-report')     ? '#A5D6A7' :
-            location.pathname.includes('/sales/finance-review') ? '#228B22' :
+            location.pathname.includes('/sales/ceo-report')     ? '#F1F8E9' :
+            location.pathname.includes('/sales/finance-review') ? '#E8F5E9' :
             location.pathname.includes('/sales/bids')           ? '#F5F5F5' :
             (
               location.pathname.includes('/sales/store-inventory') ||
               location.pathname.includes('/sales/stock-operations')
             ) ? '#1B5E20' :
-            '#D5DCF0',
+            '#F5F5F5',
           minHeight: '100vh',
           boxSizing: 'border-box',
         } : {}}>
-          {!hideBackButton && <BackButton />}
+
           <Routes>
             {/* Dashboards */}
             <Route path="overview" element={<SalesOverview />} />
@@ -124,7 +125,6 @@ const SalesDashboard = () => {
             <Route path="stock-operations" element={<RetailStockOperations />} />
 
             {/* Staff */}
-            <Route path="staff"         element={<SalesStaff />} />
             <Route path="branches"   element={<RetailBranches />} />
             <Route path="bids"       element={<TenderManagePage />} />
 
@@ -134,6 +134,7 @@ const SalesDashboard = () => {
             <Route path="finance-review/:id" element={<SalesFinanceReview />} />
             
             <Route path="audit" element={<CashierAuditLog source="sales" />} />
+            <Route path="inventory/adjust/:id" element={<SalesProductAdjust />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>

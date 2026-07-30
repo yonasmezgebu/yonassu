@@ -284,60 +284,226 @@ const PublicBidCard = ({ bid, onUpdate }) => {
             <XCircle size={14} /> Your bid was not selected for this tender.
           </div>
         )}
+        {bid.digital_signature && (
+          <div style={{ padding: '10px 18px', borderTop: '1px solid #f1f5f9', background: '#fafafa' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Digital Signature</div>
+            <div style={{ padding: '8px 14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 22, color: '#0f172a', display: 'inline-block' }}>
+              {bid.digital_signature}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 };
 
-// ─── Sales Bid Card (from tenders table) ───────────────────────────────────
-const SalesBidCard = ({ bid }) => {
-  const navigate = useNavigate();
-  const st = STATUS_MAP[bid.status] || { bg: '#f1f5f9', color: '#64748b', label: bid.status };
+// ─── Update Form for a Sale Bid (from tenders table) ────────────────────────
+const UpdateSaleBidForm = ({ bid, onClose, onSaved }) => {
+  const [form, setForm] = useState({
+    bid_price_per_unit: bid.bid_price_per_unit || '',
+    digital_signature: bid.digital_signature || '',
+    quantity_requested: bid.quantity_requested || 1,
+    notes: bid.notes || '',
+    proposed_pickup_date: bid.proposed_pickup_date ? bid.proposed_pickup_date.slice(0, 10) : '',
+    bidder_full_name: bid.bidder_full_name || '',
+    bidder_email: bid.bidder_email || '',
+    bidder_phone: bid.bidder_phone || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await apiClient.put(`/tenders/${bid.tender_id}/bid`, form);
+      onSaved();
+    } catch (e) {
+      setError(e?.message || 'Failed to update bid. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div style={{
-      background: 'white', borderRadius: 12, border: '1px solid #e2e8f0',
-      padding: '14px 18px', cursor: 'pointer', transition: 'box-shadow 0.15s',
-    }}
-      onClick={() => navigate(`/tenders/${bid.tender_id || bid.id}`)}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{
-              background: '#fef3c7', color: '#92400e', fontSize: 10, fontWeight: 700,
-              padding: '2px 8px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5
-            }}>🏷️ Sale Bid</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#64748b' }}>{bid.reference_number}</span>
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: 16, padding: '28px', width: '100%',
+        maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>Update My Bid</h3>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>{bid.tender_title}</p>
           </div>
-          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bid.tender_title}</h4>
+          <button onClick={onClose} style={{ border: 'none', background: '#f1f5f9', borderRadius: 8, padding: '6px 8px', cursor: 'pointer' }}>
+            <X size={16} color="#475569" />
+          </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ padding: '3px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: st.bg, color: st.color }}>{st.label}</span>
-          <ExternalLink size={14} color="#94a3b8" />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 18, fontSize: 13, flexWrap: 'wrap' }}>
-        <span style={{ color: '#059669', fontWeight: 700 }}>
-          {parseFloat(bid.bid_price_per_unit || 0).toLocaleString()} ETB/unit × {bid.quantity_requested}
-        </span>
-        <span style={{ color: '#0f172a', fontWeight: 600 }}>
-          Total: {parseFloat(bid.total_bid_value || 0).toLocaleString()} ETB
-        </span>
-        {bid.deadline && (
-          <span style={{ color: '#94a3b8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Calendar size={11} /> Deadline: {new Date(bid.deadline).toLocaleDateString()}
-          </span>
+
+        {error && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#dc2626' }}>
+            {error}
+          </div>
         )}
-      </div>
-      {bid.status === 'awarded' && (
-        <div style={{ marginTop: 8, padding: '8px 12px', background: '#f0fdf4', borderRadius: 8, fontSize: 13, color: '#065f46', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Award size={14} /> 🎉 Your bid was selected!
+
+        {/* Contact fields */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Full Name</label>
+          <input value={form.bidder_full_name} onChange={e => setForm(f => ({ ...f, bidder_full_name: e.target.value }))}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
         </div>
-      )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Email</label>
+            <input type="email" value={form.bidder_email} onChange={e => setForm(f => ({ ...f, bidder_email: e.target.value }))}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Phone</label>
+            <input type="tel" value={form.bidder_phone} onChange={e => setForm(f => ({ ...f, bidder_phone: e.target.value }))}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Bid Price (ETB/unit)</label>
+          <input type="number" step="0.01" min="0" value={form.bid_price_per_unit} onChange={e => setForm(f => ({ ...f, bid_price_per_unit: e.target.value }))}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Proposed Pickup Date</label>
+          <input type="date" value={form.proposed_pickup_date} onChange={e => setForm(f => ({ ...f, proposed_pickup_date: e.target.value }))}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Notes</label>
+          <textarea rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }} />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Digital Signature *</label>
+          <input required type="text" value={form.digital_signature} onChange={e => setForm(f => ({ ...f, digital_signature: e.target.value }))}
+            placeholder="Type your full name as signature"
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box' }} />
+          <div style={{ marginTop: 6, padding: '10px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 22, color: '#0f172a' }}>
+            {form.digital_signature || <span style={{ color: '#cbd5e1', fontFamily: 'sans-serif', fontSize: 13 }}>Signature preview will appear here</span>}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} disabled={saving}
+            style={{ padding: '10px 20px', borderRadius: 8, border: '1.5px solid #e2e8f0', background: 'white', fontSize: 13, fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#059669', fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {saving ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />}
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
     </div>
+  );
+};
+
+// ─── Sales Bid Card (from tenders table) ───────────────────────────────────
+const SalesBidCard = ({ bid, onUpdate }) => {
+  const navigate = useNavigate();
+  const st = STATUS_MAP[bid.status] || { bg: '#f1f5f9', color: '#64748b', label: bid.status };
+  const [editing, setEditing] = useState(false);
+
+  // Can update if bid is pending and tender is still open
+  const canUpdate = bid.status === 'pending' && bid.tender_status === 'open'
+    && new Date(bid.deadline) > new Date();
+
+  return (
+    <>
+      {editing && (
+        <UpdateSaleBidForm
+          bid={bid}
+          onClose={() => setEditing(false)}
+          onSaved={() => { setEditing(false); onUpdate(); }}
+        />
+      )}
+      <div style={{
+        background: 'white', borderRadius: 12, border: '1px solid #e2e8f0',
+        padding: '14px 18px', transition: 'box-shadow 0.15s',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/tenders/${bid.tender_id || bid.id}`)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{
+                background: '#fef3c7', color: '#92400e', fontSize: 10, fontWeight: 700,
+                padding: '2px 8px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: 0.5
+              }}>🏷️ Sale Bid</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#64748b' }}>{bid.reference_number}</span>
+            </div>
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bid.tender_title}</h4>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ padding: '3px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: st.bg, color: st.color }}>{st.label}</span>
+            {canUpdate && (
+              <button onClick={() => setEditing(true)} style={{
+                padding: '6px 12px', border: '1.5px solid #059669', borderRadius: 8, background: 'white',
+                color: '#059669', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <Edit3 size={12} /> Update Bid
+              </button>
+            )}
+            <ExternalLink size={14} color="#94a3b8" style={{ cursor: 'pointer' }} onClick={() => navigate(`/tenders/${bid.tender_id || bid.id}`)} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 18, fontSize: 13, flexWrap: 'wrap' }}>
+          <span style={{ color: '#059669', fontWeight: 700 }}>
+            {parseFloat(bid.bid_price_per_unit || 0).toLocaleString()} ETB/unit
+          </span>
+          <span style={{ color: '#0f172a', fontWeight: 600 }}>
+            Total: {parseFloat(bid.total_bid_value || 0).toLocaleString()} ETB
+          </span>
+          {bid.deadline && (
+            <span style={{ color: '#94a3b8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Calendar size={11} /> Deadline: {new Date(bid.deadline).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+        {bid.bidder_full_name && (
+          <div style={{ marginTop: 6, display: 'flex', gap: 14, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={11} /> {bid.bidder_full_name}</span>
+            {bid.bidder_email && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={11} /> {bid.bidder_email}</span>}
+            {bid.bidder_phone && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={11} /> {bid.bidder_phone}</span>}
+          </div>
+        )}
+        {bid.status === 'awarded' && (
+          <div style={{ marginTop: 8, padding: '8px 12px', background: '#f0fdf4', borderRadius: 8, fontSize: 13, color: '#065f46', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Award size={14} /> 🎉 Your bid was selected!
+          </div>
+        )}
+        <div style={{ marginTop: 10, display: 'grid', gap: 6, fontSize: 12, color: '#64748b' }}>
+          {bid.submitted_at && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Calendar size={11} /> <strong>Submitted:</strong>&nbsp;{new Date(bid.submitted_at).toLocaleString()}
+            </div>
+          )}
+          {bid.opened_at && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={11} /> <strong>Opened by Sales:</strong>&nbsp;{new Date(bid.opened_at).toLocaleString()}
+            </div>
+          )}
+          {bid.digital_signature && (
+            <div>
+              <strong>Digital Signature:</strong>
+              <div style={{ marginTop: 4, padding: '8px 14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 22, color: '#0f172a', display: 'inline-block' }}>
+                {bid.digital_signature}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -476,7 +642,7 @@ export default function CustomerBids() {
                 </div>
               )}
               {salesBids.map(b => (
-                <SalesBidCard key={`sale-${b.id}`} bid={b} />
+                <SalesBidCard key={`sale-${b.id}`} bid={b} onUpdate={handleBidUpdated} />
               ))}
             </>
           )}
