@@ -226,19 +226,20 @@ export const GSHome = () => {
 
   const nav = (path) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
 
-  // ── Derived KPIs from General Store data
-  const totalMaterialValue = Number(stats?.totalMaterialValue ?? 0);
-  const totalMachineValue  = Number(stats?.totalMachineValue  ?? 0);
-  const totalValue         = totalMaterialValue + totalMachineValue;
-  const pendingMoves       = stats?.pendingMoveRequests ?? 0;
-  const totalMaterials     = stats?.totalMaterials ?? 0;    // number of material lines
-  const machinesInStore    = stats?.machinesInStore ?? 0;
-  const machinesInProd     = stats?.machinesInProduction ?? 0;
+  // ── Derived KPIs — VALUE always comes from inventory (mats) to avoid double-counting
+  // Operations are already posted into inventory stock/value, so never sum from stats
+  const totalValue     = mats.reduce((s, m) => s + parseFloat(m.total_value || 0), 0);
+  const totalMaterials = mats.length;   // live count of distinct inventory lines
+
+  // Non-value stats (machines, moves) still come from stats API — no overlap with inventory
+  const pendingMoves       = stats?.pendingMoveRequests     ?? 0;
+  const machinesInStore    = stats?.machinesInStore         ?? 0;
+  const machinesInProd     = stats?.machinesInProduction    ?? 0;
   const machinesUnderMaint = stats?.machinesUnderMaintenance ?? 0;
 
   // ── Derived from materials list
-  const lowStock  = mats.filter(m => parseFloat(m.quantity_in_store) <= parseFloat(m.reorder_level || 0));
-  const totalQty  = mats.reduce((s, m) => s + parseFloat(m.quantity_in_store || 0), 0);
+  const lowStock      = mats.filter(m => parseFloat(m.quantity_in_store) <= parseFloat(m.reorder_level || 0));
+  const totalQty      = mats.reduce((s, m) => s + parseFloat(m.quantity_in_store || 0), 0);
   const lowStockCount = lowStock.length;
 
   // ── Action-type breakdown for the table
@@ -304,6 +305,7 @@ export const GSHome = () => {
             <span style={{ fontSize: 24 }}>💰</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Store Value</div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, fontStyle: 'italic' }}>From live inventory only — no double-count</div>
           <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
             <span style={{ fontSize: '1.1rem', opacity: 0.75, marginRight: 6 }}>ETB</span>{Number(totalValue).toLocaleString(undefined,{maximumFractionDigits:0})}
           </div>

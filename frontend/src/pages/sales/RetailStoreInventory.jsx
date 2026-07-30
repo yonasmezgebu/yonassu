@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import SignatureCanvas from 'react-signature-canvas';
+import SalesInventoryView from './SalesInventoryView';
 
 // ── Nature Theme Colors ───────────────────────────────────────────────────────
 const FG    = '#228B22'; // Forest Green
@@ -434,6 +435,17 @@ export default function RetailStoreInventory() {
           }}>
             <Package size={16}/> Store Stock
           </button>
+          
+          <button type="button" className="inv-btn" onClick={() => setActiveTab('retail_products')} style={{
+            background: activeTab === 'retail_products' ? DARK : 'white',
+            color: activeTab === 'retail_products' ? 'white' : TXT,
+            border: activeTab === 'retail_products' ? 'none' : `1px solid ${EARTH}`,
+            borderBottom:'none', padding:'12px 28px', fontWeight:800, fontSize:13,
+            textTransform:'uppercase', display:'flex', alignItems:'center', gap:8,
+          }}>
+            <Package size={16}/> Published Retail Products
+          </button>
+
           <button type="button" className="inv-btn" onClick={() => setActiveTab('my_requests')} style={{
             background: activeTab === 'my_requests' ? DARK : 'white',
             color: activeTab === 'my_requests' ? 'white' : TXT,
@@ -449,6 +461,13 @@ export default function RetailStoreInventory() {
             )}
           </button>
         </div>
+
+        {/* ── RETAIL PRODUCTS TAB ── */}
+        {activeTab === 'retail_products' && (
+          <div style={{ marginTop: 20 }}>
+            <SalesInventoryView hideHeader={true} />
+          </div>
+        )}
 
         {/* ── STORE STOCK TAB ── */}
         {activeTab === 'store_stock' && (

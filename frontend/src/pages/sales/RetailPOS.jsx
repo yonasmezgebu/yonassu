@@ -8,11 +8,12 @@ import {
   ShoppingCart, DollarSign, CreditCard, Smartphone, Banknote,
   CheckCircle, XCircle, Plus, Trash2, RefreshCw, List, Eye,
   History, Search, User, Phone, Building2, Hash, Wallet,
-  Printer, Mail, X, Minus, ChevronRight, ChevronDown, Package, AlertCircle
+  Printer, Mail, X, Minus, ChevronRight, ChevronDown, Package, AlertCircle, Edit3, EyeOff, Save
 } from 'lucide-react';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import ImportStoreProductModal from './ImportStoreProductModal';
+import SalesStoreRequestModal from './SalesStoreRequestModal';
 
 // ─── AuditRow: Expandable transaction detail row in audit trail ───────────────
 function AuditRow({ log, idx }) {
@@ -143,6 +144,7 @@ const EMPTY_ITEM = { product_id: null, product_name: '', quantity: '', unit_pric
 
 export default function RetailPOS() {
   const { user } = useAuth();
+  const isManager = user?.roles?.some(r => ['Sales Manager', 'Admin', 'CEO'].includes(r)) || false;
   const { showToast, ToastContainer } = useToast();
   const location = useLocation();
   const [tab, setTab] = useState('retail-walkin');
@@ -181,7 +183,11 @@ export default function RetailPOS() {
   const [posSearch, setPosSearch] = useState('');
   const [posPaymentMethod, setPosPaymentMethod] = useState('');
 
-  const [navSearch, setNavSearch] = useState('');
+  
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [showStoreRequestModal, setShowStoreRequestModal] = useState(false);
+const [navSearch, setNavSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [expandedCards, setExpandedCards] = useState({});
@@ -203,7 +209,56 @@ export default function RetailPOS() {
   const [voidSaleTarget, setVoidSaleTarget] = useState(null);
   const [voidReason, setVoidReason] = useState('');
 
-  const addToCart = (item) => {
+  
+  const handleToggleHide = async (p) => {
+    try {
+      await apiClient.put('/retail/products/' + p.id, { is_active: !p.is_active });
+      showToast('Visibility toggled successfully.', 'success');
+      loadProducts();
+    } catch (err) {
+      showToast(err.message || 'Failed to toggle visibility', 'error');
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    try {
+      await apiClient.delete('/retail/products/' + id);
+      showToast('Product deleted.', 'success');
+      loadProducts();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete product', 'error');
+    }
+  };
+
+  const handleUpdateProductSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setSavingProduct(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', editingProduct.name || '');
+      fd.append('sku', editingProduct.sku || '');
+      fd.append('price', editingProduct.price || editingProduct.selling_price || 0);
+      fd.append('cost_price', editingProduct.cost_price || 0);
+      fd.append('stock_quantity', editingProduct.stock || editingProduct.stock_quantity || 0);
+      fd.append('reorder_level', editingProduct.reorder_level || 10);
+      if (editingProduct.category_id) fd.append('category_id', editingProduct.category_id);
+      if (editingProduct.description) fd.append('description', editingProduct.description);
+      if (editingProduct.expiry_date) fd.append('expiry_date', editingProduct.expiry_date);
+      if (editingProduct.new_image) fd.append('product_image', editingProduct.new_image);
+      
+      await apiClient.put('/retail/products/' + editingProduct.id, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      showToast('Product updated successfully.', 'success');
+      setEditingProduct(null);
+      loadProducts();
+    } catch (error) {
+      showToast(error?.message || 'Failed to update product.', 'error');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+const addToCart = (item) => {
     const existing = posCart.find(c => c.id === item.id);
     if (existing) {
       if (existing.qty < item.stock) {
@@ -408,7 +463,10 @@ export default function RetailPOS() {
 
   const loadProducts = async () => {
     try {
-      const raw = await salesService.getRetailProducts({ limit: 1000 });
+      // Managers load all products including hidden ones so they can unhide
+      const params = { limit: 1000 };
+      if (isManager) params.include_inactive = 'true';
+      const raw = await salesService.getRetailProducts(params);
       const list = Array.isArray(raw) ? raw : raw?.data?.products || [];
       const mapped = list.map(p => ({
         ...p,
@@ -473,6 +531,19 @@ export default function RetailPOS() {
       console.error(e);
     } finally {
       setLoadingPendingOrders(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to completely delete this online order? It will be removed permanently from the customer page as well.')) return;
+    try {
+      const res = await apiClient.delete(`/pos/orders/${orderId}`);
+      if (res.status === 'success') {
+        setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+        alert('Order deleted successfully');
+      }
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to delete order');
     }
   };
 
@@ -680,7 +751,7 @@ export default function RetailPOS() {
         .rsp-card-oos { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
         .rsp-card-body { padding: 12px; flex: 1; display: flex; flex-direction: column; }
         .rsp-card-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
-        .rsp-card-desc { font-size: 12px; color: #424242; margin: 0 0 8px; border-left: 3px solid var(--sage); padding-left: 6px; white-space: pre-wrap; overflow-wrap: break-word; display: block; }
+        .rsp-card-desc { font-size: 12px; color: #424242; margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: break-word; display: block; }
         .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
         .rsp-price { font-size: 16px; font-weight: 800; color: var(--primary); }
         
@@ -764,7 +835,7 @@ export default function RetailPOS() {
             </div>
           </div>
 
-          {/* Right: Refresh + New Sale — vertically centered in header */}
+          {/* Right: Refresh — vertically centered in header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               onClick={handleRefreshAll}
@@ -785,13 +856,6 @@ export default function RetailPOS() {
             >
               <RefreshCw size={15} strokeWidth={2.5} style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}} />
               {refreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
-            <button
-              className="btn-3d"
-              onClick={() => { setShowAudit(false); setTab('retail-walkin'); resetForm(); }}
-              style={{ fontSize: 13, padding: '9px 20px', letterSpacing: '0.02em' }}
-            >
-              <span style={{ fontSize: '1rem', fontWeight: 300 }}>+</span> New Sale
             </button>
           </div>
 
@@ -930,9 +994,27 @@ export default function RetailPOS() {
                 </div>
                 <div className="pos-grid">
                 {/* Product Grid */}
-                {products
-                  .filter(i => !navSearch || (i.name && i.name.toLowerCase().includes(navSearch.toLowerCase())))
-                  .map((item, idx) => {
+                {(() => {
+                  const visibleProducts = products.filter(i => {
+                    if (!isManager && i.is_active === false) return false;
+                    if (navSearch && !(i.name && i.name.toLowerCase().includes(navSearch.toLowerCase()))) return false;
+                    return true;
+                  });
+
+                  if (visibleProducts.length === 0) {
+                    return (
+                      <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#FAFAFA', border: '2px dashed #E2E8F0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>🛍️</div>
+                        <h3 style={{ margin: '0 0 8px', color: '#1B5E20', fontSize: 20, fontWeight: 800 }}>No Retail Products Found</h3>
+                        <p style={{ margin: 0, color: '#8D6E63', fontSize: 14, maxWidth: 400 }}>
+                          {navSearch ? `No products match "${navSearch}". Try a different keyword.` : 'Your retail store is currently empty. Click "Import from Store" or "Request from Store" to stock up.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return visibleProducts.map((item, idx) => {
+
                     const inCart = posCart.find(c => c.id === item.id);
                     const stockVal = item.stock !== undefined ? item.stock : (item.quantity || 0);
                     const stockLabel = stockVal <= 0 ? 'oos' : stockVal <= (item.reorder_level || 10) ? 'low' : 'normal';
@@ -945,8 +1027,15 @@ export default function RetailPOS() {
                     };
                     
                     return (
-                      <div key={item.id} className="rsp-card" style={{ animationDelay: idx * 0.04 + 's' }}>
+                      <div key={item.id} className="rsp-card" style={{ animationDelay: idx * 0.04 + 's', opacity: item.is_active === false ? 0.55 : 1, position: 'relative' }}>
+                        {/* HIDDEN banner shown only to managers on inactive cards */}
+                        {isManager && item.is_active === false && (
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, background: '#D32F2F', color: 'white', textAlign: 'center', fontSize: 10, fontWeight: 900, letterSpacing: '.1em', padding: '3px 0', textTransform: 'uppercase' }}>
+                            🔒 HIDDEN FROM PUBLIC
+                          </div>
+                        )}
                         <div className="rsp-card-img-wrap">
+                          
                           {(() => {
                             const imgs = [item.product_image, item.product_image, item.cover_image].filter(Boolean);
                             const uniqueImgs = [...new Set(imgs)];
@@ -959,7 +1048,7 @@ export default function RetailPOS() {
                               </div>
                             );
                           })()}
-                          {(item.category || item.category_name) && <div className="rsp-card-badge">{item.category || item.category_name}</div>}
+                          
                           {stockVal <= 0 && (
                             <div className="rsp-card-oos">OUT OF STOCK</div>
                           )}
@@ -972,9 +1061,7 @@ export default function RetailPOS() {
                           
                           {item.description && (
                             <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                              <p className="rsp-card-desc">
-                                {item.description}
-                              </p>
+                              <p className="rsp-card-desc" style={{ display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{item.description}</p>
                             </div>
                           )}
                           
@@ -992,20 +1079,69 @@ export default function RetailPOS() {
                               <ShoppingCart size={13} /> {inCart ? `${inCart.qty} added` : 'Add'}
                             </button>
                           </div>
+                          {isManager && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid #E2E8F0' }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--earth)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                                {item.category || item.category_name || 'Uncategorized'}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  type="button" 
+                                  onClick={(e) => { e.stopPropagation(); handleToggleHide(item); }}
+                                  style={{ width: 28, height: 28, borderRadius: 0, border: '2px solid var(--earth)', background: 'rgba(255,255,255,0.95)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '2px 2px 0 rgba(141,110,99,0.3)' }}
+                                  title={item.is_active === false ? "Show Product" : "Hide from Public"}
+                                >
+                                  {item.is_active === false ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setEditingProduct({...item, price: priceVal, stock: stockVal}); }}
+                                  style={{ width: 28, height: 28, borderRadius: 0, border: '2px solid var(--earth)', background: 'rgba(255,255,255,0.95)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '2px 2px 0 rgba(141,110,99,0.3)' }}
+                                  title="Update Product"
+                                >
+                                  <Edit3 size={14} />
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteProduct(item.id); }}
+                                  style={{ width: 28, height: 28, borderRadius: 0, border: '2px solid #D32F2F', background: '#F44336', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '2px 2px 0 rgba(211,47,47,0.3)' }}
+                                  title="Delete Product"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
-                  })
-                }
+                  });
+                })()}
               </div>
+
               </>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>🛍️ Cart & Checkout</h2>
-                 <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} style={{ padding: '10px 20px', borderRadius: 0, background: 'white', cursor: 'pointer', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                   ← Back to Products
-                 </button>
+                 <div style={{ display: 'flex', gap: 10 }}>
+                   {isManager && (
+                     <button
+                       onClick={() => setShowStoreRequestModal(true)}
+                       style={{
+                         padding: '10px 18px', border: 'none', background: '#228B22',
+                         color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13,
+                         textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8,
+                         boxShadow: '3px 3px 0 #1B5E20',
+                       }}
+                     >
+                       📦 Request from Store
+                     </button>
+                   )}
+                   <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} style={{ padding: '10px 20px', borderRadius: 0, background: 'white', cursor: 'pointer', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                     ← Back to Products
+                   </button>
+                 </div>
                </div>
 
                {/* ── Online Order Banner ── */}
@@ -1502,12 +1638,21 @@ export default function RetailPOS() {
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
                         <div style={{ fontWeight: 800, fontSize: 17, color: '#059669', marginTop: 2 }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
                       </div>
-                      <button 
-                        onClick={() => processOnlineOrder(order)} 
-                        style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(5,150,105,0.2)' }}
-                      >
-                        Process Payment →
-                      </button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button 
+                          onClick={() => handleDeleteOrder(order.id)} 
+                          style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '10px 14px', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(220,38,38,0.15)' }}
+                          title="Delete Order Permanently"
+                        >
+                          🗑️
+                        </button>
+                        <button 
+                          onClick={() => processOnlineOrder(order)} 
+                          style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(5,150,105,0.2)' }}
+                        >
+                          Process Payment →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1758,6 +1903,189 @@ export default function RetailPOS() {
         </div>
       )}
 
+      {/* Edit Product Full Page Overlay */}
+      {editingProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: '#F5F5F5', zIndex: 9999, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', height: '100%' }}>
+          
+          {/* Header */}
+          <div style={{ background: '#1B5E20', color: '#FFFFFF', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 16, color: '#FFFFFF' }}>
+                <Edit3 size={32} color="#FFFFFF" /> Update Retail Product
+              </h2>
+              <p style={{ margin: '8px 0 0 0', color: '#A5D6A7', fontSize: 16 }}>Edit all product details. Form fields support sharp focus.</p>
+            </div>
+            <button onClick={() => setEditingProduct(null)} style={{ background: '#2E8B57', border: 'none', color: 'white', cursor: 'pointer', padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0 rgba(0,0,0,0.2)' }}>
+              <X size={28}/>
+            </button>
+          </div>
+          
+          {/* Body */}
+          <div style={{ flex: 1, padding: '40px', width: '100%', boxSizing: 'border-box' }}>
+            <form id="update-prod-form" onSubmit={handleUpdateProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 32, background: 'white', padding: 40, borderTop: '6px solid #228B22', boxSizing: 'border-box' }}>
+              
+              {/* Column 1 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Product Name</label>
+                  <input
+                    required
+                    type="text"
+                    value={editingProduct.name || ''}
+                    onChange={e => setEditingProduct({...editingProduct, name: e.target.value})}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>SKU (Stock Keeping Unit)</label>
+                  <input
+                    required
+                    type="text"
+                    value={editingProduct.sku || ''}
+                    onChange={e => setEditingProduct({...editingProduct, sku: e.target.value})}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Category ID</label>
+                  <input
+                    type="text"
+                    value={editingProduct.category_id || ''}
+                    onChange={e => setEditingProduct({...editingProduct, category_id: e.target.value})}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Description</label>
+                  <textarea
+                    rows={4}
+                    value={editingProduct.description || ''}
+                    onChange={e => setEditingProduct({...editingProduct, description: e.target.value})}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', resize: 'vertical', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+                
+              </div>
+
+              {/* Column 2 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Selling Price (ETB)</label>
+                    <input
+                      required
+                      type="number"
+                      step="0.01"
+                      value={editingProduct.price || ''}
+                      onChange={e => setEditingProduct({...editingProduct, price: e.target.value})}
+                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Cost Price (ETB)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingProduct.cost_price || ''}
+                      onChange={e => setEditingProduct({...editingProduct, cost_price: e.target.value})}
+                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Stock Quantity</label>
+                    <input
+                      disabled
+                      type="number"
+                      value={editingProduct.stock || ''}
+                      title="Stock cannot be manually edited here. It is synced from the main store inventory."
+                      style={{ width: '100%', padding: '16px', border: '1px solid #ccc', borderRadius: 0, fontSize: 16, background: '#F5F5F5', outline: 'none', cursor: 'not-allowed', color: '#888', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ fontSize: 11, color: '#8D6E63', marginTop: 4 }}>Syncs from store inventory</div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Reorder Level</label>
+                    <input
+                      required
+                      type="number"
+                      value={editingProduct.reorder_level || ''}
+                      onChange={e => setEditingProduct({...editingProduct, reorder_level: e.target.value})}
+                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Expiry Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={editingProduct.expiry_date ? editingProduct.expiry_date.split('T')[0] : ''}
+                    onChange={e => setEditingProduct({...editingProduct, expiry_date: e.target.value})}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>New Product Image (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setEditingProduct({...editingProduct, new_image: e.target.files[0]})}
+                    style={{ width: '100%', padding: '12px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                  />
+                </div>
+
+              </div>
+
+              {/* Form Actions */}
+              <div style={{ gridColumn: '1 / -1', marginTop: 16, paddingTop: 32, borderTop: '2px solid #8D6E63', display: 'flex', gap: 24, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  style={{ padding: '16px 40px', border: '2px solid #8D6E63', background: '#FFFFFF', color: '#424242', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', cursor: 'pointer', borderRadius: 0 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProduct}
+                  style={{ padding: '16px 40px', border: 'none', background: '#228B22', color: 'white', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', cursor: savingProduct ? 'not-allowed' : 'pointer', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '4px 4px 0 #1B5E20' }}
+                >
+                  <CheckCircle size={20} />
+                  {savingProduct ? 'Saving...' : 'Save Product Updates'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Void Modal */}
       {showVoidModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1801,6 +2129,17 @@ export default function RetailPOS() {
           }}
         />
       )}
+
+      {/* Store Sales Request Modal — Sales Manager requests from General Store */}
+      {showStoreRequestModal && (
+        <SalesStoreRequestModal
+          onClose={() => setShowStoreRequestModal(false)}
+          onSuccess={() => {
+            showToast('✅ Store request submitted! Awaiting Store Keeper release.', 'success');
+          }}
+          showToast={showToast}
+        />
+      )}
     </>
   );
 }
@@ -1816,3 +2155,4 @@ const tabBtn = (active) => ({
   borderRadius: 0, padding: '8px 14px', cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 700 : 400,
 });
+  

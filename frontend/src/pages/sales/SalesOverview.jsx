@@ -363,13 +363,15 @@ const SalesOverview = () => {
         topSelling:       payload.topSelling          ?? [],
         pendingTransfers: payload.pendingTransfers    ?? 0,
         
-        // newly calculated data
+        // Store inventory: for reference breakdown only (not added to grand total)
         store: { totalSKUs: storeTotalSKUs, totalUnits: storeTotalUnits, totalValue: storeTotalValue, categories: storeCategories },
+        // Retail products = the actual sales inventory (already sourced from store)
         retail: { totalSKUs: retailTotalSKUs, totalUnits: retailTotalUnits, totalValue: retailTotalValue, categories: retailCategories },
+        // Grand = ONLY retail products (store items are already reflected here after transfer)
         grand: {
-          totalSKUs: storeTotalSKUs + retailTotalSKUs,
-          totalUnits: storeTotalUnits + retailTotalUnits,
-          totalValue: storeTotalValue + retailTotalValue
+          totalSKUs:   retailTotalSKUs,
+          totalUnits:  retailTotalUnits,
+          totalValue:  retailTotalValue
         }
       });
     } catch (err) {
@@ -474,7 +476,7 @@ const SalesOverview = () => {
             <div style={{ background:'#E8F5E9', borderRadius:0, padding:8 }}><Layers size={18} color={C} /></div>
           </div>
           <div style={{ fontSize:'2.4rem', fontWeight:900, color:CD, letterSpacing:'-.03em', margin:'12px 0 6px' }}>{fmtInt(stats.grand?.totalSKUs)}</div>
-          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Across all inventories</div>
+          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Retail inventory lines</div>
         </div>
 
         {/* Stock Units */}
@@ -484,7 +486,7 @@ const SalesOverview = () => {
             <div style={{ background:'#F1F8E9', borderRadius:0, padding:8 }}><Package size={18} color={CL} /></div>
           </div>
           <div style={{ fontSize:'2.4rem', fontWeight:900, color:CD, letterSpacing:'-.03em', margin:'12px 0 6px' }}>{fmtInt(stats.grand?.totalUnits)}</div>
-          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Total physical items</div>
+          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Total physical units in retail</div>
         </div>
 
         {/* Inventory Value */}
@@ -494,7 +496,7 @@ const SalesOverview = () => {
             <div style={{ background:'#E8F5E9', borderRadius:0, padding:8 }}><DollarSign size={18} color={C} /></div>
           </div>
           <div style={{ fontSize:'1.6rem', fontWeight:900, color:CD, margin:'12px 0 6px' }}>ETB {fmtInt(stats.grand?.totalValue)}</div>
-          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Combined valuation</div>
+          <div style={{ fontSize:12, color:CE, fontWeight:600 }}>Retail inventory value only</div>
         </div>
       </div>
 
@@ -564,13 +566,13 @@ const SalesOverview = () => {
              <span style={{ fontSize:12, fontWeight:800, color:CD, textAlign:'right' }}>ETB {fmt(stats.retail?.totalValue)}</span>
           </div>
 
-          {/* ── OVERALL GRAND TOTAL ── */}
+          {/* ── OVERALL GRAND TOTAL — only from retail inventory ── */}
           <div className="grand-row">
-            <span style={{ fontSize:13, fontWeight:900, color:CD, textTransform:'uppercase' }}>COMBINED TOTAL</span>
+            <span style={{ fontSize:13, fontWeight:900, color:CD, textTransform:'uppercase' }}>INVENTORY TOTAL</span>
             <div />
-            <span style={{ fontSize:13, fontWeight:900, color:CD, textAlign:'right' }}>{fmtInt(stats.grand?.totalSKUs)}</span>
-            <span style={{ fontSize:13, fontWeight:900, color:CD, textAlign:'right' }}>{fmtInt(stats.grand?.totalUnits)}</span>
-            <span style={{ fontSize:14, fontWeight:900, color:C,  textAlign:'right' }}>ETB {fmt(stats.grand?.totalValue)}</span>
+            <span style={{ fontSize:13, fontWeight:900, color:CD, textAlign:'right' }}>{fmtInt(stats.retail?.totalSKUs)}</span>
+            <span style={{ fontSize:13, fontWeight:900, color:CD, textAlign:'right' }}>{fmtInt(stats.retail?.totalUnits)}</span>
+            <span style={{ fontSize:14, fontWeight:900, color:C,  textAlign:'right' }}>ETB {fmt(stats.retail?.totalValue)}</span>
           </div>
         </div>
 

@@ -9,8 +9,6 @@ import RetailPOS from './RetailPOS';
 import ReturnsPage from './ReturnsPage';
 
 import RetailStoreInventory from './RetailStoreInventory';
-import RetailStockOperations from './RetailStockOperations';
-
 import RetailBranches from './RetailBranches';
 import SalesCEOReport from './SalesCEOReport';
 import SalesFinanceReview from './SalesFinanceReview';
@@ -32,7 +30,7 @@ const SalesDashboard = () => {
   const FULL_BLEED = [
     '/sales/staff', '/sales/branches', 
     '/sales/finance-review', '/sales/ceo-report', 
-    '/sales/store-inventory', '/sales/stock-operations',
+    '/sales/store-inventory',
     '/sales/procurement-requests',
     '/sales/sales', '/sales/sales-return',
     '/sales/bids',
@@ -63,7 +61,6 @@ const SalesDashboard = () => {
     { label: 'Inventory', icon: 'package',
       children: [
         { label: 'Store Inventory',  path: '/sales/store-inventory',  icon: 'database', color: '#0891b2' },
-        { label: 'Stock Operations', path: '/sales/stock-operations', icon: 'package',  color: '#3b82f6' },
       ]
     },
     { type: 'divider' },
@@ -101,8 +98,7 @@ const SalesDashboard = () => {
             location.pathname.includes('/sales/finance-review') ? '#E8F5E9' :
             location.pathname.includes('/sales/bids')           ? '#F5F5F5' :
             (
-              location.pathname.includes('/sales/store-inventory') ||
-              location.pathname.includes('/sales/stock-operations')
+              location.pathname.includes('/sales/store-inventory')
             ) ? '#1B5E20' :
             '#F5F5F5',
           minHeight: '100vh',
@@ -122,7 +118,6 @@ const SalesDashboard = () => {
 
             {/* Inventory */}
             <Route path="store-inventory"  element={<RetailStoreInventory />} />
-            <Route path="stock-operations" element={<RetailStockOperations />} />
 
             {/* Staff */}
             <Route path="branches"   element={<RetailBranches />} />
