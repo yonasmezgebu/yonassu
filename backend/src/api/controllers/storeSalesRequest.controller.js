@@ -165,39 +165,20 @@ exports.releaseRequest = async (req, res) => {
       sale_date: new Date(),
     });
 
-    // ALSO CREATE RETAIL TRANSACTION FOR FINANCE
-    // Fetch product unit price if available
-    let unit_price = 0;
-    try {
-      const rp = await trx('retail_products').where('store_material_id', storeReq.product_id).first();
-      if(rp) unit_price = rp.selling_price;
-    } catch(e) {}
-    
-    const total_amount = unit_price * storeReq.quantity_requested;
-    const invNo = 'INV-' + Date.now().toString().slice(-6);
-    
-    const [txId] = await trx('retail_transactions').insert({
-      invoice_number: invNo,
-      total_amount,
-      payment_method: 'STORE_RELEASE',
-      customer_phone: storeReq.customer_phone || '',
-      sale_type: 'Store Direct',
-      received_by: storeReq.requested_by_name,
-      created_at: new Date()
-    });
-
-    await trx('retail_transaction_items').insert({
-      transaction_id: txId,
-      product_id: storeReq.product_id, // Note: this is store material id, but we map it for record
-      quantity: storeReq.quantity_requested,
-      unit_price: unit_price,
-      line_total: total_amount,
-      created_at: new Date()
-    });
+    // ALSO SYNC RETAIL PRODUCTS INVENTORY (Decrement so they match exactly)
+    const gsm = await trx('general_store_materials').where('id', storeReq.product_id).first();
+    if (gsm && gsm.material_id) {
+      await trx('retail_products')
+        .where('sku', gsm.material_id)
+        .decrement('stock_quantity', storeReq.quantity_requested)
+        .catch(() => {}); // Best effort
+    }
 
     // Update request status → Sold
     await trx('store_sales_requests').where('id', reqId).update({
       status: 'Sold',
+      store_keeper_signature: req.body.store_keeper_signature,
+      store_keeper_notes: req.body.notes || req.body.store_keeper_notes,
       updated_at: new Date(),
     });
 

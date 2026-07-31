@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, query, param } = require('express-validator');
 const POSController = require('../controllers/pos.controller');
 const { validate } = require('../middleware/validate.middleware');
-const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { authenticate, authorize, authorizeAny } = require('../middleware/auth.middleware');
 const { limiters } = require('../../config/rateLimit');
 const searchProductsValidation = [
   query('q')
@@ -441,5 +441,13 @@ router.post('/collect-online-order', authenticate, authorize(['pos:create']),
 router.post('/checkout-retail', authenticate, authorize(['pos:create']), POSController.checkoutRetail);
 router.get('/orders/pending', authenticate, authorize(['pos:read']), POSController.getPendingRetailOrders);
 router.delete('/orders/:id', authenticate, authorize(['pos:update']), POSController.deleteRetailOrder);
+
+// === NEW CART WORKFLOW ROUTES ===
+router.post('/cart/submit-finance', authenticate, authorize(['pos:create']), POSController.submitCartToFinance);
+router.post('/cart/:id/finance-approve', authenticate, authorize(['finance:verify', 'pos:update']), POSController.financeApproveCart);
+router.post('/cart/sign-store', authenticate, authorize(['pos:create']), POSController.signAndRequestStore);
+router.get('/cart/store-request/:id', authenticate, authorize(['pos:read']), POSController.checkCartStoreRequestStatus);
+router.get('/cart/pending', authenticate, authorize(['pos:read']), POSController.getPendingCartsByStatus);
+router.delete('/cart/:id', authenticate, authorize(['pos:update']), POSController.deleteRetailCart);
 
 module.exports = router;

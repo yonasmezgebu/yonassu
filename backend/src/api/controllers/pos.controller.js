@@ -2265,7 +2265,7 @@ exports.submitDaily = catchAsync(async (req, res) => {
 
 
 exports.checkoutRetail = catchAsync(async (req, res) => {
-  const { sale_type, items, payment } = req.body;
+  const { sale_type, items, payment, cart_id } = req.body;
   if (!items || items.length === 0) throw new AppError('Cart is empty', 400);
 
   let subtotal = 0;
@@ -2332,9 +2332,23 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
         total: itemSubtotal,
         source: item.product_name || 'retail'
       });
-      // Deduct inventory
-      await trx('retail_products').where('id', item.product_id).decrement('stock_quantity', item.quantity);
+      // Deduct inventory ONLY if it's a direct walk-in sale (no cart_id)
+      // If it has a cart_id, the Store Keeper already decremented it during releaseRequest!
+      if (!cart_id) {
+        await trx('retail_products').where('id', item.product_id).decrement('stock_quantity', item.quantity);
+        // Also sync General Store so they always match!
+        const rp = await trx('retail_products').where('id', item.product_id).first();
+        if (rp && rp.sku) {
+           await trx('general_store_materials').where('material_id', rp.sku).decrement('quantity_in_store', item.quantity).catch(()=>{});
+        }
+      }
     }
+
+    // Mark the pos cart as FINALIZED if it was a store-released cart
+    if (cart_id) {
+      await trx('retail_pos_carts').where('id', cart_id).update({ status: 'FINALIZED', updated_at: new Date() }).catch(() => {});
+    }
+
     return { id: saleId, invoice_number: invoiceNumber };
   });
 
@@ -2375,3 +2389,288 @@ exports.deleteRetailOrder = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Order completely deleted' });
 });
 
+
+// === NEW CART WORKFLOW FUNCTIONS ===
+
+exports.submitCartToFinance = async (req, res) => {
+  try {
+    const { cart_code, customer_name, customer_phone, payment_method, payment_amount, payment_reference, bank_name, account_number, telbir_number, txn_id, total_amount, items, cashier_name } = req.body;
+    const { db } = require('../../config/database');
+
+    const [cartId] = await db('retail_pos_carts').insert({
+      cart_code: cart_code || ('CART-' + Date.now()),
+      cashier_id: req.user.id,
+      cashier_name: cashier_name || req.user.fullName || req.user.name,
+      customer_name, customer_phone, payment_method, payment_amount,
+      payment_reference, bank_name, account_number, telbir_number, txn_id,
+      total_amount, items: JSON.stringify(items || []),
+      status: 'PENDING_FINANCE', created_at: new Date(), updated_at: new Date()
+    });
+
+    res.json({ status: 'success', data: { cart_id: cartId } });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.financeApproveCart = async (req, res) => {
+  res.json({ status: 'success', message: 'Finance approval handled in finance portal' });
+};
+
+exports.signAndRequestStore = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { cart_code, customer_name, customer_phone, signature, notes, items, total_amount, payment_method, payment_amount, txn_id, cashier_name } = req.body;
+
+    const request_code = cart_code || `CART-${Date.now().toString(36).toUpperCase()}`;
+
+    const result = await db.transaction(async (trx) => {
+      // 1. Save cart to retail_pos_carts for temporary holding
+      const [cartId] = await trx('retail_pos_carts').insert({
+        cart_code: request_code,
+        cashier_id: req.user.id,
+        cashier_name: cashier_name || req.user.fullName || req.user.name,
+        customer_name, customer_phone, payment_method, payment_amount,
+        payment_reference: txn_id,
+        total_amount, items: JSON.stringify(items || []),
+        status: 'PENDING_STORE',
+        sales_manager_signature: signature || null,
+        notes: notes || null,
+        created_at: new Date(), updated_at: new Date()
+      });
+
+      // 2. Insert items directly into store_sales_requests
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.product_id && !item.id && !item.name && !item.product_name) continue;
+        
+        await trx('store_sales_requests').insert({
+          request_code: `${request_code}-${i+1}`,
+          store_module: 'general_store',
+          product_id: item.id || item.product_id,
+          product_name: item.name || item.product_name,
+          quantity_requested: item.quantity || item.qty || 1,
+          customer_name: customer_name || 'Walk-in',
+          customer_phone: customer_phone || '',
+          requested_by_id: req.user.id,
+          requested_by_name: req.user.fullName || req.user.name,
+          notes: `From POS Cart ${request_code}`,
+          status: 'Pending',
+          cart_items: JSON.stringify(items),
+          digital_signature: signature || null
+        });
+      }
+      return cartId;
+    });
+
+    res.json({ status: 'success', data: { cart_id: result, request_code } });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.getPendingCartsByStatus = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const { db } = require('../../config/database');
+    const isManager = req.user?.roles?.some(r => ['Sales Manager', 'Admin', 'CEO'].includes(r));
+    
+    // Fetch carts that are waiting for store
+    let query = db('retail_pos_carts');
+
+    if (status) {
+      query = query.whereIn('status', status.split(','));
+    } else {
+      query = query.whereIn('status', ['PENDING_STORE', 'APPROVED_BY_STORE', 'REJECTED_BY_STORE']);
+    }
+
+    if (!isManager) {
+      query = query.where('cashier_id', req.user.id);
+    }
+
+    const carts = await query.orderBy('created_at', 'desc');
+
+    // Live sync logic: Check if store released the items
+    for (const cart of carts) {
+      if (cart.status === 'PENDING_STORE') {
+        const storeReqs = await db('store_sales_requests')
+          .where('request_code', 'like', `${cart.cart_code}%`);
+          
+        if (storeReqs.length > 0) {
+          const allReleased = storeReqs.every(r => r.status === 'Released' || r.status === 'Sold');
+          const anyRejected = storeReqs.some(r => r.status === 'Rejected');
+          
+          if (anyRejected) {
+            cart.status = 'REJECTED_BY_STORE';
+            cart.notes = 'Store Rejected: ' + (storeReqs.find(r => r.status === 'Rejected')?.rejection_reason || '');
+            await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, notes: cart.notes, updated_at: new Date() });
+          } else if (allReleased) {
+            cart.status = 'APPROVED_BY_STORE';
+            await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, updated_at: new Date() });
+          }
+        }
+      }
+
+      // Parse items JSON for the frontend
+      try {
+        if (typeof cart.items === 'string') {
+          cart.items = JSON.parse(cart.items);
+        }
+      } catch (e) {
+        cart.items = [];
+      }
+    }
+    
+    res.json({ status: 'success', data: carts });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+
+exports.storeReleaseCart = async (req, res) => {
+  const { db } = require('../../config/database');
+  const trx = await db.transaction();
+  try {
+    // req.params.id can be store_sales_requests.id OR retail_pos_carts.id — resolve both
+    const paramId = parseInt(req.params.id);
+    const { store_keeper_notes } = req.body;
+
+    // Try to find the store_sales_request directly
+    let storeReq = await trx('store_sales_requests').where('id', paramId).first();
+    // If not found by direct id, try to find via retail_pos_carts
+    if (!storeReq) {
+      const cart = await trx('retail_pos_carts').where('id', paramId).first();
+      if (cart && cart.store_request_id) {
+        storeReq = await trx('store_sales_requests').where('id', cart.store_request_id).first();
+      }
+    }
+    if (!storeReq) { await trx.rollback(); return res.status(404).json({ status: 'error', message: 'Store request not found' }); }
+    if (storeReq.status !== 'Pending') { await trx.rollback(); return res.status(400).json({ status: 'error', message: `Cannot release — status is: ${storeReq.status}` }); }
+
+    // Deduct inventory for each item
+    let items = [];
+    try { items = JSON.parse(storeReq.cart_items || '[]'); } catch(e) {}
+
+    for (const item of items) {
+      const mat = await trx('general_store_materials')
+        .where('material_name', 'like', `%${item.name || item.product_name || ''}%`).first();
+      if (mat) {
+        const deduct = parseFloat(item.qty || item.quantity || 1);
+        const newQty = Math.max(0, parseFloat(mat.quantity_in_store || 0) - deduct);
+        await trx('general_store_materials').where('id', mat.id).update({ quantity_in_store: newQty, updated_at: new Date() });
+        await trx('general_movement_log').insert({
+          material_id: mat.material_id, material_name: mat.material_name,
+          action_type: 'Issue to Department', quantity: deduct,
+          department: 'Sales',
+          registered_by: req.user?.fullName || req.user?.name || 'Store Keeper',
+          notes: `POS Sale #${storeReq.request_code} - Customer: ${storeReq.customer_name || 'N/A'}`,
+          created_at: new Date()
+        }).catch(() => {});
+      }
+    }
+
+    // Update store_sales_requests status to 'Released'
+    await trx('store_sales_requests').where('id', storeReq.id).update({
+      status: 'Released',
+      store_keeper_notes: store_keeper_notes || '',
+      updated_at: new Date()
+    });
+    // Update retail_pos_carts status to STORE_RELEASED
+    await trx('retail_pos_carts').where('store_request_id', storeReq.id).update({
+      status: 'STORE_RELEASED',
+      updated_at: new Date()
+    });
+
+    await trx.commit();
+    res.json({ status: 'success', message: 'Released. Stock deducted successfully.' });
+  } catch (error) {
+    await trx.rollback();
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.storeRejectCart = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const paramId = parseInt(req.params.id);
+    const { reject_reason } = req.body;
+
+    // Resolve whether paramId is store_sales_requests.id or retail_pos_carts.id
+    let storeReq = await db('store_sales_requests').where('id', paramId).first();
+    if (!storeReq) {
+      const cart = await db('retail_pos_carts').where('id', paramId).first();
+      if (cart && cart.store_request_id) {
+        storeReq = await db('store_sales_requests').where('id', cart.store_request_id).first();
+      }
+    }
+    if (!storeReq) return res.status(404).json({ status: 'error', message: 'Request not found' });
+    if (storeReq.status !== 'Pending') return res.status(400).json({ status: 'error', message: `Cannot reject — status is: ${storeReq.status}` });
+
+    await db('store_sales_requests').where('id', storeReq.id).update({
+      status: 'Rejected',
+      rejection_reason: reject_reason || 'Rejected by Store Keeper',
+      updated_at: new Date()
+    });
+    await db('retail_pos_carts').where('store_request_id', storeReq.id).update({
+      status: 'STORE_REJECTED',
+      updated_at: new Date()
+    });
+    res.json({ status: 'success', message: 'Cart request rejected.' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+
+exports.deleteRetailCart = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+
+    // Fetch the cart to get its cart_code before deleting
+    const cart = await db('retail_pos_carts').where({ id }).first();
+    if (!cart) return res.status(404).json({ status: 'error', message: 'Cart not found' });
+
+    await db.transaction(async (trx) => {
+      // 1. Delete all linked store_sales_requests (cleans store queue)
+      if (cart.cart_code) {
+        await trx('store_sales_requests')
+          .where('request_code', 'like', `${cart.cart_code}%`)
+          .del();
+      }
+      // 2. Delete the cart itself (cleans POS queue)
+      await trx('retail_pos_carts').where({ id }).del();
+    });
+
+    res.json({ status: 'success', message: 'Cart and all related store requests permanently deleted' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.checkCartStoreRequestStatus = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const cart = await db('retail_pos_carts').where('id', req.params.id).first();
+    if (!cart) return res.status(404).json({ status: 'error', message: 'Cart not found' });
+    
+    // Check associated store requests (created with request_code = cart_code + '-i')
+    const requests = await db('store_sales_requests').where('request_code', 'like', `${cart.cart_code}%`);
+    if (requests.length > 0) {
+      const rejected = requests.find(r => r.status === 'Rejected');
+      if (rejected) {
+        return res.json({ status: 'rejected', reject_reason: rejected.rejection_reason || 'Rejected by store keeper' });
+      }
+      
+      const allApproved = requests.every(r => r.status === 'Sold' || r.status === 'Approved');
+      if (allApproved) {
+        return res.json({ status: 'approved' });
+      }
+    }
+    
+    res.json({ status: 'pending' });
+  } catch(e) {
+    res.status(500).json({ status: 'error', message: e.message });
+  }
+};
