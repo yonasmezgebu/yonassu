@@ -149,27 +149,35 @@ exports.releaseRequest = async (req, res) => {
       notes: notes || null,
     });
 
-    // Auto-create sale record
-    const sale_code = genCode('SALE');
-    const unit_value = null; // can be derived later from store material value if needed
-    await trx('store_sales_records').insert({
-      sale_code,
-      request_id: reqId,
-      product_id: storeReq.product_id,
-      product_name: storeReq.product_name,
-      quantity_sold: storeReq.quantity_requested,
-      sold_by_id: storeReq.requested_by_id,
-      sold_by_name: storeReq.requested_by_name,
-      customer_name: storeReq.customer_name,
-      customer_phone: storeReq.customer_phone,
-      sale_date: new Date(),
-    });
+    // ── DIGITAL PAYMENT (Bank / Telebirr): AUDIT ONLY — do NOT create a sale record ──
+    // The payment was already recorded in finance_income_submissions by Finance.
+    // We only deduct stock (done above) and log to audit (general_movement_log, done above).
+    const isDigitalPayment = ['BANK_TRANSFER', 'TELBIR'].includes((storeReq.payment_method || '').toUpperCase());
+
+    if (!isDigitalPayment) {
+      // CASH: auto-create sale record as usual
+      const sale_code = 'SALE-' + Date.now().toString().slice(-6) + Math.floor(Math.random()*1000);
+      await trx('store_sales_records').insert({
+        sale_code,
+        request_id: reqId,
+        product_id: storeReq.product_id,
+        product_name: storeReq.product_name,
+        quantity_sold: storeReq.quantity_requested,
+        sold_by_id: storeReq.requested_by_id,
+        sold_by_name: storeReq.requested_by_name,
+        customer_name: storeReq.customer_name,
+        customer_phone: storeReq.customer_phone,
+        sale_date: new Date(),
+      });
+    } else {
+      // DIGITAL: write an AUDIT-ONLY entry to general_movement_log (already done above)
+      // Nothing extra needed — finance_income_submissions holds the verified record.
+    }
 
     // ALSO SYNC RETAIL PRODUCTS INVENTORY (Decrement so they match exactly)
-    const gsm = await trx('general_store_materials').where('id', storeReq.product_id).first();
-    if (gsm && gsm.material_id) {
+    if (storeReq.product_id) {
       await trx('retail_products')
-        .where('sku', gsm.material_id)
+        .where('sku', storeReq.product_id)
         .decrement('stock_quantity', storeReq.quantity_requested)
         .catch(() => {}); // Best effort
     }

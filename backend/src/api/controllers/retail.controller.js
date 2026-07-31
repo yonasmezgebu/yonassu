@@ -26,10 +26,11 @@ exports.getProducts = catchAsync(async (req, res) => {
       'p.id', 'p.name', 'p.sku',
       'p.price',
       'p.category_id', 'p.product_image', 'p.description',
-      'p.stock_quantity', 'p.reorder_level',
+      db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as stock_quantity'), 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
     )
-    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id');
+    .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id')
+    .leftJoin('general_store_materials as gsm', 'p.sku', 'gsm.material_id');
   // Only filter active unless manager requests all
   if (!include_inactive || include_inactive === 'false') {
     query = query.where('p.is_active', true);
@@ -53,10 +54,11 @@ exports.getProductById = catchAsync(async (req, res) => {
       'p.id', 'p.name', 'p.sku',
       'p.price',
       'p.category_id', 'p.product_image', 'p.description',
-      'p.stock_quantity', 'p.reorder_level',
+      db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as stock_quantity'), 'p.reorder_level',
       'p.is_active', 'pc.name as category_name'
     )
     .leftJoin('retail_categories as pc', 'p.category_id', 'pc.id')
+    .leftJoin('general_store_materials as gsm', 'p.sku', 'gsm.material_id')
     .where('p.id', req.params.id)
     .first();
   if (!product) throw new AppError('Product not found', 404);
@@ -95,7 +97,11 @@ exports.getCart = catchAsync(async (req, res) => {
 
 exports.addToCart = catchAsync(async (req, res) => {
   const { product_id, quantity = 1 } = req.body;
-  const product = await db('retail_products').where({ id: product_id, is_active: true }).first();
+  const product = await db('retail_products as p')
+    .select('p.*', db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as real_stock'))
+    .leftJoin('general_store_materials as gsm', 'p.sku', 'gsm.material_id')
+    .where({ 'p.id': product_id, 'p.is_active': true }).first();
+  if (product) product.stock_quantity = product.real_stock;
   if (!product) throw new AppError('Product not found', 404);
 
   const existing = await db('retail_cart_items').where({ user_id: req.user.id, product_id }).first();
@@ -154,7 +160,11 @@ exports.placeOrder = catchAsync(async (req, res) => {
   const result = await transaction(async (trx) => {
     for (const item of cartItems) {
       // Check if this product tracks stock (stock_quantity IS NOT NULL)
-      const product = await trx('retail_products').where({ id: item.product_id }).first();
+      const product = await trx('retail_products as p')
+    .select('p.*', db.raw('COALESCE(gsm.quantity_in_store, p.stock_quantity) as real_stock'))
+    .leftJoin('general_store_materials as gsm', 'p.sku', 'gsm.material_id')
+    .where({ 'p.id': item.product_id }).first();
+  if (product) product.stock_quantity = product.real_stock;
       if (product && product.stock_quantity !== null && product.stock_quantity !== undefined) {
         if (product.stock_quantity < item.quantity) {
           throw new AppError(`Insufficient stock for "${item.name}". Available: ${product.stock_quantity}`, 400);

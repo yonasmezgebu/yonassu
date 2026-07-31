@@ -51,7 +51,36 @@ router.get('/live-income', authenticate, async (req, res) => {
       _rental_order_id: o.id
     }));
 
-    const all = [...submissions, ...rentalRows]
+    // 3) Retail POS Digital Payments that need Finance approval
+    const pendingPos = await knex('retail_pos_carts')
+      .where('status', 'PENDING_FINANCE')
+      .orderBy('updated_at', 'desc');
+
+    const posRows = pendingPos.map(c => ({
+      id: `pos-cart-${c.id}`,
+      department: 'Retail POS',
+      submitted_by: c.cashier_name || 'POS System',
+      amount: parseFloat(c.payment_amount || c.total_amount || 0),
+      currency: 'ETB',
+      reference_no: c.txn_id || c.payment_reference || c.cart_code,
+      description: `POS Sale (${c.payment_method}) - ${c.customer_name || 'Walk-in'}`,
+      status: 'Pending',
+      manual_details: JSON.stringify({
+        paymentMethod: c.payment_method,
+        paymentReference: c.txn_id || c.payment_reference,
+        amount: parseFloat(c.payment_amount || c.total_amount || 0),
+        receivedFrom: c.customer_name || 'Walk-in',
+        bankName: c.bank_name,
+        accountNumber: c.account_number,
+        telebirrNumber: c.telbir_number
+      }),
+      created_at: c.updated_at || c.created_at,
+      updated_at: c.updated_at || c.created_at,
+      _source: 'retail_pos_cart',
+      _pos_cart_id: c.id
+    }));
+
+    const all = [...submissions, ...rentalRows, ...posRows]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     res.json({ success: true, data: all });
@@ -111,6 +140,48 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
         updated_at: order.updated_at || order.created_at,
         _source: 'rental_order',
         _rental_order_id: order.id
+      };
+
+      return res.json({
+        success: true,
+        data: {
+          submission: syntheticSubmission,
+          transactions: [],
+          systemTotal: amount,
+          transactionCount: 1
+        }
+      });
+    }
+
+    // ── Handle synthetic 'pos-cart-{n}' IDs (retail_pos_carts awaiting finance) ──
+    if (String(id).startsWith('pos-cart-')) {
+      const cartId = String(id).replace('pos-cart-', '');
+      const cart = await knex('retail_pos_carts').where({ id: cartId }).first();
+      if (!cart) return res.status(404).json({ success: false, message: 'POS Cart not found' });
+
+      const amount = parseFloat(cart.payment_amount || cart.total_amount || 0);
+      const syntheticSubmission = {
+        id,
+        department: 'Retail POS',
+        submitted_by: cart.cashier_name || 'POS System',
+        amount,
+        currency: 'ETB',
+        reference_no: cart.txn_id || cart.payment_reference || cart.cart_code,
+        description: `POS Sale (${cart.payment_method}) - ${cart.customer_name || 'Walk-in'}`,
+        status: 'Pending',
+        manual_details: JSON.stringify({
+          paymentMethod: cart.payment_method,
+          paymentReference: cart.txn_id || cart.payment_reference,
+          amount,
+          receivedFrom: cart.customer_name || 'Walk-in',
+          bankName: cart.bank_name,
+          accountNumber: cart.account_number,
+          telebirrNumber: cart.telbir_number
+        }),
+        created_at: cart.updated_at || cart.created_at,
+        updated_at: cart.updated_at || cart.created_at,
+        _source: 'retail_pos_cart',
+        _pos_cart_id: cart.id
       };
 
       return res.json({
@@ -364,6 +435,83 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       return res.json({ success: true, message: 'Car Rental payment approved and order confirmed successfully.' });
     }
 
+    // ── Handle synthetic 'pos-cart-{n}' IDs ────────────────────────
+    if (String(id).startsWith('pos-cart-')) {
+      const cartId = String(id).replace('pos-cart-', '');
+      const cart = await knex('retail_pos_carts').where({ id: cartId }).first();
+      if (!cart) return res.status(404).json({ success: false, message: 'POS Cart not found' });
+      if (cart.status !== 'PENDING_FINANCE') return res.status(400).json({ success: false, message: 'Cart is not pending finance' });
+
+      await knex.transaction(async trx => {
+        // Update cart status to PENDING_STORE so the sales manager can send it to the store
+        await trx('retail_pos_carts').where({ id: cartId }).update({
+          status: 'PENDING_STORE',
+          updated_at: knex.fn.now()
+        });
+
+        // Generate store sales requests for inventory release
+        let items = [];
+        try { if (typeof cart.items === 'string') items = JSON.parse(cart.items); } catch (e) { items = []; }
+        
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (!item.id && !item.product_id && !item.name) continue;
+          await trx('store_sales_requests').insert({
+            request_code: `${cart.cart_code}-${i + 1}`,
+            store_module: 'general_store',
+            product_id: item.id || item.product_id,
+            product_name: item.name || item.product_name,
+            quantity_requested: item.qty || item.quantity || 1,
+            customer_name: cart.customer_name || 'Walk-in',
+            customer_phone: cart.customer_phone || '',
+            requested_by_id: cart.cashier_id,
+            requested_by_name: cart.cashier_name,
+            notes: `Finance Verified (${cart.payment_method}) — Cart ${cart.cart_code}`,
+            status: 'Pending',
+            cart_items: JSON.stringify(items),
+            digital_signature: finance_signature || null,
+          });
+        }
+
+        // Insert a real submission record so it shows as Approved in history
+        const amount = parseFloat(cart.payment_amount || cart.total_amount || 0);
+        await trx('finance_income_submissions').insert({
+          department: 'Retail POS',
+          submitted_by: cart.cashier_name || 'POS System',
+          amount,
+          reference_no: cart.txn_id || cart.payment_reference || cart.cart_code,
+          description: `POS Sale (${cart.payment_method}) - ${cart.customer_name || 'Walk-in'}`,
+          status: 'Approved',
+          manual_details: JSON.stringify({
+            paymentMethod: cart.payment_method,
+            paymentReference: cart.txn_id || cart.payment_reference,
+            amount,
+            receivedFrom: cart.customer_name || 'Walk-in',
+            financeSignature: finance_signature || null,
+            financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer'
+          }),
+          created_at: knex.fn.now(),
+          updated_at: knex.fn.now()
+        });
+
+        // Insert into receivables for audit
+        await trx('finance_receivables').insert({
+          customer_name: cart.customer_name || 'Walk-in Customer',
+          invoice_no: `POS-${cart.cart_code || cartId}`,
+          invoice_date: knex.fn.now(),
+          due_date: knex.fn.now(),
+          total_amount: amount,
+          amount_paid: amount,
+          outstanding_balance: 0,
+          status: 'Paid',
+          department_source: 'Retail POS',
+          manual_details: JSON.stringify({ cart_id: String(cart.id), cart_code: cart.cart_code })
+        });
+      });
+
+      return res.json({ success: true, message: 'POS digital payment verified and sent to store for release.' });
+    }
+
     // ── Standard finance_income_submissions approval ───────────────
     const submission = await knex('finance_income_submissions').where({ id }).first();
     if (!submission) {
@@ -577,6 +725,17 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         updated_at: knex.fn.now()
       });
       return res.json({ success: true, message: 'Payment rejected.' });
+    }
+
+    // Handle synthetic pos-cart-N IDs
+    if (String(id).startsWith('pos-cart-')) {
+      const cartId = String(id).replace('pos-cart-', '');
+      await knex('retail_pos_carts').where({ id: cartId }).update({
+        status: 'REJECTED_BY_FINANCE',
+        notes: `Finance Rejected: ${reason}`,
+        updated_at: knex.fn.now()
+      });
+      return res.json({ success: true, message: 'POS Digital Payment rejected.' });
     }
 
     // Handle synthetic agrirent-N IDs

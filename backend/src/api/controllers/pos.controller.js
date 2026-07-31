@@ -2310,10 +2310,10 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       cashier_id: req.user.id,
       sale_date: db.fn.now(),
       status_id: completedStatus.id,
-      sale_type: (sale_type || 'walk_in').toLowerCase().replace('-', '_'),
+      sale_type: ((sale_type || 'walk_in').toLowerCase().replace('-', '_') === 'walkin' ? 'walk_in' : (sale_type || 'walk_in').toLowerCase().replace('-', '_')),
       payment_reference: paymentRef,
       notes: paymentNotes || null,
-      is_submitted: false
+      is_submitted: paymentMethodId !== 1 // Cash goes to audit (false), digital bypasses (true)
     });
 
     for (const item of items) {
@@ -2413,9 +2413,122 @@ exports.submitCartToFinance = async (req, res) => {
   }
 };
 
-exports.financeApproveCart = async (req, res) => {
-  res.json({ status: 'success', message: 'Finance approval handled in finance portal' });
+exports.getPendingFinanceCarts = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const carts = await db('retail_pos_carts')
+      .where('status', 'PENDING_FINANCE')
+      .orderBy('created_at', 'desc');
+    for (const cart of carts) {
+      try { if (typeof cart.items === 'string') cart.items = JSON.parse(cart.items); } catch (e) { cart.items = []; }
+    }
+    res.json({ status: 'success', data: carts });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
 };
+
+exports.financeRejectCart = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+    const { reason } = req.body;
+    await db('retail_pos_carts').where({ id }).update({
+      status: 'REJECTED_BY_FINANCE',
+      notes: `Finance Rejected: ${reason || 'No reason given'}`,
+      updated_at: new Date(),
+    });
+    res.json({ status: 'success', message: 'Cart rejected by finance' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.financeApproveCart = async (req, res) => {
+  try {
+    const { db } = require('../../config/database');
+    const { id } = req.params;
+    const { finance_officer_name, finance_signature, verification_notes } = req.body;
+
+    const cart = await db('retail_pos_carts').where({ id }).first();
+    if (!cart) return res.status(404).json({ status: 'error', message: 'Cart not found' });
+    if (cart.status !== 'PENDING_FINANCE') {
+      return res.status(400).json({ status: 'error', message: `Cart is ${cart.status}, cannot approve` });
+    }
+
+    let items = [];
+    try { items = typeof cart.items === 'string' ? JSON.parse(cart.items) : (cart.items || []); } catch (e) {}
+
+    await db.transaction(async (trx) => {
+      // 1. Record in finance_income_submissions (receivable book entry)
+      const paymentDesc = cart.payment_method === 'BANK_TRANSFER'
+        ? `Bank Transfer - ${cart.bank_name || ''} Ref: ${cart.payment_reference || cart.txn_id || ''}`
+        : `Telebirr - ${cart.telbir_number || ''} Ref: ${cart.payment_reference || cart.txn_id || ''}`;
+
+      const [submissionId] = await trx('finance_income_submissions').insert({
+        department: 'Retail POS',
+        submitted_by: cart.cashier_name,
+        amount: cart.total_amount || cart.payment_amount || 0,
+        currency: 'ETB',
+        reference_no: cart.txn_id || cart.payment_reference || cart.cart_code,
+        description: `POS Sale (${cart.payment_method}) - ${cart.customer_name || 'Walk-in'} | Verified by: ${finance_officer_name || 'Finance'}`,
+        status: 'approved',
+        manual_details: JSON.stringify({
+          payment_method: cart.payment_method,
+          payment_reference: cart.payment_reference || cart.txn_id,
+          bank_name: cart.bank_name,
+          account_number: cart.account_number,
+          telbir_number: cart.telbir_number,
+          customer_name: cart.customer_name,
+          customer_phone: cart.customer_phone,
+          items,
+          finance_officer: finance_officer_name,
+          finance_signature,
+          verified_at: new Date().toISOString(),
+          verification_notes: verification_notes || '',
+          note: 'AUDIT_ONLY — Not in retail_transactions (digital payment)',
+        }),
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      // 2. Create store_sales_requests (so store can release the items)
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.id && !item.product_id && !item.name) continue;
+        await trx('store_sales_requests').insert({
+          request_code: `${cart.cart_code}-${i + 1}`,
+          store_module: 'general_store',
+          product_id: item.id || item.product_id,
+          product_name: item.name || item.product_name,
+          quantity_requested: item.qty || item.quantity || 1,
+          customer_name: cart.customer_name || 'Walk-in',
+          customer_phone: cart.customer_phone || '',
+          requested_by_id: cart.cashier_id,
+          requested_by_name: cart.cashier_name,
+          notes: `Finance Verified (${cart.payment_method}) — Cart ${cart.cart_code}`,
+          status: 'Pending',
+          cart_items: JSON.stringify(items),
+          digital_signature: finance_signature || null,
+          payment_method: cart.payment_method || null,
+        });
+      }
+
+      // 3. Update cart status → PENDING_STORE, link submission
+      await trx('retail_pos_carts').where({ id }).update({
+        status: 'PENDING_STORE',
+        finance_submission_id: submissionId,
+        notes: `Finance Approved by ${finance_officer_name || 'Finance Officer'} | ${verification_notes || ''}`,
+        updated_at: new Date(),
+      });
+    });
+
+    res.json({ status: 'success', message: 'Payment verified. Items sent to store for release.' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 
 exports.signAndRequestStore = async (req, res) => {
   try {
@@ -2457,7 +2570,8 @@ exports.signAndRequestStore = async (req, res) => {
           notes: `From POS Cart ${request_code}`,
           status: 'Pending',
           cart_items: JSON.stringify(items),
-          digital_signature: signature || null
+          digital_signature: signature || null,
+          payment_method: payment_method || 'CASH'
         });
       }
       return cartId;
@@ -2481,7 +2595,7 @@ exports.getPendingCartsByStatus = async (req, res) => {
     if (status) {
       query = query.whereIn('status', status.split(','));
     } else {
-      query = query.whereIn('status', ['PENDING_STORE', 'APPROVED_BY_STORE', 'REJECTED_BY_STORE']);
+      query = query.whereIn('status', ['PENDING_STORE', 'APPROVED_BY_STORE', 'REJECTED_BY_STORE', 'PENDING_FINANCE', 'REJECTED_BY_FINANCE']);
     }
 
     if (!isManager) {

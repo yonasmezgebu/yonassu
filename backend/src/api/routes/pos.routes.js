@@ -444,7 +444,9 @@ router.delete('/orders/:id', authenticate, authorize(['pos:update']), POSControl
 
 // === NEW CART WORKFLOW ROUTES ===
 router.post('/cart/submit-finance', authenticate, authorize(['pos:create']), POSController.submitCartToFinance);
+router.get('/cart/pending-finance', authenticate, authorize(['finance:verify', 'finance:read', 'pos:read']), POSController.getPendingFinanceCarts);
 router.post('/cart/:id/finance-approve', authenticate, authorize(['finance:verify', 'pos:update']), POSController.financeApproveCart);
+router.post('/cart/:id/finance-reject', authenticate, authorize(['finance:verify', 'pos:update']), POSController.financeRejectCart);
 router.post('/cart/sign-store', authenticate, authorize(['pos:create']), POSController.signAndRequestStore);
 router.get('/cart/store-request/:id', authenticate, authorize(['pos:read']), POSController.checkCartStoreRequestStatus);
 router.get('/cart/pending', authenticate, authorize(['pos:read']), POSController.getPendingCartsByStatus);
