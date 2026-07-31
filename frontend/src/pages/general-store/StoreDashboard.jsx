@@ -14,7 +14,6 @@ import {
 
 import StoreReports from './StoreReports';
 import StoreCarRentingRequests from './StoreCarRentingRequests';
-import StoreSalesRequests from './StoreSalesRequests';
 
 import styles from './StoreDashboard.module.css';
 
@@ -27,11 +26,10 @@ const GeneralStoreDashboard = () => {
       children: [
         { label: '1. Consumables Inventory', path: '/general-store/inventory',        icon: 'list',           color: '#3b82f6' },
         { label: '2. Register New Item',     path: '/general-store/register',         icon: 'plus',           color: '#22c55e' },
-        { label: '3. Issue to Department',   path: '/general-store/issue',                    icon: 'arrow-up-right', color: '#f59e0b' },
-        { label: '4. Sales Requests (Signed)', path: '/general-store/sales-requests',           icon: 'send',           color: '#228B22' },
-        { label: '5. Low Stock Alerts',        path: '/general-store/alerts',                   icon: 'bell',           color: '#ef4444' },
-        { label: '6. Movement Logs',           path: '/general-store/logs',                     icon: 'list',           color: '#6366f1' },
-        { label: '7. Stock Valuation',         path: '/general-store/valuation',                icon: 'dollar-sign',    color: '#8b5cf6' },
+        { label: '3. Issue to Department',   path: '/general-store/issue',            icon: 'arrow-up-right', color: '#f59e0b' },
+        { label: '4. Low Stock Alerts',      path: '/general-store/alerts',           icon: 'bell',           color: '#ef4444' },
+        { label: '5. Movement Logs',         path: '/general-store/logs',             icon: 'list',           color: '#6366f1' },
+        { label: '6. Stock Valuation',       path: '/general-store/valuation',        icon: 'dollar-sign',    color: '#8b5cf6' },
       ]
     },
     { type: 'divider' },
@@ -55,7 +53,6 @@ const GeneralStoreDashboard = () => {
             <Route path="alerts"           element={<GSAlerts />} />
             <Route path="logs"             element={<GSLogs />} />
             <Route path="valuation"        element={<GSValuation />} />
-            <Route path="sales-requests"   element={<StoreSalesRequests />} />
             <Route path="reports"              element={<StoreReports />} />
             <Route path="car-renting-requests" element={<StoreCarRentingRequests />} />
             <Route path="*"                    element={<Navigate to="overview" replace />} />

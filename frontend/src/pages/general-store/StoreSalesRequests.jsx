@@ -28,9 +28,112 @@ const STATUS_COLOR = {
   Approved: { bg: '#E8EAF6', color: '#283593', border: '#9FA8DA' },
 };
 
+// ─── Signature Canvas ────────────────────────────────────────────────────────
+function SignatureCanvas({ onSignatureChange }) {
+  const canvasRef = React.useRef(null);
+  const drawing = React.useRef(false);
+  const lastPos = React.useRef(null);
+  const [signed, setSigned] = React.useState(false);
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const startDraw = (e) => {
+    e.preventDefault();
+    drawing.current = true;
+    lastPos.current = getPos(e, canvasRef.current);
+  };
+
+  const draw = (e) => {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = '#1B5E20';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastPos.current = pos;
+    setSigned(true);
+    onSignatureChange(canvas.toDataURL('image/png'));
+  };
+
+  const endDraw = () => { drawing.current = false; };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSigned(false);
+    onSignatureChange(null);
+  };
+
+  return (
+    <div style={{ position: 'relative', marginTop: '10px' }}>
+      <canvas
+        ref={canvasRef}
+        width={460}
+        height={140}
+        style={{
+          border: `2px solid ${signed ? '#228B22' : '#8D6E63'}`,
+          background: signed ? '#F0FFF0' : '#FAFFF8',
+          cursor: 'crosshair',
+          display: 'block',
+          width: '100%',
+          touchAction: 'none',
+        }}
+        onMouseDown={startDraw}
+        onMouseMove={draw}
+        onMouseUp={endDraw}
+        onMouseLeave={endDraw}
+        onTouchStart={startDraw}
+        onTouchMove={draw}
+        onTouchEnd={endDraw}
+      />
+      <div style={{
+        position: 'absolute', bottom: 6, left: 10,
+        fontSize: 11, color: '#aaa', pointerEvents: 'none',
+        display: signed ? 'none' : 'block',
+      }}>
+        ✍️ Draw your signature here...
+      </div>
+      {signed && (
+        <button
+          type="button"
+          onClick={clearCanvas}
+          style={{
+            position: 'absolute', top: 6, right: 6,
+            background: '#fff', border: `1px solid #8D6E63`,
+            padding: '3px 8px', fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4, color: '#8D6E63',
+          }}
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function SignaturePreviewModal({ request, onClose, onRelease, onReject, releasing, rejecting }) {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [storeSignature, setStoreSignature] = useState(null);
+  const [storeNotes, setStoreNotes] = useState('');
+
+  // Handle cart items array if it exists
+  const itemsList = request.cart_items ? JSON.parse(request.cart_items) : null;
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -52,16 +155,31 @@ function SignaturePreviewModal({ request, onClose, onRelease, onReject, releasin
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13 }}>
               <div><span style={{ color: '#888' }}>Request Code: </span><strong style={{ color: G.dark }}>{request.request_code}</strong></div>
               <div><span style={{ color: '#888' }}>Date: </span><strong>{new Date(request.created_at).toLocaleString()}</strong></div>
-              <div><span style={{ color: '#888' }}>Product: </span><strong style={{ color: G.forest }}>{request.product_name}</strong></div>
-              <div><span style={{ color: '#888' }}>Quantity: </span><strong style={{ color: G.dark, fontSize: 15 }}>{request.quantity_requested} {request.unit || 'units'}</strong></div>
-              <div><span style={{ color: '#888' }}>Requested By: </span><strong>{request.requested_by_name || '—'}</strong></div>
-              {request.customer_name && <div><span style={{ color: '#888' }}>Customer: </span><strong>{request.customer_name}</strong></div>}
+              
+              {itemsList ? (
+                <div style={{ gridColumn: '1/-1', marginTop: 8 }}>
+                  <span style={{ color: '#888', display: 'block', marginBottom: 4 }}>Cart Items: </span>
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    {itemsList.map((it, idx) => (
+                      <li key={idx}><strong style={{ color: G.forest }}>{it.qty}x</strong> {it.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <>
+                  <div><span style={{ color: '#888' }}>Product: </span><strong style={{ color: G.forest }}>{request.product_name}</strong></div>
+                  <div><span style={{ color: '#888' }}>Quantity: </span><strong style={{ color: G.dark, fontSize: 15 }}>{request.quantity_requested} {request.unit || 'units'}</strong></div>
+                </>
+              )}
+              
+              <div style={{ marginTop: 8 }}><span style={{ color: '#888' }}>Requested By: </span><strong>{request.requested_by_name || '—'}</strong></div>
+              {request.customer_name && <div style={{ marginTop: 8 }}><span style={{ color: '#888' }}>Customer: </span><strong>{request.customer_name}</strong></div>}
               {request.customer_phone && <div><span style={{ color: '#888' }}>Phone: </span><strong>{request.customer_phone}</strong></div>}
-              {request.notes && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#888' }}>Notes: </span><span>{request.notes}</span></div>}
+              {request.notes && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#888' }}>Sales Mgr Notes: </span><span>{request.notes}</span></div>}
             </div>
           </div>
 
-          {/* Signature */}
+          {/* Manager Signature */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: G.text, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Pen size={14} /> Sales Manager Signature
@@ -85,6 +203,30 @@ function SignaturePreviewModal({ request, onClose, onRelease, onReject, releasin
             )}
           </div>
 
+          {/* Store Keeper Approval block */}
+          {request.status === 'Pending' && !showRejectForm && (
+            <div style={{ marginBottom: 20, background: '#FAFAFA', border: '1px solid #E0E0E0', padding: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, textTransform: 'uppercase', marginBottom: 8 }}>
+                ✍️ Store Keeper Approval
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+                To approve and release the items, you must provide your signature and any notes.
+              </div>
+              <SignatureCanvas onSignatureChange={setStoreSignature} />
+              
+              <div style={{ marginTop: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#444', marginBottom: 4 }}>Additional Data / Reason for Sending</label>
+                <textarea
+                  rows={2}
+                  value={storeNotes}
+                  onChange={(e) => setStoreNotes(e.target.value)}
+                  placeholder="Notes about this release..."
+                  style={{ width: '100%', padding: 8, border: '1px solid #ccc', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Reject form */}
           {showRejectForm && (
             <div style={{ marginBottom: 16, background: '#FFF8E1', border: `1px solid #FFD54F`, padding: 16 }}>
@@ -104,9 +246,9 @@ function SignaturePreviewModal({ request, onClose, onRelease, onReject, releasin
                   Cancel
                 </button>
                 <button
-                  disabled={rejecting}
+                  disabled={rejecting || !rejectReason}
                   onClick={() => onReject(rejectReason)}
-                  style={{ flex: 1, padding: '10px', border: 'none', background: '#C62828', color: '#fff', cursor: rejecting ? 'not-allowed' : 'pointer', fontWeight: 800, textTransform: 'uppercase' }}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: '#C62828', color: '#fff', cursor: rejecting || !rejectReason ? 'not-allowed' : 'pointer', fontWeight: 800, textTransform: 'uppercase' }}
                 >
                   {rejecting ? 'Rejecting...' : 'Confirm Reject'}
                 </button>
@@ -126,15 +268,15 @@ function SignaturePreviewModal({ request, onClose, onRelease, onReject, releasin
                 </button>
               )}
               <button
-                disabled={!request.digital_signature || releasing}
-                onClick={onRelease}
+                disabled={!request.digital_signature || releasing || !storeSignature}
+                onClick={() => onRelease(storeSignature, storeNotes)}
                 style={{
                   flex: 2, padding: '13px', border: 'none',
-                  background: request.digital_signature && !releasing ? G.forest : '#ccc',
+                  background: (request.digital_signature && storeSignature && !releasing) ? G.forest : '#ccc',
                   color: '#fff', fontWeight: 900, fontSize: 14, textTransform: 'uppercase',
-                  cursor: request.digital_signature && !releasing ? 'pointer' : 'not-allowed',
+                  cursor: (request.digital_signature && storeSignature && !releasing) ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  boxShadow: request.digital_signature ? `4px 4px 0 ${G.dark}` : 'none',
+                  boxShadow: (request.digital_signature && storeSignature) ? `4px 4px 0 ${G.dark}` : 'none',
                 }}
               >
                 <CheckCircle size={18} /> {releasing ? 'Releasing...' : 'Release & Mark Sold'}
@@ -178,11 +320,14 @@ export default function StoreSalesRequests() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleRelease = async () => {
+  const handleRelease = async (storeSignature, storeNotes) => {
     if (!selectedRequest) return;
     setReleasing(true);
     try {
-      await apiClient.patch(`/store-sales-requests/${selectedRequest.id}/release`, {});
+      await apiClient.patch(`/store-sales-requests/${selectedRequest.id}/release`, {
+        store_keeper_signature: storeSignature,
+        notes: storeNotes
+      });
       showToast('✅ Product released and sale recorded successfully!', 'success');
       setSelectedRequest(null);
       load();

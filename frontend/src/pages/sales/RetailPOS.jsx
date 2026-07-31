@@ -333,8 +333,27 @@ const [navSearch, setNavSearch] = useState('');
     setPendingQueue(prev => prev.map(item => item.id === id ? { ...item, status, ...extra } : item));
   };
 
+  // Dismiss confirmation state
+  const [dismissTarget, setDismissTarget] = useState(null);
+  const [dismissing, setDismissing] = useState(false);
+
   const removeFromQueue = (id) => {
     setPendingQueue(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleDismissConfirm = async () => {
+    if (!dismissTarget) return;
+    setDismissing(true);
+    try {
+      await apiClient.delete(`/pos/cart/${dismissTarget.id}`);
+      setPendingQueue(prev => prev.filter(item => item.id !== dismissTarget.id));
+      showToast('Queue item permanently deleted from store and POS.', 'success');
+    } catch (e) {
+      showToast('Failed to dismiss: ' + (e?.message || 'Unknown error'), 'error');
+    } finally {
+      setDismissing(false);
+      setDismissTarget(null);
+    }
   };
 
   // Pending Online Orders
@@ -463,20 +482,7 @@ const addToCart = (item) => {
       const reqId = res?.data?.id || res?.data?.request_id || res?.data?.store_request_id || cartCode;
 
       // Add to pending queue stack
-      addToPendingQueue({
-        id: reqId,
-        cart_code: cartCode,
-        customer_name: (activeOnlineOrder ? activeOnlineOrder.customer_name : payerName) || 'Walk-in Customer',
-        items: cartSnapshot,
-        total: totalSnapshot,
-        payment_method: posPaymentMethod,
-        type: 'store',
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-        // Store snapshot of payment info for finalization
-        payerName, payerPhone, paymentAmount, txnId, cartSignature, cartNotes,
-        saleType,
-      });
+      await loadPendingQueue();
 
       // Clear cart immediately — ready for next customer
       setPosCart([]);
@@ -529,17 +535,7 @@ const addToCart = (item) => {
       await apiClient.post('/pos/cart/submit-finance', payload);
       
       // Add to pending queue as finance type
-      addToPendingQueue({
-        id: cartCode,
-        cart_code: cartCode,
-        customer_name: payload.customer_name,
-        items: cartSnapshot,
-        total: totalSnapshot,
-        payment_method: posPaymentMethod,
-        type: 'finance',
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-      });
+      await loadPendingQueue();
 
       // Clear cart immediately — ready for next customer
       setPosCart([]);
@@ -557,34 +553,45 @@ const addToCart = (item) => {
     }
   };
 
-  const finalizeCashSale = async () => {
-    const saleItems = posCart.map(item => ({
-      product_id: item.id,
-      product_name: item.name,
-      quantity: item.qty,
-      unit_price: item.price,
-    }));
+  const finalizeCashSale = async (overrideItem = null) => {
+    const itemsSrc = overrideItem ? overrideItem.items : posCart;
+    const paymentMethodSrc = overrideItem ? overrideItem.payment_method : posPaymentMethod;
+    const totalSrc = overrideItem ? overrideItem.total : posCartTotal;
+    // payerName: use customer_name from DB (stored when sent to store)
+    const payerNameSrc = overrideItem
+      ? (overrideItem.payerName || overrideItem.customer_name || 'Walk-in Customer')
+      : (cashRecipientName || payerName || recipientName || 'Walk-in Customer');
+    const txnIdSrc = overrideItem ? overrideItem.txnId : txnId;
+
+    // Items may come from live cart (id, name, qty, price) or from DB snapshot (id, name, qty, price — same shape)
+    const saleItems = itemsSrc.map(item => ({
+      product_id: item.id || item.product_id || null,
+      product_name: item.name || item.product_name,
+      quantity: item.qty || item.quantity || 1,
+      unit_price: item.price || item.unit_price || 0,
+    })).filter(i => i.product_name);
 
     setLoading(true);
     try {
         const payload = {
-            sale_type: saleType,
+            sale_type: overrideItem ? (overrideItem.saleType || 'walkin') : saleType,
             items: saleItems,
+            cart_id: overrideItem ? overrideItem.id : null,
             payment: {
-              method: posPaymentMethod,
-              amount: posCartTotal,
+              method: paymentMethodSrc,
+              amount: totalSrc,
               status: 'PAID',
-              recipient_name: cashRecipientName || payerName || recipientName,
-              recipient_phone: payerPhone || recipientPhone,
-              ...(posPaymentMethod === 'BANK_TRANSFER' && {
+              recipient_name: payerNameSrc,
+              recipient_phone: overrideItem ? (overrideItem.payerPhone || '') : (payerPhone || recipientPhone),
+              ...(paymentMethodSrc === 'BANK_TRANSFER' && {
                 bank_name: bankName,
                 account_holder: accountHolder,
                 account_number: accountNumber,
-                transaction_id: txnId,
+                transaction_id: txnIdSrc,
               }),
-              ...(posPaymentMethod === 'TELBIR' && {
+              ...(paymentMethodSrc === 'TELBIR' && {
                 telbir_number: telbirNumber,
-                transaction_id: txnId,
+                transaction_id: txnIdSrc,
               }),
             }
           };
@@ -592,10 +599,10 @@ const addToCart = (item) => {
           setOrderRequestId(null);
           
           setCompletedSale({
-            invoice_number: invoiceReq.data?.data?.invoice_number || 'POS-' + Math.floor(Math.random()*10000),
-            total_amount: posCartTotal,
-            payment_method: posPaymentMethod,
-            recipient_name: cashRecipientName || payerName || recipientName,
+            invoice_number: invoiceReq?.invoice_number || invoiceReq?.data?.invoice_number || 'POS-' + Math.floor(Math.random()*10000),
+            total_amount: totalSrc,
+            payment_method: paymentMethodSrc,
+            recipient_name: payerNameSrc,
             items: saleItems.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.unit_price }))
           });
         
@@ -693,7 +700,7 @@ const addToCart = (item) => {
     }
   }, [posPaymentMethod, financeAccounts]);
 
-  useEffect(() => { loadProducts(); loadSales(); loadFinanceAccounts(); }, []);
+  useEffect(() => { loadProducts(); loadSales(); loadFinanceAccounts(); loadPendingQueue(); }, []);
 
   // Auto-switch to ONLINE tab when navigated from the bell notification
   useEffect(() => {
@@ -755,6 +762,42 @@ const addToCart = (item) => {
       setProducts(mapped);
     } catch (e) {
       console.error('Failed to load retail products', e);
+    }
+  };
+
+  const loadPendingQueue = async () => {
+    try {
+      const res = await apiClient.get('/pos/cart/pending?status=PENDING_STORE,APPROVED_BY_STORE,REJECTED_BY_STORE');
+      const serverCarts = res?.data || [];
+      const mapped = serverCarts.map(c => {
+        let items = c.items || [];
+        
+        let localStatus = 'pending';
+        if (c.status === 'APPROVED_BY_STORE') localStatus = 'approved';
+        else if (c.status === 'REJECTED_BY_STORE') localStatus = 'rejected';
+
+        return {
+          id: c.id,
+          type: 'store',
+          cart_code: c.cart_code,
+          customer_name: c.cart_code || 'Walk-in Customer',
+          status: localStatus,
+          waiting_status: c.status,
+          reject_reason: c.notes || '',
+          items,
+          total: parseFloat(c.total_amount || 0),
+          payment_method: c.payment_method,
+          txnId: c.payment_reference,
+          cashier_name: c.cashier_name,
+          submitted_at: c.created_at,
+          payerName: c.customer_name,
+          payerPhone: c.customer_phone,
+          cartSignature: c.sales_manager_signature || null
+        };
+      });
+      setPendingQueue(mapped);
+    } catch (e) {
+      console.error('Failed to load pending queue', e);
     }
   };
 
@@ -1214,12 +1257,12 @@ const addToCart = (item) => {
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#F5F5F5', zIndex: 3001, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             {/* Overlay header */}
             <div style={{ background: '#1B5E20', padding: '24px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '4px solid #2E8B57' }}>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ fontSize: 16, fontWeight: 900, color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   ⏳ Pending Requests
                 </div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
-                  {pendingQueue.filter(q => q.status === 'pending').length} waiting · {pendingQueue.length} total
+                  {pendingQueue.length} {pendingQueue.length === 1 ? 'cart' : 'carts'} in queue
                 </div>
               </div>
               <button onClick={() => setShowPendingDrawer(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, borderRadius: 0 }}>✕</button>
@@ -1235,18 +1278,20 @@ const addToCart = (item) => {
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {pendingQueue.map((item) => (
                     <div key={item.id} style={{ background: 'white', border: '1px solid #E5E7EB', borderTop: `4px solid ${item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800'}`, overflow: 'hidden' }}>
-                      {/* Item header (Clean, no blocky background) */}
+                      {/* Item header */}
                       <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E5E7EB' }}>
                         <div>
-                          <div style={{ fontWeight: 900, fontSize: 18, color: '#424242', textTransform: 'uppercase' }}>
-                            {item.customer_name}
+                          <div style={{ fontWeight: 900, fontSize: 18, color: '#424242' }}>
+                            {item.payerName && item.payerName !== 'Walk-in Customer' ? item.payerName : 'Walk-in Customer'}
                           </div>
-                          <div style={{ fontSize: 13, color: '#8D6E63', marginTop: 4, fontWeight: 700 }}>
-                            {item.type === 'store' ? '🏪 STORE REQUEST' : '🏦 FINANCE VERIFICATION'} · {new Date(item.submitted_at).toLocaleTimeString()}
+                          <div style={{ fontSize: 12, color: '#8D6E63', marginTop: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {item.cart_code} · {item.type === 'store' ? '🏪 STORE REQUEST' : '🏦 FINANCE'} · {new Date(item.submitted_at).toLocaleTimeString()}
                           </div>
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', padding: '6px 16px', border: `2px solid ${item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800'}`, color: item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800', letterSpacing: '0.05em' }}>
-                          {item.status}
+                        <span style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', padding: '6px 16px', border: `2px solid ${item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800'}`, color: item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800', letterSpacing: '0.05em', textAlign: 'center' }}>
+                          {item.status === 'approved' ? 'READY TO FINALIZE' : 
+                           item.status === 'rejected' ? 'REJECTED' : 
+                           'WAITING: STORE RELEASE'}
                         </span>
                       </div>
 
@@ -1283,17 +1328,20 @@ const addToCart = (item) => {
                         <div style={{ flex: 1, minWidth: 200 }}>
                           <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#8D6E63', fontWeight: 800 }}>Payment Details</h4>
                           <div style={{ fontSize: 14, color: '#424242', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div><span style={{ fontWeight: 700 }}>Method:</span> {item.payment_method || 'Not Set'}</div>
-                            {item.txnId && <div><span style={{ fontWeight: 700 }}>Ref/Txn ID:</span> {item.txnId}</div>}
+                            <div><span style={{ fontWeight: 700 }}>Receiver:</span> {item.payerName || 'Walk-in Customer'}</div>
                             {item.payerPhone && <div><span style={{ fontWeight: 700 }}>Phone:</span> {item.payerPhone}</div>}
+                            <div><span style={{ fontWeight: 700 }}>Method:</span> {item.payment_method || 'CASH'}</div>
+                            {item.txnId && <div><span style={{ fontWeight: 700 }}>Ref/Txn ID:</span> {item.txnId}</div>}
+                            <div><span style={{ fontWeight: 700 }}>Cashier:</span> {item.cashier_name || '-'}</div>
                           </div>
                         </div>
                         {item.cartSignature && (
                           <div style={{ flex: 1, minWidth: 200 }}>
-                            <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#8D6E63', fontWeight: 800 }}>Customer Signature</h4>
-                            <div style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', padding: 8, display: 'inline-block' }}>
-                              <img src={item.cartSignature} alt="Signature" style={{ height: 60, objectFit: 'contain' }} />
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#8D6E63', fontWeight: 800 }}>Manager Signature</h4>
+                            <div style={{ background: '#FFFFFF', border: '2px solid #2E8B57', padding: 8, display: 'inline-block' }}>
+                              <img src={item.cartSignature} alt="Manager Signature" style={{ height: 60, objectFit: 'contain', maxWidth: 200 }} />
                             </div>
+                            <div style={{ fontSize: 11, color: '#2E8B57', fontWeight: 700, marginTop: 4 }}>✅ Signed & Authorized</div>
                           </div>
                         )}
                       </div>
@@ -1304,20 +1352,28 @@ const addToCart = (item) => {
                           <button
                             onClick={async () => {
                               showToast('Checking status with store...', 'info');
-                              // Real check: in a real system, we'd query the backend for the store's approval status.
-                              // Since the store hasn't approved it yet in this demo, it remains pending.
-                              setTimeout(() => {
-                                showToast('Still waiting for store approval...', 'info');
-                              }, 1000);
+                              try {
+                                await loadPendingQueue();
+                                const updated = pendingQueue.find(q => q.id === item.id);
+                                if (updated && updated.status === 'approved') {
+                                  showToast('✅ Store released stock! Click Continue Process to finalize.', 'success');
+                                } else if (updated && updated.status === 'rejected') {
+                                  showToast('❌ Store rejected this request.', 'error');
+                                } else {
+                                  showToast('Still waiting for store to release stock...', 'info');
+                                }
+                              } catch(e) {
+                                showToast('Could not check status', 'error');
+                              }
                             }}
                             style={{ flex: 1, padding: '14px 0', background: '#FFFFFF', color: '#1B5E20', border: '2px solid #1B5E20', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 0 }}
                           >
-                            <RefreshCw size={16} /> Check Status
+                            <RefreshCw size={16} /> Check Store Status
                           </button>
                         )}
                         {item.status === 'approved' && (
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               // Reload cart from snapshot to continue finalization
                               setPosCart(item.items);
                               setPosPaymentMethod(item.payment_method);
@@ -1328,8 +1384,15 @@ const addToCart = (item) => {
                               setTxnId(item.txnId || '');
                               setShowCart(true);
                               setShowPendingDrawer(false);
-                              // Finalize directly
-                              finalizeCashSale();
+                              
+                              // Finalize directly using the item data (this calls /pos/checkout-retail which saves to pos_sales)
+                              await finalizeCashSale(item);
+                              
+                              // Mark as complete in retail_pos_carts
+                              try {
+                                await apiClient.delete(`/pos/cart/${item.id}`);
+                              } catch(e) { }
+                              
                               removeFromQueue(item.id);
                             }}
                             style={{ flex: 2, padding: '14px 0', background: '#2E8B57', color: 'white', border: 'none', borderBottom: '4px solid #1B5E20', cursor: 'pointer', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 0 }}
@@ -1357,8 +1420,8 @@ const addToCart = (item) => {
                           </button>
                         )}
                         <button
-                          onClick={() => removeFromQueue(item.id)}
-                          style={{ padding: '14px 32px', background: '#FFFFFF', color: '#424242', border: '2px solid #424242', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', borderRadius: 0 }}
+                          onClick={() => setDismissTarget(item)}
+                          style={{ padding: '14px 32px', background: '#FFFFFF', color: '#C62828', border: '2px solid #C62828', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', borderRadius: 0 }}
                         >
                           Dismiss
                         </button>
@@ -1418,29 +1481,27 @@ const addToCart = (item) => {
               <span style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2, opacity: 0.85 }}>SALES</span>
             </div>
 
-            {/* Global WAITING badge for pending queue */}
-            {pendingQueue.length > 0 && (
-              <button
-                onClick={() => setShowPendingDrawer(true)}
-                style={{
-                  padding: '8px 16px',
-                  background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : '#10B981',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
-                }}
-              >
-                ⏳ Waiting ({pendingQueue.filter(q => q.status === 'pending').length})
-              </button>
-            )}
+            {/* Global WAITING button — always visible for Sales Manager */}
+            <button
+              onClick={() => { setShowPendingDrawer(true); loadPendingQueue(); }}
+              style={{
+                padding: '8px 16px',
+                background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#10B981' : 'rgba(255,255,255,0.15)',
+                color: 'white',
+                border: pendingQueue.length === 0 ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: 12,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
+              }}
+            >
+              ⏳ Waiting ({pendingQueue.length})
+            </button>
           </div>
 
           {/* Right: Refresh — vertically centered in header */}
@@ -1733,29 +1794,27 @@ const addToCart = (item) => {
                    </div>
                  </div>
                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                   {/* WAITING badge — shows pending queue */}
-                   {pendingQueue.length > 0 && (
-                     <button
-                       onClick={() => setShowPendingDrawer(true)}
-                       style={{
-                         padding: '8px 14px',
-                         background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : '#10B981',
-                         color: 'white',
-                         border: 'none',
-                         cursor: 'pointer',
-                         fontWeight: 800,
-                         fontSize: 12,
-                         textTransform: 'uppercase',
-                         letterSpacing: '0.05em',
-                         display: 'flex',
-                         alignItems: 'center',
-                         gap: 6,
-                         animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
-                       }}
-                     >
-                       ⏳ Waiting ({pendingQueue.filter(q => q.status === 'pending').length})
-                     </button>
-                   )}
+                    {/* WAITING button — always visible */}
+                    <button
+                      onClick={() => { setShowPendingDrawer(true); loadPendingQueue(); }}
+                      style={{
+                        padding: '8px 14px',
+                        background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#10B981' : '#E5E7EB',
+                        color: pendingQueue.length === 0 ? '#424242' : 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 800,
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
+                      }}
+                    >
+                      ⏳ Waiting ({pendingQueue.length})
+                    </button>
                    <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }}
                      style={{ padding: '9px 18px', background: 'white', color: 'var(--header)', border: '2px solid var(--header)', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                      ← Back to Products
@@ -2971,6 +3030,83 @@ const addToCart = (item) => {
             loadProducts();
           }}
         />
+      )}
+
+      {/* ── DISMISS CONFIRMATION MODAL ── */}
+      {dismissTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.65)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#FFFFFF', width: 440, maxWidth: '95vw',
+            border: '3px solid #C62828',
+            boxShadow: '0 8px 40px rgba(198,40,40,0.25)',
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            {/* Header */}
+            <div style={{ background: '#C62828', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 22 }}>⚠️</span>
+              <span style={{ color: '#FFFFFF', fontWeight: 900, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Permanently Dismiss Queue?
+              </span>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '24px 24px 8px' }}>
+              <p style={{ margin: '0 0 12px', color: '#424242', fontSize: 14, lineHeight: 1.6 }}>
+                You are about to <strong style={{ color: '#C62828' }}>permanently delete</strong> this store request from{' '}
+                <strong>both the Store queue and the Sales Manager queue</strong>.
+              </p>
+              <div style={{ background: '#FFF3F3', border: '1.5px solid #FFCDD2', padding: '12px 16px', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#C62828', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Items to be deleted:
+                </div>
+                {(dismissTarget.items || []).map((it, i) => (
+                  <div key={i} style={{ fontSize: 13, color: '#424242', padding: '2px 0' }}>
+                    • {it.name || it.product_name} × {it.qty || it.quantity}
+                  </div>
+                ))}
+                {(!dismissTarget.items || dismissTarget.items.length === 0) && (
+                  <div style={{ fontSize: 13, color: '#424242' }}>
+                    Cart: {dismissTarget.cart_code || dismissTarget.request_code || '#' + dismissTarget.id}
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '8px 0 20px', color: '#757575', fontSize: 12 }}>
+                This action <strong>cannot be undone</strong>. The data will be completely removed from the database.
+              </p>
+            </div>
+            {/* Buttons */}
+            <div style={{ display: 'flex', borderTop: '2px solid #FFCDD2' }}>
+              <button
+                onClick={() => setDismissTarget(null)}
+                disabled={dismissing}
+                style={{
+                  flex: 1, padding: '16px', background: '#FFFFFF', color: '#424242',
+                  border: 'none', borderRight: '2px solid #FFCDD2',
+                  cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDismissConfirm}
+                disabled={dismissing}
+                style={{
+                  flex: 1, padding: '16px',
+                  background: dismissing ? '#EF9A9A' : '#C62828',
+                  color: '#FFFFFF', border: 'none',
+                  cursor: dismissing ? 'not-allowed' : 'pointer',
+                  fontWeight: 900, fontSize: 14, textTransform: 'uppercase',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                {dismissing ? '⏳ Deleting...' : '🗑️ Yes, Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

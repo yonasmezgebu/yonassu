@@ -315,3 +315,16 @@
 }
 .tnb-dropdown-item:hover { background: #F9FAFB; }
 .tnb-dropdown-item--danger { color: #EF4444; }
+@media (max-width: 768px) {
+  .tnb-inner { gap: 12px; padding: 0 12px; }
+  .tnb-wordmark { font-size: 1.1rem; }
+  .tnb-nav { display: none; } /* Hide large nav on small screens, can use mobile menu later */
+  .tnb-search-form { width: 160px; }
+  .tnb-actions { gap: 2px; }
+  .tnb-dropdown { position: fixed; top: 60px; right: 10px; width: calc(100vw - 20px); max-width: 320px; }
+}
+
+@media (max-width: 480px) {
+  .tnb-brand { display: none; } /* Hide brand text on tiny screens to leave room for actions */
+  .tnb-search-form { position: absolute; left: 10px; right: 120px; width: auto; z-index: 10; background: white; }
+}

@@ -2,10 +2,10 @@
  * SalesStoreRequestModal.jsx
  * Sales Manager fills a product request form, draws an e-signature,
  * and submits a signed request to the Store Keeper.
- * Used inside RetailPOS cart panel.
+ * Used inside RetailPOS cart panel to submit entire carts.
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, RotateCcw, Package, User, Hash, Pen, CheckCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Send, RotateCcw, Package, CheckCircle } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
 const G = {
@@ -119,55 +119,27 @@ function SignatureCanvas({ onSignatureChange }) {
 }
 
 // ─── Main Modal ──────────────────────────────────────────────────────────────
-export default function SalesStoreRequestModal({ onClose, onSuccess, showToast }) {
-  const [storeMaterials, setStoreMaterials] = useState([]);
-  const [loadingMaterials, setLoadingMaterials] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [qty, setQty] = useState(1);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+export default function SalesStoreRequestModal({ onClose, onSuccess, showToast, cartData }) {
   const [notes, setNotes] = useState('');
   const [signature, setSignature] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [step, setStep] = useState(1); // 1=select product, 2=sign & submit
-
-  useEffect(() => {
-    setLoadingMaterials(true);
-    apiClient.get('/store-inventory/inventory')
-      .then(r => setStoreMaterials(r.data?.data || []))
-      .catch(() => {
-        // Fallback to general_store_materials endpoint
-        apiClient.get('/store-inventory/inventory').then(r => setStoreMaterials(r.data?.data || [])).catch(() => {});
-      })
-      .finally(() => setLoadingMaterials(false));
-  }, []);
-
-  const filtered = storeMaterials.filter(m =>
-    (m.material_name || m.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.material_id || m.id || '').toString().toLowerCase().includes(search.toLowerCase())
-  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedProduct) { showToast('Please select a product', 'warning'); return; }
     if (!signature) { showToast('Digital signature is required before submitting', 'warning'); return; }
-    if (qty < 1) { showToast('Quantity must be at least 1', 'warning'); return; }
-
-    const stockAvail = parseFloat(selectedProduct.quantity_in_store || selectedProduct.quantity || 0);
-    if (qty > stockAvail) { showToast(`Only ${stockAvail} units available in store`, 'warning'); return; }
 
     setSubmitting(true);
     try {
-      await apiClient.post('/store-sales-requests', {
-        store_module: 'general_store',
-        product_id: selectedProduct.material_id || String(selectedProduct.id),
-        product_name: selectedProduct.material_name || selectedProduct.name,
-        unit: selectedProduct.unit || '',
-        quantity_requested: qty,
-        customer_name: customerName || null,
-        customer_phone: customerPhone || null,
-        digital_signature: signature,
+      await apiClient.post('/pos/cart/sign-store', {
+        cart_code: cartData.cart_code,
+        customer_name: cartData.customer_name,
+        customer_phone: cartData.customer_phone,
+        items: cartData.items,
+        total_amount: cartData.total_amount,
+        payment_method: cartData.payment_method,
+        payment_amount: cartData.payment_amount,
+        txn_id: cartData.txn_id,
+        signature: signature,
         notes: notes || null,
       });
       showToast('✅ Signed request sent to Store Keeper!', 'success');
@@ -179,6 +151,9 @@ export default function SalesStoreRequestModal({ onClose, onSuccess, showToast }
       setSubmitting(false);
     }
   };
+
+  // Safe check if no cart
+  if (!cartData) return null;
 
   return (
     <div style={{
@@ -197,10 +172,10 @@ export default function SalesStoreRequestModal({ onClose, onSuccess, showToast }
         <div style={{ background: G.dark, color: '#fff', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Package size={20} color="#fff" /> Sales Request from Store
+              <Package size={20} color="#fff" /> Send Cart to Store
             </div>
             <div style={{ fontSize: 12, color: G.sage, marginTop: 3 }}>
-              Step {step} of 2 — {step === 1 ? 'Select Product & Details' : 'Sign & Submit'}
+              Manager Signature Required
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}>
@@ -208,214 +183,92 @@ export default function SalesStoreRequestModal({ onClose, onSuccess, showToast }
           </button>
         </div>
 
-        {/* Progress */}
-        <div style={{ display: 'flex', height: 4 }}>
-          <div style={{ flex: 1, background: G.forest }} />
-          <div style={{ flex: 1, background: step >= 2 ? G.forest : '#E0E0E0', transition: 'background 0.3s' }} />
-        </div>
-
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           <form onSubmit={handleSubmit}>
 
-            {step === 1 && (
-              <>
-                {/* Product Search */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                    Search Store Product
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Type product name or ID..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
-                    onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
-                  />
-                </div>
-
-                {/* Product List */}
-                <div style={{ border: `1px solid ${G.earth}`, maxHeight: 200, overflowY: 'auto', marginBottom: 20 }}>
-                  {loadingMaterials ? (
-                    <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>Loading store stock...</div>
-                  ) : filtered.length === 0 ? (
-                    <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>No products found</div>
-                  ) : filtered.slice(0, 50).map(m => {
-                    const qty_in = parseFloat(m.quantity_in_store || m.quantity || 0);
-                    const isSelected = selectedProduct?.material_id === m.material_id || selectedProduct?.id === m.id;
-                    return (
-                      <div
-                        key={m.id || m.material_id}
-                        onClick={() => { setSelectedProduct(m); setQty(1); }}
-                        style={{
-                          padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          background: isSelected ? '#E8F5E9' : 'white',
-                          borderBottom: `1px solid #EEE`,
-                          borderLeft: isSelected ? `4px solid ${G.forest}` : '4px solid transparent',
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: G.text }}>{m.material_name || m.name}</div>
-                          <div style={{ fontSize: 11, color: '#999' }}>ID: {m.material_id || m.id} · {m.unit || '—'} · {m.category || '—'}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: qty_in > 0 ? G.forest : '#e53e3e' }}>{qty_in}</div>
-                          <div style={{ fontSize: 10, color: '#999' }}>in stock</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Selected product summary */}
-                {selectedProduct && (
-                  <div style={{ background: '#E8F5E9', border: `1px solid ${G.leaf}`, padding: 12, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <CheckCircle size={20} color={G.forest} />
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: G.dark }}>{selectedProduct.material_name || selectedProduct.name}</div>
-                      <div style={{ fontSize: 12, color: G.olive }}>Available: {parseFloat(selectedProduct.quantity_in_store || selectedProduct.quantity || 0)} {selectedProduct.unit || 'units'}</div>
-                    </div>
+            {/* Request Summary */}
+            <div style={{ background: '#F1F8E9', border: `1px solid ${G.leaf}`, padding: 16, marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: G.olive, textTransform: 'uppercase', marginBottom: 8 }}>Cart Details</div>
+              
+              <div style={{ marginBottom: 12 }}>
+                {cartData.items.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, borderBottom: '1px solid #ddd', paddingBottom: 4, marginBottom: 4 }}>
+                    <span>{item.qty}x {item.name}</span>
+                    <strong>{(item.price * item.qty).toFixed(2)} ETB</strong>
                   </div>
-                )}
-
-                {/* Quantity */}
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                    Quantity Requested *
-                  </label>
-                  <input
-                    type="number" min={1}
-                    max={parseFloat(selectedProduct?.quantity_in_store || selectedProduct?.quantity || 9999)}
-                    value={qty}
-                    onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    required
-                    style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
-                    onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
-                  />
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 900, marginTop: 8, color: G.forest }}>
+                  <span>TOTAL:</span>
+                  <span>{cartData.total_amount.toFixed(2)} ETB</span>
                 </div>
+              </div>
 
-                {/* Customer info */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                      Customer Name (Optional)
-                    </label>
-                    <input
-                      type="text" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                      placeholder="Customer name"
-                      style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
-                      onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                      Customer Phone (Optional)
-                    </label>
-                    <input
-                      type="text" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
-                      placeholder="Phone number"
-                      style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                      onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
-                      onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
-                    />
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: G.text }}>
+                {cartData.customer_name && <div><span style={{ color: '#999' }}>Customer: </span><strong>{cartData.customer_name}</strong></div>}
+                <div><span style={{ color: '#999' }}>Payment: </span><strong>{cartData.payment_method}</strong></div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
+                Notes for Store (Optional)
+              </label>
+              <textarea
+                value={notes} onChange={e => setNotes(e.target.value)}
+                rows={2} placeholder="Any special instructions..."
+                style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
+                onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
+              />
+            </div>
+
+            {/* Signature Pad */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
+                ✍️ Sales Manager Digital Signature *
+              </label>
+              <div style={{ fontSize: 11, color: G.earth, marginBottom: 8 }}>
+                By signing below, you authorize the store to release these items.
+              </div>
+              <SignatureCanvas onSignatureChange={setSignature} />
+              {signature && (
+                <div style={{ marginTop: 6, fontSize: 11, color: G.forest, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle size={13} /> Signature captured — {new Date().toLocaleString()}
                 </div>
+              )}
+            </div>
 
-                {/* Notes */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                    Notes (Optional)
-                  </label>
-                  <textarea
-                    value={notes} onChange={e => setNotes(e.target.value)}
-                    rows={2} placeholder="Any special instructions..."
-                    style={{ width: '100%', padding: '12px', border: `1px solid ${G.earth}`, fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-                    onFocus={e => e.target.style.border = `2px solid ${G.forest}`}
-                    onBlur={e => e.target.style.border = `1px solid ${G.earth}`}
-                  />
-                </div>
-
-                {/* Next Step */}
-                <button
-                  type="button"
-                  disabled={!selectedProduct}
-                  onClick={() => setStep(2)}
-                  style={{
-                    width: '100%', padding: '14px', background: selectedProduct ? G.forest : '#ccc',
-                    color: '#fff', border: 'none', fontWeight: 900, fontSize: 15,
-                    textTransform: 'uppercase', cursor: selectedProduct ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  }}
-                >
-                  <Pen size={18} /> Next: Sign the Request
-                </button>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                {/* Request Summary */}
-                <div style={{ background: '#F1F8E9', border: `1px solid ${G.leaf}`, padding: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: G.olive, textTransform: 'uppercase', marginBottom: 8 }}>Request Summary</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-                    <div><span style={{ color: '#999' }}>Product: </span><strong>{selectedProduct?.material_name || selectedProduct?.name}</strong></div>
-                    <div><span style={{ color: '#999' }}>Quantity: </span><strong>{qty} {selectedProduct?.unit || 'units'}</strong></div>
-                    {customerName && <div><span style={{ color: '#999' }}>Customer: </span><strong>{customerName}</strong></div>}
-                    <div><span style={{ color: '#999' }}>Available: </span><strong>{parseFloat(selectedProduct?.quantity_in_store || selectedProduct?.quantity || 0)}</strong></div>
-                  </div>
-                </div>
-
-                {/* Signature Pad */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.text, marginBottom: 6, textTransform: 'uppercase' }}>
-                    ✍️ Sales Manager Digital Signature *
-                  </label>
-                  <div style={{ fontSize: 11, color: G.earth, marginBottom: 8 }}>
-                    By signing below, you confirm this request is authorized by you. The Store Keeper cannot release without this signature.
-                  </div>
-                  <SignatureCanvas onSignatureChange={setSignature} />
-                  {signature && (
-                    <div style={{ marginTop: 6, fontSize: 11, color: G.forest, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <CheckCircle size={13} /> Signature captured — {new Date().toLocaleString()}
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    style={{
-                      flex: 1, padding: '13px', border: `2px solid ${G.earth}`,
-                      background: '#fff', color: G.text, fontWeight: 800,
-                      fontSize: 14, textTransform: 'uppercase', cursor: 'pointer',
-                    }}
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!signature || submitting}
-                    style={{
-                      flex: 2, padding: '13px', border: 'none',
-                      background: signature && !submitting ? G.forest : '#ccc',
-                      color: '#fff', fontWeight: 900, fontSize: 14,
-                      textTransform: 'uppercase',
-                      cursor: signature && !submitting ? 'pointer' : 'not-allowed',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      boxShadow: signature ? `4px 4px 0 ${G.dark}` : 'none',
-                    }}
-                  >
-                    <Send size={17} /> {submitting ? 'Submitting...' : 'Submit Signed Request'}
-                  </button>
-                </div>
-              </>
-            )}
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  flex: 1, padding: '13px', border: `2px solid ${G.earth}`,
+                  background: '#fff', color: G.text, fontWeight: 800,
+                  fontSize: 14, textTransform: 'uppercase', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!signature || submitting}
+                style={{
+                  flex: 2, padding: '13px', border: 'none',
+                  background: signature && !submitting ? G.forest : '#ccc',
+                  color: '#fff', fontWeight: 900, fontSize: 14,
+                  textTransform: 'uppercase',
+                  cursor: signature && !submitting ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  boxShadow: signature ? `4px 4px 0 ${G.dark}` : 'none',
+                }}
+              >
+                <Send size={17} /> {submitting ? 'Submitting...' : 'Submit Signed Request'}
+              </button>
+            </div>
 
           </form>
         </div>

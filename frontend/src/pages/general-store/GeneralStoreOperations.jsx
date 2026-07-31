@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Truck, Leaf, ChevronUp, ChevronDown, Package, RefreshCw } from 'lucide-react';
+import { Truck, Leaf, ChevronUp, ChevronDown, Package, RefreshCw, Printer, ShoppingBag } from 'lucide-react';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
@@ -10,7 +10,7 @@ const G = {
   orange: '#FF9800', red: '#F44336', purple: '#7C3AED',
 };
 
-const DEPARTMENTS = ['Printing', 'Car Rental', 'AgriRent', 'IT', 'Maintenance'];
+const DEPARTMENTS = ['Printing', 'Car Rental', 'AgriRent', 'IT', 'Maintenance', 'Sales'];
 const CATEGORIES  = ['Paper', 'Ink', 'Toner', 'Fuel', 'Lubricant/Oil', 'Spare Parts', 'Tires', 'Cleaning', 'Stationery', 'Chemical', 'Other'];
 
 const api = axios.create();
@@ -806,7 +806,7 @@ export const GSInventory = () => {
         </div>
       </div>
 
-      {/* Toast */}
+
       {toast && (
         <div style={{ position:'fixed', bottom:40, right:40, background: toast.type==='success' ? `linear-gradient(135deg,${G.leaf},${G.emerald})` : `linear-gradient(135deg,${G.red},#b71c1c)`, border:`4px solid ${toast.type==='success'?G.dark:'#7f0000'}`, boxShadow:`8px 8px 0 ${toast.type==='success'?G.dark:'#7f0000'}`, color:'#fff', fontWeight:900, fontSize:16, padding:'20px 30px', display:'flex', gap:16, alignItems:'center', animation:'toastSlide .3s ease', zIndex:10000, borderRadius:0 }}>
           <span style={{ fontSize:28 }}>{toast.type==='success'?'✅':'❌'}</span>
@@ -1056,10 +1056,16 @@ export const GSIssueItem = () => {
   const [carRequests, setCarRequests] = useState([]);
   const [carShipModal, setCarShipModal] = useState(null);
   const [carShipQtys, setCarShipQtys] = useState({});
-  const [form, setForm]           = useState({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null });
+  const [form, setForm]           = useState({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null, request_type: null });
   const [saving, setSaving]       = useState(false);
   const [toast, setToast]         = useState(null);
   const [focused, setFocused]     = useState(null);
+  // POS Sales Requests from RetailPOS
+  const [posRequests, setPosRequests] = useState([]);
+  const [posActionLoading, setPosActionLoading] = useState({});
+  const [posRejectModal, setPosRejectModal] = useState(null);
+  const [posRejectReason, setPosRejectReason] = useState('');
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
   
   // History State
   const [allHistory, setAllHistory] = useState([]);
@@ -1073,20 +1079,42 @@ export const GSIssueItem = () => {
 
   const load = useCallback(async () => {
     try {
-      const [rMat, rReq, rCarReq] = await Promise.all([
+      const [rMat, rReq, rCarReq, rPos] = await Promise.all([
         api.get('/api/v1/printing-assets/store/materials'),
         api.get('/api/v1/printing-assets/material-requests').catch(() => ({ data: { data: [] } })),
-        api.get('/api/v1/car-renting/store-requests').catch(() => ({ data: { data: [] } }))
+        api.get('/api/v1/car-renting/store-requests').catch(() => ({ data: { data: [] } })),
+        api.get('/api/v1/store-sales-requests').catch(() => ({ data: { data: [] } }))
       ]);
       setMaterials(rMat.data.data || []);
-      setRequests((rReq.data.data || []).filter(r => r.status === 'APPROVED'));
+      
+      const allPrinting = rReq.data?.data || [];
+      setRequests(allPrinting.filter(r => r.status === 'APPROVED'));
       
       const allCarAgri = rCarReq.data?.data || [];
       setCarRequests(allCarAgri.filter(r => r.status === 'PENDING_STORE'));
       
-      const hist = allCarAgri.filter(r => r.status !== 'PENDING_STORE');
-      hist.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const allPos = rPos.data?.data || [];
+      setPosRequests(allPos.filter(r => r.status === 'Pending'));
+
+      // Combine histories
+      const mapHist = (arr, type, defDept) => arr.map(r => ({
+        ...r,
+        req_type: type,
+        department: r.department || defDept,
+        date: r.created_at || r.createdAt || r.date || new Date().toISOString(),
+        request_number: r.request_code || r.request_number || r.id,
+        items: r.items || r.quantity_requested || (type === 'pos' ? 1 : 0),
+        status: r.status
+      }));
+
+      const histCar = mapHist(allCarAgri.filter(r => r.status !== 'PENDING_STORE'), 'car_agri', 'Car Rental');
+      const histPrint = mapHist(allPrinting.filter(r => r.status !== 'APPROVED' && r.status !== 'PENDING'), 'printing', 'Printing');
+      const histPos = mapHist(allPos.filter(r => r.status !== 'Pending'), 'pos', 'Sales');
+
+      const hist = [...histCar, ...histPrint, ...histPos];
+      hist.sort((a, b) => new Date(b.date) - new Date(a.date));
       setAllHistory(hist);
+
     } catch (err) {
       console.error('Error loading materials:', err);
       showToast('error', 'Failed to load materials from the store.');
@@ -1109,8 +1137,22 @@ export const GSIssueItem = () => {
 
     setSaving(true);
     try {
-      if (form.request_id) {
-        // Ship request flow
+      if (form.request_id && form.request_type === 'pos') {
+        // POS Sales request — issue material then auto-record sale
+        await api.post('/api/v1/printing-assets/issue/material', {
+          material_id: form.material_id,
+          quantity: form.quantity,
+          department: form.department,
+          requested_by: form.requested_by,
+          job_reference: form.job_reference,
+        });
+        await api.patch(`/api/v1/store-sales-requests/${form.request_id}/release`, {
+          store_keeper_signature: 'Store Keeper',
+          notes: form.job_reference,
+        });
+        showToast('success', `✅ Issued & sale recorded for ${form.department}!`);
+      } else if (form.request_id && (form.request_type === 'printing' || form.request_type === 'car')) {
+        // Printing / Car — ship via material-requests API
         await api.post(`/api/v1/printing-assets/material-requests/${form.request_id}/ship`, { 
           shipped_qty: form.quantity,
           requested_by: form.requested_by,
@@ -1118,14 +1160,54 @@ export const GSIssueItem = () => {
         });
         showToast('success', `✅ Successfully shipped ${form.quantity} ${selected?.unit}!`);
       } else {
-        // Direct issue flow
+        // Direct issue flow (no linked request)
         await api.post('/api/v1/printing-assets/issue/material', form);
         showToast('success', `✅ Successfully issued ${form.quantity} ${selected?.unit} to ${form.department}!`);
       }
-      setForm({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null });
+      setForm({ material_id: '', quantity: '', job_reference: '', department: '', requested_by: '', request_id: null, request_type: null });
       load(); // refresh available balances
     } catch (e) { showToast('error', e.response?.data?.message || 'Error issuing material'); }
     setSaving(false);
+  };
+
+  const handlePrepareCar = (r) => {
+    setForm({
+      material_id: r.material_id || '',
+      quantity: r.quantity_requested || '',
+      department: r.department || 'Fleet Management',
+      requested_by: r.created_by_name || '',
+      job_reference: 'Car/AgriReq ' + r.request_code,
+      request_id: r.id,
+      request_type: 'car'
+    });
+    setShowWaitingModal(false);
+    const formEl = document.getElementById('issue_details_section');
+    if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handlePreparePos = (r) => {
+    let cartItems = [];
+    try { cartItems = JSON.parse(r.cart_items || '[]'); } catch(e) {}
+    if (cartItems.length === 0 && r.product_name) {
+      cartItems = [{ name: r.product_name, qty: r.quantity_requested, price: 0 }];
+    }
+    
+    // Attempt to match pos product to a material by name, or leave blank to force user selection
+    const itemName = cartItems[0]?.name || cartItems[0]?.source || r.product_name;
+    const matMatch = materials.find(m => m.material_name?.toLowerCase() === itemName?.toLowerCase());
+    
+    setForm({
+      material_id: matMatch ? matMatch.material_id : '',
+      quantity: cartItems[0]?.qty || r.quantity_requested || '',
+      department: 'Sales',
+      requested_by: r.requested_by_name || r.customer_name || '',
+      job_reference: 'POS ' + r.request_code,
+      request_id: r.id,
+      request_type: 'pos'
+    });
+    setShowWaitingModal(false);
+    const formEl = document.getElementById('issue_details_section');
+    if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handlePrepareShip = (r) => {
@@ -1135,8 +1217,10 @@ export const GSIssueItem = () => {
       department: r.department || 'Printing',
       requested_by: r.created_by_name || '',
       job_reference: 'Req ' + r.request_code,
-      request_id: r.id
+      request_id: r.id,
+      request_type: 'printing'
     });
+    setShowWaitingModal(false);
     // Scroll down to form
     const formEl = document.getElementById('issue_details_section');
     if (formEl) formEl.scrollIntoView({ behavior: 'smooth' });
@@ -1284,69 +1368,13 @@ export const GSIssueItem = () => {
             <span style={{ fontSize: 40 }}>📤</span>
             <div>
               <h1 style={{ margin:0, fontSize:32, fontWeight:900, color:'#fff', letterSpacing:1, textTransform:'uppercase' }}>Issue to Department</h1>
-              <p style={{ margin:'6px 0 0', color: G.sage, fontSize:14, fontWeight:600, letterSpacing:0.5 }}>Formal process of releasing material from General Store stock</p>
+              <p style={{ margin:'6px 0 0', color: '#888', fontSize:14, fontWeight:600, letterSpacing:0.5 }}>Formal process of releasing material from General Store stock</p>
             </div>
           </div>
+          <button onClick={() => setShowWaitingModal(true)} style={{ background: '#F59E0B', color: '#fff', padding: '12px 24px', fontWeight: 900, fontSize: 16, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '4px 4px 0 #B45309', textTransform: 'uppercase' }}>
+            🛎️ WAITING REQUESTS <span style={{ background: '#fff', color: '#F59E0B', padding: '2px 8px', borderRadius: 12 }}>{requests.length + carRequests.length + posRequests.length}</span>
+          </button>
         </div>
-
-        {/* ── APPROVED REQUESTS (SHIPPING PENDING) ── */}
-        {requests.length > 0 && (
-          <div style={{ padding: '40px 40px 0 40px' }}>
-            <div style={{ background: '#fff', border: `4px solid ${G.orange}`, boxShadow: `8px 8px 0 ${G.dark}`, marginBottom: 0 }}>
-              <div style={{ background: `linear-gradient(90deg,${G.orange},#F57C00)`, padding: '16px 24px', display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span style={{ fontSize: 24 }}>📦</span><span style={{ color: '#fff', fontWeight: 900, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Approved Requests (Ready to Ship)</span>
-              </div>
-              <div style={{ padding: '20px 30px' }}>
-                {requests.map(r => (
-                  <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px', borderBottom:`2px solid ${G.sage}44`, flexWrap:'wrap', gap:12 }}>
-                    <div>
-                      <div style={{ fontWeight:900, color:G.dark, fontSize:15 }}>{r.material_name}</div>
-                      <div style={{ fontSize:12, color:G.olive, fontWeight:700 }}>Request: {r.request_code} | Dept: {r.department || 'Printing'} | Qty: {r.quantity_requested} {r.unit}</div>
-                    </div>
-                    <button onClick={() => handlePrepareShip(r)} style={{ background: G.purple || '#7C3AED', color: '#fff', border: 'none', padding: '10px 20px', fontSize: 14, fontWeight: 900, cursor: 'pointer', borderRadius: 0, boxShadow: `4px 4px 0 #4C1D95`, textTransform: 'uppercase' }}>
-                      📦 PREPARE SHIPMENT
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── CAR / AGRI RENTAL APPROVED REQUESTS ── */}
-        {carRequests.length > 0 && (
-          <div style={{ padding: '40px 40px 0 40px' }}>
-            <div style={{ background: '#fff', border: `4px solid ${G.sky}`, boxShadow: `8px 8px 0 ${G.dark}`, marginBottom: 0 }}>
-              <div style={{ background: `linear-gradient(90deg,${G.sky},#1565C0)`, padding: '16px 24px', display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span style={{ fontSize: 24 }}>🚚</span><span style={{ color: '#fff', fontWeight: 900, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' }}>Car & AgriRental Requests (Ready to Ship)</span>
-              </div>
-              <div style={{ padding: '20px 30px' }}>
-                {carRequests.map(r => (
-                  <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px', borderBottom:`2px solid ${G.sage}44`, flexWrap:'wrap', gap:12 }}>
-                    <div>
-                      <div style={{ fontWeight:900, color:G.dark, fontSize:15 }}>Request {r.request_number}</div>
-                      <div style={{ fontSize:12, color:G.olive, fontWeight:700 }}>Dept: {r.department || 'Car Rental'} | Items: {r.item_count} | Notes: {r.notes || 'None'}</div>
-                    </div>
-                    <button onClick={async () => {
-                      try {
-                        const res = await api.get(`/api/v1/car-renting/store-requests/${r.id}`);
-                        const data = res.data?.data || res.data;
-                        const qtys = {};
-                        (data.items || []).forEach(it => { qtys[it.id] = it.quantity_requested; });
-                        setCarShipQtys(qtys);
-                        setCarShipModal(data);
-                      } catch(e) {
-                        showToast('error', 'Failed to load request detail');
-                      }
-                    }} style={{ background: G.sky, color: '#fff', border: 'none', padding: '10px 20px', fontSize: 14, fontWeight: 900, cursor: 'pointer', borderRadius: 0, boxShadow: `4px 4px 0 #0D47A1`, textTransform: 'uppercase' }}>
-                      🚚 SHIP REQUEST
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── MAIN FORM ── */}
         <div style={{ padding: '40px 40px 0 40px' }} id="issue_details_section">
@@ -1416,7 +1444,7 @@ export const GSIssueItem = () => {
           <div style={{ marginTop: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ borderLeft: `5px solid #0ea5e9`, paddingLeft: 12 }}>
               <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: G.darkGray, textTransform: 'uppercase' }}>
-                Past Car & Agri Rental Requests (Flow History)
+                Past Requests (Flow History)
               </h2>
               <div style={{ fontSize: 12, color: G.darkGray, marginTop: 2, fontWeight: 600 }}>
                 {allHistory.length} total record{allHistory.length !== 1 ? 's' : ''} across departments
@@ -1424,10 +1452,10 @@ export const GSIssueItem = () => {
             </div>
             {/* Department Filter Buttons */}
             <div style={{ display: 'flex', gap: 6 }}>
-              {['All', 'Car Rental', 'AgriRent'].map(f => {
+              {['All', 'Car Rental', 'AgriRent', 'Printing', 'Sales'].map(f => {
                 const isActive = historyFilter === f;
-                const col = f === 'Car Rental' ? '#0ea5e9' : f === 'AgriRent' ? G.olive : G.darkGray;
-                const Icon = f === 'Car Rental' ? Truck : f === 'AgriRent' ? Leaf : null;
+                const col = f === 'Car Rental' ? '#0ea5e9' : f === 'AgriRent' ? G.olive : f === 'Printing' ? '#8b5cf6' : f === 'Sales' ? '#f59e0b' : G.darkGray;
+                const Icon = f === 'Car Rental' ? Truck : f === 'AgriRent' ? Leaf : f === 'Printing' ? Printer : f === 'Sales' ? ShoppingBag : null;
                 return (
                   <button key={f} onClick={() => setHistoryFilter(f)} style={{
                     padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
@@ -1445,8 +1473,12 @@ export const GSIssueItem = () => {
                       color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, fontWeight: 900,
                     }}>
                       {f === 'All' ? allHistory.length : f === 'Car Rental'
-                        ? allHistory.filter(r => r.department === 'Car Rental' || !r.department).length
-                        : allHistory.filter(r => r.department === 'AgriRent').length}
+                        ? allHistory.filter(r => r.department === 'Car Rental').length
+                        : f === 'AgriRent'
+                        ? allHistory.filter(r => r.department === 'AgriRent').length
+                        : f === 'Printing'
+                        ? allHistory.filter(r => r.department === 'Printing').length
+                        : allHistory.filter(r => r.department === 'Sales' || r.department === 'Retail POS').length}
                     </span>
                   </button>
                 );
@@ -1478,18 +1510,22 @@ export const GSIssueItem = () => {
                     const isOpen = !!expandedRows[r.id];
                     const det = rowDetails[r.id];
                     const loadingDet = !!rowDetailLoading[r.id];
-                    const dept = r.department || 'Car Rental';
-                    const deptColor = dept === 'AgriRent' ? G.olive : '#0ea5e9';
-                    const DeptIcon = dept === 'AgriRent' ? Leaf : Truck;
+                    const dept = r.department || 'Unknown';
+                    const isAgri = dept === 'AgriRent';
+                    const isPrint = dept === 'Printing';
+                    const isSales = dept === 'Sales' || dept === 'Retail POS';
+                    const deptColor = isAgri ? G.olive : isPrint ? '#8b5cf6' : isSales ? '#f59e0b' : '#0ea5e9';
+                    const DeptIcon = isAgri ? Leaf : isPrint ? Printer : isSales ? ShoppingBag : Truck;
+                    const deptBg = isAgri ? '#f0fdf4' : isPrint ? '#f5f3ff' : isSales ? '#fef3c7' : '#e0f2fe';
 
                     return (
-                      <React.Fragment key={r.id}>
+                      <React.Fragment key={`${r.req_type}-${r.id}`}>
                         <tr style={{ borderBottom: isOpen ? 'none' : `1px solid ${G.sage}`, background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
                           <td style={{ padding: '11px 14px', color: G.darkGray, fontWeight: 700 }}>{i + 1}</td>
                           <td style={{ padding: '11px 14px', fontWeight: 900, color: G.forest, fontFamily: 'monospace', fontSize: 12 }}>{r.request_number}</td>
                           <td style={{ padding: '11px 14px' }}>
                             <span style={{
-                              background: dept === 'AgriRent' ? '#f0fdf4' : '#e0f2fe',
+                              background: deptBg,
                               color: deptColor, border: `1.5px solid ${deptColor}`,
                               padding: '3px 10px', fontSize: 11, fontWeight: 800,
                               textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -1574,7 +1610,137 @@ export const GSIssueItem = () => {
 
       </div>
 
-      {/* Toast */}
+      {/* ── WAITING REQUESTS MODAL ── */}
+      {showWaitingModal && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setShowWaitingModal(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 99999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}
+        >
+          <div style={{ background: '#fff', width: '100%', maxWidth: 1000, boxShadow: `12px 12px 0 ${G.dark}`, border: `4px solid ${G.dark}`, marginBottom: 40 }}>
+            <div style={{ background: G.dark, padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #F59E0B' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🛎️</span>
+                <div>
+                  <div style={{ color: '#F59E0B', fontSize: 20, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>Waiting Requests Queue</div>
+                  <div style={{ color: '#aaa', fontSize: 13, fontWeight: 600, marginTop: 3 }}>{requests.length + carRequests.length + posRequests.length} pending — click Prepare to auto-fill the form below</div>
+                </div>
+              </div>
+              <button onClick={() => setShowWaitingModal(false)} style={{ background: 'transparent', border: '2px solid #555', color: '#fff', width: 36, height: 36, fontSize: 18, cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <div style={{ padding: 30, background: '#F9FAFB' }}>
+              {requests.length > 0 && (
+                <div style={{ marginBottom: 30 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <span style={{ background: G.orange, color: '#fff', padding: '4px 14px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>📦 Printing / Office</span>
+                    <span style={{ color: G.olive, fontWeight: 700, fontSize: 13 }}>{requests.length} request(s)</span>
+                  </div>
+                  {requests.map(r => (
+                    <div key={r.id} style={{ background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', border: `2px solid ${G.orange}44`, borderLeft: `5px solid ${G.orange}`, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>{r.material_name}</div>
+                        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Ref: <b>{r.request_code}</b> | Dept: <b>{r.department || 'Printing'}</b> | Qty: <b>{r.quantity_requested} {r.unit}</b> | By: <b>{r.created_by_name}</b></div>
+                      </div>
+                      <button onClick={() => handlePrepareShip(r)} style={{ background: G.orange, color: '#fff', padding: '10px 22px', border: 'none', fontWeight: 800, cursor: 'pointer', boxShadow: '3px 3px 0 #E65100', textTransform: 'uppercase', fontSize: 13, whiteSpace: 'nowrap' }}>✓ Prepare Issue</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {carRequests.length > 0 && (
+                <div style={{ marginBottom: 30 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <span style={{ background: G.sky, color: '#fff', padding: '4px 14px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>🚚 Car & Agri Rental</span>
+                    <span style={{ color: G.olive, fontWeight: 700, fontSize: 13 }}>{carRequests.length} request(s)</span>
+                  </div>
+                  {carRequests.map(r => (
+                    <div key={r.id} style={{ background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', border: `2px solid ${G.sky}44`, borderLeft: `5px solid ${G.sky}`, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>Ref: {r.request_code}</div>
+                        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Dept: <b>{r.department || 'Fleet Management'}</b> | Items: <b>{(r.items || []).length}</b> | By: <b>{r.created_by_name}</b></div>
+                      </div>
+                      <button onClick={() => handlePrepareCar(r)} style={{ background: G.sky, color: '#fff', padding: '10px 22px', border: 'none', fontWeight: 800, cursor: 'pointer', boxShadow: '3px 3px 0 #0284C7', textTransform: 'uppercase', fontSize: 13, whiteSpace: 'nowrap' }}>✓ Prepare Issue</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {posRequests.length > 0 && (
+                <div style={{ marginBottom: 30 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <span style={{ background: '#10B981', color: '#fff', padding: '4px 14px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>🛒 POS Sales</span>
+                    <span style={{ color: G.olive, fontWeight: 700, fontSize: 13 }}>{posRequests.length} request(s) awaiting store release</span>
+                  </div>
+                  {posRequests.map(r => {
+                    let cartItems = [];
+                    try { cartItems = JSON.parse(r.cart_items || '[]'); } catch(e) {}
+                    if (cartItems.length === 0 && r.product_name) cartItems = [{ name: r.product_name, qty: r.quantity_requested, price: 0 }];
+                    const totalQty = cartItems.reduce((sum, i) => sum + (i.qty || i.quantity || 1), 0);
+                    return (
+                      <div key={r.id} style={{ background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', border: '2px solid #10B98144', borderLeft: '5px solid #10B981', marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: 15, color: G.dark }}>{r.customer_name || 'Walk-in Customer'}</div>
+                          <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Ref: <b>{r.request_code}</b> | Qty: <b>{totalQty} items</b> | By: <b>{r.cashier_name || r.requested_by_name || '—'}</b></div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button onClick={() => setPosRejectModal(r)} style={{ background: '#EF4444', color: '#fff', padding: '10px 16px', border: 'none', fontWeight: 800, cursor: 'pointer', boxShadow: '3px 3px 0 #B91C1C', textTransform: 'uppercase', fontSize: 13, whiteSpace: 'nowrap' }}>✕ Reject</button>
+                          <button onClick={() => handlePreparePos(r)} style={{ background: '#10B981', color: '#fff', padding: '10px 22px', border: 'none', fontWeight: 800, cursor: 'pointer', boxShadow: '3px 3px 0 #047857', textTransform: 'uppercase', fontSize: 13, whiteSpace: 'nowrap' }}>✓ Prepare Issue</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {requests.length === 0 && carRequests.length === 0 && posRequests.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 60, color: '#aaa', fontWeight: 700, fontSize: 16 }}>✅ No pending requests at this time.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Reject Reason Modal ── */}
+      {posRejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: 500, borderTop: '5px solid #F44336', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '22px 26px', borderBottom: '2px solid #F5F5F5' }}>
+              <div style={{ fontWeight: 900, fontSize: 17, color: '#212121', textTransform: 'uppercase', letterSpacing: 0.5 }}>Reject Request: {posRejectModal.request_code}</div>
+              <div style={{ fontSize: 13, color: '#8D6E63', marginTop: 5 }}>Customer: {posRejectModal.customer_name || 'Walk-in Customer'}</div>
+            </div>
+            <div style={{ padding: '22px 26px' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#8D6E63', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Reason for Rejection *</label>
+              <textarea
+                autoFocus
+                value={posRejectReason}
+                onChange={e => setPosRejectReason(e.target.value)}
+                placeholder="Enter reason..."
+                rows={4}
+                style={{ width: '100%', padding: '12px 14px', border: '2px solid #E5E7EB', fontWeight: 600, fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+            </div>
+            <div style={{ padding: '16px 26px', display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#FAFAFA', borderTop: '1px solid #F0F0F0' }}>
+              <button
+                onClick={() => { setPosRejectModal(null); setPosRejectReason(''); }}
+                style={{ padding: '10px 22px', background: '#fff', border: '2px solid #424242', color: '#424242', fontWeight: 800, cursor: 'pointer', textTransform: 'uppercase', fontSize: 13, letterSpacing: 0.5 }}
+              >Cancel</button>
+              <button
+                onClick={async () => {
+                  if (!posRejectReason.trim()) return showToast('error', 'Please provide a rejection reason');
+                  setPosActionLoading(prev => ({ ...prev, [posRejectModal.id]: true }));
+                  try {
+                    await api.patch(`/api/v1/store-sales-requests/${posRejectModal.id}/reject`, { rejection_reason: posRejectReason });
+                    showToast('success', `Request ${posRejectModal.request_code} rejected.`);
+                    setPosRejectModal(null);
+                    setPosRejectReason('');
+                    load();
+                  } catch(e) {
+                    showToast('error', e.response?.data?.message || 'Failed to reject');
+                  }
+                  setPosActionLoading(prev => ({ ...prev, [posRejectModal.id]: false }));
+                }}
+                style={{ padding: '10px 26px', background: '#F44336', border: 'none', color: '#fff', fontWeight: 800, cursor: 'pointer', textTransform: 'uppercase', fontSize: 13, letterSpacing: 0.5, boxShadow: '3px 3px 0 #B71C1C' }}
+              >Confirm Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+            {/* Toast */}
       {toast && (
         <div style={{ position:'fixed', bottom:40, right:40, background: toast.type==='success' ? `linear-gradient(135deg,${G.leaf},${G.emerald})` : `linear-gradient(135deg,${G.red},#b71c1c)`, border:`4px solid ${toast.type==='success'?G.dark:'#7f0000'}`, boxShadow:`8px 8px 0 ${toast.type==='success'?G.dark:'#7f0000'}`, color:'#fff', fontWeight:900, fontSize:16, padding:'20px 30px', display:'flex', gap:16, alignItems:'center', animation:'toastSlide .3s ease', zIndex:10000, borderRadius:0 }}>
           <span style={{ fontSize:28 }}>{toast.type==='success'?'✅':'❌'}</span>
