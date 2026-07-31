@@ -107,7 +107,10 @@ const salesService = {
 
   /* Reports */
   getCombinedDailyReport: async (params) => apiClient.get('/pos/reports/combined-daily', { params }),
-  getTodaySummary: async () => apiClient.get('/pos/reports/today-summary'),
+  getTodaySummary: async (period = 'day') => apiClient.get('/pos/reports/today-summary', { params: { period } }),
+
+  /* Audit trail */
+  getAuditTrail: async (period) => apiClient.get('/pos/audit-trail', { params: period ? { period } : {} }),
 
   /* Online order collection */
   collectOnlineOrder: async (data) => apiClient.post('/pos/collect-online-order', data),
