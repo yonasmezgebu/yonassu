@@ -293,86 +293,99 @@ const SalesOverview = () => {
     return () => clearInterval(t);
   }, []);
 
-  // data
+  // data — derived from audit trail + inventory
   const fetchData = useCallback(async (showLoader = false) => {
     try {
       if (showLoader) setLoading(true);
       setRefreshing(true);
       setError(null);
-      
-      const [res, storeRes, prodRes] = await Promise.all([
-        salesService.getTodaySummary().catch(() => ({ data: {} })),
+
+      // 1. Audit trail (today's records from pos_audit_trail)
+      // 2. Store inventory for breakdown panel
+      // 3. Retail products for inventory panel
+      const [auditRes, storeRes, prodRes] = await Promise.all([
+        salesService.getAuditTrail('day').catch(() => ({ data: [] })),
         apiClient.get('/retail/store-inventory').catch(() => ({ data: [] })),
         salesService.getRetailProducts({ limit: 1000 }).catch(() => ({ data: [] }))
       ]);
 
-      const payload = res?.data || res || {};
-      
-      // Calculate Store Inventory Data
+      // ── Compute revenue & top-selling from audit records ──
+      const auditRecords = Array.isArray(auditRes?.data)
+        ? auditRes.data
+        : (auditRes?.data?.data || []);
+
+      let todaySales = 0;
+      const productMap = {}; // name → { units, revenue }
+
+      auditRecords.forEach(rec => {
+        todaySales += parseFloat(rec.amount || 0);
+        // Each audit record carries its sale items
+        if (Array.isArray(rec.items)) {
+          rec.items.forEach(item => {
+            const name = item.product_name || item.name || `Product #${item.product_id}`;
+            const qty  = Number(item.quantity || 0);
+            const rev  = qty * Number(item.unit_price || 0);
+            if (!productMap[name]) productMap[name] = { units_sold: 0, revenue: 0 };
+            productMap[name].units_sold += qty;
+            productMap[name].revenue    += rev;
+          });
+        }
+      });
+
+      const topSelling = Object.entries(productMap)
+        .map(([name, v]) => ({ name, ...v }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
+
+      const todaySalesCount = auditRecords.length;
+
+      // ── Store Inventory breakdown ──
       const storeStock = Array.isArray(storeRes?.data) ? storeRes.data : [];
-      let storeTotalSKUs = 0;
-      let storeTotalUnits = 0;
-      let storeTotalValue = 0;
+      let storeTotalSKUs = 0, storeTotalUnits = 0, storeTotalValue = 0;
       const storeCatMap = {};
-      
       storeStock.forEach(item => {
         const cat = item.category || item.product_category || 'Uncategorized';
         const qty = Number(item.stock_quantity) || 0;
         const val = qty * Number(item.unit_price || item.price || 0);
-        
-        storeTotalSKUs += 1;
+        storeTotalSKUs  += 1;
         storeTotalUnits += qty;
         storeTotalValue += val;
-        
         if (!storeCatMap[cat]) storeCatMap[cat] = { sku_count: 0, total_quantity: 0, total_value: 0 };
-        storeCatMap[cat].sku_count += 1;
+        storeCatMap[cat].sku_count      += 1;
         storeCatMap[cat].total_quantity += qty;
-        storeCatMap[cat].total_value += val;
+        storeCatMap[cat].total_value    += val;
       });
       const storeCategories = Object.keys(storeCatMap).map(k => ({ category: k, ...storeCatMap[k] }));
 
-      // Calculate Stock Operations Data
+      // ── Retail Products breakdown ──
       const rawProd = Array.isArray(prodRes) ? prodRes : prodRes?.data?.products || prodRes?.data || [];
-      let retailTotalSKUs = 0;
-      let retailTotalUnits = 0;
-      let retailTotalValue = 0;
+      let retailTotalSKUs = 0, retailTotalUnits = 0, retailTotalValue = 0;
       const retailCatMap = {};
-      
       rawProd.forEach(item => {
         const cat = item.category_name || item.category || 'Uncategorized';
         const qty = Number(item.stock_quantity || 0);
         const val = qty * Number(item.selling_price || item.price || 0);
-        
-        retailTotalSKUs += 1;
+        retailTotalSKUs  += 1;
         retailTotalUnits += qty;
         retailTotalValue += val;
-        
         if (!retailCatMap[cat]) retailCatMap[cat] = { sku_count: 0, total_quantity: 0, total_value: 0 };
-        retailCatMap[cat].sku_count += 1;
+        retailCatMap[cat].sku_count      += 1;
         retailCatMap[cat].total_quantity += qty;
-        retailCatMap[cat].total_value += val;
+        retailCatMap[cat].total_value    += val;
       });
       const retailCategories = Object.keys(retailCatMap).map(k => ({ category: k, ...retailCatMap[k] }));
 
       setStats({
-        todaySales:       payload.total_revenue      ?? payload.todaySales      ?? 0,
-        todaySalesCount:  payload.transaction_count  ?? payload.todaySalesCount ?? 0,
-        customersServed:  payload.customersServed     ?? 0,
-        lowStockAlerts:   payload.lowStockAlerts      ?? [],
-        expiredList:      payload.expiredList         ?? [],
-        topSelling:       payload.topSelling          ?? [],
-        pendingTransfers: payload.pendingTransfers    ?? 0,
-        
-        // Store inventory: for reference breakdown only (not added to grand total)
-        store: { totalSKUs: storeTotalSKUs, totalUnits: storeTotalUnits, totalValue: storeTotalValue, categories: storeCategories },
-        // Retail products = the actual sales inventory (already sourced from store)
+        todaySales,
+        todaySalesCount,
+        customersServed:  0,
+        lowStockAlerts:   [],
+        expiredList:      [],
+        topSelling,
+        pendingTransfers: 0,
+        store:  { totalSKUs: storeTotalSKUs,  totalUnits: storeTotalUnits,  totalValue: storeTotalValue,  categories: storeCategories },
         retail: { totalSKUs: retailTotalSKUs, totalUnits: retailTotalUnits, totalValue: retailTotalValue, categories: retailCategories },
-        // Grand = ONLY retail products (store items are already reflected here after transfer)
-        grand: {
-          totalSKUs:   retailTotalSKUs,
-          totalUnits:  retailTotalUnits,
-          totalValue:  retailTotalValue
-        }
+        grand:  { totalSKUs: retailTotalSKUs, totalUnits: retailTotalUnits, totalValue: retailTotalValue }
       });
     } catch (err) {
       setError(err.message || 'Failed to load dashboard');
@@ -430,7 +443,7 @@ const SalesOverview = () => {
       <style>{DASH_CSS}</style>
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', marginBottom:'2.5rem', animation:'fadeUp .35s ease', width:'100%' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', marginBottom:'1.5rem', animation:'fadeUp .35s ease', width:'100%' }}>
         <div style={{ justifySelf:'start' }}>
           <h1 className="ov-title">
             Sales HQ &nbsp;<ShieldCheck className="leaf-blink" size={36} />
@@ -576,12 +589,19 @@ const SalesOverview = () => {
           </div>
         </div>
 
-        {/* Top Selling Today */}
-        <div className="d-static" style={{ animationDelay:'.30s' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+        {/* Top Selling Today — internal scroll */}
+        <div className="d-static" style={{ animationDelay:'.30s', display:'flex', flexDirection:'column' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexShrink:0 }}>
             <Star size={18} color={CL} />
             <span style={{ fontSize:15, fontWeight:900, color:CD }}>Top Sales Today</span>
+            {topSelling.length > 0 && (
+              <span style={{ marginLeft:'auto', fontSize:10, fontWeight:800, color:CE, background:'#E8F5E9', padding:'3px 8px' }}>
+                {topSelling.length} items
+              </span>
+            )}
           </div>
+          {/* Scrollable list — card stays fixed height */}
+          <div style={{ overflowY:'auto', flex:1, maxHeight:360 }}>
           {topSelling.length === 0 ? (
             <div style={{ textAlign:'center', padding:'20px 0', color:CS, fontSize:13 }}>
               <BarChart2 size={28} style={{ marginBottom:8, opacity:.4 }} /><br />No sales yet
@@ -599,6 +619,7 @@ const SalesOverview = () => {
               <span style={{ fontSize:11, fontWeight:800, color:C, whiteSpace:'nowrap' }}>ETB {fmt(item.revenue)}</span>
             </div>
           ))}
+          </div>{/* end scroll */}
         </div>
       </div>
 
