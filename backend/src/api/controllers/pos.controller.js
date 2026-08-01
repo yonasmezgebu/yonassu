@@ -1833,32 +1833,109 @@ exports.getCombinedDailyReport = catchAsync(async (req, res) => {
 
 /* ── Today's Sales Summary (for dashboard widgets) ── */
 
+// Helper: get date range from period string
+function getPeriodRange(period) {
+  const now = new Date();
+  let start;
+  switch (period) {
+    case 'week': {
+      const day = now.getDay(); // 0=Sun
+      start = new Date(now);
+      start.setDate(now.getDate() - day);
+      start.setHours(0, 0, 0, 0);
+      break;
+    }
+    case 'month':
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'quarter': {
+      const q = Math.floor(now.getMonth() / 3);
+      start = new Date(now.getFullYear(), q * 3, 1);
+      break;
+    }
+    case 'year':
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    default: // 'day'
+      start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+  }
+  const end = new Date();
+  return {
+    startISO: start.toISOString(),
+    endISO:   end.toISOString(),
+    startDate: start.toISOString().split('T')[0],
+    endDate:   end.toISOString().split('T')[0],
+  };
+}
+
 exports.getTodaySummary = catchAsync(async (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  const period = req.query.period || 'day';
+  const { startISO, endISO } = getPeriodRange(period);
+
+  // Total revenue + count across all sale types in the period
+  const summary = await db('pos_sales')
+    .whereNull('deleted_at')
+    .whereBetween('sale_date', [startISO, endISO])
+    .count('* as count')
+    .sum('total_amount as revenue')
+    .countDistinct('customer_id as customers')
+    .first();
+
   const walkIn = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [today])
+    .whereNull('deleted_at')
+    .whereBetween('sale_date', [startISO, endISO])
     .where('sale_type', 'walk_in')
     .count('* as count')
     .sum('total_amount as revenue')
     .first();
+
   const onlineFromPos = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [today])
+    .whereNull('deleted_at')
+    .whereBetween('sale_date', [startISO, endISO])
     .where('sale_type', 'online')
     .count('* as count')
     .sum('total_amount as revenue')
     .first();
+
   const pendingApproval = await db('pos_sales')
-    .whereRaw('DATE(sale_date) = ?', [today])
+    .whereNull('deleted_at')
+    .whereBetween('sale_date', [startISO, endISO])
     .where('manager_approved', false)
     .whereNull('manager_flag_reason')
     .count('* as count')
     .first();
+
+  // Top selling products for the period
+  const topSelling = await db('pos_items as pi')
+    .join('pos_sales as ps', 'pi.sale_id', 'ps.id')
+    .leftJoin('retail_products as rp', 'pi.product_id', 'rp.id')
+    .whereNull('ps.deleted_at')
+    .whereBetween('ps.sale_date', [startISO, endISO])
+    .select(
+      db.raw('COALESCE(rp.name, pi.source, CONCAT("Product #", pi.product_id)) as name'),
+      db.raw('SUM(pi.quantity) as units_sold'),
+      db.raw('SUM(pi.quantity * pi.unit_price) as revenue')
+    )
+    .groupBy('name')
+    .orderBy('revenue', 'desc')
+    .limit(10);
+
   res.json({
     status: 'success',
     data: {
-      walkInSales: { count: parseInt(walkIn.count || 0), revenue: parseFloat(walkIn.revenue || 0) },
+      period,
+      total_revenue:     parseFloat(summary.revenue || 0),
+      transaction_count: parseInt(summary.count   || 0),
+      customersServed:   parseInt(summary.customers || 0),
+      topSelling: topSelling.map(t => ({
+        name:       t.name,
+        units_sold: parseInt(t.units_sold || 0),
+        revenue:    parseFloat(t.revenue   || 0),
+      })),
+      walkInSales:       { count: parseInt(walkIn.count || 0),       revenue: parseFloat(walkIn.revenue || 0) },
       onlineCollections: { count: parseInt(onlineFromPos.count || 0), revenue: parseFloat(onlineFromPos.revenue || 0) },
-      pendingApproval: parseInt(pendingApproval.count || 0)
+      pendingApproval:   parseInt(pendingApproval.count || 0)
     }
   });
 });
@@ -2170,8 +2247,9 @@ exports.exportAuditExcel = catchAsync(async (req, res) => {
 });
 const { transaction: dbTransaction } = require('../../config/database');
 exports.getAuditTrail = catchAsync(async (req, res) => {
-  // Get all audit trail entries with full sale info per transaction
-  const trail = await db('pos_audit_trail as at')
+  const period = req.query.period || null;
+
+  let query = db('pos_audit_trail as at')
     .leftJoin('users as u', 'at.cashier_id', 'u.id')
     .leftJoin('pos_sales as ps', 'at.sale_id', 'ps.id')
     .leftJoin('payment_methods as pm', 'ps.payment_method_id', 'pm.id')
@@ -2188,8 +2266,15 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
       'ss.status_name'
     )
     .whereNull('ps.deleted_at')   // exclude cancelled/returned sales from audit view
-    .orderBy('at.created_at', 'desc')
-    .limit(200);
+    .orderBy('at.created_at', 'desc');
+
+  // Apply period filter if provided
+  if (period) {
+    const { startISO, endISO } = getPeriodRange(period);
+    query = query.whereBetween('at.created_at', [startISO, endISO]);
+  }
+
+  const trail = await query.limit(500);
 
   // For each audit row that has a sale_id, fetch its items
   const enriched = await Promise.all(trail.map(async (t) => {
@@ -2278,6 +2363,10 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
   if (payment?.method === 'BANK_TRANSFER') paymentMethodId = 3;
   if (payment?.method === 'TELBIR') paymentMethodId = 4;
 
+  if (paymentMethodId !== 1) {
+    return res.status(400).json({ status: 'error', message: 'Only CASH transactions are allowed in the POS transaction database. Digital payments go through Finance.' });
+  }
+
   let completedStatus = await db('sale_statuses').where('status_code', 'completed').first();
   if (!completedStatus) {
     const [id] = await db('sale_statuses').insert({ status_code: 'completed', status_name: 'Completed' });
@@ -2313,7 +2402,7 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       sale_type: ((sale_type || 'walk_in').toLowerCase().replace('-', '_') === 'walkin' ? 'walk_in' : (sale_type || 'walk_in').toLowerCase().replace('-', '_')),
       payment_reference: paymentRef,
       notes: paymentNotes || null,
-      is_submitted: paymentMethodId !== 1 // Cash goes to audit (false), digital bypasses (true)
+      is_submitted: false // Cash always goes to audit
     });
 
     for (const item of items) {
@@ -2604,28 +2693,43 @@ exports.getPendingCartsByStatus = async (req, res) => {
 
     const carts = await query.orderBy('created_at', 'desc');
 
-    // Live sync logic: Check if store released the items
-    for (const cart of carts) {
-      if (cart.status === 'PENDING_STORE') {
+    // Filter carts that actually need live sync (PENDING_STORE)
+    const pendingCarts = carts.filter(c => c.status === 'PENDING_STORE');
+    if (pendingCarts.length > 0) {
+      // Collect all cart codes
+      const cartCodes = pendingCarts.map(c => c.cart_code).filter(Boolean);
+      
+      if (cartCodes.length > 0) {
+        // Fetch all store requests matching these cart codes in a single query
         const storeReqs = await db('store_sales_requests')
-          .where('request_code', 'like', `${cart.cart_code}%`);
-          
-        if (storeReqs.length > 0) {
-          const allReleased = storeReqs.every(r => r.status === 'Released' || r.status === 'Sold');
-          const anyRejected = storeReqs.some(r => r.status === 'Rejected');
-          
-          if (anyRejected) {
-            cart.status = 'REJECTED_BY_STORE';
-            cart.notes = 'Store Rejected: ' + (storeReqs.find(r => r.status === 'Rejected')?.rejection_reason || '');
-            await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, notes: cart.notes, updated_at: new Date() });
-          } else if (allReleased) {
-            cart.status = 'APPROVED_BY_STORE';
-            await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, updated_at: new Date() });
+          .where(function() {
+            for (const code of cartCodes) {
+              this.orWhere('request_code', 'like', `${code}%`);
+            }
+          });
+
+        // Process live sync logic in-memory
+        for (const cart of pendingCarts) {
+          const reqsForCart = storeReqs.filter(r => r.request_code && r.request_code.startsWith(cart.cart_code));
+          if (reqsForCart.length > 0) {
+            const allReleased = reqsForCart.every(r => r.status === 'Released' || r.status === 'Sold');
+            const anyRejected = reqsForCart.some(r => r.status === 'Rejected');
+            
+            if (anyRejected) {
+              cart.status = 'REJECTED_BY_STORE';
+              cart.notes = 'Store Rejected: ' + (reqsForCart.find(r => r.status === 'Rejected')?.rejection_reason || '');
+              await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, notes: cart.notes, updated_at: new Date() });
+            } else if (allReleased) {
+              cart.status = 'APPROVED_BY_STORE';
+              await db('retail_pos_carts').where({ id: cart.id }).update({ status: cart.status, updated_at: new Date() });
+            }
           }
         }
       }
+    }
 
-      // Parse items JSON for the frontend
+    // Parse items JSON for the frontend
+    for (const cart of carts) {
       try {
         if (typeof cart.items === 'string') {
           cart.items = JSON.parse(cart.items);
@@ -2634,7 +2738,7 @@ exports.getPendingCartsByStatus = async (req, res) => {
         cart.items = [];
       }
     }
-    
+
     res.json({ status: 'success', data: carts });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -2667,10 +2771,13 @@ exports.storeReleaseCart = async (req, res) => {
     try { items = JSON.parse(storeReq.cart_items || '[]'); } catch(e) {}
 
     for (const item of items) {
+      const deduct = parseFloat(item.qty || item.quantity || 1);
+      const prodName = item.name || item.product_name || '';
+
+      // 1. Deduct from general_store_materials
       const mat = await trx('general_store_materials')
-        .where('material_name', 'like', `%${item.name || item.product_name || ''}%`).first();
+        .where('material_name', 'like', `%${prodName}%`).first();
       if (mat) {
-        const deduct = parseFloat(item.qty || item.quantity || 1);
         const newQty = Math.max(0, parseFloat(mat.quantity_in_store || 0) - deduct);
         await trx('general_store_materials').where('id', mat.id).update({ quantity_in_store: newQty, updated_at: new Date() });
         await trx('general_movement_log').insert({
@@ -2681,6 +2788,14 @@ exports.storeReleaseCart = async (req, res) => {
           notes: `POS Sale #${storeReq.request_code} - Customer: ${storeReq.customer_name || 'N/A'}`,
           created_at: new Date()
         }).catch(() => {});
+      }
+
+      // 2. ALSO Deduct from retail_products so POS stock matches exactly
+      const retProd = await trx('retail_products')
+        .where('name', 'like', `%${prodName}%`).first();
+      if (retProd) {
+        const newStock = Math.max(0, parseFloat(retProd.stock_quantity || 0) - deduct);
+        await trx('retail_products').where('id', retProd.id).update({ stock_quantity: newStock, updated_at: new Date() });
       }
     }
 
