@@ -46,8 +46,7 @@ const PrintingManagerDashboard = () => {
       children: [
         { label: 'Daily Production Report',     path: '/printing-manager/overview', icon: 'clock' },
         { label: 'Job Cost Report',             path: '/printing-manager/orders',   icon: 'wallet' },
-        { label: 'Material Consumption Report', path: '/printing-manager/overview', icon: 'package' },
-        { label: 'Monthly Summary',             path: '/printing-manager/overview', icon: 'file-text' },
+        { label: 'Material Consumption Report', path: '/printing-manager/overview', icon: 'package' }
       ] },
 
   ];

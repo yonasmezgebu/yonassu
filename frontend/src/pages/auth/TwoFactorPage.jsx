@@ -48,20 +48,22 @@ const TwoFactorPage = () => {
         navigate('/login');
         return;
       }
-      if (user.roles?.includes('Admin')) navigate('/admin');
-      else if (user.roles?.includes('CEO')) navigate('/ceo');
-      else if (user.roles?.includes('Finance Manager')) navigate('/finance');
-      else if (user.roles?.includes('Purchase')) navigate('/purchase');
-      else if (user.roles?.includes('Pharmacy Store Keeper')) navigate('/pharmacy-store');
-      else if (user.roles?.includes('General Store Keeper')) navigate('/general-store');
-      else if (user.roles?.includes('Sales/Cashier')) navigate('/pharmacy-worker');
-      else if (user.roles?.includes('Printing Supervisor')) navigate('/printing-manager');
-      else if (user.roles?.includes('HR Manager')) navigate('/hr');
-      else if (user.roles?.includes('Board Member')) navigate('/board');
-      else if (user.roles?.includes('Employee')) navigate('/employee');
-      else if (user.roles?.includes('Pharmacy Manager')) navigate('/pharmacy');
-      else if (user.roles?.includes('Pharmacy Worker')) navigate('/pharmacy-worker');
-      else if (user.roles?.includes('Car Renting Manager')) navigate('/car-renting');
+      const userRoles = user.roles?.map(r => r.toLowerCase()) || [];
+      if (userRoles.includes('admin')) navigate('/admin');
+      else if (userRoles.includes('ceo')) navigate('/ceo');
+      else if (userRoles.includes('finance manager') || userRoles.includes('finance')) navigate('/finance');
+      else if (userRoles.includes('purchase')) navigate('/purchase');
+      else if (userRoles.includes('pharmacy store keeper')) navigate('/pharmacy-store');
+      else if (userRoles.includes('general store keeper')) navigate('/general-store');
+      else if (userRoles.includes('sales/cashier')) navigate('/pharmacy-worker');
+      else if (userRoles.includes('printing supervisor')) navigate('/printing-manager');
+      else if (userRoles.includes('printing manager')) navigate('/printing-manager');
+      else if (userRoles.includes('hr manager')) navigate('/hr');
+      else if (userRoles.includes('board member')) navigate('/board');
+      else if (userRoles.includes('employee')) navigate('/employee');
+      else if (userRoles.includes('pharmacy manager')) navigate('/pharmacy');
+      else if (userRoles.includes('pharmacy worker')) navigate('/pharmacy-worker');
+      else if (userRoles.includes('car renting manager')) navigate('/car-renting');
       else navigate('/');
     } catch (err) {
       setError('Invalid verification code. Please try again.');

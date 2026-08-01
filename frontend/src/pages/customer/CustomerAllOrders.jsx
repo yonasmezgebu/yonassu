@@ -1,101 +1,158 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import apiClient from '../../services/apiClient';
 import carService from '../../services/carService';
-import { Printer, ShoppingCart, Package, Car, Pill, Search, Tractor, List, ChevronRight, ChevronLeft, Gavel } from 'lucide-react';
 
-const ORDER_TYPES = [
-  {
-    key: 'retail',
-    label: 'RETAIL',
-    sublabel: 'Retail',
-    icon: Package,
-    color: '#f59e0b',
-    glowColor: 'rgba(245,158,11,0.5)',
-    img: '/cards/retail.png',
-    navPath: '/customer/retail-orders',
-    subtitle: 'Shop your retail orders',
-  },
-  {
-    key: 'printing',
-    label: 'PRINTING',
-    sublabel: 'Printing',
-    icon: Printer,
-    color: '#a855f7',
-    glowColor: 'rgba(168,85,247,0.5)',
-    img: '/cards/printing.png',
-    navPath: '/customer/printing-orders',
-    subtitle: 'Track print jobs',
-  },
-  {
-    key: 'farming',
-    label: 'AGRIRENT',
-    sublabel: 'AgriRent',
-    icon: Tractor,
-    color: '#22c55e',
-    glowColor: 'rgba(34,197,94,0.7)',
-    img: '/cards/agrirent.png',
-    navPath: '/customer/farming-orders',
-    subtitle: 'Ready for new order streams.',
-  },
-  {
-    key: 'rental',
-    label: 'CAR RENTAL',
-    sublabel: 'Car Rental',
-    icon: Car,
-    color: '#38bdf8',
-    glowColor: 'rgba(56,189,248,0.5)',
-    img: '/cards/carrental.png',
-    navPath: '/customer/rentals',
-    subtitle: 'Manage your car rentals',
-  },
-  {
-    key: 'prescription',
-    label: 'PHARMACY',
-    sublabel: 'Pharmacy',
-    icon: Pill,
-    color: '#60a5fa',
-    glowColor: 'rgba(96,165,250,0.5)',
-    img: '/cards/pharmacy.png',
-    navPath: '/customer/prescriptions',
-    subtitle: 'Your prescription orders',
-  },
-  {
-    key: 'tenders',
-    label: 'TENDERS',
-    sublabel: 'Bids',
-    icon: Gavel,
-    color: '#ef4444',
-    glowColor: 'rgba(239,68,68,0.5)',
-    img: '/cards/tenders.png',
-    navPath: null,
-    subtitle: 'Manage your bids',
-  },
-  {
-    key: 'all',
-    label: 'ALL ORDERS',
-    sublabel: 'All Orders',
-    icon: List,
-    color: '#94a3b8',
-    glowColor: 'rgba(148,163,184,0.4)',
-    img: '/cards/allorders.png',
-    navPath: null,
-    subtitle: 'View everything at once',
-  },
-];
+/* ─── Color Palette ─────────────────────────────────────────────────────── */
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
+  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
+  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
+  orange: '#FF9800', red: '#F44336', purple: '#7C3AED', blue: '#3b82f6'
+};
+
+const COLORS_ARR = [G.forest, G.orange, G.sky, G.purple, G.emerald, G.brown, G.blue];
+
+/* ─── Global Animations ─────────────────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
+    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    
+    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
+    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
+    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+    
+    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
+    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
+    
+    .btn-sync {
+      position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .btn-sync::before {
+      content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2;
+    }
+    .btn-sync::after {
+      content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1;
+    }
+    .btn-sync:hover::after { background: #F5F5F5; }
+    .btn-sync:active { transform: scale(0.97); }
+    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
+
+    .d-card { 
+      --hover-color: #2E8B57;
+      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
+    
+    .d-card-no-hover { 
+      --hover-color: #228B22;
+      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
+    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
+    
+    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
+    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px 80px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
+    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
+    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
+    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
+    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    
+    .qa-card { 
+      --hover-color: #2E8B57;
+      --base-top: transparent;
+      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
+      background-image:
+        linear-gradient(to right, var(--hover-color), var(--hover-color)),
+        linear-gradient(to bottom, var(--hover-color), var(--hover-color)),
+        linear-gradient(to left, var(--hover-color), var(--hover-color)),
+        linear-gradient(to top, var(--hover-color), var(--hover-color)),
+        linear-gradient(to right, var(--base-top), var(--base-top));
+      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0;
+      background-repeat: no-repeat;
+      background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+    }
+    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
+    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
+    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+  `}</style>
+);
+
+const DecorPlants = () => (
+  <>
+    <GlobalStyles />
+    {[
+      { e:'🍃', sz:55, op:0.22, top:'1%',    left:'0.5%'  },
+      { e:'🌿', sz:48, op:0.18, top:'0%',    right:'0.5%' },
+      { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
+      { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
+    ].map((p,i) => (
+      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation:`floatLeaf ${9+i*1.5}s ease-in-out infinite`, animationDelay:`${i*1.2}s`, zIndex:0 }}>{p.e}</span>
+    ))}
+  </>
+);
+
+const CategoryBar = ({ value, max, color }) => (
+  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
+    <div style={{
+      height: '100%', borderRadius: 0, background: color,
+      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
+      transition: 'width 1.2s ease'
+    }} />
+  </div>
+);
 
 export default function CustomerAllOrders() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('farming');
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  
   const [orders, setOrders] = useState([]);
-  const [search, setSearch] = useState('');
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
 
   useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
+    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    setLoading(true);
+    try {
       const results = [];
 
       const printingP = apiClient.get('/printing/customer/orders')
@@ -104,7 +161,7 @@ export default function CustomerAllOrders() {
             (r.data?.orders || []).forEach(o => results.push({
               id: `prt-${o.id}`, type: 'printing', typeLabel: 'PRINTING',
               orderNumber: o.order_number, date: o.created_at, status: o.status_name || o.status_code,
-              amount: o.total_price, description: `${o.product_type || ''} ${o.quantity ? `(${o.quantity} copies)` : ''}`,
+              amount: o.total_price, description: `${o.product_type || ''}`,
               navPath: '/customer/printing-orders', color: '#a855f7',
             }));
           }
@@ -116,7 +173,7 @@ export default function CustomerAllOrders() {
             (r.data || []).forEach(o => results.push({
               id: `farm-${o.id}`, type: 'farming', typeLabel: 'AGRIRENT',
               orderNumber: o.order_number, date: o.created_at, status: o.status,
-              amount: o.total_amount, description: `${o.tractor_name || ''} - ${o.farming_purpose || ''}`,
+              amount: o.total_amount, description: `${o.tractor_name || ''}`,
               navPath: '/customer/farming-orders', color: '#22c55e',
             }));
           }
@@ -140,7 +197,7 @@ export default function CustomerAllOrders() {
             (r.data || []).forEach(o => results.push({
               id: `rent-${o.id}`, type: 'rental', typeLabel: 'CAR RENTAL',
               orderNumber: o.orderNumber, date: o.createdAt || o.created_at, status: o.status,
-              amount: o.totalAmount, description: `${o.carName || ''} ${o.driverName ? `(${o.driverName})` : ''}`,
+              amount: o.totalAmount, description: `${o.carName || ''}`,
               navPath: '/customer/rentals', color: '#38bdf8',
             }));
           }
@@ -152,7 +209,7 @@ export default function CustomerAllOrders() {
             (r.data || []).forEach(o => results.push({
               id: `rx-${o.id}`, type: 'prescription', typeLabel: 'PHARMACY',
               orderNumber: o.prescription_number || `RX-${o.id}`, date: o.created_at, status: o.status,
-              amount: null, description: `${o.medications?.length || 0} medications`,
+              amount: null, description: `Medications`,
               navPath: '/customer/prescriptions', color: '#60a5fa',
             }));
           }
@@ -171,405 +228,258 @@ export default function CustomerAllOrders() {
         }).catch(() => {});
 
       await Promise.all([printingP, farmingP, retailP, rentalP, prescriptionP, tenderP]);
-      results.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      results.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).reverse();
       setOrders(results);
-      setLoading(false);
-    };
-    fetchAll();
+    } catch (err) {
+      console.error('Failed to fetch customer dashboard data:', err);
+    }
+    setLoading(false);
+    setRefreshing(false);
   }, []);
 
-  // Auto-scroll infinite carousel
-  useEffect(() => {
-    if (isHovered || isPaused || loading) return;
+  useEffect(() => { load(); }, [load]);
 
-    const interval = setInterval(() => {
-      setActiveTab(prev => {
-        const idx = ORDER_TYPES.findIndex(t => t.key === prev);
-        return ORDER_TYPES[(idx + 1) % ORDER_TYPES.length].key;
-      });
-    }, 3000);
+  const nav = (path) => { if (path) navigate(path); };
 
-    return () => clearInterval(interval);
-  }, [isHovered, isPaused, loading]);
+  const totalCount = orders.length;
+  const pendingOrders = orders.filter(o => {
+    const s = (o.status || '').toUpperCase();
+    return ['PROCESSING', 'PENDING', 'SHIPPED', 'APPROVED'].some(x => s.includes(x));
+  });
+  const completedOrders = orders.filter(o => {
+    const s = (o.status || '').toUpperCase();
+    return ['COMPLETED', 'DELIVERED', 'PAID'].some(x => s.includes(x));
+  });
+  const pendingCount = pendingOrders.length;
+  const completedCount = completedOrders.length;
 
-  const filtered = useMemo(() => {
-    let list = activeTab === 'all' ? orders : orders.filter(o => o.type === activeTab);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = orders.filter(o =>
-        (o.orderNumber || '').toLowerCase().includes(q) ||
-        (o.description || '').toLowerCase().includes(q) ||
-        (o.typeLabel || '').toLowerCase().includes(q) ||
-        (o.status || '').toLowerCase().includes(q) ||
-        String(o.amount || '').includes(q)
-      );
-    }
-    return list;
-  }, [orders, activeTab, search]);
-
-  const statusBadge = (status) => {
-    if (!status) return { label: 'Unknown', bg: '#1e293b', color: '#94a3b8' };
-    const s = status.toUpperCase().replace(/\s+/g, '_');
-    if (['COMPLETED', 'DELIVERED', 'PAID'].some(x => s.includes(x))) return { label: status, bg: '#052e16', color: '#4ade80' };
-    if (['CANCELLED', 'REJECTED'].some(x => s.includes(x))) return { label: status, bg: '#450a0a', color: '#f87171' };
-    if (['PROCESSING', 'PENDING', 'SHIPPED', 'APPROVED'].some(x => s.includes(x))) return { label: status, bg: '#451a03', color: '#fbbf24' };
-    return { label: status, bg: '#1e293b', color: '#94a3b8' };
-  };
-
-  const handleRotate = (direction) => {
-    const currentIndex = ORDER_TYPES.findIndex(t => t.key === activeTab);
-    const nextIndex = (currentIndex + direction + ORDER_TYPES.length) % ORDER_TYPES.length;
-    setActiveTab(ORDER_TYPES[nextIndex].key);
-  };
-
-  const activeType = ORDER_TYPES.find(t => t.key === activeTab) || ORDER_TYPES[2];
-  const activeCount = activeTab === 'all' ? orders.length : orders.filter(o => o.type === activeTab).length;
+  const firstName = user?.fullName?.split(' ')[0] || user?.full_name?.split(' ')[0] || 'Customer';
+  
+  // Calculate breakdown
+  const categoryCounts = {};
+  orders.forEach(o => {
+    if (!categoryCounts[o.typeLabel]) categoryCounts[o.typeLabel] = 0;
+    categoryCounts[o.typeLabel]++;
+  });
+  
+  const deptBreakdown = Object.keys(categoryCounts).map(key => ({
+    department: key,
+    count: categoryCounts[key]
+  })).sort((a, b) => b.count - a.count);
+  
+  const totalCategories = deptBreakdown.length;
+  const maxDeptCount = Math.max(...deptBreakdown.map(d => d.count), 1);
+  const recentActivities = orders.slice(0, 6);
 
   return (
-    <div style={{
-      width: 'calc(100% + 64px)',
-      margin: '-32px',
-      minHeight: '100vh',
-      background: '#ffffff',
-      fontFamily: "'Inter', sans-serif",
-      overflowX: 'hidden',
-    }}>
+    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
+      <DecorPlants />
+      {/* ── HEADER ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
+        <div style={{ justifySelf: 'start' }}>
+          <h1 className="artistic-3d-title">
+            Welcome! &nbsp;<span className="blink-star">🌿</span>
+          </h1>
+        </div>
+        <div style={{ justifySelf: 'center' }}>
+          <p className="artistic-3d-subtitle">
+            CUSTOMER PORTAL · IT'S {timeString}
+          </p>
+        </div>
+        <div style={{ justifySelf: 'end' }}>
+          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+            SYNC
+          </button>
+        </div>
+      </div>
 
-      {/* ── PREMIUM 3D HUB HEADER ── */}
-      <div style={{
-        background: '#C9CCD1',
-        position: 'relative',
-        overflow: 'hidden',
-        paddingBottom: 20,
-        boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.05)'
-      }}>
-        {/* Top Bar - 3-column premium layout */}
-        <div style={{ 
-          background: 'linear-gradient(135deg, #b8bcc4 0%, #d4d7dc 40%, #c9ccd1 60%, #b8bcc4 100%)',
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
-          alignItems: 'center',
-          padding: '14px 28px',
-          borderBottom: '1px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.7)',
-          gap: 16,
-        }}>
-          {/* LEFT: Gold title */}
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 900, color: '#92400e', letterSpacing: '0.06em', textTransform: 'uppercase', textShadow: '0 1px 2px rgba(255,255,255,0.9), 0 0 12px rgba(251,191,36,0.3)' }}>
-              {activeType.label}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, fontWeight: 600, letterSpacing: '0.03em' }}>
-              <span style={{ color: '#d97706', fontWeight: 800 }}>{activeCount}</span> {activeCount === 1 ? 'order' : 'orders'} · {activeType.subtitle}
-            </div>
+      {/* ── ROW 1: KPI HERO CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+
+        {/* Hero Card */}
+        <div className="d-card" onClick={() => nav('/customer/retail-orders')}
+          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
+          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
+            <span style={{ fontSize: 24 }}>⭐</span>
           </div>
-
-          {/* CENTER: Hero Search Bar */}
-          <div style={{ position: 'relative' }}>
-            {/* Outer glow ring */}
-            <div style={{
-              position: 'absolute', inset: -3,
-              borderRadius: 32,
-              background: search
-                ? 'linear-gradient(135deg, #f59e0b, #d97706, #f59e0b)'
-                : 'linear-gradient(135deg, rgba(255,255,255,0.8), rgba(200,205,210,0.6), rgba(255,255,255,0.8))',
-              filter: 'blur(4px)',
-              opacity: search ? 0.7 : 0.5,
-              transition: 'all 0.3s ease',
-            }} />
-            <div style={{
-              position: 'relative',
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(241,245,249,0.9) 100%)',
-              border: search ? '1.5px solid #f59e0b' : '1.5px solid rgba(255,255,255,0.9)',
-              borderRadius: 28,
-              padding: '10px 18px',
-              width: 340,
-              boxShadow: search
-                ? '0 0 0 3px rgba(245,158,11,0.15), 0 8px 24px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,1)'
-                : '0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,1)',
-              transition: 'all 0.3s ease',
-            }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%',
-                background: search ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'linear-gradient(135deg,#e2e8f0,#cbd5e1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, transition: 'all 0.3s',
-                boxShadow: search ? '0 2px 8px rgba(245,158,11,0.4)' : 'none',
-              }}>
-                <Search size={14} color={search ? '#fff' : '#64748b'} />
-              </div>
-              <input
-                placeholder="Search by order, status, type, amount…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{
-                  background: 'transparent', border: 'none', outline: 'none',
-                  color: '#0f172a', fontSize: 13, width: '100%', fontWeight: 500,
-                }}
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  style={{ background: 'linear-gradient(135deg,#f1f5f9,#e2e8f0)', border: '1px solid #cbd5e1', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontSize: 11, flexShrink: 0, padding: 0 }}
-                >✕</button>
-              )}
-            </div>
-            {/* Search result count hint */}
-            {search && (
-              <div style={{ position: 'absolute', bottom: -20, left: 0, right: 0, textAlign: 'center', fontSize: 10, color: '#92400e', fontWeight: 700 }}>
-                {filtered.length} result{filtered.length !== 1 ? 's' : ''} found
-              </div>
-            )}
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Account Status</div>
+          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
+            {totalCount}<span style={{ fontSize: '1.5rem', opacity: 0.75, marginLeft: 6 }}>Orders</span>
           </div>
-
-          {/* RIGHT: Pause + label */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{isPaused ? 'Paused' : 'Auto-rotating'}</div>
-              <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', marginTop: 3 }}>
-                {ORDER_TYPES.map((t, i) => (
-                  <div key={t.key} style={{ width: i === ORDER_TYPES.findIndex(x => x.key === activeTab) ? 16 : 6, height: 4, borderRadius: 2, background: i === ORDER_TYPES.findIndex(x => x.key === activeTab) ? t.color : '#94a3b8', transition: 'all 0.4s' }} />
-                ))}
-              </div>
-            </div>
-            {/* Pause / Resume button */}
-            <button
-              onClick={() => setIsPaused(p => !p)}
-              title={isPaused ? 'Resume auto-rotate' : 'Pause auto-rotate'}
-              style={{ background: isPaused ? 'linear-gradient(135deg,#fbbf24,#f59e0b)' : 'linear-gradient(135deg,rgba(255,255,255,0.9),rgba(226,232,240,0.9))', border: isPaused ? '1.5px solid #d97706' : '1.5px solid rgba(255,255,255,0.8)', borderRadius: '50%', width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, boxShadow: isPaused ? '0 4px 12px rgba(245,158,11,0.4)' : '0 4px 12px rgba(0,0,0,0.12)', flexShrink: 0, transition: 'all 0.3s' }}
-            >
-              {isPaused ? '▶' : '⏸'}
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+            <span>👋</span> Hello, {firstName} - Manage all your services
           </div>
         </div>
 
-        {/* ── 3D CIRCULAR CAROUSEL ── */}
-        <div 
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', height: 320, perspective: 1200 }}
-        >
-          {/* Left Arrow */}
-          <button 
-            onClick={() => handleRotate(-1)}
-            style={{ position: 'absolute', left: 24, zIndex: 50, background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', border: '1px solid #cbd5e1', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-          >
-            <ChevronLeft size={24} color="#334155" />
-          </button>
-          
-          {/* Right Arrow */}
-          <button 
-            onClick={() => handleRotate(1)}
-            style={{ position: 'absolute', right: 24, zIndex: 50, background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', border: '1px solid #cbd5e1', borderRadius: '50%', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-          >
-            <ChevronRight size={24} color="#334155" />
-          </button>
+        {/* Total Orders */}
+        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/customer/retail-orders')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Total Orders</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>📦</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{totalCount.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>All time orders</div>
+        </div>
 
-          {ORDER_TYPES.map((tab, idx) => {
-            const count = tab.key === 'all' ? orders.length : orders.filter(o => o.type === tab.key).length;
-            const isActive = tab.key === activeTab;
-            const IconCmp = tab.icon;
+        {/* Completed */}
+        <div className="d-card" style={{ animationDelay: '0.15s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Completed</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>✅</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{completedCount.toLocaleString()}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Successfully delivered</div>
+        </div>
 
-            // Infinite Circular Wrap Math
-            const N = ORDER_TYPES.length;
-            const centerIdx = ORDER_TYPES.findIndex(t => t.key === activeTab);
-            let offset = idx - centerIdx;
-            
-            // Wrap the offset (shortest path)
-            if (offset > Math.floor(N / 2)) offset -= N;
-            else if (offset < -Math.floor(N / 2)) offset += N;
-            
-            // Concave 3D Math matching the picture
-            // Negative rotateY for left cards brings their left edge forward (concave)
-            const rotateY = offset * -18; 
-            const translateZ = isActive ? 120 : Math.abs(offset) * -120;
-            const translateX = offset * 220; // Wide gap for wide cards
-            const scale = isActive ? 1.25 : 0.85;
+        {/* Pending Orders */}
+        <div className="d-card" style={{ animationDelay: '0.2s', background: pendingCount > 0 ? '#FFF8F0' : undefined }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: pendingCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Pending</span>
+            <div style={{ background: pendingCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{pendingCount > 0 ? '⏳' : '✅'}</span></div>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: pendingCount > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{pendingCount}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>{pendingCount > 0 ? 'Orders in progress' : 'No active orders'}</div>
+        </div>
+      </div>
 
-            // Hide the cards jumping across the back
-            const isBackCard = Math.abs(offset) >= Math.floor(N / 2);
+      {/* ── ROW 2: DEPARTMENT BREAKDOWN + ACTIVITY FEED ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
 
+        {/* Orders Breakdown */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <span style={{ fontSize:18 }}>📊</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Orders Breakdown</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Across {totalCategories} categories</span>
+          </div>
+          {/* Sub-KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+            {[
+              { label: 'Categories',  val: totalCategories, icon: '📊', c: G.forest },
+              { label: 'Total Orders',val: totalCount,      icon: '📦', c: G.orange },
+              { label: 'Completed',   val: completedCount,  icon: '✅', c: G.sky    },
+              { label: 'In Progress', val: pendingCount,    icon: '⏳', c: G.purple },
+            ].map(k => (
+              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
+                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Header row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+            {['Category', '', 'Count', '%'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+            ))}
+          </div>
+          {deptBreakdown.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '28px 0', color: G.olive, fontSize: 13 }}>No order data yet</div>
+          ) : deptBreakdown.map((row, i) => {
+            const c = COLORS_ARR[i % COLORS_ARR.length];
+            const pct = totalCount > 0 ? Math.round((row.count / totalCount) * 100) : 0;
             return (
-              <div
-                key={tab.key}
-                onClick={() => {
-                  setActiveTab(tab.key);
-                }}
-                style={{
-                  position: 'absolute',
-                  width: 250, // Much wider, like the picture
-                  height: 140,
-                  borderRadius: 14,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-                  transformStyle: 'preserve-3d',
-                  transition: 'all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                  opacity: isBackCard ? 0 : 1,
-                  pointerEvents: isBackCard ? 'none' : 'auto',
-                  border: isActive ? `2px solid ${tab.color}` : '1px solid rgba(255,255,255,0.15)',
-                  boxShadow: isActive
-                    ? `0 0 40px ${tab.glowColor}, 0 20px 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.2)`
-                    : '0 10px 30px rgba(0,0,0,0.6), inset 0 0 10px rgba(255,255,255,0.05)',
-                  zIndex: isActive ? 20 : 10 - Math.abs(offset),
-                }}
-              >
-                {/* Background image */}
-                {tab.img ? (
-                  <img
-                    src={tab.img}
-                    alt={tab.label}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: isActive ? 0.95 : 0.65, transition: 'opacity 0.4s' }}
-                  />
-                ) : (
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }} />
-                )}
-
-                {/* Gradient overlay */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: isActive
-                    ? `linear-gradient(to top, ${tab.key === 'farming' ? 'rgba(0,40,0,0.9)' : 'rgba(0,0,0,0.85)'} 0%, rgba(0,0,0,0.1) 60%)`
-                    : 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 100%)',
-                  transition: 'background 0.6s',
-                }} />
-
-                {/* Active glow ring at top */}
-                {isActive && (
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 4,
-                    background: `linear-gradient(90deg, transparent, ${tab.color}, transparent)`,
-                    boxShadow: `0 0 10px ${tab.color}`
-                  }} />
-                )}
-
-                {/* Card content */}
-                <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: isActive ? '16px' : '12px' }}>
-                  {/* Top label */}
-                  <div>
-                    <div style={{ fontSize: isActive ? 15 : 13, fontWeight: 900, color: '#ffffff', letterSpacing: '0.05em', textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}>{tab.label}</div>
-                    <div style={{ fontSize: isActive ? 12 : 11, color: isActive ? tab.color : '#94a3b8', fontWeight: 600, marginTop: 2 }}>({count} Orders)</div>
-                  </div>
-
-                  {/* Center icon — only show on non-image or small cards */}
-                  {!tab.img && (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-                      <IconCmp size={isActive ? 54 : 40} color={isActive ? tab.color : '#94a3b8'} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 12px ${tab.color})` }} />
-                    </div>
-                  )}
-
-                  {/* Bottom label */}
-                  <div style={{
-                    fontSize: isActive ? 13 : 11,
-                    fontWeight: 700,
-                    color: '#ffffff',
-                    textShadow: '0 2px 6px rgba(0,0,0,0.9)',
-                  }}>
-                    {tab.sublabel}
-                  </div>
+              <div key={row.department} className="cat-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.department}</span>
                 </div>
+                <CategoryBar value={row.count} max={maxDeptCount} color={c} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{row.count}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.emerald, textAlign: 'right' }}>{pct}%</span>
               </div>
             );
           })}
         </div>
-      </div>
 
-      {/* ── ORDERS LIST ── */}
-      <div style={{ padding: '28px 32px', background: '#ffffff' }}>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8' }}>
-            <div style={{ fontSize: 13 }}>Loading orders...</div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '5rem', color: '#94a3b8' }}>
-            <ShoppingCart size={52} style={{ marginBottom: 16, opacity: 0.4 }} />
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#475569', fontWeight: 700 }}>No orders found</h3>
-            <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>{search ? 'Try a different search term.' : 'Place your first order to get started.'}</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-            {filtered.map(order => {
-              const badge = statusBadge(order.status);
-              const orderType = ORDER_TYPES.find(t => t.key === order.type) || ORDER_TYPES[0];
-              const OrderIcon = orderType.icon;
+        {/* Recent Activity Feed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize:18 }}>📜</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Orders</span>
+            </div>
+            {recentActivities.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
+                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No logs yet
+              </div>
+            ) : recentActivities.map((l, i) => {
+              const c = G.emerald;
+              const icon = '🛍️';
               return (
-                <div
-                  key={order.id}
-                  onClick={() => navigate(order.navPath)}
-                  style={{
-                    background: '#C9CCD1',
-                    borderRadius: 14,
-                    padding: '20px 22px',
-                    border: '1px solid #94a3b8',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.4)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 14,
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-3px)';
-                    e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)`;
-                    e.currentTarget.style.borderColor = order.color;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.4)';
-                    e.currentTarget.style.borderColor = '#94a3b8';
-                  }}
-                >
-                  {/* Row 1: Icon + Order number + Badge */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{
-                        width: 42, height: 42, borderRadius: 10,
-                        background: `${order.color}15`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <OrderIcon size={22} color={order.color} strokeWidth={1.8} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{order.orderNumber || `#${order.id}`}</div>
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{order.date ? new Date(order.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
-                      </div>
-                    </div>
-                    <span style={{
-                      padding: '4px 10px', borderRadius: 6,
-                      fontSize: 11, fontWeight: 700,
-                      background: badge.bg, color: badge.color,
-                      textTransform: 'uppercase', letterSpacing: '0.03em',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {badge.label.replace(/_/g, ' ')}
-                    </span>
+                <div key={l.id} className="top-row" onClick={() => nav(l.navPath)}>
+                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
-
-                  {/* Row 2: Description */}
-                  <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {order.description || `${order.typeLabel} order`}
-                  </div>
-
-                  {/* Row 3: Type + Amount + Arrow */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: order.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{order.typeLabel}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {order.amount && (
-                        <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
-                          {Number(order.amount).toLocaleString()} ETB
-                        </span>
-                      )}
-                      <ChevronRight size={16} color="#cbd5e1" />
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {l.typeLabel}: {l.orderNumber}
                     </div>
                   </div>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                    {l.status}
+                  </span>
                 </div>
               );
             })}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+
+        {/* Alerts */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Order Alerts</div>
+          {[
+            { label: `${pendingCount} In Progress`, sub: `Orders currently processing`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/customer/retail-orders' },
+            { label: `Need Help?`, sub: 'Contact our support team', icon: '🎧', bg: '#FFFBEB', c: '#f59e0b', path: '/customer/support' }
+          ].map(row => (
+            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
+              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
+              </div>
+              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
+            </div>
+          ))}
+          {/* Pending items mini-list */}
+          {pendingOrders.slice(0,3).map((item, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:`1px solid ${G.sage}44` }}>
+              <span style={{ fontSize:12, fontWeight:800, color:G.orange, minWidth:28 }}>{item.typeLabel}</span>
+              <span style={{ fontSize:12, fontWeight:700, color:G.dark, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{item.orderNumber}</span>
+              <span style={{ fontSize:10, color:G.olive }}>{new Date(item.date || new Date()).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Actions</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {[
+              { label: 'Retail',         sub: 'Shop products', icon: '🛒', bg: '#E6F2EB', color: G.forest,  href: '/customer/retail-orders' },
+              { label: 'Printing',       sub: 'Print jobs',    icon: '🖨️', bg: '#E8F9F1', color: G.emerald, href: '/customer/printing-orders' },
+              { label: 'AgriRent',       sub: 'Rentals',       icon: '🚜', bg: '#F1F8E9', color: G.olive,   href: '/customer/farming-orders' },
+              { label: 'Car Rental',     sub: 'Book cars',     icon: '🚗', bg: '#FFF3E0', color: G.orange,  href: '/customer/rentals' },
+              { label: 'Pharmacy',       sub: 'Prescriptions', icon: '💊', bg: '#E1F5FE', color: G.sky,     href: '/customer/prescriptions' },
+              { label: 'Tenders',        sub: 'My Bids',       icon: '⚖️', bg: '#F3E5F5', color: G.purple,  href: '/customer/bids' },
+              { label: 'Support',        sub: 'Get Help',      icon: '🎧', bg: '#EFEBE9', color: G.brown,   href: '/customer/support' }
+            ].map((a, i) => (
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
+                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
+                  <span style={{ fontSize:22 }}>{a.icon}</span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

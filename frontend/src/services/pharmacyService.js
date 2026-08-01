@@ -256,7 +256,30 @@ const pharmacyService = {
   updateWorkerHideDrugSetting: async (enabled) => {
     const res = await apiClient.patch('/pharmacy/admin/worker-can-hide-drugs', { enabled });
     return res.data;
-  }
+  },
+
+  // ── Pharmacy Manager Reports ─────────────────────────────────────────
+  // CEO Report
+  getCEOReport: async (params) =>
+    await apiClient.get('/pharmacy-reports/ceo', { params }),
+  ceoDecideDelivery: async (id, data) =>
+    await apiClient.post(`/pharmacy-reports/ceo/delivery/${id}/decide`, data),
+  ceoDecideManagerRequest: async (id, data) =>
+    await apiClient.post(`/pharmacy-reports/ceo/manager-request/${id}/decide`, data),
+  ceoDecideExpiredDrug: async (id, data) =>
+    await apiClient.post(`/pharmacy-reports/ceo/expired-drug/${id}/decide`, data),
+
+  // Finance Review
+  getFinanceReview: async (params) =>
+    await apiClient.get('/pharmacy-reports/finance', { params }),
+  financeDecideSalesReport: async (id, data) =>
+    await apiClient.patch(`/pharmacy-reports/finance/sales-report/${id}/decide`, data),
+  financeMarkDeliveryPaid: async (id, data) =>
+    await apiClient.patch(`/pharmacy-reports/finance/delivery/${id}/mark-paid`, data),
+
+  // Daily Summary
+  getManagerDailySummary: async (params) =>
+    await apiClient.get('/pharmacy-reports/daily-summary', { params })
 };
 
 export default pharmacyService;

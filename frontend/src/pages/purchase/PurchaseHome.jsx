@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, FileText, Clipboard, Inbox, Truck, CheckCircle, DollarSign, Wallet, RotateCcw, Users, Package, Clock } from 'lucide-react';
+import { ShoppingCart, FileText, Clipboard, Inbox, Truck, CheckCircle, DollarSign, Wallet, RotateCcw, Users, Package, Clock, Sprout } from 'lucide-react';
 import { getPurchaseSummary } from '../../utils/purchaseTransactionService';
 import { financeState } from '../../utils/financeTransactionService';
 
@@ -23,15 +23,30 @@ const PurchaseHome = () => {
   return (
     <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       {/* Header Context */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 'bold', color: '#0f172a', margin: '0 0 8px' }}>Purchase Manager Dashboard</h1>
-        <div style={{ display: 'flex', gap: 16, color: '#64748b', fontSize: 14, fontWeight: 500, flexWrap: 'wrap' }}>
-          <span>Welcome, <strong>Abebe Kebede</strong></span>
-          <span>•</span>
-          <span>{dateStr}</span>
-          <span>•</span>
-          <span style={{ color: '#0369a1', background: '#e0f2fe', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>Department: Purchase</span>
-          <span style={{ color: '#16a34a', background: '#dcfce7', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>18 Modules Active</span>
+      <style>{`
+        @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+        @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
+        .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+        .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
+      `}</style>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%' }}>
+        <div style={{ justifySelf: 'start' }}>
+          <h1 className="artistic-3d-title">
+            Welcome! &nbsp;<span className="blink-star">🌿</span>
+          </h1>
+        </div>
+        <div style={{ justifySelf: 'center' }}>
+          <div style={{ display: 'flex', gap: 16, color: '#64748b', fontSize: 14, fontWeight: 500, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span>Welcome, <strong>Abebe Kebede</strong></span>
+            <span>•</span>
+            <span>{dateStr}</span>
+          </div>
+        </div>
+        <div style={{ justifySelf: 'end' }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <span style={{ color: '#0369a1', background: '#e0f2fe', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>Department: Purchase</span>
+            <span style={{ color: '#16a34a', background: '#dcfce7', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>18 Modules Active</span>
+          </div>
         </div>
       </div>
 

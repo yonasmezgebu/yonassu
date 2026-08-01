@@ -22,21 +22,27 @@ const PublicRoute = ({ children }) => {
       'Sales Manager': '/sales/overview',
       'HR Manager': '/hr',
       'Employee': '/employee',
-      'Customer': '/customer'
+      'Customer': '/customer',
+      'Board Member': '/board',
+      'Printing Manager': '/printing-manager'
     };
     const rolePriority = [
-      'Admin', 'CEO', 'Finance', 'Finance Manager', 'Purchase', 'Pharmacy Store Keeper',
-      'General Store Keeper', 'Printing Supervisor', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
+      'Admin', 'CEO', 'Board Member', 'Finance', 'Finance Manager', 'Purchase', 'Pharmacy Store Keeper',
+      'General Store Keeper', 'Printing Supervisor', 'Printing Manager', 'Market Team', 'Pharmacy Manager', 'Pharmacy Worker',
       'Sales/Cashier', 'Car Renting Manager', 'Sales Manager', 'HR Manager', 'Employee', 'Customer'
     ];
     if (user?.roles) {
+      const userRoles = user.roles.map(r => r.toLowerCase());
       for (const r of rolePriority) {
-        if (user.roles.includes(r)) {
+        if (userRoles.includes(r.toLowerCase())) {
           if (dashboardMap[r]) return <Navigate to={dashboardMap[r]} replace />;
         }
       }
     }
-    return <Navigate to="/" replace />;
+    // If authenticated but no recognized role, clear invalid auth and show login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return children;
   }
   return children;
 };

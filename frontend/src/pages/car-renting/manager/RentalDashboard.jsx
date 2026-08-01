@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Sprout } from 'lucide-react';
 import { rentalState } from '../../../utils/rentalManagerState';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
@@ -164,7 +165,7 @@ const RentalDashboard = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
         <div style={{ justifySelf: 'start' }}>
           <h1 className="artistic-3d-title">
-            Welcome! <span className="blink-star" style={{ fontSize: '1.3em', filter: 'saturate(2) brightness(1.1) drop-shadow(0 0 8px rgba(34,139,34,0.6))', display: 'inline-block', transform: 'translateY(-2px)' }}>🌿</span>
+            Welcome!&nbsp;<span className="blink-star">🌿</span>
           </h1>
         </div>
         <div style={{ justifySelf: 'center' }}>

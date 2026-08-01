@@ -28,7 +28,8 @@ import PrintingReprintRequests from './PrintingReprintRequests';
 import PrintingDailyProductionReport from './PrintingDailyProductionReport';
 import PrintingJobCostReport from './PrintingJobCostReport';
 import PrintingMaterialConsumptionReport from './PrintingMaterialConsumptionReport';
-import PrintingMonthlySummaryReport from './PrintingMonthlySummaryReport';
+import PrintingCEOReport from './PrintingCEOReport';
+import PrintingFinanceReview from './PrintingFinanceReview';
 
 import styles from './PrintingDashboard.module.css';
 
@@ -67,7 +68,8 @@ const PrintingDashboard = () => {
         { label: 'Daily Production',      path: '/printing-manager/reports/daily',    icon: 'activity',    color: '#87CEEB' },
         { label: 'Job Cost Report',       path: '/printing-manager/reports/costs',    icon: 'dollar-sign', color: '#4CAF50' },
         { label: 'Material Consumption',  path: '/printing-manager/reports/materials',icon: 'layers',      color: '#8D6E63' },
-        { label: 'Monthly Summary',       path: '/printing-manager/reports/summary',  icon: 'pie-chart',   color: '#228B22' },
+        { label: 'CEO Report',            path: '/printing-manager/reports/ceo',      icon: 'briefcase',   color: '#10B981' },
+        { label: 'Finance Review',        path: '/printing-manager/reports/finance',  icon: 'file-text',   color: '#3B82F6' }
       ]
     },
 
@@ -106,7 +108,8 @@ const PrintingDashboard = () => {
             <Route path="reports/daily" element={<PrintingDailyProductionReport />} />
             <Route path="reports/costs" element={<PrintingJobCostReport />} />
             <Route path="reports/materials" element={<PrintingMaterialConsumptionReport />} />
-            <Route path="reports/summary" element={<PrintingMonthlySummaryReport />} />
+            <Route path="reports/ceo" element={<PrintingCEOReport />} />
+            <Route path="reports/finance" element={<PrintingFinanceReview />} />
 
 
             <Route path="/" element={<Navigate to="overview" replace />} />

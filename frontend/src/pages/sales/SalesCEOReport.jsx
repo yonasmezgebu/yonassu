@@ -1,539 +1,297 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Calendar, CheckCircle, XCircle, AlertTriangle, Building2,
-  DollarSign, CreditCard, ShoppingCart, Zap, RefreshCw, BarChart2
-} from 'lucide-react';
+import { ShieldCheck, Layers, ShoppingCart, Tag, Check, X, Building2, Package, RefreshCw, AlertTriangle, Briefcase, Box } from 'lucide-react';
 import salesService from '../../services/salesService';
-import apiClient from '../../services/apiClient';
+import authService from '../../services/authService';
 
-const BG  = '#F5F5F5'; // Requested by user
-const C   = '#795548'; // Rich Mocha
-const CD  = '#4E342E'; // Deep Espresso
-const CDX = '#3E2723'; // Darkest Brown
+const BG  = '#D5DCF0';
+const C   = '#064e3b'; // dark green
+const CD  = '#065f46';
+const CL  = '#10b981';
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @keyframes fadeUp     { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse      { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.9)} }
-  @keyframes spin       { to{transform:rotate(360deg)} }
-  @keyframes laserSweep { 0%{left:-150%} 100%{left:150%} }
-  @keyframes colorBlink { 
-    0%   { color: #E07B54; filter: drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform: scale(1) rotate(0deg); } 
-    25%  { color: #8BC34A; filter: drop-shadow(0 0 10px rgba(212,168,67,0.8)); transform: scale(1.15) rotate(10deg); } 
-    50%  { color: #5BAD8A; filter: drop-shadow(0 0 14px rgba(91,173,138,1)); transform: scale(1.3) rotate(-10deg); } 
-    75%  { color: #4FA3C3; filter: drop-shadow(0 0 10px rgba(79,163,195,0.8)); transform: scale(1.15) rotate(5deg); } 
-    100% { color: #E07B54; filter: drop-shadow(0 0 6px rgba(224,123,84,0.6)); transform: scale(1) rotate(0deg); } 
-  }
-  .blink-icon { animation: colorBlink 2.5s infinite ease-in-out; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .ds-page { min-height:calc(100vh - 64px); font-family:'Inter','Segoe UI',sans-serif; padding-bottom:48px; }
 
-  /* ── Full-bleed wrapper ── */
-  .ceo-page {
-    min-height: calc(100vh - 64px);
-    font-family: 'Inter','Segoe UI',sans-serif;
-    padding-bottom: 40px;
+  .ds-card {
+    --hc:${C}; background:white; border-radius:0; position:relative; overflow:hidden;
+    box-shadow:0 4px 20px rgba(0,30,80,.10); transition:transform .2s ease, box-shadow .3s ease;
+    animation:fadeUp .5s ease both;
+    border-top: 4px solid var(--hc);
   }
+  .ds-card:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(0,30,80,.18); }
 
-  /* ── 3D Card: border-tracking on hover + rainbow laser sweep ── */
-  .ceo-card {
-    --hc: ${C};
-    position: relative; overflow: hidden;
-    background: white; border-radius: 0;
-    box-shadow: 0 4px 20px rgba(0,30,80,.10);
-    transition: background-size .45s ease, box-shadow .3s ease, transform .2s ease;
-    animation: fadeUp .5s ease both;
-    background-image:
-      linear-gradient(to right,  var(--hc), var(--hc)),
-      linear-gradient(to bottom, var(--hc), var(--hc)),
-      linear-gradient(to left,   var(--hc), var(--hc)),
-      linear-gradient(to top,    var(--hc), var(--hc));
-    background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-    background-repeat: no-repeat;
-    background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+  .ds-head {
+    padding:14px 22px; background:linear-gradient(135deg,rgba(6,78,59,.08),rgba(6,78,59,.03));
+    display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(6,78,59,.1);
   }
-  .ceo-card:hover {
-    background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%;
-    box-shadow: 0 8px 32px rgba(0,30,80,.18);
-    transform: translateY(-2px);
-  }
-  .ceo-card::after {
-    content: ''; position: absolute; top: 0; left: -150%;
-    width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%);
-    transform: skewX(-25deg); pointer-events: none; z-index: 2;
-  }
-  .ceo-card:hover::after { animation: laserSweep .8s ease-out forwards; }
+  .ds-head span { font-size:13px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; color:${C}; }
 
-  /* ── 3D Stat chip ── */
-  .ceo-chip {
-    --hc: ${C};
-    position: relative; overflow: hidden;
-    background: white; border-radius: 0;
-    padding: 24px;
-    box-shadow: 0 4px 20px rgba(0,30,80,.10);
-    transition: background-size .45s ease, box-shadow .3s ease, transform .2s ease;
-    animation: fadeUp .5s ease both;
-    background-image:
-      linear-gradient(to right,  var(--hc), var(--hc)),
-      linear-gradient(to bottom, var(--hc), var(--hc)),
-      linear-gradient(to left,   var(--hc), var(--hc)),
-      linear-gradient(to top,    var(--hc), var(--hc));
-    background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-    background-repeat: no-repeat;
-    background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-  }
-  .ceo-chip:hover {
-    background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%;
-    box-shadow: 0 8px 32px rgba(0,30,80,.18);
-    transform: translateY(-3px);
-  }
-  .ceo-chip::after {
-    content: ''; position: absolute; top: 0; left: -150%;
-    width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%);
-    transform: skewX(-25deg); pointer-events: none; z-index: 2;
-  }
-  .ceo-chip:hover::after { animation: laserSweep .8s ease-out forwards; }
-
-  /* ── Card header bar ── */
-  .ceo-card-head {
-    padding: 16px 24px;
-    background: linear-gradient(135deg, ${C}, ${CD});
-    color: white; display: flex; align-items: center; gap: 12px;
-    box-shadow: inset 0 -3px 0 rgba(0,0,0,.18);
-  }
-  .ceo-card-head span {
-    font-size: 14px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase;
-    text-shadow: 0 2px 5px rgba(0,0,0,.25);
+  .ds-title {
+    font-size:2.4rem; font-weight:900; color:#0d1a30; letter-spacing:-.02em; margin:0;
+    display:flex; align-items:center; gap:12px; line-height:1.1;
   }
 
-  /* ── Title ── */
-  .ceo-title {
-    font-size: 2.5rem; font-weight: 900; color: #0d2244; letter-spacing: -.02em;
-    text-shadow: 1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 ${C}, 4px 4px 0 ${C},
-                 5px 5px 0 ${CD}, 6px 6px 0 ${CD}, 7px 7px 14px rgba(0,0,0,.2);
-    margin: 0; display: flex; align-items: center; gap: 12px; line-height: 1.1;
-  }
-  .ceo-sub { font-size: .88rem; color: ${C}; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; }
+  .ds-tbl { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .ds-th  { text-align:left; padding:11px 14px; background:rgba(6,78,59,.05); border-bottom:2px solid ${C}; color:${C}; font-weight:900; text-transform:uppercase; letter-spacing:.06em; font-size:10.5px; }
+  .ds-td  { padding:12px 14px; border-bottom:1px solid rgba(6,78,59,.1); color:#2d3748; font-weight:600; vertical-align:middle; }
+  .ds-tr:hover .ds-td { background:rgba(6,78,59,.03); }
 
-  /* ── Branch Row ── */
-  .ceo-branch-row {
-    padding: 20px; border-bottom: 1px solid rgba(90,111,154,.08);
-    display: flex; gap: 20px; align-items: center;
-    transition: background .2s;
+  .ds-badge {
+    padding:5px 12px; border-radius:99px; font-weight:900; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:.05em; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
   }
-  .ceo-branch-row:hover { background: rgba(90,111,154,.04); }
+  .db-ok      { background:linear-gradient(135deg,#f0fdf4,#dcfce7); color:#065f46; border:1px solid #6ee7b7; }
+  .db-warn    { background:linear-gradient(135deg,#fffbeb,#fef3c7); color:#92400e; border:1px solid #fde68a; }
+  .db-err     { background:linear-gradient(135deg,#fef2f2,#fee2e2); color:#991b1b; border:1px solid #fca5a5; }
+  .db-neutral { background:rgba(6,78,59,.08); color:${C}; border:1px solid rgba(6,78,59,.2); }
 
-  .ceo-badge {
-    padding: 6px 14px; border-radius: 0; font-weight: 900; font-size: 11px;
-    text-transform: uppercase; letter-spacing: .06em; display: inline-flex; align-items: center; gap: 6px;
-    box-shadow: 0 3px 0 rgba(0,0,0,.1), inset 0 1px 0 rgba(255,255,255,.5);
+  .ds-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:8px 18px; font-weight:900; font-size:12px;
+    cursor:pointer; letter-spacing:.07em; text-transform:uppercase; border-radius:8px;
+    box-shadow:0 4px 0 ${CD},0 6px 12px rgba(6,78,59,.18);
+    background:linear-gradient(135deg,#fff,${BG}); color:${C}; border:2px solid ${C};
   }
-  .ceo-badge.approved { background: linear-gradient(135deg,#f0fdf4,#dcfce7); color: #166534; border: 1px solid #86efac; box-shadow: 0 3px 0 #4ade8044, inset 0 1px 0 rgba(255,255,255,.9); }
-  .ceo-badge.pending  { background: linear-gradient(135deg,#fffbeb,#fef3c7); color: #92400e; border: 1px solid #fde68a; box-shadow: 0 3px 0 #fbbf2444, inset 0 1px 0 rgba(255,255,255,.9); }
-  .ceo-badge.mismatch { background: linear-gradient(135deg,#fef2f2,#fee2e2); color: #991b1b; border: 1px solid #fca5a5; box-shadow: 0 3px 0 #f8717144, inset 0 1px 0 rgba(255,255,255,.9); }
+  .ds-btn:active { transform:translateY(4px); box-shadow:none; }
+  .ds-btn:disabled { opacity:.55; cursor:not-allowed; }
+
+  .ds-btn-success { background:linear-gradient(135deg,#10b981,#059669); color:white; border:2px solid #064e3b; box-shadow:0 4px 0 #064e3b; }
+  .ds-btn-danger  { background:linear-gradient(135deg,#ef4444,#dc2626); color:white; border:2px solid #7f1d1d; box-shadow:0 4px 0 #7f1d1d; }
+
+  .ro-banner {
+    background:linear-gradient(135deg,#fffbeb,#fef3c7); border:2px solid #fde68a;
+    padding:14px 20px; display:flex; align-items:center; gap:12px; margin:0 32px 20px; animation:fadeUp .4s ease;
+  }
 `;
 
+const fmt = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function Section({ icon: Icon, title, count, children }) {
+  return (
+    <div className="ds-card">
+      <div className="ds-head">
+        <Icon size={20} />
+        <span>{title}</span>
+        {count !== undefined && <span style={{ background:'rgba(6,78,59,.15)', borderRadius:99, padding:'2px 10px', fontSize:11, fontWeight:900 }}>{count}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function SalesCEOReport() {
-  const today = new Date().toISOString().split('T')[0];
-  const [date, setDate] = useState(today);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [reportsData, setReportsData] = useState([]);
-  const [activeTab, setActiveTab] = useState('sales'); // 'sales' | 'products'
-  const [updateRequests, setUpdateRequests] = useState([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
-  const [rejectId, setRejectId] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-  
-  // For CEO, we want to fetch all reports for this date, and gather their branches.
-  const loadData = useCallback(async () => {
+  const [acting, setActing] = useState(null);
+
+  const user = authService.getCurrentUser();
+  const roles = (user?.roles || []).map(r => r.toLowerCase());
+  const isCEO = roles.includes('ceo') || roles.includes('admin');
+  const isManager = roles.includes('store manager') || roles.includes('sales manager');
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get(`/pos/reports/combined-daily?date=${date}`);
-      const allReports = Array.isArray(res) ? res : res?.data || [];
-      setReportsData(allReports);
-    } catch(e) {
+      const res = await salesService.getCEOReport();
+      setData(res?.data || res);
+    } catch (e) {
       console.error(e);
-      setReportsData([]);
     } finally {
       setLoading(false);
     }
-  }, [date]);
-
-  const loadUpdateRequests = useCallback(async () => {
-    setLoadingRequests(true);
-    try {
-      const res = await apiClient.get('/retail/update-requests?status=pending');
-      setUpdateRequests(res?.data?.data || res?.data || []);
-    } catch(e) {
-      console.error(e);
-      setUpdateRequests([]);
-    } finally {
-      setLoadingRequests(false);
-    }
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'sales') {
-      loadData();
-    } else {
-      loadUpdateRequests();
-    }
-  }, [activeTab, loadData, loadUpdateRequests]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleApprove = async (id) => {
-    if (!window.confirm("Approve this product update?")) return;
+  const handleAction = async (id, action) => {
+    let reason = null;
+    if (action === 'REJECT') {
+      reason = prompt('Enter rejection reason:');
+      if (!reason) return;
+    }
+    setActing(id);
     try {
-      await apiClient.post(`/retail/update-requests/${id}/approve`);
-      loadUpdateRequests();
+      await salesService.ceoApproveRetailUpdate(id, { action, rejection_reason: reason });
+      await load();
     } catch (e) {
-      alert(e?.response?.data?.message || 'Failed to approve request');
+      alert('Action failed');
+    } finally {
+      setActing(null);
     }
   };
 
-  const handleReject = async (id) => {
-    if (!rejectReason.trim()) {
-      alert("Please enter a rejection reason");
-      return;
-    }
-    try {
-      await apiClient.post(`/retail/update-requests/${id}/reject`, { reason: rejectReason.trim() });
-      setRejectId(null);
-      setRejectReason('');
-      loadUpdateRequests();
-    } catch (e) {
-      alert(e?.response?.data?.message || 'Failed to reject request');
-    }
-  };
-
-  // Aggregate Data
-  let combinedTotalApproved = 0;
-  let combinedCash = 0;
-  let combinedBank = 0;
-  let branchesApprovedCount = 0;
-  let branchesPendingCount = 0;
-  let branchesMismatchCount = 0;
-  
-  const allBranches = [];
-
-  reportsData.forEach(rep => {
-    const isApproved = rep.status === 'APPROVED';
-    const isPending  = rep.status === 'PENDING';
-    const isRejected = rep.status === 'REJECTED';
-    
-    // Aggregate status counts (assuming 1 report = 1 aggregate or 1 branch group)
-    // To match instructions "Number of branches approved vs pending", we will count the branches inside the reports
-    const repBranches = rep.branches || [];
-    const repPayments = rep.payments || [];
-    
-    if (repBranches.length === 0) {
-      // Fallback if no specific branches array (single branch sales)
-      allBranches.push({
-        id: rep.id,
-        name: `Sales Main`,
-        totalValue: parseFloat(rep.total_amount||0),
-        transCount: rep.total_sales || 0,
-        itemsSold: rep.total_items || 0, // Mock if missing
-        status: rep.status,
-        payments: repPayments,
-        lowStock: Math.floor(Math.random() * 5) // We don't have this in report payload yet, just placeholder if absent
-      });
-      
-      if (isApproved) {
-        branchesApprovedCount++;
-        combinedTotalApproved += parseFloat(rep.total_amount||0);
-        repPayments.forEach(p => {
-          if ((p.payment_type||'').toUpperCase().includes('CASH')) combinedCash += parseFloat(p.total_amount||0);
-          else combinedBank += parseFloat(p.total_amount||0);
-        });
-      }
-      else if (isPending) branchesPendingCount++;
-      else branchesMismatchCount++;
-
-    } else {
-      repBranches.forEach(b => {
-        allBranches.push({
-          id: `${rep.id}-${b.branch_id}`,
-          name: `Branch #${b.branch_id}`,
-          totalValue: parseFloat(b.total_amount||0),
-          transCount: b.total_sales || 0,
-          itemsSold: b.worker_count * 10, // approximate items if not given
-          status: rep.status,
-          payments: repPayments, // approximated split across branch
-          lowStock: 0
-        });
-        
-        if (isApproved) {
-          branchesApprovedCount++;
-          combinedTotalApproved += parseFloat(b.total_amount||0);
-        } else if (isPending) {
-          branchesPendingCount++;
-        } else {
-          branchesMismatchCount++;
-        }
-      });
-      
-      if (isApproved) {
-        repPayments.forEach(p => {
-          if ((p.payment_type||'').toUpperCase().includes('CASH')) combinedCash += parseFloat(p.total_amount||0);
-          else combinedBank += parseFloat(p.total_amount||0);
-        });
-      }
-    }
-  });
+  const requests = data?.updateRequests || [];
+  const branches = data?.branches || [];
+  const orders   = data?.ordersOverview || [];
+  const products = data?.productsOverview || [];
 
   return (
-    <div className="ceo-page">
+    <div className="ds-page">
       <style>{CSS}</style>
       
-      {/* HEADER */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', padding:'28px 32px 22px', animation:'fadeUp .35s ease' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'28px 32px 22px', animation:'fadeUp .35s ease' }}>
         <div>
-          <h1 className="ceo-title">
-            CEO Report.
-            <BarChart2 className="blink-icon" size={36}/>
-          </h1>
+          <h1 className="ds-title">Retail CEO Report. <ShieldCheck size={34} color={CL} /></h1>
+          <p style={{ fontSize:'.82rem', color:C, fontWeight:800, textTransform:'uppercase', letterSpacing:'.14em', margin:'8px 0 0' }}>
+            Product Updates & Executive Overview
+          </p>
         </div>
-        <div style={{justifySelf:'center'}}>
-          <p className="ceo-sub">Executive Summary · Real-time</p>
-        </div>
-        <div style={{justifySelf:'end', display:'flex', gap:12, alignItems:'center'}}>
-          <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-            style={{padding:'10px 14px', border:`2px solid ${C}`, background:'white',
-              fontWeight:800, color:'#0d2244', outline:'none', fontFamily:'Inter', fontSize:14,
-              boxShadow:`0 4px 0 ${CD},0 6px 14px rgba(0,40,80,.1)`, borderRadius: 0}}/>
-          <button onClick={loadData} disabled={loading}
-            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
-              padding:'10px 20px', fontWeight:900, fontSize:13, cursor:loading?'not-allowed':'pointer',
-              letterSpacing:'.08em', textTransform:'uppercase', borderRadius: 0,
-              background:`linear-gradient(135deg, #fff, ${BG})`, color:CD, border:`2px solid ${C}`,
-              boxShadow:`0 4px 0 ${CD}, 0 6px 12px rgba(69,88,128,.15), inset 0 2px 0 rgba(255,255,255,1)` }}>
-            <RefreshCw size={15} style={{animation:loading?'spin 1s linear infinite':'none'}}/> Refresh
-          </button>
-        </div>
-      </div>
-
-      <div style={{ padding: '0 32px 20px', display: 'flex', gap: 10 }}>
-        <button onClick={() => setActiveTab('sales')}
-          style={{ padding: '8px 20px', background: activeTab === 'sales' ? '#2E8B57' : '#F5F5F5', color: activeTab === 'sales' ? '#FFF' : '#333', border: `2px solid ${activeTab === 'sales' ? '#1B5E20' : '#DDD'}`, cursor: 'pointer', fontWeight: 800 }}>
-          Daily Sales
-        </button>
-        <button onClick={() => setActiveTab('products')}
-          style={{ padding: '8px 20px', background: activeTab === 'products' ? '#2E8B57' : '#F5F5F5', color: activeTab === 'products' ? '#FFF' : '#333', border: `2px solid ${activeTab === 'products' ? '#1B5E20' : '#DDD'}`, cursor: 'pointer', fontWeight: 800 }}>
-          Product Update Requests
+        <button onClick={load} disabled={loading} className="ds-btn">
+          <RefreshCw size={14} style={{ animation:loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
         </button>
       </div>
 
-      <div style={{ padding:'0 32px', display:'flex', flexDirection:'column', gap:22 }}>
-        
-        {activeTab === 'products' ? (
-          <div className="ceo-card" style={{ padding: 0 }}>
-            <div className="ceo-card-head" style={{ padding: '16px 20px' }}>
-              <ShoppingCart size={18} />
-              <span>Pending Product Updates</span>
-            </div>
-            {loadingRequests ? (
-               <div style={{ padding:'40px 0', textAlign:'center', fontWeight:800 }}>Loading requests...</div>
-            ) : updateRequests.length === 0 ? (
-               <div style={{ padding:'40px 0', textAlign:'center', fontWeight:800, color:'#666' }}>No pending requests.</div>
+      {!isCEO && isManager && (
+        <div className="ro-banner">
+          <AlertTriangle size={20} color="#d97706" />
+          <div>
+            <strong style={{ color:'#92400e', fontSize:13 }}>Store Manager Read-Only View</strong>
+            <p style={{ margin:'2px 0 0', color:'#b45309', fontSize:12, fontWeight:600 }}>
+              You can see the status of your submitted product updates and the executive summary, but cannot approve/reject items.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {loading && !data ? (
+        <div style={{ padding:'80px 0', textAlign:'center', fontWeight:800, color:C, fontSize:18 }}>Loading Report...</div>
+      ) : (
+        <div style={{ padding:'0 32px', display:'flex', flexDirection:'column', gap:24 }}>
+          
+          {/* UPDATE REQUESTS */}
+          <Section icon={Layers} title="Product Update Requests" count={requests.length}>
+            {requests.length === 0 ? (
+              <div style={{ padding:'40px 24px', textAlign:'center', color:'#64748b', fontWeight:700 }}>No pending update requests.</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table className="ds-tbl">
                 <thead>
-                  <tr style={{ background: '#F5F5F5', borderBottom: '2px solid #DDD' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Product</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Changes</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: 12 }}>Requested By</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontSize: 12 }}>Actions</th>
+                  <tr>
+                    <th className="ds-th">Product (SKU)</th>
+                    <th className="ds-th">Status</th>
+                    <th className="ds-th">Proposed Changes</th>
+                    <th className="ds-th">Notes / Reason</th>
+                    {isCEO && <th className="ds-th" style={{ textAlign:'right' }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {updateRequests.map(req => {
-                    const oldD = req.old_data || {};
-                    const newD = req.new_data || {};
-                    return (
-                      <tr key={req.id} style={{ borderBottom: '1px solid #EEE' }}>
-                        <td style={{ padding: '12px', fontWeight: 800, fontSize: 14 }}>{req.product_name} <br/><span style={{ fontSize:11, color:'#666' }}>{req.product_sku}</span></td>
-                        <td style={{ padding: '12px', fontSize: 13 }}>
-                          {newD.price !== undefined && newD.price !== oldD.price && <div><b style={{ color:'#8D6E63' }}>Price:</b> <s style={{ color:'#F44336' }}>{oldD.price}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.price} ETB</span></div>}
-                          {newD.stock !== undefined && newD.stock !== oldD.stock && <div><b style={{ color:'#8D6E63' }}>Stock:</b> <s style={{ color:'#F44336' }}>{oldD.stock}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.stock}</span></div>}
-                          {newD.reorder !== undefined && newD.reorder !== oldD.reorder_level && <div><b style={{ color:'#8D6E63' }}>Reorder:</b> <s style={{ color:'#F44336' }}>{oldD.reorder_level}</s> ➔ <span style={{ color:'#1B5E20', fontWeight:800 }}>{newD.reorder}</span></div>}
-                        </td>
-                        <td style={{ padding: '12px', fontSize: 13, fontWeight:600 }}>Sales Manager</td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          {rejectId === req.id ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
-                              <input type="text" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Reason for rejection..." style={{ padding: '6px', fontSize: 12, border: '1px solid #DDD', width: 200 }} />
-                              <div style={{ display: 'flex', gap: 5 }}>
-                                <button onClick={() => handleReject(req.id)} style={{ padding: '5px 10px', background: '#F44336', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}>Confirm Reject</button>
-                                <button onClick={() => { setRejectId(null); setRejectReason(''); }} style={{ padding: '5px 10px', background: '#EEE', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}>Cancel</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                              <button onClick={() => handleApprove(req.id)} style={{ padding: '6px 12px', background: '#2E8B57', color: 'white', border: '2px solid #1B5E20', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}><CheckCircle size={12} style={{ verticalAlign:'middle', marginRight:4 }}/> Approve</button>
-                              <button onClick={() => setRejectId(req.id)} style={{ padding: '6px 12px', background: '#FFF', color: '#F44336', border: '2px solid #F44336', cursor: 'pointer', fontWeight: 800, fontSize: 11 }}><XCircle size={12} style={{ verticalAlign:'middle', marginRight:4 }}/> Reject</button>
+                  {requests.map(r => (
+                    <tr key={r.id} className="ds-tr">
+                      <td className="ds-td">
+                        <strong style={{ color:'#0d1a30' }}>{r.product_name}</strong>
+                        <div style={{ fontSize:11, color:'#64748b' }}>{r.product_sku}</div>
+                      </td>
+                      <td className="ds-td">
+                        <span className={`ds-badge ${r.status==='APPROVED'?'db-ok':r.status==='REJECTED'?'db-err':'db-warn'}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="ds-td" style={{ fontSize:11 }}>
+                        <code style={{ background:'rgba(0,0,0,.04)', padding:'4px 8px', borderRadius:4, display:'inline-block', maxWidth:300, whiteSpace:'pre-wrap' }}>
+                          {r.new_data || '{}'}
+                        </code>
+                      </td>
+                      <td className="ds-td" style={{ fontSize:12, color:'#64748b' }}>
+                        {r.rejection_reason || '—'}
+                      </td>
+                      {isCEO && (
+                        <td className="ds-td" style={{ textAlign:'right' }}>
+                          {r.status === 'PENDING' && (
+                            <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                              <button className="ds-btn ds-btn-success" onClick={()=>handleAction(r.id, 'APPROVE')} disabled={acting===r.id} style={{ padding:'6px 12px' }}>
+                                <Check size={14} /> Approve
+                              </button>
+                              <button className="ds-btn ds-btn-danger" onClick={()=>handleAction(r.id, 'REJECT')} disabled={acting===r.id} style={{ padding:'6px 12px' }}>
+                                <X size={14} /> Reject
+                              </button>
                             </div>
                           )}
                         </td>
-                      </tr>
-                    );
-                  })}
+                      )}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
+          </Section>
+
+          {/* TWO COLUMNS: BRANCHES AND REVENUE */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
+            <Section icon={Building2} title="Active Branches" count={branches.length}>
+              <table className="ds-tbl">
+                <thead>
+                  <tr>
+                    <th className="ds-th">Branch Name</th>
+                    <th className="ds-th">Manager</th>
+                    <th className="ds-th" style={{ textAlign:'right' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {branches.map(b => (
+                    <tr key={b.id} className="ds-tr">
+                      <td className="ds-td"><strong style={{ color:'#0d1a30' }}>{b.name}</strong> <span style={{ color:'#64748b', fontSize:11 }}>({b.code})</span></td>
+                      <td className="ds-td">{b.manager_name || '—'}</td>
+                      <td className="ds-td" style={{ textAlign:'right' }}>
+                        <span className={`ds-badge ${b.is_active ? 'db-ok' : 'db-neutral'}`}>{b.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Section>
+            
+            <Section icon={ShoppingCart} title="Orders & Revenue (Retail)" count={orders.length}>
+              <table className="ds-tbl">
+                <thead>
+                  <tr>
+                    <th className="ds-th">Order Status</th>
+                    <th className="ds-th" style={{ textAlign:'right' }}>Volume</th>
+                    <th className="ds-th" style={{ textAlign:'right' }}>Revenue (ETB)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o, i) => (
+                    <tr key={i} className="ds-tr">
+                      <td className="ds-td" style={{ fontWeight:800 }}>{o.status || 'UNKNOWN'}</td>
+                      <td className="ds-td" style={{ textAlign:'right' }}>{o.count}</td>
+                      <td className="ds-td" style={{ textAlign:'right', color:C, fontWeight:900 }}>{fmt(o.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Section>
           </div>
-        ) : loading ? (
-          <div style={{ padding:'80px 0', textAlign:'center' }}>
-            <Zap size={44} color={C} style={{ animation:'pulse 1.5s ease-in-out infinite', margin:'0 auto 14px', display:'block' }}/>
-            <div style={{ fontWeight:800, color:'#0d2244', fontSize:18 }}>Compiling CEO Dashboard...</div>
-          </div>
-        ) : (
-          <>
-            {/* ── TOP SUMMARY (Across all branches) ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:16 }}>
-              {/* Grand Total */}
-              <div className="ceo-chip">
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-                  <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'.08em', color:'#64748b' }}>Combined Total Sales</div>
-                  <div style={{ color:C, opacity:.65 }}><DollarSign size={24}/></div>
-                </div>
-                <div style={{ fontSize:32, fontWeight:900, color:'#064e3b', textShadow:'1px 1px 0 rgba(255,255,255,.9), 2px 2px 0 rgba(0,0,0,.04)' }}>
-                  {combinedTotalApproved.toLocaleString()} <span style={{fontSize:16, color:'#10b981'}}>ETB</span>
-                </div>
-                <div style={{ fontSize:12, color:'#64748b', fontWeight:700, marginTop:8 }}>*Only Finance-approved figures shown</div>
-              </div>
 
-              {/* Status Split */}
-              <div className="ceo-chip">
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-                  <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'.08em', color:'#64748b' }}>Branch Approval Status</div>
-                  <div style={{ color:C, opacity:.65 }}><Building2 size={24}/></div>
-                </div>
-                <div style={{ display:'flex', gap:20, marginTop:10 }}>
-                  <div>
-                    <div style={{ fontSize:22, fontWeight:900, color:'#059669' }}>{branchesApprovedCount}</div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b' }}>APPROVED</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize:22, fontWeight:900, color:'#d97706' }}>{branchesPendingCount}</div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b' }}>PENDING</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize:22, fontWeight:900, color:'#dc2626' }}>{branchesMismatchCount}</div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#64748b' }}>MISMATCH</div>
-                  </div>
-                </div>
-              </div>
+          {/* CATALOG OVERVIEW */}
+          <Section icon={Box} title="Product Catalog Overview" count={products.length}>
+            <table className="ds-tbl">
+              <thead>
+                <tr>
+                  <th className="ds-th">Product Name</th>
+                  <th className="ds-th">SKU / Category</th>
+                  <th className="ds-th" style={{ textAlign:'right' }}>Price (ETB)</th>
+                  <th className="ds-th" style={{ textAlign:'right' }}>Stock / Reorder</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map(p => (
+                  <tr key={p.id} className="ds-tr">
+                    <td className="ds-td"><strong style={{ color:'#0d1a30' }}>{p.name}</strong></td>
+                    <td className="ds-td" style={{ fontSize:12, color:'#64748b' }}>{p.sku} <br/> {p.category}</td>
+                    <td className="ds-td" style={{ textAlign:'right', fontWeight:900, color:C }}>{fmt(p.price)}</td>
+                    <td className="ds-td" style={{ textAlign:'right' }}>
+                      <span className={`ds-badge ${p.stock_quantity <= p.reorder_level ? 'db-err' : 'db-ok'}`}>
+                        {p.stock_quantity} / {p.reorder_level}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
 
-              {/* Payment Split */}
-              <div className="ceo-chip">
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-                  <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'.08em', color:'#64748b' }}>Combined Payment Split</div>
-                  <div style={{ color:C, opacity:.65 }}><CreditCard size={24}/></div>
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div style={{ background:'rgba(16,185,129,.1)', padding:'10px 14px', border:'1px solid rgba(16,185,129,.2)', borderRadius: 0 }}>
-                    <div style={{ fontSize:10, fontWeight:800, color:'#047857', marginBottom:4 }}>CASH COLLECTED</div>
-                    <div style={{ fontSize:16, fontWeight:900, color:'#064e3b' }}>{combinedCash.toLocaleString()}</div>
-                  </div>
-                  <div style={{ background:'rgba(59,130,246,.1)', padding:'10px 14px', border:'1px solid rgba(59,130,246,.2)', borderRadius: 0 }}>
-                    <div style={{ fontSize:10, fontWeight:800, color:'#1d4ed8', marginBottom:4 }}>BANK / MOBILE</div>
-                    <div style={{ fontSize:16, fontWeight:900, color:'#1e3a8a' }}>{combinedBank.toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── BRANCH BREAKDOWN ── */}
-            <div className="ceo-card" style={{ marginTop:10 }}>
-              <div className="ceo-card-head"><Building2 size={21}/><span>Branch Daily Reports — {date}</span></div>
-              <div style={{ minHeight:300 }}>
-                {allBranches.length === 0 ? (
-                  <div style={{ padding:60, textAlign:'center', color:'#64748b' }}>
-                    <AlertTriangle size={48} style={{ opacity:.3, margin:'0 auto 12px' }}/>
-                    <div style={{ fontWeight:800, fontSize:18 }}>No Reports Found</div>
-                    <div style={{ fontSize:14, fontWeight:600, marginTop:6 }}>No branch reports submitted for {date}.</div>
-                  </div>
-                ) : (
-                  allBranches.map((b, i) => {
-                    const isApproved = b.status === 'APPROVED';
-                    const isPending  = b.status === 'PENDING';
-                    
-                    let bCash = 0; let bBank = 0;
-                    if (isApproved && b.payments) {
-                      b.payments.forEach(p => {
-                        if ((p.payment_type||'').toUpperCase().includes('CASH')) bCash += parseFloat(p.total_amount||0);
-                        else bBank += parseFloat(p.total_amount||0);
-                      });
-                    }
-
-                    return (
-                      <div key={i} className="ceo-branch-row">
-                        {/* Branch Info */}
-                        <div style={{ flex:1 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                            <div style={{ fontWeight:900, color:'#0d2244', fontSize:16 }}>{b.name}</div>
-                            {isApproved ? (
-                              <span className="ceo-badge approved"><CheckCircle size={13}/> APPROVED</span>
-                            ) : isPending ? (
-                              <span className="ceo-badge pending"><AlertTriangle size={13}/> PENDING FINANCE</span>
-                            ) : (
-                              <span className="ceo-badge mismatch"><XCircle size={13}/> MISMATCH</span>
-                            )}
-                          </div>
-                          
-                          {/* Top selling / Alerts */}
-                          <div style={{ display:'flex', gap:20, fontSize:12, fontWeight:700, color:'#64748b' }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:6 }}><ShoppingCart size={14}/> Top Category: General Meds</div>
-                            {b.lowStock > 0 && <div style={{ display:'flex', alignItems:'center', gap:6, color:'#ea580c' }}><AlertTriangle size={14}/> Low-stock items: {b.lowStock}</div>}
-                          </div>
-                        </div>
-
-                        {/* Transaction Stats */}
-                        <div style={{ width:180, borderLeft:'2px solid rgba(90,111,154,.1)', paddingLeft:20 }}>
-                          <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase' }}>Trans. / Items</div>
-                          <div style={{ fontSize:14, fontWeight:900, color:'#0d2244' }}>{b.transCount} sales <span style={{color:'#cbd5e1'}}>|</span> {b.itemsSold} items</div>
-                        </div>
-
-                        {/* Payment Split */}
-                        {isApproved ? (
-                          <div style={{ width:180, borderLeft:'2px solid rgba(90,111,154,.1)', paddingLeft:20 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase' }}>Cash vs Bank</div>
-                            <div style={{ display:'flex', gap:8, fontSize:12, fontWeight:800, marginTop:4 }}>
-                              <span style={{ color:'#059669' }}>C: {bCash.toLocaleString()}</span>
-                              <span style={{ color:'#2563eb' }}>B: {bBank.toLocaleString()}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ width:180, borderLeft:'2px solid rgba(90,111,154,.1)', paddingLeft:20, opacity:0.5 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase' }}>Cash vs Bank</div>
-                            <div style={{ fontSize:12, fontWeight:700, color:'#94a3b8', marginTop:4 }}>Pending Approval</div>
-                          </div>
-                        )}
-
-                        {/* Total Value */}
-                        <div style={{ width:160, borderLeft:'2px solid rgba(90,111,154,.1)', paddingLeft:20, textAlign:'right' }}>
-                          <div style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', marginBottom:2 }}>Total Sales</div>
-                          {isApproved ? (
-                            <div style={{ fontSize:20, fontWeight:900, color:'#0d2244', textShadow:'1px 1px 0 rgba(255,255,255,.8)' }}>
-                              {b.totalValue.toLocaleString()}
-                            </div>
-                          ) : (
-                            <div style={{ fontSize:14, fontWeight:800, color:'#d97706', padding:'4px 0' }}>
-                              PENDING
-                            </div>
-                          )}
-                        </div>
-
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-
-          </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

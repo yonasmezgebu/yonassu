@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, FileText, AlertTriangle, TrendingUp, Package,
   ArrowRight, Clock, HeartPulse, Activity, Star, BarChart2,
-  Layers, Tag, DollarSign, RefreshCw, Sparkles
+  Layers, Tag, DollarSign, RefreshCw, Sparkles, Sprout
 } from 'lucide-react';
 import api from '../../services/apiClient';
 
@@ -132,7 +132,7 @@ const PharmacyWorkerHome = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.4s ease', width: '100%' }}>
         <div style={{ justifySelf: 'start' }}>
           <h1 className="artistic-3d-title">
-            Welcome back <Sparkles className="blink-star" size={38} />
+            Welcome! &nbsp;<span className="blink-star">🌿</span>
           </h1>
         </div>
         <div style={{ justifySelf: 'center' }}>

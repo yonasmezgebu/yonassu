@@ -109,6 +109,14 @@ const salesService = {
   getCombinedDailyReport: async (params) => apiClient.get('/pos/reports/combined-daily', { params }),
   getTodaySummary: async (period = 'day') => apiClient.get('/pos/reports/today-summary', { params: { period } }),
 
+  /* Retail Reports (CEO, Finance, Daily Summary) */
+  getCEOReport: async () => apiClient.get('/retail-reports/ceo-report'),
+  ceoApproveRetailUpdate: async (id, data) => apiClient.post(`/retail-reports/ceo-report/${id}/action`, data),
+  getFinanceReview: async () => apiClient.get('/retail-reports/finance-review'),
+  financeVerifyShift: async (id, data) => apiClient.post(`/retail-reports/finance-review/shift/${id}/verify`, data),
+  financeVerifyPOSCart: async (id, data) => apiClient.post(`/retail-reports/finance-review/pos-cart/${id}/verify`, data),
+  getDailySummary: async (params) => apiClient.get('/retail-reports/daily-summary', { params }),
+
   /* Audit trail */
   getAuditTrail: async (period) => apiClient.get('/pos/audit-trail', { params: period ? { period } : {} }),
 

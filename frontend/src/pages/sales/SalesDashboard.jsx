@@ -12,6 +12,7 @@ import RetailStoreInventory from './RetailStoreInventory';
 import RetailBranches from './RetailBranches';
 import SalesCEOReport from './SalesCEOReport';
 import SalesFinanceReview from './SalesFinanceReview';
+import SalesDailySummary from './SalesDailySummary';
 
 import CashierAuditLog from './CashierAuditLog';
 import TenderManagePage from '../admin/TenderManagePage';
@@ -29,7 +30,7 @@ const SalesDashboard = () => {
   const location = useLocation();
   const FULL_BLEED = [
     '/sales/staff', '/sales/branches', 
-    '/sales/finance-review', '/sales/ceo-report', 
+    '/sales/finance-review', '/sales/ceo-report', '/sales/daily-summary',
     '/sales/store-inventory',
     '/sales/procurement-requests',
     '/sales/sales', '/sales/sales-return',
@@ -79,7 +80,7 @@ const SalesDashboard = () => {
       children: [
         { label: 'CEO Report',     path: '/sales/ceo-report',     icon: 'bar-chart-2',  color: '#064e3b' },
         { label: 'Finance Review', path: '/sales/finance-review', icon: 'dollar-sign',  color: '#D97706' },
-        { label: 'Cashier Audit',  path: '/sales/audit',          icon: 'shield',       color: '#6366f1' },
+        { label: 'Daily Summary',  path: '/sales/daily-summary',  icon: 'shield',       color: '#6366f1' },
       ]
     },
   ];
@@ -126,9 +127,8 @@ const SalesDashboard = () => {
             {/* Reports */}
             <Route path="ceo-report"    element={<SalesCEOReport />} />
             <Route path="finance-review" element={<SalesFinanceReview />} />
-            <Route path="finance-review/:id" element={<SalesFinanceReview />} />
+            <Route path="daily-summary" element={<SalesDailySummary />} />
             
-            <Route path="audit" element={<CashierAuditLog source="sales" />} />
             <Route path="inventory/adjust/:id" element={<SalesProductAdjust />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
