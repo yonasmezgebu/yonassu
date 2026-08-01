@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   Search, Bell, Settings, ChevronDown, LogOut, User,
-  LayoutDashboard, Package, Wallet, BarChart3, X
+  LayoutDashboard, Package, Wallet, BarChart3, X, Menu
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import notificationService from '../services/notificationService';
@@ -20,7 +20,6 @@ export default function TopNavBar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -103,7 +102,6 @@ export default function TopNavBar() {
     e.preventDefault();
     if (searchVal.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchVal.trim())}`);
-      setSearchOpen(false);
       setSearchVal('');
     }
   };
@@ -122,60 +120,49 @@ export default function TopNavBar() {
 
   const isCEO = location.pathname.startsWith('/ceo');
 
+  const getDashboardTitle = () => {
+    const p = location.pathname;
+    if (p.startsWith('/ceo')) return 'CEO Dashboard';
+    if (p.startsWith('/sales') || p.startsWith('/retail')) return 'Sales Dashboard';
+    if (p.startsWith('/pharmacy')) return 'Pharmacy Dashboard';
+    if (p.startsWith('/farming') || p.startsWith('/car') || p.startsWith('/rental')) return 'Car & Agri Rental Dashboard';
+    if (p.startsWith('/printing')) return 'Printing Dashboard';
+    if (p.startsWith('/general-store')) return 'General Store Dashboard';
+    if (p.startsWith('/purchase')) return 'Purchase Dashboard';
+    if (p.startsWith('/finance')) return 'Finance Dashboard';
+    if (p.startsWith('/hr')) return 'HR Dashboard';
+    return 'SUTANA EMS Dashboard';
+  };
+
   return (
     <header className="tnb-root">
       <div className="tnb-inner">
-        {/* ── Left: Brand ── */}
-        <Link to="/" className="tnb-brand">
-          <span className="tnb-wordmark">SUTANA EMS</span>
-        </Link>
+        
+        {/* ── Left: Menu + Title ── */}
+        <div className="tnb-left">
+          <Menu size={24} color="#4B5563" style={{ cursor: 'pointer' }} />
+          <span className="tnb-dynamic-title">{getDashboardTitle()}</span>
+        </div>
 
-        {/* ── Center: Nav Links or Dashboard title ── */}
-        {isCEO ? (
-          <span style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>CEO Dashboard</span>
-        ) : (
-          <nav className="tnb-nav">
-            {NAV_LINKS.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`tnb-link${isActive(link.path) ? ' tnb-link--active' : ''}`}
-              >
-                <link.icon size={16} strokeWidth={2} />
-                <span>{link.label}</span>
-              </Link>
-            ))}
-          </nav>
-        )}
+        {/* ── Center: Search Bar ── */}
+        <div className="tnb-center">
+          <form className="tnb-search-form" onSubmit={handleSearch}>
+            <Search size={18} color="#9CA3AF" />
+            <input
+              className="tnb-search-input"
+              placeholder="Search sales, medicines, orders..."
+              value={searchVal}
+              onChange={e => setSearchVal(e.target.value)}
+            />
+          </form>
+        </div>
 
-        {/* ── Right: Search + Icons + Profile ── */}
-        <div className="tnb-actions" style={isCEO ? { marginLeft: 'auto' } : undefined}>
-          {/* Search */}
-          {searchOpen ? (
-            <form className="tnb-search-form" onSubmit={handleSearch}>
-              <Search size={16} color="#9CA3AF" />
-              <input
-                autoFocus
-                className="tnb-search-input"
-                placeholder="Search..."
-                value={searchVal}
-                onChange={e => setSearchVal(e.target.value)}
-                onBlur={() => { if (!searchVal) setSearchOpen(false); }}
-              />
-              <button type="button" className="tnb-icon-btn" onMouseDown={() => setSearchOpen(false)}>
-                <X size={16} />
-              </button>
-            </form>
-          ) : (
-            <button className="tnb-icon-btn" onClick={() => setSearchOpen(true)} title="Search">
-              <Search size={18} />
-            </button>
-          )}
-
+        {/* ── Right: Icons + Profile ── */}
+        <div className="tnb-actions">
           {/* Notifications */}
           <div ref={notifRef} style={{ position: 'relative' }}>
-            <button className="tnb-icon-btn" onClick={() => setNotifOpen(o => !o)} title="Notifications">
-              <Bell size={18} />
+            <button className="tnb-icon-btn tnb-notif-btn" onClick={() => setNotifOpen(o => !o)} title="Notifications">
+              <Bell size={18} color="#047857" />
               {unreadCount > 0 && (
                 <span className="tnb-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
               )}
@@ -191,7 +178,6 @@ export default function TopNavBar() {
                     <div className="tnb-dropdown-empty">All caught up!</div>
                   ) : (
                     notifications.slice(0, 8).map(n => {
-                      // Determine navigation target by notification type
                       const getLink = () => {
                         if (n._link) return n._link;
                         const t = (n._type || '').toLowerCase();
@@ -210,13 +196,10 @@ export default function TopNavBar() {
                         style={{ cursor: 'pointer', background: n.isRead ? 'transparent' : '#f0fdf4', borderLeft: n.isRead ? 'none' : '3px solid #228B22' }}
                         onClick={async () => {
                           setNotifOpen(false);
-                          // Always remove from state immediately (disappear on click)
                           setNotifications(prev => prev.filter(x => x.id !== n.id));
-                          // Mark as read on server if system notification
                           if (n.id && n.id.startsWith('sys-') && n._refId) {
                             try { await notificationService.markSystemAsRead(n._refId); } catch (_) {}
                           }
-                          // Navigate
                           if (link) navigate(link);
                         }}>
                         <p className="tnb-notif-title">{n.title}</p>
@@ -231,17 +214,14 @@ export default function TopNavBar() {
             )}
           </div>
 
-          {/* Settings */}
-          {!isCEO && (
-          <button className="tnb-icon-btn" onClick={() => navigate('/admin/settings')} title="Settings">
-            <Settings size={18} />
-          </button>
-          )}
-
           {/* User Profile */}
           <div ref={profileRef} style={{ position: 'relative' }}>
             <button className="tnb-profile-btn" onClick={() => setProfileOpen(o => !o)}>
               <div className="tnb-avatar">{initials}</div>
+              <div className="tnb-profile-text">
+                <span className="tnb-profile-name">{user?.name || 'User'}</span>
+                <span className="tnb-profile-role">{user?.role || ''}</span>
+              </div>
               <ChevronDown size={14} className={`tnb-chevron${profileOpen ? ' tnb-chevron--open' : ''}`} />
             </button>
             {profileOpen && (

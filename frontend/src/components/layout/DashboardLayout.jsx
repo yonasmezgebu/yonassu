@@ -270,11 +270,11 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
         onClick={() => setOpen(o => !o)}
         style={{ position: 'relative' }}
       >
-        <Bell size={18} color="#eab308" style={{ filter: 'drop-shadow(0 2px 4px rgba(234,179,8,0.3))' }} />
+        <Bell size={18} color="#047857" style={{ filter: 'drop-shadow(0 2px 4px rgba(4,120,87,0.35))' }} />
         {totalBadge > 0 && (
           <span style={{
             position: 'absolute', top: '-6px', right: '-6px',
-            backgroundColor: '#EF4444', color: 'white',
+            backgroundColor: '#047857', color: 'white',
             borderRadius: '9999px', fontSize: '10px', fontWeight: '700',
             minWidth: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 4px', lineHeight: 1
@@ -1061,7 +1061,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
           
           <div className="dash-topbar-center" style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
             <div className="dash-search" style={{ flex: 1, position: 'relative' }}>
-              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}><Search size={18} /></span>
+              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#047857' }}><Search size={18} /></span>
               <input 
                 type="text" 
                 placeholder="Search sales, medicines, orders..." 
@@ -1080,8 +1080,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                 }}
                 onFocus={(e) => {
                   e.target.style.background = '#ffffff';
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
+                  e.target.style.borderColor = '#047857';
+                  e.target.style.boxShadow = '0 0 0 4px rgba(4, 120, 87, 0.1)';
                 }}
                 onBlur={(e) => {
                   e.target.style.background = '#f8fafc';
@@ -1164,11 +1164,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                     <div
                       style={{
                         width: 64, height: 64, borderRadius: '50%', margin: '0 auto 8px',
-                        background: resolvePhoto(user?.profilePhoto) ? 'transparent' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                        background: resolvePhoto(user?.profilePhoto) ? 'transparent' : 'linear-gradient(135deg, #047857, #064e3b)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '24px', fontWeight: 700, color: 'white',
                         cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                        boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                        boxShadow: '0 4px 12px rgba(4,120,87,0.3)',
                         border: '3px solid #e2e8f0'
                       }}
                       title="Click to change photo"

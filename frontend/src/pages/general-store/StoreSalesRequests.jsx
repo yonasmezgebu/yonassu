@@ -304,21 +304,21 @@ export default function StoreSalesRequests() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const load = useCallback(async () => {
-    setRefreshing(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
     try {
       const params = filter === 'All' ? {} : { status: filter };
       const res = await apiClient.get('/store-sales-requests', { params });
       setRequests(res.data?.data || []);
     } catch (e) {
-      showToast('Failed to load requests', 'error');
+      if (!silent) showToast('Failed to load requests', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [filter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); const interval = setInterval(() => load(true), 5000); return () => clearInterval(interval); }, [load]);
 
   const handleRelease = async (storeSignature, storeNotes) => {
     if (!selectedRequest) return;

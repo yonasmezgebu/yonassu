@@ -122,6 +122,7 @@ const FleetManager = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   /* ── Toast ── */
   const [toasts, setToasts] = useState([]);
@@ -141,6 +142,13 @@ const FleetManager = () => {
 
   /* ── Load ── */
   useEffect(() => { fetchCars(); }, []);
+
+  /* ── Global navbar search listener ── */
+  useEffect(() => {
+    const handler = (e) => setSearchQuery((e.detail || '').toLowerCase().trim());
+    window.addEventListener('dashboardSearch', handler);
+    return () => window.removeEventListener('dashboardSearch', handler);
+  }, []);
 
   const fetchCars = async (isManualRefresh = false) => {
     try {
@@ -180,6 +188,17 @@ const FleetManager = () => {
   const activeCars = cars.filter(c => !c.deleted_at);
   const hiddenCars = cars.filter(c => c.deleted_at);
   const availCount = activeCars.filter(c => c.availability === 'Available').length;
+
+  /* ── Filtered list for table ── */
+  const filteredCars = searchQuery
+    ? cars.filter(c =>
+        (c.name || '').toLowerCase().includes(searchQuery) ||
+        (c.carType || '').toLowerCase().includes(searchQuery) ||
+        (c.availability || '').toLowerCase().includes(searchQuery) ||
+        (c.fuelType || '').toLowerCase().includes(searchQuery) ||
+        (c.transmission || '').toLowerCase().includes(searchQuery)
+      )
+    : cars;
 
   const statusBadge = (car) => {
     if (car.deleted_at) return { label: 'Hidden', bg: '#ECEFF1', color: '#607D8B' };
@@ -313,7 +332,8 @@ const FleetManager = () => {
                 borderBottom: `3px solid ${G.olive}`,
               }}>
                 <span style={{ fontSize: 13, fontWeight: 900, color: G.mint, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  🌿 Rental Post Roster — {cars.length} Vehicle{cars.length !== 1 ? 's' : ''}
+                  🌿 Rental Post Roster — {filteredCars.length} Vehicle{filteredCars.length !== 1 ? 's' : ''}
+                  {searchQuery && <span style={{ fontSize: 11, color: G.sage, fontWeight: 600, textTransform: 'none', marginLeft: 8 }}>matching "{searchQuery}"</span>}
                 </span>
                 <span style={{ fontSize: 11, color: G.sage }}>
                   {activeCars.length} active · {hiddenCars.length} hidden
@@ -351,7 +371,13 @@ const FleetManager = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {cars.map((car, idx) => {
+                      {filteredCars.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ padding: '40px 20px', textAlign: 'center', color: G.olive, fontWeight: 700 }}>
+                            No vehicles match "{searchQuery}"
+                          </td>
+                        </tr>
+                      ) : filteredCars.map((car, idx) => {
                         const badge = statusBadge(car);
                         return (
                           <tr key={car.id} className="fm-row" style={{

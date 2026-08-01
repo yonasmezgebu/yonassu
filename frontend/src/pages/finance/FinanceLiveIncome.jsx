@@ -6,6 +6,7 @@ import {
   Package, Phone, CreditCard, Hash, Clock, ChevronRight, Car
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 const fmt = (n) => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -59,7 +60,14 @@ const SigPad = ({ label, onSave }) => {
     lastPos.current = pos; setIsEmpty(false);
   }, []);
 
-  const stopDraw = useCallback(() => { isDrawing.current = false; lastPos.current = null; }, []);
+  const stopDraw = useCallback(() => { 
+    isDrawing.current = false; 
+    lastPos.current = null; 
+    if (canvasRef.current && !isEmpty) {
+      onSave(canvasRef.current.toDataURL('image/png'));
+      setSaved(true);
+    }
+  }, [onSave, isEmpty]);
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -69,10 +77,6 @@ const SigPad = ({ label, onSave }) => {
     return () => { canvas.removeEventListener('touchstart', startDraw); canvas.removeEventListener('touchmove', draw); canvas.removeEventListener('touchend', stopDraw); };
   }, [startDraw, draw, stopDraw]);
 
-  const handleSave = () => {
-    if (isEmpty) return;
-    onSave(canvasRef.current.toDataURL('image/png')); setSaved(true);
-  };
   const handleClear = () => {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -86,10 +90,10 @@ const SigPad = ({ label, onSave }) => {
         style={{ width: '100%', height: 120, display: 'block', cursor: 'crosshair', background: isEmpty ? '#fafafa' : 'white', touchAction: 'none' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: '#F5F5F5', borderTop: '1px solid #A5D6A7' }}>
-        <span style={{ fontSize: 10, color: '#6B8E23' }}>{isEmpty ? 'Draw then Save' : saved ? '✓ Saved' : 'Press Save'}</span>
+        <span style={{ fontSize: 10, color: '#6B8E23' }}>{isEmpty ? 'Draw signature' : saved ? '✓ Saved' : ''}</span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" onClick={handleClear} style={{ fontSize: 10, padding: '3px 8px', border: '1px solid #A5D6A7', borderRadius: 4, background: 'white', cursor: 'pointer', color: '#F44336' }}>Clear</button>
-          <button type="button" onClick={handleSave} disabled={isEmpty || saved} style={{ fontSize: 10, padding: '3px 8px', border: 'none', borderRadius: 4, background: saved ? '#98FF98' : '#1B5E20', color: saved ? '#228B22' : 'white', cursor: isEmpty ? 'not-allowed' : 'pointer', fontWeight: 700 }}>Save</button>
+          
         </div>
       </div>
     </div>
@@ -115,6 +119,7 @@ const DEPARTMENTS = ['Sales', 'Pharmacy', 'Retail', 'Printing', 'Car Rental', 'A
 /*  DETAIL PAGE                                                    */
 /* ═══════════════════════════════════════════════════════════════ */
 const DetailView = ({ submissionId, onBack, onApproved }) => {
+  const { user } = useAuth();
   const [loading,    setLoading]    = useState(true);
   const [detail,     setDetail]     = useState(null);
   const [error,      setError]      = useState(null);
@@ -124,7 +129,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const [approving,  setApproving]  = useState(false);
   const [mismatch,   setMismatch]   = useState(null); // { systemTotal, cashCount, difference }
   const [approved,   setApproved]   = useState(false);
-  const [financeName, setFinanceName] = useState('');
+  const [financeName, setFinanceName] = useState(user?.fullName || user?.name || '');
   const [financeSignature, setFinanceSignature] = useState(null);
 
   // Digital-payment verification checklist (for Car Rental / AgriRent / Printing)
@@ -851,9 +856,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                     <div>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Finance Officer Name *</label>
                       <input
-                        value={financeName} onChange={e => setFinanceName(e.target.value)}
+                        value={financeName} readOnly
                         placeholder="Enter Name"
-                        style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14 }}
+                        style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14, background: '#f0fdf4', color: '#1B5E20' }}
                       />
                     </div>
                     <div>
@@ -1000,9 +1005,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#424242', marginBottom: 8 }}>Finance Officer Name *</label>
                     <input
-                      value={financeName} onChange={e => setFinanceName(e.target.value)}
+                      value={financeName} readOnly
                       placeholder="Enter Name"
-                      style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14 }}
+                      style={{ width: '100%', padding: '12px 14px', border: '2px solid #A5D6A7', borderRadius: 10, outline: 'none', fontSize: 14, background: '#f0fdf4', color: '#1B5E20' }}
                     />
                   </div>
                   <div>

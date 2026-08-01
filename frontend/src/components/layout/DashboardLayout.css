@@ -400,7 +400,7 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #64748b;
+  color: #047857;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,8 +410,8 @@ body {
 }
 
 .dash-sidebar-toggle:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #ecfdf5;
+  color: #065f46;
 }
 
 .dash-sidebar-toggle svg {
@@ -426,7 +426,7 @@ body {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #0f172a;
+  color: #047857;
 }
 
 .dash-topbar-center {
@@ -500,7 +500,7 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--dash-primary), #06b6d4);
+  background: #047857;
   color: white;
   display: flex;
   align-items: center;
@@ -521,7 +521,7 @@ body {
 .dash-user-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: #047857;
   line-height: 1.2;
 }
 
@@ -570,7 +570,7 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0 0 2px 0;
-  color: #0f172a;
+  color: #047857;
 }
 
 .dropdown-email {
@@ -763,6 +763,8 @@ body {
 }
 
 /* ── Responsive ── */
+
+/* Tablet (≤1024px): sidebar becomes overlay, hide search bar */
 @media (max-width: 1024px) {
   .dashboard-wrapper.sidebar-open .dash-main {
     margin-left: 0;
@@ -773,6 +775,32 @@ body {
   }
 }
 
+/* Medium mobile (≤768px): hide topbar title, compress right section */
+@media (max-width: 768px) {
+  .dash-topbar {
+    padding: 0 1rem;
+  }
+
+  .dash-topbar-title {
+    display: none;
+  }
+
+  .dash-topbar-right {
+    gap: 0.5rem;
+  }
+
+  .dash-notif-btn {
+    padding: 0.4rem !important;
+  }
+
+  /* Compact user chip on medium screens */
+  .dash-user-chip {
+    gap: 0.5rem;
+    padding: 0.3rem 0.4rem;
+  }
+}
+
+/* Small mobile (≤640px): hide user text, hide chevron */
 @media (max-width: 640px) {
   .dash-content {
     padding: 1rem;
@@ -792,6 +820,18 @@ body {
 
   .dropdown-arrow {
     display: none;
+  }
+
+  /* Shrink avatar slightly to save space */
+  .dash-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  /* Topbar stays full-width but tighter */
+  .dash-topbar {
+    padding: 0 0.75rem;
   }
 }
 

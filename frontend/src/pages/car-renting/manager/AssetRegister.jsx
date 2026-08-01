@@ -124,6 +124,7 @@ const AssetRegister = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   /* ── Form State ── */
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -157,6 +158,13 @@ const AssetRegister = () => {
 
   /* ── Load ── */
   useEffect(() => { fetchCars(); }, []);
+
+  /* ── Global navbar search listener ── */
+  useEffect(() => {
+    const handler = (e) => setSearchQuery((e.detail || '').toLowerCase().trim());
+    window.addEventListener('dashboardSearch', handler);
+    return () => window.removeEventListener('dashboardSearch', handler);
+  }, []);
 
   const fetchCars = async (isManualRefresh = false) => {
     try {
@@ -525,7 +533,16 @@ const AssetRegister = () => {
                 borderBottom: `3px solid ${G.olive}`,
               }}>
                 <span style={{ fontSize: 13, fontWeight: 900, color: G.mint, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  📋 Full Master Asset List — {cars.length} Asset{cars.length !== 1 ? 's' : ''}
+                  📋 Full Master Asset List — {searchQuery
+                    ? `${cars.filter(c =>
+                        (c.name || '').toLowerCase().includes(searchQuery) ||
+                        (c.carType || '').toLowerCase().includes(searchQuery) ||
+                        (c.availability || '').toLowerCase().includes(searchQuery) ||
+                        (c.fuelType || '').toLowerCase().includes(searchQuery) ||
+                        (c.transmission || '').toLowerCase().includes(searchQuery)
+                      ).length} of ${cars.length}`
+                    : cars.length} Asset{cars.length !== 1 ? 's' : ''}
+                  {searchQuery && <span style={{ fontSize: 11, color: G.sage, fontWeight: 600, textTransform: 'none', marginLeft: 8 }}>matching "{searchQuery}"</span>}
                 </span>
               </div>
 
@@ -560,7 +577,20 @@ const AssetRegister = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {cars.map((car, idx) => {
+                      {(() => {
+                        const filteredCars = searchQuery
+                          ? cars.filter(c =>
+                              (c.name || '').toLowerCase().includes(searchQuery) ||
+                              (c.carType || '').toLowerCase().includes(searchQuery) ||
+                              (c.availability || '').toLowerCase().includes(searchQuery) ||
+                              (c.fuelType || '').toLowerCase().includes(searchQuery) ||
+                              (c.transmission || '').toLowerCase().includes(searchQuery)
+                            )
+                          : cars;
+                        if (filteredCars.length === 0) return (
+                          <tr><td colSpan="6" style={{ padding: '40px 20px', textAlign: 'center', color: G.olive, fontWeight: 700 }}>No assets match "{searchQuery}"</td></tr>
+                        );
+                        return filteredCars.map((car, idx) => {
                         const isPublic = !car.deleted_at;
                         return (
                           <tr key={car.id} className="fm-row" style={{
@@ -654,7 +684,7 @@ const AssetRegister = () => {
                             </td>
                           </tr>
                         );
-                      })}
+                      })})()}
                     </tbody>
                   </table>
                 </div>

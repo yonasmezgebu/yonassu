@@ -195,6 +195,19 @@ const RentalOrders = () => {
 
   useEffect(() => { load(filter); }, [filter.page, filter.status, filter.paymentStatus, load]);
 
+  /* ── Global navbar search listener ── */
+  useEffect(() => {
+    const handler = (e) => {
+      const q = (e.detail || '').trim();
+      const fresh = { ...filter, search: q, page: 1 };
+      setFilter(fresh);
+      load(fresh);
+    };
+    window.addEventListener('dashboardSearch', handler);
+    return () => window.removeEventListener('dashboardSearch', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
   const handleSearch = () => {
     const fresh = { ...filter, page: 1 };
     setFilter(fresh);
