@@ -23,37 +23,6 @@ const InViewWrap = ({ children, className = '', style: extra = {} }) => {
   );
 };
 
-/* ── 1. Stats Bar ── */
-const statsData = [
-  { icon: Package,  label: 'Enterprise Modules', value: '6+' },
-  { icon: Wallet,   label: 'Uptime SLA',         value: '99.9%' },
-  { icon: ShoppingCart, label: 'API Response',   value: '<100ms' },
-  { icon: Truck,    label: 'Scalability',         value: '∞' },
-];
-
-export function StatsSection() {
-  return (
-    <div style={{ background: '#0D7C66', padding: '40px 40px' }}>
-      <div className="modern-container">
-        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 24 }}>
-          {statsData.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <InViewWrap key={i} className="inview-fade-up" style={{ textAlign: 'center', color: '#fff' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-                  <Icon size={32} strokeWidth={1.5} />
-                </div>
-                <div style={{ fontSize: 'clamp(1.8rem,3vw,2.4rem)', fontWeight: 800, lineHeight: 1.1 }}>{s.value}</div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.85, fontWeight: 500 }}>{s.label}</div>
-              </InViewWrap>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── 2. Platform Capabilities (Infinite Scroll) ── */
 const capabilities = [
   { icon: Package,     title: 'Store',        tag: 'Store',        color: '#4F46E5', para: 'Real-time stock tracking with full movement history, automated reorder alerts, and multi-location warehouse support.' },
@@ -71,13 +40,40 @@ const capabilities = [
 function CapabilityCard({ c }) {
   const Icon = c.icon;
   return (
-    <div className="cap-card" style={{ cursor: 'default', flexShrink: 0, marginRight: 28, background: '#eff4ff', border: '1px solid #e5e7eb', borderRadius: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: '28px 20px', textAlign: 'center', transition: 'transform 0.3s ease, box-shadow 0.3s ease', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-      <div className="icon-hover" style={{ width: 42, height: 42, borderRadius: 12, background: c.color + '15', color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, flexShrink: 0 }}>
+    <div 
+      className="cap-card" 
+      style={{ 
+        cursor: 'default', flexShrink: 0, marginRight: 28, width: '280px',
+        background: '#FFFFFF', border: '1px solid #8D6E63', 
+        borderRadius: 12, display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', justifyContent: 'flex-start', 
+        padding: '28px 20px', textAlign: 'center', 
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-1px)';
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'none';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <div 
+        style={{ 
+          width: 42, height: 42, borderRadius: 12, 
+          background: 'rgba(34, 139, 34, 0.1)', 
+          color: '#228B22', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+          marginBottom: 12, flexShrink: 0 
+        }}
+      >
         <Icon size={20} />
       </div>
-      <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1A202C', marginBottom: 8, flexShrink: 0 }}>{c.title}</span>
-      <p className="cap-para" style={{ fontSize: '0.78rem', lineHeight: 1.55, color: '#4A5568', margin: 0, fontWeight: 600, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' }}>{c.para}</p>
-      <Triangle size={14} color={c.color} fill={c.color} style={{ marginTop: 'auto', flexShrink: 0, opacity: 0.5 }} />
+      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1B5E20', marginBottom: 8, flexShrink: 0 }}>{c.title}</span>
+      <p style={{ fontSize: '0.85rem', lineHeight: 1.55, color: '#424242', margin: 0, fontWeight: 500, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' }}>
+        {c.para}
+      </p>
     </div>
   );
 }
@@ -86,11 +82,11 @@ export function CapabilitiesSection() {
   const topRow = capabilities.slice(0, 5);
   const bottomRow = capabilities.slice(5);
   return (
-    <section className="modern-section modern-section--alt">
-      <div className="modern-container">
-        <div className="section-header">
-          <h2>Platform Capabilities</h2>
-          <p>Ten powerful modules purpose-built for Ethiopian enterprises — integrated under one roof.</p>
+    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px', overflow: 'hidden' }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>Platform Capabilities</h2>
+          <p style={{ fontSize: '1.1rem', color: '#424242' }}>Ten powerful modules purpose-built for Ethiopian enterprises — integrated under one roof.</p>
         </div>
         {/* Top row — moving RIGHT */}
         <div className="scroll-track-wrap" style={{ marginBottom: 28 }}>
@@ -119,28 +115,44 @@ const steps = [
 
 export function GettingStartedSection() {
   return (
-    <section className="modern-section modern-section--dark">
-      <div className="modern-container">
-        <div className="section-header section-header--dark">
-          <h2>Getting Started</h2>
-          <p>Up and running in 4 simple steps. Most businesses are fully operational within their first week.</p>
+    <section style={{ background: '#F5F5F5', padding: '80px 0', width: '100%' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>Getting Started</h2>
+          <p style={{ fontSize: '1.1rem', color: '#424242' }}>Up and running in 4 simple steps. Most businesses are fully operational within their first week.</p>
         </div>
-        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 28 }}>
           {steps.map((s, i) => {
             const Icon = s.icon;
             return (
-              <InViewWrap key={i} className="inview-fade-up">
-                <div className="glass-card" style={{ padding: '36px 28px', textAlign: 'center', cursor: 'default' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(13,124,102,0.2)', color: '#0D7C66', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontWeight: 800, fontSize: '1.1rem' }}>
-                    {String(i + 1).padStart(2, '0')}
-                  </div>
-                  <div className="icon-hover" style={{ marginBottom: 14, color: '#d4a017' }}>
-                    <Icon size={28} />
-                  </div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>{s.title}</h3>
-                  <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#94a3b8', margin: 0 }}>{s.desc}</p>
+              <div 
+                key={i} 
+                style={{ 
+                  background: '#FFFFFF', padding: '36px 28px', textAlign: 'center', cursor: 'default',
+                  border: '1px solid #8D6E63', borderRadius: 12,
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ 
+                  width: 48, height: 48, borderRadius: '50%', background: '#98FF98', color: '#424242', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontWeight: 800, fontSize: '1.1rem' 
+                }}>
+                  {String(i + 1).padStart(2, '0')}
                 </div>
-              </InViewWrap>
+                <div style={{ marginBottom: 14, color: '#228B22' }}>
+                  <Icon size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>{s.title}</h3>
+                <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#424242', margin: 0 }}>{s.desc}</p>
+              </div>
             );
           })}
         </div>
@@ -159,45 +171,82 @@ const benefits = [
 
 export function WhySutanaSection() {
   return (
-    <section className="modern-section" style={{ background: '#fff' }}>
-      <div className="modern-container">
-        <div className="section-header">
-          <h2>Why SUTANA</h2>
-          <p>Trusted by Growing Ethiopian Enterprises — Simplifying Operations, Empowering Growth.</p>
+    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+
+        {/* Section Header — plain bg + colored text only, no banner box */}
+        <div style={{ textAlign: 'center', marginBottom: 52 }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>
+            Why SUTANA
+          </h2>
+          <p style={{ fontSize: '1.1rem', color: '#424242', maxWidth: 600, margin: '0 auto' }}>
+            Trusted by growing Ethiopian enterprises — simplifying operations, empowering growth.
+          </p>
         </div>
-        <div className="stack-mobile" style={{ display: 'flex', gap: 48, alignItems: 'flex-start' }}>
-          {/* Left — Benefits */}
-          <div style={{ flex: '0 0 50%' }}>
-            <div className="stagger">
-              {benefits.map((b, i) => {
-                const Icon = b.icon;
-                return (
-                  <InViewWrap key={i} className="inview-fade-up" style={{ marginBottom: 20 }}>
-                    <div className="modern-card" style={{ display: 'flex', gap: 18, padding: '24px 22px', cursor: 'default' }}>
-                      <div className="icon-hover" style={{ width: 48, height: 48, borderRadius: 12, background: '#0D7C6615', color: '#0D7C66', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={22} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{b.title}</h4>
-                        <p style={{ fontSize: '0.85rem', lineHeight: 1.6, color: '#64748b', margin: 0 }}>{b.desc}</p>
-                      </div>
-                    </div>
-                  </InViewWrap>
-                );
-              })}
+
+        {/* Two-column layout: Benefits left, Image right */}
+        <div style={{ display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap' }}>
+
+          {/* Left — Benefits list */}
+          <div style={{ flex: '1 1 440px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {benefits.map((b, i) => {
+              const Icon = b.icon;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex', gap: 18, padding: '22px 20px',
+                    background: '#FFFFFF', border: '1px solid #8D6E63', borderRadius: 12,
+                    cursor: 'default', transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  {/* Icon box — Sage Green background, Forest Green icon */}
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12, flexShrink: 0,
+                    background: '#A5D6A7', color: '#228B22',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Icon size={22} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#1B5E20', marginBottom: 4 }}>{b.title}</h4>
+                    <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: '#424242', margin: 0 }}>{b.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right — Image with hover zoom, 10px radius, Earth Brown border */}
+          <div style={{ flex: '1 1 380px' }}>
+            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #8D6E63', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
+              <img
+                src={happy1}
+                alt="SUTANA Enterprise Team"
+                style={{
+                  width: '100%', height: 'auto', display: 'block',
+                  transition: 'transform 0.15s ease'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              />
             </div>
           </div>
-          {/* Right — Image */}
-          <InViewWrap className="inview-fade-up" style={{ flex: '0 0 50%' }}>
-            <div className="hover-float" style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' }}>
-              <img src={happy1} alt="SUTANA Enterprise" style={{ width: '100%', height: 'auto', display: 'block' }} />
-            </div>
-          </InViewWrap>
+
         </div>
       </div>
     </section>
   );
 }
+
 
 /* ── 5. Success Stories ── */
 const testimonials = [
@@ -208,74 +257,90 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section className="modern-section modern-section--alt">
-      <div className="modern-container">
-        <div className="section-header">
-          <h2>Success Stories</h2>
-          <p>Businesses that transformed with SUTANA — real results from real Ethiopian enterprises.</p>
+    <section style={{ background: '#F5F5F5', padding: '80px 0', width: '100%' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+
+        {/* Section Header — plain bg + colored text only, no banner box */}
+        <div style={{ textAlign: 'center', marginBottom: 52 }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>
+            Success Stories
+          </h2>
+          <p style={{ fontSize: '1.1rem', color: '#424242', maxWidth: 580, margin: '0 auto' }}>
+            Businesses that transformed with SUTANA — real results from real Ethiopian enterprises.
+          </p>
         </div>
-        <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px,1fr))', gap: 28 }}>
+
+        {/* Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px,1fr))', gap: 28 }}>
           {testimonials.map((t, i) => (
-            <InViewWrap key={i} className="inview-fade-up">
-              <div className="modern-card" style={{ padding: '32px 28px', cursor: 'default', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* Stars */}
-                <div style={{ display: 'flex', gap: 2, marginBottom: 14 }}>
-                  {[...Array(5)].map((_, si) => (
-                    <Star key={si} size={16} fill="#F59E0B" color="#F59E0B" strokeWidth={1.5} />
-                  ))}
+            <div
+              key={i}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #8D6E63',
+                borderRadius: 12,
+                padding: '32px 28px',
+                cursor: 'default',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {/* 5 Stars */}
+              <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
+                {[...Array(5)].map((_, si) => (
+                  <Star key={si} size={15} fill="#228B22" color="#228B22" strokeWidth={1.5} />
+                ))}
+              </div>
+
+              {/* Quote icon — Forest Green, subtle */}
+              <Quote size={28} color="#A5D6A7" style={{ marginBottom: 10 }} />
+
+              {/* Quote text */}
+              <p style={{
+                fontSize: '0.92rem', lineHeight: 1.75, color: '#424242',
+                flex: 1, marginBottom: 24, fontStyle: 'italic'
+              }}>
+                "{t.quote}"
+              </p>
+
+              {/* Divider + Author */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                borderTop: '1px solid #8D6E63', paddingTop: 18
+              }}>
+                {/* Avatar — 50% radius as per rules */}
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: '#1B5E20', color: '#FFFFFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: '0.85rem', flexShrink: 0,
+                  border: '2px solid #A5D6A7'
+                }}>
+                  {t.initials}
                 </div>
-                <Quote size={32} color="#0D7C6620" style={{ marginBottom: 8 }} />
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.7, color: '#475569', flex: 1, marginBottom: 20, fontStyle: 'italic' }}>"{t.quote}"</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, ${t.color}, ${t.color}88)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0 }}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{t.name}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{t.role}</div>
-                  </div>
+                <div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B5E20' }}>{t.name}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#6B8E23', fontWeight: 500 }}>{t.role}</div>
                 </div>
               </div>
-            </InViewWrap>
+            </div>
           ))}
         </div>
+
       </div>
     </section>
   );
 }
 
-/* ── 7. Smart Footer ── */
-const footerLinks = {
-  solutions: [
-    { icon: Package,     label: 'Inventory',  href: '/services' },
-    { icon: Wallet,      label: 'Finance',    href: '/services' },
-    { icon: ShoppingCart,label: 'POS',        href: '/services' },
-    { icon: Truck,       label: 'Purchase',   href: '/services' },
-    { icon: BarChart3,   label: 'Analytics',  href: '/services' },
-  ],
-  company: [
-    { icon: Home,        label: 'Home',       href: '/' },
-    { icon: Building2,   label: 'About',      href: '/about' },
-    { icon: Briefcase,   label: 'Services',   href: '/services' },
-    { icon: FileText,    label: 'Tenders',    href: '/tenders' },
-  ],
-  support: [
-    { icon: Phone,       label: 'Contact Us', href: '/chat' },
-    { icon: LogIn,       label: 'Sign In',    href: '/login' },
-    { icon: Scale,       label: 'Legal',      href: '#' },
-    { icon: Shield,      label: 'Privacy Policy', href: '#' },
-    { icon: FileText,    label: 'Terms of Service', href: '#' },
-  ],
-};
-
-function FooterLink({ icon: Icon, label, href }) {
-  return (
-    <a href={href} className="footer-link">
-      <Icon size={16} className="footer-link-icon" />
-      <span>{label}</span>
-    </a>
-  );
-}
 
 export function SmartFooter() {
   const [socialLinks, setSocialLinks] = useState([]);
@@ -284,7 +349,6 @@ export function SmartFooter() {
     const fetchSocials = async () => {
       try {
         const response = await apiClient.get('/public/social-links');
-        // apiClient interceptor already returns response.data
         setSocialLinks(response?.data || []);
       } catch (err) {
         console.error('Failed to load social links', err);
@@ -310,8 +374,7 @@ export function SmartFooter() {
   );
 
   const getSocialIcon = (platform, color) => {
-    // User requested green color for the icons
-    const props = { size: 20, color: '#10B981' };
+    const props = { size: 18, color };
     switch(platform.toLowerCase()) {
       case 'facebook': return <FacebookIcon {...props} />;
       case 'telegram': return <TelegramIcon {...props} />;
@@ -322,86 +385,162 @@ export function SmartFooter() {
     }
   };
 
+  const handleLinkHover = (e) => {
+    e.currentTarget.style.color = '#8BC34A';
+    e.currentTarget.style.textDecoration = 'underline';
+  };
+  const handleLinkLeave = (e) => {
+    e.currentTarget.style.color = '#87CEEB';
+    e.currentTarget.style.textDecoration = 'none';
+  };
+
   return (
-    <footer className="smart-footer">
-      <div className="smart-footer-inner">
-        {/* Column 1 — Brand */}
-        <div className="smart-footer-col smart-footer-brand">
-          <div className="footer-brand-name">SUTANA</div>
-          <p className="footer-brand-desc">
-            Modern Enterprise Management for Ethiopia&rsquo;s growing businesses. Built locally. Trusted widely.
+    <footer style={{ background: '#1B5E20', color: '#FFFFFF', width: '100%' }}>
+      {/* 4 Columns Container */}
+      <div style={{
+        maxWidth: 1200, margin: '0 auto', padding: '60px 40px',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '40px'
+      }}>
+        
+        {/* Column 1: Brand & Social */}
+        <div>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '16px' }}>SUTANA</h3>
+          <p style={{ fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px', color: '#FFFFFF' }}>
+            Modern Enterprise Management for Ethiopia's growing businesses. Built locally. Trusted widely.
           </p>
+          {socialLinks.length > 0 && (
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {socialLinks.filter(l => l.is_active).map(link => (
+                <a
+                  key={link.platform}
+                  href={link.url || '#'}
+                  target={link.url ? "_blank" : "_self"}
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'transparent',
+                    color: '#FFFFFF',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#2E8B57'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {getSocialIcon(link.platform, '#FFFFFF')}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Column 2 — Solutions */}
-        <div className="smart-footer-col">
-          <h4 className="footer-col-heading">Solutions</h4>
-          <nav className="footer-col-links">
-            {footerLinks.solutions.map((l, i) => (
-              <FooterLink key={i} {...l} />
+        {/* Column 2: Quick Links */}
+        <div>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Quick Links</h4>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {['About', 'Admissions', 'Academics', 'Contact Us'].map((label, i) => (
+              <a 
+                key={i} href="#" 
+                style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease', fontSize: '0.95rem' }} 
+                onMouseEnter={handleLinkHover} 
+                onMouseLeave={handleLinkLeave}
+              >
+                {label}
+              </a>
             ))}
           </nav>
         </div>
 
-        {/* Column 3 — Company */}
-        <div className="smart-footer-col">
-          <h4 className="footer-col-heading">Company</h4>
-          <nav className="footer-col-links">
-            {footerLinks.company.map((l, i) => (
-              <FooterLink key={i} {...l} />
-            ))}
-          </nav>
+        {/* Column 3: Contact Info */}
+        <div>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.95rem', color: '#FFFFFF' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span style={{ lineHeight: 1.5 }}>Injibara, Awi Zone<br />Amhara Region, Ethiopia</span>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <Phone size={18} style={{ flexShrink: 0 }} />
+              <span>+251 911 234 567</span>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <Mail size={18} style={{ flexShrink: 0 }} />
+              <span>info@sutana.com</span>
+            </div>
+          </div>
         </div>
 
-        {/* Column 4 — Support */}
-        <div className="smart-footer-col">
-          <h4 className="footer-col-heading">Support</h4>
-          <nav className="footer-col-links">
-            {footerLinks.support.map((l, i) => (
-              <FooterLink key={i} {...l} />
-            ))}
-          </nav>
+        {/* Column 4: Newsletter */}
+        <div>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Newsletter</h4>
+          <p style={{ fontSize: '0.9rem', marginBottom: '16px', color: '#FFFFFF', lineHeight: 1.5 }}>
+            Subscribe to get the latest updates and news.
+          </p>
+          <form onSubmit={e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input 
+              type="email" 
+              placeholder="Your email address" 
+              required
+              style={{
+                width: '100%', padding: '10px 14px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '6px',
+                color: '#FFFFFF',
+                fontSize: '0.95rem',
+                outline: 'none',
+                transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = '#2E8B57';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46,139,87,0.15)';
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            <button 
+              type="submit"
+              style={{
+                width: '100%', padding: '10px',
+                background: '#2E8B57', color: '#FFFFFF',
+                border: 'none', borderRadius: '8px',
+                fontWeight: 700, fontSize: '0.95rem',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                e.currentTarget.style.background = '#1B5E20';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.background = '#2E8B57';
+              }}
+            >
+              Subscribe
+            </button>
+          </form>
         </div>
       </div>
 
-      <div className="smart-footer-divider" />
-
-      <div className="smart-footer-bottom">
-        <span>&copy; 2026 SUTANA Enterprise Management System. All rights reserved.</span>
-        
-        {socialLinks.length > 0 && (
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            {socialLinks.filter(l => l.is_active).map(link => (
-              <a 
-                key={link.platform} 
-                href={link.url || '#'} 
-                target={link.url ? "_blank" : "_self"} 
-                rel="noopener noreferrer"
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.05)',
-                  padding: '8px',
-                  borderRadius: '50%',
-                  transition: 'background 0.3s'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-                  e.currentTarget.firstChild.style.transform = 'scale(1.1)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.firstChild.style.transform = 'scale(1)';
-                }}
-              >
-                {getSocialIcon(link.platform, link.icon_color)}
-              </a>
-            ))}
+      {/* Bottom Bar: Copyright & Links */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        <div style={{
+          maxWidth: 1200, margin: '0 auto', padding: '24px 40px',
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '24px',
+          fontSize: '0.85rem'
+        }}>
+          <span style={{ color: '#FFFFFF', textAlign: 'center' }}>
+            &copy; 2026 SUTANA Enterprise Management System. All rights reserved.
+          </span>
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <a href="#" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</a>
+            <a href="#" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</a>
           </div>
-        )}
-
-        <span className="footer-location">Injibara, Ethiopia</span>
+        </div>
       </div>
     </footer>
   );
@@ -409,33 +548,130 @@ export function SmartFooter() {
 
 export function CTASection() {
   return (
-    <section style={{ padding: '80px 40px', background: 'linear-gradient(135deg, #0D7C66 0%, #1A8F7A 40%, #0EA5E9 100%)', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.08, backgroundImage: 'radial-gradient(circle at 25% 50%, #fff 0%, transparent 50%), radial-gradient(circle at 75% 50%, #fff 0%, transparent 50%)' }} />
-      <div className="modern-container" style={{ position: 'relative', zIndex: 1, textAlign: 'center', color: '#fff' }}>
-        <div style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 99, background: 'rgba(255,255,255,0.15)', fontSize: '0.8rem', fontWeight: 600, marginBottom: 20, backdropFilter: 'blur(6px)' }}>
-          Ready to transform?
-        </div>
-        <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', fontWeight: 800, marginBottom: 16, lineHeight: 1.15 }}>
-          Stop managing chaos.<br />Start managing growth.
-        </h2>
-        <p style={{ fontSize: '1rem', lineHeight: 1.7, opacity: 0.9, maxWidth: 640, margin: '0 auto 36px' }}>
-          Join forward-thinking Ethiopian businesses using SUTANA EMS to eliminate manual work, eliminate data silos, and gain real-time visibility into every corner of your operations.
-        </p>
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => window.location.href = '/login'} style={{ padding: '14px 36px', borderRadius: 12, border: 'none', background: '#fff', color: '#0D7C66', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 8px 25px rgba(0,0,0,0.15)' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 12px 35px rgba(0,0,0,0.25)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)'; }}
-          >
-            Sign In Now <ArrowRight size={18} />
-          </button>
-          <button onClick={() => window.location.href = '/chat'} style={{ padding: '14px 36px', borderRadius: 12, border: '2px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'transform 0.2s', backdropFilter: 'blur(6px)' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.6)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
-          >
-            Talk to Our Team <ChevronRight size={18} />
-          </button>
+    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+
+        {/* Inner card — White with Earth Brown border, 12px radius */}
+        <div style={{
+          background: '#F5F5F5',
+          border: '1px solid #8D6E63',
+          borderRadius: 12,
+          padding: '64px 40px',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+
+          {/* Subtle Forest Green top accent bar — not a full banner, just a thin decorative line */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            height: 4, background: '#228B22', borderRadius: '12px 12px 0 0'
+          }} />
+
+          {/* Small label badge using Sage Green — informational widget */}
+          <div style={{
+            display: 'inline-block',
+            padding: '5px 16px',
+            background: '#A5D6A7',
+            border: '1px solid #8D6E63',
+            borderRadius: 8,
+            fontSize: '0.78rem',
+            fontWeight: 800,
+            color: '#424242',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            marginBottom: 24
+          }}>
+            Ready to transform?
+          </div>
+
+          {/* Main heading — Dark Green, no banner, plain bg */}
+          <h2 style={{
+            fontSize: 'clamp(1.8rem, 4vw, 3rem)',
+            fontWeight: 900,
+            color: '#1B5E20',
+            marginBottom: 16,
+            lineHeight: 1.15,
+            letterSpacing: '-0.02em'
+          }}>
+            Stop managing chaos.<br />Start managing growth.
+          </h2>
+
+          {/* Body text — Dark Gray on Light Gray bg */}
+          <p style={{
+            fontSize: '1.05rem',
+            lineHeight: 1.75,
+            color: '#424242',
+            maxWidth: 620,
+            margin: '0 auto 40px'
+          }}>
+            Join forward-thinking Ethiopian businesses using SUTANA EMS to eliminate manual work,
+            break data silos, and gain real-time visibility into every corner of your operations.
+          </p>
+
+          {/* Buttons row — moderate size, 8px radius, hover lift */}
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+
+            {/* Primary — Emerald Green */}
+            <button
+              onClick={() => window.location.href = '/login'}
+              style={{
+                padding: '12px 28px', borderRadius: 8,
+                border: '1px solid #2E8B57',
+                background: '#2E8B57', color: '#FFFFFF',
+                fontWeight: 700, fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#1B5E20';
+                e.currentTarget.style.borderColor = '#1B5E20';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(46,139,87,0.3)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#2E8B57';
+                e.currentTarget.style.borderColor = '#2E8B57';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Sign In Now <ArrowRight size={16} />
+            </button>
+
+            {/* Secondary — Olive Green */}
+            <button
+              onClick={() => window.location.href = '/chat'}
+              style={{
+                padding: '12px 28px', borderRadius: 8,
+                border: '1px solid #6B8E23',
+                background: 'transparent', color: '#6B8E23',
+                fontWeight: 700, fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#6B8E23';
+                e.currentTarget.style.color = '#FFFFFF';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(107,142,35,0.25)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#6B8E23';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Talk to Our Team <ChevronRight size={16} />
+            </button>
+
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
