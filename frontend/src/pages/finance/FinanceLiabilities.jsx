@@ -590,6 +590,33 @@ export default function FinanceLiabilities() {
 
   const closeAdd = () => { setAddModal(null); setForm({}); };
   const closeEdit = () => { setEditItem(null); setForm({}); };
+
+  const openEdit = (r) => {
+    const f = { ...r };
+    if (f.due_date) f.due_date = f.due_date.split('T')[0];
+    if (f.issue_date) f.issue_date = f.issue_date.split('T')[0];
+    if (f.created_at) f.created_at = f.created_at.split('T')[0];
+    
+    if (tab === 'ap') {
+      f.supplier_name = r.party_name;
+      f.invoice_number = r.reference_no;
+      f.invoice_date = f.issue_date || f.created_at;
+    } else if (tab === 'loan') {
+      f.lender_name = r.party_name;
+      f.loan_no = r.reference_no;
+      f.principal_amount = r.amount;
+      f.loan_date = f.issue_date || f.created_at;
+    } else if (tab === 'tax') {
+      f.tax_type = r.party_name || r.tax_type;
+      f.tax_ref = r.reference_no;
+      f.period = r.tax_period;
+      f.amount_due = r.amount;
+    } else if (tab === 'other') {
+      f.liability_type_sub = r.liability_type;
+    }
+    setForm(f);
+    setEditItem(r);
+  };
   const closePay = () => { setPayItem(null); setPayForm({}); };
 
   /* ── Tab config ── */
@@ -778,7 +805,7 @@ export default function FinanceLiabilities() {
                                   Pay
                                 </button>
                               )}
-                              <button className="ll-btn" style={{ background: '#ffa000', borderColor: '#ffa000', color: '#fff', marginLeft: '0.2rem', marginRight: '0.2rem' }} onClick={() => { setForm(r); setEditItem(r); }}>
+                              <button className="ll-btn" style={{ background: '#ffa000', borderColor: '#ffa000', color: '#fff', marginLeft: '0.2rem', marginRight: '0.2rem' }} onClick={() => openEdit(r)}>
                                 <Edit2 size={12} />
                               </button>
                               <button className="ll-btn del-btn" onClick={() => setDeleteItem(r)}>
@@ -918,7 +945,7 @@ export default function FinanceLiabilities() {
                     <div className="ll-form-grid">
                       <div className="ll-form-group">
                         <label className="ll-label">Type *</label>
-                        <select required className="ll-select" name="liability_type" onChange={handleInput}>
+                        <select required className="ll-select" name="liability_type_sub" value={form.liability_type_sub || ''} onChange={handleInput}>
                           <option value="">-- Select --</option>
                           <option value="SALARY">Salary</option>
                           <option value="OTHER">Other</option>
@@ -1086,7 +1113,7 @@ export default function FinanceLiabilities() {
                     <div className="ll-form-grid">
                       <div className="ll-form-group">
                         <label className="ll-label">Type *</label>
-                        <select required className="ll-select" name="liability_type" value={form.liability_type || ''} onChange={handleInput}>
+                        <select required className="ll-select" name="liability_type_sub" value={form.liability_type_sub || ''} onChange={handleInput}>
                           <option value="">-- Select --</option>
                           <option value="SALARY">Salary</option>
                           <option value="OTHER">Other</option>

@@ -357,7 +357,7 @@ const SalesOverview = () => {
               { label: 'Finance',        sub: 'Review',        icon: '💵', bg: '#F3E5F5', color: G.purple,  href: '/sales/finance-review' },
               { label: 'Stock Ops',      sub: 'Manage stock',  icon: '🔄', bg: '#EFEBE9', color: G.brown,   href: '/sales/stock-operations' }
             ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: \`\${0.4 + i * 0.04}s\` }}>
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
                 <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
                   <span style={{ fontSize:22 }}>{a.icon}</span>
                 </div>
