@@ -94,12 +94,27 @@ export default function GlobalChatPage() {
   return (
     /* Single page — everything scrolls together */
     <div style={{ minHeight: '100vh', background: C.lightGray, fontFamily: 'inherit' }}>
+      <style>{`
+        .gc-container { padding: 60px 40px 80px; }
+        .gc-layout { flex-direction: row; }
+        .gc-left { flex: 0 0 42%; padding: 48px 40px; border-right: 1px solid ${C.earthBrown}; border-bottom: none; }
+        .gc-right { padding: 48px 44px; }
+        .gc-form-row { grid-template-columns: 1fr 1fr; }
+        
+        @media (max-width: 768px) {
+          .gc-container { padding: 30px 20px 60px; }
+          .gc-layout { flex-direction: column; }
+          .gc-left { padding: 32px 24px; border-right: none; border-bottom: 1px solid ${C.earthBrown}; }
+          .gc-right { padding: 32px 24px; }
+          .gc-form-row { grid-template-columns: 1fr; }
+        }
+      `}</style>
 
       {/* ── Public Navbar ── */}
       <PublicNav />
 
       {/* ── Page Content ── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 40px 80px' }}>
+      <div className="gc-container" style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Page header */}
         <div style={{ marginBottom: 48 }}>
@@ -141,7 +156,7 @@ export default function GlobalChatPage() {
         </div>
 
         {/* ── Two-column layout with vertical divider ── */}
-        <div style={{
+        <div className="gc-layout" style={{
           display: 'flex', gap: 0,
           background: C.white,
           border: `1px solid ${C.earthBrown}`,
@@ -151,11 +166,8 @@ export default function GlobalChatPage() {
         }}>
 
           {/* ── LEFT column: Contact Info ── */}
-          <div style={{
-            flex: '0 0 42%',
-            padding: '48px 40px',
+          <div className="gc-left" style={{
             background: C.lightGray,
-            borderRight: `1px solid ${C.earthBrown}`,
             display: 'flex', flexDirection: 'column', gap: 20,
           }}>
             <h2 style={{ fontSize: '1.3rem', fontWeight: 900, color: C.darkGreen, marginBottom: 4 }}>
@@ -217,7 +229,7 @@ export default function GlobalChatPage() {
           </div>
 
           {/* ── RIGHT column: Form ── */}
-          <div style={{ flex: 1, padding: '48px 44px' }}>
+          <div className="gc-right" style={{ flex: 1 }}>
             {submitted ? (
               /* Success state */
               <div style={{
@@ -272,7 +284,7 @@ export default function GlobalChatPage() {
                   }}
                 >
                   {/* Name + Email row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="gc-form-row" style={{ display: 'grid', gap: 16 }}>
                     <div>
                       <label style={{ fontSize: 11, fontWeight: 800, color: C.darkGray, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Full Name *
