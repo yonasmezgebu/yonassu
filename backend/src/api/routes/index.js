@@ -43,6 +43,7 @@ router.use('/printing', printingRoutes);
 router.use('/admin', adminRoutes);
 router.use('/ceo', ceoRoutes);
 router.use('/customer', customerRoutes);
+router.use('/finance/reports', require('./financeReports.routes'));
 router.use('/finance', financeRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/pos', posRoutes);
