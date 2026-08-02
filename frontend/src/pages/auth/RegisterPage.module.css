@@ -1,241 +1,515 @@
 /* ── Google Font ── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* ─────────────────────────────────────────────────────
-   PAGE WRAPPER — dark deep-navy background
-───────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   REGISTER PAGE — 100% screen, two-column layout
+   Left: Deep forest green brand panel
+   Right: White form panel
+════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Full-screen two-column container — Rule 5: 100% end to end */
 .authContainer {
-  position: relative;
+  display: flex;
+  width: 100%;
   min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ────────────────────────────────────────────────
+   LEFT PANEL — Forest Green brand panel
+   Rule 2: proper green background
+   Rule 9 & 11: white text on green (visible)
+──────────────────────────────────────────────── */
+.leftPanel {
+  width: 38%;
+  min-height: 100vh;
+  background: #1B5E20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Gradient overlay — green only, no plants */
+.leftPanel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #1B5E20 0%, #228B22 55%, #2E8B57 100%);
+  z-index: 0;
+}
+
+/* Geometric grid texture */
+.leftPanel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 59px,
+      rgba(255,255,255,0.04) 60px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 59px,
+      rgba(255,255,255,0.04) 60px
+    );
+  z-index: 1;
+}
+
+.brandBlock {
+  position: relative;
+  z-index: 2;
+  padding: 48px 36px 0 36px;
+  width: 100%;
+}
+
+.brandLogo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 48px;
+}
+
+/* Rule 3 & 8: sharp corners — no radius */
+.logoMark {
+  width: 48px;
+  height: 48px;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Inter', sans-serif;
-  background: #0e0e2c;
-  overflow: hidden;
-  padding: 0;
+  flex-shrink: 0;
+  border-radius: 0;
 }
 
-/* ── Blue/purple glowing orb — top right ── */
-.authContainer::before {
-  content: '';
-  position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 420px;
-  height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(88, 86, 214, 0.55) 0%, rgba(100, 60, 220, 0.3) 50%, transparent 80%);
-  pointer-events: none;
-  z-index: 0;
+.logoMark svg {
+  width: 30px;
+  height: 30px;
 }
 
-/* ── Smaller purple orb — bottom left ── */
-.authContainer::after {
-  content: '';
-  position: absolute;
-  bottom: 40px;
-  left: -60px;
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(100, 60, 220, 0.35) 0%, transparent 75%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ─────────────────────────────────────────────────────
-   CARD — centered, no border, dark bg
-───────────────────────────────────────────────────── */
-.authCard {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  max-width: 420px;
-  padding: 52px 40px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  /* We need the wave to be at the bottom, so extra bottom padding */
-  padding-bottom: 220px;
-}
-
-/* ─────────────────────────────────────────────────────
-   HEADER
-───────────────────────────────────────────────────── */
-.authHeader {
-  text-align: center;
-  margin-bottom: 36px;
-}
-
-/* Hide the SUTANA logo text — design has no logo, just "Sign Up" title */
-.logo {
-  display: none;
-}
-
-.authHeader h2 {
-  font-size: 2rem;
+.brandName {
+  font-size: 1.5rem;
   font-weight: 800;
   color: #ffffff;
-  margin: 0 0 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.brandTagline {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+  font-weight: 400;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.heroText {
+  margin-top: 48px;
+}
+
+/* Rule 11: visible headings on green */
+.heroText h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 18px;
   letter-spacing: -0.01em;
 }
 
-.subtitle {
-  color: rgba(255, 255, 255, 0.5);
+.heroText h1 span {
+  color: #98FF98;
+}
+
+.heroText p {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.7;
+  max-width: 300px;
+}
+
+/* Feature list */
+.featureList {
+  list-style: none;
+  padding: 0;
+  margin: 28px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.featureList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+}
+
+.featureDot {
+  width: 8px;
+  height: 8px;
+  background: #98FF98;
+  flex-shrink: 0;
+  /* Rule 8: no radius */
+  border-radius: 0;
+}
+
+/* Left footer */
+.leftFooter {
+  position: relative;
+  z-index: 2;
+  padding: 0 36px 32px 36px;
+  width: 100%;
+}
+
+.leftFooter p {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ────────────────────────────────────────────────
+   RIGHT PANEL — White/Light Gray form panel
+   Rule 5: fills remaining width, 100% height
+──────────────────────────────────────────────── */
+.rightPanel {
+  flex: 1;
+  min-height: 100vh;
+  background: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  position: relative;
+  overflow-y: auto;
+}
+
+/* Rule 12: top bar flush to top, no gap */
+.rightTopBar {
+  width: 100%;
+  background: #228B22;
+  padding: 0 48px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.topBarBrand {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.topBarNav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+/* Rule 9: visible links on green bar */
+.topBarNav a {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+/* Rule 15: hover on nav links */
+.topBarNav a:hover {
+  color: #ffffff;
+}
+
+/* Form area — Rule 13: content not touching top bar, proper padding */
+.formArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 48px 40px 48px;
+}
+
+/* ── In-App Notifications (Rule 6: no browser alerts) ── */
+.notification {
+  width: 100%;
+  max-width: 560px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 0.875rem;
+  font-weight: 500;
+  /* Rule 8: no radius */
+  border-radius: 0;
+  border-left: 4px solid;
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.notificationError {
+  background: #FFEBEE;
+  color: #C62828;
+  border-color: #F44336;
+}
+
+/* Rule 6: success also as in-app notification */
+.notificationSuccess {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border-color: #4CAF50;
+}
+
+/* ── Page title above card — Rule 16: no bold color header container ── */
+.pageTitle {
+  width: 100%;
+  max-width: 560px;
+  margin-bottom: 24px;
+}
+
+.pageTitle h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #424242;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.pageTitle p {
+  font-size: 0.88rem;
+  color: #616161;
   margin: 0;
   line-height: 1.5;
 }
 
-/* ─────────────────────────────────────────────────────
-   ERROR ALERT
-───────────────────────────────────────────────────── */
-.errorAlert {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.2rem;
-  font-size: 0.85rem;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  text-align: center;
-  animation: fadeUp 0.3s ease both;
+.titleAccent {
+  width: 48px;
+  height: 3px;
+  background: #228B22;
+  margin-top: 10px;
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── Form card — Rule 3: sharp corners, Rule 8: no radius ── */
+.formCard {
+  background: #ffffff;
+  width: 100%;
+  max-width: 560px;
+  padding: 36px 40px;
+  border-radius: 0;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.10);
+  border: 1.5px solid #D7CCC8;
 }
 
-/* ─────────────────────────────────────────────────────
-   FORM
-───────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────
+   ACCOUNT TYPE TOGGLE
+   Rule 1: all buttons sharp corners
+   Rule 8: no radius
+──────────────────────────────────────────────── */
+.roleToggleGroup {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  border: 2px solid #8D6E63;
+}
+
+/* Each role button — sharp, no radius */
+.roleBtn {
+  flex: 1;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: none;
+  border-right: 1px solid #8D6E63;
+  color: #616161;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  /* Rule 8: no radius */
+  border-radius: 0;
+  transition: background 0.2s, color 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.roleBtn:last-child {
+  border-right: none;
+}
+
+/* Rule 15: hover */
+.roleBtn:hover {
+  background: #E8F5E9;
+  color: #228B22;
+}
+
+/* Active state — Forest Green */
+.roleBtnActive {
+  background: #228B22;
+  color: #ffffff;
+}
+
+.roleBtnActive:hover {
+  background: #2E8B57;
+  color: #ffffff;
+}
+
+/* ────────────────────────────────────────────────
+   FORM — two-column grid on wide, single on mobile
+   Rule 4: proper row/column design
+──────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 0;
+  width: 100%;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.formGroupFull {
+  grid-column: 1 / -1;
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 7px;
 }
 
+/* Rule 9 & 11: visible labels — dark text */
 .formGroup label {
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
-  margin-bottom: 10px;
-  letter-spacing: 0.01em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #424242;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: block;
 }
 
-/* ── Underline-style inputs (no box) ── */
+/* Rule 10, 14: sharp corner inputs, bold 2px border */
 .input {
   width: 100%;
-  padding: 8px 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+  padding: 12px 14px;
+  background: #ffffff;
   border-radius: 0;
-  font-size: 0.95rem;
+  border: 2px solid #8D6E63;
+  font-size: 0.92rem;
   font-family: inherit;
-  color: #ffffff;
+  color: #424242;
   outline: none;
-  transition: border-color 0.25s ease;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
 
 .input::placeholder {
-  color: rgba(255, 255, 255, 0.22);
+  color: #9E9E9E;
+  font-weight: 400;
+}
+
+/* Rule 15: hover */
+.input:hover {
+  border-color: #228B22;
 }
 
 .input:focus {
-  border-bottom-color: #5b5de8;
+  border-color: #228B22;
+  box-shadow: 0 0 0 3px rgba(34,139,34,0.14);
 }
 
-/* ── Account type toggle buttons ── */
-.formGroup > div[style] {
-  gap: 10px !important;
-}
-
-.formGroup > div > button {
-  flex: 1;
-  padding: 9px !important;
-  border-radius: 8px !important;
-  font-size: 0.85rem !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  font-family: inherit !important;
-}
-
-/* Customer button — override inline style via specificity */
-.formGroup > div > button:first-child {
-  background: rgba(91, 93, 232, 0.15) !important;
-  border: 1.5px solid rgba(91, 93, 232, 0.4) !important;
-  color: #a5b4fc !important;
-}
-
-.formGroup > div > button:first-child:hover {
-  background: rgba(91, 93, 232, 0.25) !important;
-  border-color: #a5b4fc !important;
-}
-
-/* Employee button — hidden */
-.formGroup > div > button:last-child {
-  display: none !important;
-}
-
-/* ── Show password checkbox ── */
+/* ── Show password row ── */
 .showPasswordLabel {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: #616161;
   user-select: none;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .showPasswordCheck {
   width: 16px;
   height: 16px;
-  accent-color: #5b5de8;
+  accent-color: #228B22;
   cursor: pointer;
+  border-radius: 0;
 }
 
-/* ─────────────────────────────────────────────────────
-   PRIMARY BUTTON — blue to purple gradient
-───────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────
+   FORM ACTIONS SECTION
+──────────────────────────────────────────────── */
+.formActions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Rule 1, 3, 8: primary button — sharp, no radius */
 .btnPrimary {
   width: 100%;
-  margin-top: 4px;
-  padding: 16px;
-  background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+  padding: 15px 24px;
+  background: #228B22;
   color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 0;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 6px 28px rgba(91, 93, 232, 0.45);
-  letter-spacing: 0.04em;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 3px 3px 0px #1B5E20;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   font-family: inherit;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Rule 15: hover effect */
 .btnPrimary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
-  box-shadow: 0 8px 36px rgba(91, 93, 232, 0.6);
-  transform: translateY(-2px);
+  background: #2E8B57;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #1B5E20;
 }
 
 .btnPrimary:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #1B5E20;
 }
 
 .btnPrimary:disabled {
@@ -243,120 +517,230 @@
   cursor: not-allowed;
 }
 
-/* ─────────────────────────────────────────────────────
-   BOTTOM SECTION — Already a user?
-───────────────────────────────────────────────────── */
-.registerSection {
-  margin-top: 24px;
-  text-align: center;
+/* Loading shimmer */
+.btnPrimary.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* ── Already have account? ── */
+.loginSection {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  margin-top: 20px;
 }
 
 .divider {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9E9E9E;
+  font-size: 0.78rem;
+  width: 100%;
+  font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
-/* Hide the divider lines — just show text inline */
 .divider::before,
 .divider::after {
-  display: none;
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #D7CCC8;
 }
 
+/* Rule 1, 3, 8: outlined login button — sharp */
 .registerBtn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 24px;
   background: transparent;
-  border: none;
-  color: #818cf8;
-  font-size: 0.9rem;
+  border: 2px solid #228B22;
+  color: #228B22;
+  border-radius: 0;
+  font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: background 0.2s, color 0.2s, box-shadow 0.15s, transform 0.15s;
+  width: 100%;
   font-family: inherit;
+  letter-spacing: 0.04em;
+}
+
+/* Rule 15: hover */
+.registerBtn:hover {
+  background: #228B22;
+  color: #ffffff;
+  box-shadow: 3px 3px 0px #1B5E20;
+  transform: translate(-1px, -1px);
+}
+
+/* ── Back home ── */
+.backHomeWrap {
+  margin-top: 24px;
+  display: flex;
   justify-content: center;
 }
 
-.registerBtn:hover {
-  color: #a5b4fc;
-  text-decoration: underline;
-}
-
-.adminNote {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.3);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.loginLink {
-  color: #818cf8;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s ease;
-}
-
-.loginLink:hover {
-  color: #a5b4fc;
-}
-
-/* ─────────────────────────────────────────────────────
-   BACK HOME BUTTON
-───────────────────────────────────────────────────── */
 .backHome {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.28);
-  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6B8E23;
+  text-decoration: none;
+  transition: color 0.2s;
+  padding: 4px 0;
   border: none;
+  background: none;
   cursor: pointer;
-  padding: 0;
-  margin-top: 20px;
-  transition: color 0.2s ease;
   font-family: inherit;
+  border-bottom: 2px solid transparent;
 }
 
 .backHome:hover {
-  color: rgba(255, 255, 255, 0.6);
+  color: #228B22;
+  border-bottom-color: #228B22;
 }
 
-/* ─────────────────────────────────────────────────────
-   WAVE BOTTOM — blue-to-purple layered wave
-   Done via a pseudo on a wrapping div we inject via
-   the authCard padding trick + absolute positioning
-───────────────────────────────────────────────────── */
-.authCard::after {
-  content: '';
-  position: fixed;
-  bottom: 0;
-  left: 0;
+/* ────────────────────────────────────────────────
+   RIGHT PANEL FOOTER
+──────────────────────────────────────────────── */
+.rightFooter {
   width: 100%;
-  height: 220px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 220' preserveAspectRatio='none'%3E%3Cpath d='M0,120 C200,180 400,60 600,120 C800,180 1000,60 1200,120 C1300,150 1380,130 1440,120 L1440,220 L0,220 Z' fill='rgba(91,93,232,0.18)'/%3E%3Cpath d='M0,150 C240,100 480,190 720,150 C960,110 1200,185 1440,150 L1440,220 L0,220 Z' fill='rgba(124,58,237,0.22)'/%3E%3Cpath d='M0,175 C360,145 720,200 1080,172 C1260,158 1380,180 1440,175 L1440,220 L0,220 Z' fill='rgba(59,130,246,0.28)'/%3E%3Cpath d='M0,195 C480,175 960,210 1440,195 L1440,220 L0,220 Z' fill='rgba(109,40,217,0.55)'/%3E%3C/svg%3E") no-repeat bottom center / 100% 100%;
-  pointer-events: none;
-  z-index: 0;
+  background: #228B22;
+  padding: 16px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
 }
 
-/* ─────────────────────────────────────────────────────
-   RESPONSIVE
-───────────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .authCard {
-    padding: 40px 24px 220px;
+.rightFooter p {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.7);
+  margin: 0;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 20px;
+}
+
+.footerLinks a {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.6);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footerLinks a:hover {
+  color: #ffffff;
+}
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE — Rule 7: mobile responsive
+════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  .authContainer {
+    flex-direction: column;
   }
 
-  .authHeader h2 {
-    font-size: 1.75rem;
+  .leftPanel {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .brandBlock {
+    padding: 28px 24px 28px 24px;
+  }
+
+  .heroText {
+    margin-top: 12px;
+  }
+
+  .heroText h1 {
+    font-size: 1.7rem;
+  }
+
+  .featureList {
+    display: none;
+  }
+
+  .leftFooter {
+    display: none;
+  }
+
+  .rightPanel {
+    min-height: auto;
+  }
+
+  .rightTopBar {
+    padding: 0 20px;
+  }
+
+  .formArea {
+    padding: 28px 20px 28px 20px;
+    align-items: stretch;
+  }
+
+  .pageTitle {
+    max-width: 100%;
+  }
+
+  .formCard {
+    max-width: 100%;
+    padding: 24px 20px;
+    box-shadow: none;
+    border: none;
+    border-top: 3px solid #228B22;
+  }
+
+  .notification {
+    max-width: 100%;
+  }
+
+  .rightFooter {
+    padding: 14px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGroupFull {
+    grid-column: 1;
+  }
+
+  .rightTopBar {
+    height: 48px;
+  }
+
+  .pageTitle h2 {
+    font-size: 1.3rem;
+  }
+
+  .btnPrimary {
+    font-size: 0.92rem;
+    padding: 13px;
   }
 }
