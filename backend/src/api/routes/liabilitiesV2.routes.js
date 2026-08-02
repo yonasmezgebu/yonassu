@@ -217,4 +217,91 @@ router.get('/payments', authenticate, async (req, res) => {
   }
 });
 
+// ─── PUT /liabilities-v2/:id — Update ────────────────────────────────────────
+router.put('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      party_name, reference_no, due_date, amount, description, 
+      interest_rate, term_months, tax_type, tax_period, liability_type_sub,
+      supplier_name, lender_name, tax_ref
+    } = req.body;
+    
+    const liability = await knex('liabilities').where({ id }).first();
+    if (!liability) return res.status(404).json({ success: false, message: 'Liability not found.' });
+    
+    const final_amount = amount ? parseFloat(amount) : parseFloat(liability.amount);
+    const paid = parseFloat(liability.paid_amount);
+    const new_balance = final_amount - paid;
+    const final_due = due_date || liability.due_date;
+    const status = computeStatus(new_balance, final_due);
+
+    // Normalize party_name from specific fields if missing
+    let final_party_name = party_name || liability.party_name;
+    if (liability.liability_type === 'ACCOUNTS_PAYABLE' && supplier_name) final_party_name = supplier_name;
+    if (liability.liability_type === 'BANK_LOAN' && lender_name) final_party_name = lender_name;
+    if (liability.liability_type === 'TAX' && tax_type) final_party_name = tax_type;
+    
+    let final_ref = reference_no || liability.reference_no;
+    if (liability.liability_type === 'TAX' && tax_ref) final_ref = tax_ref;
+
+    await knex.transaction(async trx => {
+      await trx('liabilities').where({ id }).update({
+        party_name: final_party_name,
+        reference_no: final_ref,
+        amount: final_amount,
+        balance: new_balance,
+        status: status,
+        due_date: final_due,
+        description: description !== undefined ? description : liability.description
+      });
+      
+      if (liability.liability_type === 'BANK_LOAN') {
+        const updateObj = { principal_amount: final_amount };
+        if (interest_rate !== undefined) updateObj.interest_rate = parseFloat(interest_rate || 0);
+        if (term_months !== undefined) updateObj.term_months = parseInt(term_months || 0);
+        if (lender_name) updateObj.lender_name = lender_name;
+        await trx('loan_details').where({ liability_id: id }).update(updateObj);
+      }
+      
+      if (liability.liability_type === 'TAX') {
+        const updateObj = {};
+        if (tax_type !== undefined) updateObj.tax_type = tax_type;
+        if (tax_period !== undefined) updateObj.tax_period = tax_period;
+        if (Object.keys(updateObj).length > 0) {
+          await trx('tax_details').where({ liability_id: id }).update(updateObj);
+        }
+      }
+      
+      if (liability.liability_type === 'SALARY' || liability.liability_type === 'OTHER') {
+        if (liability_type_sub) {
+          await trx('liabilities').where({ id }).update({ liability_type: liability_type_sub.toUpperCase() });
+        }
+      }
+    });
+
+    res.json({ success: true, message: 'Liability updated successfully.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Failed to update liability.' });
+  }
+});
+
+// ─── DELETE /liabilities-v2/:id — Delete ──────────────────────────────────────
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await knex.transaction(async trx => {
+      await trx('loan_details').where({ liability_id: id }).del();
+      await trx('tax_details').where({ liability_id: id }).del();
+      await trx('liability_payments').where({ liability_id: id }).del();
+      await trx('liabilities').where({ id }).del();
+    });
+    res.json({ success: true, message: 'Liability deleted successfully.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Failed to delete liability.' });
+  }
+});
+
 module.exports = router;
