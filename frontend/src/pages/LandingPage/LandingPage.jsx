@@ -4,7 +4,7 @@ import './PublicLayout.css';
 import Carousel from './Carousel';
 import EventSection from './EventSection';
 import {
-  StatsSection, CapabilitiesSection, GettingStartedSection,
+  CapabilitiesSection, GettingStartedSection,
   WhySutanaSection, TestimonialsSection, CTASection
 } from './ModernSections';
 
@@ -13,7 +13,6 @@ const LandingPage = () => (
     <PublicNav />
     <Carousel />
     <EventSection />
-    <StatsSection />
     <CapabilitiesSection />
     <GettingStartedSection />
     <WhySutanaSection />
