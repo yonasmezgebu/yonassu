@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layers, Building2, Landmark, FileText, Users, History,
-  X, CheckCircle, AlertCircle, RefreshCw, Trash2, CreditCard, TrendingDown
+  X, CheckCircle, AlertCircle, RefreshCw, Trash2, CreditCard, TrendingDown, Edit2
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
@@ -483,6 +483,7 @@ export default function FinanceLiabilities() {
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [addModal, setAddModal] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [payItem, setPayItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
   const [form, setForm] = useState({});
@@ -528,7 +529,7 @@ export default function FinanceLiabilities() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const ep = { ap: '/add-ap', loan: '/add-loan', tax: '/add-tax', other: '/add-other' }[addModal];
+      const ep = { ap: '/accounts-payable', loan: '/loans', tax: '/taxes', other: '/salary-other' }[addModal];
       await apiClient.post('/liabilities-v2' + ep, form);
       push('Record created successfully.');
       setAddModal(null);
@@ -570,7 +571,25 @@ export default function FinanceLiabilities() {
     }
   };
 
+  
+  const submitEdit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await apiClient.put('/liabilities-v2/' + editItem.id, form);
+      push('Record updated successfully.');
+      setEditItem(null);
+      setForm({});
+      load();
+    } catch (err) {
+      push(err?.message || 'Failed to update record.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const closeAdd = () => { setAddModal(null); setForm({}); };
+  const closeEdit = () => { setEditItem(null); setForm({}); };
   const closePay = () => { setPayItem(null); setPayForm({}); };
 
   /* ── Tab config ── */
@@ -753,14 +772,19 @@ export default function FinanceLiabilities() {
                           <td className="ll-td"><StatusBadge status={r.status} /></td>
                           <td className="ll-td">
                             <div className="ll-td-actions">
+                              
                               {r.status !== 'Paid' && (
                                 <button className="ll-btn pay-btn" onClick={() => setPayItem(r)}>
                                   Pay
                                 </button>
                               )}
+                              <button className="ll-btn" style={{ background: '#ffa000', borderColor: '#ffa000', color: '#fff', marginLeft: '0.2rem', marginRight: '0.2rem' }} onClick={() => { setForm(r); setEditItem(r); }}>
+                                <Edit2 size={12} />
+                              </button>
                               <button className="ll-btn del-btn" onClick={() => setDeleteItem(r)}>
                                 <Trash2 size={12} />
                               </button>
+
                             </div>
                           </td>
                         </>
@@ -932,6 +956,174 @@ export default function FinanceLiabilities() {
                   <button type="button" className="ll-btn outline" onClick={closeAdd}>Cancel</button>
                   <button type="submit" className="ll-btn" disabled={submitting}>
                     {submitting ? 'Saving…' : 'Save Record'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+
+      {/* ── Edit Modal ── */}
+      {editItem && (
+        <div className="ll-overlay">
+          <div className="ll-modal">
+            <div className="ll-modal-head">
+              <span className="ll-modal-title">
+                <FileText size={16} />
+                {('Edit ' + modalTitle[tab])}
+              </span>
+              <button className="ll-modal-close" onClick={closeEdit}><X size={16} /></button>
+            </div>
+            <div className="ll-modal-body">
+              <form onSubmit={submitEdit}>
+
+                {/* Accounts Payable fields */}
+                {tab === 'ap' && (
+                  <>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Supplier Name *</label>
+                      <input required className="ll-input" name="supplier_name" value={form.supplier_name || ''} onChange={handleInput} />
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Invoice No. *</label>
+                        <input required className="ll-input" name="invoice_number" value={form.invoice_number || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Amount (ETB) *</label>
+                        <input required type="number" step="0.01" min="0" className="ll-input" name="amount" value={form.amount || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Invoice Date</label>
+                        <input type="date" className="ll-input" name="invoice_date" value={form.invoice_date || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Due Date</label>
+                        <input type="date" className="ll-input" name="due_date" value={form.due_date || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Bank Loan fields */}
+                {tab === 'loan' && (
+                  <>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Lender / Bank Name *</label>
+                      <input required className="ll-input" name="lender_name" value={form.lender_name || ''} onChange={handleInput} />
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Loan Reference No. *</label>
+                        <input required className="ll-input" name="loan_no" value={form.loan_no || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Principal Amount (ETB) *</label>
+                        <input required type="number" step="0.01" min="0" className="ll-input" name="principal_amount" value={form.principal_amount || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Interest Rate</label>
+                        <input className="ll-input" name="interest_rate" value={form.interest_rate || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Term (Months)</label>
+                        <input type="number" min="1" className="ll-input" name="term_months" value={form.term_months || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Loan Date</label>
+                        <input type="date" className="ll-input" name="loan_date" value={form.loan_date || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Due Date</label>
+                        <input type="date" className="ll-input" name="due_date" value={form.due_date || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Tax fields */}
+                {tab === 'tax' && (
+                  <>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Tax Type *</label>
+                        <input required className="ll-input" name="tax_type" value={form.tax_type || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Tax Reference No. *</label>
+                        <input required className="ll-input" name="tax_ref" value={form.tax_ref || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Tax Period</label>
+                        <input className="ll-input" name="period" value={form.period || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Amount Due (ETB) *</label>
+                        <input required type="number" step="0.01" min="0" className="ll-input" name="amount_due" value={form.amount_due || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Due Date</label>
+                      <input type="date" className="ll-input" name="due_date" value={form.due_date || ''} onChange={handleInput} />
+                    </div>
+                  </>
+                )}
+
+                {/* Salary / Other fields */}
+                {tab === 'other' && (
+                  <>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Type *</label>
+                        <select required className="ll-select" name="liability_type" value={form.liability_type || ''} onChange={handleInput}>
+                          <option value="">-- Select --</option>
+                          <option value="SALARY">Salary</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Party Name *</label>
+                        <input required className="ll-input" name="party_name" value={form.party_name || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-grid">
+                      <div className="ll-form-group">
+                        <label className="ll-label">Reference No. *</label>
+                        <input required className="ll-input" name="reference_no" value={form.reference_no || ''} onChange={handleInput} />
+                      </div>
+                      <div className="ll-form-group">
+                        <label className="ll-label">Amount (ETB) *</label>
+                        <input required type="number" step="0.01" min="0" className="ll-input" name="amount" value={form.amount || ''} onChange={handleInput} />
+                      </div>
+                    </div>
+                    <div className="ll-form-group">
+                      <label className="ll-label">Due Date</label>
+                      <input type="date" className="ll-input" name="due_date" value={form.due_date || ''} onChange={handleInput} />
+                    </div>
+                  </>
+                )}
+
+                {/* Shared description */}
+                <div className="ll-form-group">
+                  <label className="ll-label">Description / Notes</label>
+                  <input className="ll-input" name="description" value={form.description || ''} onChange={handleInput} />
+                </div>
+
+                <div className="ll-form-footer">
+                  <button type="button" className="ll-btn outline" onClick={closeEdit}>Cancel</button>
+                  <button type="submit" className="ll-btn" disabled={submitting}>
+                    {submitting ? 'Updating…' : 'Update Record'}
                   </button>
                 </div>
               </form>

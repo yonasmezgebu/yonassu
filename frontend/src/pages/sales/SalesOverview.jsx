@@ -296,8 +296,8 @@ const SalesOverview = () => {
               const c = l.status_code === 'delivered' ? G.emerald : l.status_code === 'in_progress' ? G.blue : G.orange;
               const icon = l.status_code === 'delivered' ? '✅' : '⏳';
               return (
-                <div key={l.id} className="top-row" onClick={() => nav(\`/printing/orders/\${l.id}\`)}>
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: \`\${c}22\`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div key={l.id} className="top-row" onClick={() => nav(`/printing/orders/${l.id}`)}>
+                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -322,8 +322,8 @@ const SalesOverview = () => {
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
           {[
-            { label: \`\${pendingCount} Pending Orders\`, sub: \`Orders awaiting fulfillment\`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/printing/orders' },
-            { label: \`\${pastDueCount} Past Due\`, sub: 'Orders beyond deadline', icon: '🚨', bg: '#FFFBEB', c: '#f59e0b', path: '/printing/orders' }
+            { label: `${pendingCount} Pending Orders`, sub: `Orders awaiting fulfillment`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/printing/orders' },
+            { label: `${pastDueCount} Past Due`, sub: 'Orders beyond deadline', icon: '🚨', bg: '#FFFBEB', c: '#f59e0b', path: '/printing/orders' }
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
               <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
@@ -336,7 +336,7 @@ const SalesOverview = () => {
           ))}
           {/* Quick info list */}
           {activities.slice(0,3).map((item, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:\`1px solid \${G.sage}44\` }}>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:`1px solid ${G.sage}44` }}>
               <span style={{ fontSize:12, fontWeight:800, color:G.orange, minWidth:28 }}>{item.order_number}</span>
               <span style={{ fontSize:12, fontWeight:700, color:G.dark, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{item.product_type || 'Custom Order'}</span>
               <span style={{ fontSize:10, color:G.olive }}>{item.status_name}</span>
