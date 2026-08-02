@@ -27,8 +27,6 @@ import FinanceProcurement from './FinanceProcurement';
 import FinanceCashFlow from './FinanceCashFlow';
 import FinanceProfitLoss from './FinanceProfitLoss';
 import FinanceBalanceSheet from './FinanceBalanceSheet';
-import FinanceIncomeExpense from './FinanceIncomeExpense';
-import FinanceReportsHub from './FinanceReportsHub';
 import FinanceEquity from './FinanceEquity';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
@@ -46,9 +44,9 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
-        { label: '2. Payment Voucher',      path: '/finance/pv',            icon: 'shopping-cart', color: '#f59e0b' },
-        { label: '3. Petty Cash Voucher',   path: '/finance/pcv',           icon: 'wallet',        color: '#8b5cf6' },
-        { label: '4. Expense Book',         path: '/finance/cash-book',     icon: 'book',          color: '#06b6d4' },
+        { label: 'Payment Voucher',      path: '/finance/pv',            icon: 'shopping-cart', color: '#f59e0b' },
+        { label: 'Petty Cash Voucher',   path: '/finance/pcv',           icon: 'wallet',        color: '#8b5cf6' },
+        { label: 'Expense Book',         path: '/finance/cash-book',     icon: 'book',          color: '#06b6d4' },
         { label: 'Liabillites&accounts payable', path: '/finance/liabilities',   icon: 'alert-circle',  color: '#eab308' },
       ] },
     { type: 'divider' },
@@ -73,11 +71,9 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
       children: [
-        { label: '20. Cash Flow',         path: '/finance/cash-flow',       icon: 'droplets',     color: '#0369a1' },
-        { label: '21. Profit & Loss',     path: '/finance/profit-loss',     icon: 'trending-up',  color: '#059669' },
-        { label: '22. Balance Sheet',     path: '/finance/balance-sheet',   icon: 'scale',        color: '#7c3aed' },
-        { label: '23. Income & Expense',  path: '/finance/income-expense',  icon: 'bar-chart-2',  color: '#2563eb' },
-        { label: '24. Financial Reports', path: '/finance/reports-hub',     icon: 'file-bar-chart', color: '#475569' },
+        { label: 'Cash Flow',        path: '/finance/cash-flow',    icon: 'droplets',    color: '#0369a1' },
+        { label: 'Income Statement', path: '/finance/profit-loss',  icon: 'trending-up', color: '#059669' },
+        { label: 'Balance Sheet',    path: '/finance/balance-sheet', icon: 'scale',      color: '#7c3aed' },
       ] },
   ];
 
@@ -122,8 +118,6 @@ const FinanceDashboard = () => {
             <Route path="cash-flow" element={<FinanceCashFlow />} />
             <Route path="profit-loss" element={<FinanceProfitLoss />} />
             <Route path="balance-sheet" element={<FinanceBalanceSheet />} />
-            <Route path="income-expense" element={<FinanceIncomeExpense />} />
-            <Route path="reports-hub" element={<FinanceReportsHub />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
