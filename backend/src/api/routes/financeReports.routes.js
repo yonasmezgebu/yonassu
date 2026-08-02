@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
-const db = require('../db/db'); // assuming this is the knex instance
+const { db } = require('../../config/database');
 
 // GET /api/finance/reports/cash-flow
 router.get('/cash-flow', authenticate, async (req, res) => {
