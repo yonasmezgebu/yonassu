@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../services/apiClient';
 import { Upload, Edit3, Trash2, X, Save, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
+import styles from './GalleryManager.module.css';
 
 const resolveImg = (url) => {
   if (!url) return null;
@@ -20,7 +21,7 @@ const INITIAL_FORM = {
   display_order: '0', status: 'active', image: null
 };
 
-export default () => {
+const GalleryManager = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('cars');
@@ -28,9 +29,18 @@ export default () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ ...INITIAL_FORM });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  
+  // In-App Notification (Rule 6)
+  const [notif, setNotif] = useState({ type: null, text: '' });
+  const [formError, setFormError] = useState('');
+  
   const fileRef = useRef(null);
+
+  const showNotif = (type, text) => {
+    setNotif({ type, text });
+    setTimeout(() => setNotif({ type: null, text: '' }), 5000);
+  };
 
   useEffect(() => { fetchImages(); }, []);
 
@@ -39,8 +49,11 @@ export default () => {
       setLoading(true);
       const res = await axios.get('/gallery');
       if (res.status === 'success') setImages(res.data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const filtered = images.filter(i => i.category === activeTab);
@@ -49,8 +62,7 @@ export default () => {
     setForm({ ...INITIAL_FORM, category: activeTab });
     setEditing(null);
     setShowForm(true);
-    setError('');
-    setSuccess('');
+    setFormError('');
   };
 
   const openEdit = (img) => {
@@ -62,15 +74,16 @@ export default () => {
     });
     setEditing(img.id);
     setShowForm(true);
-    setError('');
-    setSuccess('');
+    setFormError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) { setError('Title is required'); return; }
-    if (!editing && !form.image) { setError('Image file is required'); return; }
-    setSaving(true); setError(''); setSuccess('');
+    if (!form.title.trim()) { setFormError('Title is required'); return; }
+    if (!editing && !form.image) { setFormError('Image file is required'); return; }
+    
+    setSaving(true); 
+    setFormError('');
 
     try {
       const fd = new FormData();
@@ -85,211 +98,340 @@ export default () => {
 
       if (editing) {
         const res = await axios.put(`/gallery/${editing}`, fd);
-        if (res.status === 'success') setSuccess('Image updated!');
+        if (res.status === 'success') showNotif('success', 'Image updated successfully!');
       } else {
         const res = await axios.post('/gallery', fd);
-        if (res.status === 'success') setSuccess('Image uploaded!');
+        if (res.status === 'success') showNotif('success', 'Image uploaded successfully!');
       }
       setShowForm(false);
       fetchImages();
     } catch (err) {
-      setError(err.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
+      setFormError(err.response?.data?.message || 'Save failed');
+    } finally { 
+      setSaving(false); 
+    }
   };
 
-  const handleDelete = async (img) => {
-    if (!confirm('Are you sure you want to delete this image? This cannot be undone.')) return;
+  const triggerDelete = (img) => {
+    setConfirmDelete(img);
+  };
+
+  const confirmAndDelete = async () => {
+    if (!confirmDelete) return;
+    setSaving(true);
     try {
-      const res = await axios.delete(`/gallery/${img.id}`);
-      if (res.status === 'success') { setSuccess('Image deleted'); fetchImages(); }
-    } catch (err) { alert(err.response?.data?.message || 'Delete failed'); }
+      const res = await axios.delete(`/gallery/${confirmDelete.id}`);
+      if (res.status === 'success') { 
+        showNotif('success', 'Image deleted successfully'); 
+        fetchImages(); 
+      }
+    } catch (err) { 
+      showNotif('error', err.response?.data?.message || 'Delete failed'); 
+    } finally {
+      setSaving(false);
+      setConfirmDelete(null);
+    }
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>Gallery Manager</h2>
-        <button onClick={openAdd} style={{
-          background: '#059669', color: 'white', border: 'none', padding: '10px 20px',
-          borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-        }}>
-          <Upload size={16} /> Add New Image
-        </button>
+    <div className={styles.container}>
+      {/* ── HEADER ── */}
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.badge}>
+            <span className={styles.badgeDot} />
+            <span className={styles.badgeTxt}>Administration</span>
+          </div>
+          <h1 className={styles.pageTitle}>
+            Public <span>Gallery</span>
+          </h1>
+          <p className={styles.pageSubtitle}>
+            Manage images for the public-facing gallery and fleet showcase.
+          </p>
+        </div>
+
+        <div className={styles.headerActions}>
+          <button onClick={openAdd} className={styles.addBtn}>
+            <Upload size={14} /> Add New Image
+          </button>
+        </div>
       </div>
 
-      {success && (
-        <div style={{ padding: '10px 14px', background: '#f0fdf4', color: '#059669', borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>
-          {success}
+      {/* ── NOTIFICATIONS — Rule 6 ── */}
+      {notif.text && (
+        <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
+          <span>{notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
         </div>
       )}
 
-      {/* Category Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #e2e8f0' }}>
-        {CATEGORIES.map(c => (
-          <button key={c.key} onClick={() => setActiveTab(c.key)}
-            style={{
-              padding: '10px 20px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-              background: activeTab === c.key ? '#f0fdf4' : 'transparent',
-              color: activeTab === c.key ? '#059669' : '#64748b',
-              borderBottom: activeTab === c.key ? '2px solid #059669' : '2px solid transparent',
-              marginBottom: -2
-            }}>
-            {c.label}
-          </button>
-        ))}
-      </div>
+      {/* ── BODY AREA ── */}
+      <div className={styles.bodyArea}>
+        
+        {/* Category Tabs */}
+        <div className={styles.tabBar}>
+          {CATEGORIES.map(c => (
+            <button 
+              key={c.key} 
+              onClick={() => setActiveTab(c.key)}
+              className={`${styles.tabBtn} ${activeTab === c.key ? styles.tabBtnActive : ''}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Image Table */}
-      {loading ? <p>Loading...</p> : (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        {/* Controls Bar */}
+        <div className={styles.controlsBar}>
+          <div className={styles.countLabel}>
+            {filtered.length} image(s) in {CATEGORIES.find(c => c.key === activeTab)?.label}
+          </div>
+        </div>
+
+        {/* Table — Rule 3, 4, 8 */}
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
             <thead>
-              <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Image</th>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Title</th>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Description</th>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Order</th>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Status</th>
-                <th style={{ padding: '12px 14px', color: '#475569', fontWeight: 600 }}>Actions</th>
+              <tr>
+                <th>Preview</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th className={styles.center}>Order</th>
+                <th className={styles.center}>Status</th>
+                <th className={styles.right}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                  No images in this category. Click "Add New Image" to upload.
-                </td></tr>
-              ) : filtered.map(img => (
-                <tr key={img.id} style={{ borderTop: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '10px 14px' }}>
-                    <div style={{ width: 56, height: 40, borderRadius: 6, background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {img.image_path ? (
-                        <img src={resolveImg(img.image_path)} alt={img.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={e => { e.target.style.display = 'none'; }} />
-                      ) : <ImageIcon size={20} color="#94a3b8" />}
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px 14px', fontWeight: 500 }}>{img.title}</td>
-                  <td style={{ padding: '10px 14px', color: '#64748b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {img.description || '-'}
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>{img.display_order}</td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                      background: img.status === 'active' ? '#f0fdf4' : '#fef2f2',
-                      color: img.status === 'active' ? '#059669' : '#dc2626'
-                    }}>
-                      {img.status === 'active' ? <Eye size={12} /> : <EyeOff size={12} />}
-                      {img.status === 'active' ? 'Active' : 'Hidden'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEdit(img)}
-                        style={{ background: '#eff6ff', color: '#3b82f6', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Edit3 size={12} /> Edit
-                      </button>
-                      <button onClick={() => handleDelete(img)}
-                        style={{ background: '#fef2f2', color: '#dc2626', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Trash2 size={12} /> Delete
-                      </button>
-                    </div>
+              {loading ? (
+                <tr><td colSpan={6} className={styles.loading}>Loading images...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className={styles.empty}>
+                    No images in this category. Click "Add New Image" to upload.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(img => (
+                  <tr key={img.id}>
+                    <td>
+                      <div className={styles.thumb}>
+                        {img.image_path ? (
+                          <img 
+                            src={resolveImg(img.image_path)} 
+                            alt={img.title} 
+                            onError={e => { e.target.style.display = 'none'; }} 
+                          />
+                        ) : (
+                          <ImageIcon size={20} color="#94a3b8" />
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className={styles.titleCell}>{img.title}</div>
+                    </td>
+                    <td>
+                      <div className={styles.descCell} title={img.description}>
+                        {img.description || '—'}
+                      </div>
+                    </td>
+                    <td className={styles.center}>
+                      <div style={{ fontWeight: 800, color: '#424242' }}>
+                        {img.display_order}
+                      </div>
+                    </td>
+                    <td className={styles.center}>
+                      <span className={`${styles.statusBadge} ${img.status === 'active' ? styles.statusActive : styles.statusHidden}`}>
+                        {img.status === 'active' ? <Eye size={10} /> : <EyeOff size={10} />}
+                        {img.status === 'active' ? 'Active' : 'Hidden'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actionsList}>
+                        <button className={`${styles.actionBtn} ${styles.actionBtnEdit}`} onClick={() => openEdit(img)}>
+                          <Edit3 size={10} /> Edit
+                        </button>
+                        <button className={`${styles.actionBtn} ${styles.actionBtnDel}`} onClick={() => triggerDelete(img)}>
+                          <Trash2 size={10} /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* ── MODAL (Rule 10, 14, 17) ── */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
-        }}>
-          <div style={{
-            background: 'white', borderRadius: 16, padding: '2rem', width: '100%', maxWidth: 560,
-            maxHeight: '85vh', overflowY: 'auto'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ margin: 0, fontSize: 18 }}>{editing ? 'Edit Image' : 'Add New Image'}</h2>
-              <button onClick={() => setShowForm(false)} style={{ background: '#f1f5f9', border: 'none', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={18} />
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalWide}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>{editing ? 'Edit Image' : 'Add New Image'}</h2>
+              <button className={styles.closeBtn} onClick={() => setShowForm(false)}>
+                <X size={20} />
               </button>
             </div>
+            
+            <div className={styles.modalBody}>
+              {formError && (
+                <div className={styles.formError}>{formError}</div>
+              )}
 
-            {error && (
-              <div style={{ padding: '10px', background: '#fef2f2', color: '#dc2626', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{error}</div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Category *</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13 }}>
+              <form id="galleryForm" onSubmit={handleSubmit} className={styles.formGrid}>
+                
+                <div className={styles.formGroup}>
+                  <label>Category *</label>
+                  <select 
+                    className={styles.input} 
+                    value={form.category} 
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  >
                     {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Display Order *</label>
-                  <input type="number" value={form.display_order} onChange={e => setForm(f => ({ ...f, display_order: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
+                
+                <div className={styles.formGroup}>
+                  <label>Display Order *</label>
+                  <input 
+                    type="number" 
+                    className={styles.input} 
+                    value={form.display_order} 
+                    onChange={e => setForm(f => ({ ...f, display_order: e.target.value }))} 
+                  />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Title *</label>
-                  <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} maxLength={255} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
+
+                <div className={`${styles.formGroup} ${styles.formGridFull}`}>
+                  <label>Title *</label>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    maxLength={255}
+                    value={form.title} 
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))} 
+                    placeholder="Enter image title..."
+                  />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Description</label>
-                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }} />
+
+                <div className={`${styles.formGroup} ${styles.formGridFull}`}>
+                  <label>Description</label>
+                  <textarea 
+                    className={styles.input} 
+                    rows={3} 
+                    value={form.description} 
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Enter image description..."
+                    style={{ resize: 'vertical' }}
+                  />
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Date Taken</label>
-                  <input type="date" value={form.date_taken} onChange={e => setForm(f => ({ ...f, date_taken: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
+
+                <div className={styles.formGroup}>
+                  <label>Date Taken</label>
+                  <input 
+                    type="date" 
+                    className={styles.input} 
+                    value={form.date_taken} 
+                    onChange={e => setForm(f => ({ ...f, date_taken: e.target.value }))} 
+                  />
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Location</label>
-                  <input type="text" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} maxLength={255} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
+
+                <div className={styles.formGroup}>
+                  <label>Location</label>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    maxLength={255}
+                    value={form.location} 
+                    onChange={e => setForm(f => ({ ...f, location: e.target.value }))} 
+                    placeholder="e.g. Main Campus"
+                  />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Image File {!editing ? '*' : ''}</label>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" ref={fileRef}
+
+                <div className={`${styles.formGroup} ${styles.formGridFull}`}>
+                  <label>Image File {!editing ? '*' : ''}</label>
+                  <input 
+                    type="file" 
+                    className={styles.input} 
+                    accept="image/jpeg,image/png,image/webp" 
+                    ref={fileRef}
                     onChange={e => setForm(f => ({ ...f, image: e.target.files[0] }))}
-                    style={{ width: '100%', fontSize: 13 }} />
-                  {form.image && <p style={{ fontSize: 12, color: '#059669', margin: '4px 0 0' }}>{form.image.name}</p>}
+                  />
+                  {form.image && <div className={styles.fileHint}>Selected: {form.image.name}</div>}
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Status</label>
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
-                      <input type="radio" value="active" checked={form.status === 'active'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} /> Active
+
+                <div className={styles.formGroup}>
+                  <label>Status</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
+                      <input 
+                        type="radio" 
+                        value="active" 
+                        checked={form.status === 'active'} 
+                        onChange={e => setForm(f => ({ ...f, status: e.target.value }))} 
+                      /> 
+                      Active
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 13 }}>
-                      <input type="radio" value="hidden" checked={form.status === 'hidden'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} /> Hidden
+                    <label className={styles.radioLabel}>
+                      <input 
+                        type="radio" 
+                        value="hidden" 
+                        checked={form.status === 'hidden'} 
+                        onChange={e => setForm(f => ({ ...f, status: e.target.value }))} 
+                      /> 
+                      Hidden
                     </label>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: 8, marginTop: '1.5rem' }}>
-                <button type="button" onClick={() => setShowForm(false)}
-                  style={{ flex: 1, background: '#f1f5f9', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving}
-                  style={{
-                    flex: 1, background: saving ? '#e2e8f0' : '#059669', color: saving ? '#94a3b8' : 'white',
-                    border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-                  }}>
-                  <Save size={16} /> {saving ? 'Saving...' : editing ? 'Update Image' : 'Upload Image'}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button className={styles.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
+              <button 
+                type="submit" 
+                form="galleryForm"
+                className={styles.saveBtn}
+                disabled={saving}
+              >
+                <Save size={14} /> {saving ? 'Saving...' : editing ? 'Update Image' : 'Upload Image'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE CONFIRMATION MODAL ── */}
+      {confirmDelete && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalSmall}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Confirm Deletion</h2>
+              <button className={styles.closeBtn} onClick={() => setConfirmDelete(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0, fontSize: 14, color: '#424242', fontWeight: 600 }}>
+                Are you sure you want to delete <strong>{confirmDelete.title}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button 
+                className={styles.deleteConfirmBtn}
+                onClick={confirmAndDelete}
+                disabled={saving}
+              >
+                {saving ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default GalleryManager;
