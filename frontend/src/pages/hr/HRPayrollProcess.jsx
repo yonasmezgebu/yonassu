@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import hrService from '../../services/hrService';
 import { playSuccessSound, playInfoSound } from '../../utils/playNotificationSound';
 import styles from './HRPayrollProcess.module.css';
@@ -105,25 +105,23 @@ const HRPayrollProcess = () => {
 
   return (
     <div className={styles.container}>
+      
+      {/* ── HEADER ── */}
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.pageTitle}>Payroll Processing</h1>
-          <p className={styles.pageSubtitle}>Calculate, approve, and finalize monthly payroll runs.</p>
-        </div>
+        <h1 className={styles.pageTitle}>Payroll Processing</h1>
+        <p className={styles.pageSubtitle}>Calculate, approve, and finalize monthly payroll runs.</p>
       </div>
 
+      {/* ── STATUS ALERT ── */}
       {statusMsg.text && (
-        <div style={{
-          padding: '10px 16px', borderRadius: 8, marginBottom: 12,
-          background: statusMsg.type === 'success' ? '#d1fae5' : '#fee2e2',
-          color: statusMsg.type === 'success' ? '#065f46' : '#991b1b',
-          fontWeight: 500, fontSize: '0.9rem'
-        }}>
+        <div className={`${styles.statusAlert} ${statusMsg.type === 'success' ? styles.statusSuccess : styles.statusError}`}>
           {statusMsg.text}
         </div>
       )}
 
+      {/* ── MAIN CARD ── */}
       <div className={styles.card}>
+        
         <div className={styles.periodSelect}>
           <label>Select Payroll Period:</label>
           <input
@@ -140,7 +138,7 @@ const HRPayrollProcess = () => {
             disabled={isFinalized}
             className={styles.monthInput}
           />
-          <span className={styles.statusBadge + ' ' + styles[status.replace(/ /g, '')]}>{status}</span>
+          <span className={`${styles.statusBadge} ${styles[status.replace(/ /g, '')]}`}>{status}</span>
         </div>
 
         <div className={styles.stepper}>
@@ -160,49 +158,52 @@ const HRPayrollProcess = () => {
             </div>
             <div className={styles.summaryBox}>
               <div className={styles.summaryLabel}>Total Gross Salary</div>
-              <div className={styles.summaryValue}>${fmtN(payrollData.summary?.gross)}</div>
+              <div className={styles.summaryValue}>{fmtN(payrollData.summary?.gross)} ETB</div>
             </div>
             <div className={styles.summaryBox}>
               <div className={styles.summaryLabel}>Total Deductions</div>
-              <div className={styles.summaryValue}>${fmtN(payrollData.summary?.deductions)}</div>
+              <div className={styles.summaryValue} style={{ color: '#D32F2F' }}>{fmtN(payrollData.summary?.deductions)} ETB</div>
             </div>
             <div className={styles.summaryBox}>
               <div className={styles.summaryLabel}>Total Net Salary</div>
-              <div className={styles.summaryValueBold}>${fmtN(payrollData.summary?.net)}</div>
+              <div className={styles.summaryValueBold}>{fmtN(payrollData.summary?.net)} ETB</div>
             </div>
             <div className={styles.summaryBox} style={{ cursor: 'pointer' }} onClick={loadItems}>
               <div className={styles.summaryLabel}>View Breakdown ↓</div>
-              <div className={styles.summaryValue} style={{ fontSize: '0.85rem', color: '#6366f1' }}>Click to expand</div>
+              <div className={styles.summaryValue} style={{ fontSize: '13px', color: '#2E8B57', fontWeight: '800' }}>Click to expand</div>
             </div>
           </div>
         )}
 
         {showItems && items.length > 0 && (
-          <div style={{ marginTop: 16, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ background: '#f1f5f9' }}>
-                  <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Employee</th>
-                  <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Base Salary</th>
-                  <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Days Present</th>
-                  <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Absence Ded.</th>
-                  <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Net Salary</th>
+                <tr>
+                  <th>Employee</th>
+                  <th className={styles.right}>Base Salary</th>
+                  <th className={styles.right}>Days Present</th>
+                  <th className={styles.right}>Absence Ded.</th>
+                  <th className={styles.right}>Net Salary</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '8px' }}>{item.full_name || item.employee_id}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>${fmtN(item.base_salary)}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{item.days_present ?? '—'}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626' }}>${fmtN(item.absence_deduction)}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>${fmtN(item.net_salary)}</td>
+                  <tr key={item.id}>
+                    <td>{item.full_name || item.employee_id}</td>
+                    <td className={styles.right}>{fmtN(item.base_salary)}</td>
+                    <td className={styles.right}>{item.days_present ?? '—'}</td>
+                    <td className={`${styles.right} ${styles.deduction}`}>{fmtN(item.absence_deduction)}</td>
+                    <td className={`${styles.right} ${styles.netPay}`}>{fmtN(item.net_salary)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <button style={{ marginTop: 8, fontSize: '0.8rem', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer' }}
-              onClick={() => setShowItems(false)}>Hide breakdown</button>
+            <div style={{ padding: '12px 16px', background: '#F5F5F5' }}>
+              <button className={styles.hideBtn} onClick={() => setShowItems(false)}>
+                Hide breakdown
+              </button>
+            </div>
           </div>
         )}
 
@@ -221,7 +222,7 @@ const HRPayrollProcess = () => {
 
           {payrollData && status === 'Payslips Generated' && (
             <button className={styles.primaryBtn} onClick={handleApprove} disabled={loading}>
-              {loading ? 'Approving...' : 'Approve Payroll (Manager)'}
+              {loading ? 'Approving...' : 'Approve Payroll'}
             </button>
           )}
 

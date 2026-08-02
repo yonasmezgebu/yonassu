@@ -1,134 +1,305 @@
+/* ── Google Font ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ════════════════════════════════════════════════
+   HR APPLICATIONS PAGE — 17-Rule Green Nature Design
+   Rule 5: 100% stretch, no centered container
+════════════════════════════════════════════════ */
 .container {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  background: #F5F5F5;
+  min-height: 100vh;
+  margin: -24px;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
 }
+.container * { box-sizing: border-box; }
 
+/* ── HEADER ── Rule 2: Dark Green */
 .header {
-  margin-bottom: 24px;
+  background: #1B5E20;
+  border-bottom: 3px solid #228B22;
+  padding: 24px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 
-.pageTitle {
-  font-size: 28px;
+.headerLeft {
+  flex: 1;
+  min-width: 300px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #4CAF50;
+  padding: 4px 14px;
+  margin-bottom: 12px;
+  border-radius: 0;
+}
+.badgeDot { width: 6px; height: 6px; background: #98FF98; }
+.badgeTxt { color: #A5D6A7; font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+
+.pageTitle { font-size: 38px; font-weight: 900; color: #FFFFFF; letter-spacing: -0.02em; line-height: 1.1; margin: 0 0 8px; }
+.pageTitle span { color: #98FF98; }
+.pageSubtitle { color: #A5D6A7; font-size: 14px; margin: 0; font-weight: 500; }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ── IN-APP NOTIFICATION — Rule 6 ── */
+.notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 48px;
+  font-size: 13px;
   font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 8px 0;
+  border-bottom: 2px solid transparent;
+}
+.notifSuccess { background: #E8F5E9; border-color: #4CAF50; border-left: 6px solid #228B22; color: #1B5E20; }
+.notifError { background: #FFEBEE; border-color: #F44336; border-left: 6px solid #D32F2F; color: #C62828; }
+.notifDismiss { background: transparent; border: none; font-size: 18px; cursor: pointer; color: inherit; opacity: 0.6; padding: 0 4px; }
+.notifDismiss:hover { opacity: 1; }
+
+/* ── BODY ── */
+.bodyArea { padding: 32px 48px 48px; }
+
+/* Controls toolbar */
+.controlsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background: #FFFFFF;
+  border: 1.5px solid #8D6E63;
+  padding: 16px 20px;
+  border-radius: 0;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.04);
 }
 
-.pageSubtitle {
-  color: #64748b;
-  margin: 0;
-  font-size: 16px;
+.countLabel {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1B5E20;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
+.filterGroup { display: flex; gap: 16px; align-items: center; }
+
+/* Form inputs styling — Rule 10, 14 */
+.input {
+  background: #F5F5F5;
+  border: 2px solid #8D6E63;
+  color: #424242;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.2s;
+  border-radius: 0;
+}
+.input:focus { border-color: #228B22; background: #FFFFFF; box-shadow: 0 0 0 3px rgba(34,139,34,0.15); }
+
+/* ── TABLE — Rule 3, 4, 8 ── */
 .tableWrapper {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  background: #FFFFFF;
+  border: 1.5px solid #8D6E63;
+  border-radius: 0;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.06);
   overflow-x: auto;
 }
+.table { width: 100%; border-collapse: collapse; }
+.table thead tr { background: #F5F5F5; border-bottom: 2px solid #228B22; }
+.table th { padding: 16px 20px; color: #1B5E20; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; text-align: left; }
+.table th.right { text-align: right; }
+.table tbody tr { border-bottom: 1px solid #E8F5E9; transition: background 0.15s; }
+.table tbody tr:hover { background: #F1F8E9; }
+.table td { padding: 16px 20px; color: #424242; font-size: 13px; vertical-align: middle; }
+.table td.right { text-align: right; }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.appTitle { font-weight: 800; color: #1B5E20; font-size: 14px; margin-bottom: 4px; }
+.appSub { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
 
-.table th, .table td {
-  padding: 16px;
-  text-align: left;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 14px;
-}
-
-.table th {
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  font-size: 12px;
-  background: #f8fafc;
-}
-
-.appName { font-weight: 600; color: #0f172a; }
-.appEmail { font-weight: 400; color: #64748b; font-size: 13px; }
-.jobTitle { font-weight: 500; color: #334155; }
-
+/* Status badges — Rule 8 */
 .statusBadge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.New { background: #fef3c7; color: #92400e; }
-.Reviewed { background: #e0f2fe; color: #0369a1; }
-.Shortlisted { background: #dbeafe; color: #1e40af; }
-.Interview { background: #f3e8ff; color: #6b21a8; }
-.Offered { background: #dcfce7; color: #166534; }
-.Hired { background: #10b981; color: white; }
-.Rejected { background: #fee2e2; color: #b91c1c; }
-
-.link {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: 500;
-}
-.link:hover { text-decoration: underline; }
-
-.actionBtn {
-  background: #f1f5f9;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 6px;
-  margin-right: 8px;
-  font-size: 13px;
-}
-.actionBtn:hover { background: #e2e8f0; }
-
-.rejectBtn {
-  background: transparent;
-  color: #ef4444;
+  display: inline-block;
+  padding: 5px 12px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 0;
   border: 1px solid transparent;
-  font-weight: 500;
+  white-space: nowrap;
+}
+
+.statusPENDING { background: #FFF8E1; color: #E65100; border-color: #FF9800; }
+.statusIN_PERSON_INVITED { background: #E1F5FE; color: #0277BD; border-color: #03A9F4; }
+.statusSUBMITTED_TO_CEO { background: #F3E5F5; color: #7B1FA2; border-color: #9C27B0; }
+.statusAPPROVED { background: #E8F5E9; color: #1B5E20; border-color: #4CAF50; }
+.statusINFORMED { background: #E3F2FD; color: #1565C0; border-color: #1976D2; }
+.statusREJECTED { background: #FFEBEE; color: #C62828; border-color: #F44336; }
+.statusDEFAULT { background: #F5F5F5; color: #424242; border-color: #8D6E63; }
+
+
+/* Action buttons in row — Rule 1, 15 */
+.actionsList { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1.5px solid #8D6E63;
+  color: #424242;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 0;
+  transition: all 0.2s;
+  text-decoration: none;
 }
-.rejectBtn:hover { background: #fee2e2; }
 
-.handledMsg { font-size: 13px; color: #64748b; font-style: italic; }
-.rejectedReason { font-size: 13px; color: #ef4444; }
+.actionBtnEmail { border-color: #0277BD; color: #0277BD; }
+.actionBtnEmail:hover { background: #0277BD; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
 
-/* Modals */
+.actionBtnOk { border-color: #4CAF50; color: #228B22; }
+.actionBtnOk:hover { background: #4CAF50; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
+
+.actionBtnSend { border-color: #7B1FA2; color: #7B1FA2; }
+.actionBtnSend:hover { background: #7B1FA2; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
+
+.actionBtnReject { border-color: #F44336; color: #C62828; }
+.actionBtnReject:hover { background: #F44336; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
+
+
+.loading, .empty { padding: 60px; text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #A5D6A7; }
+
+/* ── MODAL — Rule 10, 14, 17 ── */
 .modalOverlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;
+  position: fixed;
+  inset: 0;
+  background: rgba(27,94,32,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
 }
-
-.modal {
-  background: white; border-radius: 12px; width: 100%; max-width: 400px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+.modalWide {
+  background: #FFFFFF;
+  border: 3px solid #228B22;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 0;
+  box-shadow: 8px 8px 0px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
 }
 
 .modalHeader {
-  padding: 20px 24px; border-bottom: 1px solid #e2e8f0;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  border-bottom: 2px solid #228B22;
+  background: #1B5E20;
+}
+.modalTitle { color: #FFFFFF; font-size: 18px; font-weight: 900; margin: 0; letter-spacing: -0.01em; text-transform: uppercase; }
+.closeBtn { background: transparent; border: 1px solid #4CAF50; color: #8BC34A; width: 32px; height: 32px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border-radius: 0; }
+.closeBtn:hover { background: #228B22; color: #fff; }
+
+.modalBody {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.formGroup { display: flex; flex-direction: column; gap: 8px; }
+.formGroup label { font-size: 11px; font-weight: 800; color: #424242; text-transform: uppercase; letter-spacing: 0.1em; }
+
+
+/* Modal Footer */
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 20px 28px;
+  border-top: 2px solid #8D6E63;
+  background: #F5F5F5;
+  gap: 12px;
+}
+.cancelBtn {
+  background: transparent;
+  border: 2px solid #8D6E63;
+  color: #424242;
+  padding: 10px 18px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 0;
+}
+.cancelBtn:hover { border-color: #228B22; color: #228B22; background: #E8F5E9; }
+
+.saveBtn {
+  background: #F44336;
+  border: 2px solid #F44336;
+  color: #FFFFFF;
+  padding: 10px 24px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 0;
+  box-shadow: 3px 3px 0px #C62828;
+}
+.saveBtn:hover:not(:disabled) {
+  background: #D32F2F;
+  border-color: #D32F2F;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #C62828;
+}
+.saveBtn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #C62828;
+}
+.saveBtn:disabled {
+  background: #FFCDD2;
+  border-color: #FFCDD2;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.modalTitle { margin: 0; font-size: 18px; font-weight: 600; }
-.closeBtn { background: none; border: none; font-size: 24px; cursor: pointer; }
-
-.modalBody { padding: 24px; }
-.formGroup { margin-bottom: 16px; }
-.formGroup label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
-.input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
-
-.modalActions {
-  padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;
+/* ────────────────────────────────────────────────
+   RESPONSIVE — Rule 7
+──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .header, .bodyArea { padding: 24px; }
+  .controlsBar { flex-direction: column; align-items: stretch; gap: 16px; }
+  .filterGroup { flex-direction: column; align-items: stretch; }
+  .filterGroup .input, .filterGroup select { width: 100% !important; }
 }
-.cancelBtn { padding: 8px 16px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; cursor: pointer; }
-.rejectConfirmBtn { padding: 8px 16px; border-radius: 6px; background: #ef4444; color: white; border: none; cursor: pointer; }
-.rejectConfirmBtn:disabled { background: #fca5a5; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .headerActions { width: 100%; justify-content: flex-start; }
+  .modalFooter { flex-direction: column; align-items: stretch; }
+  .modalFooter button { width: 100%; }
+}

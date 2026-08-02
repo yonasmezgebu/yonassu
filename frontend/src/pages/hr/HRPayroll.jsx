@@ -46,6 +46,152 @@ const HRPayroll = () => {
     fetchSalaries();
   }, [department]);
 
+  const handlePrint = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+    const rows = filteredSalaries.map((s, i) => `
+      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+        <td>${i + 1}</td>
+        <td>
+          <div class="emp-name">${s.name || '—'}</div>
+          <div class="emp-id">#${s.id}</div>
+        </td>
+        <td>${s.department || '—'}</td>
+        <td>${s.role || '—'}</td>
+        <td class="num">${fmtN(s.baseSalary)} ETB</td>
+        <td class="num green">${s.allowances > 0 ? '+' + fmtN(s.allowances) + ' ETB' : '—'}</td>
+        <td class="num bold">${fmtN(s.netSalary)} ETB</td>
+        <td>${s.bankAccount || 'N/A'}</td>
+      </tr>`).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Salary List — SUTANA Enterprise</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #222; padding: 32px; }
+
+    /* ── HEADER ── */
+    .print-header { border-bottom: 4px solid #228B22; padding-bottom: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .org-name { font-size: 26px; font-weight: 900; color: #1B5E20; letter-spacing: -0.02em; }
+    .org-sub { font-size: 13px; color: #6B8E23; font-weight: 700; margin-top: 4px; }
+    .print-meta { text-align: right; font-size: 12px; color: #424242; line-height: 1.7; }
+    .print-meta strong { color: #1B5E20; }
+
+    /* ── TITLE ── */
+    .report-title { font-size: 20px; font-weight: 900; color: #228B22; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .report-period { font-size: 13px; color: #6B8E23; font-weight: 700; margin-bottom: 24px; }
+
+    /* ── SUMMARY CARDS ── */
+    .summary { display: flex; gap: 0; border: 1.5px solid #228B22; margin-bottom: 28px; }
+    .sum-card { flex: 1; padding: 14px 20px; border-right: 1px solid #228B22; }
+    .sum-card:last-child { border-right: none; }
+    .sum-label { font-size: 10px; font-weight: 800; color: #6B8E23; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+    .sum-value { font-size: 18px; font-weight: 900; color: #1B5E20; }
+    .sum-value span { font-size: 12px; color: #6B8E23; }
+
+    /* ── TABLE ── */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead tr { background: #1B5E20; }
+    thead th { padding: 12px 10px; color: #ffffff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; font-size: 10px; }
+    thead th.num { text-align: right; }
+    tbody tr.even { background: #FFFFFF; }
+    tbody tr.odd { background: #F1F8E9; }
+    tbody tr td { padding: 10px; border-bottom: 1px solid #E8F5E9; vertical-align: middle; }
+    .emp-name { font-weight: 800; color: #1B5E20; font-size: 13px; }
+    .emp-id { color: #6B8E23; font-size: 10px; font-family: monospace; margin-top: 2px; }
+    td.num { text-align: right; font-weight: 700; }
+    td.green { color: #228B22; font-weight: 800; }
+    td.bold { font-weight: 900; color: #1B5E20; border: 1px solid #4CAF50; padding: 6px 10px; }
+
+    /* ── FOOTER ── */
+    .print-footer { margin-top: 40px; border-top: 2px solid #8D6E63; padding-top: 16px; display: flex; justify-content: space-between; font-size: 11px; color: #6B8E23; font-weight: 700; }
+    .sig-line { border-top: 1px solid #424242; margin-top: 40px; width: 180px; font-size: 10px; padding-top: 6px; color: #424242; }
+    .sigs { display: flex; justify-content: space-between; margin-top: 48px; }
+
+    @media print {
+      body { padding: 20px; }
+      @page { margin: 18mm; size: A4 landscape; }
+      thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #1B5E20 !important; }
+      tbody tr.odd { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #F1F8E9 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      <div class="org-name">SUTANA Enterprise</div>
+      <div class="org-sub">Enterprise Management System</div>
+    </div>
+    <div class="print-meta">
+      <strong>Printed:</strong> ${dateStr} at ${timeStr}<br/>
+      <strong>Report:</strong> Staff Salary List<br/>
+      <strong>Total Records:</strong> ${filteredSalaries.length}
+    </div>
+  </div>
+
+  <div class="report-title">Staff Salary List</div>
+  <div class="report-period">Generated on ${dateStr} &nbsp;|&nbsp; ${filteredSalaries.length} staff member(s)</div>
+
+  <div class="summary">
+    <div class="sum-card">
+      <div class="sum-label">Total Staff</div>
+      <div class="sum-value">${filteredSalaries.length}</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Total Base Salary</div>
+      <div class="sum-value">${fmtN(totalBase)} <span>ETB</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Total Net Salary</div>
+      <div class="sum-value">${fmtN(totalNet)} <span>ETB</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Employee</th>
+        <th>Department</th>
+        <th>Role</th>
+        <th class="num">Base Salary</th>
+        <th class="num">Allowances</th>
+        <th class="num">Net Salary</th>
+        <th>Bank Account</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="sigs">
+    <div><div class="sig-line">HR Manager Signature</div></div>
+    <div><div class="sig-line">Finance Manager Signature</div></div>
+    <div><div class="sig-line">CEO Approval</div></div>
+  </div>
+
+  <div class="print-footer">
+    <span>SUTANA Enterprise Management System — Confidential</span>
+    <span>Page 1 of 1</span>
+  </div>
+
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  };
+
   const openEdit = (emp) => {
     setSelectedEmp(emp);
     setEditForm({
@@ -64,7 +210,7 @@ const HRPayroll = () => {
     try {
       await hrService.updateSalary(selectedEmp.id, editForm);
       playSuccessSound();
-      setStatusMsg({ type: 'success', text: `✅ Salary updated for ${selectedEmp.name}.` });
+      setStatusMsg({ type: 'success', text: `Salary updated for ${selectedEmp.name}.` });
       setShowEditModal(false);
       fetchSalaries();
     } catch (err) {
@@ -84,161 +230,135 @@ const HRPayroll = () => {
   const fmtN = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className={styles.container} style={{ margin: 0, padding: 0 }}>
-      {/* ══ WORLD-CLASS HERO HEADER — SALARY LIST ══ */}
-      <div style={{
-        position: 'relative',
-        background: 'linear-gradient(135deg, #064e3b 0%, #047857 40%, #059669 70%, #10b981 100%)',
-        borderRadius: 0,
-        padding: '36px 24px 40px',
-        overflow: 'hidden',
-      }}>
-        {/* Glowing orbs — teal & gold tones */}
-        <div style={{ position: 'absolute', top: -40, right: -20, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.3) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -50, left: 60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(250,204,21,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+    <div className={styles.container}>
 
-        {/* Top Header Row */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {/* ── IN-APP STATUS NOTIFICATION (Rule 6: no alerts) ── */}
+      {statusMsg.text && (
+        <div className={`${styles.statusMessage} ${statusMsg.type === 'success' ? styles.statusSuccess : styles.statusError}`}>
+          {statusMsg.text}
+        </div>
+      )}
+
+      {/* ── HEADER (Rule 2, 3, 11) ── */}
+      <div className={styles.header}>
+        <div className={styles.topRow}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(167,243,208,0.2)', border: '1px solid rgba(167,243,208,0.4)', borderRadius: 20, padding: '4px 14px', marginBottom: 14 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#facc15', display: 'inline-block', boxShadow: '0 0 8px #facc15' }} />
-              <span style={{ color: '#a7f3d0', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Finance · Salary List</span>
+            <div className={styles.badge}>
+              <span className={styles.badgeDot} />
+              <span className={styles.badgeTxt}>Finance · Salary List</span>
             </div>
-            <h1 style={{ margin: '0 0 8px', fontSize: 38, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-              Employee
-              <span style={{ background: 'linear-gradient(90deg, #facc15, #fef08a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginLeft: 12 }}>Salaries</span>
+            <h1 className={styles.pageTitle}>
+              Employee <span>Salaries</span>
             </h1>
-            <p style={{ margin: 0, color: '#a7f3d0', fontSize: 15, fontWeight: 400, opacity: 0.9 }}>
+            <p className={styles.pageSubtitle}>
               Manage base salaries, allowances, and banking information.
             </p>
           </div>
 
-          <button onClick={() => window.print()} style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, cursor: 'pointer', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, backdropFilter: 'blur(8px)', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.25)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Export PDF
+          <button className={styles.exportBtn} onClick={handlePrint}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print
           </button>
         </div>
 
-        {/* Dashboard Cards Row */}
+        {/* Metric Cards (Rule 3: Sharp corners) */}
         {!loading && filteredSalaries.length > 0 && (
-          <div style={{ position: 'relative', zIndex: 2, marginTop: 36, display: 'flex', gap: 20, alignItems: 'stretch' }}>
-            
-            <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '20px 24px' }}>
-              <div style={{ fontSize: 13, color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Total Employees</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: '#ffffff' }}>{filteredSalaries.length}</div>
+          <div className={styles.metrics}>
+            <div className={styles.metric}>
+              <div className={styles.metricLbl}>Total Staff</div>
+              <div className={styles.metricVal}>{filteredSalaries.length}</div>
             </div>
-
-            <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '20px 24px' }}>
-              <div style={{ fontSize: 13, color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Total Base Salary</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: '#ffffff' }}>{fmtN(totalBase)} <span style={{ fontSize: 16, color: '#d1fae5' }}>ETB</span></div>
+            <div className={styles.metric}>
+              <div className={styles.metricLbl}>Total Base Salary</div>
+              <div className={styles.metricVal}>{fmtN(totalBase)} <span>ETB</span></div>
             </div>
-
-            <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '20px 24px' }}>
-              <div style={{ fontSize: 13, color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Total Net Salary</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: '#facc15', textShadow: '0 2px 10px rgba(250,204,21,0.3)' }}>{fmtN(totalNet)} <span style={{ fontSize: 16, color: '#fef08a' }}>ETB</span></div>
+            <div className={styles.metric}>
+              <div className={styles.metricLbl}>Total Net Salary</div>
+              <div className={styles.metricValNet}>{fmtN(totalNet)} <span>ETB</span></div>
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ padding: '0 24px' }}>
-        {statusMsg.text && (
-          <div style={{
-            marginTop: 20, padding: '12px 16px', borderRadius: 12,
-            background: statusMsg.type === 'success' ? '#d1fae5' : '#fee2e2',
-            color: statusMsg.type === 'success' ? '#065f46' : '#991b1b',
-            fontWeight: 600, fontSize: '15px', border: `1px solid ${statusMsg.type === 'success' ? '#34d399' : '#f87171'}`
-          }}>
-            {statusMsg.text}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 16, margin: '24px 0' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <svg style={{ position: 'absolute', left: 16, top: 14, color: '#94a3b8' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input
-              type="text"
-              placeholder="Search employee name or ID..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', padding: '14px 16px 14px 48px', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: '15px', outline: 'none', background: '#f8fafc', color: '#0f172a', fontWeight: 500 }}
-            />
-          </div>
-          <select value={department} onChange={e => setDepartment(e.target.value)} style={{ padding: '14px 20px', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: '15px', outline: 'none', background: '#f8fafc', color: '#0f172a', fontWeight: 600, minWidth: 200, cursor: 'pointer' }}>
-            <option value="">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+      {/* ── FILTERS (Rule 14: Bold border on inputs) ── */}
+      <div className={styles.filters}>
+        <div className={styles.searchBox}>
+          <svg className={styles.searchIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" stroke="currentColor">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search by name or ID..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
+        <select className={styles.filterSelect} value={department} onChange={e => setDepartment(e.target.value)}>
+          <option value="">All Departments</option>
+          {departments.map(d => (
+            <option key={d.id} value={d.id}>{d.name}</option>
+          ))}
+        </select>
+      </div>
 
-      <div style={{ padding: '0 24px 40px' }}>
+      {/* ── BODY & TABLE (Rule 4, 5, 15) ── */}
+      <div className={styles.bodyArea}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#64748b', fontSize: 18, fontWeight: 600 }}>Loading salaries...</div>
+          <div className={styles.loading}>● Loading salaries...</div>
         ) : (
-          <div style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            boxShadow: '0 12px 40px rgba(0,0,0,0.03)', 
-            overflow: 'hidden', 
-            border: '1px solid rgba(226, 232, 240, 0.8)',
-            fontFamily: "'Inter', sans-serif"
-          }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '24px 32px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Employee</th>
-                  <th style={{ padding: '24px 20px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Department & Role</th>
-                  <th style={{ padding: '24px 20px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'right' }}>Base Salary</th>
-                  <th style={{ padding: '24px 20px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'right' }}>Allowances</th>
-                  <th style={{ padding: '24px 20px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'right' }}>Net Salary</th>
-                  <th style={{ padding: '24px 20px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Bank Account</th>
-                  <th style={{ padding: '24px 32px', fontWeight: 700, color: '#64748b', fontSize: '12px', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>Action</th>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department &amp; Role</th>
+                  <th className={styles.right}>Base Salary</th>
+                  <th className={styles.right}>Allowances</th>
+                  <th className={styles.right}>Net Salary</th>
+                  <th>Bank Account</th>
+                  <th className={styles.center}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSalaries.length === 0 ? (
-                  <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: 16 }}>No records found.</td></tr>
+                  <tr>
+                    <td colSpan={7} className={styles.empty}>
+                      No records match your search.
+                    </td>
+                  </tr>
                 ) : (
-                  filteredSalaries.map((s, index) => (
-                    <tr key={s.id}
-                        style={{ 
-                          borderBottom: '1px solid #f1f5f9',
-                          transition: 'all 0.2s ease',
-                          background: index % 2 === 0 ? '#ffffff' : '#fafafa',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#fafafa'; }}
-                    >
-                      <td style={{ padding: '20px 32px' }}>
-                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '15px' }}>{s.name}</div>
-                        <div style={{ color: '#64748b', fontSize: '13px', fontFamily: 'monospace' }}>#{s.id}</div>
+                  filteredSalaries.map((s) => (
+                    <tr key={s.id}>
+                      <td>
+                        <div className={styles.empName}>{s.name}</div>
+                        <div className={styles.empId}>#{s.id}</div>
                       </td>
-                      <td style={{ padding: '20px 20px' }}>
-                        <div style={{ fontWeight: 600, color: '#334155', fontSize: '14px' }}>{s.department || '—'}</div>
-                        <div style={{ color: '#64748b', fontSize: '13px' }}>{s.role || '—'}</div>
+                      <td>
+                        <div className={styles.deptName}>{s.department || '—'}</div>
+                        <div className={styles.roleName}>{s.role || '—'}</div>
                       </td>
-                      <td style={{ padding: '20px 20px', textAlign: 'right', fontWeight: 600, color: '#475569' }}>
-                        {fmtN(s.baseSalary)} ETB
+                      <td className={styles.right}>
+                        <span className={styles.currency}>{fmtN(s.baseSalary)} ETB</span>
                       </td>
-                      <td style={{ padding: '20px 20px', textAlign: 'right', fontWeight: 600, color: '#059669' }}>
-                        {s.allowances > 0 ? `+${fmtN(s.allowances)} ETB` : '—'}
-                      </td>
-                      <td style={{ padding: '20px 20px', textAlign: 'right' }}>
-                        <span style={{ 
-                          background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
-                          color: '#16a34a', padding: '6px 12px', borderRadius: '8px', 
-                          fontWeight: 800, fontSize: '15px', border: '1px solid #bbf7d0' 
-                        }}>
-                          {fmtN(s.netSalary)}
+                      <td className={styles.right}>
+                        <span className={styles.currencyPlus}>
+                          {s.allowances > 0 ? `+${fmtN(s.allowances)} ETB` : '—'}
                         </span>
                       </td>
-                      <td style={{ padding: '20px 20px' }}>
-                        <div style={{ fontFamily: 'monospace', color: '#475569', fontSize: '13px', background: '#f1f5f9', padding: '4px 8px', borderRadius: 6, display: 'inline-block' }}>{s.bankAccount || 'N/A'}</div>
+                      <td className={styles.right}>
+                        <span className={styles.currencyNet}>{fmtN(s.netSalary)}</span>
                       </td>
-                      <td style={{ padding: '20px 32px', textAlign: 'center' }}>
-                        <button onClick={() => openEdit(s)} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 10px rgba(59,130,246,0.3)' }}>
+                      <td>
+                        <span className={styles.bankBadge}>{s.bankAccount || 'N/A'}</span>
+                      </td>
+                      <td className={styles.center}>
+                        <button className={styles.editBtn} onClick={() => openEdit(s)}>
                           Edit
                         </button>
                       </td>
@@ -250,23 +370,25 @@ const HRPayroll = () => {
           </div>
         )}
       </div>
-      </div>
 
+      {/* ── EDIT MODAL (Rule 10, 14, 17: Form with sharp fields, bold borders) ── */}
       {showEditModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowEditModal(false)}>
+        <div className={styles.modalOverlay} onClick={() => !saving && setShowEditModal(false)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
+
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Edit Salary: {selectedEmp?.name}</h2>
+              <h2 className={styles.modalTitle}>Edit Salary — {selectedEmp?.name}</h2>
               <button className={styles.closeBtn} onClick={() => setShowEditModal(false)}>×</button>
             </div>
+
             <div className={styles.modalBody}>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 12, background: '#f8fafc', padding: '8px 12px', borderRadius: 6 }}>
-                <strong>Emp ID:</strong> {selectedEmp?.id} &nbsp;|&nbsp;
-                <strong>Department:</strong> {selectedEmp?.department} &nbsp;|&nbsp;
-                <strong>Bank:</strong> {selectedEmp?.bankAccount}
+              <div className={styles.empMeta}>
+                <strong>ID:</strong> {selectedEmp?.id} &nbsp;|&nbsp;
+                <strong>Dept:</strong> {selectedEmp?.department}
               </div>
+
               <div className={styles.formGroup}>
-                <label>Base Salary</label>
+                <label>Base Salary (ETB)</label>
                 <input
                   type="number" min="0" step="0.01"
                   value={editForm.baseSalary}
@@ -274,8 +396,9 @@ const HRPayroll = () => {
                   className={styles.input}
                 />
               </div>
+
               <div className={styles.formGroup}>
-                <label>Total Allowances (Housing + Transport + Comms)</label>
+                <label>Total Allowances (Housing + Transport)</label>
                 <input
                   type="number" min="0" step="0.01"
                   value={editForm.allowances}
@@ -283,6 +406,7 @@ const HRPayroll = () => {
                   className={styles.input}
                 />
               </div>
+
               <div className={styles.formGroup}>
                 <label>Bank Name</label>
                 <input
@@ -293,6 +417,7 @@ const HRPayroll = () => {
                   className={styles.input}
                 />
               </div>
+
               <div className={styles.formGroup}>
                 <label>Bank Account Number</label>
                 <input
@@ -303,19 +428,25 @@ const HRPayroll = () => {
                   className={styles.input}
                 />
               </div>
-              <div style={{ marginTop: 8, padding: '8px 12px', background: '#f0fdf4', borderRadius: 6, fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
-                Estimated Net: {fmtN(editForm.baseSalary + editForm.allowances)} ETB
+
+              <div className={styles.netEstimate}>
+                Estimated Net Salary: {fmtN(editForm.baseSalary + editForm.allowances)} ETB
               </div>
             </div>
+
             <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className={styles.cancelBtn} onClick={() => setShowEditModal(false)} disabled={saving}>
+                Cancel
+              </button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 };

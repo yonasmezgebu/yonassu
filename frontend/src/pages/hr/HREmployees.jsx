@@ -20,118 +20,6 @@ const resolvePhoto = (url) => {
   return `${BACKEND_URL}${cleanUrl}`;
 };
 
-/* ── Inline global styles for sharp green theme ── */
-const PageStyles = () => (
-  <style>{`
-    .hr-emp-page * { box-sizing: border-box; }
-    .hr-emp-page { background: #F5F5F5; min-height: 100vh; margin: -24px; padding: 0; font-family: 'Inter','Segoe UI',sans-serif; }
-
-    /* ── HEADER ── */
-    .hr-emp-header { background: #1B5E20; border-bottom: 3px solid #228B22; padding: 24px 36px 0; }
-    .hr-emp-badge { display:inline-flex; align-items:center; gap:6px; border:1px solid #4CAF50; padding:3px 12px; margin-bottom:10px; }
-    .hr-emp-badge-dot { width:6px; height:6px; background:#8BC34A; }
-    .hr-emp-badge-txt { color:#A5D6A7; font-size:11px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; }
-    .hr-emp-title { font-size:36px; font-weight:900; color:#FFFFFF; letter-spacing:-.02em; line-height:1.05; margin:0 0 6px; }
-    .hr-emp-title span { color:#8BC34A; }
-    .hr-emp-subtitle { color:#A5D6A7; font-size:13px; margin:0 0 20px; }
-    .hr-emp-toprow { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-
-    /* Metric cards */
-    .hr-emp-metrics { display:flex; gap:0; border:1px solid #2E8B57; border-right:none; }
-    .hr-emp-metric { padding:14px 22px; border-right:1px solid #2E8B57; min-width:110px; background: rgba(0,0,0,0.15); }
-    .hr-emp-metric-val { font-size:26px; font-weight:900; color:#8BC34A; line-height:1; }
-    .hr-emp-metric-lbl { font-size:10px; color:#A5D6A7; font-weight:700; text-transform:uppercase; letter-spacing:.1em; margin-top:3px; }
-
-    /* Buttons */
-    .hr-emp-btn-outline { background:transparent; border:1px solid #4CAF50; color:#8BC34A; padding:9px 18px; cursor:pointer; font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; transition:all .15s; }
-    .hr-emp-btn-outline:hover { background:#2E8B57; color:#fff; border-color:#2E8B57; }
-    .hr-emp-btn-solid { background:#228B22; border:1px solid #4CAF50; color:#FFFFFF; padding:9px 18px; cursor:pointer; font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; transition:all .15s; }
-    .hr-emp-btn-solid:hover { background:#2E8B57; border-color:#8BC34A; }
-
-    /* Search bar */
-    .hr-emp-searchbar { background:#FFFFFF; border-bottom:2px solid #A5D6A7; padding:0 36px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 4px rgba(34,139,34,0.06); }
-    .hr-emp-searchbar input { flex:1; background:transparent; border:none; outline:none; color:#424242; font-size:14px; padding:14px 0; font-family:'Inter',sans-serif; }
-    .hr-emp-searchbar input::placeholder { color:#A5D6A7; }
-    .hr-emp-count { color:#228B22; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; white-space:nowrap; }
-    .hr-emp-clear { background:transparent; border:1px solid #A5D6A7; color:#6B8E23; width:26px; height:26px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .hr-emp-clear:hover { background:#F5F5F5; border-color:#228B22; }
-
-    /* Table */
-    .hr-emp-body { padding:0; background:#FFFFFF; border:1px solid #A5D6A7; margin:16px; }
-    .hr-emp-table { width:100%; border-collapse:collapse; }
-    .hr-emp-table thead tr { background:#F5F5F5; border-bottom:2px solid #228B22; }
-    .hr-emp-table thead th { padding:14px 20px; color:#2d6a2d; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; text-align:left; }
-    .hr-emp-table thead th:last-child { text-align:right; padding-right:36px; }
-    .hr-emp-table thead th:first-child { padding-left:36px; }
-    .hr-emp-table tbody tr { border-bottom:1px solid #E8F5E9; transition:background .12s; }
-    .hr-emp-table tbody tr:hover { background:#F1F8E9; }
-    .hr-emp-table td { padding:14px 20px; color:#424242; font-size:13px; vertical-align:middle; }
-    .hr-emp-table td:first-child { padding-left:36px; }
-    .hr-emp-table td:last-child { text-align:right; padding-right:36px; }
-
-    /* Avatar */
-    .hr-emp-avatar { width:38px; height:38px; background:#E8F5E9; border:1px solid #A5D6A7; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:900; color:#228B22; overflow:hidden; flex-shrink:0; }
-    .hr-emp-name { font-weight:700; color:#1B5E20; font-size:14px; }
-    .hr-emp-contact { color:#6B8E23; font-size:12px; margin-top:2px; }
-
-    /* Status badges */
-    .hr-emp-status-active { background:transparent; border:1px solid #4CAF50; color:#228B22; padding:3px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; display:inline-block; }
-    .hr-emp-status-inactive { background:transparent; border:1px solid #F44336; color:#F44336; padding:3px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; display:inline-block; }
-    .hr-emp-pending { background:transparent; border:1px solid #FF9800; color:#FF9800; padding:2px 8px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; margin-left:6px; display:inline-block; }
-
-    /* Dept chip */
-    .hr-emp-dept { border:1px solid #A5D6A7; color:#6B8E23; padding:4px 10px; font-size:12px; font-weight:600; display:inline-block; background:#F5F5F5; }
-
-    /* Row action buttons */
-    .hr-emp-row-btn-edit { background:transparent; border:1px solid #2E8B57; color:#228B22; padding:6px 14px; cursor:pointer; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; transition:all .12s; }
-    .hr-emp-row-btn-edit:hover { background:#2E8B57; color:#fff; }
-    .hr-emp-row-btn-reg { background:transparent; border:1px solid #FF9800; color:#FF9800; padding:6px 14px; cursor:pointer; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; transition:all .12s; }
-    .hr-emp-row-btn-reg:hover { background:#FF9800; color:#fff; }
-
-    /* Empty state */
-    .hr-emp-empty { text-align:center; padding:60px 20px; color:#A5D6A7; }
-    .hr-emp-empty-icon { font-size:36px; margin-bottom:12px; }
-
-    /* Toast */
-    .hr-emp-toast { position:fixed; top:20px; right:20px; z-index:9999; border:1px solid; padding:12px 20px; font-weight:700; font-size:13px; }
-    .hr-emp-toast-success { background:#E8F5E9; border-color:#4CAF50; color:#1B5E20; }
-    .hr-emp-toast-error { background:#FFEBEE; border-color:#F44336; color:#F44336; }
-
-    /* Banner */
-    .hr-emp-banner { display:flex; align-items:center; gap:12px; background:#E8F5E9; border:1px solid #4CAF50; padding:12px 24px; margin:0 0 2px; }
-    .hr-emp-banner p { margin:0; color:#228B22; font-size:13px; font-weight:600; }
-    .hr-emp-banner strong { color:#1B5E20; }
-    .hr-emp-banner-close { background:transparent; border:none; color:#228B22; cursor:pointer; font-size:18px; margin-left:auto; }
-
-    /* Error / loading state */
-    .hr-emp-error { padding:40px; text-align:center; color:#F44336; }
-    .hr-emp-loading { padding:40px; text-align:center; color:#228B22; letter-spacing:.1em; text-transform:uppercase; font-size:12px; font-weight:700; }
-
-    /* ── MODAL ── */
-    .hr-emp-overlay { position:fixed; inset:0; background:rgba(27,94,32,0.7); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
-    .hr-emp-modal { background:#FFFFFF; border:2px solid #228B22; width:100%; max-width:740px; max-height:90vh; display:flex; flex-direction:column; }
-    .hr-emp-modal-hdr { display:flex; align-items:center; justify-content:space-between; padding:20px 28px; border-bottom:2px solid #228B22; background:#1B5E20; flex-shrink:0; }
-    .hr-emp-modal-title { color:#FFFFFF; font-size:16px; font-weight:800; margin:0; letter-spacing:-.01em; }
-    .hr-emp-modal-close { background:transparent; border:1px solid #4CAF50; color:#8BC34A; width:30px; height:30px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; }
-    .hr-emp-modal-close:hover { background:#228B22; }
-    .hr-emp-modal-body { overflow-y:auto; padding:24px 28px; flex:1; background:#FFFFFF; }
-    .hr-emp-modal-section { margin-bottom:24px; }
-    .hr-emp-modal-section h3 { color:#228B22; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; margin:0 0 14px; border-bottom:2px solid #A5D6A7; padding-bottom:8px; }
-    .hr-emp-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .hr-emp-modal-grid label { display:flex; flex-direction:column; gap:5px; color:#6B8E23; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
-    .hr-emp-modal-grid input, .hr-emp-modal-grid select { background:#F5F5F5; border:1px solid #A5D6A7; color:#424242; padding:9px 12px; font-size:13px; outline:none; font-family:'Inter',sans-serif; transition:border .12s; }
-    .hr-emp-modal-grid input:focus, .hr-emp-modal-grid select:focus { border-color:#228B22; background:#FFFFFF; }
-    .hr-emp-modal-grid .full-col { grid-column: 1 / -1; }
-    .hr-emp-modal-err { background:#FFEBEE; border:1px solid #F44336; color:#F44336; padding:10px 14px; font-size:13px; margin-bottom:16px; }
-    .hr-emp-modal-ftr { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:16px 28px; border-top:2px solid #A5D6A7; background:#F5F5F5; flex-shrink:0; }
-    .hr-emp-cancel { background:transparent; border:1px solid #A5D6A7; color:#6B8E23; padding:9px 20px; cursor:pointer; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-    .hr-emp-cancel:hover { border-color:#228B22; color:#228B22; }
-    .hr-emp-save { background:#228B22; border:1px solid #228B22; color:#FFFFFF; padding:9px 24px; cursor:pointer; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.06em; transition:all .15s; }
-    .hr-emp-save:hover { background:#1B5E20; border-color:#1B5E20; }
-    .hr-emp-save:disabled { opacity:.5; cursor:not-allowed; }
-  `}</style>
-);
-
 const HREmployees = ({ onRegister, onEdit }) => {
   const location = useLocation();
   const [employees, setEmployees]   = useState([]);
@@ -160,16 +48,13 @@ const HREmployees = ({ onRegister, onEdit }) => {
       setLoading(true);
       setFetchError(null);
       const res = await hrService.etp.listEmployees({ search, _t: Date.now() });
-      console.log('[HREmployees] raw response:', res?.data);
       const data = Array.isArray(res?.data?.data)
         ? res.data.data
         : Array.isArray(res?.data)
           ? res.data
           : [];
-      console.log('[HREmployees] employees loaded:', data.length);
       setEmployees(data);
     } catch (err) {
-      console.error('[HREmployees] Failed to fetch:', err);
       setFetchError(err?.response?.data?.message || `Error: ${err.message}`);
     } finally {
       setLoading(false);
@@ -259,54 +144,53 @@ const HREmployees = ({ onRegister, onEdit }) => {
 
   /* ── Render ──────────────────────────────────────────────────────── */
   return (
-    <div className="hr-emp-page">
-      <PageStyles />
+    <div className={styles.pageContainer}>
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
-        <div className={`hr-emp-toast hr-emp-toast-${toast.type}`}>
+        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
           {toast.msg}
         </div>
       )}
 
       {/* ══ HEADER ══ */}
-      <div className="hr-emp-header">
-        <div className="hr-emp-toprow">
+      <div className={styles.header}>
+        <div className={styles.topRow}>
           <div>
-            <div className="hr-emp-badge">
-              <span className="hr-emp-badge-dot" />
-              <span className="hr-emp-badge-txt">HR Module</span>
+            <div className={styles.badge}>
+              <span className={styles.badgeDot} />
+              <span className={styles.badgeTxt}>HR Module</span>
             </div>
-            <h1 className="hr-emp-title">
+            <h1 className={styles.title}>
               Employee <span>Directory</span>
             </h1>
-            <p className="hr-emp-subtitle">
+            <p className={styles.subtitle}>
               Full workforce roster — registered & pending employees
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className={styles.metricsWrapper}>
             {/* Metric cards */}
-            <div className="hr-emp-metrics">
-              <div className="hr-emp-metric">
-                <div className="hr-emp-metric-val">{loading ? '—' : employees.length}</div>
-                <div className="hr-emp-metric-lbl">Total Staff</div>
+            <div className={styles.metrics}>
+              <div className={styles.metric}>
+                <div className={styles.metricVal}>{loading ? '—' : employees.length}</div>
+                <div className={styles.metricLbl}>Total Staff</div>
               </div>
-              <div className="hr-emp-metric">
-                <div className="hr-emp-metric-val" style={{ color: '#c0a020' }}>
+              <div className={styles.metric}>
+                <div className={styles.metricVal} style={{ color: '#c0a020' }}>
                   {loading ? '—' : employees.filter(e => e._source === 'users_table').length}
                 </div>
-                <div className="hr-emp-metric-lbl">Pending Setup</div>
+                <div className={styles.metricLbl}>Pending Setup</div>
               </div>
-              <div className="hr-emp-metric">
-                <div className="hr-emp-metric-val">
+              <div className={styles.metric}>
+                <div className={styles.metricVal}>
                   {loading ? '—' : employees.filter(e => (e.employment_status || 'Active').toLowerCase() === 'active').length}
                 </div>
-                <div className="hr-emp-metric-lbl">Active</div>
+                <div className={styles.metricLbl}>Active</div>
               </div>
             </div>
 
-            <button className="hr-emp-btn-solid" onClick={fetchEmployees}>
+            <button className={styles.btnSolid} onClick={fetchEmployees}>
               ↻ Refresh
             </button>
           </div>
@@ -314,17 +198,17 @@ const HREmployees = ({ onRegister, onEdit }) => {
 
         {/* Registration banner */}
         {registeredBanner && (
-          <div className="hr-emp-banner" style={{ marginTop: 16 }}>
-            <span style={{ color: '#3d9e3d', fontSize: 16 }}>✓</span>
+          <div className={styles.banner}>
+            <span style={{ fontSize: 18 }}>✓</span>
             <p><strong>{registeredBanner}</strong> registered successfully and added to the directory.</p>
-            <button className="hr-emp-banner-close" onClick={() => setRegisteredBanner(null)}>×</button>
+            <button className={styles.bannerClose} onClick={() => setRegisteredBanner(null)}>×</button>
           </div>
         )}
       </div>
 
       {/* ══ SEARCH BAR ══ */}
-      <div className="hr-emp-searchbar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2d6a2d" strokeWidth="2.5" strokeLinecap="square">
+      <div className={styles.searchbar}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="square">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
@@ -334,24 +218,24 @@ const HREmployees = ({ onRegister, onEdit }) => {
           onChange={e => setSearch(e.target.value)}
         />
         {search && (
-          <button className="hr-emp-clear" onClick={() => setSearch('')}>×</button>
+          <button className={styles.searchClear} onClick={() => setSearch('')}>×</button>
         )}
         {!loading && (
-          <span className="hr-emp-count">{filtered.length} Records</span>
+          <span className={styles.searchCount}>{filtered.length} Records</span>
         )}
       </div>
 
       {/* ══ BODY ══ */}
-      <div className="hr-emp-body">
+      <div className={styles.bodyArea}>
         {loading ? (
-          <div className="hr-emp-loading">● Loading workforce data...</div>
+          <div className={styles.loadingState}>● Loading workforce data...</div>
         ) : fetchError ? (
-          <div className="hr-emp-error">
-            <p style={{ marginBottom: 12 }}>⚠ {fetchError}</p>
-            <button className="hr-emp-btn-outline" onClick={fetchEmployees}>Retry</button>
+          <div className={styles.errorState}>
+            <p style={{ marginBottom: 16 }}>⚠ {fetchError}</p>
+            <button className={styles.btnSolid} onClick={fetchEmployees}>Retry</button>
           </div>
         ) : (
-          <table className="hr-emp-table">
+          <table className={styles.table}>
             <thead>
               <tr>
                 <th>Employee</th>
@@ -365,8 +249,8 @@ const HREmployees = ({ onRegister, onEdit }) => {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5}>
-                    <div className="hr-emp-empty">
-                      <div className="hr-emp-empty-icon">◻</div>
+                    <div className={styles.emptyState}>
+                      <div className={styles.emptyIcon}>◻</div>
                       No records match your search.
                     </div>
                   </td>
@@ -382,40 +266,40 @@ const HREmployees = ({ onRegister, onEdit }) => {
                     <tr key={emp.employee_id}>
                       {/* Employee */}
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div className="hr-emp-avatar">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <div className={styles.avatar}>
                             {avatarUrl
                               ? <img src={avatarUrl} alt={emp.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               : initials}
                           </div>
                           <div>
-                            <div className="hr-emp-name">{emp.full_name}</div>
-                            <div className="hr-emp-contact">{emp.personal_email || emp.personal_phone || '—'}</div>
+                            <div className={styles.name}>{emp.full_name}</div>
+                            <div className={styles.contact}>{emp.personal_email || emp.personal_phone || '—'}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* ID / Role */}
                       <td>
-                        <div style={{ color: '#3d9e3d', fontFamily: 'monospace', fontWeight: 700, fontSize: 13 }}>
+                        <div className={styles.idCell}>
                           #{emp.employee_id}
-                          {isPending && <span className="hr-emp-pending">Pending</span>}
+                          {isPending && <span className={styles.pendingBadge}>Pending</span>}
                         </div>
-                        <div style={{ color: '#4a7a4a', fontSize: 12, marginTop: 2 }}>
+                        <div className={styles.roleCell}>
                           {emp.position_title || emp.position_id || 'Not assigned'}
                         </div>
                       </td>
 
                       {/* Department */}
                       <td>
-                        <span className="hr-emp-dept">
+                        <span className={styles.deptChip}>
                           {emp.dept_name || emp.dept_id || 'No Dept'}
                         </span>
                       </td>
 
                       {/* Status */}
                       <td>
-                        <span className={isActive ? 'hr-emp-status-active' : 'hr-emp-status-inactive'}>
+                        <span className={isActive ? styles.statusActive : styles.statusInactive}>
                           {emp.employment_status || 'Active'}
                         </span>
                       </td>
@@ -423,7 +307,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
                       {/* Action */}
                       <td>
                         <button
-                          className={isPending ? 'hr-emp-row-btn-reg' : 'hr-emp-row-btn-edit'}
+                          className={isPending ? styles.rowBtnReg : styles.rowBtnEdit}
                           onClick={() => openEdit(emp)}
                         >
                           {isPending ? 'Complete Setup' : 'Edit'}
@@ -440,27 +324,27 @@ const HREmployees = ({ onRegister, onEdit }) => {
 
       {/* ══ MODAL ══ */}
       {editing && (
-        <div className="hr-emp-overlay" onClick={() => !editing.saving && setEditing(null)}>
-          <div className="hr-emp-modal" onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={() => !editing.saving && setEditing(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
 
-            <div className="hr-emp-modal-hdr">
-              <h2 className="hr-emp-modal-title">
+            <div className={styles.modalHdr}>
+              <h2 className={styles.modalTitle}>
                 {editing.isNew
                   ? `Register — ${editing.emp.full_name}`
                   : `Edit Profile — ${editing.emp.full_name}`}
               </h2>
-              <button className="hr-emp-modal-close" onClick={() => setEditing(null)}>×</button>
+              <button className={styles.modalClose} onClick={() => setEditing(null)}>×</button>
             </div>
 
-            <div className="hr-emp-modal-body">
+            <div className={styles.modalBody}>
               {editing.error && (
-                <div className="hr-emp-modal-err">{editing.error}</div>
+                <div className={styles.modalErr}>{editing.error}</div>
               )}
 
               {/* Personal */}
-              <div className="hr-emp-modal-section">
+              <div className={styles.modalSection}>
                 <h3>Personal Information</h3>
-                <div className="hr-emp-modal-grid">
+                <div className={styles.modalGrid}>
                   <label>Full Name
                     <input value={editing.form.full_name} onChange={e => setField('full_name', e.target.value)} />
                   </label>
@@ -479,16 +363,16 @@ const HREmployees = ({ onRegister, onEdit }) => {
                   <label>Email
                     <input value={editing.form.personal_email} onChange={e => setField('personal_email', e.target.value)} />
                   </label>
-                  <label className="full-col">Physical Address
+                  <label className={styles.fullCol}>Physical Address
                     <input value={editing.form.physical_address} onChange={e => setField('physical_address', e.target.value)} />
                   </label>
                 </div>
               </div>
 
               {/* Employment */}
-              <div className="hr-emp-modal-section">
+              <div className={styles.modalSection}>
                 <h3>Employment Information</h3>
-                <div className="hr-emp-modal-grid">
+                <div className={styles.modalGrid}>
                   <label>Department
                     <select value={editing.form.dept_id} onChange={e => setField('dept_id', e.target.value)}>
                       <option value="">— Select —</option>
@@ -533,9 +417,9 @@ const HREmployees = ({ onRegister, onEdit }) => {
               </div>
 
               {/* Compensation */}
-              <div className="hr-emp-modal-section">
+              <div className={styles.modalSection}>
                 <h3>Compensation</h3>
-                <div className="hr-emp-modal-grid">
+                <div className={styles.modalGrid}>
                   <label>Base Salary (ETB)
                     <input type="number" value={editing.form.base_salary} onChange={e => setField('base_salary', e.target.value)} />
                   </label>
@@ -552,9 +436,9 @@ const HREmployees = ({ onRegister, onEdit }) => {
               </div>
 
               {/* Bank */}
-              <div className="hr-emp-modal-section">
+              <div className={styles.modalSection}>
                 <h3>Bank Details</h3>
-                <div className="hr-emp-modal-grid">
+                <div className={styles.modalGrid}>
                   <label>Bank Name
                     <input value={editing.form.bank_name} onChange={e => setField('bank_name', e.target.value)} />
                   </label>
@@ -565,9 +449,9 @@ const HREmployees = ({ onRegister, onEdit }) => {
               </div>
 
               {/* Emergency Contact */}
-              <div className="hr-emp-modal-section">
+              <div className={styles.modalSection}>
                 <h3>Emergency Contact</h3>
-                <div className="hr-emp-modal-grid">
+                <div className={styles.modalGrid}>
                   <label>Contact Name
                     <input value={editing.form.emergency_contact_name} onChange={e => setField('emergency_contact_name', e.target.value)} />
                   </label>
@@ -578,11 +462,11 @@ const HREmployees = ({ onRegister, onEdit }) => {
               </div>
             </div>
 
-            <div className="hr-emp-modal-ftr">
-              <button className="hr-emp-cancel" onClick={() => setEditing(null)} disabled={editing.saving}>
+            <div className={styles.modalFtr}>
+              <button className={styles.btnCancel} onClick={() => setEditing(null)} disabled={editing.saving}>
                 Cancel
               </button>
-              <button className="hr-emp-save" onClick={handleSave} disabled={editing.saving}>
+              <button className={styles.btnSave} onClick={handleSave} disabled={editing.saving}>
                 {editing.saving ? 'Saving...' : editing.isNew ? 'Register Employee' : 'Save Changes'}
               </button>
             </div>

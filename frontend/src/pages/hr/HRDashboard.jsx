@@ -23,6 +23,7 @@ import HRPerformanceReview from './HRPerformanceReview';
 import HRFeedback from './HRFeedback';
 import HRPolicies from './HRPolicies';
 import HRAnnouncements from './HRAnnouncements';
+import HRNotices from './HRNotices';
 import NewsManager from '../admin/NewsManager';
 import GalleryManager from '../admin/GalleryManager';
 import JobApplicationsManager from './JobApplicationsManager';
@@ -70,7 +71,11 @@ const HRDashboard = () => {
     '/hr/payslips',
     '/hr/employee-info',
     '/hr/hr-policies',
-    '/hr/announcements'
+    '/hr/announcements',
+    '/hr/applications',
+    '/hr/news',
+    '/hr/gallery',
+    '/hr/internal-notices',
   ];
   const isNoPadding = noPaddingPaths.includes(location.pathname);
 
@@ -96,12 +101,11 @@ const HRDashboard = () => {
       <Route path="employee-info"       element={<HREmployeeStatus />} />
       <Route path="hr-policies"         element={<HRPolicies />} />
       <Route path="announcements"       element={<HRAnnouncements />} />
-      <Route path="internal-notices"    element={<HRPolicies />} />
+      <Route path="internal-notices"    element={<HRNotices />} />
       <Route path="hr-messages"         element={<HRPolicies />} />
       <Route path="news"                element={<NewsManager />} />
       <Route path="gallery"             element={<GalleryManager />} />
       <Route path="job-applications"    element={<JobApplicationsManager />} />
-      <Route path="applications"        element={<JobApplicationsManager />} />
       <Route path="/"                   element={<Navigate to="employee-summary" replace />} />
     </Routes>
   );
