@@ -4,7 +4,8 @@ import {
   Printer, BarChart3, Key, Settings, Upload, Rocket,
   Shield, Globe, Zap, Smartphone, Star, ArrowRight,
   Quote, ChevronRight, Home, Building2, Briefcase,
-  FileText, Phone, LogIn, Scale, Triangle, Car, Pill, Sprout
+  FileText, Phone, LogIn, Scale, Triangle, Car, Pill, Sprout,
+  MapPin, Mail
 } from 'lucide-react';
 import useInView from './useInView';
 import apiClient from '../../services/apiClient';
