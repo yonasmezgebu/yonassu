@@ -56,13 +56,17 @@ router.get('/dashboard', authenticate, async (req, res) => {
 router.get('/', authenticate, async (req, res) => {
   try {
     const { type } = req.query;
-    let q = knex('liabilities').orderBy('created_at', 'desc');
+    let q = knex('liabilities as l')
+      .leftJoin('tax_details as t', 'l.id', 't.liability_id')
+      .leftJoin('loan_details as d', 'l.id', 'd.liability_id')
+      .select('l.*', 't.tax_type', 't.tax_period', 'd.interest_rate', 'd.term_months')
+      .orderBy('l.created_at', 'desc');
     if (type) {
       const types = type.split(',');
       if (types.length > 1) {
-        q = q.whereIn('liability_type', types);
+        q = q.whereIn('l.liability_type', types);
       } else {
-        q = q.where('liability_type', type);
+        q = q.where('l.liability_type', type);
       }
     }
     const data = await q;
