@@ -90,11 +90,14 @@ export default function EventSection() {
   );
 }
 
-/* ── Styles ── */
+/* ── New Unified Design System Styles ── */
 
 const sectionStyle = {
-  padding: '60px 40px',
-  background: '#0f1420',
+  padding: '80px 40px',
+  background: '#F5F5F5', // Light Gray background
+  color: '#424242',      // Dark Gray text
+  width: '100%',
+  boxSizing: 'border-box'
 };
 
 const containerStyle = {
@@ -107,16 +110,17 @@ const containerStyle = {
 
 const imageWrapStyle = {
   flex: '0 0 50%',
-  borderRadius: 16,
+  borderRadius: 10, // Images / thumbnails get 10px radius
   overflow: 'hidden',
-  boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.06)', // Soft shadow
+  border: '1px solid #8D6E63', // Earth Brown default border
 };
 
 const imageInnerStyle = {
   position: 'relative',
   width: '100%',
   paddingTop: '75%',
-  background: '#1a1f2e',
+  background: '#FFFFFF',
 };
 
 const imgStyle = {
@@ -128,29 +132,28 @@ const imgStyle = {
 
 const textWrapStyle = {
   flex: '0 0 50%',
-  color: '#e2e8f0',
+  color: '#424242', // Text on light background -> Dark Gray
 };
 
 const headingStyle = {
   fontSize: 'clamp(1.4rem, 3vw, 2.2rem)',
   fontWeight: 800,
-  color: '#d4a017',
-  letterSpacing: '1px',
+  color: '#1B5E20', // Dark Green
+  letterSpacing: '-0.01em',
   marginBottom: 8,
 };
 
 const subStyle = {
   fontSize: 'clamp(0.85rem, 1.6vw, 1.15rem)',
-  color: '#94a3b8',
-  fontWeight: 500,
+  color: '#228B22', // Forest Green
+  fontWeight: 600,
   marginBottom: 20,
-  letterSpacing: '0.5px',
 };
 
 const descStyle = {
-  fontSize: '0.95rem',
-  lineHeight: 1.7,
-  color: '#cbd5e1',
+  fontSize: '1rem',
+  lineHeight: 1.6,
+  color: '#424242',
   marginBottom: 24,
 };
 
@@ -163,12 +166,12 @@ const servicesStyle = {
 
 const serviceTagStyle = {
   padding: '6px 14px',
-  background: 'rgba(212, 160, 23, 0.12)',
-  border: '1px solid rgba(212, 160, 23, 0.25)',
-  borderRadius: 20,
+  background: '#A5D6A7', // Sage Green for small informational cards
+  border: '1px solid #8D6E63', // Earth Brown thin border
+  borderRadius: 6, // small elements get smaller radius
   fontSize: '0.8rem',
   fontWeight: 600,
-  color: '#d4a017',
+  color: '#424242', // Dark Gray text on Sage Green background
 };
 
 const visionStyle = {
@@ -181,22 +184,23 @@ const missionStyle = {
 
 const miniHeadStyle = {
   fontSize: '0.75rem',
-  fontWeight: 700,
-  color: '#d4a017',
-  letterSpacing: '3px',
+  fontWeight: 800,
+  color: '#1B5E20', // Dark Green
+  letterSpacing: '1px',
+  textTransform: 'uppercase',
   marginBottom: 4,
 };
 
 const miniTextStyle = {
   fontSize: '0.9rem',
   lineHeight: 1.6,
-  color: '#94a3b8',
+  color: '#424242',
 };
 
 const taglineStyle = {
   fontSize: '1rem',
   fontStyle: 'italic',
-  color: '#cbd5e1',
-  borderTop: '1px solid rgba(255,255,255,0.08)',
+  color: '#2E8B57', // Emerald Green accent
+  borderTop: '1px solid #8D6E63', // Earth Brown border
   paddingTop: 16,
 };
