@@ -1,25 +1,211 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Book, Download, Printer, Filter, RefreshCw, TrendingUp, TrendingDown,
+  Book, Printer, RefreshCw, TrendingUp, TrendingDown,
   DollarSign, Eye, X, CheckCircle, Building, Smartphone, Banknote,
-  ChevronLeft, ChevronRight, Search
+  ChevronLeft, ChevronRight, Search, Filter
 } from 'lucide-react';
 import api from '../../services/apiClient';
 
-/* ──────────────────────────────────────────────────────────────── */
-/*  CRV Detail Modal + Print                                         */
-/* ──────────────────────────────────────────────────────────────── */
+/* ── Global CSS ─────────────────────────────────────────────── */
+const G = `
+  .cb-wrap {
+    padding: 24px;
+    background: #F5F5F5;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .cb-inp {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #8D6E63;
+    border-radius: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #424242;
+    background: #FFFFFF;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cb-inp:focus {
+    border-color: #228B22;
+    box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
+  }
+  .cb-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #8D6E63;
+    border-radius: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #424242;
+    background: #FFFFFF;
+    outline: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .cb-select:focus { border-color: #228B22; }
+  .cb-lbl {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    color: #1B5E20;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+  .btn-green {
+    background: #228B22;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-green:hover { background: #1B5E20; transform: translateY(-1px); }
+  .btn-outline {
+    background: #FFFFFF;
+    color: #1B5E20;
+    border: 2px solid #228B22;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-outline:hover { background: #228B22; color: #FFFFFF; }
+  .btn-reset {
+    background: #F5F5F5;
+    color: #424242;
+    border: 2px solid #8D6E63;
+    border-radius: 0;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .btn-reset:hover { background: #8D6E63; color: #FFFFFF; }
+  .cb-tr { transition: background 0.15s; }
+  .cb-tr:hover { background: #A5D6A7 !important; cursor: pointer; }
+  .cb-card {
+    background: #FFFFFF;
+    border: 1px solid #8D6E63;
+    border-radius: 0;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  }
+  .cb-filter-panel {
+    background: #FFFFFF;
+    border: 1px solid #8D6E63;
+    border-radius: 0;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  }
+  .cb-table-wrap {
+    background: #FFFFFF;
+    border: 1px solid #8D6E63;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    width: 100%;
+  }
+  .pg-btn {
+    padding: 6px 12px;
+    border: 2px solid #8D6E63;
+    border-radius: 0;
+    background: #FFFFFF;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    color: #424242;
+    transition: all 0.15s;
+  }
+  .pg-btn:hover { background: #228B22; color: #FFFFFF; border-color: #228B22; }
+  .pg-btn.active { background: #228B22; color: #FFFFFF; border-color: #1B5E20; }
+  .pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: #A5D6A7;
+    border: 1px solid #228B22;
+    border-radius: 0;
+    cursor: pointer;
+    color: #1B5E20;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.15s;
+  }
+  .view-btn:hover { background: #228B22; color: #FFFFFF; }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-box {
+    background: #FFFFFF;
+    border: 2px solid #1B5E20;
+    border-radius: 0;
+    width: 100%;
+    max-width: 760px;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr auto; gap: 14px; align-items: flex-end; }
+  @media (max-width: 900px) {
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: 1fr; }
+    .cb-wrap { padding: 12px; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+/* ── In-app Notification ─────────────────────────────────────── */
+const Notif = ({ n, onClose }) => {
+  if (!n) return null;
+  return (
+    <div style={{ background: n.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFFFFF', padding: '14px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, border: '2px solid #1B5E20', width: '100%', boxSizing: 'border-box' }}>
+      {n.type === 'error' ? '⚠' : '✓'} {n.msg}
+      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', fontWeight: 900, fontSize: 18 }}>✕</button>
+    </div>
+  );
+};
+
+/* ── Document Modal ───────────────────────────────────────────── */
 const DocumentModal = ({ doc, onClose }) => {
   if (!doc) return null;
-
   const printRef = useRef(null);
   const isCRV = doc.docType === 'CRV';
+  const isPCV = doc.docType === 'PCV';
 
   const handlePrint = () => {
     const content = printRef.current.innerHTML;
     const w = window.open('', '_blank');
-    w.document.write(`
-      <html><head><title>${doc.docType} Print</title>
+    w.document.write(`<html><head><title>${doc.docType} Print</title>
       <style>
         body { font-family: 'Times New Roman', serif; margin: 40px; color: #000; }
         h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 3px; margin: 0 0 4px; text-align: center; }
@@ -32,61 +218,39 @@ const DocumentModal = ({ doc, onClose }) => {
         .payment-box { padding: 12px 16px; border: 1px solid #555; font-size: 13px; display: inline-block; min-width: 240px; vertical-align: top; margin-left: 20px; }
         .sig-row { display: flex; justify-content: space-between; margin-top: 50px; }
         .sig-block { text-align: center; width: 210px; }
-        .sig-image { height: 80px; border: 1px solid #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; overflow: hidden; }
+        .sig-image { height: 80px; border: 1px solid #999; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; overflow: hidden; }
         .sig-image img { max-height: 75px; max-width: 100%; object-fit: contain; }
         .sig-name { border-top: 1px solid #333; padding-top: 4px; font-weight: 700; font-size: 13px; }
         .sig-label { font-size: 11px; color: #555; margin-top: 2px; }
       </style>
-      </head><body>${content}</body></html>
-    `);
-    w.document.close();
-    w.focus();
-    w.print();
-    w.close();
+      </head><body>${content}</body></html>`);
+    w.document.close(); w.focus(); w.print(); w.close();
   };
 
   const pm = doc.payment_method;
   const amt = parseFloat(doc.amount || 0);
-  const docNumber = isCRV ? doc.crv_number : (doc.docType === 'PCV' ? doc.pcv_number : doc.pv_number);
-  const docTitle = isCRV ? 'CASH RECEIPT VOUCHER' : (doc.docType === 'PCV' ? 'PETTY CASH VOUCHER' : 'PAYMENT VOUCHER');
+  const docNumber = isCRV ? doc.crv_number : (isPCV ? doc.pcv_number : doc.pv_number);
+  const docTitle = isCRV ? 'CASH RECEIPT VOUCHER' : (isPCV ? 'PETTY CASH VOUCHER' : 'PAYMENT VOUCHER');
   const partyLabel = isCRV ? 'RECEIVED FROM' : 'PAID TO';
   const partyName = isCRV ? doc.received_from : doc.paid_to;
 
-  const headerBg = isCRV ? 'linear-gradient(135deg,#0f172a,#1e293b)' : (doc.docType === 'PCV' ? 'linear-gradient(135deg,#eab308,#a16207)' : 'linear-gradient(135deg,#0ea5e9,#0284c7)');
-  const printBtnBg = isCRV ? '#22c55e' : (doc.docType === 'PCV' ? '#713f12' : '#0f172a');
-  const accentColor = isCRV ? '#16a34a' : (doc.docType === 'PCV' ? '#a16207' : '#0284c7');
-  const boxBg = isCRV ? '#f0fdf4' : (doc.docType === 'PCV' ? '#fefce8' : '#f0f9ff');
-  const boxBorder = isCRV ? '1px solid #bbf7d0' : (doc.docType === 'PCV' ? '1px dashed #fde047' : '1px solid #bae6fd');
+  const accentColor = isCRV ? '#228B22' : (isPCV ? '#FF9800' : '#228B22');
+  const accentBg    = isCRV ? '#A5D6A7' : (isPCV ? '#FFF3E0' : '#A5D6A7');
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, backdropFilter: 'blur(4px)'
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{
-        background: 'white', borderRadius: 20, width: '100%', maxWidth: 760,
-        maxHeight: '90vh', overflow: 'auto',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.3)'
-      }}>
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
         {/* Modal Header */}
-        <div style={{
-          padding: '24px 28px', borderBottom: '1px solid #e2e8f0',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: headerBg,
-          borderRadius: '20px 20px 0 0'
-        }}>
+        <div style={{ padding: '20px 24px', borderBottom: '2px solid #8D6E63', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1B5E20' }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{docTitle}</div>
-            <div style={{ color: 'white', fontSize: 22, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 2 }}>{docNumber}</div>
+            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{docTitle}</div>
+            <div style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 2 }}>{docNumber}</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={handlePrint}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: printBtnBg, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-              <Printer size={15} /> Print
+            <button className="btn-green" onClick={handlePrint} style={{ padding: '8px 16px', fontSize: 13, background: '#2E8B57' }}>
+              <Printer size={14} /> Print
             </button>
-            <button onClick={onClose}
-              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: 8, cursor: 'pointer', padding: '9px 12px', display: 'flex', alignItems: 'center' }}>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '8px 12px', display: 'flex', alignItems: 'center', borderRadius: 0 }}>
               <X size={18} />
             </button>
           </div>
@@ -94,35 +258,34 @@ const DocumentModal = ({ doc, onClose }) => {
 
         {/* Modal Body */}
         <div style={{ padding: 28 }}>
-          {/* Meta */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
+          {/* Meta grid */}
+          <div className="grid-3" style={{ marginBottom: 20 }}>
             {[
               ['Date', new Date(doc.date).toLocaleDateString('en-GB')],
               ['Payment Method', doc.payment_method],
               ['Reference', doc.reference_no || 'N/A'],
             ].map(([k, v]) => (
-              <div key={k} style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>{v}</div>
+              <div key={k} style={{ background: '#F5F5F5', padding: '12px 16px', border: '1px solid #8D6E63' }}>
+                <div style={{ fontSize: 10, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
+                <div style={{ fontWeight: 700, color: '#1B5E20', fontSize: 14 }}>{v}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: boxBg, border: boxBorder, borderRadius: 12, padding: '16px 20px', marginBottom: 24 }}>
-            <div style={{ fontSize: 11, color: accentColor, fontWeight: 600, marginBottom: 6 }}>{partyLabel}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{partyName}</div>
-            <div style={{ fontSize: 13, color: '#475569' }}>{doc.description}</div>
+          <div style={{ background: accentBg, border: `2px solid ${accentColor}`, padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: accentColor, fontWeight: 800, marginBottom: 6 }}>{partyLabel}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>{partyName}</div>
+            <div style={{ fontSize: 13, color: '#424242', fontWeight: 600 }}>{doc.description}</div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>AMOUNT</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: accentColor }}>ETB {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+              <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, marginBottom: 4 }}>AMOUNT</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: '#1B5E20' }}>ETB {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
             </div>
-
             {pm === 'Bank' && (
-              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '14px 18px', fontSize: 13 }}>
-                <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Building size={14} /> Bank Details</div>
+              <div style={{ background: '#A5D6A7', border: '2px solid #228B22', padding: '14px 18px', fontSize: 13 }}>
+                <div style={{ fontWeight: 800, color: '#1B5E20', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Building size={14} /> Bank Details</div>
                 <div>Bank: <b>{doc.bank_name}</b></div>
                 <div>A/C Name: <b>{doc.account_holder}</b></div>
                 <div>A/C No: <b>{doc.account_number}</b></div>
@@ -130,42 +293,35 @@ const DocumentModal = ({ doc, onClose }) => {
               </div>
             )}
             {pm === 'Telebirr' && (
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 18px', fontSize: 13 }}>
-                <div style={{ fontWeight: 700, color: '#b45309', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Smartphone size={14} /> Telebirr</div>
+              <div style={{ background: '#FFF3E0', border: '2px solid #FF9800', padding: '14px 18px', fontSize: 13 }}>
+                <div style={{ fontWeight: 800, color: '#FF9800', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Smartphone size={14} /> Telebirr</div>
                 <div>Mobile: <b>{doc.telebirr_number}</b></div>
                 <div>Name: <b>{doc.telebirr_name}</b></div>
               </div>
             )}
             {pm === 'Cash' && (
-              <div style={{ background: boxBg, border: boxBorder, borderRadius: 10, padding: '14px 24px', fontSize: 16, fontWeight: 700, color: accentColor, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ background: '#A5D6A7', border: '2px solid #228B22', padding: '14px 24px', fontSize: 16, fontWeight: 800, color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Banknote size={20} /> By Cash
               </div>
             )}
           </div>
 
           {/* Signatures */}
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 14 }}>Signatures</div>
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'space-around' }}>
+          <div style={{ borderTop: '2px solid #8D6E63', paddingTop: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#1B5E20', textTransform: 'uppercase', marginBottom: 14 }}>Signatures</div>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'space-around', flexWrap: 'wrap' }}>
               {[
                 { label: 'Prepared By',          name: doc.prepared_by,   sig: doc.prepared_signature },
                 { label: 'Checked By',           name: doc.checked_by,    sig: doc.checked_signature },
                 { label: isCRV ? "Receiver's Signature" : "Payee's Signature", name: doc.receiver_name, sig: doc.receiver_signature },
               ].map(({ label, name, sig }) => (
-                <div key={label} style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{
-                    height: 80, border: '1px solid #e2e8f0', borderRadius: 8,
-                    overflow: 'hidden', background: '#fafafa',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8
-                  }}>
-                    {sig
-                      ? <img src={sig} alt={label} style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} />
-                      : <span style={{ color: '#cbd5e1', fontSize: 11 }}>No signature</span>
-                    }
+                <div key={label} style={{ flex: 1, textAlign: 'center', minWidth: 140 }}>
+                  <div style={{ height: 80, border: '2px solid #8D6E63', overflow: 'hidden', background: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                    {sig ? <img src={sig} alt={label} style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#8D6E63', fontSize: 11 }}>No signature</span>}
                   </div>
-                  <div style={{ borderTop: '1px solid #334155', paddingTop: 6, display: 'inline-block', minWidth: 140 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{name || '—'}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{label}</div>
+                  <div style={{ borderTop: '2px solid #1B5E20', paddingTop: 6, display: 'inline-block', minWidth: 140 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1B5E20' }}>{name || '—'}</div>
+                    <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{label}</div>
                   </div>
                 </div>
               ))}
@@ -191,7 +347,7 @@ const DocumentModal = ({ doc, onClose }) => {
           </div>
           <div class="body-line">
             <div><b>{partyLabel}:</b> <span class="underline">{partyName}</span></div>
-            <div><b>THE SUM OF:</b> <span class="underline" style={{fontStyle:'italic'}}>ETB {amt.toLocaleString()}</span></div>
+            <div><b>THE SUM OF:</b> <span class="underline" style={{ fontStyle: 'italic' }}>ETB {amt.toLocaleString()}</span></div>
             <div><b>BEING PAYMENT FOR:</b> <span class="underline">{doc.description}</span></div>
           </div>
           <div>
@@ -213,7 +369,7 @@ const DocumentModal = ({ doc, onClose }) => {
               </span>
             )}
             {pm === 'Cash' && (
-              <span class="payment-box" style={{textAlign:'center', fontWeight:'bold', fontSize:18}}>By Cash</span>
+              <span class="payment-box" style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>By Cash</span>
             )}
           </div>
           <div class="sig-row">
@@ -237,252 +393,47 @@ const DocumentModal = ({ doc, onClose }) => {
   );
 };
 
-/* ──────────────────────────────────────────────────────────────── */
-/*  Main Cashbook Component                                          */
-/* ──────────────────────────────────────────────────────────────── */
+/* ── Main Expense Book Component ─────────────────────────────── */
 const FinanceCashBook = () => {
-  const [entries, setEntries]     = useState([]);
-  const [recordMap, setRecordMap] = useState({});   // reference → full CRV/PV object
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [entries, setEntries]         = useState([]);
+  const [recordMap, setRecordMap]     = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [notif, setNotif]             = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  const [dateFrom, setDateFrom]   = useState('');
-  const [dateTo, setDateTo]       = useState('');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [search, setSearch]       = useState('');
-  const [page, setPage]           = useState(1);
+  const [dateFrom, setDateFrom]       = useState('');
+  const [dateTo, setDateTo]           = useState('');
+  const [typeFilter, setTypeFilter]   = useState('All');
+  const [search, setSearch]           = useState('');
+  const [page, setPage]               = useState(1);
   const PER_PAGE = 15;
 
   const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setNotif(null);
     try {
-      const [cbRes, crvRes, pvRes, pcvRes] = await Promise.all([
+      const [cbRes, pvRes, pcvRes] = await Promise.all([
         api.get('/finance-cash/cashbook'),
-        api.get('/finance-cash/crv'),
         api.get('/finance-cash/pv'),
         api.get('/finance-cash/pcv'),
       ]);
+      const cashbook = cbRes?.data || [];
+      const pvs      = pvRes?.data || [];
+      const pcvs     = pcvRes?.data || [];
 
-      const cashbook = cbRes?.data || cbRes || [];
-      const crvs     = crvRes?.data || crvRes || [];
-      const pvs      = pvRes?.data || pvRes || [];
-      const pcvs     = pcvRes?.data || pcvRes || [];
-
-      // Build lookup: reference number → record
       const map = {};
-      (Array.isArray(crvs) ? crvs : []).forEach(c => { map[c.crv_number] = { ...c, docType: 'CRV' }; });
-      (Array.isArray(pvs) ? pvs : []).forEach(p => { map[p.pv_number] = { ...p, docType: 'PV' }; });
+      (Array.isArray(pvs)  ? pvs  : []).forEach(p => { map[p.pv_number]  = { ...p, docType: 'PV'  }; });
       (Array.isArray(pcvs) ? pcvs : []).forEach(p => { map[p.pcv_number] = { ...p, docType: 'PCV' }; });
 
       setEntries(Array.isArray(cashbook) ? cashbook : []);
       setRecordMap(map);
     } catch (err) {
-      setError(err.message || 'Failed to load cashbook');
-    } finally {
-      setLoading(false);
-    }
+      setNotif({ type: 'error', msg: err.message || 'Failed to load Expense Book' });
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const handlePrintAll = () => {
-    if (!filtered.length) return;
-    const fmt2 = v => parseFloat(v||0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-    const rows = filtered.map((entry, idx) => {
-      const isReceipt = entry.receipts > 0;
-      const isPayment = entry.payments > 0;
-      
-      return `
-        <tr>
-          <td class="text-center">${new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-          <td class="text-center"><b>${entry.type}</b></td>
-          <td class="text-center" style="font-family:monospace;">${entry.reference || '-'}</td>
-          <td>${entry.description || '-'}</td>
-          <td class="text-right" style="color: #16a34a;">${isReceipt ? fmt2(entry.receipts) : '-'}</td>
-          <td class="text-right" style="color: #dc2626;">${isPayment ? fmt2(entry.payments) : '-'}</td>
-          <td class="text-right" style="font-weight:bold; color: ${entry.balance >= 0 ? '#0f172a' : '#dc2626'}">${fmt2(entry.balance)}</td>
-        </tr>
-      `;
-    });
-
-    const totalIn = filtered.reduce((sum, e) => sum + (e.receipts || 0), 0);
-    const totalOut = filtered.reduce((sum, e) => sum + (e.payments || 0), 0);
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Cashbook Ledger</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Courier+Prime&display=swap');
-    
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: Arial, sans-serif; 
-      background: white; 
-      color: #111; 
-      padding: 30px;
-    }
-    
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #000;
-    }
-    .company-name {
-      font-size: 24px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
-    }
-    .doc-title {
-      font-size: 16px;
-      color: #444;
-      font-weight: bold;
-    }
-    .print-meta {
-      font-size: 12px;
-      color: #666;
-      text-align: right;
-      margin-top: 10px;
-    }
-
-    /* Ledger Table Design */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 30px;
-      font-size: 12px;
-    }
-    th {
-      border: 1px solid #000;
-      padding: 10px;
-      background-color: #f0f0f0;
-      text-transform: uppercase;
-      font-weight: bold;
-      text-align: center;
-      font-size: 11px;
-    }
-    td {
-      border: 1px solid #aaa;
-      padding: 8px 10px;
-      vertical-align: top;
-    }
-    
-    /* Simulate notebook lines */
-    tbody tr:nth-child(even) { background-color: #fcfcfc; }
-    
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    
-    .totals-row td {
-      border: 2px solid #000;
-      background-color: #e5e5e5;
-      font-weight: bold;
-      font-size: 13px;
-    }
-
-    .summary-box {
-      float: right;
-      width: 300px;
-      border: 2px solid #000;
-      padding: 15px;
-      background: #fafafa;
-    }
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .summary-row.net {
-      border-top: 1px solid #000;
-      padding-top: 8px;
-      font-weight: bold;
-      font-size: 16px;
-    }
-
-    .clearfix::after {
-      content: "";
-      clear: both;
-      display: table;
-    }
-
-    @page { margin: 15mm; size: A4 portrait; }
-    @media print { 
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0; } 
-      th { background-color: #f0f0f0 !important; }
-      .totals-row td { background-color: #e5e5e5 !important; }
-      .summary-box { background: #fafafa !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="company-name">SUTANA ENTERPRISE</div>
-    <div class="doc-title">CASHBOOK LEDGER</div>
-    <div class="print-meta">
-      Period: ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Start'} to ${dateTo ? new Date(dateTo).toLocaleDateString() : 'Current'}<br/>
-      Printed on: ${new Date().toLocaleString('en-GB')}
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th width="10%">Date</th>
-        <th width="8%">Type</th>
-        <th width="15%">Reference</th>
-        <th width="35%">Particulars / Description</th>
-        <th width="12%">Income (In)</th>
-        <th width="12%">Out (Pay)</th>
-        <th width="12%">Net Balance</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows.join('\\n')}
-      <tr class="totals-row">
-        <td colspan="4" class="text-right">TOTALS:</td>
-        <td class="text-right" style="color: #16a34a;">${fmt2(totalIn)}</td>
-        <td class="text-right" style="color: #dc2626;">${fmt2(totalOut)}</td>
-        <td class="text-right"></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="clearfix">
-    <div class="summary-box">
-      <div class="summary-row">
-        <span>Total Income:</span>
-        <span style="color: #16a34a;">ETB ${fmt2(totalIn)}</span>
-      </div>
-      <div class="summary-row">
-        <span>Total Payments:</span>
-        <span style="color: #dc2626;">ETB ${fmt2(totalOut)}</span>
-      </div>
-      <div class="summary-row net">
-        <span>Net Balance:</span>
-        <span style="color: ${totalIn - totalOut >= 0 ? '#000' : '#dc2626'};">ETB ${fmt2(totalIn - totalOut)}</span>
-      </div>
-    </div>
-  </div>
-
-</body>
-</html>`;
-
-    const w = window.open('', '_blank', 'width=900,height=1100');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 400);
-  };
-
-  // Running balance
+  // Running balance calculation
   let runningBal = 0;
   const withBalance = [...entries]
     .sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id)
@@ -505,89 +456,168 @@ const FinanceCashBook = () => {
     return true;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const paginated  = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const totalReceipts  = filtered.reduce((a, e) => a + e.receipts, 0);
-  const totalPayments  = filtered.reduce((a, e) => a + e.payments, 0);
+  const totalPages    = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginated     = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const totalReceipts = filtered.reduce((a, e) => a + e.receipts, 0);
+  const totalPayments = filtered.reduce((a, e) => a + e.payments, 0);
+  const netBalance    = totalReceipts - totalPayments;
 
   const fmt = v => v.toLocaleString(undefined, { minimumFractionDigits: 2 });
+  const fmt2 = v => parseFloat(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+  const handlePrintAll = () => {
+    if (!filtered.length) return;
+    const rows = filtered.map(entry => {
+      const isReceipt = entry.receipts > 0;
+      const isPayment = entry.payments > 0;
+      return `
+        <tr>
+          <td class="text-center">${new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+          <td class="text-center"><b>${entry.type}</b></td>
+          <td class="text-center" style="font-family:monospace;">${entry.reference || '-'}</td>
+          <td>${entry.description || '-'}</td>
+          <td class="text-right" style="color:#228B22;">${isReceipt ? fmt2(entry.receipts) : '-'}</td>
+          <td class="text-right" style="color:#F44336;">${isPayment ? fmt2(entry.payments) : '-'}</td>
+          <td class="text-right" style="font-weight:bold; color:${entry.balance >= 0 ? '#1B5E20' : '#F44336'}">${fmt2(entry.balance)}</td>
+        </tr>`;
+    });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Expense Book Ledger</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;background:white;color:#111;padding:30px;}
+    .header{text-align:center;margin-bottom:30px;padding-bottom:15px;border-bottom:3px solid #1B5E20;}
+    .company-name{font-size:24px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;color:#1B5E20;}
+    .doc-title{font-size:16px;color:#444;font-weight:bold;}.print-meta{font-size:12px;color:#666;text-align:right;margin-top:10px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:30px;font-size:12px;}
+    th{border:1px solid #1B5E20;padding:10px;background-color:#A5D6A7;text-transform:uppercase;font-weight:bold;text-align:center;font-size:11px;color:#1B5E20;}
+    td{border:1px solid #8D6E63;padding:8px 10px;vertical-align:top;}
+    tbody tr:nth-child(even){background-color:#F1F8E9;}
+    .text-center{text-align:center;}.text-right{text-align:right;}
+    .totals-row td{border:2px solid #1B5E20;background-color:#A5D6A7;font-weight:bold;font-size:13px;color:#1B5E20;}
+    .summary-box{float:right;width:300px;border:2px solid #1B5E20;padding:15px;background:#F1F8E9;}
+    .summary-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;}
+    .summary-row.net{border-top:1px solid #1B5E20;padding-top:8px;font-weight:bold;font-size:16px;}
+    .clearfix::after{content:"";clear:both;display:table;}
+    @page{margin:15mm;size:A4 portrait;}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:0;}}</style>
+    </head><body>
+    <div class="header">
+      <div class="company-name">SUTANA ENTERPRISE</div>
+      <div class="doc-title">EXPENSE BOOK LEDGER</div>
+      <div class="print-meta">Period: ${dateFrom ? new Date(dateFrom).toLocaleDateString() : 'Start'} to ${dateTo ? new Date(dateTo).toLocaleDateString() : 'Current'}<br/>Printed on: ${new Date().toLocaleString('en-GB')}</div>
+    </div>
+    <table><thead><tr>
+      <th width="10%">Date</th><th width="8%">Type</th><th width="15%">Reference</th>
+      <th width="35%">Particulars</th><th width="12%">Income (In)</th><th width="12%">Out (Pay)</th><th width="12%">Net Balance</th>
+    </tr></thead><tbody>
+      ${rows.join('\n')}
+      <tr class="totals-row"><td colspan="4" class="text-right">TOTALS:</td>
+        <td class="text-right">${fmt2(totalReceipts)}</td>
+        <td class="text-right">${fmt2(totalPayments)}</td>
+        <td class="text-right"></td>
+      </tr>
+    </tbody></table>
+    <div class="clearfix">
+      <div class="summary-box">
+        <div class="summary-row"><span>Total Income:</span><span style="color:#228B22;">ETB ${fmt2(totalReceipts)}</span></div>
+        <div class="summary-row"><span>Total Payments:</span><span style="color:#F44336;">ETB ${fmt2(totalPayments)}</span></div>
+        <div class="summary-row net"><span>Net Balance:</span><span style="color:${netBalance >= 0 ? '#1B5E20' : '#F44336'};">ETB ${fmt2(netBalance)}</span></div>
+      </div>
+    </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=1100');
+    w.document.write(html); w.document.close(); w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
+  // Type badge styling
+  const typeBadge = (type) => {
+    const map = {
+      CRV: { bg: '#A5D6A7', color: '#1B5E20' },
+      PV:  { bg: '#FFEBEE', color: '#F44336' },
+      PCV: { bg: '#FFF3E0', color: '#FF9800' },
+    };
+    const s = map[type] || { bg: '#F5F5F5', color: '#424242' };
+    return { background: s.bg, color: s.color, padding: '3px 10px', fontSize: 11, fontWeight: 800, border: `1px solid ${s.color}`, whiteSpace: 'nowrap' };
+  };
 
   return (
-    <div style={{ padding: 32, background: '#f1f5f9', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+    <div className="cb-wrap">
+      <style>{G}</style>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+      <Notif n={notif} onClose={() => setNotif(null)} />
+
+      {/* Top Action Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 12, color: '#0f172a' }}>
-            <span style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', padding: 10, borderRadius: 12, display: 'flex', boxShadow: '0 4px 10px rgba(14,165,233,.3)' }}>
-              <Book color="white" size={22} />
-            </span>
-            Cashbook Master Ledger
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px', color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Book size={24} color="#228B22" /> Expense Book Ledger
           </h1>
-          <p style={{ color: '#64748b', margin: '6px 0 0', fontSize: 14 }}>Central record of all cash receipts and payments</p>
+          <p style={{ color: '#424242', margin: 0, fontSize: 14, fontWeight: 600 }}>Central record of all cash receipts and payments</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={fetchAll}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', color: '#475569', fontWeight: 600, fontSize: 13, boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
-            <RefreshCw size={15} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
+          <button className="btn-outline" onClick={fetchAll} style={{ padding: '10px 16px', fontSize: 13 }}>
+            <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
           </button>
-          <button onClick={handlePrintAll}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: '#0f172a', border: 'none', borderRadius: 10, cursor: 'pointer', color: 'white', fontWeight: 600, fontSize: 13 }}>
-            <Printer size={15} /> Print All ({filtered.length})
+          <button className="btn-green" onClick={handlePrintAll} style={{ padding: '10px 16px', fontSize: 13 }}>
+            <Printer size={14} /> Print All ({filtered.length})
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18, marginBottom: 24 }}>
-        <div style={{ background: 'white', padding: '20px 24px', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="grid-3" style={{ marginBottom: 20 }}>
+        {/* Total Receipts */}
+        <div className="cb-card" style={{ borderLeft: '4px solid #228B22' }}>
           <div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Total Receipts</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>ETB {fmt(totalReceipts)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{filtered.filter(e => e.receipts > 0).length} entries</div>
+            <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Total Receipts</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#228B22' }}>ETB {fmt(totalReceipts)}</div>
+            <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{filtered.filter(e => e.receipts > 0).length} entries</div>
           </div>
-          <div style={{ background: '#dcfce7', padding: 12, borderRadius: 12 }}><TrendingUp size={22} color="#16a34a" /></div>
-        </div>
-        <div style={{ background: 'white', padding: '20px 24px', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Total Payments</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626' }}>ETB {fmt(totalPayments)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{filtered.filter(e => e.payments > 0).length} entries</div>
+          <div style={{ background: '#A5D6A7', padding: 14, display: 'flex', alignItems: 'center' }}>
+            <TrendingUp size={24} color="#1B5E20" />
           </div>
-          <div style={{ background: '#fee2e2', padding: 12, borderRadius: 12 }}><TrendingDown size={22} color="#dc2626" /></div>
         </div>
-        <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', padding: '20px 24px', borderRadius: 16, boxShadow: '0 8px 20px rgba(15,23,42,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Total Payments */}
+        <div className="cb-card" style={{ borderLeft: '4px solid #F44336' }}>
           <div>
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Net Balance</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: totalReceipts - totalPayments >= 0 ? '#4ade80' : '#f87171' }}>
-              ETB {fmt(totalReceipts - totalPayments)}
+            <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Total Payments</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#F44336' }}>ETB {fmt(totalPayments)}</div>
+            <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{filtered.filter(e => e.payments > 0).length} entries</div>
+          </div>
+          <div style={{ background: '#FFEBEE', padding: 14, display: 'flex', alignItems: 'center' }}>
+            <TrendingDown size={24} color="#F44336" />
+          </div>
+        </div>
+        {/* Net Balance */}
+        <div className="cb-card" style={{ background: '#1B5E20', border: '1px solid #1B5E20' }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#A5D6A7', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Net Balance</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: netBalance >= 0 ? '#8BC34A' : '#FF5252' }}>
+              ETB {fmt(netBalance)}
             </div>
-            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{filtered.length} total records</div>
+            <div style={{ fontSize: 11, color: '#A5D6A7', marginTop: 2, fontWeight: 600 }}>{filtered.length} total records</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,.08)', padding: 12, borderRadius: 12 }}><DollarSign size={22} color="white" /></div>
+          <div style={{ background: 'rgba(255,255,255,0.12)', padding: 14, display: 'flex', alignItems: 'center' }}>
+            <DollarSign size={24} color="#FFFFFF" />
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ background: 'white', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 20px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,.04)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr auto', gap: 14, alignItems: 'flex-end' }}>
+      <div className="cb-filter-panel">
+        <div className="grid-4">
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>DATE FROM</label>
-            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-              onFocus={e => (e.target.style.borderColor = '#0ea5e9')} onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              style={{ width: '100%', padding: '9px 12px', border: '2px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            <label className="cb-lbl">Date From</label>
+            <input className="cb-inp" type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>DATE TO</label>
-            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
-              onFocus={e => (e.target.style.borderColor = '#0ea5e9')} onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              style={{ width: '100%', padding: '9px 12px', border: '2px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            <label className="cb-lbl">Date To</label>
+            <input className="cb-inp" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>TYPE</label>
-            <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-              onFocus={e => (e.target.style.borderColor = '#0ea5e9')} onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              style={{ width: '100%', padding: '9px 12px', border: '2px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', background: 'white', boxSizing: 'border-box' }}>
+            <label className="cb-lbl">Type</label>
+            <select className="cb-select" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
               <option value="All">All Types</option>
               <option value="CRV">Cash Receipt (CRV)</option>
               <option value="PV">Payment Voucher</option>
@@ -595,109 +625,90 @@ const FinanceCashBook = () => {
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>SEARCH</label>
+            <label className="cb-lbl">Search</label>
             <div style={{ position: 'relative' }}>
-              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Reference or description…"
-                onFocus={e => (e.target.style.borderColor = '#0ea5e9')} onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-                style={{ width: '100%', padding: '9px 12px 9px 32px', border: '2px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#8D6E63' }} />
+              <input className="cb-inp" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Reference or description…" style={{ paddingLeft: 30 }} />
             </div>
           </div>
-          <button onClick={() => { setDateFrom(''); setDateTo(''); setTypeFilter('All'); setSearch(''); setPage(1); }}
-            style={{ padding: '9px 16px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>
+          <button className="btn-reset" onClick={() => { setDateFrom(''); setDateTo(''); setTypeFilter('All'); setSearch(''); setPage(1); }} style={{ padding: '10px 16px', fontSize: 13 }}>
             Reset
           </button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: '#fef2f2', color: '#991b1b', padding: '14px 18px', borderRadius: 10, marginBottom: 18, border: '1px solid #fecaca', fontSize: 13 }}>
-          ⚠ {error}
-        </div>
-      )}
-
       {/* Table */}
-      <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', borderBottom: '2px solid #e2e8f0' }}>
-              {['Date', 'Type', 'Reference', 'Description', 'Receipts (In)', 'Payments (Out)', 'Balance', ''].map((col, i) => (
-                <th key={i} style={{ padding: '14px 16px', textAlign: ['Receipts (In)', 'Payments (Out)', 'Balance'].includes(col) ? 'right' : 'left', color: '#475569', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
-                <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />
-                Loading cashbook data…
-              </td></tr>
-            ) : paginated.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
-                <Book size={40} style={{ opacity: 0.15, margin: '0 auto 12px', display: 'block' }} />
-                {entries.length === 0 ? 'No transactions yet. Create a CRV to get started.' : 'No results match your filters.'}
-              </td></tr>
-            ) : paginated.map((entry, idx) => {
-              const isEven = idx % 2 === 0;
-              const hasRecord = (entry.type === 'CRV' || entry.type === 'PV' || entry.type === 'PCV') && recordMap[entry.reference];
-              return (
-                <tr key={entry.id} style={{ borderBottom: '1px solid #f1f5f9', background: isEven ? 'white' : '#fafbfc', transition: 'background .15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = '#f0f9ff')}
-                  onMouseOut={e => (e.currentTarget.style.background = isEven ? 'white' : '#fafbfc')}>
-                  <td style={{ padding: '13px 16px', color: '#64748b', whiteSpace: 'nowrap', fontSize: 13 }}>
-                    {new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td style={{ padding: '13px 16px' }}>
-                    <span style={{
-                      background: entry.type === 'CRV' ? '#dcfce7' : entry.type === 'PV' ? '#fee2e2' : entry.type === 'PCV' ? '#fefce8' : '#fef9c3',
-                      color: entry.type === 'CRV' ? '#15803d' : entry.type === 'PV' ? '#dc2626' : entry.type === 'PCV' ? '#a16207' : '#a16207',
-                      padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700
-                    }}>{entry.type}</span>
-                  </td>
-                  <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontWeight: 700, color: '#0ea5e9', fontSize: 12 }}>{entry.reference}</td>
-                  <td style={{ padding: '13px 16px', color: '#334155', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.description}</td>
-                  <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
-                    {entry.receipts > 0 ? `+ ${fmt(entry.receipts)}` : <span style={{ color: '#d1d5db' }}>—</span>}
-                  </td>
-                  <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>
-                    {entry.payments > 0 ? `- ${fmt(entry.payments)}` : <span style={{ color: '#d1d5db' }}>—</span>}
-                  </td>
-                  <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: entry.balance >= 0 ? '#0f172a' : '#dc2626', fontSize: 13 }}>
-                    {fmt(entry.balance)}
-                  </td>
-                  <td style={{ padding: '13px 16px', textAlign: 'center' }}>
-                    {hasRecord && (
-                      <button onClick={() => setSelectedRecord(hasRecord)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 7, cursor: 'pointer', color: '#0284c7', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        <Eye size={13} /> View
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="cb-table-wrap">
+        <div style={{ overflowX: 'auto', width: '100%' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 700 }}>
+            <thead>
+              <tr style={{ background: '#2E8B57' }}>
+                {['Date', 'Type', 'Reference', 'Description', 'Receipts (In)', 'Payments (Out)', 'Balance', ''].map((col, i) => (
+                  <th key={i} style={{ padding: '14px 16px', textAlign: ['Receipts (In)', 'Payments (Out)', 'Balance'].includes(col) ? 'right' : 'left', color: '#FFFFFF', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap', borderBottom: '2px solid #1B5E20' }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#1B5E20', fontWeight: 700 }}>
+                  <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />
+                  Loading expense book data…
+                </td></tr>
+              ) : paginated.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#1B5E20' }}>
+                  <Book size={40} style={{ opacity: 0.3, margin: '0 auto 12px', display: 'block' }} />
+                  <div style={{ fontWeight: 700 }}>{entries.length === 0 ? 'No transactions yet.' : 'No results match your filters.'}</div>
+                </td></tr>
+              ) : paginated.map((entry, idx) => {
+                const isEven = idx % 2 === 0;
+                const hasRecord = (entry.type === 'PV' || entry.type === 'PCV') && recordMap[entry.reference];
+                return (
+                  <tr key={entry.id} className="cb-tr" style={{ borderBottom: '1px solid #E0E0E0', background: isEven ? '#FFFFFF' : '#F1F8E9' }}>
+                    <td style={{ padding: '13px 16px', color: '#424242', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>
+                      {new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td style={{ padding: '13px 16px' }}>
+                      <span style={typeBadge(entry.type)}>{entry.type}</span>
+                    </td>
+                    <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontWeight: 800, color: '#228B22', fontSize: 12 }}>{entry.reference}</td>
+                    <td style={{ padding: '13px 16px', color: '#424242', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{entry.description}</td>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#228B22' }}>
+                      {entry.receipts > 0 ? `+ ${fmt(entry.receipts)}` : <span style={{ color: '#BDBDBD' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#F44336' }}>
+                      {entry.payments > 0 ? `- ${fmt(entry.payments)}` : <span style={{ color: '#BDBDBD' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 900, color: entry.balance >= 0 ? '#1B5E20' : '#F44336', fontSize: 13 }}>
+                      {fmt(entry.balance)}
+                    </td>
+                    <td style={{ padding: '13px 16px', textAlign: 'center' }}>
+                      {hasRecord && (
+                        <button className="view-btn" onClick={() => setSelectedRecord(hasRecord)}>
+                          <Eye size={13} /> View
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {filtered.length > PER_PAGE && (
-          <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
+          <div style={{ padding: '14px 20px', borderTop: '2px solid #8D6E63', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F1F8E9', flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ fontSize: 12, color: '#1B5E20', fontWeight: 700 }}>
               Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
             </span>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.4 : 1 }}>
+              <button className="pg-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 <ChevronLeft size={15} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => Math.abs(p - page) <= 2).map(p => (
-                <button key={p} onClick={() => setPage(p)}
-                  style={{ padding: '6px 11px', border: `1px solid ${p === page ? '#0ea5e9' : '#e2e8f0'}`, borderRadius: 6, background: p === page ? '#0ea5e9' : 'white', color: p === page ? 'white' : '#475569', cursor: 'pointer', fontWeight: p === page ? 700 : 400, fontSize: 13 }}>
-                  {p}
-                </button>
+                <button key={p} className={`pg-btn ${p === page ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
               ))}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer', opacity: page === totalPages ? 0.4 : 1 }}>
+              <button className="pg-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
                 <ChevronRight size={15} />
               </button>
             </div>
@@ -707,8 +718,6 @@ const FinanceCashBook = () => {
 
       {/* Document Detail Modal */}
       {selectedRecord && <DocumentModal doc={selectedRecord} onClose={() => setSelectedRecord(null)} />}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

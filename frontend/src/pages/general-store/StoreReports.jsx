@@ -353,7 +353,6 @@ const StoreReports = () => {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', width: '100%', background: `linear-gradient(160deg, #eafaea, #f0f9f0 50%, ${G.light})`, fontFamily: "'Inter',sans-serif", paddingBottom: 60 }}>
-      <DecorPlants />
       
       {/* ── HEADER ── */}
       <div style={{ position: 'relative', zIndex: 1 }}>

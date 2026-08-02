@@ -23,7 +23,7 @@ const styleString = "@keyframes floatLeaf { 0%,100% { transform: translateY(0) r
   "@keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }\n" +
   "@keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px rgba(34,139,34,0.53)); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px rgba(139,195,74,0.8)); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px rgba(135,206,235,0.8)); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px rgba(34,139,34,0.53)); transform:scale(1) rotate(0deg); } }\n" +
   ".blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }\n" +
-  ".artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }\n" +
+  
   ".artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }\n" +
   ".btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; }\n" +
   ".btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }\n" +
@@ -56,33 +56,21 @@ const styleString = "@keyframes floatLeaf { 0%,100% { transform: translateY(0) r
   ".qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }\n" +
   ".qa-card:hover::before { animation: laserSweep 0.6s ease-out; }";
 
-const GlobalStyles = () => (
-  <style dangerouslySetInnerHTML={{ __html: styleString }} />
-);
-
-const DecorPlants = () => (
-  <>
-    <GlobalStyles />
-    {[
-      { e:'🍃', sz:55, op:0.22, top:'1%',    left:'0.5%'  },
-      { e:'🌿', sz:48, op:0.18, top:'0%',    right:'0.5%' },
-      { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
-      { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
-    ].map((p,i) => (
-      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation: "floatLeaf " + (9+i*1.5) + "s ease-in-out infinite", animationDelay: (i*1.2) + "s", zIndex:0 }}>{p.e}</span>
-    ))}
-  </>
-);
 
 const CategoryBar = ({ value, max, color }) => (
   <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
     <div style={{
       height: '100%', borderRadius: 0, background: color,
-      width: (max > 0 ? Math.min(100, (value / max) * 100) : 0) + '%',
+      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
       transition: 'width 1.2s ease'
     }} />
   </div>
 );
+
+const GlobalStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: styleString }} />
+);
+
 
 const GSHome = () => {
   const [stats, setStats] = useState(null);
@@ -160,7 +148,7 @@ const GSHome = () => {
 
   return (
     <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
-      <DecorPlants />
+      <GlobalStyles />
       {/* ── HEADER ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
         <div style={{ justifySelf: 'start' }}>
@@ -174,9 +162,9 @@ const GSHome = () => {
           </p>
         </div>
         <div style={{ justifySelf: 'end' }}>
-          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
-            SYNC
+                    <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none', zIndex: 1, position: 'relative' }}>🔄</span>
+            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
         </div>
       </div>

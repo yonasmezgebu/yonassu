@@ -226,7 +226,12 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     navigate(link, { state: { bellTs: Date.now() } });
   };
 
-  useEffect(() => { load(); }, [refreshTrigger]);
+  const bellDebounce = React.useRef(null);
+  useEffect(() => {
+    if (bellDebounce.current) clearTimeout(bellDebounce.current);
+    bellDebounce.current = setTimeout(() => { load(); }, 1500);
+    return () => { if (bellDebounce.current) clearTimeout(bellDebounce.current); };
+  }, [refreshTrigger]);
 
   const ceoTotal = (ceoPending || []).reduce((s, i) => s + i.count, 0);
   const ceoNew = Math.max(0, ceoTotal - (ceoPendingSnapshot || 0));
@@ -872,17 +877,22 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     }
   }, [location.pathname, isCeoRoute, isPharmacyRoute, isPurchaseRoute, isFinanceRoute, isCarRentingRoute, notifRefresh]);
 
-  // Load page-level unread notifications matching current URL
+  // Load page-level unread notifications matching current URL (debounced to prevent loop)
+  const pageNotifDebounce = React.useRef(null);
   useEffect(() => {
-    notificationService.getMyNotificationsV2().then(all => {
-      const unread = (all || []).filter(n => {
-        if (n.isRead) return false;
-        if (!n.link) return false;
-        const link = n.link.split('?')[0];
-        return location.pathname === link || location.pathname.startsWith(link + '/');
-      });
-      setPageNotifs(unread);
-    }).catch(() => {});
+    if (pageNotifDebounce.current) clearTimeout(pageNotifDebounce.current);
+    pageNotifDebounce.current = setTimeout(() => {
+      notificationService.getMyNotificationsV2().then(all => {
+        const unread = (all || []).filter(n => {
+          if (n.isRead) return false;
+          if (!n.link) return false;
+          const link = n.link.split('?')[0];
+          return location.pathname === link || location.pathname.startsWith(link + '/');
+        });
+        setPageNotifs(unread);
+      }).catch(() => {});
+    }, 2000); // 2s debounce – collapses rapid notifRefresh bursts
+    return () => { if (pageNotifDebounce.current) clearTimeout(pageNotifDebounce.current); };
   }, [location.pathname, notifRefresh]);
 
   const markPageNotifsRead = async () => {

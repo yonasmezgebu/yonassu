@@ -4,7 +4,6 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import FinanceHome from './FinanceHome';
 
 // Cash Management
-import FinanceCRV from './FinanceCRV';
 import FinancePV from './FinancePV';
 import FinancePCV from './FinancePCV';
 import FinancePendingPCVs from './FinancePendingPCVs';
@@ -13,11 +12,13 @@ import FinanceBankAccounts from './FinanceBankAccounts';
 
 // Receivables
 import FinanceOutstandingReceivables from './FinanceOutstandingReceivables';
+import FinanceAccountsReceivable from './FinanceAccountsReceivable';
 
 // Payables
 import FinanceSuppliers from './FinanceSuppliers';
 import FinanceSupplierBills from './FinanceSupplierBills';
 import FinanceSupplierPayments from './FinanceSupplierPayments';
+import FinanceLiabilities from './FinanceLiabilities';
 
 // Procurement
 import FinanceProcurement from './FinanceProcurement';
@@ -28,6 +29,7 @@ import FinanceProfitLoss from './FinanceProfitLoss';
 import FinanceBalanceSheet from './FinanceBalanceSheet';
 import FinanceIncomeExpense from './FinanceIncomeExpense';
 import FinanceReportsHub from './FinanceReportsHub';
+import FinanceEquity from './FinanceEquity';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
 import FinancePrintingAssets from './FinancePrintingAssets';
@@ -42,20 +44,22 @@ const FinanceDashboard = () => {
   const menuItems = [
     { label: 'Dashboard', path: '/finance/overview', icon: 'home' },
     { type: 'divider' },
-    { label: 'Finance Management', icon: 'wallet',
+    { label: 'Expense', icon: 'wallet',
       children: [
-        { label: '1. Cash Receipt Voucher', path: '/finance/crv',           icon: 'credit-card',  color: '#22c55e' },
         { label: '2. Payment Voucher',      path: '/finance/pv',            icon: 'shopping-cart', color: '#f59e0b' },
         { label: '3. Petty Cash Voucher',   path: '/finance/pcv',           icon: 'wallet',        color: '#8b5cf6' },
-        { label: '4. Cash Book',            path: '/finance/cash-book',     icon: 'book',          color: '#06b6d4' },
+        { label: '4. Expense Book',         path: '/finance/cash-book',     icon: 'book',          color: '#06b6d4' },
+        { label: 'Liabillites&accounts payable', path: '/finance/liabilities',   icon: 'alert-circle',  color: '#eab308' },
       ] },
     { type: 'divider' },
     { label: 'Accounts and reconciliation', path: '/finance/bank-accounts', icon: 'building', color: '#3b82f6' },
     { type: 'divider' },
-    { label: 'Receivables', icon: 'users',
+    { label: 'Revenue', icon: 'users',
       children: [
         { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
-        { label: 'Receivables Book',             path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
+        { label: 'Revenue Book',             path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
+        { label: 'Accounts Receivable',      path: '/finance/accounts-receivable', icon: 'users', color: '#3b82f6' },
+        { label: 'Equity',                   path: '/finance/equity',         icon: 'pie-chart',   color: '#10b981' },
       ] },
     { type: 'divider' },
     { label: 'Assets', icon: 'package',
@@ -92,7 +96,6 @@ const FinanceDashboard = () => {
             <Route path="tractor-assets" element={<FinanceTractorAssets />} />
 
             {/* Cash Management */}
-            <Route path="crv" element={<FinanceCRV />} />
             <Route path="pv" element={<FinancePV />} />
             <Route path="pcv" element={<FinancePCV />} />
             <Route path="cash-book" element={<FinanceCashBook />} />
@@ -100,17 +103,20 @@ const FinanceDashboard = () => {
 
             {/* Receivables */}
             <Route path="outstanding-ar" element={<FinanceOutstandingReceivables />} />
+            <Route path="accounts-receivable" element={<FinanceAccountsReceivable />} />
 
             {/* Payables */}
             <Route path="suppliers" element={<FinanceSuppliers />} />
             <Route path="supplier-bills" element={<FinanceSupplierBills />} />
             <Route path="supplier-payments" element={<FinanceSupplierPayments />} />
+            <Route path="liabilities" element={<FinanceLiabilities />} />
 
             {/* Procurement */}
             <Route path="procurement" element={<FinanceProcurement />} />
             
-            {/* Live Income */}
+            {/* Live Income & Equity */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
+            <Route path="equity" element={<FinanceEquity />} />
 
             {/* Reports */}
             <Route path="cash-flow" element={<FinanceCashFlow />} />

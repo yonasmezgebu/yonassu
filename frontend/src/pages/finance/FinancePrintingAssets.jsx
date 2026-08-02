@@ -33,7 +33,7 @@ api.interceptors.request.use(cfg => {
 // ─── TOAST ───────────────────────────────────────────────────────────────────
 const ToastContainer = ({ toasts, remove }) => (
   <div style={{
-    position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+    position: 'fixed', top: 20, right: 20, zIndex: 9999,
     display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none',
   }}>
     {toasts.map(t => {
@@ -43,14 +43,13 @@ const ToastContainer = ({ toasts, remove }) => (
         <div key={t.id} style={{
           pointerEvents: 'all', background: bg, color: '#fff',
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: `6px 6px 0 ${G.dark}`, minWidth: 280, maxWidth: 380,
-          animation: 'toastIn .3s cubic-bezier(.175,.885,.32,1.275)',
+          minWidth: 280, maxWidth: 380,
           border: `2px solid ${G.dark}`,
         }}>
-          <Icon size={20} style={{ flexShrink: 0 }} />
+          <Icon size={18} style={{ flexShrink: 0 }} />
           <span style={{ fontWeight: 700, fontSize: 14, flex: 1, lineHeight: 1.4 }}>{t.msg}</span>
           <button onClick={() => remove(t.id)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 2 }}>
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 2, pointerEvents: 'all' }}>
             <X size={16} />
           </button>
         </div>
@@ -71,63 +70,75 @@ function useToast() {
   return { toasts, push, remove };
 }
 
-// ─── SHARED UI ───────────────────────────────────────────────────────────────
-const Btn3D = ({ children, onClick, color = G.emerald, icon: Icon, disabled, full, small }) => (
-  <button onClick={onClick} disabled={disabled}
-    style={{
-      background: color, color: '#fff', border: `2px solid ${G.dark}`,
-      padding: small ? '7px 14px' : '11px 20px',
-      fontWeight: 800, fontSize: small ? 12 : 14,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.6 : 1,
-      display: 'inline-flex', alignItems: 'center', gap: 7,
-      boxShadow: `4px 4px 0 ${G.dark}`, borderRadius: 0,
-      width: full ? '100%' : undefined, justifyContent: full ? 'center' : undefined,
-      transition: 'all .1s', userSelect: 'none',
-      whiteSpace: 'nowrap',
-    }}
-    onMouseDown={e => { if (!disabled) { e.currentTarget.style.transform = 'translate(4px,4px)'; e.currentTarget.style.boxShadow = 'none'; }}}
-    onMouseUp={e => { if (!disabled) { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${G.dark}`; }}}
-    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${G.dark}`; }}
-  >
-    {Icon && <Icon size={small ? 14 : 16} />}
-    {children}
-  </button>
-);
-
+// ─── DEPT BADGE ───────────────────────────────────────────────────────────────
 const DeptBadge = ({ dept }) => {
   const c = DEPT_COLORS[dept] || G.olive;
   return (
     <span style={{
       background: c, color: '#fff', padding: '3px 10px',
       fontSize: 11, fontWeight: 800, border: `2px solid ${G.dark}`,
-      boxShadow: `2px 2px 0 ${G.dark}`, display: 'inline-block',
+      display: 'inline-block',
     }}>{dept}</span>
   );
 };
 
-// ─── STAT CARD (3-D, sharp) ───────────────────────────────────────────────────
+// ─── FLAT BUTTON ─────────────────────────────────────────────────────────────
+const FlatBtn = ({ children, onClick, color = G.emerald, icon: Icon, disabled, full, small }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    style={{
+      background: disabled ? G.sage : color,
+      color: '#fff',
+      border: `2px solid ${G.dark}`,
+      padding: small ? '7px 14px' : '11px 20px',
+      fontWeight: 800,
+      fontSize: small ? 12 : 14,
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.7 : 1,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 7,
+      width: full ? '100%' : undefined,
+      justifyContent: full ? 'center' : undefined,
+      transition: 'background 0.2s',
+      whiteSpace: 'nowrap',
+      fontFamily: 'inherit',
+      textTransform: 'uppercase',
+    }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = G.dark; }}
+    onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = color; }}
+  >
+    {Icon && <Icon size={small ? 14 : 16} />}
+    {children}
+  </button>
+);
+
+// ─── STAT CARD ───────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color, Icon, sub }) => (
   <div style={{
-    background: '#fff', border: `3px solid ${G.dark}`,
-    boxShadow: `6px 6px 0 ${G.dark}`, padding: '22px 24px',
-    flex: '1 1 220px', minWidth: 0,
+    background: '#fff',
+    border: `2px solid ${G.dark}`,
+    padding: '20px 22px',
     display: 'flex', flexDirection: 'column', gap: 8,
-    animation: 'cardIn .4s ease-out',
-  }}>
+    transition: 'background 0.2s',
+  }}
+    onMouseEnter={e => e.currentTarget.style.background = '#F1F8E9'}
+    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+  >
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <div style={{ background: color, padding: 10, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
-        <Icon size={22} color="#fff" />
+      <div style={{ background: color, padding: 10, border: `2px solid ${G.dark}`, display: 'flex' }}>
+        <Icon size={20} color="#fff" />
       </div>
       {sub && <span style={{ fontSize: 11, color: G.olive, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{sub}</span>}
     </div>
-    <div style={{ fontSize: 26, fontWeight: 900, color: G.dark, lineHeight: 1.1, marginTop: 6 }}>
+    <div style={{ fontSize: 24, fontWeight: 900, color: G.dark, lineHeight: 1.1, marginTop: 4 }}>
       {value ?? '—'}
     </div>
-    <div style={{ fontSize: 12, color: G.darkGray, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8 }}>
+    <div style={{ fontSize: 12, color: G.darkGray, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
       {label}
     </div>
-    <div style={{ height: 4, background: color, marginTop: 4, boxShadow: `2px 2px 0 ${G.dark}` }} />
+    <div style={{ height: 3, background: color, marginTop: 2 }} />
   </div>
 );
 
@@ -170,42 +181,58 @@ const StoreMaterialsTab = ({ toast }) => {
   return (
     <div>
       {/* Filter Row */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20, padding: '16px 20px', background: G.lightGray, border: `2px solid ${G.sage}`, borderLeft: `6px solid ${G.forest}` }}>
-        <Filter size={16} color={G.olive} />
+      <div style={{
+        display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
+        marginBottom: 18, padding: '14px 18px',
+        background: G.lightGray, border: `2px solid ${G.dark}`,
+        borderLeft: `6px solid ${G.forest}`,
+      }}>
+        <Filter size={15} color={G.olive} />
         <span style={{ fontSize: 12, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 1 }}>Department:</span>
         <div style={{ position: 'relative' }}>
           <select
             value={dept} onChange={e => setDept(e.target.value)}
-            style={{ padding: '8px 36px 8px 12px', border: `2px solid ${G.dark}`, background: '#fff', fontSize: 13, fontWeight: 700, appearance: 'none', cursor: 'pointer', outline: 'none', color: G.darkGray }}
+            style={{
+              padding: '8px 36px 8px 12px', border: `2px solid ${G.dark}`,
+              background: '#fff', fontSize: 13, fontWeight: 700,
+              appearance: 'none', cursor: 'pointer', outline: 'none',
+              color: G.darkGray, fontFamily: 'inherit',
+            }}
           >
             <option value="">All Departments</option>
             {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
           </select>
-          <ChevronDown size={14} color={G.dark} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <ChevronDown size={13} color={G.dark} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
-        <Btn3D small icon={RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
+        <FlatBtn small icon={RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
           {loading ? 'Loading…' : 'Refresh'}
-        </Btn3D>
+        </FlatBtn>
         {grandTotal > 0 && (
-          <div style={{ marginLeft: 'auto', fontWeight: 900, fontSize: 15, color: G.forest, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <TrendingUp size={16} /> Grand Total: ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          <div style={{ marginLeft: 'auto', fontWeight: 900, fontSize: 14, color: G.forest, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <TrendingUp size={15} /> Grand Total: ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
         )}
       </div>
 
       {loading && materials.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 80, color: G.olive, fontWeight: 800, fontSize: 18 }}>Loading materials…</div>
+        <div style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>
+          Loading materials…
+        </div>
       ) : materials.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 80, color: G.sage, fontWeight: 800, fontSize: 16, border: `3px dashed ${G.sage}` }}>
+        <div style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
           No materials found{dept ? ` for "${dept}"` : ''}.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
+        <div style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 }}>
             <thead>
-              <tr style={{ background: G.dark, color: '#fff' }}>
+              <tr style={{ background: G.dark }}>
                 {['ID', 'Item Name', 'Category', 'Department', 'Qty in Store', 'Unit', 'Unit Value (ETB)', 'Total Value (ETB)', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 900, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, whiteSpace: 'nowrap', borderBottom: `4px solid ${G.forest}` }}>{h}</th>
+                  <th key={h} style={{
+                    padding: '14px 16px', textAlign: 'left', fontWeight: 900, textTransform: 'uppercase',
+                    fontSize: 11, letterSpacing: 1, whiteSpace: 'nowrap', color: '#fff',
+                    border: `1px solid ${G.forest}`,
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -214,17 +241,17 @@ const StoreMaterialsTab = ({ toast }) => {
                 const isDirty = editing[m.id] !== undefined;
                 return (
                   <tr key={m.id}
-                    style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `2px solid ${G.lightGray}`, transition: 'background .15s' }}
+                    style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `1px solid ${G.sage}`, transition: 'background .15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#e8f5e9'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f4fbf4'}
                   >
-                    <td style={{ padding: '11px 16px', fontWeight: 900, color: G.emerald, whiteSpace: 'nowrap' }}>{m.material_id}</td>
-                    <td style={{ padding: '11px 16px', fontWeight: 700, color: G.dark }}>{m.material_name}</td>
-                    <td style={{ padding: '11px 16px', color: G.darkGray }}>{m.category}</td>
-                    <td style={{ padding: '11px 16px' }}><DeptBadge dept={m.department} /></td>
-                    <td style={{ padding: '11px 16px', fontWeight: 700, color: G.dark }}>{parseFloat(m.quantity_in_store).toLocaleString()}</td>
-                    <td style={{ padding: '11px 16px', color: G.darkGray }}>{m.unit}</td>
-                    <td style={{ padding: '11px 16px' }}>
+                    <td style={{ padding: '11px 16px', fontWeight: 900, color: G.emerald, whiteSpace: 'nowrap', border: `1px solid ${G.sage}` }}>{m.material_id}</td>
+                    <td style={{ padding: '11px 16px', fontWeight: 700, color: G.dark, border: `1px solid ${G.sage}` }}>{m.material_name}</td>
+                    <td style={{ padding: '11px 16px', color: G.darkGray, border: `1px solid ${G.sage}` }}>{m.category}</td>
+                    <td style={{ padding: '11px 16px', border: `1px solid ${G.sage}` }}><DeptBadge dept={m.department} /></td>
+                    <td style={{ padding: '11px 16px', fontWeight: 700, color: G.dark, border: `1px solid ${G.sage}` }}>{parseFloat(m.quantity_in_store).toLocaleString()}</td>
+                    <td style={{ padding: '11px 16px', color: G.darkGray, border: `1px solid ${G.sage}` }}>{m.unit}</td>
+                    <td style={{ padding: '11px 16px', border: `1px solid ${G.sage}` }}>
                       <input
                         type="number" min="0" step="0.01"
                         value={isDirty ? editing[m.id] : (m.unit_value || '')}
@@ -235,18 +262,18 @@ const StoreMaterialsTab = ({ toast }) => {
                           border: `2px solid ${isDirty ? G.forest : G.sage}`,
                           background: isDirty ? '#f0fdf0' : '#fff',
                           fontSize: 13, fontWeight: 700, outline: 'none',
-                          boxShadow: isDirty ? `2px 2px 0 ${G.forest}` : 'none',
+                          fontFamily: 'inherit',
                         }}
                       />
                     </td>
-                    <td style={{ padding: '11px 16px', fontWeight: 900, color: G.forest, whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 16px', fontWeight: 900, color: G.forest, whiteSpace: 'nowrap', border: `1px solid ${G.sage}` }}>
                       ETB {parseFloat(m.total_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
-                    <td style={{ padding: '11px 16px' }}>
+                    <td style={{ padding: '11px 16px', border: `1px solid ${G.sage}` }}>
                       {isDirty && (
-                        <Btn3D small icon={Save} color={G.forest} disabled={saving[m.id]} onClick={() => saveValue(m.id)}>
+                        <FlatBtn small icon={Save} color={G.forest} disabled={saving[m.id]} onClick={() => saveValue(m.id)}>
                           {saving[m.id] ? 'Saving…' : 'Save'}
-                        </Btn3D>
+                        </FlatBtn>
                       )}
                     </td>
                   </tr>
@@ -254,14 +281,14 @@ const StoreMaterialsTab = ({ toast }) => {
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: G.dark, color: '#fff' }}>
-                <td colSpan={7} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>
+              <tr style={{ background: G.dark }}>
+                <td colSpan={7} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: '#fff', border: `1px solid ${G.forest}` }}>
                   Grand Total — {materials.length} Item{materials.length !== 1 ? 's' : ''}
                 </td>
-                <td style={{ padding: '14px 16px', fontWeight: 900, fontSize: 16, color: '#98FF98', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '14px 16px', fontWeight: 900, fontSize: 15, color: G.mint, whiteSpace: 'nowrap', border: `1px solid ${G.forest}` }}>
                   ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </td>
-                <td />
+                <td style={{ border: `1px solid ${G.forest}` }} />
               </tr>
             </tfoot>
           </table>
@@ -306,38 +333,46 @@ const PrintingMachinesTab = ({ toast }) => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20, padding: '16px 20px', background: G.lightGray, border: `2px solid ${G.sage}`, borderLeft: `6px solid ${G.brown}` }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        flexWrap: 'wrap', gap: 12, marginBottom: 18, padding: '14px 18px',
+        background: G.lightGray, border: `2px solid ${G.dark}`, borderLeft: `6px solid ${G.brown}`,
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Printer size={18} color={G.brown} />
+          <Printer size={16} color={G.brown} />
           <span style={{ fontSize: 13, color: G.dark, fontWeight: 700 }}>
             Finance sets the internal book value for each registered machine.
           </span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {grandTotal > 0 && (
-            <div style={{ fontWeight: 900, fontSize: 15, color: G.forest, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <TrendingUp size={16} /> Total: ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <div style={{ fontWeight: 900, fontSize: 14, color: G.forest, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <TrendingUp size={15} /> Total: ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
           )}
-          <Btn3D small icon={RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
+          <FlatBtn small icon={RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
-          </Btn3D>
+          </FlatBtn>
         </div>
       </div>
 
       {loading && machines.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 80, color: G.olive, fontWeight: 800, fontSize: 18 }}>Loading machines…</div>
+        <div style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>Loading machines…</div>
       ) : machines.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 80, color: G.sage, fontWeight: 800, fontSize: 16, border: `3px dashed ${G.sage}` }}>
+        <div style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
           No printing machines registered yet.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
+        <div style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
             <thead>
-              <tr style={{ background: G.dark, color: '#fff' }}>
+              <tr style={{ background: G.dark }}>
                 {['Machine ID', 'Name', 'Model / Serial', 'Department', 'Status', 'Internal Book Value (ETB)', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 900, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, whiteSpace: 'nowrap', borderBottom: `4px solid ${G.forest}` }}>{h}</th>
+                  <th key={h} style={{
+                    padding: '14px 16px', textAlign: 'left', fontWeight: 900, textTransform: 'uppercase',
+                    fontSize: 11, letterSpacing: 1, whiteSpace: 'nowrap', color: '#fff',
+                    border: `1px solid ${G.forest}`,
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -349,20 +384,20 @@ const PrintingMachinesTab = ({ toast }) => {
                   : m.status === 'Idle in Production' ? G.orange : G.olive;
                 return (
                   <tr key={m.id}
-                    style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `2px solid ${G.lightGray}`, transition: 'background .15s' }}
+                    style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `1px solid ${G.sage}`, transition: 'background .15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#e8f5e9'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f4fbf4'}
                   >
-                    <td style={{ padding: '12px 16px', fontWeight: 900, color: G.emerald, whiteSpace: 'nowrap' }}>{m.machine_id}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: G.dark }}>{m.machine_name}</td>
-                    <td style={{ padding: '12px 16px', color: G.darkGray }}>{m.model_serial || '—'}</td>
-                    <td style={{ padding: '12px 16px' }}><DeptBadge dept={m.department || 'Printing'} /></td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: statusColor, color: '#fff', padding: '4px 10px', fontSize: 11, fontWeight: 800, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, display: 'inline-block' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 900, color: G.emerald, whiteSpace: 'nowrap', border: `1px solid ${G.sage}` }}>{m.machine_id}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: G.dark, border: `1px solid ${G.sage}` }}>{m.machine_name}</td>
+                    <td style={{ padding: '12px 16px', color: G.darkGray, border: `1px solid ${G.sage}` }}>{m.model_serial || '—'}</td>
+                    <td style={{ padding: '12px 16px', border: `1px solid ${G.sage}` }}><DeptBadge dept={m.department || 'Printing'} /></td>
+                    <td style={{ padding: '12px 16px', border: `1px solid ${G.sage}` }}>
+                      <span style={{ background: statusColor, color: '#fff', padding: '4px 10px', fontSize: 11, fontWeight: 800, border: `2px solid ${G.dark}`, display: 'inline-block' }}>
                         {m.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td style={{ padding: '12px 16px', border: `1px solid ${G.sage}` }}>
                       <input
                         type="number" min="0" step="0.01"
                         value={isDirty ? editing[m.id] : (m.internal_value || '')}
@@ -373,15 +408,15 @@ const PrintingMachinesTab = ({ toast }) => {
                           border: `2px solid ${isDirty ? G.forest : G.sage}`,
                           background: isDirty ? '#f0fdf0' : '#fff',
                           fontSize: 13, fontWeight: 700, outline: 'none',
-                          boxShadow: isDirty ? `2px 2px 0 ${G.forest}` : 'none',
+                          fontFamily: 'inherit',
                         }}
                       />
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td style={{ padding: '12px 16px', border: `1px solid ${G.sage}` }}>
                       {isDirty && (
-                        <Btn3D small icon={Save} color={G.forest} disabled={saving[m.id]} onClick={() => saveValue(m.id)}>
+                        <FlatBtn small icon={Save} color={G.forest} disabled={saving[m.id]} onClick={() => saveValue(m.id)}>
                           {saving[m.id] ? 'Saving…' : 'Save'}
-                        </Btn3D>
+                        </FlatBtn>
                       )}
                     </td>
                   </tr>
@@ -389,14 +424,14 @@ const PrintingMachinesTab = ({ toast }) => {
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: G.dark, color: '#fff' }}>
-                <td colSpan={5} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>
+              <tr style={{ background: G.dark }}>
+                <td colSpan={5} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: '#fff', border: `1px solid ${G.forest}` }}>
                   Total Book Value — {machines.length} Machine{machines.length !== 1 ? 's' : ''}
                 </td>
-                <td style={{ padding: '14px 16px', fontWeight: 900, fontSize: 16, color: '#98FF98', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '14px 16px', fontWeight: 900, fontSize: 15, color: G.mint, whiteSpace: 'nowrap', border: `1px solid ${G.forest}` }}>
                   ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </td>
-                <td />
+                <td style={{ border: `1px solid ${G.forest}` }} />
               </tr>
             </tfoot>
           </table>
@@ -425,87 +460,103 @@ const FinancePrintingAssets = () => {
   useEffect(() => { loadStats(); }, [loadStats]);
 
   const TABS = [
-    { id: 'materials', label: 'Consumables',     icon: Package,    color: G.forest  },
-    { id: 'machines',  label: 'Fixed Assets',    icon: Printer,    color: G.brown   },
+    { id: 'materials', label: 'Consumables',  icon: Package, color: G.forest },
+    { id: 'machines',  label: 'Fixed Assets', icon: Printer, color: G.brown  },
   ];
 
-  // Stat cards data
   const CARDS = stats ? [
-    { label: 'Total Consumable Lines',  value: stats.totalMaterials, Icon: Package,    color: G.lime,    sub: 'Items' },
+    { label: 'Total Consumable Lines',  value: stats.totalMaterials, Icon: Package,    color: G.lime,    sub: 'Items'     },
     { label: 'Total Consumable Value',  value: `ETB ${parseFloat(stats.totalMaterialValue || 0).toLocaleString()}`, Icon: DollarSign, color: G.emerald, sub: 'Value' },
-    { label: 'Printing Machines',       value: stats.totalMachines,  Icon: Printer,    color: G.forest,  sub: 'Assets' },
+    { label: 'Printing Machines',       value: stats.totalMachines,  Icon: Printer,    color: G.forest,  sub: 'Assets'    },
     { label: 'Machine Book Value',      value: `ETB ${parseFloat(stats.totalMachineValue  || 0).toLocaleString()}`, Icon: TrendingUp, color: G.brown,   sub: 'Book Val.' },
-    { label: 'Machines In Store',       value: stats.machinesInStore,        Icon: Home,       color: G.olive,   sub: 'In Store' },
-    { label: 'Machines In Production',  value: stats.machinesInProduction,   Icon: Settings2,  color: G.sky,     sub: 'Active' },
+    { label: 'Machines In Store',       value: stats.machinesInStore,       Icon: Home,      color: G.olive,   sub: 'In Store'  },
+    { label: 'Machines In Production',  value: stats.machinesInProduction,  Icon: Settings2, color: G.sky,     sub: 'Active'    },
   ] : [];
 
   return (
-    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", padding: '0 0 60px 0' }}>
+    <div style={{ background: '#FFFFFF', minHeight: '100vh', width: '100%', fontFamily: "'Inter','Segoe UI',sans-serif", boxSizing: 'border-box' }}>
 
-      {/* ── KEYFRAMES ── */}
       <style>{`
-        @keyframes toastIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes cardIn  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes spin    { 100% { transform: rotate(360deg); } }
-        .spin-anim { animation: spin 1s linear infinite; }
+        @keyframes gsv-spin { 100% { transform: rotate(360deg); } }
+        .gsv-spin { animation: gsv-spin 1s linear infinite; }
+        * { box-sizing: border-box; }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-          .stat-grid  { grid-template-columns: 1fr 1fr !important; }
-          .tab-row    { flex-direction: column !important; }
-          .tab-btn    { width: 100% !important; }
-          .page-header h1 { font-size: 20px !important; }
-          .page-header p  { font-size: 13px !important; }
+        .gsv-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 20px;
         }
-        @media (max-width: 480px) {
-          .stat-grid  { grid-template-columns: 1fr !important; }
+        .gsv-tab-row {
+          display: flex;
+          gap: 0;
+          margin-bottom: 20px;
+        }
+        .gsv-tab-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 20px;
+          border: 2px solid #1B5E20;
+          font-weight: 900;
+          font-size: 14px;
+          cursor: pointer;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          transition: background 0.2s, color 0.2s;
+          font-family: inherit;
+        }
+        .gsv-tab-btn:not(:last-child) {
+          border-right: none;
+        }
+
+        @media (max-width: 900px) {
+          .gsv-stat-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+          .gsv-stat-grid { grid-template-columns: 1fr; }
+          .gsv-tab-row { flex-direction: column; }
+          .gsv-tab-btn:not(:last-child) { border-right: 2px solid #1B5E20; border-bottom: none; }
         }
       `}</style>
 
-      {/* ── FULL-WIDTH HEADER ── */}
-      <div style={{
-        background: `linear-gradient(90deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`,
-        padding: '28px 40px', color: '#fff',
-        boxShadow: `0 8px 32px ${G.dark}66`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
-      }} className="page-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-            <div style={{ background: G.mint, padding: 8, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
-              <DollarSign size={28} color={G.dark} />
+      {/* ── CONTENT WRAPPER ── */}
+      <div style={{ padding: '20px 24px', boxSizing: 'border-box' }}>
+
+        {/* ── PAGE HEADER ── */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 14, marginBottom: 20,
+          paddingBottom: 14, borderBottom: `2px solid ${G.dark}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ background: G.forest, padding: '10px 12px', display: 'flex', border: `2px solid ${G.dark}` }}>
+              <DollarSign size={22} color="#fff" />
             </div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: -.5 }}>
-              General Store — Asset Valuation
-            </h1>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: G.dark, letterSpacing: -0.5 }}>
+                General Store — Asset Valuation
+              </div>
+              <div style={{ fontSize: 13, color: G.darkGray, marginTop: 2, fontWeight: 500 }}>
+                Finance sets internal unit values for all consumables &amp; fixed assets across departments.
+              </div>
+            </div>
           </div>
-          <p style={{ margin: '0 0 0 52px', opacity: .85, fontSize: 14, lineHeight: 1.5 }}>
-            Finance sets internal unit values for all consumables &amp; fixed assets across departments.
-          </p>
+          <FlatBtn icon={RefreshCw} color={G.emerald} onClick={loadStats} disabled={statsLoading}>
+            {statsLoading ? 'Loading…' : 'Refresh Stats'}
+          </FlatBtn>
         </div>
-        <button
-          onClick={loadStats}
-          disabled={statsLoading}
-          style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.4)`, color: '#fff', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13 }}
-        >
-          <RefreshCw size={16} className={statsLoading ? 'spin-anim' : ''} />
-          Refresh Stats
-        </button>
-      </div>
 
-      <div style={{ padding: '32px 40px 0' }}>
-
-        {/* ── STAT CARDS — 2×3 responsive grid ── */}
+        {/* ── STAT CARDS ── */}
         {statsLoading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: G.olive, fontWeight: 800, fontSize: 16 }}>
+          <div style={{ textAlign: 'center', padding: 40, color: G.olive, fontWeight: 800, fontSize: 15 }}>
+            <RefreshCw size={28} className="gsv-spin" style={{ display: 'block', margin: '0 auto 12px', color: G.forest }} />
             Loading stats…
           </div>
         ) : (
-          <div className="stat-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 20, marginBottom: 32,
-          }}>
+          <div className="gsv-stat-grid">
             {CARDS.map((c, i) => (
               <StatCard key={i} label={c.label} value={c.value} color={c.color} Icon={c.Icon} sub={c.sub} />
             ))}
@@ -514,11 +565,12 @@ const FinancePrintingAssets = () => {
 
         {/* ── INFO BANNER ── */}
         <div style={{
-          background: '#fff', border: `3px solid ${G.dark}`, borderLeft: `8px solid ${G.sky}`,
-          boxShadow: `4px 4px 0 ${G.dark}`, padding: '14px 20px',
-          display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap',
+          background: '#E3F2FD', border: `2px solid ${G.sky}`,
+          borderLeft: `6px solid ${G.sky}`,
+          padding: '12px 18px', display: 'flex', gap: 10, alignItems: 'flex-start',
+          marginBottom: 20, flexWrap: 'wrap',
         }}>
-          <Info size={20} color={G.sky} style={{ flexShrink: 0, marginTop: 2 }} />
+          <Info size={18} color={G.sky} style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ fontSize: 13, color: G.dark, lineHeight: 1.6 }}>
             <strong>Departments served:</strong> Printing · Car Rental · AgriRent · Sales · Retail · IT · Maintenance.
             &nbsp;Use the department filter in the Consumables tab to scope work.
@@ -526,37 +578,25 @@ const FinancePrintingAssets = () => {
           </div>
         </div>
 
-        {/* ── STRETCHED TAB BUTTONS (2 per row, full-width each) ── */}
-        <div className="tab-row" style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
-          {TABS.map((t, idx) => {
+        {/* ── TAB BUTTONS ── */}
+        <div className="gsv-tab-row">
+          {TABS.map(t => {
             const active = tab === t.id;
             return (
-              <button key={t.id} className="tab-btn"
+              <button key={t.id} className="gsv-tab-btn"
                 onClick={() => setTab(t.id)}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  padding: '16px 24px', border: `3px solid ${G.dark}`,
-                  borderRight: idx < TABS.length - 1 ? 'none' : `3px solid ${G.dark}`,
                   background: active ? G.dark : '#fff',
                   color: active ? '#fff' : G.darkGray,
-                  fontWeight: 900, fontSize: 15, cursor: 'pointer',
-                  boxShadow: active ? `0 6px 0 ${G.forest}` : 'none',
-                  transform: active ? 'translateY(-3px)' : 'translateY(0)',
-                  transition: 'all .2s',
-                  position: 'relative',
-                  zIndex: active ? 2 : 1,
-                  textTransform: 'uppercase', letterSpacing: 1,
+                  borderColor: G.dark,
                 }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = G.lightGray; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = '#fff'; }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = G.lightGray; } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = '#fff'; } }}
               >
-                <t.icon size={18} color={active ? '#fff' : t.color} />
+                <t.icon size={17} color={active ? '#fff' : t.color} />
                 {t.label}
                 {active && (
-                  <div style={{
-                    position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)',
-                    width: 40, height: 6, background: G.leaf,
-                  }} />
+                  <div style={{ width: 6, height: 6, background: G.leaf, borderRadius: '50%' }} />
                 )}
               </button>
             );
@@ -564,25 +604,18 @@ const FinancePrintingAssets = () => {
         </div>
 
         {/* ── TAB CONTENT PANEL ── */}
-        <div style={{
-          background: '#fff', border: `3px solid ${G.dark}`,
-          boxShadow: `6px 6px 0 ${G.dark}`, padding: '28px 28px',
-          animation: 'fadeIn .25s ease-out',
-        }}>
-          {/* Panel header */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            paddingBottom: 18, marginBottom: 24,
-            borderBottom: `3px solid ${G.sage}`,
-          }}>
-            <div style={{ background: tab === 'materials' ? G.forest : G.brown, padding: 8, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
-              {tab === 'materials' ? <Package size={20} color="#fff" /> : <Printer size={20} color="#fff" />}
+        <div style={{ background: '#fff', border: `2px solid ${G.dark}`, padding: '24px' }}>
+
+          {/* Panel sub-header — only a small label, NOT a bold full-width container header (rule 16) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 12, borderBottom: `2px solid ${G.sage}` }}>
+            <div style={{ background: tab === 'materials' ? G.forest : G.brown, padding: 8, border: `2px solid ${G.dark}` }}>
+              {tab === 'materials' ? <Package size={18} color="#fff" /> : <Printer size={18} color="#fff" />}
             </div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: G.dark }}>
-                {tab === 'materials' ? 'Consumables — Unit Cost Valuation' : 'Printing Machines — Fixed Asset Book Value'}
+              <div style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>
+                {tab === 'materials' ? 'Consumables — Unit Cost Valuation' : 'Fixed Assets — Book Value'}
               </div>
-              <div style={{ fontSize: 12, color: G.olive, fontWeight: 700, marginTop: 2, textTransform: 'uppercase', letterSpacing: .8 }}>
+              <div style={{ fontSize: 11, color: G.olive, fontWeight: 700, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8 }}>
                 {tab === 'materials' ? 'All Departments' : 'Finance — Internal Appraisal'}
               </div>
             </div>
@@ -593,6 +626,7 @@ const FinancePrintingAssets = () => {
             : <PrintingMachinesTab toast={push} />
           }
         </div>
+
       </div>
 
       <ToastContainer toasts={toasts} remove={remove} />
