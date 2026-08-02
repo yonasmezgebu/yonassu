@@ -117,6 +117,17 @@ const steps = [
 export function GettingStartedSection() {
   return (
     <section style={{ background: '#F5F5F5', padding: '80px 0', width: '100%' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .gs-card {
+            border-top: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            border-radius: 0 !important;
+            border-left: 2px solid #8D6E63 !important;
+          }
+        }
+      `}</style>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>Getting Started</h2>
@@ -128,6 +139,7 @@ export function GettingStartedSection() {
             return (
               <div 
                 key={i} 
+                className="gs-card"
                 style={{ 
                   background: '#FFFFFF', padding: '36px 28px', textAlign: 'center', cursor: 'default',
                   border: '1px solid #8D6E63', borderRadius: 12,
@@ -173,6 +185,20 @@ const benefits = [
 export function WhySutanaSection() {
   return (
     <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .ws-card {
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-radius: 0 !important;
+            padding: 24px 0 !important;
+          }
+          .ws-card:last-child {
+            border-bottom: none !important;
+          }
+        }
+      `}</style>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
 
         {/* Section Header — plain bg + colored text only, no banner box */}
@@ -195,6 +221,7 @@ export function WhySutanaSection() {
               return (
                 <div
                   key={i}
+                  className="ws-card"
                   style={{
                     display: 'flex', gap: 18, padding: '22px 20px',
                     background: '#FFFFFF', border: '1px solid #8D6E63', borderRadius: 12,
@@ -396,21 +423,56 @@ export function SmartFooter() {
   };
 
   return (
-    <footer style={{ background: '#1B5E20', color: '#FFFFFF', width: '100%' }}>
+    <footer className="smart-footer-wrapper" style={{ background: '#1B5E20', color: '#FFFFFF', width: '100%' }}>
+      <style>{`
+        .sf-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 60px 40px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+        .sf-socials { display: flex; gap: 12px; flex-wrap: wrap; }
+        .sf-contact-list { display: flex; flex-direction: column; gap: 16px; font-size: 0.95rem; color: #FFFFFF; }
+        .sf-contact-item { display: flex; gap: 12px; align-items: flex-start; }
+        
+        @media (min-width: 769px) {
+          .sf-col {
+            padding: 0 32px;
+            border-right: 1px solid rgba(255,255,255,0.15);
+          }
+          .sf-col:first-child { padding-left: 0; }
+          .sf-col:last-child { padding-right: 0; border-right: none; }
+        }
+
+        @media (max-width: 768px) {
+          .sf-container {
+            padding: 40px 20px;
+            gap: 28px;
+            text-align: center;
+          }
+          .sf-col {
+            padding-bottom: 28px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+          }
+          .sf-col:last-child { border-bottom: none; padding-bottom: 0; }
+          .sf-socials { justify-content: center; }
+          .sf-contact-list { align-items: center; }
+          .sf-contact-item { justify-content: center; text-align: center; flex-direction: column; align-items: center; gap: 6px; }
+        }
+      `}</style>
+      
       {/* 4 Columns Container */}
-      <div style={{
-        maxWidth: 1200, margin: '0 auto', padding: '60px 40px',
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '40px'
-      }}>
+      <div className="sf-container">
         
         {/* Column 1: Brand & Social */}
-        <div>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '16px' }}>SUTANA</h3>
+        <div className="sf-col">
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '16px', color: '#FFFFFF' }}>SUTANA</h3>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px', color: '#FFFFFF' }}>
             Modern Enterprise Management for Ethiopia's growing businesses. Built locally. Trusted widely.
           </p>
           {socialLinks.length > 0 && (
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="sf-socials">
               {socialLinks.filter(l => l.is_active).map(link => (
                 <a
                   key={link.platform}
@@ -435,7 +497,7 @@ export function SmartFooter() {
         </div>
 
         {/* Column 2: Quick Links */}
-        <div>
+        <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Quick Links</h4>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {['About', 'Admissions', 'Academics', 'Contact Us'].map((label, i) => (
@@ -452,18 +514,18 @@ export function SmartFooter() {
         </div>
 
         {/* Column 3: Contact Info */}
-        <div>
+        <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.95rem', color: '#FFFFFF' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+          <div className="sf-contact-list">
+            <div className="sf-contact-item">
               <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
               <span style={{ lineHeight: 1.5 }}>Injibara, Awi Zone<br />Amhara Region, Ethiopia</span>
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div className="sf-contact-item">
               <Phone size={18} style={{ flexShrink: 0 }} />
               <span>+251 911 234 567</span>
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div className="sf-contact-item">
               <Mail size={18} style={{ flexShrink: 0 }} />
               <span>info@sutana.com</span>
             </div>
@@ -471,7 +533,7 @@ export function SmartFooter() {
         </div>
 
         {/* Column 4: Newsletter */}
-        <div>
+        <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Newsletter</h4>
           <p style={{ fontSize: '0.9rem', marginBottom: '16px', color: '#FFFFFF', lineHeight: 1.5 }}>
             Subscribe to get the latest updates and news.
@@ -549,11 +611,23 @@ export function SmartFooter() {
 
 export function CTASection() {
   return (
-    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+    <section className="cta-wrapper" style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .cta-wrapper { padding: 40px 0 !important; }
+          .cta-container { padding: 0 16px !important; }
+          .cta-card {
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 48px 24px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+          }
+        }
+      `}</style>
+      <div className="cta-container" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
 
         {/* Inner card — White with Earth Brown border, 12px radius */}
-        <div style={{
+        <div className="cta-card" style={{
           background: '#F5F5F5',
           border: '1px solid #8D6E63',
           borderRadius: 12,
