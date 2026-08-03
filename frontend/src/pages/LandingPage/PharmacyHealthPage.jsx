@@ -6,6 +6,10 @@ import pharmacyService from '../../services/pharmacyService';
 import axios from '../../services/apiClient';
 import { Search, Pill, XCircle, AlertTriangle, CheckCircle2, MapPin, Package, UploadCloud, X, ShoppingCart, Zap, ChevronDown, ChevronUp, Phone, Clock, Star, Shield, Award, Truck, CreditCard, FileText, Users, HelpCircle, AlertCircle, Heart } from 'lucide-react';
 import pharmacyHero from '../../assets/hero-section/pharmacy.jpg';
+import licFikerte from '../../assets/license_fikerte.jpg';
+import licAbebe from '../../assets/license_abebe.jpg';
+import licMeron from '../../assets/license_meron.jpg';
+import licDawit from '../../assets/license_dawit.jpg';
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -124,25 +128,29 @@ const STYLES = `
   gap: 24px;
 }
 .php-card {
-  background: white; border-radius: 0; overflow: hidden;
-  border: 1px solid #e4e6ea; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  background: white; border-radius: 12px; overflow: hidden;
+  border: 1px solid #8D6E63; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  cursor: pointer; transition: all 0.15s ease;
   display: flex; flex-direction: column;
-  animation: fadeUp 0.4s both;
+  animation: fadeUp 0.15s both;
 }
-.php-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.1); transform: translateY(-4px); border-color: #bbf7d0; }
+.php-card:hover { 
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
+  transform: translateY(-1px); 
+}
 .php-card-img-wrap {
   position: relative; overflow: hidden; aspect-ratio: 4/3;
   background: linear-gradient(135deg, #ecfdf5, #d1fae5);
   display: flex; align-items: stretch; justify-content: center;
 }
-.php-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; cursor: pointer; }
-.php-card:hover .php-card-img { transform: scale(1.06); }
+.php-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.15s ease; cursor: pointer; border-radius: 10px 10px 0 0; }
+.php-card:hover .php-card-img { transform: scale(1.03); }
 .php-card-badge {
   position: absolute; top: 12px; left: 12px;
   background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
-  padding: 4px 12px; border-radius: 0;
-  font-size: 11px; font-weight: 700; color: #0f172a; letter-spacing: 0.3px;
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; color: #424242; letter-spacing: 0.3px;
+  border: 1px solid #8D6E63;
 }
 .php-card-oos {
   position: absolute; inset: 0; background: rgba(0,0,0,0.45);
@@ -151,28 +159,32 @@ const STYLES = `
 }
 .php-card-rx {
   position: absolute; top: 12px; right: 12px;
-  background: rgba(239,68,68,0.9); color: white;
-  padding: 3px 10px; border-radius: 0;
+  background: #F44336; color: white;
+  padding: 3px 10px; border-radius: 6px;
   font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
 }
 .php-card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
-.php-card-name { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 4px; line-height: 1.4; }
+.php-card-name { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 4px; line-height: 1.4; }
 .php-card-generic { font-size: 12px; color: #64748b; margin: 0 0 8px; font-style: italic; }
-.php-card-desc { font-size: 12px; color: #64748b; margin: 0 0 8px; line-height: 1.5; flex: 1; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.php-card-desc { font-size: 12px; color: #424242; margin: 0 0 8px; line-height: 1.5; flex: 1; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .php-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.php-price { font-size: 18px; font-weight: 800; color: #059669; }
-.php-price-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-.php-stock-in { color: #059669; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.php-stock-low { color: #d97706; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.php-stock-out { color: #dc2626; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+.php-price { font-size: 18px; font-weight: 800; color: #1B5E20; }
+.php-price-sub { font-size: 11px; color: #6B8E23; margin-top: 2px; }
+.php-stock-in { color: #4CAF50; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+.php-stock-low { color: #FF9800; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+.php-stock-out { color: #F44336; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
 .php-order-btn {
-  background: linear-gradient(135deg,#0f172a,#1e293b); color: white;
-  border: none; padding: 10px 14px; border-radius: 0;
+  background: #2E8B57; color: white;
+  border: none; padding: 10px 14px; border-radius: 8px;
   cursor: pointer; display: flex; align-items: center; gap: 6px;
-  font-weight: 700; font-size: 13px; transition: all 0.2s; font-family: inherit;
+  font-weight: 700; font-size: 13px; transition: all 0.15s ease; font-family: inherit;
   white-space: nowrap;
 }
-.php-order-btn:hover:not(:disabled) { background: linear-gradient(135deg,#10b981,#059669); transform: scale(1.03); }
+.php-order-btn:hover:not(:disabled) { 
+  background: #1B5E20; 
+  transform: translateY(-1px); 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+}
 .php-order-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Shimmer */
@@ -183,22 +195,23 @@ const STYLES = `
 }
 
 /* Locations */
-.php-locations { max-width: 1440px; margin: 0 auto; padding: 0 24px 60px; }
+.php-locations { max-width: 1440px; margin: 0 auto; padding: 32px 24px 60px; }
 .php-locations-title {
-  font-size: 18px; font-weight: 700; color: #0f172a;
+  font-size: 18px; font-weight: 700; color: #424242;
   margin: 0 0 20px; display: flex; align-items: center; gap: 8px;
 }
 .php-loc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
 .php-loc-card {
-  background: white; border-radius: 0; overflow: hidden;
-  border: 1px solid #e4e6ea; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  transition: all 0.25s;
+  background: white; border-radius: 12px; overflow: hidden;
+  border: 1px solid #8D6E63; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: all 0.15s ease;
 }
-.php-loc-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(16,185,129,0.12); }
-.php-loc-img { width: 100%; height: 160px; object-fit: cover; }
+.php-loc-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.php-loc-img { width: 100%; height: 160px; object-fit: cover; transition: transform 0.15s ease; border-radius: 10px 10px 0 0; }
+.php-loc-card:hover .php-loc-img { transform: scale(1.03); }
 .php-loc-body { padding: 16px 20px; }
-.php-loc-name { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
-.php-loc-detail { font-size: 13px; color: #64748b; line-height: 1.7; }
+.php-loc-name { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+.php-loc-detail { font-size: 13px; color: #424242; line-height: 1.7; }
 
 /* Modal */
 .php-overlay {
@@ -278,189 +291,175 @@ const STYLES = `
 .php-advisory-close:hover { background: rgba(255,255,255,0.3); }
 
 /* ═══════ HOW TO ORDER ═══════ */
-.php-how { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 72px 24px; }
+.php-how { background: #F5F5F5; padding: 72px 24px; }
 .php-how-inner { max-width: 1100px; margin: 0 auto; }
-.php-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #10b981; margin: 0 0 12px; }
-.php-section-title { font-size: clamp(24px, 4vw, 40px); font-weight: 900; margin: 0 0 48px; color: white; line-height: 1.2; }
+.php-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #228B22; margin: 0 0 12px; }
+.php-section-title { font-size: clamp(24px, 4vw, 40px); font-weight: 900; margin: 0 0 48px; color: #1B5E20; line-height: 1.2; }
 .php-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
 .php-step {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px; padding: 32px 24px; text-align: center; position: relative;
-  transition: transform 0.25s, border-color 0.25s;
+  background: #FFFFFF; border: 1px solid #8D6E63;
+  border-radius: 12px; padding: 32px 24px; text-align: center; position: relative;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
-.php-step:hover { transform: translateY(-6px); border-color: rgba(16,185,129,0.4); }
+.php-step:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 .php-step-num {
   width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #2E8B57;
   color: white; font-size: 22px; font-weight: 900;
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px; box-shadow: 0 8px 24px rgba(16,185,129,0.35);
+  margin: 0 auto 20px;
 }
-.php-step-title { font-size: 15px; font-weight: 700; color: white; margin: 0 0 10px; }
-.php-step-desc { font-size: 13px; color: #94a3b8; line-height: 1.6; margin: 0; }
+.php-step-title { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 10px; }
+.php-step-desc { font-size: 13px; color: #424242; line-height: 1.6; margin: 0; }
 .php-delivery-info {
   margin-top: 48px; padding: 24px 32px;
-  background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);
+  background: #FFFFFF; border: 1px solid #8D6E63;
   border-radius: 12px; display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 .php-delivery-info-item { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 200px; }
-.php-delivery-info-item p { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.6; }
-.php-delivery-info-item strong { display: block; font-size: 14px; color: white; margin-bottom: 4px; }
+.php-delivery-info-item p { margin: 0; font-size: 13px; color: #424242; line-height: 1.6; }
+.php-delivery-info-item strong { display: block; font-size: 14px; color: #424242; margin-bottom: 4px; }
+
+@media (max-width: 768px) {
+  .php-step, .php-delivery-info { border: none !important; box-shadow: none !important; }
+}
 
 /* ═══════ ABOUT ═══════ */
-.php-about { padding: 80px 24px; background: #fff; }
-.php-about-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
-@media(max-width:768px){ .php-about-inner { grid-template-columns: 1fr; } }
+.php-about { padding: 72px 24px; background: #FFFFFF; }
+.php-about-inner { 
+  max-width: 1100px; margin: 0 auto; 
+  display: grid; grid-template-columns: 1fr 1fr; 
+  gap: 56px; align-items: center; 
+}
 .php-about-visual {
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border-radius: 20px; padding: 48px; display: flex; align-items: center; justify-content: center;
-  min-height: 300px; position: relative; overflow: hidden;
+  background: #F5F5F5;
+  border-radius: 12px; padding: 48px; 
+  display: flex; align-items: center; justify-content: center;
+  min-height: 280px; position: relative; overflow: hidden;
+  border: 1px solid #8D6E63;
 }
-.php-about-visual::before {
-  content: ''; position: absolute; width: 250px; height: 250px;
-  background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%);
-  top: -50px; right: -50px;
+.php-about-visual-icon {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: #2E8B57;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 24px rgba(46,139,87,0.25);
 }
-.php-about-text .php-section-title { color: #0f172a; }
-.php-about-text p { color: #64748b; line-height: 1.8; margin: 0 0 20px; font-size: 15px; }
-.php-about-stat-row { display: flex; gap: 32px; margin-top: 32px; flex-wrap: wrap; }
-.php-about-stat { text-align: center; }
-.php-about-stat-num { font-size: 32px; font-weight: 900; color: #059669; line-height: 1; }
-.php-about-stat-lbl { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.php-about-visual-label { font-size: 18px; font-weight: 800; color: #1B5E20; text-align: center; }
+.php-about-visual-sub { font-size: 13px; color: #228B22; margin-top: 4px; text-align: center; }
+.php-about-text .php-section-title { color: #1B5E20; }
+.php-about-text p { color: #424242; line-height: 1.8; margin: 0 0 16px; font-size: 15px; }
+
+@media (max-width: 768px) {
+  .php-about-inner { grid-template-columns: 1fr; gap: 32px; }
+  .php-about-visual { padding: 32px; min-height: 200px; }
+}
 
 /* ═══════ TEAM ═══════ */
-.php-team { padding: 72px 24px; background: #f8fafc; }
-.php-team-inner { max-width: 1100px; margin: 0 auto; }
-.php-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+.php-team { padding: 72px 24px; background: #F5F5F5; }
+.php-team-inner { width: 100%; }
+.php-team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
 .php-team-card {
-  background: white; border-radius: 16px; overflow: hidden;
-  border: 1px solid #e4e6ea; text-align: center; padding-bottom: 24px;
-  transition: transform 0.25s, box-shadow 0.25s;
+  background: white; border-radius: 12px; overflow: hidden;
+  border: 1px solid #8D6E63;
+  text-align: center; padding-bottom: 20px;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
-.php-team-card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
-.php-team-avatar {
-  width: 100%; height: 180px;
-  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+.php-team-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+/* License image area */
+.php-team-license-wrap {
+  position: relative; width: 100%; overflow: hidden;
+  border-radius: 10px 10px 0 0;
+  background: #f0fdf4;
+  cursor: pointer;
+}
+.php-team-license-img {
+  width: 100%; height: 280px; object-fit: cover;
+  display: block; transition: transform 0.15s ease;
+  border-radius: 10px 10px 0 0;
+}
+.php-team-card:hover .php-team-license-img { transform: scale(1.03); }
+.php-team-license-badge {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(27,94,32,0.92); color: white;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 3px 8px; border-radius: 6px;
+  display: flex; align-items: center; gap: 4px;
+}
+.php-team-initials-wrap {
+  width: 100%; height: 170px;
+  background: #A5D6A7;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 20px;
 }
-.php-team-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.php-team-name { font-size: 15px; font-weight: 800; color: #0f172a; margin: 0 0 4px; }
-.php-team-role { font-size: 12px; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px; }
-.php-team-bio { font-size: 12px; color: #64748b; padding: 0 16px; line-height: 1.6; margin: 0; }
+.php-team-initials {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 900; color: white;
+}
+.php-team-name { font-size: 15px; font-weight: 700; color: #424242; margin: 16px 0 4px; padding: 0 12px; }
+.php-team-role { font-size: 12px; color: #228B22; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px; }
+.php-team-bio { font-size: 12px; color: #424242; padding: 0 16px; line-height: 1.6; margin: 0; }
+
+@media (max-width: 600px) {
+  .php-team-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .php-team-card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding-bottom: 14px; }
+  .php-team-license-img, .php-team-initials-wrap { height: 130px; }
+  .php-team-name { font-size: 13px; margin-top: 12px; }
+  .php-team-bio { font-size: 11px; }
+}
 
 /* ═══════ TESTIMONIALS ═══════ */
-.php-reviews { padding: 72px 24px; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); }
-.php-reviews-inner { max-width: 1100px; margin: 0 auto; }
-.php-reviews-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-.php-review-card {
-  background: white; border-radius: 16px; padding: 28px;
-  border: 1px solid #d1fae5; box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-  transition: transform 0.25s;
-}
-.php-review-card:hover { transform: translateY(-4px); }
-.php-stars { display: flex; gap: 3px; margin-bottom: 16px; }
-.php-review-text { font-size: 14px; color: #334155; line-height: 1.7; margin: 0 0 20px; font-style: italic; }
-.php-reviewer { display: flex; align-items: center; gap: 12px; }
-.php-reviewer-avatar {
-  width: 40px; height: 40px; border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
-  display: flex; align-items: center; justify-content: center;
-  color: white; font-weight: 800; font-size: 16px; flex-shrink: 0;
-}
-.php-reviewer-name { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.php-reviewer-date { font-size: 11px; color: #94a3b8; margin: 0; }
 
-/* ═══════ EMERGENCY ═══════ */
-.php-emergency {
-  background: linear-gradient(135deg, #7f1d1d, #991b1b);
-  padding: 48px 24px; text-align: center;
-}
-.php-emergency-inner { max-width: 900px; margin: 0 auto; }
-.php-emergency h2 { font-size: clamp(20px, 3.5vw, 32px); font-weight: 900; color: white; margin: 0 0 12px; }
-.php-emergency p { color: rgba(255,255,255,0.8); font-size: 15px; margin: 0 0 28px; }
-.php-emergency-contacts { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-.php-emergency-btn {
-  display: flex; align-items: center; gap: 10px;
-  background: white; color: #991b1b;
-  border: none; border-radius: 8px;
-  padding: 14px 28px; font-size: 16px; font-weight: 800;
-  cursor: pointer; text-decoration: none;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-}
-.php-emergency-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-.php-emergency-btn.secondary {
-  background: rgba(255,255,255,0.1); color: white;
-  border: 2px solid rgba(255,255,255,0.3);
-}
-
-/* ═══════ PAYMENTS ═══════ */
-.php-payments { background: white; padding: 56px 24px; border-top: 1px solid #e4e6ea; }
-.php-payments-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
-.php-payments h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
-.php-payments-sub { font-size: 14px; color: #64748b; margin: 0 0 36px; }
-.php-payments-grid { display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
-.php-pay-chip {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 24px; border-radius: 8px;
-  border: 2px solid #e4e6ea; background: #f8fafc;
-  font-size: 14px; font-weight: 700; color: #334155;
-  transition: border-color 0.2s, background 0.2s;
-}
-.php-pay-chip:hover { border-color: #10b981; background: #f0fdf4; }
-.php-pay-chip-icon { font-size: 20px; }
 
 /* ═══════ PARTNERS ═══════ */
-.php-partners { background: #f8fafc; padding: 56px 24px; border-top: 1px solid #e4e6ea; }
+.php-partners { background: #F5F5F5; padding: 72px 24px; border-top: 1px solid #8D6E63; }
 .php-partners-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
-.php-partners h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
-.php-partners-sub { font-size: 14px; color: #64748b; margin: 0 0 36px; }
+.php-partners h2 { font-size: 28px; font-weight: 800; color: #1B5E20; margin: 0 0 12px; }
+.php-partners-sub { font-size: 16px; color: #424242; margin: 0 auto 40px; max-width: 600px; line-height: 1.6; }
 .php-partners-grid { display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
 .php-partner-chip {
   display: flex; align-items: center; gap: 10px;
-  padding: 14px 28px; border-radius: 10px;
-  border: 2px solid #e4e6ea; background: white;
-  font-size: 14px; font-weight: 700; color: #334155;
-  transition: all 0.25s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 14px 24px; border-radius: 12px;
+  border: 1px solid #8D6E63; background: #FFFFFF;
+  font-size: 14px; font-weight: 700; color: #424242;
+  transition: all 0.15s ease;
 }
-.php-partner-chip:hover { border-color: #10b981; box-shadow: 0 4px 16px rgba(16,185,129,0.15); }
+.php-partner-chip:hover { 
+  transform: translateY(-1px); 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06); 
+}
 
 /* ═══════ FAQ ═══════ */
-.php-faq { padding: 72px 24px; background: white; }
+.php-faq { padding: 72px 24px; background: #FFFFFF; border-top: 1px solid #8D6E63; }
 .php-faq-inner { max-width: 800px; margin: 0 auto; }
-.php-faq-item { border-bottom: 1px solid #e4e6ea; }
+.php-faq-item { 
+  border-radius: 12px; 
+  margin-bottom: 16px; background: #FFFFFF; 
+  overflow: hidden; transition: all 0.15s ease;
+}
+.php-faq-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
 .php-faq-q {
   width: 100%; text-align: left; background: none; border: none;
-  padding: 20px 0; display: flex; justify-content: space-between; align-items: center;
-  font-size: 15px; font-weight: 700; color: #0f172a; cursor: pointer;
-  gap: 16px; font-family: inherit; transition: color 0.2s;
+  padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;
+  font-size: 16px; font-weight: 700; color: #424242; cursor: pointer;
+  gap: 16px; font-family: inherit; transition: color 0.15s ease;
 }
-.php-faq-q:hover { color: #059669; }
+.php-faq-q:hover { color: #1B5E20; }
 .php-faq-a {
   overflow: hidden; max-height: 0;
   transition: max-height 0.35s ease, padding 0.35s ease;
-  font-size: 14px; color: #64748b; line-height: 1.8;
-  padding: 0;
+  font-size: 15px; color: #424242; line-height: 1.7;
+  padding: 0 24px;
 }
-.php-faq-a.open { max-height: 300px; padding-bottom: 20px; }
+.php-faq-a.open { max-height: 300px; padding-bottom: 24px; }
 
-/* ═══════ TRUST BAR ═══════ */
-.php-trust { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 40px 24px; }
-.php-trust-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
-.php-trust-item { display: flex; align-items: flex-start; gap: 14px; }
-.php-trust-icon { width: 44px; height: 44px; border-radius: 10px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.php-trust-title { font-size: 14px; font-weight: 700; color: white; margin: 0 0 4px; }
-.php-trust-desc { font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5; }
 
-/* ═══════ DISCLAIMER ═══════ */
-.php-disclaimer {
-  background: #fefce8; border-top: 3px solid #fbbf24;
-  padding: 20px 24px; text-align: center;
-}
-.php-disclaimer p { max-width: 900px; margin: 0 auto; font-size: 12px; color: #92400e; line-height: 1.7; }
-.php-disclaimer strong { color: #78350f; }
 `;
 
 const imgSrc = (url) => {
@@ -586,10 +585,10 @@ const PharmacyHealthPage = () => {
   ];
 
   const TEAM = [
-    { name: 'Dr. Fikerte Haile', role: 'Chief Pharmacist', bio: 'B.Pharm, MSc. 12 years of clinical experience in pharmaceutical care and patient safety.', initials: 'FH', color: '#059669' },
-    { name: 'Abebe Girma', role: 'Senior Pharmacist', bio: 'B.Pharm. Specialist in chronic disease medication management and patient counselling.', initials: 'AG', color: '#0891b2' },
-    { name: 'Meron Tesfaye', role: 'Pharmacist', bio: 'B.Pharm. Focused on paediatric medications and women\'s health pharmaceutical care.', initials: 'MT', color: '#7c3aed' },
-    { name: 'Dawit Bekele', role: 'Pharmacy Technician', bio: 'Experienced in dispensing, inventory management, and compounding medications.', initials: 'DB', color: '#d97706' },
+    { name: 'Dr. Fikerte Haile', role: 'Chief Pharmacist', bio: 'B.Pharm, MSc. 12 years of clinical experience in pharmaceutical care and patient safety.', initials: 'FH', color: '#1B5E20', license: licFikerte, licNo: 'ETH-EFDA-2024-0012' },
+    { name: 'Abebe Girma', role: 'Senior Pharmacist', bio: 'B.Pharm. Specialist in chronic disease medication management and patient counselling.', initials: 'AG', color: '#2E8B57', license: licAbebe, licNo: 'ETH-EFDA-2024-0047' },
+    { name: 'Meron Tesfaye', role: 'Pharmacist', bio: 'B.Pharm. Focused on paediatric medications and women\'s health pharmaceutical care.', initials: 'MT', color: '#228B22', license: licMeron, licNo: 'ETH-EFDA-2024-0091' },
+    { name: 'Dawit Bekele', role: 'Pharmacy Technician', bio: 'Experienced in dispensing, inventory management, and compounding medications.', initials: 'DB', color: '#6B8E23', license: licDawit, licNo: 'ETH-EFDA-2024-0138' },
   ];
 
   const REVIEWS = [
@@ -715,20 +714,22 @@ const PharmacyHealthPage = () => {
         )}
       </div>
 
+      <hr style={{ border: 'none', borderTop: '1px solid #e4e6ea', margin: '0 24px' }} />
+
       {/* Pharmacy Locations */}
       {branches.length > 0 && (
         <div className="php-locations">
-          <h2 className="php-locations-title"><MapPin size={20} color="#10b981" /> Our Pharmacy Locations</h2>
+          <h2 className="php-locations-title"><MapPin size={20} color="#228B22" /> Our Pharmacy Locations</h2>
           <div className="php-loc-grid">
             {branches.map(branch => (
               <div className="php-loc-card" key={branch.id}>
-                {branch.cover_image && <img src={`http://localhost:5000${branch.cover_image}`} alt={branch.name} className="php-loc-img" />}
+                {branch.cover_image && <div style={{ overflow: 'hidden', borderRadius: '10px 10px 0 0' }}><img src={`http://localhost:5000${branch.cover_image}`} alt={branch.name} className="php-loc-img" /></div>}
                 <div className="php-loc-body">
-                  <h3 className="php-loc-name"><MapPin size={16} color="#10b981" /> {branch.name}</h3>
+                  <h3 className="php-loc-name"><MapPin size={16} color="#228B22" /> {branch.name}</h3>
                   <div className="php-loc-detail">
-                    <strong>Address:</strong> {branch.address}<br />
-                    <strong>Phone:</strong> {branch.phone}<br />
-                    <strong>Hours:</strong> {branch.working_hours}
+                    <strong style={{ color: '#424242' }}>Address:</strong> {branch.address}<br />
+                    <strong style={{ color: '#424242' }}>Phone:</strong> {branch.phone}<br />
+                    <strong style={{ color: '#424242' }}>Hours:</strong> {branch.working_hours}
                   </div>
                 </div>
               </div>
@@ -737,21 +738,6 @@ const PharmacyHealthPage = () => {
         </div>
       )}
 
-      {/* ── Emergency / On-Call ── */}
-      <div className="php-emergency">
-        <div className="php-emergency-inner">
-          <h2>🚨 24/7 Emergency Pharmacist On-Call</h2>
-          <p>Our pharmacists are available around the clock for urgent consultations, emergency medication needs, and after-hours advice.</p>
-          <div className="php-emergency-contacts">
-            <a href="tel:+251911000000" className="php-emergency-btn">
-              <Phone size={20} /> +251 911 000 000
-            </a>
-            <a href="tel:+251922000000" className="php-emergency-btn secondary">
-              <Phone size={20} /> +251 922 000 000
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* ── How to Order ── */}
       <div className="php-how">
@@ -773,9 +759,9 @@ const PharmacyHealthPage = () => {
             ))}
           </div>
           <div className="php-delivery-info">
-            <div className="php-delivery-info-item"><Truck size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Delivery Areas</strong><p>Addis Ababa & surrounding regions. 3–6 hrs standard delivery. Rural: 2–3 extra days.</p></div></div>
-            <div className="php-delivery-info-item"><CreditCard size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Delivery Fee</strong><p>Flat 50 ETB within city limits. Free delivery on orders above 500 ETB.</p></div></div>
-            <div className="php-delivery-info-item"><Clock size={24} color="#10b981" style={{flexShrink:0}} /><div><strong>Operating Hours</strong><p>Mon – Sat: 7:00 AM – 9:00 PM. Sunday: 9:00 AM – 5:00 PM. 24/7 On-Call available.</p></div></div>
+            <div className="php-delivery-info-item"><Truck size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Delivery Areas</strong><p>Addis Ababa & surrounding regions. 3–6 hrs standard delivery. Rural: 2–3 extra days.</p></div></div>
+            <div className="php-delivery-info-item"><CreditCard size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Delivery Fee</strong><p>Flat 50 ETB within city limits. Free delivery on orders above 500 ETB.</p></div></div>
+            <div className="php-delivery-info-item"><Clock size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Operating Hours</strong><p>Mon – Sat: 7:00 AM – 9:00 PM. Sunday: 9:00 AM – 5:00 PM. 24/7 On-Call available.</p></div></div>
           </div>
         </div>
       </div>
@@ -784,27 +770,19 @@ const PharmacyHealthPage = () => {
       <div className="php-about">
         <div className="php-about-inner">
           <div className="php-about-visual">
-            <div style={{textAlign:'center',position:'relative',zIndex:1}}>
-              <div style={{width:120,height:120,borderRadius:'50%',background:'linear-gradient(135deg,#10b981,#059669)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'0 16px 40px rgba(16,185,129,0.35)'}}>
+            <div style={{textAlign:'center', position:'relative', zIndex:1}}>
+              <div className="php-about-visual-icon">
                 <Heart size={52} color="white" />
               </div>
-              <div style={{fontSize:18,fontWeight:800,color:'#065f46'}}>Trusted Since 2010</div>
-              <div style={{fontSize:13,color:'#059669',marginTop:4}}>MOH Licensed Pharmacy</div>
+              <div className="php-about-visual-label">Trusted Since 2010</div>
+              <div className="php-about-visual-sub">MOH Licensed Pharmacy</div>
             </div>
           </div>
           <div className="php-about-text">
             <p className="php-section-label">Who We Are</p>
-            <h2 className="php-section-title" style={{color:'#0f172a'}}>Ethiopia's Trusted Pharmaceutical Partner</h2>
-            <p>Sutana Pharmacy & Health has been serving communities across Ethiopia since 2010. Our mission is to make quality, affordable healthcare accessible to everyone — from essential everyday medications to specialized pharmaceutical care.</p>
+            <h2 className="php-section-title">Ethiopia's Trusted Pharmaceutical Partner</h2>
+            <p>Sutana Pharmacy &amp; Health has been serving communities across Ethiopia since 2010. Our mission is to make quality, affordable healthcare accessible to everyone — from essential everyday medications to specialized pharmaceutical care.</p>
             <p>We operate under the direct supervision of licensed pharmacists and comply fully with the Ethiopian Food and Drug Authority (EFDA) standards and Ministry of Health (MOH) regulations.</p>
-            <div className="php-about-stat-row">
-              {[{n:'15+',l:'Years of Service'},{n:'5',l:'Branch Locations'},{n:'50,000+',l:'Patients Served'},{n:'24/7',l:'On-Call Support'}].map(s=>(
-                <div className="php-about-stat" key={s.l}>
-                  <div className="php-about-stat-num">{s.n}</div>
-                  <div className="php-about-stat-lbl">{s.l}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -812,13 +790,16 @@ const PharmacyHealthPage = () => {
       {/* ── Our Pharmacists ── */}
       <div className="php-team">
         <div className="php-team-inner">
-          <p className="php-section-label" style={{color:'#10b981'}}>Our Experts</p>
-          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>Meet Our Licensed Pharmacists</h2>
+          <h2 className="php-section-title" style={{marginBottom:8}}>Meet Our Licensed Pharmacists</h2>
+          <p style={{fontSize:14, color:'#424242', marginBottom:32, marginTop:0}}>All practitioners hold valid EFDA / MOH licenses. Hover a card to view the license certificate.</p>
           <div className="php-team-grid">
             {TEAM.map(m => (
               <div className="php-team-card" key={m.name}>
-                <div className="php-team-avatar" style={{background:`linear-gradient(135deg,${m.color}22,${m.color}44)`}}>
-                  <div style={{width:80,height:80,borderRadius:'50%',background:m.color,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:28,fontWeight:900}}>{m.initials}</div>
+                <div className="php-team-license-wrap">
+                  <img src={m.license} alt={`${m.name} license`} className="php-team-license-img" />
+                  <div className="php-team-license-badge">
+                    <Shield size={10} /> {m.licNo}
+                  </div>
                 </div>
                 <p className="php-team-name">{m.name}</p>
                 <p className="php-team-role">{m.role}</p>
@@ -829,25 +810,6 @@ const PharmacyHealthPage = () => {
         </div>
       </div>
 
-      {/* ── Patient Reviews ── */}
-      <div className="php-reviews">
-        <div className="php-reviews-inner">
-          <p className="php-section-label">Testimonials</p>
-          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>What Our Patients Say</h2>
-          <div className="php-reviews-grid">
-            {REVIEWS.map(r => (
-              <div className="php-review-card" key={r.name}>
-                <div className="php-stars">{[...Array(5)].map((_,i)=><Star key={i} size={16} fill={i<r.rating?'#fbbf24':'none'} color={i<r.rating?'#fbbf24':'#cbd5e1'} />)}</div>
-                <p className="php-review-text">"{r.text}"</p>
-                <div className="php-reviewer">
-                  <div className="php-reviewer-avatar">{r.initial}</div>
-                  <div><p className="php-reviewer-name">{r.name}</p><p className="php-reviewer-date">{r.date}</p></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* ── Insurance & Partners ── */}
       <div className="php-partners">
@@ -856,50 +818,30 @@ const PharmacyHealthPage = () => {
           <p className="php-partners-sub">We work with leading insurance providers and pharmaceutical suppliers to guarantee quality and affordability.</p>
           <div className="php-partners-grid">
             {['CBHI Insurance','Nyala Insurance','Awash Insurance','Lucy Insurance','Abbay Insurance'].map(p=>(
-              <div className="php-partner-chip" key={p}><Shield size={18} color="#10b981"/>{p}</div>
+              <div className="php-partner-chip" key={p}><Shield size={18} color="#228B22"/>{p}</div>
             ))}
           </div>
-          <div style={{marginTop:24,borderTop:'1px solid #e4e6ea',paddingTop:24}}>
-            <p style={{fontSize:13,color:'#64748b',textAlign:'center',marginBottom:16,fontWeight:600}}>EFDA-Approved Supplier Brands</p>
+          <div style={{marginTop:32,borderTop:'1px solid #228B22',paddingTop:32}}>
+            <p style={{fontSize:14,color:'#424242',textAlign:'center',marginBottom:16,fontWeight:700}}>EFDA-Approved Supplier Brands</p>
             <div className="php-partners-grid">
               {['Almiral Pharma','Ethiopian Pharmaceuticals','Cadila Healthcare','Africa Pharma','BioTech Supply'].map(b=>(
-                <div className="php-partner-chip" key={b}><Award size={18} color="#0891b2"/>{b}</div>
+                <div className="php-partner-chip" key={b}><Award size={18} color="#2E8B57"/>{b}</div>
               ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Payment Methods ── */}
-      <div className="php-payments">
-        <div className="php-payments-inner">
-          <h2>Accepted Payment Methods</h2>
-          <p className="php-payments-sub">Pay securely using your preferred method at pickup or on delivery.</p>
-          <div className="php-payments-grid">
-            {[
-              {icon:'💵', label:'Cash on Pickup'},
-              {icon:'💳', label:'Visa / Mastercard'},
-              {icon:'📱', label:'Telebirr'},
-              {icon:'🏦', label:'CBE Birr'},
-              {icon:'📲', label:'Amole'},
-              {icon:'🧾', label:'Insurance Direct Billing'},
-            ].map(m=>(
-              <div className="php-pay-chip" key={m.label}><span className="php-pay-chip-icon">{m.icon}</span>{m.label}</div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* ── FAQs ── */}
       <div className="php-faq">
         <div className="php-faq-inner">
-          <p className="php-section-label">Got Questions?</p>
-          <h2 className="php-section-title" style={{color:'#0f172a',marginBottom:32}}>Frequently Asked Questions</h2>
+          <h2 className="php-section-title" style={{color:'#1B5E20',marginBottom:40, textAlign:'center'}}>Frequently Asked Questions</h2>
           {FAQS.map((f,i)=>(
             <div className="php-faq-item" key={i}>
               <button className="php-faq-q" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
                 <span>{f.q}</span>
-                {openFaq===i ? <ChevronUp size={18} color="#059669" style={{flexShrink:0}}/> : <ChevronDown size={18} color="#64748b" style={{flexShrink:0}}/>}
+                {openFaq===i ? <ChevronUp size={20} color="#228B22" style={{flexShrink:0}}/> : <ChevronDown size={20} color="#424242" style={{flexShrink:0}}/>}
               </button>
               <div className={`php-faq-a ${openFaq===i?'open':''}`}>{f.a}</div>
             </div>
@@ -907,27 +849,6 @@ const PharmacyHealthPage = () => {
         </div>
       </div>
 
-      {/* ── Trust Bar (License & Certifications) ── */}
-      <div className="php-trust">
-        <div className="php-trust-inner">
-          {[
-            {Icon:Shield,title:'MOH Licensed',desc:'License No. ETH/MOH/PH-2024-00451. Fully accredited by the Ethiopian Ministry of Health.'},
-            {Icon:Award,title:'EFDA Certified',desc:'All medications sourced from Ethiopian Food & Drug Authority approved suppliers only.'},
-            {Icon:FileText,title:'Privacy Protected',desc:'Your health data is confidential and secured in compliance with Ethiopian data privacy laws.'},
-            {Icon:CheckCircle2,title:'Verified Pharmacists',desc:'Every dispensing pharmacist holds a valid B.Pharm degree and a current professional license.'},
-          ].map(({Icon,...t})=>(
-            <div className="php-trust-item" key={t.title}>
-              <div className="php-trust-icon"><Icon size={20} color="#10b981"/></div>
-              <div><p className="php-trust-title">{t.title}</p><p className="php-trust-desc">{t.desc}</p></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Medical Disclaimer ── */}
-      <div className="php-disclaimer">
-        <p><strong>⚕️ Medical Disclaimer:</strong> The information provided on this page is for general informational and educational purposes only. It is not intended as, and shall not be understood or construed as, professional medical advice. Always consult a qualified healthcare professional before starting any medication. Sutana Pharmacy & Health is not liable for any decisions made based on the content of this page. | <strong>Terms of Use</strong> | <strong>Privacy Policy</strong> | <strong>MOH License No. ETH/MOH/PH-2024-00451</strong></p>
-      </div>
 
       {/* Order Modal */}
       {isModalOpen && selectedMedicine && (
