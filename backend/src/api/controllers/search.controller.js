@@ -80,19 +80,22 @@ exports.search = catchAsync(async (req, res) => {
         }));
       }),
 
-      db('farming_products').where(function() {
-        this.where('name', 'like', keyword).orWhere('description', 'like', keyword);
-      }).where('is_active', true).limit(isLive ? 3 : limit).select(
-        'id', 'name', 'description', 'price', 'stock_quantity as stock_qty'
-      ).then(rows => {
-        rows.forEach(r => results.products.push({
-          id: `fp-${r.id}`, name: r.name, sku: null, price: r.price,
-          stock_qty: r.stock_qty,
-          stock_status: r.stock_qty > 10 ? 'in_stock' : r.stock_qty > 0 ? 'low_stock' : 'out_of_stock',
-          description: r.description?.slice(0, 150), url: `/services/farming`,
-          entity_type: 'farming_product',
-        }));
-      }),
+      db.schema.hasTable('farming_products').then(exists => {
+        if (!exists) return;
+        return db('farming_products').where(function() {
+          this.where('name', 'like', keyword).orWhere('description', 'like', keyword);
+        }).where('is_active', true).limit(isLive ? 3 : limit).select(
+          'id', 'name', 'description', 'price', 'stock_quantity as stock_qty'
+        ).then(rows => {
+          rows.forEach(r => results.products.push({
+            id: `fp-${r.id}`, name: r.name, sku: null, price: r.price,
+            stock_qty: r.stock_qty,
+            stock_status: r.stock_qty > 10 ? 'in_stock' : r.stock_qty > 0 ? 'low_stock' : 'out_of_stock',
+            description: r.description?.slice(0, 150), url: `/services/farming`,
+            entity_type: 'farming_product',
+          }));
+        });
+      }).catch(() => { /* farming_products table unavailable – skip silently */ }),
     );
   }
 
