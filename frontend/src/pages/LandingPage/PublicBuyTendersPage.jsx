@@ -12,6 +12,10 @@ const STYLES = `
 @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
 @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes glowBlink {
+  0%, 100% { box-shadow: inset 0 0 8px rgba(74, 222, 128, 0.4), 0 0 8px rgba(74, 222, 128, 0.2); border-color: #86efac; }
+  50% { box-shadow: inset 0 0 16px rgba(34, 197, 94, 0.8), 0 0 16px rgba(34, 197, 94, 0.6); border-color: #22c55e; }
+}
 
 @keyframes heroBreath {
   0% { transform: scale(1.05); opacity: 0.85; }
@@ -151,22 +155,20 @@ const STYLES = `
 
 /* ===== DARK TENDER CARD (inside laser section) ===== */
 .tender-card-dark {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: #FFFFFF;
   border-radius: 12px;
-  overflow: hidden;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border: 1px solid #8D6E63;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  animation: fadeUp 0.4s both;
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  overflow: hidden;
   position: relative;
-  z-index: 2;
 }
 .tender-card-dark:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
-  border-color: rgba(0,255,128,0.25);
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
 }
 
 
@@ -234,8 +236,8 @@ const STYLES = `
   color: #64748b;
   font-family: inherit;
 }
-.status-pill:hover { background: #e2e8f0; color: #334155; }
-.status-pill.active { background: linear-gradient(135deg, #059669, #10b981); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
+.status-pill:hover { background: #8D6E63; color: #334155; }
+.status-pill.active { background: linear-gradient(135deg, #2E8B57, #2E8B57); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
 
 .search-bar {
   display: flex;
@@ -243,7 +245,7 @@ const STYLES = `
   gap: 8px;
   padding: 8px 16px;
   background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid #8D6E63;
   border-radius: 20px;
   flex: 1;
   min-width: 220px;
@@ -251,11 +253,11 @@ const STYLES = `
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .search-bar:focus-within {
-  border-color: #059669;
+  border-color: #2E8B57;
   box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
   background: white;
 }
-.search-bar input { border: none; outline: none; flex: 1; font-size: 13px; color: #0f172a; background: transparent; font-family: inherit; }
+.search-bar input { border: none; outline: none; flex: 1; font-size: 13px; color: #424242; background: transparent; font-family: inherit; }
 
 .tender-main-layout {
   max-width: 1440px;
@@ -265,7 +267,7 @@ const STYLES = `
 
 .tender-card-h {
   background: white;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: row;
@@ -295,7 +297,7 @@ const STYLES = `
   width: 240px;
   min-width: 240px;
   height: 160px;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: linear-gradient(135deg, #f1f5f9 0%, #8D6E63 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,7 +326,7 @@ const STYLES = `
   background: #f8fafc;
   padding: 2px 8px;
   border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #8D6E63;
 }
 .status-badge {
   padding: 3px 10px;
@@ -341,7 +343,7 @@ const STYLES = `
 .tender-card-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: #424242;
   line-height: 1.35;
   margin: 0;
   overflow: hidden;
@@ -379,7 +381,7 @@ const STYLES = `
 .meta-price {
   font-size: 15px;
   font-weight: 800;
-  color: #059669;
+  color: #2E8B57;
   margin-left: auto;
 }
 
@@ -405,10 +407,10 @@ const STYLES = `
 
 .card-shimmer {
   height: 160px;
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background: linear-gradient(90deg, #8D6E63 25%, #f1f5f9 50%, #8D6E63 75%);
   background-size: 400px;
   animation: shimmer 1.5s infinite;
-  border-radius: 14px;
+  border-radius: 12px;
   margin-bottom: 14px;
 }
 
@@ -418,7 +420,7 @@ const STYLES = `
   justify-content: space-between;
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #8D6E63;
 }
 
 @media (max-width: 768px) {
@@ -516,7 +518,7 @@ const STYLES = `
 }
 .btd-winner-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 .btd-winner-icon {
-  width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+  width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0;
   background: #1B5E20;
   display: flex; align-items: center; justify-content: center;
 }
@@ -600,25 +602,25 @@ const STYLES = `
 }
 
 /* ═══════ TRUST & LEGAL ═══════ */
-.btd-trust-wrap { background: linear-gradient(135deg, #0f172a, #1e293b); }
+.btd-trust-wrap { background: linear-gradient(135deg, #424242, #1B5E20); }
 .btd-trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 28px; }
 .btd-trust-item { display: flex; align-items: flex-start; gap: 14px; }
-.btd-trust-icon { width: 44px; height: 44px; border-radius: 10px; background: rgba(5,150,105,0.15); border: 1px solid rgba(5,150,105,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.btd-trust-icon { width: 44px; height: 44px; border-radius: 8px; background: rgba(5,150,105,0.15); border: 1px solid rgba(5,150,105,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .btd-trust-title { font-size: 14px; font-weight: 700; color: white; margin: 0 0 4px; }
 .btd-trust-desc { font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5; }
 
 /* ═══════ CONTACT ═══════ */
-.btd-contact-wrap { background: #f0fdf4; border-top: 3px solid #10b981; }
+.btd-contact-wrap { background: #f0fdf4; border-top: 3px solid #2E8B57; }
 .btd-contact-inner { max-width: 900px; margin: 0 auto; text-align: center; }
 .btd-contact-cards { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 32px; }
 .btd-contact-card {
-  background: white; border-radius: 14px; padding: 28px 36px;
+  background: white; border-radius: 12px; padding: 28px 36px;
   border: 1.5px solid #bbf7d0; text-align: center;
   box-shadow: 0 4px 16px rgba(5,150,105,0.08);
   min-width: 220px; transition: transform 0.2s;
 }
 .btd-contact-card:hover { transform: translateY(-3px); }
-.btd-contact-card a { color: #059669; font-weight: 800; font-size: 16px; text-decoration: none; }
+.btd-contact-card a { color: #2E8B57; font-weight: 800; font-size: 16px; text-decoration: none; }
 .btd-contact-card a:hover { text-decoration: underline; }
 .btd-contact-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700; margin: 0 0 8px; }
 
@@ -716,7 +718,6 @@ const Countdown = ({ deadline }) => {
   return (
     <div
       className="tender-card-dark"
-      onClick={onClick}
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       {!isMultiple && imgSrc && (
@@ -726,41 +727,47 @@ const Countdown = ({ deadline }) => {
       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
         {/* Top row: badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#00dcff', background: 'rgba(0,220,255,0.1)', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(0,220,255,0.2)' }}>{t.reference_number}</span>
-          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(0,255,128,0.15)', color: '#00ff88', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px', border: '1px solid rgba(0,255,128,0.25)' }}>{t.status}</span>
-          {t.category && <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(200,0,255,0.12)', color: '#c800ff', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(200,0,255,0.2)' }}>{t.category}</span>}
+          <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#424242', background: '#F5F5F5', padding: '3px 10px', borderRadius: '6px', border: '1px solid #8D6E63' }}>{t.reference_number}</span>
+          <span style={{
+            fontSize: '11px', fontWeight: 900,
+            background: isOpen ? '#f0fdf4' : '#F5F5F5',
+            color: isOpen ? '#15803d' : '#64748b',
+            padding: isOpen ? '3px 9px' : '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px',
+            border: isOpen ? '2px solid #86efac' : '1px solid #8D6E63',
+            boxShadow: isOpen ? 'inset 0 0 8px rgba(74, 222, 128, 0.4), 0 0 8px rgba(74, 222, 128, 0.2)' : 'none',
+            animation: isOpen ? 'glowBlink 1.2s ease-in-out infinite' : 'none'
+          }}>{t.status}</span>
+          {t.category && <span style={{ fontSize: '11px', fontWeight: 700, background: '#F5F5F5', color: '#424242', padding: '3px 10px', borderRadius: '6px', border: '1px solid #8D6E63' }}>{t.category}</span>}
           {isOpen && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'linear-gradient(135deg,#fef3c7,#fde68a)', color:'#92400e', fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20 }}><Flame size={10} /><Countdown deadline={t.deadline} /></span>}
         </div>
 
         {/* Title */}
-        <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.25 }}>{t.title}</h3>
+        <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#1B5E20', margin: 0, lineHeight: 1.25 }}>{t.title}</h3>
 
         {/* Description */}
-        {t.description && <p style={{ color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.6, fontSize: '13px', fontWeight: 600 }}>{t.description}</p>}
+        {t.description && <p style={{ color: '#424242', margin: 0, lineHeight: 1.6, fontSize: '13px', fontWeight: 600 }}>{t.description}</p>}
 
         {/* Meta row */}
-        <div className="tender-card-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
-            {isMultiple ? (
-              <span style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>📦 {parsedItems.length} Items (Smart Table)</span>
-            ) : t.item_name ? (
-              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Tag size={12} />{t.item_name} × {t.quantity}</span>
-            ) : null}
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
-            {t.deadline && <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>}
-            {!isMultiple && <span style={{ fontSize: '15px', fontWeight: 800, color: '#fbbf24' }}>{parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB</span>}
-          </div>
-          <button className="tender-btn" style={{
-            background: '#1B5E20', color: 'white', border: 'none', borderRadius: '8px',
-            padding: '9px 18px', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px',
-            cursor: 'pointer', transition: 'background 0.15s, transform 0.15s', whiteSpace: 'nowrap'
-          }}
-            onMouseOver={e => { e.currentTarget.style.background='#145214'; e.currentTarget.style.transform='translateY(-1px)'; }}
-            onMouseOut={e => { e.currentTarget.style.background='#1B5E20'; e.currentTarget.style.transform='translateY(0)'; }}
-          >
-            View Details <ArrowRight size={14} />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #8D6E63', marginBottom: '16px' }}>
+          {isMultiple ? (
+            <span style={{ background: '#F5F5F5', color: '#424242', padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>📦 {parsedItems.length} Items</span>
+          ) : t.item_name ? (
+            <span style={{ color: '#424242', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Tag size={12} />{t.item_name} × {t.quantity}</span>
+          ) : null}
+          <span style={{ color: '#424242', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
+          {t.deadline && <span style={{ color: '#424242', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>}
+          {!isMultiple && <span style={{ fontSize: '15px', fontWeight: 800, color: '#2E8B57', marginLeft: 'auto' }}>{parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB</span>}
         </div>
+        <button className="tender-btn" onClick={onClick} style={{
+          background: '#1B5E20', color: '#FFFFFF', border: 'none', borderRadius: '8px',
+          padding: '12px', fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          cursor: 'pointer', transition: 'all 0.25s ease', width: '100%', marginTop: 'auto'
+        }}
+          onMouseOver={e => { e.currentTarget.style.background='#D4AF37'; e.currentTarget.style.color='#1B1B1B'; e.currentTarget.style.boxShadow='0 4px 14px rgba(212,175,55,0.5)'; e.currentTarget.style.transform='translateY(-2px)'; }}
+          onMouseOut={e => { e.currentTarget.style.background='#1B5E20'; e.currentTarget.style.color='#FFFFFF'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='translateY(0)'; }}
+        >
+          View Tender Details <ArrowRight size={16} />
+        </button>
       </div>
     </div>
   );
@@ -815,7 +822,7 @@ export default () => {
       <div className="tender-hero-wrap">
         <img className="tender-hero-img" src={tenderHero} alt="Tenders hero" />
         <div className="tender-hero-overlay">
-          <h1 style={{ fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 900, color: '#fbbf24', margin: 0, lineHeight: 1.1, textShadow: '2px 4px 12px rgba(0,0,0,0.8)' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 900, color: '#2E8B57', margin: 0, lineHeight: 1.1, textShadow: '2px 4px 12px rgba(0,0,0,0.8)' }}>
             Compete &amp; Buy from Sutana
           </h1>
         </div>
@@ -833,25 +840,26 @@ export default () => {
           border: '1.5px dashed #d1fae5', boxShadow: '0 4px 24px rgba(5,150,105,0.07)'
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#424242', margin: '0 0 8px' }}>
             No Open Tenders Right Now
           </h3>
           <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.7 }}>
             New tenders are posted regularly. Check back soon or{' '}
-            <a href="/contact" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>
+            <a href="/contact" style={{ color: '#2E8B57', fontWeight: 600, textDecoration: 'none' }}>
               contact us
             </a>{' '}to be notified when a new one opens.
           </p>
         </div>
       ) : (
         <>
-          <LaserBanner>
+          <div style={{ padding: '60px 24px', background: '#F5F5F5', minHeight: '100vh' }}>
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
-                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#ffffff', margin: 0 }}>Open Tenders</h2>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: '4px 0 0' }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: 0 }}>Open Tenders</h2>
+                <p style={{ fontSize: 13, color: '#424242', margin: '4px 0 0', fontWeight: 600 }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#00ff88', fontSize: 13, fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#228B22', fontSize: 13, fontWeight: 700 }}>
                 <Flame size={14} /> Live bidding open
               </div>
             </div>
@@ -865,8 +873,8 @@ export default () => {
                 />
               ))}
             </div>
-          </LaserBanner>
-          <hr style={{ border: 'none', borderTop: '3px solid #228B22', margin: 0 }} />
+          </div>
+          <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
         </>
       )}
 
