@@ -251,6 +251,7 @@ const FarmingServicePage = () => {
   return (
     <div className={styles.pageWrapper}>
       <PublicNav />
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&display=swap');`}</style>
 
       {/* Hero Section */}
       <section className={styles.heroSection}>
@@ -367,40 +368,75 @@ const FarmingServicePage = () => {
                 const tc = cat ? TYPE_CONFIG[cat.type] || TYPE_CONFIG.general : TYPE_CONFIG.general;
                 return (
                   <div key={product.id} className={styles.productCard} style={{ animationDelay: (searchResults.indexOf(product) * 0.07) + 's' }}>
-                    {/* Image Section */}
+                    {/* Image */}
                     <div className={styles.productImageWrapper}>
                       {product.image1 ? (
                         <img src={resolveImg(product.image1)} alt={product.name} className={styles.productImage} onClick={() => handleImageClick(product.image1, product.name)} />
                       ) : (
                         <div className={styles.productPlaceholder}><Tractor size={60} /></div>
                       )}
-                      <div className={styles.productImageBadges}>
-                        <span className={styles.typeBadge}><Tractor size={12}/> {product.tractor_type || product.tractorType || 'Tractor'}</span>
-                        {product.availability !== 'Available' && <span className={styles.outOfStockBadge}>{product.availability}</span>}
-                      </div>
+                      {product.availability !== 'Available' && (
+                        <span className={styles.outOfStockBadge} style={{ position: 'absolute', top: 10, left: 10 }}>{product.availability}</span>
+                      )}
                     </div>
 
                     {/* Card Body */}
-                    <div className={styles.productInfo}>
-                      <h3 className={styles.productName}>{product.name}</h3>
-                      <p className={styles.productCategory}>
-                        <Fuel size={13}/> {product.fuel_type || product.fuelType || '—'} &bull; {product.transmission || '—'}
-                      </p>
-                      <div className={styles.cardFooter}>
-                        <div>
-                          <div className={styles.cardPrice}>ETB {parseFloat(product.daily_rate || product.dailyRate || 0).toLocaleString()}</div>
-                          <div className={styles.cardPriceSub}>per day</div>
-                        </div>
-                        {product.availability === 'Available' ? (
-                          <button onClick={() => openOrderModal(product)} className={styles.orderBtn}>
-                            <ShoppingCart size={15} /> Order Now
-                          </button>
-                        ) : (
-                          <button className={styles.orderBtn} disabled>
-                            <X size={15} /> Unavailable
-                          </button>
-                        )}
+                    <div className={styles.productInfo} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+                      {/* Name */}
+                      <h3 className={styles.productName} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 17, letterSpacing: '0.01em', lineHeight: 1.3, marginBottom: 8 }}>
+                        {product.name}
+                      </h3>
+
+                      {/* Spec row */}
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                        {product.fuel_type || product.fuelType ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                            <Fuel size={11} /> {product.fuel_type || product.fuelType}
+                          </span>
+                        ) : null}
+                        {product.transmission ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5D4037', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                            <Wrench size={11} /> {product.transmission}
+                          </span>
+                        ) : null}
                       </div>
+
+                      {/* Price and Category Row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+                        <div>
+                          <div className={styles.cardPrice} style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 800, letterSpacing: '0.03em' }}>
+                            ETB {parseFloat(product.daily_rate || product.dailyRate || 0).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#6D4C41', fontStyle: 'italic', letterSpacing: '0.04em', marginTop: 2 }}>per day · operator included</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F5F5F5', padding: '6px 10px', borderRadius: 8 }}>
+                          <Tractor size={12} color="#2E8B57" />
+                          <span style={{ fontSize: 10, color: '#2E8B57', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                            {product.tractor_type || product.tractorType || 'Tractor'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Button — full width */}
+                      {product.availability === 'Available' ? (
+                        <button
+                          onClick={() => openOrderModal(product)}
+                          className={styles.orderBtn}
+                          style={{ width: '100%', justifyContent: 'center', gap: 8, padding: '10px 16px', marginTop: 'auto' }}
+                        >
+                          <Calendar size={15} /> Reserve Machine
+                        </button>
+                      ) : (
+                        <button
+                          className={styles.orderBtn}
+                          style={{ width: '100%', justifyContent: 'center', background: '#6B8E23', gap: 8, padding: '10px 16px', marginTop: 'auto' }}
+                          onClick={() => window.location.href = 'tel:+251911000000'}
+                        >
+                          <Phone size={15} /> Contact When Available
+                        </button>
+                      )}
+
                     </div>
                   </div>
                 );
@@ -414,25 +450,33 @@ const FarmingServicePage = () => {
             ══════════════════════════════════════════════ */}
 
         {/* ── How to Hire ── */}
-        <section style={{ background: 'linear-gradient(135deg,#f0fdf4 0%,#eff6ff 100%)', padding: '72px 24px' }}>
+        <section style={{ background: '#F5F5F5', padding: '72px 24px', borderTop: '1px solid #228B22' }}>
+          <style>{`
+            .fsp-how-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 20px; }
+            .fsp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 20px; text-align: center; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: default; }
+            .fsp-how-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+            .fsp-how-icon { width: 52px; height: 52px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+            .fsp-how-title { font-size: 15px; font-weight: 700; color: #424242; margin-bottom: 6px; }
+            .fsp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.6; }
+            @media (max-width: 600px) {
+              .fsp-how-card { border: none; box-shadow: none; padding: 16px 8px; border-radius: 0; }
+              .fsp-how-card:hover { transform: none; box-shadow: none; }
+              .fsp-how-icon { border-radius: 0; }
+            }
+          `}</style>
           <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 56 }}>
-              <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>Simple Process</span>
-              <h2 style={{ fontSize: 'clamp(26px,4vw,38px)', fontWeight: 900, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.02em' }}>How to Hire a Machine</h2>
-              <p style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>Four easy steps to get your field work done. Fast, reliable, and professional.</p>
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', margin: '0 0 10px' }}>How to Hire a Machine</h2>
+              <p style={{ fontSize: 15, color: '#424242', maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>Four easy steps to get your field work done. Fast, reliable, and professional.</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 20, position: 'relative' }}>
-              {HOW_TO_HIRE.map((step, i) => (
-                <div key={step.n} style={{ background: '#fff', borderRadius: 20, padding: '32px 24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', position: 'relative', transition: 'transform 0.25s', cursor: 'default' }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-6px)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', boxShadow: '0 8px 20px rgba(5,150,105,0.3)' }}>
-                    <step.icon size={26} color="#fff" />
+            <div className="fsp-how-grid">
+              {HOW_TO_HIRE.map((step) => (
+                <div key={step.n} className="fsp-how-card">
+                  <div className="fsp-how-icon">
+                    <step.icon size={24} color="#FFFFFF" />
                   </div>
-                  <div style={{ position: 'absolute', top: 16, right: 16, width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{step.n}</div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{step.title}</h3>
-                  <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+                  <h3 className="fsp-how-title">{step.title}</h3>
+                  <p className="fsp-how-desc">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -440,46 +484,56 @@ const FarmingServicePage = () => {
         </section>
 
         {/* ── Requirements & Pricing ── */}
-        <section style={{ background: '#fff', padding: '72px 24px' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 32 }}>
-            {/* Service Coverage */}
-            <div style={{ background: 'linear-gradient(135deg,#fef3c7,#fef9c3)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(245,158,11,0.3)' }}>
-                <MapPin size={28} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Coverage & Details</h3>
-              <p style={{ fontSize: 14, color: '#78716c', marginBottom: 24 }}>Important information about our service areas.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section style={{ background: '#FFFFFF', padding: '72px 24px' }}>
+          <style>{`
+            .fsp-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
+            .fsp-info-card { background: #FFFFFF; border-radius: 12px; padding: 36px 32px; border: 1px solid #8D6E63; transition: box-shadow 0.15s ease, transform 0.15s ease; }
+            .fsp-info-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
+            .fsp-info-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+            .fsp-info-title { font-size: 20px; font-weight: 800; color: #1B5E20; margin: 0 0 6px; }
+            .fsp-info-sub { font-size: 14px; color: #424242; margin: 0 0 22px; }
+            .fsp-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
+            .fsp-row-label { font-size: 13px; font-weight: 700; color: #1B5E20; flex-shrink: 0; }
+            .fsp-row-val { font-size: 13px; color: #424242; text-align: right; }
+            @media (max-width: 600px) {
+              .fsp-info-card { border: none; box-shadow: none; padding: 20px 0; border-radius: 0; }
+              .fsp-info-card:hover { transform: none; box-shadow: none; }
+              .fsp-info-grid { gap: 16px; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <div className="fsp-info-grid">
+              {/* Service Coverage */}
+              <div className="fsp-info-card">
+                <div className="fsp-info-icon"><MapPin size={24} color="#FFFFFF" /></div>
+                <h3 className="fsp-info-title">Coverage &amp; Details</h3>
+                <p className="fsp-info-sub">Important information about our service areas.</p>
                 {[
                   { label: 'Coverage Area', value: 'Addis Ababa & surrounding farming zones' },
                   { label: 'Booking Method', value: 'Phone booking only. No online self-booking.' },
                   { label: 'Included Staff', value: 'Professional driver/operator always included' },
                 ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, backdropFilter: 'blur(4px)' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>{r.label}</span>
-                    <span style={{ fontSize: 13, color: '#78716c', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
+                  <div key={r.label} className="fsp-row">
+                    <span className="fsp-row-label">{r.label}</span>
+                    <span className="fsp-row-val">{r.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Pricing */}
-            <div style={{ background: 'linear-gradient(135deg,#eff6ff,#e0f2fe)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(59,130,246,0.2)' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(59,130,246,0.3)' }}>
-                <Wallet size={28} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Pricing Structure</h3>
-              <p style={{ fontSize: 14, color: '#475569', marginBottom: 24 }}>Flexible rates based on your specific farm needs.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Pricing */}
+              <div className="fsp-info-card">
+                <div className="fsp-info-icon"><Wallet size={24} color="#FFFFFF" /></div>
+                <h3 className="fsp-info-title">Pricing Structure</h3>
+                <p className="fsp-info-sub">Flexible rates based on your specific farm needs.</p>
                 {[
                   { label: 'Per Hour Rate', value: 'Available for short-term minor field work' },
                   { label: 'Daily Rate', value: 'Standard flat rate for full-day tractor usage' },
                   { label: 'Per Hectare', value: 'Priced by land size for plowing/harvesting' },
                   { label: 'Fuel Costs', value: 'Fuel is billed separately or supplied by client' },
                 ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>{r.label}</span>
-                    <span style={{ fontSize: 13, color: '#475569', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
+                  <div key={r.label} className="fsp-row">
+                    <span className="fsp-row-label">{r.label}</span>
+                    <span className="fsp-row-val">{r.value}</span>
                   </div>
                 ))}
               </div>
@@ -488,31 +542,31 @@ const FarmingServicePage = () => {
         </section>
 
         {/* ── FAQs ── */}
-        <section style={{ background: '#f8fafc', padding: '72px 24px' }}>
-          <div style={{ maxWidth: 800, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }}>
-              <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>FAQs</span>
-              <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Common Questions</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section style={{ background: '#F5F5F5', padding: '72px 24px' }}>
+          <style>{`
+            .fsp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; border: none; }
+            .fsp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+            .fsp-faq-btn { width: 100%; background: none; border: none; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
+            .fsp-faq-btn:hover { color: #1B5E20; }
+            .fsp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 24px 20px; }
+            @media (max-width: 600px) {
+              .fsp-faq-item { border-radius: 0; box-shadow: none; border-bottom: 1px solid #E0E0E0; margin-bottom: 0; }
+              .fsp-faq-item:hover { box-shadow: none; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 760, margin: '0 auto' }}>
+            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 40 }}>Common Questions</h2>
+            <div>
               {AGRIRENT_FAQS.map((f, i) => (
-                <div key={i} style={{ background: openFaq === i ? 'linear-gradient(135deg,#f0fdf4,#eff6ff)' : '#fff', borderRadius: 16, border: `1px solid ${openFaq === i ? 'rgba(5,150,105,0.25)' : '#e2e8f0'}`, overflow: 'hidden', transition: 'all 0.25s ease' }}>
-                  <button
-                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                    style={{ width: '100%', background: 'none', border: 'none', padding: '22px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: '#0f172a', fontSize: 15, cursor: 'pointer', textAlign: 'left', gap: 16 }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ width: 30, height: 30, borderRadius: '50%', background: openFaq === i ? 'linear-gradient(135deg,#059669,#10b981)' : '#f1f5f9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.25s' }}>
-                        <HelpCircle size={14} color={openFaq === i ? '#fff' : '#64748b'} />
-                      </span>
-                      {f.q}
-                    </span>
+                <div key={i} className="fsp-faq-item">
+                  <button className="fsp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                    <span>{f.q}</span>
                     {openFaq === i
-                      ? <ChevronUp size={18} color="#059669" style={{ flexShrink: 0 }} />
-                      : <ChevronDown size={18} color="#94a3b8" style={{ flexShrink: 0 }} />}
+                      ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} />
+                      : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
                   </button>
                   {openFaq === i && (
-                    <div style={{ padding: '0 24px 22px 68px', color: '#475569', fontSize: 14, lineHeight: 1.7 }}>{f.a}</div>
+                    <div className="fsp-faq-ans">{f.a}</div>
                   )}
                 </div>
               ))}
@@ -527,46 +581,6 @@ const FarmingServicePage = () => {
           <div style={{ position: 'absolute', bottom: -80, left: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 70%)', pointerEvents: 'none' }} />
 
           <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-            <div style={{ textAlign: 'center', marginBottom: 56 }}>
-              <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Trust, Legal & Support</h2>
-              <p style={{ fontSize: 15, color: '#94a3b8', margin: 0 }}>Transparent policies. Secure service. We are here to help your farm grow.</p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
-              {/* Terms */}
-              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(5,150,105,0.35)' }}>
-                  <Shield size={22} color="#fff" />
-                </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Terms of Service</h3>
-                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                  Hiring agreements are subject to equipment availability. Cancellations must be made at least 48 hours prior to the scheduled date to receive a full refund of the deposit. Drivers are responsible for machine operation; clients must ensure safe access to fields.
-                </p>
-              </div>
-
-              {/* Privacy */}
-              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(59,130,246,0.35)' }}>
-                  <FileText size={22} color="#fff" />
-                </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Privacy Policy</h3>
-                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                  We collect your farm location and contact details strictly to fulfill service requests. Your data is never sold to third parties. We use industry-standard security to ensure your personal information is protected.
-                </p>
-              </div>
-
-              {/* Disclaimer */}
-              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(245,158,11,0.35)' }}>
-                  <Info size={22} color="#fff" />
-                </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Disclaimer</h3>
-                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                  Heavy machinery operation is subject to weather conditions. If severe rain or muddy fields make work unsafe or impossible, Sutana reserves the right to reschedule the service without penalty.
-                </p>
-              </div>
-            </div>
-
             {/* Contact Strip - Primary Call to Action */}
             <div style={{ marginTop: 40, background: 'rgba(5,150,105,0.12)', borderRadius: 20, padding: '32px 36px', border: '1px solid rgba(5,150,105,0.3)', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
