@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Package, Wallet, ShoppingCart, Truck,
   Printer, BarChart3, Key, Settings, Upload, Rocket,
@@ -545,20 +546,20 @@ export function SmartFooter() {
               required
               style={{
                 width: '100%', padding: '10px 14px',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.15)',
+                background: '#FFFFFF',
+                border: '1px solid #8D6E63',
                 borderRadius: '6px',
-                color: '#FFFFFF',
+                color: '#424242',
                 fontSize: '0.95rem',
                 outline: 'none',
                 transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
               }}
               onFocus={e => {
-                e.currentTarget.style.borderColor = '#2E8B57';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46,139,87,0.15)';
+                e.currentTarget.style.borderColor = '#047454';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(4,116,84,0.2)';
               }}
               onBlur={e => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                e.currentTarget.style.borderColor = '#8D6E63';
                 e.currentTarget.style.boxShadow = 'none';
               }}
             />
@@ -600,9 +601,9 @@ export function SmartFooter() {
             &copy; 2026 SUTANA Enterprise Management System. All rights reserved.
           </span>
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <a href="#" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</a>
-            <a href="#" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</a>
-          </div>
+              <Link to="/privacy" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</Link>
+              <Link to="/terms"   style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</Link>
+            </div>
         </div>
       </div>
     </footer>
