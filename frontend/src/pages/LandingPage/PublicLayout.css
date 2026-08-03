@@ -1308,17 +1308,19 @@ body.dark-theme .pub-dropdown-item:hover {
   color: #8BC34A !important;
   -webkit-text-fill-color: #8BC34A !important;
   font-weight: 800 !important;
+}
+.pub-dropdown-item--active span:last-child {
   position: relative;
 }
-.pub-dropdown-item--active::after {
+.pub-dropdown-item--active span:last-child::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 12px;
-  right: 12px;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
   height: 2px;
   background: #8BC34A;
-  border-radius: 2px 2px 0 0;
+  border-radius: 2px;
 }
 body.dark-theme .pub-dropdown-item--active {
   background: rgba(255,255,255,0.15) !important;
