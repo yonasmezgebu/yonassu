@@ -379,8 +379,8 @@ export function SmartFooter() {
       try {
         const response = await apiClient.get('/public/social-links');
         setSocialLinks(response?.data || []);
-      } catch (err) {
-        console.error('Failed to load social links', err);
+      } catch (_) {
+        // Server unavailable — footer renders without social icons
       }
     };
     fetchSocials();
