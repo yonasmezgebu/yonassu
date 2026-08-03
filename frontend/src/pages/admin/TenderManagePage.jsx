@@ -47,8 +47,10 @@ const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: ${C.lightGray}; color: ${C.darkGray}; }
 
-  /* ── Kill all rounded corners globally ── */
-  input, textarea, select, button { border-radius: 0 !important; }
+  /* ── 17-Rule Design System Radii ── */
+  input, textarea, select { border-radius: 6px !important; }
+  button { border-radius: 8px !important; }
+  .btn-icon, .btn-sm { border-radius: 6px !important; }
 
   .tm-page { width: 100%; min-height: 100vh; background: ${C.lightGray}; }
 
@@ -61,7 +63,7 @@ const GLOBAL_CSS = `
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    border-bottom: 4px solid ${C.forestGreen};
+    border-bottom: 1px solid ${C.earthBrown};
   }
   .tm-header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; color: #FFFFFF !important; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
 
@@ -72,7 +74,7 @@ const GLOBAL_CSS = `
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-    border-bottom: 2px solid ${C.emerald};
+    border-bottom: 1px solid ${C.earthBrown};
   }
 
   .tm-tab {
@@ -83,6 +85,7 @@ const GLOBAL_CSS = `
     cursor: pointer;
     font-weight: 600;
     font-size: 13px;
+    border-radius: 8px;
     transition: all 0.15s;
   }
   .tm-tab.active {
@@ -100,7 +103,8 @@ const GLOBAL_CSS = `
     align-items: center;
     gap: 8px;
     background: ${C.white};
-    border: 2px solid ${C.sage};
+    border: 1px solid ${C.earthBrown};
+    border-radius: 6px;
     padding: 8px 14px;
     max-width: 420px;
     width: 100%;
@@ -113,14 +117,14 @@ const GLOBAL_CSS = `
   /* Tender Card */
   .tm-card {
     background: ${C.white};
-    border: 1px solid ${C.sage};
-    border-left: 4px solid ${C.forestGreen};
+    border: 1px solid ${C.earthBrown};
+    border-radius: 12px;
     overflow: hidden;
     transition: box-shadow 0.15s, transform 0.15s;
     cursor: pointer;
   }
-  .tm-card:hover { box-shadow: 0 4px 20px rgba(34,139,34,0.18); transform: translateY(-1px); }
-  .tm-card.selected { border-left-color: ${C.olive}; background: #F1F8E9; }
+  .tm-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .tm-card.selected { border-color: ${C.emerald}; background: #F1F8E9; }
 
   .tm-card-img {
     width: 100%;
@@ -170,17 +174,17 @@ const GLOBAL_CSS = `
     gap: 6px;
     transition: opacity 0.15s, background 0.15s;
   }
-  .btn:hover { opacity: 0.88; }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .btn-primary   { background: ${C.forestGreen}; color: ${C.white}; }
-  .btn-emerald   { background: ${C.emerald};     color: ${C.white}; }
-  .btn-blue      { background: #1565C0;           color: ${C.white}; }
-  .btn-orange    { background: ${C.orange};       color: ${C.white}; }
-  .btn-red       { background: ${C.red};          color: ${C.white}; }
-  .btn-ghost     { background: ${C.lightGray};    color: ${C.darkGray}; border: 1px solid #DDD; }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-primary   { background: ${C.emerald}; color: ${C.white}; }
+  .btn-emerald   { background: ${C.emerald}; color: ${C.white}; }
+  .btn-blue      { background: #1565C0; color: ${C.white}; }
+  .btn-orange    { background: ${C.orange}; color: ${C.white}; }
+  .btn-red       { background: ${C.red}; color: ${C.white}; }
+  .btn-ghost     { background: ${C.lightGray}; color: ${C.darkGray}; border: 1px solid ${C.earthBrown}; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
-  .btn-icon { padding: 6px; background: transparent; border: 1px solid #DDD; cursor: pointer; display: inline-flex; align-items: center; transition: all 0.15s; }
-  .btn-icon:hover { background: ${C.mint}; border-color: ${C.emerald}; color: ${C.darkGreen}; }
+  .btn-icon { padding: 6px; background: transparent; border: 1px solid ${C.earthBrown}; cursor: pointer; display: inline-flex; align-items: center; transition: all 0.15s; }
+  .btn-icon:hover { background: ${C.mint}; border-color: ${C.emerald}; color: ${C.darkGreen}; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
   .btn-icon.danger:hover { background: #FFEBEE; border-color: ${C.red}; color: ${C.red}; }
 
   /* Status badge */
@@ -195,8 +199,8 @@ const GLOBAL_CSS = `
   /* Section panel */
   .tm-panel {
     background: ${C.white};
-    border: 1px solid ${C.sage};
-    border-top: 3px solid ${C.forestGreen};
+    border: 1px solid ${C.earthBrown};
+    border-radius: 12px;
     margin-top: 20px;
   }
   .tm-panel-header {
@@ -243,7 +247,7 @@ const GLOBAL_CSS = `
   }
 
   /* Form */
-  .tm-form { background: ${C.white}; border: 2px solid ${C.forestGreen}; border-top: 5px solid ${C.darkGreen}; padding: 28px; border-radius: 0; }
+  .tm-form { background: ${C.white}; border: 1px solid ${C.earthBrown}; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 28px; border-radius: 12px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-grid .full { grid-column: 1 / -1; }
   .form-group { margin-bottom: 4px; }
@@ -313,15 +317,15 @@ const GLOBAL_CSS = `
   }
   .tm-modal {
     background: ${C.white}; border-top: 5px solid ${C.darkGreen}; border: 2px solid ${C.forestGreen}; border-top: 5px solid ${C.darkGreen};
-    width: 100%; max-width: 420px; padding: 24px; border-radius: 0;
+    background: ${C.white}; border: 1px solid ${C.earthBrown}; border-radius: 12px;
+    width: 100%; max-width: 420px; padding: 24px;
   }
   .tm-modal h3 { font-size: 16px; font-weight: 700; color: ${C.darkGreen}; margin-bottom: 16px; }
   .tm-modal textarea, .tm-modal input {
-    width: 100%; padding: 10px 14px; border: 2px solid #9E9E9E; border-radius: 0 !important;
+    width: 100%; padding: 10px 14px; border: 1px solid ${C.earthBrown}; border-radius: 6px;
     font-size: 13px; color: ${C.darkGray}; outline: none; resize: vertical;
-    box-shadow: none !important;
   }
-  .tm-modal textarea:focus, .tm-modal input:focus { border-color: ${C.forestGreen}; border-left: 4px solid ${C.darkGreen}; background: #FAFFF8; }
+  .tm-modal textarea:focus, .tm-modal input:focus { border-color: ${C.emerald}; box-shadow: 0 0 0 3px rgba(46,139,87,0.15); }
 
   /* Filter pills */
   .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
@@ -746,6 +750,14 @@ export default function TenderManagePage() {
     } catch (err) { notify('error', err.message); }
   };
 
+  const handleSendAwardEmail = (bid) => {
+    const subject = `Award Notification - ${selectedTender.title}`;
+    const body = `Dear ${bid.bidder_full_name || bid.customer_name},\r\n\r\nWe are delighted to officially notify you that your company has been awarded the contract for the tender "${selectedTender.title}".\r\n\r\nAfter a thorough evaluation process, your bid was selected as the most competitive and suitable for our requirements. We appreciate the time and effort your team invested in preparing your proposal.\r\n\r\nPlease contact our procurement office at your earliest convenience to discuss the contract signing, delivery schedules, and the next steps for finalizing this agreement.\r\n\r\nWe look forward to a successful collaboration.\r\n\r\nBest regards,\r\nSutana Enterprise Management System`;
+    const mailto = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(bid.bidder_email || bid.customer_email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailto, '_blank');
+    handleMarkEmailSent(bid.id);
+  };
+
 
 
 
@@ -852,6 +864,8 @@ export default function TenderManagePage() {
               <div><strong>Total Value:</strong> ETB {parseFloat(detailModalBid.total_bid_value || 0).toLocaleString()}</div>
               <div><strong>Submit Date (Save Date):</strong> {new Date(detailModalBid.submitted_at).toLocaleString()}</div>
               <div><strong>Open Date:</strong> {detailModalBid.opened_at ? new Date(detailModalBid.opened_at).toLocaleString() : 'Just Opened'}</div>
+              {detailModalBid.delivery_time && <div><strong>Delivery Time:</strong> {detailModalBid.delivery_time}</div>}
+              {detailModalBid.payment_terms && <div><strong>Payment Terms:</strong> {detailModalBid.payment_terms}</div>}
               <div>
                 <strong>Digital Signature:</strong>
                 <div style={{ marginTop: 8, padding: '12px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8, fontFamily: '"Caveat", "Dancing Script", cursive', fontSize: 24, color: '#0f172a' }}>
@@ -1090,14 +1104,9 @@ export default function TenderManagePage() {
                                                       <Eye size={13} color="#1565C0" />
                                                     </button>
                                                     {b.status === 'awarded' && (
-                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                        <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${b.bidder_email || b.customer_email}&su=Award Notification - ${selectedTender.title}&body=Dear ${b.bidder_full_name || b.customer_name},%0D%0A%0D%0AWe are delighted to officially notify you that your company has been awarded the contract for the tender "${selectedTender.title}".%0D%0A%0D%0AAfter a thorough evaluation process, your bid was selected as the most competitive and suitable for our requirements. We appreciate the time and effort your team invested in preparing your proposal.%0D%0A%0D%0APlease contact our procurement office at your earliest convenience to discuss the contract signing, delivery schedules, and the next steps for finalizing this agreement.%0D%0A%0D%0AWe look forward to a successful collaboration.%0D%0A%0D%0ABest regards,%0D%0ASutana Enterprise Management System`} target="_blank" rel="noreferrer" style={{ fontSize: 10, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, textDecoration: 'none', textAlign: 'center' }}>
-                                                          Email
-                                                        </a>
-                                                        <button onClick={() => handleMarkEmailSent(b.id)} style={{ fontSize: 10, background: b.notification_sent ? '#10b981' : '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
-                                                          {b.notification_sent ? 'Sent' : 'Mark Sent'}
-                                                        </button>
-                                                      </div>
+                                                      <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#10b981' : '#3b82f6', color: 'white', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                        {b.notification_sent ? 'Email Sent' : 'Send Email'}
+                                                      </button>
                                                     )}
                                                   </div>
                                                 </td>
@@ -1176,14 +1185,9 @@ export default function TenderManagePage() {
                                         </button>
                                       )}
                                       {b.status === 'awarded' && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                          <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${b.bidder_email || b.customer_email}&su=Award Notification - ${selectedTender.title}&body=Dear ${b.bidder_full_name || b.customer_name},%0D%0A%0D%0AWe are delighted to officially notify you that your company has been awarded the contract for the tender "${selectedTender.title}".%0D%0A%0D%0AAfter a thorough evaluation process, your bid was selected as the most competitive and suitable for our requirements. We appreciate the time and effort your team invested in preparing your proposal.%0D%0A%0D%0APlease contact our procurement office at your earliest convenience to discuss the contract signing, delivery schedules, and the next steps for finalizing this agreement.%0D%0A%0D%0AWe look forward to a successful collaboration.%0D%0A%0D%0ABest regards,%0D%0ASutana Enterprise Management System`} target="_blank" rel="noreferrer" style={{ fontSize: 10, background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: 4, textDecoration: 'none', textAlign: 'center' }}>
-                                            Email
-                                          </a>
-                                          <button onClick={() => handleMarkEmailSent(b.id)} style={{ fontSize: 10, background: b.notification_sent ? '#10b981' : '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
-                                            {b.notification_sent ? 'Sent' : 'Mark Sent'}
-                                          </button>
-                                        </div>
+                                        <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#10b981' : '#3b82f6', color: 'white', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                          {b.notification_sent ? 'Email Sent' : 'Send Email'}
+                                        </button>
                                       )}
                                     </div>
                                   </td>
