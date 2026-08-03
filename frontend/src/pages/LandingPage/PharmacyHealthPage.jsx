@@ -405,7 +405,7 @@ const STYLES = `
 .php-team-bio { font-size: 12px; color: #424242; padding: 0 16px; line-height: 1.6; margin: 0; }
 
 @media (max-width: 600px) {
-  .php-team-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .php-team-grid { grid-template-columns: 1fr; gap: 16px; }
   .php-team-card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding-bottom: 14px; }
   .php-team-license-img, .php-team-initials-wrap { height: 130px; }
   .php-team-name { font-size: 13px; margin-top: 12px; }
@@ -653,13 +653,9 @@ const PharmacyHealthPage = () => {
       <div className="php-main">
         <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#228B22', margin: 0 }}>
               {catFilter === 'all' ? 'All Medications' : categories.find(c => String(c.id) === catFilter)?.name || 'Medications'}
             </h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''} found</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#059669', fontWeight: 600 }}>
-            <Pill size={15} /> Sutana Pharmacy
           </div>
         </div>
 
@@ -742,7 +738,6 @@ const PharmacyHealthPage = () => {
       {/* ── How to Order ── */}
       <div className="php-how">
         <div className="php-how-inner">
-          <p className="php-section-label">Simple Process</p>
           <h2 className="php-section-title">How to Order &amp; Delivery Policy</h2>
           <div className="php-steps">
             {[
