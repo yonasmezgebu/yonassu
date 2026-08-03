@@ -6,7 +6,7 @@ import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCirc
 import retailStoreHero from '../../assets/hero-section/retail store.jpg';
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@600;700;800&display=swap');
 
 @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
 @keyframes heroZoom { 0%{transform:scale(1)} 100%{transform:scale(1.15)} }
@@ -110,13 +110,12 @@ const STYLES = `
 
 /* Toolbar */
 .rsp-toolbar {
-  background: white;
-  border-bottom: 1px solid #e4e6ea;
-  padding: 14px 0;
+  background: #FFFFFF;
+  border-bottom: 1px solid #8D6E63;
+  padding: 12px 0;
   position: sticky;
   top: 68px;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 .rsp-toolbar-inner {
   max-width: 100%;
@@ -124,39 +123,39 @@ const STYLES = `
   padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 .rsp-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: transparent;
   border: 1px solid rgba(255,255,255,0.7);
-  border-radius: 0;
+  border-radius: 6px;
   width: 100%;
   max-width: 600px;
   margin-top: 30px;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 .rsp-search:focus-within { border-color: white; background: rgba(255,255,255,0.1); }
 .rsp-search input { border: none; outline: none; flex: 1; font-size: 15px; color: white; background: transparent; font-family: inherit; }
 .rsp-search input::placeholder { color: rgba(255,255,255,0.7); }
 .rsp-cat-pill {
-  padding: 7px 18px;
-  border-radius: 0;
-  border: 1.5px solid #e2e8f0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid #8D6E63;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  transition: all 0.2s;
-  background: #f8fafc;
-  color: #64748b;
+  transition: all 0.15s ease;
+  background: #FFFFFF;
+  color: #424242;
   font-family: inherit;
 }
-.rsp-cat-pill:hover { background: #e2e8f0; color: #334155; }
-.rsp-cat-pill.active { background: linear-gradient(135deg,#059669,#10b981); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
+.rsp-cat-pill:hover { background: #F5F5F5; color: #1B5E20; border-color: #2E8B57; }
+.rsp-cat-pill.active { background: #2E8B57; color: #FFFFFF; border-color: #2E8B57; }
 
 /* Main */
 .rsp-main {
@@ -172,41 +171,40 @@ const STYLES = `
   gap: 24px;
 }
 .rsp-card {
-  background: white;
-  border-radius: 0;
+  background: #FFFFFF;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #e4e6ea;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid #8D6E63;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   flex-direction: column;
   animation: fadeUp 0.4s both;
 }
-.rsp-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.1); transform: translateY(-4px); border-color: #c7e7dc; }
+.rsp-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
 .rsp-card-img-wrap {
   position: relative;
   overflow: hidden;
   aspect-ratio: 4/3;
-  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  background: #F5F5F5;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 10px 10px 0 0;
 }
-.rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
-.rsp-card:hover .rsp-card-img { transform: scale(1.06); }
+.rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.15s ease; border-radius: 10px 10px 0 0; }
+.rsp-card:hover .rsp-card-img { transform: scale(1.03); }
 .rsp-card-badge {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(6px);
-  padding: 4px 12px;
-  border-radius: 0;
+  top: 10px;
+  left: 10px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(4px);
+  padding: 3px 10px;
+  border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: 0.3px;
+  color: #1B5E20;
 }
 .rsp-card-oos {
   position: absolute;
@@ -219,30 +217,57 @@ const STYLES = `
   font-weight: 700;
   color: white;
   letter-spacing: 1px;
+  border-radius: 10px 10px 0 0;
 }
-.rsp-card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
-.rsp-card-name { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 6px; line-height: 1.4; }
-.rsp-card-desc { font-size: 12px; color: #64748b; margin: 0 0 16px; line-height: 1.5; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rsp-card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; }
+.rsp-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #1B5E20;
+  margin: 0 0 6px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+.rsp-card-desc {
+  font-size: 12px;
+  font-style: italic;
+  color: #5D4037;
+  margin: 0 0 14px;
+  line-height: 1.65;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  letter-spacing: 0.02em;
+}
 .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
-.rsp-price { font-size: 20px; font-weight: 800; color: #059669; }
-.rsp-price-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.rsp-price {
+  font-size: 17px;
+  font-weight: 800;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #2E8B57;
+  letter-spacing: 0.03em;
+}
+.rsp-price-sub { font-size: 10px; color: #6D4C41; margin-top: 2px; font-style: italic; letter-spacing: 0.04em; }
 .rsp-add-btn {
-  background: linear-gradient(135deg,#0f172a,#1e293b);
-  color: white;
+  background: #2E8B57;
+  color: #FFFFFF;
   border: none;
-  padding: 10px 16px;
-  border-radius: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
   font-family: inherit;
 }
-.rsp-add-btn:hover:not(:disabled) { background: linear-gradient(135deg,#059669,#10b981); transform: scale(1.03); }
-.rsp-add-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.rsp-add-btn:hover:not(:disabled) { background: #1B5E20; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.rsp-add-btn:disabled { background: #F5F5F5; color: #8D6E63; border: 1px solid #8D6E63; cursor: not-allowed; }
 
 /* Shimmer */
 .rsp-shimmer {
@@ -643,16 +668,10 @@ const RetailStorePage = () => {
 
       {/* ─── Product Grid ─── */}
       <div className="rsp-main">
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-              {catFilter === 'all' ? 'All Products' : categories.find(c => String(c.id) === catFilter)?.name || 'Products'}
-            </h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} item{filtered.length !== 1 ? 's' : ''} found</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#059669', fontWeight: 600 }}>
-            <TrendingUp size={15} /> Live Stock
-          </div>
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1B5E20', margin: 0 }}>
+            {catFilter === 'all' ? 'All Products' : categories.find(c => String(c.id) === catFilter)?.name || 'Products'}
+          </h2>
         </div>
 
         {loading ? (
@@ -701,106 +720,121 @@ const RetailStorePage = () => {
         )}
         
         {/* ── Section: How to Buy ── */}
-        <div style={{ marginTop: 60, padding: '40px 0', borderTop: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>How to Buy</h2>
-          <p style={{ fontSize: 15, color: '#64748b', marginBottom: 24 }}>Two simple ways to get what you need.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-            {HOW_TO_BUY.map(step => (
-              <div key={step.n} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 0, padding: '24px' }}>
-                <div style={{ width: 48, height: 48, borderRadius: 0, background: '#f8fafc', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                  <step.icon size={24} />
+        <section style={{ background: '#F5F5F5', margin: '60px -24px 0', padding: '56px 24px', borderTop: '1px solid #228B22' }}>
+          <style>{`
+            .rsp-how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 20px; }
+            .rsp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 22px; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+            .rsp-how-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
+            .rsp-how-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+            .rsp-how-title { font-size: 16px; font-weight: 700; color: #1B5E20; margin: 0 0 8px; }
+            .rsp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.65; }
+            @media (max-width: 600px) {
+              .rsp-how-card { border: none; border-radius: 0; box-shadow: none; padding: 16px 0; border-bottom: 1px solid #E0E0E0; }
+              .rsp-how-card:hover { transform: none; box-shadow: none; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <h2 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>How to Buy</h2>
+            <p style={{ fontSize: 14, color: '#424242', marginBottom: 32 }}>Two simple ways to get what you need.</p>
+            <div className="rsp-how-grid">
+              {HOW_TO_BUY.map(step => (
+                <div key={step.n} className="rsp-how-card">
+                  <div className="rsp-how-icon"><step.icon size={22} color="#FFFFFF" /></div>
+                  <h3 className="rsp-how-title">{step.title}</h3>
+                  <p className="rsp-how-desc">{step.desc}</p>
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>{step.n}. {step.title}</h3>
-                <p style={{ fontSize: 14, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
         {/* ── Section: Delivery & Payment ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 40, marginTop: 40 }}>
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Truck size={22} color="#059669"/> Delivery / Pickup</h2>
-            <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 0, padding: 20 }}>
-              <div style={{ marginBottom: 16 }}>
-                <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Standard Delivery</strong>
-                <span style={{ fontSize: 14, color: '#64748b' }}>Available in major areas. Fees calculated at checkout. Delivery within 1-2 business days for in-stock items.</span>
+        <section style={{ background: '#FFFFFF', margin: '0 -24px', padding: '56px 24px' }}>
+          <style>{`
+            .rsp-dp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: 32px; }
+            .rsp-dp-card { background: #FFFFFF; border-radius: 12px; padding: 28px 24px; border: 1px solid #8D6E63; }
+            .rsp-dp-head { font-size: 18px; font-weight: 700; color: #1B5E20; margin: 0 0 20px; display: flex; align-items: center; gap: 8px; }
+            .rsp-dp-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #F5F5F5; border-radius: 8px; margin-bottom: 10px; }
+            .rsp-dp-row-icon { width: 36px; height: 36px; border-radius: 8px; background: #2E8B57; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+            .rsp-dp-row-title { font-size: 13px; font-weight: 700; color: #424242; margin: 0 0 3px; }
+            .rsp-dp-row-desc { font-size: 12px; color: #424242; margin: 0; line-height: 1.5; }
+            @media (max-width: 600px) {
+              .rsp-dp-card { border: none; border-radius: 0; padding: 20px 0; }
+              .rsp-dp-grid { gap: 0; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <div className="rsp-dp-grid">
+              <div className="rsp-dp-card">
+                <h2 className="rsp-dp-head"><Truck size={20} color="#2E8B57" /> Delivery / Pickup</h2>
+                <div className="rsp-dp-row">
+                  <div className="rsp-dp-row-icon"><Truck size={18} color="#FFFFFF" /></div>
+                  <div>
+                    <p className="rsp-dp-row-title">Standard Delivery</p>
+                    <p className="rsp-dp-row-desc">Available in major areas. Fees calculated at checkout. Delivery within 1-2 business days for in-stock items.</p>
+                  </div>
+                </div>
+                <div className="rsp-dp-row">
+                  <div className="rsp-dp-row-icon"><Package size={18} color="#FFFFFF" /></div>
+                  <div>
+                    <p className="rsp-dp-row-title">Store Pickup</p>
+                    <p className="rsp-dp-row-desc">Free pickup from our main branch. Ready within 2 hours for in-stock items.</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <strong style={{ display: 'block', color: '#0f172a', marginBottom: 4 }}>Store Pickup</strong>
-                <span style={{ fontSize: 14, color: '#64748b' }}>Free pickup from our main branch. Ready within 2 hours for in-stock items.</span>
+              <div className="rsp-dp-card">
+                <h2 className="rsp-dp-head"><CreditCard size={20} color="#2E8B57" /> Payment Methods</h2>
+                <div className="rsp-dp-row">
+                  <div className="rsp-dp-row-icon"><Banknote size={18} color="#FFFFFF" /></div>
+                  <div>
+                    <p className="rsp-dp-row-title">Bank Transfer</p>
+                    <p className="rsp-dp-row-desc">Direct transfer to our accounts (CBE, Awash, etc.)</p>
+                  </div>
+                </div>
+                <div className="rsp-dp-row">
+                  <div className="rsp-dp-row-icon"><CreditCard size={18} color="#FFFFFF" /></div>
+                  <div>
+                    <p className="rsp-dp-row-title">Mobile Money</p>
+                    <p className="rsp-dp-row-desc">Telebirr, CBE Birr, and other wallets supported.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><CreditCard size={22} color="#059669"/> Payment Methods</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid #e2e8f0', borderRadius: 0, padding: 16 }}>
-                <Banknote size={20} color="#3b82f6" />
-                <div>
-                  <strong style={{ display: 'block', color: '#0f172a', fontSize: 14 }}>Bank Transfer</strong>
-                  <span style={{ fontSize: 13, color: '#64748b' }}>Direct transfer to our accounts (CBE, Awash, etc.)</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid #e2e8f0', borderRadius: 0, padding: 16 }}>
-                <Clock size={20} color="#f59e0b" />
-                <div>
-                  <strong style={{ display: 'block', color: '#0f172a', fontSize: 14 }}>Mobile Money</strong>
-                  <span style={{ fontSize: 13, color: '#64748b' }}>Telebirr, CBE Birr, and other wallets supported.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
 
         {/* ── Section: FAQs ── */}
-        <div style={{ marginTop: 60, padding: '40px 0', borderTop: '1px solid #e2e8f0' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 24 }}>Frequently Asked Questions</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {FAQS.map((f, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <button 
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  style={{ width: '100%', background: 'none', border: 'none', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600, color: '#0f172a', fontSize: 16, cursor: 'pointer', textAlign: 'left' }}
-                >
-                  {f.q}
-                  {openFaq === i ? <ChevronUp size={18} color="#059669" /> : <ChevronDown size={18} color="#64748b" />}
-                </button>
-                {openFaq === i && <div style={{ padding: '0 0 20px', color: '#64748b', fontSize: 15, lineHeight: 1.6 }}>{f.a}</div>}
-              </div>
-            ))}
+        <section style={{ background: '#F5F5F5', margin: '0 -24px', padding: '56px 24px' }}>
+          <style>{`
+            .rsp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; }
+            .rsp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+            .rsp-faq-btn { width: 100%; background: none; border: none; padding: 20px 22px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
+            .rsp-faq-btn:hover { color: #1B5E20; }
+            .rsp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 22px 20px; }
+            @media (max-width: 600px) {
+              .rsp-faq-item { border-radius: 0; box-shadow: none; border-bottom: 1px solid #E0E0E0; margin-bottom: 0; background: #F5F5F5; }
+              .rsp-faq-item:hover { box-shadow: none; }
+            }
+          `}</style>
+          <div style={{ maxWidth: 760, margin: '0 auto' }}>
+            <h2 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 36 }}>Common Questions</h2>
+            <div>
+              {FAQS.map((f, i) => (
+                <div key={i} className="rsp-faq-item">
+                  <button className="rsp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                    <span>{f.q}</span>
+                    {openFaq === i ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} /> : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
+                  </button>
+                  {openFaq === i && <div className="rsp-faq-ans">{f.a}</div>}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
       </div>
 
-      {/* ── Trust, Legal & Contact ── */}
-      <div style={{ background: '#0f172a', color: '#fff', padding: '60px 24px', position: 'relative', zIndex: 5 }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 32 }}>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Legal & Policies</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13, color: '#94a3b8' }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><Shield size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Terms of Service:</strong> Direct purchases can be returned within 3 days. Supplier orders are final sale once approved.</div></div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><FileText size={16} color="#34d399" style={{flexShrink:0, marginTop:2}} /> <div><strong>Privacy Policy:</strong> Your contact and address details are used solely for order fulfillment.</div></div>
-            </div>
-          </div>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#fbbf24' }}>Disclaimer</h3>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: '#94a3b8' }}>
-              <Info size={16} color="#fbbf24" style={{flexShrink:0, marginTop:2}} />
-              <p style={{ margin: 0, lineHeight: 1.5 }}>Product availability, packaging, and final pricing may vary slightly for supplier orders compared to in-stock items. We always confirm details before billing.</p>
-            </div>
-          </div>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#34d399' }}>Store Support</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: '#94a3b8' }}>
-              <a href="tel:+251911000000" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={16} color="#34d399" /> +251 911 000 000</a>
-              <a href="mailto:store@sutana.com" style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={16} color="#34d399" /> store@sutana.com</a>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 13 }}><Clock size={16} color="#34d399" /> Mon-Sat, 8AM - 8PM</div>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* ─────────────── ORDER MODAL ─────────────── */}
       {cartOpen && (
