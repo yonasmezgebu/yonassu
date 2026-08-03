@@ -6,6 +6,7 @@ import PrintingOrders from './PrintingOrders';
 import PrintingCreateOrder from './PrintingCreateOrder';
 import PrintingOrderDetail from './PrintingOrderDetail';
 import PrintingTaxReceipts from './PrintingTaxReceipts';
+import PrintingPublicPageSettings from './PrintingPublicPageSettings';
 
 const PrintingManagerDashboard = () => {
   const menuItems = [
@@ -48,7 +49,11 @@ const PrintingManagerDashboard = () => {
         { label: 'Job Cost Report',             path: '/printing-manager/orders',   icon: 'wallet' },
         { label: 'Material Consumption Report', path: '/printing-manager/overview', icon: 'package' }
       ] },
-
+    { type: 'divider' },
+    { label: 'Settings', icon: 'settings',
+      children: [
+        { label: 'Public Page', path: '/printing-manager/public-settings', icon: 'globe' }
+      ] }
   ];
 
   return (
@@ -59,6 +64,7 @@ const PrintingManagerDashboard = () => {
         <Route path="orders/:id"      element={<PrintingOrderDetail />} />
         <Route path="create-order"    element={<PrintingCreateOrder />} />
         <Route path="tax-receipts"    element={<PrintingTaxReceipts />} />
+        <Route path="public-settings" element={<PrintingPublicPageSettings />} />
         <Route path="/"               element={<Navigate to="overview" replace />} />
       </Routes>
     </DashboardLayout>
