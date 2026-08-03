@@ -1,123 +1,239 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Printer, Pill, Car, Wheat, Store, ArrowRight } from 'lucide-react';
+import { PublicNav } from './PublicNavFooter';
+export { PublicNav };
 import './PublicLayout.css';
-export { PublicNav } from './PublicNavFooter';
 
-const NAVY = '#1a2b4b';
-const TEAL = '#0D7C66';
+const DARK_GREEN = '#1B5E20';
+const FOREST_GREEN = '#228B22';
+const EMERALD_GREEN = '#2E8B57';
+const OLIVE_GREEN = '#6B8E23';
+const EARTH_BROWN = '#8D6E63';
+const LIGHT_GRAY = '#F5F5F5';
+const DARK_GRAY = '#424242';
+const SAGE_GREEN = '#A5D6A7';
+
+const STYLES = `
+  .services-page-wrap {
+    min-height: 100vh;
+    background: ${LIGHT_GRAY};
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+  
+  .services-content {
+    flex: 1;
+    padding: 80px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .services-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  
+  .services-header h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 900;
+    color: ${DARK_GREEN};
+    margin: 0 0 16px;
+  }
+  
+  .services-header p {
+    font-size: 1.05rem;
+    color: ${DARK_GRAY};
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .services-list {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .service-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    border-radius: 12px;
+    background: #FFFFFF;
+    border: 1px solid ${EARTH_BROWN};
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  .service-icon-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    background: ${SAGE_GREEN};
+    color: ${DARK_GREEN};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .service-card:hover .service-icon-box {
+    background: ${FOREST_GREEN};
+    color: #FFFFFF;
+  }
+
+  .service-info {
+    flex: 1;
+  }
+
+  .service-title {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: ${DARK_GREEN};
+    margin-bottom: 4px;
+  }
+
+  .service-desc {
+    font-size: 0.9rem;
+    color: ${DARK_GRAY};
+    line-height: 1.5;
+  }
+
+  .service-arrow {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: ${LIGHT_GRAY};
+    color: ${DARK_GRAY};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .service-card:hover .service-arrow {
+    background: ${SAGE_GREEN};
+    color: ${DARK_GREEN};
+    transform: translateX(4px);
+  }
+
+  .services-actions {
+    margin-top: 48px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .services-btn-primary {
+    background: ${EMERALD_GREEN};
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .services-btn-primary:hover {
+    background: ${DARK_GREEN};
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(27,94,32,0.3);
+  }
+
+  .services-btn-secondary {
+    background: ${OLIVE_GREEN};
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .services-btn-secondary:hover {
+    background: #55711C;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 142, 35, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    .services-content { padding: 48px 16px; }
+    .service-card { padding: 20px; gap: 16px; }
+    .service-icon-box { width: 48px; height: 48px; }
+  }
+`;
 
 const services = [
-  { icon: Printer, label: 'Commercial Printing',   path: '/services/printing', color: '#2563eb', bg: '#eff6ff', desc: 'Offset, digital, large-format printing with end-to-end production tracking.' },
-  { icon: Pill,    label: 'Pharmacy & Health',      path: '/services/pharmacy', color: '#059669', bg: '#f0fdf4', desc: 'Prescription management, medication inventory, and health consultations.' },
-  { icon: Car,     label: 'Car Rental',             path: '/fleet-gallery',     color: '#d97706', bg: '#fffbeb', desc: 'Reliable vehicles for short and long-term rental with flexible terms.' },
-  { icon: Wheat,   label: 'AgriRent',  path: '/services/farming',  color: '#7c3aed', bg: '#f5f3ff', desc: 'Rent farming machineries, tractors, and expert advice for modern farming.' },
-  { icon: Store,   label: 'Retail Store',            path: '/services/retail',   color: '#ec4899', bg: '#fdf2f8', desc: 'Stationery, electronics, office supplies, and everyday essentials.' },
+  { icon: Printer, label: 'Commercial Printing',   path: '/services/printing', desc: 'Offset, digital, large-format printing with end-to-end production tracking.' },
+  { icon: Pill,    label: 'Pharmacy & Health',     path: '/services/pharmacy', desc: 'Prescription management, medication inventory, and health consultations.' },
+  { icon: Car,     label: 'Car Rental',            path: '/fleet-gallery',     desc: 'Reliable vehicles for short and long-term rental with flexible terms.' },
+  { icon: Wheat,   label: 'AgriRent',              path: '/services/farming',  desc: 'Rent farming machineries, tractors, and expert advice for modern farming.' },
+  { icon: Store,   label: 'Retail Store',          path: '/services/retail',   desc: 'Stationery, electronics, office supplies, and everyday essentials.' },
 ];
-
-const ServiceCard = ({ service, index, isVisible }) => {
-  const Icon = service.icon;
-
-  return (
-    <div className="service-card-wrap"
-      style={{
-        transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-        opacity: isVisible ? 1 : 0,
-        transition: `all 0.5s cubic-bezier(0.22, 1, 0.36, 1) ${index * 0.1}s`,
-      }}>
-      <a href={service.path} onClick={e => { e.preventDefault(); window.location.href = service.path; }}
-        className="service-card-inner"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 20,
-          padding: '24px 28px', borderRadius: 18,
-          background: '#fff',
-          textDecoration: 'none', cursor: 'pointer',
-          position: 'relative', zIndex: 1,
-          transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
-          border: '1px solid #E5E7EB',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = service.color; }}
-        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#E5E7EB'; }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: 14,
-          background: service.bg, color: service.color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, transition: 'transform 0.3s',
-        }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) rotate(-4deg)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1) rotate(0)'}>
-          <Icon size={26} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 17, color: NAVY, marginBottom: 4, letterSpacing: '-0.01em' }}>
-            {service.label}
-          </div>
-          <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>
-            {service.desc}
-          </div>
-        </div>
-        <div style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: '#F3F4F6',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, transition: 'all 0.3s',
-          color: '#9CA3AF',
-        }}
-          onMouseEnter={e => { e.currentTarget.style.background = service.bg; e.currentTarget.style.color = service.color; e.currentTarget.style.transform = 'translateX(4px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.transform = 'translateX(0)'; }}>
-          <ArrowRight size={18} />
-        </div>
-      </a>
-    </div>
-  );
-};
 
 const ServicesPage = () => {
   const navigate = useNavigate();
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 100);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
-    <div className="public-page">
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', padding: '40px 24px',
-        background: 'linear-gradient(160deg, #EEF2FF 0%, #F0FDF4 50%, #FEF2F2 100%)',
-      }}>
-        <div style={{
-          width: '100%', maxWidth: 640,
-          display: 'flex', flexDirection: 'column', gap: 14,
-        }}>
-          {services.map((s, i) => (
-            <ServiceCard key={i} service={s} index={i} isVisible={visible} />
-          ))}
+    <div className="services-page-wrap">
+      <style>{STYLES}</style>
+      <PublicNav />
+      
+      <div className="services-content">
+        <div className="services-header">
+          <h1>Our <span style={{ color: FOREST_GREEN }}>Services</span></h1>
+          <p>We provide a comprehensive suite of tools and services designed to empower your business operations.</p>
         </div>
 
-        <div style={{
-          marginTop: 36, display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center',
-          opacity: visible ? 1 : 0, transition: 'opacity 0.6s 0.6s',
-        }}>
-          <button onClick={() => navigate('/about')} style={{
-            padding: '12px 28px', border: `2px solid ${NAVY}`, borderRadius: 12,
-            background: 'transparent', color: NAVY, fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = NAVY; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = NAVY; }}>
+        <div className="services-list">
+          {services.map((service, index) => {
+            const Icon = service.icon;
+            return (
+              <a 
+                key={index} 
+                href={service.path} 
+                onClick={(e) => { e.preventDefault(); navigate(service.path); }}
+                className="service-card"
+              >
+                <div className="service-icon-box">
+                  <Icon size={24} />
+                </div>
+                <div className="service-info">
+                  <div className="service-title">{service.label}</div>
+                  <div className="service-desc">{service.desc}</div>
+                </div>
+                <div className="service-arrow">
+                  <ArrowRight size={18} />
+                </div>
+              </a>
+            );
+          })}
+        </div>
+
+        <div className="services-actions">
+          <button className="services-btn-secondary" onClick={() => navigate('/about')}>
             About Us
           </button>
-          <button onClick={() => navigate('/')} style={{
-            padding: '12px 28px', border: 'none', borderRadius: 12,
-            background: NAVY, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            transition: 'opacity 0.2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+          <button className="services-btn-primary" onClick={() => navigate('/')}>
             Back to Home
           </button>
         </div>
@@ -127,4 +243,3 @@ const ServicesPage = () => {
 };
 
 export default ServicesPage;
-
