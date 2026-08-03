@@ -43,7 +43,7 @@ const BoardDashboard   = lazy(() => import('../pages/board/BoardDashboard'));
 const NotificationsPage = lazy(() => import('../pages/employee/NotificationsPage'));
 const EmployeeDashboard = lazy(() => import('../pages/employee/EmployeePortalDashboard'));
 const PrescriptionViewer = lazy(() => import('../pages/shared/PrescriptionViewer'));
-const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicTendersPage'));
+const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
 const PublicSmartTendersPage = lazy(() => import('../pages/LandingPage/PublicSmartTendersPage'));
 const PublicBuyTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
 const TenderDetailPage = lazy(() => import('../pages/LandingPage/TenderDetailPage'));
