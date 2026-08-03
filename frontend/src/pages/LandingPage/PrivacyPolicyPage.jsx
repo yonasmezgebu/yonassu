@@ -73,6 +73,33 @@ const PrivacyPolicyPage = () => {
         'Continued use of our services after changes constitutes acceptance of the updated policy.',
       ],
     },
+    {
+      icon: Shield,
+      title: 'Car Rental — Data Privacy',
+      content: [
+        'Your ID, driver\'s license, and payment information are collected solely for rental verification and billing.',
+        'We do not sell or share your personal data with third parties under any circumstances.',
+        'All rental records are securely stored and accessible only to authorized SUTANA staff.',
+        'Vehicle GPS and trip data is retained for 90 days for safety and dispute resolution purposes only.',
+        'To request deletion of your car rental data, contact privacy@sutana.com.',
+      ],
+    },
+    {
+      icon: Shield,
+      title: 'AgriRent — Data Privacy',
+      content: [
+        'We collect your farm location and contact details strictly to fulfill service requests.',
+        'Your data is never sold to third parties.',
+        'We use industry-standard security to ensure your personal information is protected.',
+      ],
+    },
+    {
+      icon: Shield,
+      title: 'Retail Store — Data Privacy',
+      content: [
+        'Your contact and address details are used solely for order fulfillment.',
+      ],
+    },
   ];
 
   return (
