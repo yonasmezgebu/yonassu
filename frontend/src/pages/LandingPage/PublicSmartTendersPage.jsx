@@ -10,12 +10,22 @@ import clumpSound from '../../assets/notification/clump.mp3';
 import { 
   FileText, Calendar, Box, Activity, User, Briefcase, Clock, FileCheck, CheckCircle, 
   MessageCircle, Send, X, AlertCircle, Phone, Mail, Award, Check,
-  PartyPopper, Trophy, Sparkles, Star, Gift, Rocket, ClipboardList, Smartphone, Sparkle
+  PartyPopper, Trophy, Sparkles, Star, Gift, Rocket, ClipboardList, Smartphone, Sparkle, Flame
 } from 'lucide-react';
 import './PublicLayout.css';
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@keyframes glowBlink {
+  0%, 100% { box-shadow: 0 0 4px 1px rgba(139,195,74,0.5); border-color: #8BC34A; }
+  50%       { box-shadow: 0 0 12px 4px rgba(139,195,74,0.9); border-color: #fff176; }
+}
+.open-badge-blink {
+  animation: glowBlink 1.2s ease-in-out infinite;
+  font-weight: 900;
+  border: 2px solid #8BC34A;
+}
 
 .tender-hero-wrap {
   width: 100%;
@@ -100,148 +110,16 @@ const STYLES = `
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 6px;
-  background: linear-gradient(90deg, #fbbf24, #f59e0b, #10b981, #3b82f6, #a855f7);
-}
-
-/* ===== LASER BANNER ===== */
-@keyframes laserSweep {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 300% 0; }
-}
-@keyframes laserBeam1 {
-  0%   { transform: rotate(-30deg) translateX(-120%); opacity: 0; }
-  20%  { opacity: 0.7; }
-  80%  { opacity: 0.7; }
-  100% { transform: rotate(-30deg) translateX(220%); opacity: 0; }
-}
-@keyframes laserBeam2 {
-  0%   { transform: rotate(25deg) translateX(120%); opacity: 0; }
-  20%  { opacity: 0.5; }
-  80%  { opacity: 0.5; }
-  100% { transform: rotate(25deg) translateX(-220%); opacity: 0; }
-}
-@keyframes laserBeam3 {
-  0%   { transform: rotate(-15deg) translateX(-180%); opacity: 0; }
-  30%  { opacity: 0.4; }
-  70%  { opacity: 0.4; }
-  100% { transform: rotate(-15deg) translateX(220%); opacity: 0; }
-}
-@keyframes textFadeIn {
-  0%   { opacity: 0; transform: translateY(10px) scale(0.97); }
-  20%  { opacity: 1; transform: translateY(0) scale(1); }
-  75%  { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-10px) scale(0.97); }
-}
-.laser-banner {
-  position: relative;
-  background: rgba(27, 94, 32, 0.75);
-  backdrop-filter: blur(12px);
-  overflow: hidden;
-  padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 48px);
-  border-radius: 0;
-  margin-bottom: 0;
-  min-height: 140px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-}
-.laser-banner::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%, rgba(0,220,255,0.12) 20%,
-    rgba(160,0,255,0.18) 35%, rgba(255,0,128,0.12) 50%,
-    rgba(0,255,128,0.15) 65%, rgba(0,180,255,0.12) 80%, transparent 100%);
-  background-size: 300% 100%;
-  animation: laserSweep 4s linear infinite;
-}
-.laser-beam {
-  position: absolute;
-  top: -10%; left: 50%;
-  width: 3px;
-  height: 200%;
-  border-radius: 3px;
-  transform-origin: top center;
-  pointer-events: none;
-}
-.laser-beam-1 {
-  background: linear-gradient(to bottom, rgba(0,220,255,0.9), rgba(0,220,255,0));
-  animation: laserBeam1 3.5s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(0,220,255,0.8), 0 0 24px rgba(0,220,255,0.4);
-}
-.laser-beam-2 {
-  background: linear-gradient(to bottom, rgba(200,0,255,0.9), rgba(200,0,255,0));
-  animation: laserBeam2 4.2s ease-in-out infinite 0.8s;
-  box-shadow: 0 0 12px rgba(200,0,255,0.8), 0 0 24px rgba(200,0,255,0.4);
-}
-.laser-beam-3 {
-  background: linear-gradient(to bottom, rgba(0,255,128,0.8), rgba(0,255,128,0));
-  animation: laserBeam3 5s ease-in-out infinite 1.6s;
-  box-shadow: 0 0 10px rgba(0,255,128,0.7), 0 0 20px rgba(0,255,128,0.3);
-}
-.laser-beam-4 {
-  background: linear-gradient(to bottom, rgba(255,200,0,0.8), rgba(255,200,0,0));
-  animation: laserBeam1 4.8s ease-in-out infinite 2.4s;
-  box-shadow: 0 0 10px rgba(255,200,0,0.7), 0 0 20px rgba(255,200,0,0.3);
-}
-.laser-beam-5 {
-  background: linear-gradient(to bottom, rgba(0,220,255,0.7), rgba(0,220,255,0));
-  animation: laserBeam2 3.8s ease-in-out infinite 1.2s;
-  box-shadow: 0 0 10px rgba(0,220,255,0.6), 0 0 20px rgba(0,220,255,0.2);
-}
-.laser-beam-6 {
-  background: linear-gradient(to bottom, rgba(255,0,128,0.7), rgba(255,0,128,0));
-  animation: laserBeam3 4.5s ease-in-out infinite 0.5s;
-  box-shadow: 0 0 10px rgba(255,0,128,0.6), 0 0 20px rgba(255,0,128,0.2);
-}
-.laser-beam-7 {
-  background: linear-gradient(to bottom, rgba(0,255,128,0.6), rgba(0,255,128,0));
-  animation: laserBeam1 5.2s ease-in-out infinite 2.0s;
-  box-shadow: 0 0 8px rgba(0,255,128,0.5), 0 0 16px rgba(0,255,128,0.2);
-}
-.laser-beam-8 {
-  background: linear-gradient(to bottom, rgba(200,0,255,0.6), rgba(200,0,255,0));
-  animation: laserBeam2 4.0s ease-in-out infinite 2.8s;
-  box-shadow: 0 0 8px rgba(200,0,255,0.5), 0 0 16px rgba(200,0,255,0.2);
-}
-.laser-text-wrap {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-}
-.laser-text {
-  font-size: clamp(16px, 2.5vw, 24px);
-  font-weight: 900;
-  letter-spacing: -0.5px;
-  line-height: 1.3;
-  background: linear-gradient(90deg, #00dcff, #c800ff, #ff0080, #00ff80, #ffc800, #00dcff);
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: textFadeIn 4s ease-in-out, laserSweep 3s linear infinite;
-  text-shadow: none;
-}
-.laser-sub {
-  font-size: 13px;
-  color: rgba(255,255,255,0.5);
-  margin-top: 8px;
-  font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b, #2E8B57, #3b82f6, #a855f7);
 }
 
 /* ===== TENDER CARD (Dark Hero Style) ===== */
 .tender-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(8px);
+  background: #FFFFFF;
   border-radius: 12px;
   padding: 0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border: 1px solid #8D6E63;
   display: flex;
   flex-direction: column;
   transition: transform 0.28s ease, box-shadow 0.28s ease;
@@ -249,8 +127,8 @@ const STYLES = `
   position: relative;
 }
 .tender-card:hover {
-  transform: translateY(-6px) scale(1.01);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(46,139,87,0.25);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 .tender-card-inner {
   padding: 24px 26px 22px;
@@ -264,7 +142,7 @@ const STYLES = `
   width: 100%;
   padding: 12px 16px;
   border-radius: 8px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid #8D6E63;
   font-size: 15px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
@@ -290,17 +168,18 @@ const STYLES = `
   box-shadow: 0 2px 8px rgba(27,94,32,0.3);
 }
 .bid-btn:hover {
-  background: #145214;
+  background: #D4AF37;
+  color: #1B1B1B;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(27,94,32,0.4);
+  box-shadow: 0 4px 14px rgba(212,175,55,0.5);
 }
 
 .submit-bid-btn {
   padding: 14px 36px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #2E8B57;
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -321,394 +200,6 @@ const STYLES = `
 }
 `;
 
-// ===========================
-// Laser Banner Component
-// ===========================
-const LASER_PHRASES = [
-  "Connect with top suppliers.",
-  "Compare competitive bids.",
-  "Optimize your procurement lifecycle.",
-  "Transparent. Fast. Reliable.",
-  "Trusted by suppliers across Ethiopia.",
-  "Submit your best bid today.",
-];
-
-const LaserBanner = ({ children }) => {
-  const [phraseIdx, setPhraseIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const cycle = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setPhraseIdx(i => (i + 1) % LASER_PHRASES.length);
-        setVisible(true);
-      }, 500);
-    }, 3500);
-    return () => clearInterval(cycle);
-  }, []);
-
-  return (
-    <div className="laser-banner">
-      <div className="laser-beam laser-beam-1" />
-      <div className="laser-beam laser-beam-2" />
-      <div className="laser-beam laser-beam-3" />
-      <div className="laser-beam laser-beam-4" />
-      <div className="laser-beam laser-beam-5" />
-      <div className="laser-beam laser-beam-6" />
-      <div className="laser-beam laser-beam-7" />
-      <div className="laser-beam laser-beam-8" />
-
-      <div className="laser-text-wrap">
-        <div className="laser-text" style={{
-          opacity: visible ? 1 : 0,
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.97)',
-          transition: 'opacity 0.5s ease, transform 0.5s ease',
-        }}>
-          {LASER_PHRASES[phraseIdx]}
-        </div>
-        <div className="laser-sub" style={{ marginBottom: children ? '40px' : '0' }}>SUTANA Smart Tenders &amp; Procurement</div>
-      </div>
-      
-      <div style={{ position: 'relative', zIndex: 3, width: '100%', maxWidth: '1400px' }}>
-        {children}
-      </div>
-    </div>
-  );
-};
-
-// ===========================
-// Celebration Modal Component
-// ===========================
-const CelebrationModal = ({ onClose, name }) => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    // Burst confetti from left and right
-    const duration = 4000;
-    const end = Date.now() + duration;
-    const colors = ['#fbbf24', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ef4444', '#ec4899'];
-
-    (function frame() {
-      confetti({
-        particleCount: 5,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors,
-        zIndex: 10000
-      });
-      confetti({
-        particleCount: 5,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors,
-        zIndex: 10000
-      });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    })();
-
-    return () => confetti.reset();
-  }, []);
-
-  return (
-    <div className="t-overlay" onClick={onClose}>
-      <div className="celebrate-card" onClick={e => e.stopPropagation()}>
-        {/* Stars row */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
-          <PartyPopper size={32} color="#fbbf24" />
-          <Trophy size={36} color="#f59e0b" />
-          <PartyPopper size={32} color="#fbbf24" style={{ transform: 'scaleX(-1)' }} />
-        </div>
-
-        <h2 style={{
-          fontSize: '32px', fontWeight: 900, margin: '0 0 8px',
-          background: 'linear-gradient(135deg, #fbbf24, #f59e0b, #10b981)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
-        }}>
-          Congratulations!
-        </h2>
-
-        <p style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
-          {name || 'Your bid'} has been submitted!
-        </p>
-
-        <p style={{ color: '#64748b', fontSize: '15px', margin: '0 0 32px', lineHeight: 1.6 }}>
-          Your competitive bid has been received by <strong style={{ color: '#0f172a' }}>SUTANA</strong>.
-          Our Purchase team will review and contact you within <strong>3–5 business days</strong>.
-        </p>
-
-        {/* Floating emojis */}
-        <div style={{ marginBottom: '28px', display: 'flex', gap: '16px', justifyContent: 'center' }}>
-          {[<PartyPopper size={28} color="#ec4899" />, <Sparkles size={28} color="#f59e0b" />, <Star size={28} color="#fbbf24" />, <Sparkle size={28} color="#3b82f6" />, <Gift size={28} color="#10b981" />].map((icon, i) => (
-            <span key={i} className="float-emoji" style={{ animationDelay: `${i * 0.4}s` }}>{icon}</span>
-          ))}
-        </div>
-
-        <button onClick={onClose} style={{
-          padding: '14px 48px',
-          background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-          color: 'white', border: 'none', borderRadius: '50px',
-          fontWeight: 700, fontSize: '16px', cursor: 'pointer',
-          boxShadow: '0 6px 20px rgba(99,102,241,0.4)',
-          transition: 'transform 0.15s',
-        }}>
-          <Rocket size={18} style={{ display: 'inline-block', marginRight: '6px' }} /> Awesome, Close!
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ==========================
-// Contact Modal Component
-// ==========================
-const ContactModal = ({ onClose, onContinue, email, setEmail, phone, setPhone }) => (
-  <div className="t-overlay">
-    <div className="contact-card">
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-          <ClipboardList size={40} color="#3b82f6" />
-        </div>
-        <h3 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
-          One Quick Step
-        </h3>
-        <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>
-          Enter your contact details before submitting your bid.
-        </p>
-      </div>
-
-      <form onSubmit={e => { e.preventDefault(); onContinue(); }}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontWeight: 600, color: '#334155', fontSize: '14px' }}>
-            <Mail size={16} color="#64748b" /> Email Address <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <input
-            type="email" required value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="t-input" placeholder="you@company.com"
-          />
-        </div>
-
-        <div style={{ marginBottom: '28px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', fontWeight: 600, color: '#334155', fontSize: '14px' }}>
-            <Smartphone size={16} color="#64748b" /> Phone Number <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <input
-            type="tel" required value={phone}
-            onChange={e => setPhone(e.target.value)}
-            className="t-input" placeholder="+251 911 234 567"
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button type="button" onClick={onClose}
-            style={{ flex: 1, padding: '12px', border: '1.5px solid #e2e8f0', background: 'transparent', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', color: '#64748b', fontSize: '14px' }}>
-            Cancel
-          </button>
-          <button type="submit"
-            style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '14px' }}>
-            Continue to Bid →
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-);
-
-// ==========================
-// Contact Chat Modal Component
-// ==========================
-const ContactChatModal = ({ onClose, procurementContact, userEmail, api }) => {
-  const [senderName, setSenderName] = useState('');
-  const [senderPhone, setSenderPhone] = useState('');
-  const [senderEmail, setSenderEmail] = useState(userEmail || '');
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [toast, setToast] = useState(null); // { type: 'success'|'error', text: string }
-
-  const showToast = (type, text) => {
-    setToast({ type, text });
-    setTimeout(() => setToast(null), 4500);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSending(true);
-    try {
-      await api.post('/procurement-settings/messages', {
-        senderName, senderEmail, senderPhone, message
-      });
-      showToast('success', '✅ Message sent! We will get back to you soon.');
-      setTimeout(() => onClose(), 2000);
-    } catch (err) {
-      showToast('error', '❌ Failed to send: ' + (err.message || 'Please try again.'));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="t-overlay" onClick={onClose}>
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: '1100px',
-          margin: '0 auto',
-          background: 'white',
-          borderRadius: '0',
-          overflow: 'hidden',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: '22px 36px', borderBottom: '2px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a' }}>
-          <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', color: 'white' }}>
-            <MessageCircle size={24} color="#3b82f6" /> Contact Procurement Team
-          </h3>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', padding: '8px 12px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '6px', color: 'white', fontWeight: 600, fontSize: '13px', transition: 'background 0.2s' }}
-            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-            onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>
-            <X size={16} /> Close
-          </button>
-        </div>
-
-        {/* Content Body */}
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-
-          {/* Left Side: Direct Contact Info */}
-          <div style={{ flex: '0 0 360px', padding: '40px 36px', background: 'linear-gradient(160deg, #1e293b 0%, #0f172a 100%)', color: 'white', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-            <h4 style={{ margin: '0 0 10px', fontSize: '20px', fontWeight: 800, color: '#f8fafc' }}>Reach Us Directly</h4>
-            <p style={{ margin: '0 0 28px', fontSize: '14px', color: '#94a3b8', lineHeight: 1.6 }}>
-              Need immediate assistance? Reach out to our procurement officers via phone or email during business hours.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {procurementContact?.phone1 ? (
-                <a href={`tel:${procurementContact.phone1}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '15px', color: 'white', fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '16px 18px', borderRadius: '0', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.2s' }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.borderColor = 'rgba(59,130,246,0.4)'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                  <div style={{ background: '#3b82f6', padding: '10px', borderRadius: '0', display: 'flex', flexShrink: 0 }}><Phone size={18} color="white" /></div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Primary Phone</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{procurementContact.phone1}</div>
-                  </div>
-                </a>
-              ) : null}
-
-              {procurementContact?.phone2 ? (
-                <a href={`tel:${procurementContact.phone2}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '15px', color: 'white', fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '16px 18px', borderRadius: '0', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.2s' }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                  <div style={{ background: '#10b981', padding: '10px', borderRadius: '0', display: 'flex', flexShrink: 0 }}><Phone size={18} color="white" /></div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Secondary Phone</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700 }}>{procurementContact.phone2}</div>
-                  </div>
-                </a>
-              ) : null}
-
-              {procurementContact?.email ? (
-                <a href={`mailto:${procurementContact.email}?subject=Tender Inquiry`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '15px', color: 'white', fontWeight: 600, textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '16px 18px', borderRadius: '0', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.2s' }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                  <div style={{ background: '#8b5cf6', padding: '10px', borderRadius: '0', display: 'flex', flexShrink: 0 }}><Mail size={18} color="white" /></div>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Email Address</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700 }}>{procurementContact.email}</div>
-                  </div>
-                </a>
-              ) : null}
-
-              {!(procurementContact?.phone1 || procurementContact?.phone2 || procurementContact?.email) && (
-                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.04)', borderRadius: '0', color: '#94a3b8', fontSize: '14px', fontStyle: 'italic', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                  No direct contact details provided.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Side: Message Form */}
-          <div style={{ flex: 1, padding: '40px 36px', background: 'white', minWidth: '320px' }}>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>Send us a Message</div>
-            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '28px', paddingBottom: '20px', borderBottom: '2px solid #f1f5f9' }}>We'll reply to your email as soon as possible.</div>
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '7px', fontSize: '13px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Name <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input required value={senderName} onChange={e => setSenderName(e.target.value)} className="t-input" placeholder="Yonas Mezgebu"
-                    style={{ fontSize: '14px', padding: '13px 14px', background: '#f8fafc', borderRadius: '0', border: '2px solid #e2e8f0', transition: 'border-color 0.2s' }}
-                    onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
-                    onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '7px', fontSize: '13px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Phone</label>
-                  <input type="tel" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} className="t-input" placeholder="+251 911..."
-                    style={{ fontSize: '14px', padding: '13px 14px', background: '#f8fafc', borderRadius: '0', border: '2px solid #e2e8f0', transition: 'border-color 0.2s' }}
-                    onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
-                    onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'} />
-                </div>
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '7px', fontSize: '13px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
-                <input type="email" required value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="t-input" placeholder="you@company.com"
-                  style={{ fontSize: '14px', padding: '13px 14px', background: '#f8fafc', borderRadius: '0', border: '2px solid #e2e8f0', transition: 'border-color 0.2s' }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
-                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'} />
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '7px', fontSize: '13px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Message <span style={{ color: '#ef4444' }}>*</span></label>
-                <textarea required value={message} onChange={e => setMessage(e.target.value)} className="t-input" rows="4"
-                  placeholder="How can we help you? Tell us about your inquiry..."
-                  style={{ fontSize: '14px', padding: '13px 14px', resize: 'vertical', background: '#f8fafc', borderRadius: '0', border: '2px solid #e2e8f0', transition: 'border-color 0.2s', lineHeight: 1.6 }}
-                  onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
-                  onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
-                ></textarea>
-              </div>
-
-              {/* In-App Notification (Inline) */}
-              {toast && (
-                <div style={{
-                  marginBottom: '20px',
-                  background: toast.type === 'success' ? 'linear-gradient(135deg, #065f46, #10b981)' : 'linear-gradient(135deg, #7f1d1d, #ef4444)',
-                  color: 'white', padding: '14px 20px', borderRadius: '0',
-                  fontSize: '14px', fontWeight: 600, letterSpacing: '0.2px',
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  animation: 'fadeIn 0.3s ease',
-                }}>
-                  <span style={{ flex: 1 }}>{toast.text}</span>
-                  <button type="button" onClick={() => setToast(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '13px' }}>✕</button>
-                </div>
-              )}
-
-              <button type="submit" disabled={sending}
-                style={{ width: '100%', padding: '16px', background: sending ? '#94a3b8' : 'linear-gradient(135deg, #1e40af, #3b82f6)', color: 'white', border: 'none', borderRadius: '0', fontWeight: 800, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', cursor: sending ? 'not-allowed' : 'pointer', fontSize: '15px', letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: sending ? 'none' : '0 4px 20px rgba(59,130,246,0.4)', transition: 'all 0.2s' }}
-                onMouseOver={e => { if (!sending) e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <Send size={18} /> {sending ? 'Sending Message...' : 'Send Message'}
-              </button>
-            </form>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-// ==========================
-// Main Page
-// ==========================
 const PublicSmartTendersPage = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -927,58 +418,68 @@ const PublicSmartTendersPage = () => {
             {biddingStep !== 2 && (
               <>
                 {/* Laser Banner & Cards Combined Section */}
-                <LaserBanner>
+                <div style={{ padding: '60px 24px', background: '#F5F5F5', minHeight: '100vh' }}>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: 0 }}>Open Tenders</h2>
+                      <p style={{ fontSize: 13, color: '#424242', margin: '4px 0 0', fontWeight: 600 }}>{tenders.length} tender{tenders.length !== 1 ? 's' : ''} available</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#228B22', fontSize: 13, fontWeight: 700 }}>
+                      <Flame size={14} /> Live bidding open
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '28px', width: '100%' }}>
                   {tenders.map(tender => (
                     <div key={tender.id} className="tender-card">
                       <div className="tender-card-inner">
                         {/* Top row */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(0,255,128,0.15)', color: '#00ff88', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(0,255,128,0.25)' }}>
+                          <span className="open-badge-blink" style={{ fontSize: '11px', fontWeight: 800, background: '#F5F5F5', color: '#228B22', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <CheckCircle size={11} /> Open
                           </span>
                           {tender.tender_number && (
-                            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#00dcff', background: 'rgba(0,220,255,0.1)', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(0,220,255,0.2)' }}>{tender.tender_number}</span>
+                            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#424242', background: '#F5F5F5', padding: '3px 10px', borderRadius: '6px', border: '1px solid #8D6E63' }}>{tender.tender_number}</span>
                           )}
                         </div>
 
                         {/* Category */}
                         {tender.category && (
                           <div style={{ marginBottom: '10px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(200,0,255,0.12)', color: '#c800ff', padding: '3px 10px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(200,0,255,0.2)' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, background: '#F5F5F5', color: '#424242', padding: '3px 10px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #8D6E63' }}>
                               <FileText size={10} /> {tender.category}
                             </span>
                           </div>
                         )}
 
                         {/* Title */}
-                        <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', marginBottom: '12px', lineHeight: 1.25, letterSpacing: '-0.3px' }}>{tender.title}</h3>
+                        <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#1B5E20', marginBottom: '12px', lineHeight: 1.25, letterSpacing: '-0.3px' }}>{tender.title}</h3>
 
                         {/* Description - full text, no truncation */}
-                        <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: '18px', lineHeight: 1.7, flex: 1, fontSize: '14px', fontWeight: 600 }}>
+                        <p style={{ color: '#424242', marginBottom: '18px', lineHeight: 1.7, flex: 1, fontSize: '14px', fontWeight: 600 }}>
                           {tender.description}
                         </p>
 
                         {/* Dates */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '18px' }}>
                           {tender.opening_date && (
-                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: 'rgba(0,220,255,0.9)', marginBottom: '3px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}><Calendar size={11} /> Opens</span>
+                            <div style={{ fontSize: '12px', color: '#424242', background: '#F5F5F5', padding: '10px 12px', borderRadius: '8px', border: '1px solid #8D6E63' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#424242', marginBottom: '3px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}><Calendar size={11} /> Opens</span>
                               {new Date(tender.opening_date).toLocaleDateString()}
                             </div>
                           )}
                           {tender.closing_date && (
-                            <div style={{ fontSize: '12px', background: 'rgba(255,100,0,0.1)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255,100,0,0.2)' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#ff8040', marginBottom: '3px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}><Clock size={11} /> Closes</span>
-                              <strong style={{ color: '#ff8040' }}>{new Date(tender.closing_date).toLocaleDateString()}</strong>
+                            <div style={{ fontSize: '12px', background: '#FFF3E0', padding: '10px 12px', borderRadius: '8px', border: '1px solid #8D6E63' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#D84315', marginBottom: '3px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}><Clock size={11} /> Closes</span>
+                              <strong style={{ color: '#D84315' }}>{new Date(tender.closing_date).toLocaleDateString()}</strong>
                             </div>
                           )}
                         </div>
 
                         {/* Footer row */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.07)', marginBottom: '16px' }}>
-                          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}><Box size={13} /> {tender.items?.length || 0} items</span>
-                          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}><Send size={13} /> {tender.bids_count || 0} bids</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '14px', borderTop: '1px solid #8D6E63', marginBottom: '16px' }}>
+                          <span style={{ fontSize: '12px', color: '#424242', display: 'flex', alignItems: 'center', gap: '4px' }}><Box size={13} /> {tender.items?.length || 0} items</span>
+                          <span style={{ fontSize: '12px', color: '#424242', display: 'flex', alignItems: 'center', gap: '4px' }}><Send size={13} /> {tender.bids_count || 0} bids</span>
                         </div>
 
                         <button
@@ -992,13 +493,13 @@ const PublicSmartTendersPage = () => {
                     </div>
                   ))}
                   {tenders.length === 0 && (
-                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#e2e8f0', fontSize: '18px', padding: '40px 0' }}>
+                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#8D6E63', fontSize: '18px', padding: '40px 0' }}>
                       No active tenders currently available.
                     </p>
                   )}
                   </div>
-                </LaserBanner>
-                <hr style={{ border: 'none', borderTop: '3px solid #228B22', margin: 0 }} />
+                </div>
+                <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
               </>
             )}
 
@@ -1105,14 +606,14 @@ const PublicSmartTendersPage = () => {
 
             {/* ===== Bid Form Step ===== */}
             {biddingStep === 2 && selectedTender && (
-              <div style={{ background: 'white', borderRadius: '16px', padding: 'clamp(20px, 5vw, 40px)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: 'white', borderRadius: '16px', padding: 'clamp(20px, 5vw, 40px)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', border: '1px solid #8D6E63' }}>
                 <button onClick={() => setBiddingStep(0)}
                   style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginBottom: '24px', fontWeight: 600, fontSize: '15px' }}>
                   ← Back to Tenders
                 </button>
 
                 <div style={{ marginBottom: '32px' }}>
-                  <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '6px', color: '#0f172a' }}>{selectedTender.title}</h2>
+                  <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '6px', color: '#424242' }}>{selectedTender.title}</h2>
                   <p style={{ color: '#64748b' }}>{selectedTender.description}</p>
                   <div style={{ marginTop: '12px', padding: '12px 16px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', fontSize: '14px', color: '#0369a1' }}>
                     👤 Bidder: <strong>{bidderEmail}</strong> · 📱 {bidderPhone}
@@ -1121,10 +622,10 @@ const PublicSmartTendersPage = () => {
 
                 <form onSubmit={handleSubmit}>
                   {/* Smart Table */}
-                  <div style={{ overflowX: 'auto', marginBottom: '32px', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                  <div style={{ overflowX: 'auto', marginBottom: '32px', border: '1px solid #8D6E63', borderRadius: '10px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
                       <thead>
-                        <tr style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>
+                        <tr style={{ background: 'linear-gradient(135deg, #424242, #1B5E20)' }}>
                           <th style={{ padding: '14px 12px', color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>No</th>
                           <th style={{ padding: '14px 12px', color: 'white', fontWeight: 700, fontSize: '13px' }}>Object Type</th>
                           <th style={{ padding: '14px 12px', color: '#94a3b8', fontWeight: 600, fontSize: '13px' }}>Unit</th>
@@ -1148,7 +649,7 @@ const PublicSmartTendersPage = () => {
                           return (
                             <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
                               <td style={{ padding: '14px 12px', fontWeight: 700, color: '#94a3b8' }}>{index + 1}</td>
-                              <td style={{ padding: '14px 12px', fontWeight: 700, color: '#0f172a' }}>{item.object_type}</td>
+                              <td style={{ padding: '14px 12px', fontWeight: 700, color: '#424242' }}>{item.object_type}</td>
                               <td style={{ padding: '14px 12px', color: '#64748b' }}>{item.unit}</td>
                               <td style={{ padding: '14px 12px', fontWeight: 600 }}>{item.quantity}</td>
                               <td style={{ padding: '10px 8px' }}>
@@ -1163,8 +664,8 @@ const PublicSmartTendersPage = () => {
                                   className="t-input" style={{ minWidth: '60px', textAlign: 'right' }}
                                 />
                               </td>
-                              <td style={{ padding: '14px 8px', textAlign: 'center', fontWeight: 700, color: '#059669', background: '#f0fdf4' }}>{totalB}</td>
-                              <td style={{ padding: '14px 8px', textAlign: 'center', fontWeight: 700, color: '#059669', background: '#f0fdf4' }}>{totalC.toString().padStart(2, '0')}</td>
+                              <td style={{ padding: '14px 8px', textAlign: 'center', fontWeight: 700, color: '#2E8B57', background: '#f0fdf4' }}>{totalB}</td>
+                              <td style={{ padding: '14px 8px', textAlign: 'center', fontWeight: 700, color: '#2E8B57', background: '#f0fdf4' }}>{totalC.toString().padStart(2, '0')}</td>
                               <td style={{ padding: '10px 8px' }}>
                                 <input type="text" placeholder="Remarks..."
                                   onChange={e => handleBidItemChange(item.id, 'checkup', e.target.value)}
@@ -1179,8 +680,8 @@ const PublicSmartTendersPage = () => {
                   </div>
 
                   {/* Terms & Conditions (Delivery & Payment) */}
-                  <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
-                    <h3 style={{ margin: '0 0 20px', fontWeight: 700, color: '#0f172a' }}>Terms &amp; Conditions</h3>
+                  <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '12px', border: '1px solid #8D6E63', marginBottom: '24px' }}>
+                    <h3 style={{ margin: '0 0 20px', fontWeight: 700, color: '#424242' }}>Terms &amp; Conditions</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px', color: '#334155' }}>Estimated Delivery Time <span style={{ color: '#ef4444' }}>*</span></label>
@@ -1203,8 +704,8 @@ const PublicSmartTendersPage = () => {
                   </div>
 
                   {/* Footer: Name, Signature, Date */}
-                  <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px' }}>
-                    <h3 style={{ margin: '0 0 20px', fontWeight: 700, color: '#0f172a' }}>Competitor Details</h3>
+                  <div style={{ background: '#f8fafc', padding: '28px', borderRadius: '12px', border: '1px solid #8D6E63', marginBottom: '32px' }}>
+                    <h3 style={{ margin: '0 0 20px', fontWeight: 700, color: '#424242' }}>Competitor Details</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px', color: '#334155' }}>
@@ -1220,7 +721,7 @@ const PublicSmartTendersPage = () => {
                           Date (Auto from Server)
                         </label>
                         <input type="text" disabled value={new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}
-                          className="t-input" style={{ background: '#e2e8f0', cursor: 'not-allowed' }}
+                          className="t-input" style={{ background: '#8D6E63', cursor: 'not-allowed' }}
                         />
                       </div>
                     </div>
@@ -1241,7 +742,7 @@ const PublicSmartTendersPage = () => {
                         <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '14px', color: '#334155' }}>
                           Signature with Hand
                         </label>
-                        <div style={{ border: '1.5px solid #e2e8f0', background: 'white', borderRadius: '8px' }}>
+                        <div style={{ border: '1.5px solid #8D6E63', background: 'white', borderRadius: '8px' }}>
                           <SignatureCanvas onSave={dataUrl => setHandSignature(dataUrl)} />
                         </div>
                       </div>
