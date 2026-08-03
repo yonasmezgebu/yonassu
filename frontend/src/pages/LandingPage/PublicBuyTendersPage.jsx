@@ -50,33 +50,33 @@ const STYLES = `
 }
 .laser-banner {
   position: relative;
-  background: linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 40%, #0a0a1a 100%);
+  background: rgba(27, 94, 32, 0.9);
   overflow: hidden;
-  padding: 48px 24px;
+  padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 48px);
+  border-radius: 0;
+  margin-bottom: 0;
   min-height: 140px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
-  margin-top: -32px;
+  justify-content: flex-start;
+  width: 100%;
 }
 .laser-banner::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg,
-    transparent 0%, rgba(0,220,255,0.12) 20%,
-    rgba(160,0,255,0.18) 35%, rgba(255,0,128,0.12) 50%,
-    rgba(0,255,128,0.15) 65%, rgba(0,180,255,0.12) 80%, transparent 100%);
-  background-size: 300% 100%;
-  animation: laserSweep 4s linear infinite;
+    transparent 0%, rgba(16, 185, 129, 0.12) 20%,
+    rgba(5, 150, 105, 0.18) 35%, rgba(52, 211, 153, 0.12) 50%,
+    rgba(16, 185, 129, 0.15) 65%, rgba(5, 150, 105, 0.12) 80%, transparent 100%);
+  background-size: 100% 100%;
 }
 .laser-beam {
   position: absolute;
-  top: 0; left: 50%;
+  top: -10%; left: 50%;
   width: 3px;
-  height: 300px;
+  height: 200%;
   border-radius: 3px;
   transform-origin: top center;
   pointer-events: none;
@@ -101,10 +101,31 @@ const STYLES = `
   animation: laserBeam1 4.8s ease-in-out infinite 2.4s;
   box-shadow: 0 0 10px rgba(255,200,0,0.7), 0 0 20px rgba(255,200,0,0.3);
 }
+.laser-beam-5 {
+  background: linear-gradient(to bottom, rgba(0,220,255,0.7), rgba(0,220,255,0));
+  animation: laserBeam2 3.8s ease-in-out infinite 1.2s;
+  box-shadow: 0 0 10px rgba(0,220,255,0.6), 0 0 20px rgba(0,220,255,0.2);
+}
+.laser-beam-6 {
+  background: linear-gradient(to bottom, rgba(255,0,128,0.7), rgba(255,0,128,0));
+  animation: laserBeam3 4.5s ease-in-out infinite 0.5s;
+  box-shadow: 0 0 10px rgba(255,0,128,0.6), 0 0 20px rgba(255,0,128,0.2);
+}
+.laser-beam-7 {
+  background: linear-gradient(to bottom, rgba(0,255,128,0.6), rgba(0,255,128,0));
+  animation: laserBeam1 5.2s ease-in-out infinite 2.0s;
+  box-shadow: 0 0 8px rgba(0,255,128,0.5), 0 0 16px rgba(0,255,128,0.2);
+}
+.laser-beam-8 {
+  background: linear-gradient(to bottom, rgba(200,0,255,0.6), rgba(200,0,255,0));
+  animation: laserBeam2 4.0s ease-in-out infinite 2.8s;
+  box-shadow: 0 0 8px rgba(200,0,255,0.5), 0 0 16px rgba(200,0,255,0.2);
+}
 .laser-text-wrap {
   position: relative;
   z-index: 2;
   text-align: center;
+  width: 100%;
 }
 .laser-text {
   font-size: clamp(16px, 2.5vw, 24px);
@@ -126,6 +147,26 @@ const STYLES = `
   font-weight: 500;
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+/* ===== DARK TENDER CARD (inside laser section) ===== */
+.tender-card-dark {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: fadeUp 0.4s both;
+  position: relative;
+  z-index: 2;
+}
+.tender-card-dark:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  border-color: rgba(0,255,128,0.25);
 }
 
 
@@ -380,109 +421,183 @@ const STYLES = `
   border-bottom: 2px solid #e2e8f0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .tender-hero-wrap { height: 280px; }
   .tender-card-h { flex-direction: column; }
   .tender-card-thumb, .tender-card-thumb-placeholder { width: 100%; min-width: unset; height: 200px; }
   .meta-price { margin-left: 0; }
+  
+  .btd-step { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .btd-step:last-child { border-bottom: none; }
+  .btd-steps::before { display: none; }
+  
+  .tender-btn { width: 100%; justify-content: center; }
+  .tender-card-actions { flex-direction: column; align-items: stretch !important; gap: 16px !important; }
 }
 
 /* ═══════ HOW TENDER WORKS ═══════ */
-.btd-section { padding: 72px 24px; }
+.btd-section { padding: clamp(48px, 6vw, 80px) clamp(16px, 4vw, 48px); }
 .btd-inner { max-width: 1100px; margin: 0 auto; }
-.btd-label { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #059669; margin: 0 0 12px; }
-.btd-title { font-size: clamp(22px, 3.5vw, 36px); font-weight: 900; margin: 0 0 48px; line-height: 1.2; }
-.btd-title.dark { color: #0f172a; }
-.btd-title.light { color: #fff; }
-
-.btd-how-wrap { background: linear-gradient(135deg, #0f172a, #1e293b); }
-.btd-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; position: relative; }
-.btd-steps::before { content:''; position:absolute; top:40px; left:0; right:0; height:2px; background:linear-gradient(90deg,#059669,#10b981,#34d399); opacity:0.35; }
-.btd-step {
-  padding: 32px 24px; text-align: center; position: relative;
-  border-right: 1px solid rgba(255,255,255,0.06);
+.btd-section-title {
+  font-size: clamp(20px, 3vw, 30px); font-weight: 900;
+  color: #1B5E20; margin: 0 0 40px; line-height: 1.2;
 }
-.btd-step:last-child { border-right: none; }
+
+/* How it works */
+.btd-how-wrap { background: #F5F5F5; }
+.btd-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 24px;
+}
+.btd-step {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  border: 1px solid #8D6E63;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex; flex-direction: column; align-items: center;
+}
+.btd-step:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 .btd-step-num {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, #059669, #10b981);
+  width: 52px; height: 52px; border-radius: 50%;
+  background: #1B5E20;
   color: white; font-size: 20px; font-weight: 900;
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px;
-  box-shadow: 0 0 0 8px rgba(5,150,105,0.15);
-  position: relative; z-index: 1;
+  margin: 0 auto 18px;
+  flex-shrink: 0;
 }
-.btd-step-title { font-size: 14px; font-weight: 800; color: white; margin: 0 0 8px; }
-.btd-step-desc { font-size: 13px; color: #94a3b8; line-height: 1.6; margin: 0; }
+.btd-step-title { font-size: 15px; font-weight: 800; color: #424242; margin: 0 0 10px; }
+.btd-step-desc { font-size: 13px; color: #757575; line-height: 1.7; margin: 0; }
 
 .btd-win-rule {
-  margin-top: 40px; padding: 20px 28px;
-  background: rgba(251,191,36,0.08); border: 1.5px solid rgba(251,191,36,0.3);
+  margin-top: 32px; padding: 18px 24px;
+  background: #fff; border: 1px solid #8D6E63;
+  border-left: 4px solid #228B22;
   border-radius: 12px; display: flex; align-items: flex-start; gap: 14px;
 }
-.btd-win-rule p { margin: 0; font-size: 14px; color: #fde68a; line-height: 1.7; }
-.btd-win-rule strong { color: #fbbf24; }
+.btd-win-rule p { margin: 0; font-size: 14px; color: #424242; line-height: 1.7; }
+.btd-win-rule strong { color: #1B5E20; }
 
-/* ═══════ ABOUT SUTANA ═══════ */
+/* About / Who We Are */
 .btd-about-wrap { background: #fff; }
-.btd-about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
-@media(max-width:768px){ .btd-about-grid { grid-template-columns: 1fr; } }
+.btd-about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 5vw, 64px);
+  align-items: center;
+}
 .btd-about-visual {
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border-radius: 20px; min-height: 280px;
+  background: #F5F5F5;
+  border-radius: 12px;
+  border: 1px solid #8D6E63;
+  min-height: 260px;
   display: flex; align-items: center; justify-content: center;
-  padding: 40px; position: relative; overflow: hidden;
+  padding: 40px;
 }
-.btd-about-visual::before {
-  content:''; position:absolute; inset:0;
-  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2310b981' fill-opacity='0.06'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-9.5zm-2-9.5v.5h-4V10H9V5H0V0h5v5h5V0h10v10h-2zm10 0v5h-5v-5h5zM20 0v5h5V0h-5zm10 5v5h-5V5h5zM30 0v5h5V0h-5z'/%3E%3C/g%3E%3C/svg%3E") center/40px;
-}
-.btd-stat-row { display: flex; gap: 28px; margin-top: 32px; flex-wrap: wrap; }
-.btd-stat { text-align: center; }
-.btd-stat-n { font-size: 28px; font-weight: 900; color: #059669; line-height: 1; }
-.btd-stat-l { font-size: 11px; color: #64748b; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-.btd-about-text p { color: #64748b; line-height: 1.8; font-size: 15px; margin: 0 0 16px; }
+.btd-about-text p { color: #757575; line-height: 1.8; font-size: 15px; margin: 0 0 14px; }
+.btd-about-text p:last-child { margin-bottom: 0; }
 
-/* ═══════ PAST WINNERS ═══════ */
-.btd-winners-wrap { background: #f8fafc; }
-.btd-winners-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+/* Past Winners */
+.btd-winners-wrap { background: #F5F5F5; }
+.btd-winners-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
 .btd-winner-card {
-  background: white; border-radius: 12px; padding: 24px;
-  border: 1px solid #e4e6ea; display: flex; align-items: flex-start; gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: #fff;
+  border-radius: 12px;
+  padding: 22px 20px;
+  border: 1px solid #8D6E63;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .btd-winner-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 .btd-winner-icon {
   width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: #1B5E20;
   display: flex; align-items: center; justify-content: center;
 }
-.btd-winner-product { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 6px; }
-.btd-winner-meta { font-size: 12px; color: #64748b; margin: 0 0 4px; }
+.btd-winner-product { font-size: 14px; font-weight: 700; color: #424242; margin: 0 0 5px; }
+.btd-winner-meta { font-size: 12px; color: #757575; margin: 0 0 8px; }
 .btd-winner-value {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 14px; font-weight: 800; color: #059669;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  padding: 3px 10px; border-radius: 6px; margin-top: 8px;
+  font-size: 13px; font-weight: 700; color: #2E8B57;
+  background: #F5F5F5; border: 1px solid #8D6E63;
+  padding: 3px 10px; border-radius: 6px;
 }
 
-/* ═══════ FAQ ═══════ */
-.btd-faq-wrap { background: white; }
+/* FAQ */
+.btd-faq-wrap { background: #fff; }
 .btd-faq-inner { max-width: 820px; margin: 0 auto; }
-.btd-faq-item { border-bottom: 1px solid #e4e6ea; }
+.btd-faq-item { border-bottom: 1px solid #e0e0e0; }
+.btd-faq-item:first-of-type { border-top: 1px solid #e0e0e0; }
 .btd-faq-q {
   width: 100%; text-align: left; background: none; border: none;
-  padding: 20px 0; display: flex; justify-content: space-between; align-items: center;
-  font-size: 15px; font-weight: 700; color: #0f172a; cursor: pointer;
-  gap: 16px; font-family: inherit; transition: color 0.2s;
+  padding: 18px 0; display: flex; justify-content: space-between; align-items: center;
+  font-size: 15px; font-weight: 700; color: #424242; cursor: pointer;
+  gap: 16px; font-family: inherit; transition: color 0.15s ease;
 }
-.btd-faq-q:hover { color: #059669; }
+.btd-faq-q:hover { color: #1B5E20; }
 .btd-faq-a {
   overflow: hidden; max-height: 0;
   transition: max-height 0.35s ease, padding 0.35s ease;
-  font-size: 14px; color: #64748b; line-height: 1.8; padding: 0;
+  font-size: 14px; color: #757575; line-height: 1.8; padding: 0;
 }
-.btd-faq-a.open { max-height: 400px; padding-bottom: 20px; }
+.btd-faq-a.open { max-height: 400px; padding-bottom: 18px; }
+
+/* ─── Tablet (≤ 900px) ─── */
+@media(max-width: 900px) {
+  .btd-about-grid { grid-template-columns: 1fr; gap: 24px; }
+  .btd-about-visual { min-height: 160px; padding: 28px; order: -1; }
+  .btd-steps { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── Mobile (≤ 600px) ─── */
+@media(max-width: 600px) {
+  .btd-section { padding: 40px 16px; }
+  .btd-section-title { font-size: 20px; margin-bottom: 28px; }
+
+  /* Steps → single column stacked, no border on mobile */
+  .btd-steps { grid-template-columns: 1fr; gap: 0; }
+  .btd-step {
+    flex-direction: row;
+    text-align: left;
+    padding: 16px 4px;
+    gap: 16px;
+    align-items: flex-start;
+    border: none;
+    border-bottom: 1px solid #e0e0e0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .btd-step:last-child { border-bottom: none; }
+  .btd-step:hover { transform: none; box-shadow: none; }
+  .btd-step-num { margin: 0; flex-shrink: 0; width: 40px; height: 40px; font-size: 16px; }
+  .btd-step-title { font-size: 14px; margin-bottom: 6px; }
+  .btd-step-desc { font-size: 13px; }
+
+  /* Win rule */
+  .btd-win-rule { flex-direction: row; gap: 12px; padding: 14px 16px; }
+  .btd-win-rule p { font-size: 13px; }
+
+  /* About visual hidden on very small — just show text */
+  .btd-about-visual { display: none; }
+  .btd-about-text p { font-size: 14px; }
+
+  /* Winners → single column */
+  .btd-winners-grid { grid-template-columns: 1fr; gap: 12px; }
+  .btd-winner-card { padding: 16px 14px; gap: 12px; }
+  .btd-winner-icon { width: 38px; height: 38px; }
+  .btd-winner-product { font-size: 13px; }
+  .btd-winner-meta { font-size: 11px; }
+
+  /* FAQ touch targets */
+  .btd-faq-q { padding: 16px 0; font-size: 14px; }
+  .btd-faq-a { font-size: 13px; }
+}
 
 /* ═══════ TRUST & LEGAL ═══════ */
 .btd-trust-wrap { background: linear-gradient(135deg, #0f172a, #1e293b); }
@@ -528,7 +643,7 @@ const LASER_PHRASES = [
   "Bid on open tenders today.",
 ];
 
-const LaserBanner = () => {
+const LaserBanner = ({ children }) => {
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -545,11 +660,14 @@ const LaserBanner = () => {
 
   return (
     <div className="laser-banner">
-      {/* Laser beams */}
       <div className="laser-beam laser-beam-1" />
       <div className="laser-beam laser-beam-2" />
       <div className="laser-beam laser-beam-3" />
       <div className="laser-beam laser-beam-4" />
+      <div className="laser-beam laser-beam-5" />
+      <div className="laser-beam laser-beam-6" />
+      <div className="laser-beam laser-beam-7" />
+      <div className="laser-beam laser-beam-8" />
 
       <div className="laser-text-wrap">
         <div className="laser-text" style={{
@@ -559,8 +677,10 @@ const LaserBanner = () => {
         }}>
           {LASER_PHRASES[phraseIdx]}
         </div>
-        <div className="laser-sub">SUTANA Smart Tenders & Procurement</div>
+        <div className="laser-sub">SUTANA Smart Tenders &amp; Procurement</div>
       </div>
+
+      {children && <div style={{ width: '100%', marginTop: '32px', position: 'relative', zIndex: 2 }}>{children}</div>}
     </div>
   );
 };
@@ -582,7 +702,7 @@ const Countdown = ({ deadline }) => {
   return <span>{remaining}</span>;
 };
 
-const TenderCard = ({ t, onClick, index }) => {
+  const TenderCard = ({ t, onClick, index }) => {
   const imgs = (() => { try { return JSON.parse(t.attachments || '[]'); } catch { return []; } })();
   const images = imgs.filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f));
   const [imgIdx, setImgIdx] = useState(0);
@@ -595,65 +715,49 @@ const TenderCard = ({ t, onClick, index }) => {
 
   return (
     <div
-      className="tender-card-h"
+      className="tender-card-dark"
       onClick={onClick}
       style={{ animationDelay: `${index * 0.05}s` }}
     >
-      {!isMultiple && (
-        imgSrc
-          ? <img className="tender-card-thumb" src={imgSrc} alt={t.title} loading="lazy" onError={() => setImgIdx(i => i + 1)} />
-          : <div className="tender-card-thumb-placeholder">
-              <TrendingUp size={40} color="#cbd5e1" />
-            </div>
+      {!isMultiple && imgSrc && (
+        <img src={imgSrc} alt={t.title} loading="lazy" onError={() => setImgIdx(i => i + 1)}
+          style={{ width: '100%', height: '180px', objectFit: 'cover', display: 'block', borderRadius: '12px 12px 0 0' }} />
       )}
-      <div className="tender-card-body">
-        <div className="tender-card-toprow">
-          <span className="tender-ref">{t.reference_number}</span>
-          <span className={`status-badge ${t.status}`}>{t.status.replace('_', ' ')}</span>
-          {t.category && <span style={{ fontSize: 11, color: '#64748b', padding: '2px 8px', background: '#f8fafc', borderRadius: 4, border: '1px solid #e2e8f0' }}>{t.category}</span>}
-          {isOpen && <span className="countdown-badge"><Flame size={10} /><Countdown deadline={t.deadline} /></span>}
+      <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+        {/* Top row: badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#00dcff', background: 'rgba(0,220,255,0.1)', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(0,220,255,0.2)' }}>{t.reference_number}</span>
+          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(0,255,128,0.15)', color: '#00ff88', padding: '4px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '1px', border: '1px solid rgba(0,255,128,0.25)' }}>{t.status}</span>
+          {t.category && <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(200,0,255,0.12)', color: '#c800ff', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(200,0,255,0.2)' }}>{t.category}</span>}
+          {isOpen && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'linear-gradient(135deg,#fef3c7,#fde68a)', color:'#92400e', fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20 }}><Flame size={10} /><Countdown deadline={t.deadline} /></span>}
         </div>
 
-        <h3 className="tender-card-title">{t.title}</h3>
-        {t.description && <p className="tender-card-desc">{t.description}</p>}
+        {/* Title */}
+        <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.25 }}>{t.title}</h3>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 16 }}>
-          <div className="tender-card-meta" style={{ marginTop: 0, flex: 1 }}>
-            {(() => {
-              let parsedItems = [];
-              try { parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch(_){}
-              if (parsedItems.length > 0) {
-                return (
-                  <span className="meta-item" style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: 'white', padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
-                    📦 {parsedItems.length} Items (Smart Table)
-                  </span>
-                );
-              }
-              if (t.item_name) {
-                return <span className="meta-item"><Tag size={12} />{t.item_name} × {t.quantity}</span>;
-              }
-              return null;
-            })()}
-            <span className="meta-item"><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
-            {t.deadline && (
-              <span className="meta-item"><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>
-            )}
-            {(() => {
-              let parsedItems = [];
-              try { parsedItems = typeof t.items === 'string' ? JSON.parse(t.items) : (t.items || []); } catch(_){}
-              if (parsedItems.length > 0) return null; // no price for multi-item tenders
-              return (
-                <span className="meta-price">
-                  {parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB
-                </span>
-              );
-            })()}
+        {/* Description */}
+        {t.description && <p style={{ color: 'rgba(255,255,255,0.75)', margin: 0, lineHeight: 1.6, fontSize: '13px', fontWeight: 600 }}>{t.description}</p>}
+
+        {/* Meta row */}
+        <div className="tender-card-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+            {isMultiple ? (
+              <span style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 11 }}>📦 {parsedItems.length} Items (Smart Table)</span>
+            ) : t.item_name ? (
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Tag size={12} />{t.item_name} × {t.quantity}</span>
+            ) : null}
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Calendar size={12} />{new Date(t.created_at).toLocaleDateString('en-CA')}</span>
+            {t.deadline && <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, display:'flex', alignItems:'center', gap:4 }}><Clock size={12} />{new Date(t.deadline).toLocaleDateString('en-CA')}</span>}
+            {!isMultiple && <span style={{ fontSize: '15px', fontWeight: 800, color: '#fbbf24' }}>{parseFloat(t.starting_bid_price || 0).toLocaleString()} ETB</span>}
           </div>
-          <button style={{ 
-            background: '#059669', color: 'white', border: 'none', borderRadius: '8px', 
-            padding: '8px 16px', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px',
-            cursor: 'pointer', transition: 'background 0.2s', whiteSpace: 'nowrap', marginLeft: 12
-          }}>
+          <button className="tender-btn" style={{
+            background: '#1B5E20', color: 'white', border: 'none', borderRadius: '8px',
+            padding: '9px 18px', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px',
+            cursor: 'pointer', transition: 'background 0.15s, transform 0.15s', whiteSpace: 'nowrap'
+          }}
+            onMouseOver={e => { e.currentTarget.style.background='#145214'; e.currentTarget.style.transform='translateY(-1px)'; }}
+            onMouseOut={e => { e.currentTarget.style.background='#1B5E20'; e.currentTarget.style.transform='translateY(0)'; }}
+          >
             View Details <ArrowRight size={14} />
           </button>
         </div>
@@ -740,35 +844,36 @@ export default () => {
           </p>
         </div>
       ) : (
-        <div className="tender-main-layout">
-          <LaserBanner />
-          <div className="tender-results-header" style={{ marginTop: '32px' }}>
-            <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                Open Tenders
-              </h2>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
+        <>
+          <LaserBanner>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#ffffff', margin: 0 }}>Open Tenders</h2>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: '4px 0 0' }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#00ff88', fontSize: 13, fontWeight: 700 }}>
+                <Flame size={14} /> Live bidding open
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontSize: 13, fontWeight: 600 }}>
-              <Flame size={14} /> Live bidding open
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '24px', width: '100%' }}>
+              {filtered.map((t, i) => (
+                <TenderCard
+                  key={t.id}
+                  t={t}
+                  index={i}
+                  onClick={() => navigate(`/tenders/${t.id}`)}
+                />
+              ))}
             </div>
-          </div>
-          {filtered.map((t, i) => (
-            <TenderCard
-              key={t.id}
-              t={t}
-              index={i}
-              onClick={() => navigate(`/tenders/${t.id}`)}
-            />
-          ))}
-        </div>
+          </LaserBanner>
+          <hr style={{ border: 'none', borderTop: '3px solid #228B22', margin: 0 }} />
+        </>
       )}
 
       {/* ─── How Tender Works ─── */}
       <div className="btd-how-wrap btd-section">
         <div className="btd-inner">
-          <p className="btd-label">Simple & Transparent</p>
-          <h2 className="btd-title light">How the Tender Process Works</h2>
+          <h2 className="btd-section-title">How the Tender Process Works</h2>
           <div className="btd-steps">
             {[
               { n:'1', title:'Sutana Posts a Product', desc:'Sutana lists a product or batch for competitive bidding with a starting price and closing deadline.' },
@@ -784,48 +889,42 @@ export default () => {
             ))}
           </div>
           <div className="btd-win-rule">
-            <Gavel size={22} color="#fbbf24" style={{flexShrink:0, marginTop:2}} />
+            <Gavel size={22} color="#228B22" style={{flexShrink:0, marginTop:2}} />
             <p><strong>Core Winning Rule:</strong> The tender is won by whoever submits the <strong>greatest value offer</strong> before the closing time. No other bidder can see the winning amount until the tender closes. Sutana reserves the right to reject any bid or cancel a tender at its sole discretion. Final sale is not guaranteed until officially confirmed by Sutana.</p>
           </div>
         </div>
       </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: 0 }} />
 
       {/* ─── About Sutana ─── */}
       <div className="btd-about-wrap btd-section">
         <div className="btd-inner">
           <div className="btd-about-grid">
             <div className="btd-about-visual">
-              <div style={{textAlign:'center', position:'relative', zIndex:1}}>
-                <div style={{width:100,height:100,borderRadius:'50%',background:'linear-gradient(135deg,#059669,#10b981)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:'0 16px 40px rgba(5,150,105,0.35)'}}>
-                  <Gavel size={44} color="white" />
+              <div style={{textAlign:'center'}}>
+                <div style={{width:88,height:88,borderRadius:'50%',background:'#1B5E20',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:'0 8px 28px rgba(27,94,32,0.25)'}}>
+                  <Gavel size={40} color="white" />
                 </div>
-                <div style={{fontSize:16,fontWeight:800,color:'#065f46'}}>Sutana Products Marketplace</div>
-                <div style={{fontSize:12,color:'#059669',marginTop:4}}>Trusted Supplier Since 2010</div>
+                <div style={{fontSize:15,fontWeight:800,color:'#424242'}}>Sutana Products Marketplace</div>
+                <div style={{fontSize:12,color:'#2E8B57',marginTop:4,fontWeight:600}}>Trusted Supplier Since 2010</div>
               </div>
             </div>
             <div className="btd-about-text">
-              <p className="btd-label">Who We Are</p>
-              <h2 className="btd-title dark" style={{marginBottom:16}}>Ethiopia's Leading Product Bidding Platform</h2>
+              <h2 className="btd-section-title" style={{marginBottom:16}}>Who We Are</h2>
               <p>Sutana is a premier Ethiopian supplier offering a wide range of quality products through a transparent competitive tendering process.</p>
               <p>Our tender marketplace gives businesses and individuals access to certified, quality-checked items at fair, market-driven prices — determined by open competition, not fixed pricing.</p>
-              <div className="btd-stat-row">
-                {[{n:'200+',l:'Tenders Completed'},{n:'50+',l:'Product Categories'},{n:'1,000+',l:'Registered Buyers'},{n:'100%',l:'Transparent Process'}].map(s=>(
-                  <div className="btd-stat" key={s.l}>
-                    <div className="btd-stat-n">{s.n}</div>
-                    <div className="btd-stat-l">{s.l}</div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── Past Winners / Success Stories ─── */}
+      <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: 0 }} />
+
+      {/* ─── Past Winners ─── */}
       <div className="btd-winners-wrap btd-section">
         <div className="btd-inner">
-          <p className="btd-label">Success Stories</p>
-          <h2 className="btd-title dark">Past Winning Tenders</h2>
+          <h2 className="btd-section-title">Past Winning Tenders</h2>
           <div className="btd-winners-grid">
             {WINNERS.map(w => (
               <div className="btd-winner-card" key={w.product}>
@@ -838,22 +937,23 @@ export default () => {
               </div>
             ))}
           </div>
-          <p style={{fontSize:12,color:'#94a3b8',marginTop:20,textAlign:'center'}}>* Winner identities are kept private. Only product and winning offer value are displayed.</p>
+          <p style={{fontSize:12,color:'#9e9e9e',marginTop:20,textAlign:'center'}}>* Winner identities are kept private. Only product and winning offer value are displayed.</p>
         </div>
       </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: 0 }} />
 
       {/* ─── FAQs ─── */}
       <div className="btd-faq-wrap btd-section">
         <div className="btd-faq-inner">
-          <p className="btd-label">Got Questions?</p>
-          <h2 className="btd-title dark">Frequently Asked Questions</h2>
+          <h2 className="btd-section-title">Frequently Asked Questions</h2>
           {FAQS.map((f,i) => (
             <div className="btd-faq-item" key={i}>
               <button className="btd-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 <span>{f.q}</span>
                 {openFaq === i
-                  ? <ChevronUp size={18} color="#059669" style={{flexShrink:0}} />
-                  : <ChevronDown size={18} color="#64748b" style={{flexShrink:0}} />}
+                  ? <ChevronUp size={18} color="#1B5E20" style={{flexShrink:0}} />
+                  : <ChevronDown size={18} color="#9e9e9e" style={{flexShrink:0}} />}
               </button>
               <div className={`btd-faq-a ${openFaq === i ? 'open' : ''}`}>{f.a}</div>
             </div>
@@ -861,55 +961,7 @@ export default () => {
         </div>
       </div>
 
-      {/* ─── Trust & Legal ─── */}
-      <div className="btd-trust-wrap btd-section">
-        <div className="btd-inner">
-          <p className="btd-label">Trust & Legal</p>
-          <h2 className="btd-title light">Your Bid, Protected by Policy</h2>
-          <div className="btd-trust-grid">
-            {[
-              { Icon: Shield, title: 'Terms & Conditions', desc: 'All bids are legally binding once submitted. By bidding, you agree to Sutana\'s tender terms including payment obligations upon winning.' },
-              { Icon: FileText, title: 'Payment & Delivery Policy', desc: 'Winners must complete payment within 48 hours of notification. Products are delivered or available for pickup within 5 business days.' },
-              { Icon: Eye, title: 'Privacy Policy', desc: 'Bidder identities and offer amounts are kept strictly confidential. Only the winning offer value is disclosed after tender closure.' },
-              { Icon: Info, title: 'Disclaimer', desc: 'Sutana reserves the right to reject any bid or cancel any tender at its sole discretion. Final sale is confirmed only upon official award notification.' },
-            ].map(({Icon, ...t}) => (
-              <div className="btd-trust-item" key={t.title}>
-                <div className="btd-trust-icon"><Icon size={20} color="#10b981" /></div>
-                <div>
-                  <p className="btd-trust-title">{t.title}</p>
-                  <p className="btd-trust-desc">{t.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* ─── Contact for Tender Support ─── */}
-      <div className="btd-contact-wrap btd-section">
-        <div className="btd-contact-inner">
-          <p className="btd-label">Need Help?</p>
-          <h2 className="btd-title dark" style={{textAlign:'center',marginBottom:8}}>Tender Support Contact</h2>
-          <p style={{color:'#64748b',fontSize:15,textAlign:'center',margin:0}}>Have a question about a tender, bid submission, or payment? Our team is ready to help.</p>
-          <div className="btd-contact-cards">
-            <div className="btd-contact-card">
-              <div className="btd-contact-label">📞 Call Us</div>
-              <a href="tel:+251911000000"><Phone size={16} style={{marginRight:6,verticalAlign:'middle'}} />+251 911 000 000</a>
-              <p style={{fontSize:12,color:'#94a3b8',margin:'8px 0 0'}}>Mon–Sat, 8AM–6PM</p>
-            </div>
-            <div className="btd-contact-card">
-              <div className="btd-contact-label">✉️ Email Us</div>
-              <a href="mailto:tenders@sutana.com"><Mail size={16} style={{marginRight:6,verticalAlign:'middle'}} />tenders@sutana.com</a>
-              <p style={{fontSize:12,color:'#94a3b8',margin:'8px 0 0'}}>Reply within 24 hours</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Disclaimer ─── */}
-      <div className="btd-disclaimer">
-        <p><strong>⚖️ Legal Disclaimer:</strong> Participation in Sutana tenders constitutes acceptance of all Terms & Conditions. All bids are confidential and legally binding upon submission. Sutana reserves the right to reject, modify, or cancel any tender at its sole discretion without obligation. Final sale is confirmed only upon official award. Winning amounts will only be disclosed after tender closure. | <strong>Terms of Use</strong> | <strong>Privacy Policy</strong> | <strong>Tender Policy</strong></p>
-      </div>
 
     </div>
   );

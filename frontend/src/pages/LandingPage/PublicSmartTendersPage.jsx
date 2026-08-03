@@ -42,7 +42,7 @@ const STYLES = `
   padding: 0 24px;
 }
 .tender-page-root {
-  background: #06091a;
+  background: #F5F5F5;
   min-height: 100vh;
   font-family: 'Inter', -apple-system, sans-serif;
 }
@@ -134,15 +134,17 @@ const STYLES = `
 }
 .laser-banner {
   position: relative;
-  background: linear-gradient(135deg, #0a0a1a 0%, #0d1b3e 40%, #0a0a1a 100%);
+  background: rgba(27, 94, 32, 0.75);
+  backdrop-filter: blur(12px);
   overflow: hidden;
-  padding: 48px 48px;
+  padding: clamp(24px, 5vw, 48px) clamp(16px, 4vw, 48px);
   border-radius: 0;
   margin-bottom: 0;
   min-height: 140px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
 }
 .laser-banner::before {
@@ -158,9 +160,9 @@ const STYLES = `
 }
 .laser-beam {
   position: absolute;
-  top: 0; left: 50%;
+  top: -10%; left: 50%;
   width: 3px;
-  height: 300px;
+  height: 200%;
   border-radius: 3px;
   transform-origin: top center;
   pointer-events: none;
@@ -184,6 +186,26 @@ const STYLES = `
   background: linear-gradient(to bottom, rgba(255,200,0,0.8), rgba(255,200,0,0));
   animation: laserBeam1 4.8s ease-in-out infinite 2.4s;
   box-shadow: 0 0 10px rgba(255,200,0,0.7), 0 0 20px rgba(255,200,0,0.3);
+}
+.laser-beam-5 {
+  background: linear-gradient(to bottom, rgba(0,220,255,0.7), rgba(0,220,255,0));
+  animation: laserBeam2 3.8s ease-in-out infinite 1.2s;
+  box-shadow: 0 0 10px rgba(0,220,255,0.6), 0 0 20px rgba(0,220,255,0.2);
+}
+.laser-beam-6 {
+  background: linear-gradient(to bottom, rgba(255,0,128,0.7), rgba(255,0,128,0));
+  animation: laserBeam3 4.5s ease-in-out infinite 0.5s;
+  box-shadow: 0 0 10px rgba(255,0,128,0.6), 0 0 20px rgba(255,0,128,0.2);
+}
+.laser-beam-7 {
+  background: linear-gradient(to bottom, rgba(0,255,128,0.6), rgba(0,255,128,0));
+  animation: laserBeam1 5.2s ease-in-out infinite 2.0s;
+  box-shadow: 0 0 8px rgba(0,255,128,0.5), 0 0 16px rgba(0,255,128,0.2);
+}
+.laser-beam-8 {
+  background: linear-gradient(to bottom, rgba(200,0,255,0.6), rgba(200,0,255,0));
+  animation: laserBeam2 4.0s ease-in-out infinite 2.8s;
+  box-shadow: 0 0 8px rgba(200,0,255,0.5), 0 0 16px rgba(200,0,255,0.2);
 }
 .laser-text-wrap {
   position: relative;
@@ -214,10 +236,11 @@ const STYLES = `
 
 /* ===== TENDER CARD (Dark Hero Style) ===== */
 .tender-card {
-  background: linear-gradient(145deg, #0f1729 0%, #1a2a4a 60%, #0f1729 100%);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
   padding: 0;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
   display: flex;
   flex-direction: column;
@@ -225,18 +248,9 @@ const STYLES = `
   overflow: hidden;
   position: relative;
 }
-.tender-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #00dcff, #c800ff, #ff0080, #00ff80, #ffc800);
-  background-size: 300% 100%;
-  animation: laserSweep 3s linear infinite;
-}
 .tender-card:hover {
   transform: translateY(-6px) scale(1.01);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,150,255,0.15);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(46,139,87,0.25);
 }
 .tender-card-inner {
   padding: 24px 26px 22px;
@@ -263,20 +277,23 @@ const STYLES = `
 
 /* ===== BID BUTTON ===== */
 .bid-btn {
-  background: linear-gradient(135deg, #00dcff 0%, #c800ff 50%, #ff0080 100%);
+  background: #1B5E20;
   color: white;
   border: none;
   padding: 13px 22px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 15px;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+  transition: all 0.15s ease;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 20px rgba(0,150,255,0.4);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(27,94,32,0.3);
 }
-.bid-btn:hover { opacity: 0.9; transform: scale(1.03); box-shadow: 0 8px 30px rgba(0,150,255,0.6); }
+.bid-btn:hover {
+  background: #145214;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27,94,32,0.4);
+}
 
 .submit-bid-btn {
   padding: 14px 36px;
@@ -316,7 +333,7 @@ const LASER_PHRASES = [
   "Submit your best bid today.",
 ];
 
-const LaserBanner = () => {
+const LaserBanner = ({ children }) => {
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -333,11 +350,14 @@ const LaserBanner = () => {
 
   return (
     <div className="laser-banner">
-      {/* Laser beams */}
       <div className="laser-beam laser-beam-1" />
       <div className="laser-beam laser-beam-2" />
       <div className="laser-beam laser-beam-3" />
       <div className="laser-beam laser-beam-4" />
+      <div className="laser-beam laser-beam-5" />
+      <div className="laser-beam laser-beam-6" />
+      <div className="laser-beam laser-beam-7" />
+      <div className="laser-beam laser-beam-8" />
 
       <div className="laser-text-wrap">
         <div className="laser-text" style={{
@@ -347,7 +367,11 @@ const LaserBanner = () => {
         }}>
           {LASER_PHRASES[phraseIdx]}
         </div>
-        <div className="laser-sub">SUTANA Smart Tenders &amp; Procurement</div>
+        <div className="laser-sub" style={{ marginBottom: children ? '40px' : '0' }}>SUTANA Smart Tenders &amp; Procurement</div>
+      </div>
+      
+      <div style={{ position: 'relative', zIndex: 3, width: '100%', maxWidth: '1400px' }}>
+        {children}
       </div>
     </div>
   );
@@ -725,7 +749,7 @@ const PublicSmartTendersPage = () => {
         if (target) {
           setSelectedTender(target);
           setBidItems({});
-          setCompetitorName('');
+          setCompetitorName(user?.name || user?.full_name || '');
           setDigitalSignature('');
           setHandSignature('');
           setDeliveryTime('');
@@ -764,13 +788,13 @@ const PublicSmartTendersPage = () => {
     
     setSelectedTender(tender);
     setBidItems({});
-    setCompetitorName('');
     setDigitalSignature('');
     setHandSignature('');
     setDeliveryTime('');
     setPaymentTerms('');
     
     // Auto-fill from user context
+    setCompetitorName(user?.name || user?.full_name || '');
     setBidderEmail(user?.email || '');
     setBidderPhone(user?.phone || '');
     
@@ -902,12 +926,9 @@ const PublicSmartTendersPage = () => {
             {/* ===== Tender Cards List ===== */}
             {biddingStep !== 2 && (
               <>
-                {/* Laser Banner - full width */}
-                <LaserBanner />
-
-                {/* Cards Grid - full width with padding */}
-                <div style={{ padding: '40px 40px 48px', background: 'linear-gradient(180deg, #06091a 0%, #0d1b3e 50%, #06091a 100%)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '28px' }}>
+                {/* Laser Banner & Cards Combined Section */}
+                <LaserBanner>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '28px', width: '100%' }}>
                   {tenders.map(tender => (
                     <div key={tender.id} className="tender-card">
                       <div className="tender-card-inner">
@@ -931,10 +952,10 @@ const PublicSmartTendersPage = () => {
                         )}
 
                         {/* Title */}
-                        <h3 style={{ fontSize: '21px', fontWeight: 900, color: '#ffffff', marginBottom: '12px', lineHeight: 1.25, letterSpacing: '-0.3px' }}>{tender.title}</h3>
+                        <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', marginBottom: '12px', lineHeight: 1.25, letterSpacing: '-0.3px' }}>{tender.title}</h3>
 
                         {/* Description - full text, no truncation */}
-                        <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '18px', lineHeight: 1.7, flex: 1, fontSize: '14px' }}>
+                        <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: '18px', lineHeight: 1.7, flex: 1, fontSize: '14px', fontWeight: 600 }}>
                           {tender.description}
                         </p>
 
@@ -971,65 +992,68 @@ const PublicSmartTendersPage = () => {
                     </div>
                   ))}
                   {tenders.length === 0 && (
-                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#64748b', fontSize: '18px', padding: '40px 0' }}>
+                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#e2e8f0', fontSize: '18px', padding: '40px 0' }}>
                       No active tenders currently available.
                     </p>
                   )}
-                </div>
-              </div>{/* end cards grid padding wrapper */}
+                  </div>
+                </LaserBanner>
+                <hr style={{ border: 'none', borderTop: '3px solid #228B22', margin: 0 }} />
               </>
             )}
 
             {/* ===== INFO SECTIONS (visible only on list view) ===== */}
             {biddingStep !== 2 && (
-              <div style={{ background: '#fff' }}>
+              <div style={{ background: '#F5F5F5' }}>
                 {/* How It Works */}
-                <div style={{ padding: '64px 40px 48px' }}>
-                  <h2 style={{ textAlign: 'center', fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 900, color: '#0f172a', marginBottom: '8px' }}>How It Works</h2>
-                  <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '40px', fontSize: '16px' }}>Four simple steps from tender discovery to award</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
+                <div style={{ padding: 'clamp(32px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 900, color: '#1B5E20', marginBottom: '8px' }}>How It Works</h2>
+                  <p style={{ textAlign: 'center', color: '#424242', marginBottom: '40px', fontSize: '16px' }}>Four simple steps from tender discovery to award</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '24px' }}>
                     {[
-                      { step: '01', icon: <FileText size={36} color="#3b82f6" />, title: 'Browse Tenders', desc: 'Review all open tenders above. Each listing includes item details, quantities, and the closing deadline.' },
-                      { step: '02', icon: <FileCheck size={36} color="#3b82f6" />, title: 'Register & Bid', desc: 'Click "Start Bidding", provide your email and phone, then fill in your unit prices for each requested item.' },
-                      { step: '03', icon: <Activity size={36} color="#3b82f6" />, title: 'Evaluation', desc: 'Our Purchase team analyses all submitted bids, comparing price, delivery time and payment terms.' },
-                      { step: '04', icon: <Award size={36} color="#3b82f6" />, title: 'Award & Contract', desc: 'The best-value supplier is recommended and approved by our CEO. You will be notified within 3–5 business days.' },
+                      { step: '01', icon: <FileText size={32} color="#228B22" />, title: 'Browse Tenders', desc: 'Review all open tenders above. Each listing includes item details, quantities, and the closing deadline.' },
+                      { step: '02', icon: <FileCheck size={32} color="#228B22" />, title: 'Register & Bid', desc: 'Click "Start Bidding", provide your email and phone, then fill in your unit prices for each requested item.' },
+                      { step: '03', icon: <Activity size={32} color="#228B22" />, title: 'Evaluation', desc: 'Our Purchase team analyses all submitted bids, comparing price, delivery time and payment terms.' },
+                      { step: '04', icon: <Award size={32} color="#228B22" />, title: 'Award & Contract', desc: 'The best-value supplier is recommended and approved by our CEO. You will be notified within 3–5 business days.' },
                     ].map(s => (
-                      <div key={s.step} style={{ background: 'white', borderRadius: '16px', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '48px', opacity: 0.06, fontWeight: 900, color: '#0f172a' }}>{s.step}</div>
-                        <div style={{ marginBottom: '16px' }}>{s.icon}</div>
-                        <h3 style={{ fontWeight: 800, fontSize: '17px', color: '#0f172a', marginBottom: '10px' }}>Step {s.step}: {s.title}</h3>
-                        <p style={{ color: '#64748b', fontSize: '14px', lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+                      <div key={s.step} style={{ background: '#FFFFFF', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #8D6E63', position: 'relative', overflow: 'hidden', transition: 'transform 0.15s, box-shadow 0.15s' }} onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}>
+                        <div style={{ position: 'absolute', top: '16px', right: '16px', fontSize: '48px', opacity: 0.04, fontWeight: 900, color: '#1B5E20' }}>{s.step}</div>
+                        <div style={{ marginBottom: '16px', background: '#E8F5E9', display: 'inline-block', padding: '12px', borderRadius: '50%' }}>{s.icon}</div>
+                        <h3 style={{ fontWeight: 700, fontSize: '17px', color: '#1B5E20', marginBottom: '8px' }}>Step {s.step}: {s.title}</h3>
+                        <p style={{ color: '#424242', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
                 {/* Why Bid Section */}
-                <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', borderRadius: '0', padding: '64px 40px', marginBottom: '0', color: 'white' }}>
-                  <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, marginBottom: '8px' }}>Why Bid with SUTANA?</h2>
-                  <p style={{ textAlign: 'center', color: '#94a3b8', marginBottom: '40px', fontSize: '15px' }}>Trusted by suppliers across Ethiopia</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '28px' }}>
+                <div style={{ background: '#FFFFFF', padding: 'clamp(32px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, marginBottom: '8px', color: '#1B5E20' }}>Why Bid with SUTANA?</h2>
+                  <p style={{ textAlign: 'center', color: '#424242', marginBottom: '40px', fontSize: '15px' }}>Trusted by suppliers across Ethiopia</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '28px' }}>
                     {[
-                      { icon: <Activity size={32} color="#fbbf24" />, title: 'Fast Process', desc: 'Digital submission — no paperwork, no queues. Submit your bid in minutes from anywhere.' },
-                      { icon: <FileCheck size={32} color="#10b981" />, title: 'Fair & Transparent', desc: 'Every bid is evaluated on merit. Lowest price, delivery, and payment terms are all scored objectively.' },
-                      { icon: <Briefcase size={32} color="#3b82f6" />, title: 'Timely Payment', desc: 'SUTANA is committed to paying awarded suppliers on time, as per the agreed payment schedule.' },
-                      { icon: <Activity size={32} color="#a855f7" />, title: 'Long-Term Partnerships', desc: 'Top-performing suppliers are prioritized for future tenders and ongoing procurement contracts.' },
-                      { icon: <User size={32} color="#ec4899" />, title: 'Open to All', desc: 'Any registered business or individual can participate. No entry fee, no hidden requirements.' },
-                      { icon: <Mail size={32} color="#ef4444" />, title: 'Instant Confirmation', desc: 'Receive immediate bid confirmation and status updates directly to your registered email and phone.' },
+                      { icon: <Activity size={28} color="#2E8B57" />, title: 'Fast Process', desc: 'Digital submission — no paperwork, no queues. Submit your bid in minutes from anywhere.' },
+                      { icon: <FileCheck size={28} color="#2E8B57" />, title: 'Fair & Transparent', desc: 'Every bid is evaluated on merit. Lowest price, delivery, and payment terms are all scored objectively.' },
+                      { icon: <Briefcase size={28} color="#2E8B57" />, title: 'Timely Payment', desc: 'SUTANA is committed to paying awarded suppliers on time, as per the agreed payment schedule.' },
+                      { icon: <CheckCircle size={28} color="#2E8B57" />, title: 'Long-Term Partnerships', desc: 'Top-performing suppliers are prioritized for future tenders and ongoing procurement contracts.' },
+                      { icon: <User size={28} color="#2E8B57" />, title: 'Open to All', desc: 'Any registered business or individual can participate. No entry fee, no hidden requirements.' },
+                      { icon: <Mail size={28} color="#2E8B57" />, title: 'Instant Confirmation', desc: 'Receive immediate bid confirmation and status updates directly to your registered email and phone.' },
                     ].map(b => (
-                      <div key={b.title} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '12px', padding: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <div style={{ marginBottom: '12px' }}>{b.icon}</div>
-                        <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '8px', color: 'white' }}>{b.title}</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>{b.desc}</p>
+                      <div key={b.title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                        <div style={{ marginBottom: '12px', background: '#F5F5F5', padding: '14px', borderRadius: '50%', border: '1px solid #8D6E63' }}>{b.icon}</div>
+                        <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '8px', color: '#1B5E20' }}>{b.title}</h3>
+                        <p style={{ color: '#424242', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>{b.desc}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
                 {/* Requirements */}
-                <div style={{ padding: '64px 40px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '0' }}>
-                  <div style={{ background: 'white', borderRadius: '16px', padding: '32px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h3 style={{ fontWeight: 800, fontSize: '18px', color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><FileCheck size={20} color="#3b82f6" /> What You Need to Bid</h3>
+                <div style={{ padding: 'clamp(32px, 5vw, 64px) clamp(16px, 5vw, 40px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '24px', marginBottom: '0' }}>
+                  <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '32px', border: '1px solid #8D6E63', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ fontWeight: 800, fontSize: '18px', color: '#1B5E20', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><FileCheck size={20} color="#228B22" /> What You Need to Bid</h3>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {[
                         'Valid email address and phone number',
@@ -1039,35 +1063,41 @@ const PublicSmartTendersPage = () => {
                         'Your preferred payment terms',
                         'Digital or hand-drawn signature',
                       ].map(r => (
-                        <li key={r} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', color: '#334155' }}>
-                          <span style={{ marginTop: '2px' }}><Check size={16} color="#10b981" /></span> {r}
+                        <li key={r} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', color: '#424242' }}>
+                          <span style={{ marginTop: '2px' }}><Check size={16} color="#4CAF50" /></span> {r}
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div style={{ background: 'white', borderRadius: '16px', padding: '32px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h3 style={{ fontWeight: 800, fontSize: '18px', color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><AlertCircle size={20} color="#f59e0b" /> Frequently Asked Questions</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* FAQs with Accordion */}
+                  <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '32px', border: '1px solid #8D6E63', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ fontWeight: 800, fontSize: '18px', color: '#1B5E20', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><AlertCircle size={20} color="#2E8B57" /> Frequently Asked Questions</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {[
                         { q: 'Can I bid on multiple tenders?', a: 'Yes. You can submit separate bids for as many open tenders as you qualify for.' },
                         { q: 'What happens after I submit?', a: 'Our Purchase team will review, compare, and rank all bids. You will be contacted if your bid is selected.' },
                         { q: 'Is there a cost to bid?', a: 'No. Bidding on SUTANA tenders is completely free of charge.' },
                         { q: 'Can I update my bid?', a: 'Once submitted, bids are final. Please review all pricing carefully before submitting.' },
                       ].map(faq => (
-                        <div key={faq.q} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
-                          <p style={{ fontWeight: 700, color: '#0f172a', margin: '0 0 4px', fontSize: '14px' }}>{faq.q}</p>
-                          <p style={{ color: '#64748b', margin: 0, fontSize: '13px', lineHeight: 1.6 }}>{faq.a}</p>
-                        </div>
+                        <details key={faq.q} style={{ borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                          <summary style={{ fontWeight: 700, color: '#424242', fontSize: '14px', cursor: 'pointer', outline: 'none', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {faq.q}
+                            <span style={{ color: '#228B22', fontSize: '18px' }}>+</span>
+                          </summary>
+                          <p style={{ color: '#424242', margin: '8px 0 0', fontSize: '13px', lineHeight: 1.6 }}>{faq.a}</p>
+                        </details>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', borderRadius: '0', padding: '64px 40px', textAlign: 'center', marginBottom: '0' }}>
-                  <h3 style={{ fontWeight: 900, fontSize: '28px', color: '#0f172a', margin: '0 0 12px' }}>Have Questions About a Tender?</h3>
-                  <p style={{ color: '#78350f', margin: '0 0 24px', fontSize: '16px' }}>Our procurement team is ready to help clarify any requirements.</p>
-                  <button onClick={() => setShowContactChat(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 40px', background: '#0f172a', color: 'white', borderRadius: '50px', border: 'none', fontWeight: 700, fontSize: '16px', cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
-                    <MessageCircle size={20} /> Contact Procurement Team
+                <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
+                <div style={{ background: '#FFFFFF', padding: 'clamp(40px, 5vw, 64px) clamp(16px, 5vw, 40px)', textAlign: 'center' }}>
+                  <h3 style={{ fontWeight: 900, fontSize: '24px', color: '#1B5E20', margin: '0 0 12px' }}>Have Questions About a Tender?</h3>
+                  <p style={{ color: '#424242', margin: '0 0 24px', fontSize: '15px' }}>Our procurement team is ready to help clarify any requirements.</p>
+                  <button onClick={() => setShowContactChat(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 32px', background: '#2E8B57', color: '#FFFFFF', borderRadius: '8px', border: 'none', fontWeight: 600, fontSize: '14px', cursor: 'pointer', transition: 'transform 0.15s, background 0.15s' }} onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#228B22'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)'; }} onMouseOut={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#2E8B57'; e.currentTarget.style.boxShadow = 'none'; }}>
+                    <MessageCircle size={18} /> Contact Procurement Team
                   </button>
                 </div>
               </div>
@@ -1075,7 +1105,7 @@ const PublicSmartTendersPage = () => {
 
             {/* ===== Bid Form Step ===== */}
             {biddingStep === 2 && selectedTender && (
-              <div style={{ background: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: 'white', borderRadius: '16px', padding: 'clamp(20px, 5vw, 40px)', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' }}>
                 <button onClick={() => setBiddingStep(0)}
                   style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginBottom: '24px', fontWeight: 600, fontSize: '15px' }}>
                   ← Back to Tenders
