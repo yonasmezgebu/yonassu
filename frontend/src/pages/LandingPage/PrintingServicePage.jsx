@@ -111,39 +111,40 @@ const STYLES = `
   display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;
 }
 .psp-card {
-  background:white;border-radius:0;overflow:hidden;
-  border:1px solid #e4e6ea;box-shadow:0 1px 4px rgba(0,0,0,0.04);
+  background:#FFFFFF;border-radius:12px;overflow:hidden;
+  border:1px solid #8D6E63;box-shadow:none;
   display:flex;flex-direction:column;
   animation:psp-fadeUp 0.4s both;
-  transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
 }
-.psp-card:hover { box-shadow:0 12px 32px rgba(0,0,0,0.1);transform:translateY(-4px);border-color:#bae6fd; }
+.psp-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-1px); }
 .psp-card-img {
   width:100%;height:220px;object-fit:cover;
-  transition:transform 0.5s;
+  transition:transform 0.15s ease;
 }
-.psp-card:hover .psp-card-img { transform:scale(1.06); }
+.psp-card:hover .psp-card-img { transform:scale(1.03); }
 .psp-card-img-wrap { position:relative;overflow:hidden; }
 .psp-card-badge {
   position:absolute;top:12px;left:12px;
   background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);
-  padding:4px 12px;border-radius:0;
-  font-size:11px;font-weight:800;color:#1a2b4b;letter-spacing:0.3px;
+  padding:4px 12px;border-radius:12px;
+  font-size:11px;font-weight:800;color:#424242;letter-spacing:0.3px;
+  border:1px solid #8D6E63;
 }
 .psp-card-body { padding:20px;flex:1;display:flex;flex-direction:column; }
-.psp-card-name { font-size:16px;font-weight:800;color:#0f172a;margin:0 0 6px; }
-.psp-card-desc { font-size:13px;color:#64748b;margin:0 0 16px;line-height:1.6;flex:1; }
+.psp-card-name { font-size:16px;font-weight:800;color:#424242;margin:0 0 6px; }
+.psp-card-desc { font-size:13px;color:#424242;margin:0 0 16px;line-height:1.6;flex:1; }
 .psp-card-footer { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto; }
-.psp-price { font-size:18px;font-weight:800;color:#059669; }
-.psp-price-sub { font-size:11px;color:#94a3b8;margin-top:2px; }
+.psp-price { font-size:18px;font-weight:800;color:#1B5E20; }
+.psp-price-sub { font-size:11px;color:#424242;margin-top:2px; }
 .psp-order-btn {
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);color:white;
-  border:none;padding:10px 18px;border-radius:0;
+  background:#2E8B57;color:#FFFFFF;
+  border:none;padding:10px 18px;border-radius:8px;
   cursor:pointer;display:flex;align-items:center;gap:6px;
-  font-weight:800;font-size:13px;transition:all 0.2s;font-family:inherit;
+  font-weight:800;font-size:13px;transition:all 0.15s ease;font-family:inherit;
   white-space:nowrap;
 }
-.psp-order-btn:hover { transform:scale(1.03);box-shadow:0 4px 16px rgba(13,124,102,0.4); }
+.psp-order-btn:hover { background:#1B5E20;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15); }
 
 /* ── MODAL / OVERLAY ─────────────────────────────── */
 .psp-overlay {
@@ -289,65 +290,132 @@ const STYLES = `
 }
 
 /* ── How to Order ─────────────────────────────────── */
-.psp-how { background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:72px 24px; }
+.psp-how { background:#F5F5F5;padding:72px 24px; }
 .psp-how-inner { max-width:1100px;margin:0 auto; }
-.psp-section-label { font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#0D7C66;margin:0 0 12px; }
-.psp-section-title { font-size:clamp(22px,3.5vw,36px);font-weight:900;margin:0 0 48px;color:white;line-height:1.2; }
+.psp-section-label { font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#228B22;margin:0 0 12px; }
+.psp-section-title { font-size:clamp(22px,3.5vw,36px);font-weight:900;margin:0 0 48px;color:#1B5E20;line-height:1.2; }
 .psp-steps { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px; }
 .psp-step {
-  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-  border-radius:16px;padding:28px 20px;text-align:center;
-  transition:transform 0.25s,border-color 0.25s;
+  background:#FFFFFF;border:1px solid #8D6E63;
+  border-radius:12px;padding:28px 20px;text-align:center;
+  transition:transform 0.15s ease,box-shadow 0.15s ease;
 }
-.psp-step:hover { transform:translateY(-6px);border-color:rgba(13,124,102,0.4); }
+.psp-step:hover { transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.08); }
 .psp-step-num {
   width:52px;height:52px;border-radius:50%;
-  background:linear-gradient(135deg,#0D7C66,#059669);
-  color:white;font-size:20px;font-weight:900;
+  background:#98FF98;color:#424242;font-size:20px;font-weight:900;
   display:flex;align-items:center;justify-content:center;
-  margin:0 auto 18px;box-shadow:0 8px 24px rgba(13,124,102,0.35);
+  margin:0 auto 18px;
 }
-.psp-step-title { font-size:15px;font-weight:700;color:white;margin:0 0 8px; }
-.psp-step-desc { font-size:13px;color:#94a3b8;line-height:1.6;margin:0; }
+.psp-step-title { font-size:15px;font-weight:800;color:#1B5E20;margin:0 0 8px; }
+.psp-step-desc { font-size:13px;color:#424242;line-height:1.6;margin:0; }
+
+@media (max-width: 768px) {
+  .psp-how { padding:40px 20px; }
+  .psp-step {
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    padding:24px 0 !important;
+    box-shadow:none !important;
+    border-bottom:1px solid rgba(141,110,99,0.15) !important;
+  }
+  .psp-step:last-child { border-bottom:none !important; padding-bottom:0 !important; }
+}
 
 /* ── Pricing table ───────────────────────────────── */
-.psp-pricing { padding:72px 24px;background:white; }
+.psp-pricing { padding:72px 24px;background:#FFFFFF; }
 .psp-pricing-inner { max-width:900px;margin:0 auto; }
-.psp-table-wrap { background:white;border-radius:0;overflow:hidden;border:1px solid #e4e6ea; }
-.psp-table { width:100%;border-collapse:collapse;font-size:0.95rem; }
-.psp-table thead tr { background:#1a2b4b; }
-.psp-table th { padding:14px 18px;text-align:left;color:white;font-weight:700;font-size:0.85rem; }
-.psp-table tbody tr { border-bottom:1px solid #f1f5f9;transition:background 0.15s; }
-.psp-table tbody tr:hover { background:#f8fafc; }
-.psp-table td { padding:14px 18px;color:#334155; }
-.psp-table td:first-child { font-weight:700;color:#1a2b4b; }
-.psp-table .color-val { color:#0D7C66;font-weight:700; }
+.psp-pricing-title { font-size:clamp(22px,3.5vw,32px);font-weight:900;color:#1B5E20;margin:0 0 32px;line-height:1.2; }
+.psp-table-scroll { overflow-x:auto;-webkit-overflow-scrolling:touch; }
+.psp-table-wrap {
+  background:#FFFFFF;border-radius:10px;overflow:hidden;
+  border:1px solid #8D6E63;box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  min-width:480px;
+}
+.psp-table { width:100%;border-collapse:collapse;font-size:0.92rem; }
+.psp-table thead tr { background:#1B5E20; }
+.psp-table th { padding:14px 18px;text-align:left;color:#FFFFFF;font-weight:700;font-size:0.85rem;white-space:nowrap; }
+.psp-table th:not(:first-child) { text-align:right; }
+.psp-table tbody tr:nth-child(odd) { background:#FFFFFF; }
+.psp-table tbody tr:nth-child(even) { background:#F5F5F5; }
+.psp-table tbody tr { border-bottom:1px solid #F5F5F5;transition:background 0.15s ease; }
+.psp-table tbody tr:hover { background:#A5D6A7; }
+.psp-table tbody tr:last-child { border-bottom:none; }
+.psp-table td { padding:14px 18px;color:#424242;white-space:nowrap; }
+.psp-table td:first-child { font-weight:700;color:#1B5E20;text-align:left; }
+.psp-table td:not(:first-child) { text-align:right; }
+.psp-table .color-val { color:#2E8B57;font-weight:700; }
+.psp-pricing-note { font-size:13px;color:#424242;margin-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px; }
 
-/* ── FAQ ─────────────────────────────────────────── */
-.psp-faq { padding:72px 24px;background:#f8fafc; }
+/* ── FAQ ──────────────────────────────────────── */
+.psp-faq { padding:72px 24px;background:#F5F5F5; }
 .psp-faq-inner { max-width:780px;margin:0 auto; }
-.psp-faq-item { border-bottom:1px solid #e4e6ea; }
+.psp-faq-title { font-size:clamp(22px,3.5vw,32px);font-weight:900;color:#1B5E20;margin:0 0 36px;line-height:1.2; }
+.psp-faq-item {
+  border-bottom:1px solid #8D6E63;
+  background:#FFFFFF;
+  border-radius:0;
+  transition:background 0.15s ease;
+}
+.psp-faq-item:first-of-type { border-top:1px solid #8D6E63;border-radius:12px 12px 0 0; }
+.psp-faq-item:last-of-type { border-radius:0 0 12px 12px;border-bottom:none; }
 .psp-faq-q {
   width:100%;text-align:left;background:none;border:none;
-  padding:20px 0;display:flex;justify-content:space-between;align-items:center;
-  font-size:15px;font-weight:700;color:#0f172a;cursor:pointer;
-  gap:16px;font-family:inherit;transition:color 0.2s;
+  padding:20px 24px;display:flex;justify-content:space-between;align-items:center;
+  font-size:15px;font-weight:700;color:#424242;cursor:pointer;
+  gap:16px;font-family:inherit;transition:color 0.15s ease;
 }
-.psp-faq-q:hover { color:#0D7C66; }
+.psp-faq-q:hover { color:#1B5E20; }
+.psp-faq-item:hover { background:#F5F5F5; }
 .psp-faq-a {
   overflow:hidden;max-height:0;
   transition:max-height 0.35s ease,padding 0.35s ease;
-  font-size:14px;color:#64748b;line-height:1.8;padding:0;
+  font-size:14px;color:#424242;line-height:1.8;padding:0 24px;
 }
 .psp-faq-a.open { max-height:300px;padding-bottom:20px; }
 
-/* ── Trust bar ───────────────────────────────────── */
-.psp-trust { background:linear-gradient(135deg,#0f172a,#1e293b);padding:40px 24px; }
-.psp-trust-inner { max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px; }
-.psp-trust-item { display:flex;align-items:flex-start;gap:14px; }
-.psp-trust-icon { width:44px;height:44px;border-radius:10px;background:rgba(13,124,102,0.15);border:1px solid rgba(13,124,102,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0; }
-.psp-trust-title { font-size:14px;font-weight:700;color:white;margin:0 0 4px; }
-.psp-trust-desc { font-size:12px;color:#94a3b8;margin:0;line-height:1.5; }
+@media (max-width:768px) {
+  .psp-faq { padding:40px 16px; }
+  .psp-faq-item { border:none !important;border-radius:0 !important;border-bottom:1px solid rgba(141,110,99,0.2) !important;background:transparent !important; }
+  .psp-faq-item:first-of-type { border-top:none !important; }
+  .psp-faq-item:last-of-type { border-bottom:none !important; }
+  .psp-faq-q { padding:18px 0; }
+  .psp-faq-a { padding:0; }
+  .psp-faq-a.open { padding-bottom:16px; }
+}
+
+/* ── Trust bar ─────────────────────────────────── */
+.psp-trust { background:#1B5E20;padding:48px 24px; }
+.psp-trust-inner { max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px; }
+.psp-trust-item {
+  display:flex;align-items:flex-start;gap:14px;
+  padding:20px;border-radius:12px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);
+  transition:background 0.15s ease,transform 0.15s ease;
+}
+.psp-trust-item:hover { background:rgba(255,255,255,0.12);transform:translateY(-1px); }
+.psp-trust-icon {
+  width:44px;height:44px;border-radius:10px;
+  background:#A5D6A7;border:none;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.psp-trust-title { font-size:14px;font-weight:800;color:#FFFFFF;margin:0 0 4px; }
+.psp-trust-desc { font-size:12px;color:rgba(255,255,255,0.75);margin:0;line-height:1.6; }
+
+@media (max-width:768px) {
+  .psp-trust { padding:32px 16px; }
+  .psp-trust-item {
+    border:none !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    padding:16px 0 !important;
+    border-bottom:1px solid rgba(255,255,255,0.12) !important;
+  }
+  .psp-trust-item:last-child { border-bottom:none !important; }
+  .psp-trust-item:hover { transform:none; }
+}
 
 /* ── Spinner ─────────────────────────────────────── */
 .psp-spinner {
@@ -355,6 +423,62 @@ const STYLES = `
   border-top-color:white;border-radius:50%;
   animation:psp-spin 0.7s linear infinite;
 }
+/* ── Calculator Modal ── */
+.calc-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
+}
+.calc-modal {
+  background: #f8fafc; width: 320px; max-width: 100%; border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2), inset 0 2px 0 rgba(255,255,255,0.8);
+  padding: 20px; display: flex; flex-direction: column; gap: 16px;
+  border: 1px solid #e2e8f0;
+}
+.calc-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px; font-weight: 700; color: #1B5E20; margin-bottom: 4px;
+}
+.calc-close {
+  background: rgba(27,94,32,0.1); border: none; width: 28px; height: 28px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #1B5E20; cursor: pointer; transition: 0.2s;
+}
+.calc-close:hover { background: #1B5E20; color: white; }
+.calc-screen {
+  background: #d4d8ce; border-radius: 12px; padding: 16px;
+  text-align: right; box-shadow: inset 0 4px 8px rgba(0,0,0,0.1);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  height: 80px; position: relative; border: 2px solid #b7bdae;
+}
+.calc-equation { font-size: 13px; color: #64748b; min-height: 16px; margin-bottom: 4px; font-family: 'Courier New', monospace; }
+.calc-display { font-size: 32px; font-weight: 600; color: #1e293b; letter-spacing: -1px; font-family: 'Courier New', monospace; }
+.calc-keys {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+}
+.calc-key {
+  background: #ffffff; border: none; border-radius: 10px;
+  font-size: 20px; font-weight: 600; color: #334155;
+  height: 54px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: 0.1s;
+  box-shadow: 0 4px 0 #cbd5e1, 0 8px 12px rgba(0,0,0,0.05);
+}
+.calc-key:active {
+  transform: translateY(4px); box-shadow: 0 0 0 #cbd5e1;
+}
+.calc-func { background: #e2e8f0; color: #0f172a; box-shadow: 0 4px 0 #94a3b8; }
+.calc-func:active { box-shadow: 0 0 0 #94a3b8; }
+.calc-op { background: #1B5E20; color: #ffffff; box-shadow: 0 4px 0 #0d3811; font-size: 24px; }
+.calc-op:active { box-shadow: 0 0 0 #0d3811; }
+.calc-zero { grid-column: span 2; justify-content: flex-start; padding-left: 24px; }
+.calc-btn-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #2E8B57; color: white; border: none;
+  padding: 8px 16px; border-radius: 8px; font-size: 14px;
+  font-weight: 700; cursor: pointer; transition: 0.2s;
+}
+.calc-btn-trigger:hover { background: #1B5E20; transform: translateY(-1px); }
 `;
 
 /* ═══════════════════════════════════════════════════════
@@ -410,6 +534,84 @@ const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingTy
 };
 
 /* ═══════════════════════════════════════════════════════
+   LIVE CALCULATOR COMPONENT
+════════════════════════════════════════════════════════ */
+const LiveCalculator = ({ onClose }) => {
+  const [paperType, setPaperType] = useState('A4');
+  const [pagesPerCopy, setPagesPerCopy] = useState(100);
+  const [quantity, setQuantity] = useState(1);
+  const [colorPrinting, setColorPrinting] = useState(false);
+  const [bindingType, setBindingType] = useState('None');
+
+  const pricing = calcPrice({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType });
+
+  return (
+    <div className="calc-overlay" onClick={onClose}>
+      <div className="calc-modal" style={{ width: 420 }} onClick={e => e.stopPropagation()}>
+        <div className="calc-header">
+          <span>Printing Price Estimator</span>
+          <button className="calc-close" onClick={onClose}><X size={16}/></button>
+        </div>
+        
+        <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px', lineHeight: 1.4 }}>
+          Adjust the specifications below to instantly estimate the cost of your printing order based on our standard rates.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Paper Size</label>
+            <select style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontSize: 13, minWidth: 160 }} value={paperType} onChange={e => setPaperType(e.target.value)}>
+              {PAPER_TYPES.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Pages Per Copy</label>
+            <input type="number" min="1" value={pagesPerCopy} onChange={e => setPagesPerCopy(parseInt(e.target.value)||1)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', width: 160, textAlign: 'right', fontSize: 13 }} />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Quantity (Copies)</label>
+            <input type="number" min="1" value={quantity} onChange={e => setQuantity(parseInt(e.target.value)||1)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', width: 160, textAlign: 'right', fontSize: 13 }} />
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Color Mode</label>
+            <select style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontSize: 13, minWidth: 160 }} value={colorPrinting.toString()} onChange={e => setColorPrinting(e.target.value === 'true')}>
+              <option value="false">Black & White</option>
+              <option value="true">Color Printing</option>
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Binding Type</label>
+            <select style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontSize: 13, minWidth: 160 }} value={bindingType} onChange={e => setBindingType(e.target.value)}>
+              {BINDING_TYPES.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 24, background: '#1B5E20', padding: 20, borderRadius: 16, color: 'white', boxShadow: '0 10px 25px rgba(27,94,32,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10, opacity: 0.85 }}>
+            <span>Printing Cost:</span>
+            <span>{pricing.subtotal.toFixed(2)} ETB</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 16, opacity: 0.85 }}>
+            <span>Binding Cost:</span>
+            <span>{pricing.bindingCost.toFixed(2)} ETB</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 20, fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 16 }}>
+            <span>Total Estimate:</span>
+            <span>{pricing.totalPrice.toFixed(2)} ETB</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════════════ */
 export default function PrintingServicePage() {
@@ -418,6 +620,7 @@ export default function PrintingServicePage() {
 
   const [catFilter, setCatFilter] = useState('all');
   const [openFaq, setOpenFaq] = useState(null);
+  const [isCalcOpen, setIsCalcOpen] = useState(false);
 
   // Modal state
   const [isModalOpen, setIsModalOpen]         = useState(false);
@@ -662,47 +865,18 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
       >
         <div className="psp-hero-grid" />
         <div className="psp-hero-content">
-          <div className="psp-hero-badge">
-            <Printer size={18} /> SUTANA Professional Printing
-          </div>
           <h1 className="psp-hero-title">Printing Services</h1>
-          <p className="psp-hero-sub">Books · Modules · Exam Papers · Brochures · Tax Receipts</p>
-          <div className="psp-hero-btns">
-            <button className="psp-hero-btn-primary" onClick={() => handleOpenOrder(PRODUCT_TYPES[0])}>
-              <ShoppingCart size={20} /> Place an Order
-            </button>
-          </div>
         </div>
       </div>
 
       {/* ── Category Toolbar ── */}
-      <div className="psp-toolbar">
-        <div className="psp-toolbar-inner">
-          <button className={'psp-cat-pill' + (catFilter === 'all' ? ' active' : '')} onClick={() => setCatFilter('all')}>All Services</button>
-          {PRODUCT_TYPES.map(p => (
-            <button
-              key={p.code}
-              className={'psp-cat-pill' + (catFilter === p.code ? ' active' : '')}
-              onClick={() => setCatFilter(catFilter === p.code ? 'all' : p.code)}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* ── Service Cards ── */}
       <div className="psp-main">
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              {catFilter === 'all' ? 'All Printing Services' : PRODUCT_TYPES.find(p => p.code === catFilter)?.name}
-            </h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{filtered.length} service{filtered.length !== 1 ? 's' : ''} available</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#0D7C66', fontWeight: 700 }}>
-            <Printer size={15} /> SUTANA Printing
-          </div>
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20', margin: 0 }}>
+            {catFilter === 'all' ? 'All Printing Services' : PRODUCT_TYPES.find(p => p.code === catFilter)?.name}
+          </h2>
         </div>
 
         <div className="psp-grid">
@@ -712,7 +886,7 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                 {svc.img ? (
                   <img src={svc.img} className="psp-card-img" alt={svc.name} />
                 ) : (
-                  <div style={{ height: 220, background: 'linear-gradient(135deg,#1a2b4b,#0D7C66)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ height: 220, background: 'linear-gradient(135deg,#1B5E20,#2E8B57)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FileText size={60} color="rgba(255,255,255,0.4)" />
                   </div>
                 )}
@@ -737,9 +911,9 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
       </div>
 
       {/* ── How to Order ── */}
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(46, 139, 87, 0.3)', margin: 0, width: '100%' }} />
       <div className="psp-how">
         <div className="psp-how-inner">
-          <p className="psp-section-label">Simple Process</p>
           <h2 className="psp-section-title">How to Place Your Order</h2>
           <div className="psp-steps">
             {[
@@ -757,38 +931,43 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
           </div>
         </div>
       </div>
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(46, 139, 87, 0.3)', margin: 0, width: '100%' }} />
 
       {/* ── Pricing Table ── */}
       <div className="psp-pricing">
         <div className="psp-pricing-inner">
-          <p className="psp-section-label" style={{ color: '#0D7C66' }}>Transparent Pricing</p>
-          <h2 className="psp-section-title" style={{ color: '#0f172a', marginBottom: 32 }}>Pricing Guide</h2>
-          <div className="psp-table-wrap">
-            <table className="psp-table">
-              <thead>
-                <tr>
-                  <th>Service / Item</th>
-                  <th>A4 (B/W)</th>
-                  <th>A5 (B/W)</th>
-                  <th>A3 (B/W)</th>
-                  <th>Color</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PRICING_ROWS.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.name}</td>
-                    <td>{r.a4}</td>
-                    <td>{r.a5}</td>
-                    <td>{r.a3}</td>
-                    <td className="color-val">{r.color}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 className="psp-pricing-title" style={{ margin: 0 }}>Pricing Guide</h2>
+            <button className="calc-btn-trigger" onClick={() => setIsCalcOpen(true)}>
+              <Calculator size={16} /> Calculator
+            </button>
           </div>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 16, textAlign: 'center' }}>
-            <Info size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          <div className="psp-table-scroll">
+            <div className="psp-table-wrap">
+              <table className="psp-table">
+                <thead>
+                  <tr>
+                    <th>Service / Product</th>
+                    <th>Base Price (B/W)</th>
+                    <th>Color Price</th>
+                    <th>Binding / Extras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PRICING_ROWS.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.name}</td>
+                      <td>{r.base}</td>
+                      <td className="color-val">{r.color}</td>
+                      <td>{r.bind}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="psp-pricing-note">
+            <Info size={14} />
             Tax Receipts are priced by approval quantity. Contact us for custom bulk pricing.
           </p>
         </div>
@@ -797,32 +976,16 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
       {/* ── FAQs ── */}
       <div className="psp-faq">
         <div className="psp-faq-inner">
-          <p className="psp-section-label">Got Questions?</p>
-          <h2 className="psp-section-title" style={{ color: '#0f172a', marginBottom: 32 }}>Frequently Asked Questions</h2>
+          <h2 className="psp-faq-title">Frequently Asked Questions</h2>
           {FAQS.map((f, i) => (
             <div className="psp-faq-item" key={i}>
               <button className="psp-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 <span>{f.q}</span>
-                {openFaq === i ? <ChevronUp size={18} color="#0D7C66" style={{ flexShrink: 0 }} /> : <ChevronDown size={18} color="#64748b" style={{ flexShrink: 0 }} />}
+                {openFaq === i
+                  ? <ChevronUp size={18} color="#1B5E20" style={{ flexShrink: 0 }} />
+                  : <ChevronDown size={18} color="#8D6E63" style={{ flexShrink: 0 }} />}
               </button>
               <div className={`psp-faq-a${openFaq === i ? ' open' : ''}`}>{f.a}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Trust Bar ── */}
-      <div className="psp-trust">
-        <div className="psp-trust-inner">
-          {[
-            { Icon: Shield, title: 'File Privacy', desc: 'Uploaded documents are strictly confidential and auto-deleted 30 days after pickup.' },
-            { Icon: CheckCircle2, title: 'Quality Guarantee', desc: 'Professional-grade printers and premium paper for crisp, clean output every time.' },
-            { Icon: Clock, title: 'Fast Turnaround', desc: 'Most orders ready in 2–24 hours. Rush service available on request.' },
-            { Icon: FileText, title: 'Terms of Service', desc: 'Orders in production cannot be cancelled. Please verify your file before submitting.' },
-          ].map(({ Icon, ...t }) => (
-            <div className="psp-trust-item" key={t.title}>
-              <div className="psp-trust-icon"><Icon size={20} color="#0D7C66" /></div>
-              <div><p className="psp-trust-title">{t.title}</p><p className="psp-trust-desc">{t.desc}</p></div>
             </div>
           ))}
         </div>
@@ -1125,6 +1288,8 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
           </div>
         </div>
       )}
+
+      {isCalcOpen && <LiveCalculator onClose={() => setIsCalcOpen(false)} />}
     </div>
   );
 }
