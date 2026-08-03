@@ -90,6 +90,60 @@ const TermsOfServicePage = () => {
         'Verified Pharmacists: Every dispensing pharmacist holds a valid B.Pharm degree and a current professional license.',
       ],
     },
+    {
+      icon: Shield,
+      title: 'Car Rental — Terms of Service',
+      content: [
+        'Rental agreements are legally binding upon signature by both parties.',
+        'Late returns beyond the 1-hour grace period incur hourly penalties at the agreed daily rate.',
+        'Cancellations made within 24 hours of the scheduled pickup time may forfeit the security deposit.',
+        'All agreements are governed by the laws of the Federal Democratic Republic of Ethiopia (Ethiopian Commercial Law).',
+        'The renter is solely responsible for any damage, fines, or liability not covered by the included insurance.',
+        'Vehicles must be returned with the same fuel level as at pickup.',
+      ],
+    },
+    {
+      icon: FileText,
+      title: 'Car Rental — Disclaimer',
+      content: [
+        'Insurance coverage details are specified in the signed rental agreement at time of pickup.',
+        'SUTANA Car Rental is not liable for personal belongings left in vehicles.',
+        'Renters must hold a valid driver\'s license and be 21 years of age or older.',
+        'Any traffic fines or violations incurred during the rental period are the sole responsibility of the renter.',
+      ],
+    },
+    {
+      icon: Shield,
+      title: 'AgriRent — Terms of Service',
+      content: [
+        'Hiring agreements are subject to equipment availability.',
+        'Cancellations must be made at least 48 hours prior to the scheduled date to receive a full refund of the deposit.',
+        'Drivers are responsible for machine operation; clients must ensure safe access to fields.',
+      ],
+    },
+    {
+      icon: FileText,
+      title: 'AgriRent — Disclaimer',
+      content: [
+        'Heavy machinery operation is subject to weather conditions.',
+        'If severe rain or muddy fields make work unsafe or impossible, Sutana reserves the right to reschedule the service without penalty.',
+      ],
+    },
+    {
+      icon: Shield,
+      title: 'Retail Store — Terms of Service',
+      content: [
+        'Direct purchases can be returned within 3 days.',
+        'Supplier orders are final sale once approved.',
+      ],
+    },
+    {
+      icon: FileText,
+      title: 'Retail Store — Disclaimer',
+      content: [
+        'Product availability, packaging, and final pricing may vary slightly for supplier orders compared to in-stock items. We always confirm details before billing.',
+      ],
+    },
   ];
 
   return (
