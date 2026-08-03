@@ -298,23 +298,23 @@
 }
 
 .reserveBtn {
-  background: #1a1a2e;
+  background: #2E8B57;
   color: white;
 }
 
 .reserveBtn:hover {
-  background: #16213e;
+  background: #1B5E20;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(26,26,46,0.3);
+  box-shadow: 0 5px 15px rgba(46,139,87,0.3);
 }
 
 .notifyBtn {
-  background: #ffc107;
-  color: #1a1a2e;
+  background: #6B8E23;
+  color: white;
 }
 
 .notifyBtn:hover {
-  background: #ffca2c;
+  background: #556B2F;
   transform: translateY(-2px);
 }
 

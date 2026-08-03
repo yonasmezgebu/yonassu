@@ -191,7 +191,7 @@ const FleetGalleryPage = () => {
       
       <div className={styles.heroSection} style={{ background: `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.8)), url(${carHero}) center/cover no-repeat` }}>
         <div className={styles.heroContent}>
-          <h1>Drive Your Dream —<br />Premium Cars for Every Journey</h1>
+          <h1>Premium Cars for Every Journey</h1>
         </div>
       </div>
 
@@ -277,7 +277,7 @@ const FleetGalleryPage = () => {
                 <div className={styles.actionButtons}>
                   {currentCar.availability === 'Available' ? (
                     <button className={styles.reserveBtn} onClick={() => handleReserve(currentCar)}>
-                      Book Now
+                      Reserve Car
                     </button>
                   ) : (
                     <button className={styles.notifyBtn} onClick={() => handleNotify(currentCar)}>
@@ -311,129 +311,94 @@ const FleetGalleryPage = () => {
           ══════════════════════════════════════════════ */}
 
       {/* ── How to Rent ── */}
-      <section style={{ background: 'linear-gradient(135deg,#f0fdf4 0%,#eff6ff 100%)', padding: '72px 24px' }}>
+      <section style={{ background: '#F5F5F5', padding: '72px 24px', borderTop: '1px solid #228B22' }}>
+        <style>{`
+          .fgp-how-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 20px; }
+          .fgp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 20px; text-align: center; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: default; }
+          .fgp-how-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+          .fgp-how-icon { width: 52px; height: 52px; border-radius: 50%; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+          .fgp-how-title { font-size: 15px; font-weight: 700; color: #424242; margin-bottom: 6px; }
+          .fgp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.6; }
+          @media (max-width: 600px) {
+            .fgp-how-card { border: none; box-shadow: none; padding: 16px 8px; }
+            .fgp-how-card:hover { transform: none; box-shadow: none; }
+          }
+          .fgp-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
+          .fgp-info-card { background: #FFFFFF; border-radius: 12px; padding: 36px 32px; border: 1px solid #8D6E63; transition: box-shadow 0.15s ease, transform 0.15s ease; }
+          .fgp-info-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
+          .fgp-info-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+          .fgp-info-title { font-size: 20px; font-weight: 800; color: #1B5E20; margin: 0 0 6px; }
+          .fgp-info-sub { font-size: 14px; color: #424242; margin: 0 0 22px; }
+          .fgp-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
+          .fgp-row-label { font-size: 13px; font-weight: 700; color: #1B5E20; flex-shrink: 0; }
+          .fgp-row-val { font-size: 13px; color: #424242; text-align: right; }
+          .fgp-pickup-row { display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
+          .fgp-pickup-label { font-weight: 700; font-size: 14px; color: #424242; margin-bottom: 2px; }
+          .fgp-pickup-desc { font-size: 13px; color: #424242; line-height: 1.5; }
+          @media (max-width: 600px) {
+            .fgp-info-card { border: none; box-shadow: none; padding: 20px 0; }
+            .fgp-info-card:hover { transform: none; box-shadow: none; }
+            .fgp-info-grid { gap: 4px; }
+          }
+          .fgp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; }
+          .fgp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+          .fgp-faq-btn { width: 100%; background: none; border: none; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
+          .fgp-faq-btn:hover { color: #1B5E20; }
+          .fgp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 24px 20px; }
+        `}</style>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>Simple Process</span>
-            <h2 style={{ fontSize: 'clamp(26px,4vw,38px)', fontWeight: 900, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.02em' }}>How to Rent a Car</h2>
-            <p style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>Five easy steps to get you behind the wheel — no hassle, no delays.</p>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', margin: '0 0 10px' }}>How to Rent a Car</h2>
+            <p style={{ fontSize: 15, color: '#424242', maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>Five easy steps to get you behind the wheel — no hassle, no delays.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 20, position: 'relative' }}>
-            {HOW_TO_RENT.map((step, i) => (
-              <div key={step.n} style={{ background: '#fff', borderRadius: 20, padding: '32px 24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', position: 'relative', transition: 'transform 0.25s', cursor: 'default' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-6px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                {/* connector line */}
-                {i < HOW_TO_RENT.length - 1 && (
-                  <div style={{ display: 'none' }} />
-                )}
-                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', boxShadow: '0 8px 20px rgba(5,150,105,0.3)' }}>
-                  <step.icon size={26} color="#fff" />
+          <div className="fgp-how-grid">
+            {HOW_TO_RENT.map((step) => (
+              <div key={step.n} className="fgp-how-card">
+                <div className="fgp-how-icon">
+                  <step.icon size={24} color="#FFFFFF" />
                 </div>
-                <div style={{ position: 'absolute', top: 16, right: 16, width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{step.n}</div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{step.title}</h3>
-                <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>{step.desc}</p>
+                <h3 className="fgp-how-title">{step.title}</h3>
+                <p className="fgp-how-desc">{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Requirements & Pricing ── */}
-      <section style={{ background: '#fff', padding: '72px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 32 }}>
-          {/* Requirements */}
-          <div style={{ background: 'linear-gradient(135deg,#fef3c7,#fef9c3)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(245,158,11,0.2)' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(245,158,11,0.3)' }}>
-              <FileBadge size={28} color="#fff" />
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Rental Requirements</h3>
-            <p style={{ fontSize: 14, color: '#78716c', marginBottom: 24 }}>What you need to bring on pickup day.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {[
-                { label: 'Minimum Age', value: 'Must be 21 years or older' },
-                { label: 'Driver\'s License', value: 'Valid license, held for at least 1 year' },
-                { label: 'ID / Passport', value: 'Valid national ID or international passport' },
-              ].map(r => (
-                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, backdropFilter: 'blur(4px)' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>{r.label}</span>
-                  <span style={{ fontSize: 13, color: '#78716c', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Pricing */}
-          <div style={{ background: 'linear-gradient(135deg,#eff6ff,#e0f2fe)', borderRadius: 24, padding: '40px 36px', border: '1px solid rgba(59,130,246,0.2)' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(59,130,246,0.3)' }}>
-              <Wallet size={28} color="#fff" />
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Pricing & Rates</h3>
-            <p style={{ fontSize: 14, color: '#475569', marginBottom: 24 }}>Transparent pricing, no hidden charges.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ── Pricing & Pickup (merged) ── */}
+      <section style={{ background: '#FFFFFF', padding: '72px 24px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div className="fgp-info-grid">
+            <div className="fgp-info-card">
+              <div className="fgp-info-icon"><Wallet size={24} color="#FFFFFF" /></div>
+              <h3 className="fgp-info-title">Pricing &amp; Rates</h3>
+              <p className="fgp-info-sub">Transparent pricing — no hidden charges.</p>
               {[
                 { label: 'Daily Rate', value: 'Per-car pricing — see fleet listings above' },
                 { label: 'Weekly Discount', value: 'Available on request for 7+ day bookings' },
                 { label: 'Security Deposit', value: 'Fully refundable within 24–48 hrs after return' },
                 { label: 'Late Return Fee', value: 'Hourly charge after 1 hr grace; up to a full day rate' },
               ].map(r => (
-                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.7)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>{r.label}</span>
-                  <span style={{ fontSize: 13, color: '#475569', textAlign: 'right', maxWidth: '55%' }}>{r.value}</span>
+                <div key={r.label} className="fgp-row">
+                  <span className="fgp-row-label">{r.label}</span>
+                  <span className="fgp-row-val">{r.value}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pickup / Delivery & Payment ── */}
-      <section style={{ background: 'linear-gradient(135deg,#f8fafc,#f0fdf4)', padding: '72px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 32 }}>
-          {/* Pickup */}
-          <div style={{ background: '#fff', borderRadius: 24, padding: '40px 36px', boxShadow: '0 4px 30px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(139,92,246,0.3)' }}>
-              <MapPin size={28} color="#fff" />
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Pickup & Delivery</h3>
-            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>Flexible pickup options to suit your schedule.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="fgp-info-card">
+              <div className="fgp-info-icon"><MapPin size={24} color="#FFFFFF" /></div>
+              <h3 className="fgp-info-title">Pickup &amp; Delivery</h3>
+              <p className="fgp-info-sub">Flexible options to suit your schedule.</p>
               {[
-                { icon: '🏢', label: 'Office Pickup', desc: 'Collect directly from our main Addis Ababa office during business hours. Free of charge.' },
+                { icon: '🏢', label: 'Office Pickup', desc: 'Collect from our main Addis Ababa office during business hours. Free of charge.' },
                 { icon: '🚗', label: 'Delivery Option', desc: 'We deliver to hotels and selected city locations for an additional fee.' },
                 { icon: '🔄', label: 'Return Process', desc: 'Return to the agreed location on time. Early returns credited; late returns charged hourly.' },
               ].map(p => (
-                <div key={p.label} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: '16px', background: '#f8fafc', borderRadius: 14 }}>
-                  <span style={{ fontSize: 22, lineHeight: 1 }}>{p.icon}</span>
+                <div key={p.label} className="fgp-pickup-row">
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{p.icon}</span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 4 }}>{p.label}</div>
-                    <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55 }}>{p.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payment */}
-          <div style={{ background: '#fff', borderRadius: 24, padding: '40px 36px', boxShadow: '0 4px 30px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 8px 20px rgba(5,150,105,0.3)' }}>
-              <CreditCard size={28} color="#fff" />
-            </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Payment Methods</h3>
-            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>We accept multiple payment options for your convenience.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { flag: '🏦', name: 'Bank Transfer', detail: 'CBE, Awash, Dashen, Birhan Bank' },
-                { flag: '📱', name: 'Mobile Money', detail: 'Telebirr, CBE Birr' },
-                { flag: '💵', name: 'Cash', detail: 'Accepted for deposits and short-term rentals' },
-                { flag: '💳', name: 'Card / POS', detail: 'Visa & Mastercard accepted at office' },
-              ].map(m => (
-                <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: 20 }}>{m.flag}</span>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{m.name}</div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>{m.detail}</div>
+                    <div className="fgp-pickup-label">{p.label}</div>
+                    <div className="fgp-pickup-desc">{p.desc}</div>
                   </div>
                 </div>
               ))}
@@ -442,103 +407,24 @@ const FleetGalleryPage = () => {
         </div>
       </section>
 
-      {/* ── FAQs ── */}
-      <section style={{ background: '#fff', padding: '72px 24px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <span style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 18px', borderRadius: 999, marginBottom: 14 }}>FAQs</span>
-            <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Common Questions</h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Common Questions ── */}
+      <section style={{ background: '#F5F5F5', padding: '72px 24px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 40 }}>Common Questions</h2>
+          <div>
             {FAQS.map((f, i) => (
-              <div key={i} style={{ background: openFaq === i ? 'linear-gradient(135deg,#f0fdf4,#eff6ff)' : '#f8fafc', borderRadius: 16, border: `1px solid ${openFaq === i ? 'rgba(5,150,105,0.25)' : '#e2e8f0'}`, overflow: 'hidden', transition: 'all 0.25s ease' }}>
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  style={{ width: '100%', background: 'none', border: 'none', padding: '22px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: '#0f172a', fontSize: 15, cursor: 'pointer', textAlign: 'left', gap: 16 }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: '50%', background: openFaq === i ? 'linear-gradient(135deg,#059669,#10b981)' : '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.25s' }}>
-                      <HelpCircle size={14} color={openFaq === i ? '#fff' : '#64748b'} />
-                    </span>
-                    {f.q}
-                  </span>
+              <div key={i} className="fgp-faq-item">
+                <button className="fgp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                  <span>{f.q}</span>
                   {openFaq === i
-                    ? <ChevronUp size={18} color="#059669" style={{ flexShrink: 0 }} />
-                    : <ChevronDown size={18} color="#94a3b8" style={{ flexShrink: 0 }} />}
+                    ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} />
+                    : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
                 </button>
                 {openFaq === i && (
-                  <div style={{ padding: '0 24px 22px 68px', color: '#475569', fontSize: 14, lineHeight: 1.7 }}>{f.a}</div>
+                  <div className="fgp-faq-ans">{f.a}</div>
                 )}
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Trust, Legal & Contact ── */}
-      <section style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)', padding: '72px 24px', position: 'relative', overflow: 'hidden' }}>
-        {/* decorative glow */}
-        <div style={{ position: 'absolute', top: -120, right: -120, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(5,150,105,0.18) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -80, left: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 70%)', pointerEvents: 'none' }} />
-
-        <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <h2 style={{ fontSize: 'clamp(24px,4vw,34px)', fontWeight: 900, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Trust, Legal & Support</h2>
-            <p style={{ fontSize: 15, color: '#94a3b8', margin: 0 }}>Transparent policies. Secure data. We are here when you need us.</p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
-            {/* Terms */}
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(5,150,105,0.35)' }}>
-                <Shield size={22} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Terms of Service</h3>
-              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                Rental agreements are legally binding upon signature. Late returns beyond the 1-hour grace period incur hourly penalties. Cancellations made within 24 hours of pickup may forfeit the deposit. All agreements are governed by Ethiopian Commercial Law.
-              </p>
-            </div>
-
-            {/* Privacy */}
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(59,130,246,0.35)' }}>
-                <FileText size={22} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Privacy Policy</h3>
-              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                Your ID, license, and payment information are collected solely for rental verification and billing. We do not sell or share your personal data with third parties. All records are securely stored and accessible only to authorized staff.
-              </p>
-            </div>
-
-            {/* Disclaimer */}
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '32px 28px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f59e0b,#fbbf24)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 6px 16px rgba(245,158,11,0.35)' }}>
-                <Info size={22} color="#fff" />
-              </div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Disclaimer</h3>
-              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.65, margin: 0 }}>
-                Vehicles must be returned with the same fuel level as at pickup. The renter is solely responsible for any damage, fines, or liability not covered by the included insurance. Insurance coverage details are specified in the signed rental agreement.
-              </p>
-            </div>
-          </div>
-
-          {/* Contact Strip */}
-          <div style={{ marginTop: 40, background: 'rgba(5,150,105,0.12)', borderRadius: 20, padding: '32px 36px', border: '1px solid rgba(5,150,105,0.3)', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#34d399', marginBottom: 6 }}>Rental Support</div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#fff', margin: 0 }}>Need help? We are here for you.</h3>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-              <a href="tel:+251911000000" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: 'rgba(255,255,255,0.08)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600, transition: 'background 0.2s' }}>
-                <Phone size={18} color="#34d399" /> +251 911 000 000
-              </a>
-              <a href="mailto:rental@sutana.com" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: 'rgba(255,255,255,0.08)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
-                <Mail size={18} color="#34d399" /> rental@sutana.com
-              </a>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: 'rgba(255,255,255,0.06)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: 14 }}>
-                <PhoneCall size={18} color="#34d399" /> 24/7 Roadside Assist
-              </div>
-            </div>
           </div>
         </div>
       </section>
