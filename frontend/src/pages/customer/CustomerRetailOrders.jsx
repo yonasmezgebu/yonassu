@@ -2,44 +2,205 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import {
-  ClipboardList, Clock, CheckCircle, XCircle, Store, RefreshCw,
-  ArrowLeft, Calendar, DollarSign, Truck, Package, Hash,
-  ShoppingCart
+  ClipboardList, Clock, CheckCircle, XCircle, RefreshCw,
+  ArrowLeft, Calendar, DollarSign, Truck, Package,
+  ShoppingCart, Eye, MapPin, CreditCard, Phone, Mail, User, Hash, FileText
 } from 'lucide-react';
 
-const BASE = 'http://localhost:5000';
+/* ─── helpers ─────────────────────────────────────────────── */
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
-const STATUS_CONFIG = {
-  PROCESSING:       { label: 'Processing',        color: '#3f6212', bg: '#f7fee7', border: '#d9f99d', dot: '#84cc16' }, 
-  SHIPPED:          { label: 'Shipped',           color: '#1e3a8a', bg: '#eff6ff', border: '#bfdbfe', dot: '#3b82f6' }, 
-  DELIVERED:        { label: 'Delivered',         color: '#14532d', bg: '#f0fdf4', border: '#bbf7d0', dot: '#22c55e' }, 
-  CANCELLED:        { label: 'Cancelled',         color: '#7f1d1d', bg: '#fef2f2', border: '#fecaca', dot: '#ef4444' }, 
-  AWAITING_PAYMENT: { label: 'Awaiting Payment',  color: '#9a3412', bg: '#fff7ed', border: '#fed7aa', dot: '#f97316' },
-  AWAITING_PICKUP:  { label: 'Awaiting Pickup',   color: '#064e3b', bg: '#ecfdf5', border: '#a7f3d0', dot: '#10b981' },
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return `${BASE}${path.startsWith('/') ? path : '/' + path}`.replace(/\\/g, '/');
+};
+
+const fmt = (n) => parseFloat(n || 0).toFixed(2);
+
+/* ─── config ──────────────────────────────────────────────── */
+const ORDER_STATUS = {
+  PROCESSING:       { label: 'Processing',       color: '#FFFFFF', bg: '#8D6E63' },
+  PACKING:          { label: 'Packing',           color: '#FFFFFF', bg: '#6B8E23' },
+  SHIPPED:          { label: 'Shipped',           color: '#FFFFFF', bg: '#87CEEB' },
+  DELIVERED:        { label: 'Delivered',         color: '#FFFFFF', bg: '#228B22' },
+  CANCELLED:        { label: 'Cancelled',         color: '#FFFFFF', bg: '#F44336' },
+};
+
+const PAYMENT_STATUS = {
+  AWAITING_PAYMENT: { label: 'Awaiting Payment', color: '#FFFFFF', bg: '#FF9800' },
+  PAID:             { label: 'Paid',              color: '#FFFFFF', bg: '#228B22' },
+  OVERDUE:          { label: 'Overdue',           color: '#FFFFFF', bg: '#F44336' },
 };
 
 const STATUS_TABS = [
-  { key: 'ALL',              label: 'ALL ORDERS', Icon: ClipboardList },
-  { key: 'PROCESSING',       label: 'PROCESSING', Icon: Clock },
-  { key: 'SHIPPED',          label: 'SHIPPED',    Icon: Truck },
-  { key: 'DELIVERED',        label: 'DELIVERED',  Icon: CheckCircle },
+  { key: 'ALL',        label: 'All Orders', Icon: ClipboardList },
+  { key: 'PROCESSING', label: 'Processing', Icon: Clock },
+  { key: 'SHIPPED',    label: 'Shipped',    Icon: Truck },
+  { key: 'DELIVERED',  label: 'Delivered',  Icon: CheckCircle },
 ];
 
+/* ─── shared styles injected once ────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  .ro-page {
+    padding: 32px;
+    background: #F5F5F5;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: #424242;
+  }
+
+  /* ── header row ── */
+  .ro-page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .ro-page-title  { font-size: 2rem; font-weight: 700; color: #1B5E20; margin: 0; }
+  .ro-page-sub    { font-size: 0.95rem; color: #424242; margin: 6px 0 0; }
+
+  /* ── tabs ── */
+  .ro-tabs { display: flex; gap: 8px; border-bottom: 1px solid #8D6E63; margin-bottom: 24px; overflow-x: auto; }
+  .ro-tab  { background: transparent; border: none; border-bottom: 3px solid transparent; padding: 12px 24px; color: #424242; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease; font-size: 0.95rem; white-space: nowrap; }
+  .ro-tab.active  { color: #228B22; border-bottom: 3px solid #228B22; }
+  .ro-tab:hover:not(.active) { color: #228B22; }
+
+  /* ── table ── */
+  .ro-table-wrap { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 10px; overflow-x: auto; }
+  .ro-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .ro-table th { background: #1B5E20; color: #FFFFFF; padding: 14px 20px; font-weight: 500; white-space: nowrap; }
+  .ro-table th:first-child { border-radius: 10px 0 0 0; }
+  .ro-table th:last-child  { border-radius: 0 10px 0 0; }
+  .ro-table td { padding: 14px 20px; border-bottom: 1px solid #F5F5F5; }
+  .ro-table-row { transition: background 0.15s ease; cursor: pointer; }
+  .ro-table-row:nth-child(even) { background: #F5F5F5; }
+  .ro-table-row:hover { background: #A5D6A7 !important; }
+  .ro-table-row:last-child td { border-bottom: none; }
+
+  /* ── detail layout ── */
+  .ro-detail-wrap { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; overflow: hidden; }
+
+  .ro-detail-top {
+    background: #1B5E20;
+    padding: 28px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .ro-inv-number { font-size: 1.6rem; font-weight: 700; color: #FFFFFF; margin: 0 0 6px; }
+  .ro-inv-date   { font-size: 0.9rem; color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 6px; }
+  .ro-total-box  { text-align: right; }
+  .ro-total-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .ro-total-amt  { font-size: 2rem; font-weight: 700; color: #FFFFFF; line-height: 1; }
+
+  /* ── status bar under header ── */
+  .ro-status-bar { background: #F5F5F5; border-bottom: 1px solid #e0e0e0; padding: 14px 32px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  /* ── body sections ── */
+  .ro-body { padding: 32px; }
+  .ro-section { margin-bottom: 32px; }
+  .ro-section:last-child { margin-bottom: 0; }
+  .ro-section-title {
+    font-size: 0.8rem; font-weight: 700; color: #228B22; text-transform: uppercase;
+    letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px;
+    margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #F5F5F5;
+  }
+
+  /* ── two-col info grid ── */
+  .ro-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 680px) { .ro-info-grid { grid-template-columns: 1fr; } }
+  .ro-info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F5F5F5; gap: 16px; }
+  .ro-info-row:last-child { border-bottom: none; }
+  .ro-info-label { font-size: 0.9rem; color: #757575; }
+  .ro-info-value { font-size: 0.95rem; font-weight: 600; color: #424242; text-align: right; }
+
+  /* ── order items table inside detail ── */
+  .ro-items-table-wrap { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+  .ro-items-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .ro-items-table th { background: #F5F5F5; color: #424242; padding: 11px 16px; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ro-items-table td { padding: 14px 16px; border-bottom: 1px solid #F5F5F5; vertical-align: middle; }
+  .ro-items-table tr:last-child td { border-bottom: none; }
+
+  /* ── totals summary ── */
+  .ro-totals { margin-top: 12px; }
+  .ro-total-line { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #F5F5F5; font-size: 0.95rem; color: #424242; }
+  .ro-total-line.grand { padding: 14px 0; border-bottom: none; font-size: 1.15rem; font-weight: 700; color: #1B5E20; border-top: 2px solid #1B5E20; margin-top: 4px; }
+
+  /* ── divider ── */
+  .ro-divider { border: none; border-top: 1px solid #F5F5F5; margin: 24px 0; }
+
+  /* ── product thumbnail ── */
+  .ro-product-img { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: #F5F5F5; transition: transform 0.15s ease; }
+  .ro-product-img:hover { transform: scale(1.03); }
+  .ro-product-placeholder { width: 52px; height: 52px; border-radius: 10px; background: #F5F5F5; display: flex; align-items: center; justify-content: center; }
+
+  /* ── badge ── */
+  .ro-badge { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+
+  /* ── buttons ── */
+  .ro-btn-primary { background: #2E8B57; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .ro-btn-primary:hover:not(:disabled) { background: #267347; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.12); }
+  .ro-btn-primary:disabled { opacity: 0.6; cursor: wait; }
+
+  .ro-btn-secondary { background: #6B8E23; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .ro-btn-secondary:hover { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.12); }
+
+  .ro-btn-danger { background: #F44336; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .ro-btn-danger:hover { background: #d32f2f; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.12); }
+
+  .ro-btn-sm { padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; }
+
+  /* ── empty state ── */
+  .ro-empty { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 64px 24px; text-align: center; }
+
+  /* ── toast ── */
+  .ro-toast { position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px; color: #FFFFFF; padding: 16px 24px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: roSlide 0.3s ease-out forwards; }
+  .ro-toast.success { background: #4CAF50; }
+  .ro-toast.error   { background: #F44336; }
+  .ro-toast.warning { background: #FF9800; }
+
+  /* ── spin ── */
+  .ro-spin { animation: roSpin 1s linear infinite; }
+
+  @keyframes roSlide { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes roSpin  { 100% { transform: rotate(360deg); } }
+
+  @media (max-width: 720px) {
+    .ro-page { padding: 16px; }
+    .ro-detail-top { padding: 20px 16px; }
+    .ro-body { padding: 16px; }
+    .ro-status-bar { padding: 12px 16px; }
+    .ro-table th, .ro-table td { padding: 12px; }
+  }
+`;
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT
+═══════════════════════════════════════════════════════════ */
 export default function CustomerRetailOrders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [orders, setOrders]           = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [selectedOrder, setSelected]  = useState(null);
+  const [activeTab, setActiveTab]     = useState('ALL');
+  const [refreshing, setRefreshing]   = useState(false);
+  const [notification, setNotif]      = useState(null);
   const navigate = useNavigate();
 
-  const [refreshing, setRefreshing] = useState(false);
+  const toast = (msg, type = 'success') => {
+    setNotif({ msg, type });
+    setTimeout(() => setNotif(null), 4000);
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
       const res = await axios.get('/retail/orders/my-orders');
-      if (res.status === 'success') setOrders(res.data || []);
+      // API returns { status:'success', data: [...] }
+      const list = res.data?.data ?? res.data ?? [];
+      setOrders(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error('Failed to load retail orders', err);
+      toast('Failed to load orders.', 'error');
     } finally {
       setLoading(false);
     }
@@ -49,9 +210,11 @@ export default function CustomerRetailOrders() {
     setRefreshing(true);
     try {
       const res = await axios.get('/retail/orders/my-orders');
-      if (res.status === 'success') setOrders(res.data || []);
-    } catch (err) {
-      console.error('Failed to refresh', err);
+      const list = res.data?.data ?? res.data ?? [];
+      setOrders(Array.isArray(list) ? list : []);
+      toast('Orders refreshed.', 'success');
+    } catch {
+      toast('Failed to refresh orders.', 'error');
     } finally {
       setRefreshing(false);
     }
@@ -60,478 +223,327 @@ export default function CustomerRetailOrders() {
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const handleCancel = async (id) => {
-    if (!window.confirm('Cancel this retail order?')) return;
     try {
       await axios.put(`/retail/orders/${id}/status`, { status: 'CANCELLED' });
-      fetchOrders();
-      setSelectedOrder(null);
+      toast('Order cancelled successfully.');
+      // update in-place so detail view refreshes instantly
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'CANCELLED' } : o));
+      setSelected(prev => prev?.id === id ? { ...prev, status: 'CANCELLED' } : prev);
     } catch (err) {
-      alert(err.response?.data?.message || 'Cancellation requires contacting support.');
+      toast(err.response?.data?.message || 'Cancellation failed. Please contact support.', 'error');
     }
   };
 
-  const filtered = activeTab === 'ALL' 
-    ? orders 
-    : orders.filter(o => o.status === activeTab);
+  const filtered = activeTab === 'ALL' ? orders : orders.filter(o => o.status === activeTab);
 
   /* ═══════════════════════════════════════════════════════════
-     DETAIL VIEW — 3D Green Theme
+     DETAIL VIEW — single full-page layout
   ═══════════════════════════════════════════════════════════ */
   if (selectedOrder) {
-    const o = selectedOrder;
-    const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.PROCESSING;
-    
+    const o   = selectedOrder;
+    const ost = ORDER_STATUS[o.status]         || ORDER_STATUS.PROCESSING;
+    const pst = PAYMENT_STATUS[o.payment_status] || null;
+    const canCancel = ['PROCESSING', 'PACKING'].includes(o.status);
+
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        backgroundColor: '#e6f2e8', 
-        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100\' height=\'100\' filter=\'url(%23noise)\' opacity=\'0.04\'/%3E%3C/svg%3E")',
-        padding: '32px 24px 60px', 
-        fontFamily: "'Inter', sans-serif" 
-      }}>
-        
-        <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-          
-          <button onClick={() => setSelectedOrder(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#166534', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', marginBottom: 16, transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateX(-4px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateX(0)'}>
+      <div className="ro-page">
+        <style>{STYLES}</style>
+        {notification && <div className={`ro-toast ${notification.type}`}>{notification.msg}</div>}
+
+        {/* ── top nav row ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+          <button className="ro-btn-secondary" onClick={() => setSelected(null)}>
             <ArrowLeft size={16} /> Back to Retail Orders
           </button>
-
-          {/* Dark Forest Green 3D Header Card */}
-          <div style={{ 
-            background: 'linear-gradient(135deg, #064e3b 0%, #14532d 100%)', 
-            borderRadius: 16,
-            padding: '36px 48px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 32,
-            boxShadow: '0 20px 25px -5px rgba(6, 78, 59, 0.4), inset 0 2px 0 rgba(255,255,255,0.1), inset 0 -4px 0 rgba(0,0,0,0.2)'
-          }}>
-            {/* Left */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.8rem', color: '#ecfdf5', margin: 0, fontWeight: 700, letterSpacing: '0.02em', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                #{o.invoice_number}
-              </h1>
-              <div>
-                <span style={{ display: 'inline-block', padding: '6px 14px', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.4)', borderRadius: 20, color: '#6ee7b7', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 0 10px rgba(52,211,153,0.2)' }}>
-                  {cfg.label}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#a7f3d0', fontSize: '0.9rem' }}>
-                <Calendar size={14} /> {new Date(o.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} at {new Date(o.created_at).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-
-            {/* Right Price Card 3D */}
-            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '24px 32px', textAlign: 'right', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 16px rgba(0,0,0,0.2)' }}>
-              <div style={{ fontSize: '0.75rem', color: '#a7f3d0', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, fontWeight: 600 }}>Total Amount</div>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#34d399', textShadow: '0 0 20px rgba(52, 211, 153, 0.4)', lineHeight: 1 }}>
-                {parseFloat(o.total_amount || 0).toFixed(2)} ETB
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          <div style={{ background: '#ffffff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 15px 35px -5px rgba(22, 101, 52, 0.15), 0 4px 6px -2px rgba(22, 101, 52, 0.05)' }}>
-            
-            {/* Card Headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', background: 'linear-gradient(90deg, #f0fdf4 0%, #ecfdf5 100%)', borderBottom: '2px solid #d1fae5' }}>
-              <div style={{ padding: '24px 32px', fontSize: '1.4rem', fontWeight: 700, color: '#064e3b' }}>
-                Order Items & Details
-              </div>
-            </div>
-
-            {/* Card Body */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', background: '#ffffff' }}>
-              
-              {/* Left Column - Details */}
-              <div style={{ padding: '32px', borderRight: '2px solid #d1fae5', display: 'flex', flexDirection: 'column', gap: 40 }}>
-                
-                {/* Product Items */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {o.items && o.items.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 24, paddingBottom: 16, borderBottom: idx < o.items.length -1 ? '1px dashed #d1fae5' : 'none' }}>
-                      <div style={{ width: 100, height: 100, borderRadius: 16, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 2px 0 #fff, 0 8px 16px rgba(0, 0, 0, 0.05)' }}>
-                        {item.product_image ? (
-                           <img src={item.product_image.startsWith('http') ? item.product_image : `${BASE}${item.product_image.startsWith('/') ? '' : '/'}${item.product_image}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} />
-                        ) : (
-                           <Package size={40} color="#cbd5e1" />
-                        )}
-                      </div>
-                      
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#064e3b', marginBottom: 8 }}>{item.product_name}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Quantity</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#14532d' }}>{item.quantity} x {parseFloat(item.price || (item.subtotal / item.quantity)).toFixed(2)} ETB</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Subtotal</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#059669' }}>{parseFloat(item.subtotal).toFixed(2)} ETB</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Column - Status & Info */}
-              <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', background: '#f7fee7' }}>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    <Hash size={16} /> CURRENT STATUS
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '1.2rem', fontWeight: 700, color: '#064e3b', background: '#ecfdf5', padding: '12px 16px', borderRadius: 8, border: `1px solid ${cfg.border}` }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: cfg.dot, boxShadow: `0 0 0 3px rgba(34, 197, 94, 0.2)` }} />
-                    {cfg.label}
-                  </div>
-
-                  <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 24, border: '1px solid #d1fae5', boxShadow: 'inset 0 1px 0 #fff', marginTop: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 16 }}>
-                      <ClipboardList size={16} /> CONTACT INFO
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #a7f3d0', paddingBottom: 12 }}>
-                        <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: 500 }}>Full Name</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#064e3b' }}>
-                          {o.customer_name || 'N/A'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed #a7f3d0', paddingBottom: 12 }}>
-                        <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: 500 }}>Email</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#064e3b' }}>
-                          {o.customer_email || 'N/A'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: 500 }}>Phone</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#064e3b' }}>
-                          {o.customer_phone || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 'auto' }}>
-                    {o.status === 'PROCESSING' && (
-                      <button onClick={() => handleCancel(o.id)} style={{ width: '100%', padding: '16px', background: 'linear-gradient(180deg, #dc2626 0%, #991b1b 100%)', border: 'none', color: '#fff', borderRadius: 8, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 0 #7f1d1d, 0 10px 20px rgba(0,0,0,0.2)', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={e => { e.currentTarget.style.transform = 'translateY(4px)'; e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 0 #7f1d1d, 0 4px 10px rgba(0,0,0,0.2)'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.2), 0 6px 0 #7f1d1d, 0 10px 20px rgba(0,0,0,0.2)'; }}>
-                        <XCircle size={18} /> CANCEL RETAIL ORDER
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-              </div>
-            </div>
-          </div>
+          {canCancel && (
+            <button className="ro-btn-danger" onClick={() => handleCancel(o.id)}>
+              <XCircle size={16} /> Cancel Order
+            </button>
+          )}
         </div>
+
+        {/* ── main detail panel ── */}
+        <div className="ro-detail-wrap">
+
+          {/* dark green top strip */}
+          <div className="ro-detail-top">
+            <div>
+              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Retail Order</div>
+              <h1 className="ro-inv-number">#{o.invoice_number || o.id}</h1>
+              <div className="ro-inv-date">
+                <Calendar size={14} />
+                {new Date(o.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <div className="ro-total-box">
+              <div className="ro-total-label">Total Amount</div>
+              <div className="ro-total-amt">{fmt(o.total_amount)} ETB</div>
+            </div>
+          </div>
+
+          {/* status badges strip */}
+          <div className="ro-status-bar">
+            <span style={{ fontSize: '0.85rem', color: '#757575', marginRight: '4px' }}>Order Status:</span>
+            <span className="ro-badge" style={{ background: ost.bg, color: ost.color }}>{ost.label}</span>
+            {pst && (
+              <>
+                <span style={{ fontSize: '0.85rem', color: '#757575', marginLeft: '12px', marginRight: '4px' }}>Payment:</span>
+                <span className="ro-badge" style={{ background: pst.bg, color: pst.color }}>{pst.label}</span>
+              </>
+            )}
+            <span style={{ fontSize: '0.85rem', color: '#757575', marginLeft: '12px', marginRight: '4px' }}>Delivery:</span>
+            <span className="ro-badge" style={{ background: '#F5F5F5', color: '#424242', textTransform: 'capitalize' }}>
+              {o.delivery_type || 'pickup'}
+            </span>
+          </div>
+
+          {/* ── body ── */}
+          <div className="ro-body">
+
+            {/* SECTION 1 — Order Items */}
+            <div className="ro-section">
+              <div className="ro-section-title"><Package size={16} /> Order Items</div>
+
+              {o.items && o.items.length > 0 ? (
+                <>
+                  <div className="ro-items-table-wrap">
+                    <table className="ro-items-table">
+                      <thead>
+                        <tr>
+                          <th>Product</th>
+                          <th>Name</th>
+                          <th style={{ textAlign: 'right' }}>Unit Price</th>
+                          <th style={{ textAlign: 'right' }}>Qty</th>
+                          <th style={{ textAlign: 'right' }}>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {o.items.map((item, idx) => {
+                          const imgUrl = getImageUrl(item.product_image);
+                          // unit_price from DB column name
+                          const unitPrice = item.unit_price ?? item.price ?? (item.subtotal / item.quantity);
+                          return (
+                            <tr key={idx}>
+                              <td>
+                                {imgUrl
+                                  ? <img src={imgUrl} alt={item.product_name} className="ro-product-img" />
+                                  : <div className="ro-product-placeholder"><Package size={24} color="#8D6E63" /></div>
+                                }
+                              </td>
+                              <td style={{ fontWeight: 600, color: '#1B5E20' }}>{item.product_name}</td>
+                              <td style={{ textAlign: 'right' }}>{fmt(unitPrice)} ETB</td>
+                              <td style={{ textAlign: 'right' }}>{item.quantity}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: '#2E8B57' }}>{fmt(item.subtotal)} ETB</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* totals summary */}
+                  <div className="ro-totals" style={{ maxWidth: '320px', marginLeft: 'auto', marginTop: '16px' }}>
+                    {parseFloat(o.subtotal || 0) > 0 && (
+                      <div className="ro-total-line">
+                        <span>Subtotal</span>
+                        <span>{fmt(o.subtotal)} ETB</span>
+                      </div>
+                    )}
+                    {parseFloat(o.delivery_fee || 0) > 0 && (
+                      <div className="ro-total-line">
+                        <span>Delivery Fee</span>
+                        <span>{fmt(o.delivery_fee)} ETB</span>
+                      </div>
+                    )}
+                    {parseFloat(o.tax || 0) > 0 && (
+                      <div className="ro-total-line">
+                        <span>Tax</span>
+                        <span>{fmt(o.tax)} ETB</span>
+                      </div>
+                    )}
+                    <div className="ro-total-line grand">
+                      <span>Total</span>
+                      <span>{fmt(o.total_amount)} ETB</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ padding: '24px 0', color: '#757575', fontSize: '0.95rem' }}>
+                  No items found for this order.
+                </div>
+              )}
+            </div>
+
+            <hr className="ro-divider" />
+
+            {/* SECTION 2 — Customer & Payment side by side */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px' }}>
+
+              {/* Customer Info */}
+              <div className="ro-section" style={{ marginBottom: 0 }}>
+                <div className="ro-section-title"><User size={16} /> Customer Info</div>
+                <div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label"><User size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Full Name</span>
+                    <span className="ro-info-value">{o.customer_name || '—'}</span>
+                  </div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label"><Mail size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Email</span>
+                    <span className="ro-info-value">{o.customer_email || '—'}</span>
+                  </div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label"><Phone size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Phone</span>
+                    <span className="ro-info-value">{o.customer_phone || '—'}</span>
+                  </div>
+                  {o.delivery_type === 'delivery' && (
+                    <div className="ro-info-row">
+                      <span className="ro-info-label"><MapPin size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Address</span>
+                      <span className="ro-info-value">{o.delivery_address || '—'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment & Order Info */}
+              <div className="ro-section" style={{ marginBottom: 0 }}>
+                <div className="ro-section-title"><CreditCard size={16} /> Payment & Order Info</div>
+                <div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label">Payment Method</span>
+                    <span className="ro-info-value" style={{ textTransform: 'capitalize' }}>{(o.payment_method || '—').replace('_', ' ')}</span>
+                  </div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label">Payment Status</span>
+                    <span className="ro-info-value">
+                      {pst ? (
+                        <span className="ro-badge" style={{ background: pst.bg, color: pst.color, fontSize: '0.82rem' }}>{pst.label}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label">Delivery Type</span>
+                    <span className="ro-info-value" style={{ textTransform: 'capitalize' }}>{o.delivery_type || '—'}</span>
+                  </div>
+                  <div className="ro-info-row">
+                    <span className="ro-info-label"><Hash size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Invoice #</span>
+                    <span className="ro-info-value">{o.invoice_number || '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 3 — Notes (if any) */}
+            {o.notes && (
+              <>
+                <hr className="ro-divider" />
+                <div className="ro-section" style={{ marginBottom: 0 }}>
+                  <div className="ro-section-title"><FileText size={16} /> Notes</div>
+                  <p style={{ margin: 0, color: '#424242', lineHeight: 1.7 }}>{o.notes}</p>
+                </div>
+              </>
+            )}
+
+          </div>{/* /ro-body */}
+        </div>{/* /ro-detail-wrap */}
       </div>
     );
   }
 
   /* ═══════════════════════════════════════════════════════════
-     LIST VIEW — Emerald & Leaf Green 3D Theme
+     LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ minHeight: '100vh', background: '#ecfdf5', fontFamily: "'Inter', sans-serif" }}>
+    <div className="ro-page">
+      <style>{STYLES}</style>
 
-      {/* ── PREMIUM EMERALD HEADER ── */}
-      <div style={{
-        width: '100%',
-        background: 'linear-gradient(180deg, #dcfce7 0%, #a7f3d0 100%)',
-        borderBottom: '2px solid #6ee7b7',
-        boxShadow: '0 10px 25px rgba(5, 150, 105, 0.1)'
-      }}>
-        <div style={{ padding: '32px 48px 0' }}>
+      {notification && <div className={`ro-toast ${notification.type}`}>{notification.msg}</div>}
 
-          {/* ── Top Row: Title + Buttons ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-
-            {/* Left: Title + Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', padding: 12, borderRadius: 16, boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.3), 0 8px 16px rgba(4, 120, 87, 0.3)' }}>
-                  <Store size={36} color="#fff" />
-                </div>
-                <h1 style={{
-                  fontFamily: "'Playfair Display', 'Georgia', serif",
-                  fontSize: '3.2rem',
-                  fontWeight: 800,
-                  color: '#064e3b',
-                  margin: 0,
-                  letterSpacing: '0.02em',
-                  textShadow: '0 2px 4px rgba(255,255,255,0.8)'
-                }}>Retail Orders</h1>
-              </div>
-
-              {/* Moss Green Counter Bubble */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                width: 80, height: 80, borderRadius: '50%',
-                background: 'radial-gradient(circle at 30% 30%, #4ade80, #16a34a)',
-                boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.6), inset 0 -4px 8px rgba(0,0,0,0.2), 0 10px 20px rgba(22, 163, 74, 0.4)',
-                border: '3px solid #bbf7d0',
-                color: '#fff',
-                lineHeight: 1
-              }}>
-                <span style={{ fontSize: '2.2rem', fontWeight: 900, lineHeight: 1, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{orders.length}</span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>orders</span>
-              </div>
-            </div>
-
-            {/* Right: Refresh + New Request */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-
-              {/* 3D Glass Refresh Button */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  title="Refresh orders"
-                  style={{
-                    width: 68, height: 68, borderRadius: '50%', border: 'none',
-                    cursor: refreshing ? 'wait' : 'pointer', padding: 0,
-                    background: 'conic-gradient(from 45deg, #a7f3d0, #ecfdf5, #6ee7b7, #ecfdf5, #a7f3d0)',
-                    boxShadow: refreshing
-                      ? 'inset 0 4px 10px rgba(5, 150, 105, 0.3), 0 2px 4px rgba(5, 150, 105, 0.1)'
-                      : '0 8px 16px rgba(5, 150, 105, 0.25), inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -3px 6px rgba(5, 150, 105, 0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transform: refreshing ? 'scale(0.95)' : 'scale(1)',
-                    transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                  }}
-                >
-                  <div style={{
-                    width: 52, height: 52, borderRadius: '50%',
-                    background: refreshing
-                      ? 'linear-gradient(145deg, #6ee7b7 0%, #a7f3d0 100%)'
-                      : 'linear-gradient(145deg, #ffffff 0%, #dcfce7 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 2px 6px rgba(5, 150, 105, 0.2), 0 1px 2px rgba(255,255,255,0.8)'
-                  }}>
-                    <RefreshCw
-                      size={24}
-                      color={refreshing ? '#047857' : '#059669'}
-                      strokeWidth={2.5}
-                      style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}}
-                    />
-                  </div>
-                </button>
-                <span style={{
-                  fontSize: '0.75rem',
-                  color: refreshing ? '#047857' : '#059669',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  transition: 'color 0.2s'
-                }}>
-                  {refreshing ? 'Loading...' : 'Refresh'}
-                </span>
-              </div>
-
-              {/* Glossy Forest Green New Request Button */}
-              <div style={{
-                padding: 6, borderRadius: 16,
-                background: 'rgba(255,255,255,0.4)',
-                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 12px 24px rgba(6, 78, 59, 0.2)'
-              }}>
-                <button onClick={() => navigate('/services/retail')} style={{
-                  background: 'linear-gradient(180deg, #10b981 0%, #047857 100%)',
-                  border: '1px solid #064e3b',
-                  borderRadius: 12,
-                  padding: '16px 40px',
-                  color: '#fff',
-                  fontSize: '1.2rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  boxShadow: 'inset 0 2px 2px rgba(255,255,255,0.4), 0 4px 8px rgba(0,0,0,0.2)',
-                  letterSpacing: '0.02em',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseDown={e => { e.currentTarget.style.transform = 'translateY(2px)'; e.currentTarget.style.boxShadow = 'inset 0 2px 2px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.2)'; }}
-                onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'inset 0 2px 2px rgba(255,255,255,0.4), 0 4px 8px rgba(0,0,0,0.2)'; }}
-                >
-                  <span style={{ fontSize: '1.6rem', fontWeight: 400, lineHeight: 1 }}>+</span> New Order
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Sage Green Tabs Bar ── */}
-          <div style={{
-            display: 'flex',
-            background: 'linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%)',
-            borderRadius: '12px 12px 0 0',
-            border: '2px solid #6ee7b7',
-            borderBottom: 'none',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 -2px 10px rgba(5, 150, 105, 0.05)',
-            overflow: 'hidden'
-          }}>
-            {STATUS_TABS.map((tab, idx) => {
-              const active = activeTab === tab.key;
-              const TabIcon = tab.Icon;
-              return (
-                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    flex: 1,
-                    padding: '18px 20px',
-                    border: 'none',
-                    borderRight: idx < STATUS_TABS.length - 1 ? '2px solid #6ee7b7' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    position: 'relative',
-                    transition: 'all 0.2s',
-                    background: active
-                      ? 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,1) 100%)'
-                      : 'transparent',
-                    color: active ? '#064e3b' : '#059669',
-                    fontWeight: 800,
-                    fontSize: '0.9rem',
-                    letterSpacing: '0.08em'
-                  }}>
-                  {/* Emerald glowing top-bar for active */}
-                  {active && (
-                    <div style={{
-                      position: 'absolute', top: 0, left: '10%', right: '10%',
-                      height: 5,
-                      background: 'linear-gradient(90deg, transparent, #10b981, transparent)',
-                      boxShadow: '0 2px 12px rgba(16, 185, 129, 0.8)',
-                      borderRadius: '0 0 4px 4px'
-                    }} />
-                  )}
-                  <TabIcon size={20} color={active ? '#047857' : '#34d399'} strokeWidth={2.5} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
+      {/* header */}
+      <div className="ro-page-header">
+        <div>
+          <h1 className="ro-page-title">Retail Orders</h1>
+          <p className="ro-page-sub">Manage your purchases from the retail store</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="ro-btn-primary" onClick={() => navigate('/services/retail')}>
+            + New Order
+          </button>
+          <button className="ro-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'ro-spin' : ''} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div style={{ padding: '24px 48px', maxWidth: 1400, margin: '0 auto' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ height: 130, borderRadius: 12, background: 'linear-gradient(110deg, #dcfce7 8%, #ecfdf5 18%, #dcfce7 33%)', backgroundSize: '200% 100%', animation: 'shine 1.4s linear infinite' }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '100px 20px', background: '#ffffff', borderRadius: 16, border: '2px solid #dcfce7', boxShadow: '0 10px 25px rgba(5, 150, 105, 0.05)', color: '#059669' }}>
-            <div style={{ padding: 24, background: '#ecfdf5', borderRadius: '50%', border: '2px dashed #6ee7b7' }}>
-              <ShoppingCart size={64} color="#34d399" />
-            </div>
-            <p style={{ fontSize: '1.2rem', margin: 0, fontWeight: 700, color: '#047857' }}>No retail orders found for this status.</p>
-            <button onClick={() => navigate('/services/retail')}
-              style={{ background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff', padding: '12px 32px', borderRadius: 8, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)', marginTop: 10 }}>
-              Shop Retail Store
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filtered.map(order => {
-              const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.PROCESSING;
-              const dateStr = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-              return (
-                <div key={order.id} onClick={() => { setSelectedOrder(order); }}
-                  style={{ 
-                    background: 'linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)', 
-                    borderRadius: 12, 
-                    border: '1px solid #d1fae5',
-                    borderLeft: `6px solid ${cfg.dot}`, 
-                    cursor: 'pointer', 
-                    transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)', 
-                    boxShadow: '0 8px 15px -3px rgba(6, 78, 59, 0.08), 0 4px 6px -2px rgba(6, 78, 59, 0.04)', 
-                    padding: '20px 32px', 
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'stretch' 
-                  }}
-                  onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(6, 78, 59, 0.12), 0 10px 10px -5px rgba(6, 78, 59, 0.08)'; e.currentTarget.style.border = '1px solid #6ee7b7'; e.currentTarget.style.borderLeft = `6px solid ${cfg.dot}`; }}
-                  onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 15px -3px rgba(6, 78, 59, 0.08), 0 4px 6px -2px rgba(6, 78, 59, 0.04)'; e.currentTarget.style.border = '1px solid #d1fae5'; e.currentTarget.style.borderLeft = `6px solid ${cfg.dot}`; }}>
-                  
-                  {/* LEFT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20 }}>
-                    <div style={{ fontWeight: 800, color: '#166534', fontSize: '1rem', letterSpacing: '0.05em' }}>ORDER #{order.invoice_number}</div>
-                    
-                    <div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#064e3b', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {order.items && order.items.length > 0 ? (
-                           <span>{order.items.length} {order.items.length === 1 ? 'Item' : 'Items'}</span>
-                        ) : (
-                           <span>Order Items</span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: '0.95rem', color: '#14532d', marginTop: 12, fontWeight: 600 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#059669' }}>
-                          <DollarSign size={16} /> 
-                          {parseFloat(order.total_amount || 0).toFixed(2)} ETB
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CENTER COLUMN (Date) */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: 4 }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 600, color: '#15803d', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Calendar size={16} /> {dateStr}
-                    </span>
-                  </div>
-
-                  {/* RIGHT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: cfg.bg, padding: '6px 14px', borderRadius: 20, border: `1px solid ${cfg.border}` }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: cfg.dot, boxShadow: `0 0 8px ${cfg.dot}` }} />
-                      <span style={{ fontWeight: 800, color: cfg.color, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cfg.label}</span>
-                    </div>
-                    
-                    <div style={{ background: 'rgba(5, 150, 105, 0.1)', borderRadius: 10, padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }} style={{
-                        background: 'linear-gradient(180deg, #10b981 0%, #047857 100%)',
-                        color: '#fff',
-                        border: '1px solid #064e3b',
-                        borderRadius: 8,
-                        padding: '8px 20px',
-                        fontWeight: 800,
-                        fontSize: '0.9rem',
-                        boxShadow: '0 4px 10px rgba(4, 120, 87, 0.3), inset 0 1px 0 rgba(255,255,255,0.4)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6
-                      }}>View Order &rarr;</button>
-                    </div>
-
-                    {order.status === 'PROCESSING' && (
-                      <div style={{ marginTop: 4 }}>
-                        <button onClick={(e) => { e.stopPropagation(); handleCancel(order.id); }} style={{
-                          background: 'transparent',
-                          color: '#ef4444',
-                          border: 'none',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          <XCircle size={14} /> Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* tabs */}
+      <div className="ro-tabs">
+        {STATUS_TABS.map(({ key, label, Icon }) => (
+          <button key={key} className={`ro-tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>
+            <Icon size={17} /> {label}
+          </button>
+        ))}
       </div>
 
-      <style>{`@keyframes shine { to { background-position-x: -200%; } }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-      `}</style>
+      {/* content */}
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: '#757575' }}>Loading orders…</div>
+      ) : filtered.length === 0 ? (
+        <div className="ro-empty">
+          <ShoppingCart size={48} color="#A5D6A7" style={{ marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '1.4rem', color: '#1B5E20', margin: '0 0 8px' }}>No Orders Found</h2>
+          <p style={{ color: '#757575', margin: '0 0 20px' }}>You don't have any retail orders in this category.</p>
+          <button className="ro-btn-primary" onClick={() => navigate('/services/retail')}>Shop Retail Store</button>
+        </div>
+      ) : (
+        <div className="ro-table-wrap">
+          <table className="ro-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Date</th>
+                <th>Items</th>
+                <th>Payment</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((order) => {
+                const ost = ORDER_STATUS[order.status]           || ORDER_STATUS.PROCESSING;
+                const pst = PAYMENT_STATUS[order.payment_status] || null;
+                const dateStr = new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                return (
+                  <tr key={order.id} className="ro-table-row" onClick={() => setSelected(order)}>
+                    <td style={{ fontWeight: 600, color: '#1B5E20' }}>{order.invoice_number || order.id}</td>
+                    <td>{dateStr}</td>
+                    <td>{order.items?.length ?? 0} {order.items?.length === 1 ? 'item' : 'items'}</td>
+                    <td>
+                      {pst
+                        ? <span className="ro-badge" style={{ background: pst.bg, color: pst.color, fontSize: '0.8rem' }}>{pst.label}</span>
+                        : '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#2E8B57' }}>
+                      {fmt(order.total_amount)} ETB
+                    </td>
+                    <td>
+                      <span className="ro-badge" style={{ background: ost.bg, color: ost.color, fontSize: '0.8rem' }}>{ost.label}</span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="ro-btn-secondary ro-btn-sm"
+                        onClick={(e) => { e.stopPropagation(); setSelected(order); }}
+                      >
+                        <Eye size={14} /> View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
