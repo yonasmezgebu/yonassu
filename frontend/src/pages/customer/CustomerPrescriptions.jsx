@@ -1,330 +1,492 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import {
-  ClipboardList, Clock, CheckCircle, XCircle, Package, RefreshCw,
+  ClipboardList, Clock, CheckSquare, XSquare, Package, RefreshCw,
   ArrowLeft, User, Mail, Phone, MapPin, Truck, Hash, Calendar,
-  ShoppingBag, DollarSign, Image, AlertCircle, Trash2, FileText
+  DollarSign, Image as ImageIcon, AlertCircle, Upload, FileText, CheckCircle
 } from 'lucide-react';
 
-const BASE = 'http://localhost:5000';
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return `${BASE}${path.startsWith('/') ? path : '/' + path}`.replace(/\\/g, '/');
+};
+
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const fmtDateTime = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtMoney = (n) => parseFloat(n || 0).toFixed(2);
+
+/* ─── status maps ─────────────────────────────────────────── */
 const STATUS_CONFIG = {
-  pending:          { label: 'Pending Review',   color: '#d97706', bg: '#fffbeb', border: '#fde68a', dot: '#f59e0b' },
-  approved:         { label: 'Approved',          color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', dot: '#3b82f6' },
-  rejected:         { label: 'Rejected',          color: '#dc2626', bg: '#fef2f2', border: '#fecaca', dot: '#ef4444' },
-  ready_for_pickup: { label: 'Ready for Pickup', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', dot: '#10b981' },
-  picked_up:        { label: 'Picked Up',         color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb', dot: '#9ca3af' },
-  delivered:        { label: 'Delivered',         color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb', dot: '#9ca3af' },
+  pending:          { label: 'Pending Review',   color: '#FFFFFF', bg: '#8D6E63' },
+  approved:         { label: 'Approved',         color: '#FFFFFF', bg: '#8BC34A' }, // lime green badge
+  rejected:         { label: 'Rejected',         color: '#FFFFFF', bg: '#F44336' },
+  ready_for_pickup: { label: 'Ready for Pickup', color: '#FFFFFF', bg: '#2E8B57' },
+  picked_up:        { label: 'Picked Up',        color: '#FFFFFF', bg: '#228B22' },
+  delivered:        { label: 'Delivered',        color: '#FFFFFF', bg: '#228B22' },
 };
 
 const STATUS_TABS = [
-  { key: 'all',       label: 'ALL ORDERS', Icon: ClipboardList },
-  { key: 'pending',   label: 'PENDING',    Icon: Clock },
-  { key: 'approved',  label: 'APPROVED',   Icon: CheckCircle },
-  { key: 'delivered', label: 'DELIVERED',  Icon: Truck },
+  { key: 'all',       label: 'All Orders', Icon: ClipboardList },
+  { key: 'pending',   label: 'Pending',    Icon: Clock },
+  { key: 'approved',  label: 'Approved',   Icon: CheckCircle },
+  { key: 'delivered', label: 'Delivered',  Icon: Truck },
 ];
 
+/* ─── shared CSS ──────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  .cp-page {
+    padding: 32px;
+    background: #F5F5F5;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: #424242;
+  }
+  @media (max-width: 720px) { .cp-page { padding: 16px; } }
+
+  /* header row */
+  .cp-page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .cp-page-title  { font-size: 2rem; font-weight: 700; color: #1B5E20; margin: 0; }
+  .cp-page-sub    { font-size: 0.95rem; color: #424242; margin: 6px 0 0; }
+
+  /* tabs */
+  .cp-tabs { display: flex; gap: 0; border-bottom: 1px solid #8D6E63; margin-bottom: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cp-tab  { background: transparent; border: none; border-bottom: 3px solid transparent; padding: 12px 24px; color: #424242; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease; font-size: 0.95rem; white-space: nowrap; }
+  .cp-tab.active { color: #228B22; border-bottom: 3px solid #228B22; }
+  .cp-tab:hover:not(.active) { color: #228B22; }
+
+  /* card list */
+  .cp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+  .cp-card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s ease; display: flex; flex-direction: column; gap: 12px; }
+  .cp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+  .cp-card-header { display: flex; justify-content: space-between; align-items: center; }
+  .cp-order-num { font-size: 0.8rem; font-weight: 700; color: #8D6E63; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cp-card-title { font-size: 1.15rem; font-weight: 700; color: #1B5E20; margin: 0; }
+  .cp-card-meta { display: flex; gap: 16px; font-size: 0.9rem; color: #424242; flex-wrap: wrap; }
+  .cp-card-meta span { display: flex; align-items: center; gap: 5px; }
+  .cp-card-footer { border-top: 1px solid #F5F5F5; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .cp-view-link { color: #2E8B57; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }
+
+  /* empty state */
+  .cp-empty { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 64px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  /* ─── DETAIL PANEL ─── */
+  .cp-detail-wrap { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; overflow: hidden; }
+
+  .cp-detail-top {
+    background: #1B5E20;
+    padding: 28px 32px;
+    display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;
+  }
+  @media (max-width: 600px) { .cp-detail-top { padding: 20px 16px; } }
+  .cp-detail-inv { font-size: 1.6rem; font-weight: 700; color: #FFFFFF; margin: 0 0 6px; }
+  .cp-detail-date { font-size: 0.9rem; color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 6px; }
+  .cp-detail-total-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .cp-detail-total-amt { font-size: 2rem; font-weight: 700; color: #FFFFFF; line-height: 1; }
+
+  .cp-status-bar { background: #F5F5F5; border-bottom: 1px solid #e0e0e0; padding: 14px 32px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cp-status-lbl { font-size: 0.85rem; color: #757575; margin-right: 2px; }
+
+  .cp-body { padding: 32px; }
+  @media (max-width: 600px) { .cp-body { padding: 16px; } }
+
+  .cp-section { margin-bottom: 32px; }
+  .cp-section:last-child { margin-bottom: 0; }
+  .cp-section-title { font-size: 0.8rem; font-weight: 700; color: #228B22; text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #F5F5F5; }
+
+  .cp-info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #F5F5F5; gap: 16px; }
+  .cp-info-row:last-child { border-bottom: none; }
+  .cp-info-label { font-size: 0.9rem; color: #757575; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .cp-info-value { font-size: 0.95rem; font-weight: 600; color: #424242; text-align: right; }
+
+  /* two-col grid for sections side by side */
+  .cp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  @media (max-width: 760px) { .cp-two-col { grid-template-columns: 1fr; } }
+
+  /* drug image */
+  .cp-drug-image-wrap { width: 100%; height: 220px; border-radius: 10px; overflow: hidden; background: #F5F5F5; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; padding: 12px; }
+  .cp-drug-image { width: 100%; height: 100%; object-fit: contain; }
+
+  /* prescription image */
+  .cp-rx-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F5F5F5; border: 1px dashed #8D6E63; border-radius: 10px; min-height: 220px; padding: 24px; text-align: center; }
+  .cp-rx-img { width: 100%; max-height: 400px; object-fit: contain; cursor: zoom-in; border-radius: 8px; transition: transform 0.15s ease; }
+  .cp-rx-img:hover { transform: scale(1.02); }
+
+  /* totals rows */
+  .cp-total-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F5F5F5; font-size: 0.95rem; }
+  .cp-total-line.grand { border-bottom: none; border-top: 2px solid #1B5E20; margin-top: 4px; padding-top: 14px; font-size: 1.1rem; font-weight: 700; color: #1B5E20; }
+
+  /* action forms */
+  .cp-action-section { background: #F5F5F5; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
+  .cp-input { padding: 10px 12px; border: 1px solid #8D6E63; border-radius: 6px; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; transition: all 0.15s ease; background: #FFFFFF; color: #424242; }
+  .cp-input:focus { border-color: #2E8B57; box-shadow: 0 0 0 3px rgba(46,139,87,0.15); outline: none; }
+
+  /* badge */
+  .cp-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  /* divider */
+  .cp-divider { border: none; border-top: 1px solid #F5F5F5; margin: 24px 0; }
+
+  /* buttons */
+  .cp-btn-primary   { background: #2E8B57; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+  .cp-btn-primary:hover:not(:disabled)   { background: #267347; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cp-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .cp-btn-secondary { background: #6B8E23; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+  .cp-btn-secondary:hover:not(:disabled) { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cp-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .cp-btn-danger    { background: #F44336; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
+  .cp-btn-danger:hover:not(:disabled)    { background: #d32f2f; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cp-btn-danger:disabled { opacity: 0.55; cursor: not-allowed; }
+  
+  /* toast */
+  .cp-toast { position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px; color: #FFFFFF; padding: 16px 24px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.18); animation: cpSlide 0.3s ease-out forwards; }
+  .cp-toast.success { background: #4CAF50; }
+  .cp-toast.error   { background: #F44336; }
+  .cp-toast.warning { background: #FF9800; }
+
+  /* modal */
+  .cp-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 32px; }
+  .cp-modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; cursor: pointer; }
+  .cp-modal-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+
+  .cp-spin { animation: cpSpin 1s linear infinite; }
+  @keyframes cpSpin  { 100% { transform: rotate(360deg); } }
+  @keyframes cpSlide { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+`;
+
 export default function CustomerPrescriptions() {
+  const navigate = useNavigate();
   const [requests, setRequests]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab]   = useState('all');
-  const [imgError, setImgError]     = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const navigate = useNavigate();
-
   const [refreshing, setRefreshing] = useState(false);
+  const [notification, setNotif]    = useState(null);
+  
+  const [imgError, setImgError]     = useState(false);
+  const [lightbox, setLightbox]     = useState(null);
+
+  // action states
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading]       = useState(false);
+  const [cancelOpen, setCancelOpen]     = useState(false);
+  const fileRef = useRef(null);
+
+  const toast = (msg, type = 'success') => {
+    setNotif({ msg, type });
+    setTimeout(() => setNotif(null), 4500);
+  };
 
   const fetchRequests = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await axios.get('/pharmacy/requests/my-requests');
-      setRequests(res.data.data || res.data || []);
+      const list = res.data?.data || res.data || [];
+      setRequests(Array.isArray(list) ? list : []);
+      if (selectedOrder) {
+        const updated = (Array.isArray(list) ? list : []).find(r => r.id === selectedOrder.id);
+        if (updated) setSelectedOrder(updated);
+      }
     } catch (err) {
       console.error('Failed to load prescription requests', err);
+      toast('Failed to load prescription requests.', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedOrder]);
+
+  useEffect(() => { fetchRequests(); }, []); // eslint-disable-line
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       const res = await axios.get('/pharmacy/requests/my-requests');
-      setRequests(res.data.data || res.data || []);
-    } catch (err) {
-      console.error('Failed to refresh', err);
+      const list = res.data?.data || res.data || [];
+      setRequests(Array.isArray(list) ? list : []);
+      if (selectedOrder) {
+        const updated = (Array.isArray(list) ? list : []).find(r => r.id === selectedOrder.id);
+        if (updated) setSelectedOrder(updated);
+      }
+      toast('Orders refreshed.');
+    } catch {
+      toast('Failed to refresh.', 'error');
     } finally {
       setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
-
-  const handleCancel = async (id) => {
-    if (!window.confirm('Cancel this request?')) return;
+  const handleCancel = async () => {
     try {
-      await axios.delete(`/pharmacy/requests/${id}/cancel`);
+      await axios.delete(`/pharmacy/requests/${selectedOrder.id}/cancel`);
+      toast('Request cancelled successfully.');
+      setCancelOpen(false);
       fetchRequests();
       setSelectedOrder(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel request');
+      const msg = err.response?.data?.message || err.message || 'Failed to cancel request.';
+      toast(msg, 'error');
     }
   };
 
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleUpload = async (e, id) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('prescription_image', file);
-    
+  const handleUpload = async () => {
+    if (!selectedFile || !selectedOrder) return;
+    setUploading(true);
     try {
-      setIsUploading(true);
-      const res = await axios.post(`/pharmacy/requests/${id}/upload`, formData);
+      const formData = new FormData();
+      formData.append('prescription_image', selectedFile);
+      const res = await axios.post(`/pharmacy/requests/${selectedOrder.id}/upload`, formData);
+      toast('Prescription image uploaded!');
+      setSelectedFile(null);
+      if (fileRef.current) fileRef.current.value = '';
       fetchRequests();
-      if (selectedOrder) {
-        setSelectedOrder(prev => ({ ...prev, prescription_image: res.imageUrl }));
-      }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to upload image');
+      const msg = err.response?.data?.message || err.message || 'Failed to upload image.';
+      toast(msg, 'error');
     } finally {
-      setIsUploading(false);
+      setUploading(false);
     }
+  };
+
+  const openDetail = (req) => {
+    setSelectedOrder(req);
+    setImgError(false);
+    setCancelOpen(false);
+    setSelectedFile(null);
   };
 
   const filtered = activeTab === 'all' ? requests : requests.filter(r => r.status === activeTab);
 
   /* ═══════════════════════════════════════════════════════════
-     DETAIL VIEW — full single-page layout
+     DETAIL VIEW — single full page
   ═══════════════════════════════════════════════════════════ */
   if (selectedOrder) {
-    const o   = selectedOrder;
+    const o = selectedOrder;
     const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending;
-    const imgSrc = o.prescription_image
-      ? (o.prescription_image.startsWith('http') ? o.prescription_image : `${BASE}${o.prescription_image}`)
-      : null;
-    const medImgSrc = o.medication_image
-      ? (o.medication_image.startsWith('http') ? o.medication_image : `${BASE}${o.medication_image}`)
-      : null;
+    
+    const medImgSrc = getImageUrl(o.medication_image);
+    const rxImgSrc = getImageUrl(o.prescription_image);
+    
+    const canCancel = o.status === 'pending';
+    const canUpload = o.status === 'pending' || o.status === 'approved';
 
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        backgroundColor: '#e2e8f0', // soft grey/blue background similar to marble look
-        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100\' height=\'100\' filter=\'url(%23noise)\' opacity=\'0.05\'/%3E%3C/svg%3E")',
-        padding: '32px 24px 60px', 
-        fontFamily: "'Inter', sans-serif" 
-      }}>
-        
-        <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-          
-          {/* Back Button (moved outside the dark header for exact match) */}
-          <button onClick={() => setSelectedOrder(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#475569', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', marginBottom: 16 }}>
+      <div className="cp-page">
+        <style>{STYLES}</style>
+        {notification && <div className={`cp-toast ${notification.type}`}>{notification.msg}</div>}
+
+        {/* top nav row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+          <button className="cp-btn-secondary" onClick={() => setSelectedOrder(null)}>
             <ArrowLeft size={16} /> Back to Orders
           </button>
+          {canCancel && !cancelOpen && (
+            <button className="cp-btn-danger" onClick={() => setCancelOpen(true)}>
+              <XSquare size={16} /> Cancel Order
+            </button>
+          )}
+        </div>
 
-          {/* Dark Header Card */}
-          <div style={{ 
-            background: '#11151c', 
-            backgroundImage: 'radial-gradient(circle at top right, #1f2937 0%, #11151c 100%)',
-            borderRadius: 16,
-            padding: '36px 48px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 32,
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            {/* Left */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.8rem', color: '#fff', margin: 0, fontWeight: 500, letterSpacing: '0.02em' }}>
-                #{o.request_number}
-              </h1>
-              <div>
-                <span style={{ display: 'inline-block', padding: '6px 14px', background: 'rgba(217, 119, 6, 0.15)', border: '1px solid rgba(217, 119, 6, 0.4)', borderRadius: 20, color: '#fbbf24', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {cfg.label}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9ca3af', fontSize: '0.9rem' }}>
-                <Calendar size={14} /> {new Date(o.requested_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} at {new Date(o.requested_at).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-              </div>
+        <div className="cp-detail-wrap">
+          {/* ── dark green top strip ── */}
+          <div className="cp-detail-top">
+            <div>
+              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Pharmacy Order</div>
+              <h1 className="cp-detail-inv">#{o.request_number || o.id}</h1>
+              <div className="cp-detail-date"><Calendar size={14} /> Requested on {fmtDateTime(o.requested_at)}</div>
             </div>
-
-            {/* Right */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '24px 32px', textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, fontWeight: 600 }}>Total Amount</div>
-              <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#5eead4', textShadow: '0 0 20px rgba(94, 234, 212, 0.25)', lineHeight: 1 }}>
-                {parseFloat(o.total_amount || 0).toFixed(2)} ETB
-              </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="cp-detail-total-label">Total Amount</div>
+              <div className="cp-detail-total-amt">{fmtMoney(o.total_amount)} ETB</div>
             </div>
           </div>
 
-          {/* Main White Card */}
-          <div style={{ background: '#f4f4f5', borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)' }}>
+          {/* status bar */}
+          <div className="cp-status-bar">
+            <span className="cp-status-lbl">Order Status:</span>
+            <span className="cp-badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+          </div>
+
+          {/* ── body ── */}
+          <div className="cp-body">
             
-            {/* Card Headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', background: '#f4f4f5', borderBottom: '1px solid #d4d4d8' }}>
-              <div style={{ padding: '24px 32px', borderRight: '1px solid #d4d4d8', fontSize: '1.4rem', fontWeight: 600, color: '#18181b' }}>
-                Medication Details
-              </div>
-              <div style={{ padding: '24px 32px', fontSize: '1.4rem', fontWeight: 600, color: '#18181b' }}>
-                Prescription
+            {/* SECTION 1 — Medication Details */}
+            <div className="cp-section">
+              <div className="cp-section-title"><Package size={16} /> Medication Details</div>
+              <div className="cp-two-col">
+                {/* left: image + name */}
+                <div>
+                  <div className="cp-drug-image-wrap">
+                    {medImgSrc ? (
+                      <img src={medImgSrc} alt={o.medication_name} className="cp-drug-image" />
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#8D6E63' }}>
+                        <ImageIcon size={40} />
+                        <span style={{ fontSize: '0.85rem' }}>No Image Available</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1B5E20', marginBottom: '4px' }}>{o.medication_name || '—'}</div>
+                </div>
+                {/* right: info rows */}
+                <div>
+                  <div className="cp-info-row">
+                    <span className="cp-info-label">Quantity</span>
+                    <span className="cp-info-value">{o.quantity} unit(s)</span>
+                  </div>
+                  <div className="cp-info-row">
+                    <span className="cp-info-label">Unit Price</span>
+                    <span className="cp-info-value">{fmtMoney(o.price_per_unit)} ETB</span>
+                  </div>
+                  <div className="cp-info-row">
+                    <span className="cp-info-label"><Truck size={14} /> Delivery Option</span>
+                    <span className="cp-info-value" style={{ textTransform: 'capitalize' }}>
+                      {o.delivery_option || 'Pickup'}
+                    </span>
+                  </div>
+                  {o.delivery_address && (
+                    <div className="cp-info-row">
+                      <span className="cp-info-label"><MapPin size={14} /> Delivery Address</span>
+                      <span className="cp-info-value" style={{ maxWidth: '220px', textAlign: 'right' }}>{o.delivery_address}</span>
+                    </div>
+                  )}
+                  
+                  {/* Payment Summary */}
+                  <div style={{ marginTop: '24px' }}>
+                    <div className="cp-total-line">
+                      <span>Subtotal ({o.quantity} units)</span>
+                      <span>{fmtMoney(o.quantity * (o.price_per_unit || 0))} ETB</span>
+                    </div>
+                    {(o.delivery_fee > 0) && (
+                      <div className="cp-total-line">
+                        <span>Delivery Fee</span>
+                        <span>{fmtMoney(o.delivery_fee)} ETB</span>
+                      </div>
+                    )}
+                    <div className="cp-total-line grand">
+                      <span>Total Due</span>
+                      <span>{fmtMoney(o.total_amount)} ETB</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Card Body */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', background: '#f4f4f5' }}>
+            <hr className="cp-divider" />
+
+            {/* SECTION 2 — Customer & Prescription */}
+            <div className="cp-two-col">
               
-              {/* Left Column */}
-              <div style={{ padding: '32px', borderRight: '1px solid #d4d4d8', display: 'flex', flexDirection: 'column', gap: 40 }}>
-                
-                {/* Drug Image + Info */}
-                <div style={{ display: 'flex', gap: 24 }}>
-                  <div style={{ width: 160, height: 160, borderRadius: 8, background: '#e4e4e7', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 8 }}>
-                    {medImgSrc ? (
-                      <img src={medImgSrc} alt={o.medication_name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    ) : (
-                      <Image size={40} color="#a1a1aa" />
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', flex: 1, alignContent: 'start' }}>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#52525b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Medication Name</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#09090b' }}>{o.medication_name}</div>
-                    </div>
-                    
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: '#52525b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Quantity</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#18181b' }}>{o.quantity} unit(s)</div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: '#52525b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Delivery Type</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 500, color: '#18181b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: '#059669' }}>{o.delivery_option === 'delivery' ? '🚚' : '🏥'}</span> 
-                        {o.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
-                      </div>
-                    </div>
-                  </div>
+              {/* Customer Info */}
+              <div className="cp-section">
+                <div className="cp-section-title"><User size={16} /> Customer Information</div>
+                <div className="cp-info-row">
+                  <span className="cp-info-label"><User size={14} /> Name</span>
+                  <span className="cp-info-value">{o.customer_name || '—'}</span>
+                </div>
+                <div className="cp-info-row">
+                  <span className="cp-info-label"><Mail size={14} /> Email</span>
+                  <span className="cp-info-value">{o.customer_email || '—'}</span>
+                </div>
+                <div className="cp-info-row">
+                  <span className="cp-info-label"><Phone size={14} /> Phone</span>
+                  <span className="cp-info-value">{o.customer_phone || '—'}</span>
                 </div>
 
-                {/* Customer & Actions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'start' }}>
-                  
-                  {/* Customer Info */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', fontWeight: 600, color: '#3f3f46', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 16 }}>
-                      <User size={16} /> CUSTOMER INFORMATION
-                      <img src={`https://ui-avatars.com/api/?name=${o.customer_name}&background=d4d4d8&color=18181b`} alt={o.customer_name} style={{ width: 36, height: 36, borderRadius: 8, marginLeft: 'auto' }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #d4d4d8', paddingBottom: 16 }}>
-                        <span style={{ fontSize: '0.9rem', color: '#52525b' }}>Full Name</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#09090b' }}>{o.customer_name}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #d4d4d8', paddingBottom: 16 }}>
-                        <span style={{ fontSize: '0.9rem', color: '#52525b' }}>Email</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#09090b' }}>{o.customer_email}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#52525b' }}>Phone</span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#09090b' }}>{o.customer_phone || '—'}</span>
-                      </div>
+                {/* Rejection Reason if any */}
+                {o.rejection_reason && (
+                  <div style={{ marginTop: '24px' }}>
+                    <div className="cp-section-title" style={{ color: '#F44336' }}><AlertCircle size={16} /> Rejection Reason</div>
+                    <div style={{ background: '#FFEBEE', padding: '12px', borderRadius: '6px', color: '#C62828', fontSize: '0.95rem' }}>
+                      {o.rejection_reason}
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', fontWeight: 600, color: '#3f3f46', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                      <Hash size={16} /> STATUS & ACTIONS
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.05rem', fontWeight: 600, color: '#09090b' }}>
-                      <div style={{ width: 12, height: 12, borderRadius: '50%', background: cfg.dot, boxShadow: `0 0 0 3px rgba(0,0,0,0.05)` }} />
-                      Currently {cfg.label}
-                    </div>
-
-                    <div style={{ marginTop: 'auto' }}>
-                      {o.status === 'pending' && (
-                        <button onClick={() => handleCancel(o.id)} style={{ width: '100%', padding: '16px', background: 'linear-gradient(180deg, #dc2626 0%, #991b1b 100%)', border: 'none', color: '#fff', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', boxShadow: '0 4px 0 #7f1d1d, 0 8px 15px rgba(0,0,0,0.2)' }}>
-                          <XCircle size={18} /> CANCEL REQUEST
-                        </button>
-                      )}
-                      {o.status === 'rejected' && (
-                        <button onClick={() => navigate('/services/pharmacy')} style={{ width: '100%', padding: '16px', background: 'linear-gradient(180deg, #059669 0%, #047857 100%)', border: 'none', color: '#fff', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: '0 4px 0 #065f46, 0 8px 15px rgba(0,0,0,0.2)' }}>
-                          SUBMIT NEW REQUEST
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Right Column */}
-              <div style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
-                
-                <div style={{ flex: 1, border: imgSrc ? 'none' : '2px dashed #a1a1aa', borderRadius: 12, background: imgSrc ? 'none' : 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', marginBottom: 24, minHeight: 360 }}>
-                  {!imgSrc ? (
+              {/* Prescription Image */}
+              <div className="cp-section">
+                <div className="cp-section-title"><FileText size={16} /> Prescription Image</div>
+                <div className="cp-rx-wrap" style={{ border: rxImgSrc ? '1px solid #e0e0e0' : '1px dashed #8D6E63' }}>
+                  {!rxImgSrc ? (
                     <>
-                      <div style={{ border: '2px solid #a1a1aa', borderRadius: 16, width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, position: 'relative' }}>
-                        <Image size={40} color="#a1a1aa" />
-                        <div style={{ position: 'absolute', width: '110%', height: 2, background: '#a1a1aa', transform: 'rotate(-45deg)' }} />
-                      </div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 600, color: '#18181b', marginBottom: 12 }}>No image<br/>attached</div>
-                      <div style={{ fontSize: '0.9rem', color: '#52525b', lineHeight: 1.5, maxWidth: 260 }}>
-                        No prescription image attached to this order. The patient may present a physical copy upon pickup.
+                      <FileText size={40} color="#8D6E63" style={{ marginBottom: '12px' }} />
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#424242', marginBottom: '8px' }}>No Prescription Attached</div>
+                      <div style={{ fontSize: '0.9rem', color: '#757575', maxWidth: '240px' }}>
+                        If a physical prescription is required, you can upload it here or present it upon pickup.
                       </div>
                     </>
                   ) : imgError ? (
                     <>
-                        <AlertCircle size={48} color="#ef4444" style={{ marginBottom: 16 }} />
-                        <div style={{ fontWeight: 600, color: '#991b1b', marginBottom: 8, fontSize: '1.1rem' }}>Failed to load image</div>
-                        <a href={imgSrc} target="_blank" rel="noreferrer" style={{ color: '#09090b', fontSize: '0.9rem', textDecoration: 'underline' }}>Open Image Directly</a>
+                      <AlertCircle size={40} color="#F44336" style={{ marginBottom: '12px' }} />
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#424242', marginBottom: '8px' }}>Image Failed to Load</div>
+                      <a href={rxImgSrc} target="_blank" rel="noreferrer" style={{ color: '#2E8B57', fontSize: '0.9rem', textDecoration: 'underline' }}>Open Image Directly</a>
                     </>
                   ) : (
-                    <div 
-                      style={{ width: '100%', height: '100%', padding: 8, background: '#fff', border: '1px solid #d4d4d8', borderRadius: 12, cursor: 'zoom-in' }}
-                      onClick={() => setSelectedImage(imgSrc)}
-                    >
-                      <img src={imgSrc} alt="Prescription" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 8 }} />
-                    </div>
+                    <img 
+                      src={rxImgSrc} 
+                      alt="Prescription" 
+                      className="cp-rx-img"
+                      onError={() => setImgError(true)}
+                      onClick={() => setLightbox(rxImgSrc)}
+                    />
                   )}
                 </div>
-                
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: '16px', background: '#09090b', color: '#fff', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: isUploading ? 'wait' : 'pointer', border: 'none' }}>
-                  <input type="file" accept="image/*" onChange={(e) => handleUpload(e, o.id)} style={{ display: 'none' }} disabled={isUploading} />
-                  <FileText size={18} /> {isUploading ? 'UPLOADING...' : 'UPLOAD MANUALLY'}
-                </label>
+
+                {/* Upload action directly under image */}
+                {canUpload && (
+                  <div style={{ marginTop: '16px' }}>
+                    <input
+                      type="file"
+                      ref={fileRef}
+                      accept="image/*,.pdf"
+                      onChange={e => setSelectedFile(e.target.files[0])}
+                      className="cp-input"
+                      style={{ padding: '8px 12px', cursor: 'pointer', marginBottom: '12px' }}
+                    />
+                    <button
+                      className="cp-btn-primary"
+                      style={{ width: '100%' }}
+                      onClick={handleUpload}
+                      disabled={!selectedFile || uploading}
+                    >
+                      <Upload size={15} /> {uploading ? 'Uploading…' : (rxImgSrc ? 'Update Prescription' : 'Upload Prescription')}
+                    </button>
+                  </div>
+                )}
               </div>
-
             </div>
+
+            {/* ── ACTIONS ── */}
+            {canCancel && cancelOpen && (
+              <>
+                <hr className="cp-divider" />
+                <div className="cp-action-section" style={{ border: '1px solid #F44336' }}>
+                  <div className="cp-section-title" style={{ marginBottom: '14px', color: '#F44336' }}><XSquare size={16} /> Cancel Order</div>
+                  <div style={{ fontSize: '0.95rem', color: '#424242', marginBottom: '16px' }}>Are you sure you want to cancel this pharmacy order? This action cannot be undone.</div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button className="cp-btn-danger" onClick={handleCancel}>Confirm Cancellation</button>
+                    <button className="cp-btn-secondary" onClick={() => setCancelOpen(false)}>Back</button>
+                  </div>
+                </div>
+              </>
+            )}
+
+          </div>{/* /cp-body */}
+        </div>{/* /cp-detail-wrap */}
+
+        {/* lightbox */}
+        {lightbox && (
+          <div className="cp-modal" onClick={() => setLightbox(null)}>
+            <button className="cp-modal-close" onClick={() => setLightbox(null)}><XSquare size={32} /></button>
+            <img src={lightbox} alt="Full view" className="cp-modal-img" onClick={e => e.stopPropagation()} />
           </div>
-        </div>
-
-      {/* Fullscreen Image Modal */}
-      {selectedImage && (
-        <div 
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', padding: '40px' }}
-          onClick={() => setSelectedImage(null)}
-        >
-          <button 
-            style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}
-            onClick={() => setSelectedImage(null)}
-          >
-            <XCircle size={28} />
-          </button>
-          <img 
-            src={selectedImage} 
-            alt="Prescription Full View" 
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} 
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-
+        )}
       </div>
     );
   }
@@ -333,276 +495,72 @@ export default function CustomerPrescriptions() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ minHeight: '100vh', background: '#eeecea', fontFamily: "'Inter', sans-serif" }}>
+    <div className="cp-page">
+      <style>{STYLES}</style>
+      {notification && <div className={`cp-toast ${notification.type}`}>{notification.msg}</div>}
 
-      {/* ── PREMIUM HEADER ── */}
-      <div style={{
-        width: '100%',
-        background: 'linear-gradient(180deg, #f5f3ee 0%, #ece9e0 100%)',
-        borderBottom: '1px solid #d6d0c4',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
-      }}>
-        <div style={{ padding: '32px 48px 0' }}>
-
-          {/* ── Top Row: Title + Buttons ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-
-            {/* Left: Title + Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <h1 style={{
-                fontFamily: "'Playfair Display', 'Georgia', serif",
-                fontSize: '3rem',
-                fontWeight: 700,
-                color: '#1a1a2e',
-                margin: 0,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                lineHeight: 1
-              }}>My Orders</h1>
-
-              {/* Teal Counter Bubble */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                width: 76, height: 76, borderRadius: '50%',
-                background: 'radial-gradient(circle at 35% 35%, #a7f3d0, #2dd4bf)',
-                boxShadow: 'inset 0 3px 6px rgba(255,255,255,0.7), inset 0 -3px 6px rgba(0,0,0,0.12), 0 8px 20px rgba(45,212,191,0.4)',
-                border: '2px solid rgba(255,255,255,0.6)',
-                color: '#065f46',
-                lineHeight: 1
-              }}>
-                <span style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>{requests.length}</span>
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>request</span>
-              </div>
-            </div>
-
-            {/* Right: Refresh + New Request */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-
-              {/* Metallic Refresh Button */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  title="Refresh orders"
-                  style={{
-                    width: 64, height: 64, borderRadius: '50%', border: 'none',
-                    cursor: refreshing ? 'wait' : 'pointer', padding: 0,
-                    background: 'conic-gradient(from 45deg, #c8c8cc, #f0f0f2, #9a9a9e, #f0f0f2, #c8c8cc)',
-                    boxShadow: refreshing
-                      ? 'inset 0 3px 8px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.15)'
-                      : '0 6px 12px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -2px 4px rgba(0,0,0,0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transform: refreshing ? 'scale(0.95)' : 'scale(1)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{
-                    width: 50, height: 50, borderRadius: '50%',
-                    background: refreshing
-                      ? 'linear-gradient(145deg, #a0a0a4 0%, #c8c8cc 100%)'
-                      : 'linear-gradient(145deg, #e8e8ea 0%, #b0b0b4 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.35), 0 1px 2px rgba(255,255,255,0.6)'
-                  }}>
-                    <RefreshCw
-                      size={22}
-                      color={refreshing ? '#059669' : '#3f3f46'}
-                      strokeWidth={2.5}
-                      style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}}
-                    />
-                  </div>
-                </button>
-                <span style={{
-                  fontSize: '0.72rem',
-                  color: refreshing ? '#059669' : '#71717a',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  transition: 'color 0.2s'
-                }}>
-                  {refreshing ? 'Loading...' : 'Refresh'}
-                </span>
-              </div>
-
-              {/* Glossy New Request Button */}
-              <div style={{
-                padding: 5, borderRadius: 14,
-                background: 'rgba(255,255,255,0.35)',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04), 0 10px 24px rgba(5,150,105,0.25)'
-              }}>
-                <button onClick={() => navigate('/services/pharmacy')} style={{
-                  background: 'linear-gradient(180deg, #34d399 0%, #059669 100%)',
-                  border: '1px solid #047857',
-                  borderRadius: 10,
-                  padding: '14px 36px',
-                  color: '#fff',
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.45), 0 2px 4px rgba(0,0,0,0.12)',
-                  letterSpacing: '0.01em'
-                }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 300, lineHeight: 1 }}>+</span> New Request
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Tabs Bar ── */}
-          <div style={{
-            display: 'flex',
-            background: 'linear-gradient(180deg, #e8e4da 0%, #f0ede4 100%)',
-            borderRadius: '10px 10px 0 0',
-            border: '1px solid #cbc6bb',
-            borderBottom: 'none',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 -2px 6px rgba(0,0,0,0.02)',
-            overflow: 'hidden'
-          }}>
-            {STATUS_TABS.map((tab, idx) => {
-              const active = activeTab === tab.key;
-              const TabIcon = tab.Icon;
-              return (
-                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    flex: 1,
-                    padding: '16px 20px',
-                    border: 'none',
-                    borderRight: idx < STATUS_TABS.length - 1 ? '1px solid #cbc6bb' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    position: 'relative',
-                    transition: 'all 0.2s',
-                    background: active
-                      ? 'linear-gradient(180deg, rgba(253,230,138,0.35) 0%, rgba(255,255,255,0.5) 100%)'
-                      : 'transparent',
-                    color: active ? '#92400e' : '#78716c',
-                    fontWeight: 700,
-                    fontSize: '0.875rem',
-                    letterSpacing: '0.06em'
-                  }}>
-                  {/* Gold glowing top-bar for active */}
-                  {active && (
-                    <div style={{
-                      position: 'absolute', top: 0, left: '15%', right: '15%',
-                      height: 4,
-                      background: 'linear-gradient(90deg, transparent, #d97706, transparent)',
-                      boxShadow: '0 2px 10px rgba(217,119,6,0.7)',
-                      borderRadius: '0 0 4px 4px'
-                    }} />
-                  )}
-                  <TabIcon size={18} color={active ? '#b45309' : '#a8a29e'} strokeWidth={2} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
+      {/* header */}
+      <div className="cp-page-header">
+        <div>
+          <h1 className="cp-page-title">Pharmacy Orders</h1>
+          <p className="cp-page-sub">Track and manage your medication requests</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="cp-btn-primary" onClick={() => navigate('/services/pharmacy')}>
+            Browse Medications
+          </button>
+          <button className="cp-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'cp-spin' : ''} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '24px 48px' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ height: 120, background: 'linear-gradient(110deg,#ececec 8%,#f5f5f5 18%,#ececec 33%)', backgroundSize: '200% 100%', animation: 'shine 1.4s linear infinite' }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '80px 20px', background: '#fff', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
-            <ClipboardList size={56} color="#e2e8f0" />
-            <p style={{ fontSize: '1rem', margin: 0, fontWeight: 600 }}>No orders found.</p>
-            <button onClick={() => navigate('/services/pharmacy')}
-              style={{ background: '#10b981', border: 'none', color: '#fff', padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}>
-              Browse Medications
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filtered.map(req => {
-              const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
-              const dateStr = new Date(req.requested_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-              return (
-                <div key={req.id} onClick={() => { setImgError(false); setSelectedOrder(req); }}
-                  style={{ background: '#f6f3eb', borderRadius: 8, borderLeft: `4px solid ${cfg.dot}`, cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.1s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'stretch' }}
-                  onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)' }}
-                  onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)' }}>
-                  
-                  {/* LEFT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20 }}>
-                    <div style={{ fontWeight: 600, color: '#18181b', fontSize: '0.95rem' }}>#{req.request_number}</div>
-                    
-                    <div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#09090b', letterSpacing: '0.02em' }}>{req.medication_name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.85rem', color: '#18181b', marginTop: 10 }}>
-                        <span>Qty: {req.quantity}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Package size={20} color="#5eead4" style={{ filter: 'drop-shadow(0 2px 4px rgba(45,212,191,0.5))' }} /> 
-                          {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
-                        </span>
-                        <span>{parseFloat(req.total_amount || 0).toFixed(2)} ETB</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CENTER COLUMN (Date) */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: 2 }}>
-                    <span style={{ fontSize: '0.95rem', color: '#18181b' }}>{dateStr}</span>
-                  </div>
-
-                  {/* RIGHT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <span style={{ fontSize: '0.95rem', color: '#18181b' }}>{dateStr}</span>
-                      <span style={{ fontWeight: 600, color: '#18181b', fontSize: '0.95rem' }}>{cfg.label}</span>
-                    </div>
-                    
-                    <div style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 8, padding: 3, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)' }}>
-                      <button onClick={(e) => { e.stopPropagation(); setImgError(false); setSelectedOrder(req); }} style={{
-                        background: 'linear-gradient(180deg, #5ce1e6 0%, #38bdf8 100%)',
-                        color: '#fff',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: 6,
-                        padding: '6px 16px',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}>Details &rarr;</button>
-                    </div>
-
-                    {req.status === 'pending' && (
-                      <div style={{ background: 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 3, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
-                        <button onClick={(e) => { e.stopPropagation(); handleCancel(req.id); }} style={{
-                          background: 'linear-gradient(180deg, #f87171 0%, #ef4444 100%)',
-                          color: '#fff',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          borderRadius: 6,
-                          padding: '6px 16px',
-                          fontWeight: 600,
-                          fontSize: '0.85rem',
-                          boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          Cancel ✨
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* tabs */}
+      <div className="cp-tabs">
+        {STATUS_TABS.map(({ key, label, Icon }) => (
+          <button key={key} className={`cp-tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>
+            <Icon size={16} /> {label}
+          </button>
+        ))}
       </div>
 
-      <style>{`@keyframes shine { to { background-position-x: -200%; } }`}</style>
+      {/* list */}
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: '#757575' }}>Loading orders…</div>
+      ) : filtered.length === 0 ? (
+        <div className="cp-empty">
+          <ClipboardList size={48} color="#A5D6A7" />
+          <h2 style={{ fontSize: '1.4rem', color: '#1B5E20', margin: 0 }}>No Orders Found</h2>
+          <p style={{ color: '#757575', margin: 0 }}>You don't have any pharmacy requests in this category.</p>
+          <button className="cp-btn-primary" onClick={() => navigate('/services/pharmacy')}>Browse Medications</button>
+        </div>
+      ) : (
+        <div className="cp-list">
+          {filtered.map(req => {
+            const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
+            return (
+              <div key={req.id} className="cp-card" onClick={() => openDetail(req)}>
+                <div className="cp-card-header">
+                  <span className="cp-order-num">#{req.request_number || req.id}</span>
+                  <span className="cp-badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                </div>
+                <h3 className="cp-card-title">{req.medication_name}</h3>
+                <div className="cp-card-meta">
+                  <span><Calendar size={14} /> {fmtDate(req.requested_at)}</span>
+                  <span><DollarSign size={14} /> {fmtMoney(req.total_amount)} ETB</span>
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#424242', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Package size={14} color="#6B8E23" /> Qty: {req.quantity} • {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
+                </div>
+                <div className="cp-card-footer">
+                  <span className="cp-view-link">View Details →</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
