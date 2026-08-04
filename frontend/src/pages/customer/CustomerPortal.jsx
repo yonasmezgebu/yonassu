@@ -13,6 +13,7 @@ import CustomerBids           from './CustomerBids';
 import CustomerInvoices       from './CustomerInvoices';
 import CustomerReceipts       from './CustomerReceipts';
 import SupportTickets         from './SupportTickets';
+import CustomerBecomeSupplier from './CustomerBecomeSupplier';
 
 const CustomerPortal = () => {
   const menuItems = [
@@ -42,9 +43,11 @@ const CustomerPortal = () => {
     { type: 'divider' },
 
     {
-      label: 'Settings & Support', icon: 'settings',
+      label: 'Account & Support', icon: 'settings',
       children: [
         { label: 'Support Tickets', path: '/customer/support', icon: 'message-circle', color: '#64748b' },
+        { label: 'Become a Supplier', path: '/customer/become-supplier', icon: 'truck', color: '#10b981' },
+        { label: 'Become a Customer', path: '/customer/become-customer', icon: 'user-plus', color: '#8b5cf6' },
       ],
     },
   ];
@@ -71,8 +74,10 @@ const CustomerPortal = () => {
         <Route path="invoices"        element={<CustomerInvoices />} />
         <Route path="receipts"        element={<CustomerReceipts />} />
 
-        {/* Support */}
+        {/* Support & Settings */}
         <Route path="support"         element={<SupportTickets />} />
+        <Route path="become-supplier" element={<CustomerBecomeSupplier />} />
+        <Route path="become-customer" element={<div style={{padding: 40}}><h2>Become a Customer</h2><p>Application form coming soon...</p></div>} />
 
         {/* Catch-all */}
         <Route path="*"               element={<Navigate to="dashboard" replace />} />
