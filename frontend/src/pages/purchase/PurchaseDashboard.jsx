@@ -58,7 +58,13 @@ const PurchaseDashboard = () => {
       ]
     },
     { type: 'divider' },
-    { label: 'Supplier Management', path: '/purchase/suppliers', icon: 'building' },
+    { label: 'Supplier Management', icon: 'building',
+      children: [
+        { label: 'Supplier Directory',       path: '/purchase/suppliers',          icon: 'truck',      color: '#10b981' },
+        { label: 'Supplier Performance',     path: '/purchase/supplier-performance', icon: 'bar-chart-2', color: '#8b5cf6' },
+        { label: 'Contracts',                path: '/purchase/contracts',          icon: 'file-text',  color: '#0284c7' },
+      ]
+    },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
       children: [
