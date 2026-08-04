@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 // Actual fully-featured customer service pages
@@ -49,8 +49,12 @@ const CustomerPortal = () => {
     },
   ];
 
+  const location = useLocation();
+  const noPaddingRoutes = ['/customer/printing-orders', '/customer/rentals'];
+  const isNoPadding = noPaddingRoutes.some(route => location.pathname.includes(route));
+
   return (
-    <DashboardLayout menuItems={menuItems} title="Customer Portal">
+    <DashboardLayout menuItems={menuItems} title="Customer Portal" noPadding={isNoPadding}>
       <Routes>
         {/* Overview Dashboard */}
         <Route path="dashboard"       element={<CustomerAllOrders />} />
