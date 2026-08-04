@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Car, Clock, CheckSquare, XSquare, PlaySquare, RefreshCw, 
-  ArrowLeft, Calendar, DollarSign, Image as ImageIcon, 
-  ChevronRight, Activity, Upload, AlertCircle, Plus
+import {
+  Car, Clock, CheckSquare, XSquare, PlaySquare, RefreshCw,
+  ArrowLeft, Calendar, DollarSign, Image as ImageIcon,
+  Upload, Plus, XCircle, User, Phone, Mail, CreditCard,
+  FileText, MapPin, Hash, Wrench, AlertTriangle
 } from 'lucide-react';
 import carService from '../../services/carService';
 
+/* ─── helpers ──────────────────────────────────────────────── */
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
 const getImageUrl = (path) => {
@@ -15,375 +17,641 @@ const getImageUrl = (path) => {
   return `${BASE}${path.startsWith('/') ? path : '/' + path}`.replace(/\\/g, '/');
 };
 
-const STATUS_CONFIG = {
-  PENDING_APPROVAL: { label: 'Pending',     color: '#FFFFFF', bg: '#8D6E63', border: '#5D4037' }, // Earth Brown
-  APPROVED:         { label: 'Approved',    color: '#FFFFFF', bg: '#8BC34A', border: '#558B2F' }, // Lime Green
-  CONFIRMED:        { label: 'Confirmed',   color: '#FFFFFF', bg: '#2E8B57', border: '#1B5E20' }, // Emerald
-  ACTIVE:           { label: 'Active',      color: '#FFFFFF', bg: '#87CEEB', border: '#0288D1' }, // Sky Blue
-  COMPLETED:        { label: 'Completed',   color: '#FFFFFF', bg: '#228B22', border: '#006400' }, // Forest Green
-  REJECTED:         { label: 'Rejected',    color: '#FFFFFF', bg: '#F44336', border: '#B71C1C' }, // Red
-  CANCELLED:        { label: 'Cancelled',   color: '#FFFFFF', bg: '#F44336', border: '#B71C1C' }, // Red
+const fmtDate  = (d) => d ? new Date(d).toLocaleDateString('en-GB',  { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const fmtMoney = (n) => parseFloat(n || 0).toFixed(2);
+
+/* ─── status maps ─────────────────────────────────────────── */
+const ORDER_STATUS = {
+  PENDING_APPROVAL: { label: 'Pending Approval', color: '#FFFFFF', bg: '#8D6E63' },
+  APPROVED:         { label: 'Approved',          color: '#FFFFFF', bg: '#8BC34A' },
+  CONFIRMED:        { label: 'Confirmed',          color: '#FFFFFF', bg: '#2E8B57' },
+  ACTIVE:           { label: 'Active',             color: '#FFFFFF', bg: '#87CEEB' },
+  COMPLETED:        { label: 'Completed',          color: '#FFFFFF', bg: '#228B22' },
+  REJECTED:         { label: 'Rejected',           color: '#FFFFFF', bg: '#F44336' },
+  CANCELLED:        { label: 'Cancelled',          color: '#FFFFFF', bg: '#F44336' },
+};
+
+const PAYMENT_STATUS = {
+  UNPAID:  { label: 'Unpaid',  color: '#FFFFFF', bg: '#FF9800' },
+  PAID:    { label: 'Paid',    color: '#FFFFFF', bg: '#228B22' },
+  PARTIAL: { label: 'Partial', color: '#FFFFFF', bg: '#8BC34A' },
 };
 
 const STATUS_TABS = [
-  { key: 'ALL',              label: 'ALL RENTALS', Icon: Car },
-  { key: 'PENDING_APPROVAL', label: 'PENDING',     Icon: Clock },
-  { key: 'APPROVED',         label: 'APPROVED',    Icon: CheckSquare },
-  { key: 'ACTIVE',           label: 'ACTIVE',      Icon: PlaySquare },
-  { key: 'COMPLETED',        label: 'COMPLETED',   Icon: CheckSquare },
+  { key: 'ALL',              label: 'All Rentals', Icon: Car },
+  { key: 'PENDING_APPROVAL', label: 'Pending',     Icon: Clock },
+  { key: 'APPROVED',         label: 'Approved',    Icon: CheckSquare },
+  { key: 'ACTIVE',           label: 'Active',      Icon: PlaySquare },
+  { key: 'COMPLETED',        label: 'Completed',   Icon: CheckSquare },
 ];
 
+/* ─── shared CSS ──────────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  .cr-page {
+    padding: 32px;
+    background: #F5F5F5;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: #424242;
+  }
+  @media (max-width: 720px) { .cr-page { padding: 16px; } }
+
+  /* header row */
+  .cr-page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .cr-page-title  { font-size: 2rem; font-weight: 700; color: #1B5E20; margin: 0; }
+  .cr-page-sub    { font-size: 0.95rem; color: #424242; margin: 6px 0 0; }
+
+  /* tabs */
+  .cr-tabs { display: flex; gap: 0; border-bottom: 1px solid #8D6E63; margin-bottom: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cr-tab  { background: transparent; border: none; border-bottom: 3px solid transparent; padding: 12px 24px; color: #424242; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease; font-size: 0.95rem; white-space: nowrap; }
+  .cr-tab.active { color: #228B22; border-bottom: 3px solid #228B22; }
+  .cr-tab:hover:not(.active) { color: #228B22; }
+
+  /* card list */
+  .cr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+  .cr-card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s ease; }
+  .cr-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+  .cr-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cr-order-num { font-size: 0.8rem; font-weight: 700; color: #8D6E63; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cr-card-title { font-size: 1.1rem; font-weight: 700; color: #1B5E20; margin: 0 0 10px; }
+  .cr-card-meta { display: flex; gap: 16px; font-size: 0.9rem; color: #424242; margin-bottom: 10px; flex-wrap: wrap; }
+  .cr-card-meta span { display: flex; align-items: center; gap: 5px; }
+  .cr-dates { background: #F5F5F5; border-radius: 6px; padding: 10px 12px; font-size: 0.9rem; color: #1B5E20; font-weight: 600; margin-bottom: 12px; }
+  .cr-card-footer { border-top: 1px solid #F5F5F5; padding-top: 12px; text-align: right; }
+  .cr-view-link { color: #2E8B57; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }
+
+  /* empty state */
+  .cr-empty { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 64px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  /* ─── DETAIL PANEL ─── */
+  .cr-detail-wrap { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; overflow: hidden; }
+
+  .cr-detail-top {
+    background: #1B5E20;
+    padding: 28px 32px;
+    display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;
+  }
+  @media (max-width: 600px) { .cr-detail-top { padding: 20px 16px; } }
+  .cr-detail-inv { font-size: 1.6rem; font-weight: 700; color: #FFFFFF; margin: 0 0 6px; }
+  .cr-detail-date { font-size: 0.9rem; color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 6px; }
+  .cr-detail-total-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .cr-detail-total-amt { font-size: 2rem; font-weight: 700; color: #FFFFFF; line-height: 1; }
+
+  .cr-status-bar { background: #F5F5F5; border-bottom: 1px solid #e0e0e0; padding: 14px 32px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cr-status-lbl { font-size: 0.85rem; color: #757575; margin-right: 2px; }
+
+  .cr-body { padding: 32px; }
+  @media (max-width: 600px) { .cr-body { padding: 16px; } }
+
+  .cr-section { margin-bottom: 32px; }
+  .cr-section:last-child { margin-bottom: 0; }
+  .cr-section-title { font-size: 0.8rem; font-weight: 700; color: #228B22; text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #F5F5F5; }
+
+  .cr-info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #F5F5F5; gap: 16px; }
+  .cr-info-row:last-child { border-bottom: none; }
+  .cr-info-label { font-size: 0.9rem; color: #757575; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .cr-info-value { font-size: 0.95rem; font-weight: 600; color: #424242; text-align: right; }
+
+  /* two-col grid for sections side by side */
+  .cr-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  @media (max-width: 760px) { .cr-two-col { grid-template-columns: 1fr; } }
+
+  /* car image */
+  .cr-car-image-wrap { width: 100%; height: 220px; border-radius: 10px; overflow: hidden; background: #F5F5F5; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .cr-car-image { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; transition: transform 0.15s ease; }
+  .cr-car-image:hover { transform: scale(1.03); }
+
+  /* payment proof image */
+  .cr-proof-img { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e0e0e0; cursor: zoom-in; transition: transform 0.15s ease; }
+  .cr-proof-img:hover { transform: scale(1.03); }
+
+  /* totals rows */
+  .cr-total-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F5F5F5; font-size: 0.95rem; }
+  .cr-total-line.grand { border-bottom: none; border-top: 2px solid #1B5E20; margin-top: 4px; padding-top: 14px; font-size: 1.1rem; font-weight: 700; color: #1B5E20; }
+
+  /* action forms */
+  .cr-action-section { background: #F5F5F5; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
+  .cr-form-label { font-size: 0.9rem; font-weight: 600; color: #424242; margin-bottom: 8px; display: block; }
+  .cr-input { padding: 10px 12px; border: 1px solid #8D6E63; border-radius: 6px; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; transition: all 0.15s ease; background: #FFFFFF; color: #424242; }
+  .cr-input:focus { border-color: #2E8B57; box-shadow: 0 0 0 3px rgba(46,139,87,0.15); outline: none; }
+
+  /* badge */
+  .cr-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; }
+
+  /* divider */
+  .cr-divider { border: none; border-top: 1px solid #F5F5F5; margin: 24px 0; }
+
+  /* buttons */
+  .cr-btn-primary   { background: #2E8B57; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .cr-btn-primary:hover:not(:disabled)   { background: #267347; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cr-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .cr-btn-secondary { background: #6B8E23; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .cr-btn-secondary:hover:not(:disabled) { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cr-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .cr-btn-danger    { background: #F44336; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+  .cr-btn-danger:hover    { background: #d32f2f; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+  .cr-btn-sm { padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; }
+
+  /* toast */
+  .cr-toast { position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px; color: #FFFFFF; padding: 16px 24px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.18); animation: crSlide 0.3s ease-out forwards; }
+  .cr-toast.success { background: #4CAF50; }
+  .cr-toast.error   { background: #F44336; }
+  .cr-toast.warning { background: #FF9800; }
+
+  /* modal */
+  .cr-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 32px; }
+  .cr-modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; cursor: pointer; }
+  .cr-modal-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+
+  .cr-spin { animation: crSpin 1s linear infinite; }
+  @keyframes crSpin  { 100% { transform: rotate(360deg); } }
+  @keyframes crSlide { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+`;
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENT
+═══════════════════════════════════════════════════════════ */
 export default function CustomerRentals() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [activeTab, setActiveTab] = useState('ALL');
-  const [imgError, setImgError] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  
+  const [orders, setOrders]         = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [selected, setSelected]     = useState(null);
+  const [activeTab, setActiveTab]   = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotif]    = useState(null);
+  const [imgError, setImgError]     = useState(false);
+  const [lightbox, setLightbox]     = useState(null);
 
-  // Action states
-  const [uploadingFor, setUploadingFor] = useState(false);
+  // action states
   const [selectedFile, setSelectedFile] = useState(null);
-  const [cancelPrompt, setCancelPrompt] = useState(false);
+  const [uploading, setUploading]       = useState(false);
+  const [cancelOpen, setCancelOpen]     = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [extendPrompt, setExtendPrompt] = useState(false);
-  const [extendDays, setExtendDays] = useState(1);
+  const [extendOpen, setExtendOpen]     = useState(false);
+  const [extendDays, setExtendDays]     = useState(1);
   const fileRef = useRef(null);
 
-  const showNotification = (msg, type = 'success') => {
-    setNotification({ msg, type });
-    setTimeout(() => setNotification(null), 4000);
+  const toast = (msg, type = 'success') => {
+    setNotif({ msg, type });
+    setTimeout(() => setNotif(null), 4500);
   };
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
+      // apiClient interceptor returns response.data so we get { status, data } directly
       const res = await carService.getMyRentalOrders();
-      if (res.status === 'success') {
-        setOrders(res.data || []);
-        if (selectedOrder) {
-          const updated = (res.data || []).find(o => o.id === selectedOrder.id);
-          if (updated) setSelectedOrder(updated);
-        }
+      const list = res.data ?? [];
+      setOrders(Array.isArray(list) ? list : []);
+      // update detail view if open
+      if (selected) {
+        const updated = (Array.isArray(list) ? list : []).find(o => o.id === selected.id);
+        if (updated) setSelected(updated);
       }
     } catch (err) {
-      console.error('Failed to load car rentals', err);
-      showNotification('Failed to load rentals.', 'error');
+      console.error('Failed to load rentals', err);
+      toast('Failed to load rentals.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedOrder]);
+  }, [selected]);
+
+  useEffect(() => { fetchOrders(); }, []); // eslint-disable-line
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       const res = await carService.getMyRentalOrders();
-      if (res.status === 'success') {
-        setOrders(res.data || []);
-        if (selectedOrder) {
-          const updated = (res.data || []).find(o => o.id === selectedOrder.id);
-          if (updated) setSelectedOrder(updated);
-        }
+      const list = res.data ?? [];
+      setOrders(Array.isArray(list) ? list : []);
+      if (selected) {
+        const updated = (Array.isArray(list) ? list : []).find(o => o.id === selected.id);
+        if (updated) setSelected(updated);
       }
-    } catch (err) {
-      console.error('Failed to refresh', err);
-      showNotification('Failed to refresh rentals.', 'error');
-    } finally {
-      setRefreshing(false);
-    }
+      toast('Rentals refreshed.');
+    } catch { toast('Failed to refresh.', 'error'); }
+    finally { setRefreshing(false); }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
-
   const handleUploadProof = async () => {
-    if (!selectedFile || !selectedOrder) return;
+    if (!selectedFile || !selected) return;
+    setUploading(true);
     try {
-      setUploadingFor(true);
-      const formData = new FormData();
-      formData.append('proof', selectedFile);
-      await carService.uploadPaymentProof(selectedOrder.id, formData);
-      showNotification('Payment proof uploaded successfully!', 'success');
+      const fd = new FormData();
+      fd.append('proof', selectedFile);
+      await carService.uploadPaymentProof(selected.id, fd);
+      toast('Payment proof uploaded!');
       setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = '';
       fetchOrders();
-    } catch (e) {
-      showNotification('Failed to upload payment proof', 'error');
-    } finally {
-      setUploadingFor(false);
-    }
+    } catch { toast('Failed to upload payment proof.', 'error'); }
+    finally { setUploading(false); }
   };
 
   const handleCancel = async () => {
-    if (!cancelReason) return showNotification('Cancellation reason is required.', 'error');
+    if (!cancelReason.trim()) return toast('Cancellation reason is required.', 'error');
     try {
-      await carService.cancelRentalOrder(selectedOrder.id, cancelReason);
-      showNotification('Rental cancelled successfully.', 'success');
-      setCancelPrompt(false);
+      await carService.cancelRentalOrder(selected.id, cancelReason);
+      toast('Rental cancelled successfully.');
+      setCancelOpen(false);
       setCancelReason('');
       fetchOrders();
-    } catch (err) {
-      showNotification('Failed to cancel rental.', 'error');
-    }
+    } catch { toast('Failed to cancel rental.', 'error'); }
   };
 
   const handleExtend = async () => {
     try {
-      await carService.extendRentalOrder(selectedOrder.id, extendDays);
-      showNotification('Extension requested successfully.', 'success');
-      setExtendPrompt(false);
+      await carService.extendRentalOrder(selected.id, extendDays);
+      toast('Extension requested successfully.');
+      setExtendOpen(false);
       setExtendDays(1);
       fetchOrders();
-    } catch (e) {
-      showNotification('Failed to request extension.', 'error');
-    }
+    } catch { toast('Failed to request extension.', 'error'); }
+  };
+
+  const openDetail = (order) => {
+    setSelected(order);
+    setImgError(false);
+    setCancelOpen(false);
+    setCancelReason('');
+    setExtendOpen(false);
+    setExtendDays(1);
+    setSelectedFile(null);
   };
 
   const filtered = activeTab === 'ALL' ? orders : orders.filter(o => o.status === activeTab);
 
   /* ═══════════════════════════════════════════════════════════
-     DETAIL VIEW
+     DETAIL VIEW — single full page
   ═══════════════════════════════════════════════════════════ */
-  if (selectedOrder) {
-    const o = selectedOrder;
-    const cfg = STATUS_CONFIG[o.status] || STATUS_CONFIG.PENDING_APPROVAL;
-    const carImgPath = o.carImage || o.car?.images?.[0] || null;
-    const carImg = getImageUrl(carImgPath);
+  if (selected) {
+    const o    = selected;
+    const ost  = ORDER_STATUS[o.status]        || ORDER_STATUS.PENDING_APPROVAL;
+    const pst  = PAYMENT_STATUS[o.paymentStatus] || null;
+    const imgUrl = getImageUrl(o.carImage);
+    const proofUrl = getImageUrl(o.paymentProofUrl);
+    const canCancel = ['PENDING_APPROVAL', 'APPROVED'].includes(o.status);
+    const canUpload  = o.status === 'APPROVED' && o.paymentStatus !== 'PAID';
+    const canExtend  = o.status === 'ACTIVE';
 
-    const paymentStatusColor = 
-      ['PAID', 'Confirmed'].includes(o.paymentStatus) ? { bg: '#228B22', text: '#FFF', label: '✅ CONFIRMED — Recorded in Finance' } :
-      ['REJECTED', 'Rejected'].includes(o.paymentStatus) ? { bg: '#F44336', text: '#FFF', label: '❌ REJECTED — Contact Support' } :
-                                                           { bg: '#FF8F00', text: '#FFF', label: '⏳ PENDING — Awaiting Finance Verification' };
+    const hasFees = o.extensionFee > 0 || o.damageFee > 0 || o.fuelFee > 0 || o.lateFee > 0;
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F5', fontFamily: "'Inter', sans-serif", width: '100%', boxSizing: 'border-box', margin: 0, padding: 0 }}>
-        
-        {/* Notification Toast */}
-        {notification && (
-          <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: notification.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFF', padding: '16px 24px', fontWeight: 600, fontSize: '1rem', boxShadow: '0 10px 20px rgba(0,0,0,0.3)', borderRadius: 0 }}>
-            {notification.msg}
-          </div>
-        )}
+      <div className="cr-page">
+        <style>{STYLES}</style>
+        {notification && <div className={`cr-toast ${notification.type}`}>{notification.msg}</div>}
 
-        {/* ── BACK BUTTON + ORDER HEADER ── */}
-        <div style={{ background: '#228B22', borderBottom: '4px solid #1B5E20', padding: '28px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <button onClick={() => { setSelectedOrder(null); setCancelPrompt(false); setExtendPrompt(false); setSelectedFile(null); }} 
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#1B5E20', color: '#FFF', border: 'none', padding: '12px 20px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', boxShadow: '4px 4px 0px #0A3A10', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: 0 }} 
-              onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px,2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #0A3A10'; }} 
-              onMouseUp={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #0A3A10'; }}>
-              <ArrowLeft size={16} /> BACK
+        {/* top nav row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+          <button className="cr-btn-secondary" onClick={() => setSelected(null)}>
+            <ArrowLeft size={16} /> Back to Rentals
+          </button>
+          {canCancel && !cancelOpen && (
+            <button className="cr-btn-danger" onClick={() => setCancelOpen(true)}>
+              <XSquare size={16} /> Cancel Rental
             </button>
+          )}
+        </div>
+
+        <div className="cr-detail-wrap">
+
+          {/* ── dark green top strip ── */}
+          <div className="cr-detail-top">
             <div>
-              <h1 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.8rem)', color: '#FFF', margin: 0, fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                RENTAL #{o.orderNumber}
-              </h1>
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-block', padding: '6px 14px', background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', borderRadius: 0 }}>
-                  {cfg.label}
-                </span>
-                <span style={{ color: '#A5D6A7', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <Calendar size={14} style={{ display: 'inline', marginRight: 4 }} />
-                  {new Date(o.createdAt || o.created_at || Date.now()).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
+              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Car Rental</div>
+              <h1 className="cr-detail-inv">#{o.orderNumber || o.id}</h1>
+              <div className="cr-detail-date"><Calendar size={14} /> Booked {fmtDate(o.createdAt)}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="cr-detail-total-label">Total Amount</div>
+              <div className="cr-detail-total-amt">{fmtMoney(o.totalAmount)} ETB</div>
             </div>
           </div>
-          <div style={{ background: '#FFF', border: '3px solid #1B5E20', padding: '16px 28px', textAlign: 'right', boxShadow: '6px 6px 0px #1B5E20', borderRadius: 0 }}>
-            <div style={{ fontSize: '0.75rem', color: '#424242', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Total Amount</div>
-            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#228B22', lineHeight: 1.1 }}>{parseFloat(o.totalAmount || 0).toFixed(2)} ETB</div>
+
+          {/* status bar */}
+          <div className="cr-status-bar">
+            <span className="cr-status-lbl">Order:</span>
+            <span className="cr-badge" style={{ background: ost.bg, color: ost.color }}>{ost.label}</span>
+            {pst && (
+              <>
+                <span className="cr-status-lbl" style={{ marginLeft: '10px' }}>Payment:</span>
+                <span className="cr-badge" style={{ background: pst.bg, color: pst.color }}>{pst.label}</span>
+              </>
+            )}
+            {o.isCancellationRequested && (
+              <span className="cr-badge" style={{ background: '#FF9800', color: '#FFFFFF', marginLeft: '10px' }}>
+                <AlertTriangle size={13} /> Cancellation Requested
+              </span>
+            )}
+            {o.pendingExtensionDays && (
+              <span className="cr-badge" style={{ background: '#87CEEB', color: '#424242', marginLeft: '10px' }}>
+                Extension Pending ({o.pendingExtensionDays}d)
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* ── PAYMENT STATUS BANNER ── */}
-        <div style={{ background: paymentStatusColor.bg, padding: '16px 48px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <Activity size={20} color={paymentStatusColor.text} />
-          <span style={{ color: paymentStatusColor.text, fontWeight: 900, fontSize: 'clamp(0.9rem, 2vw, 1rem)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            FINANCE PAYMENT STATUS: {paymentStatusColor.label}
-          </span>
-          {['PAID', 'Confirmed'].includes(o.paymentStatus) && (
-            <span style={{ marginLeft: 'auto', color: '#A5D6A7', fontSize: '0.85rem', fontWeight: 600 }}>
-              Payment recorded in Finance Receivables Book
-            </span>
-          )}
-        </div>
+          {/* ── body ── */}
+          <div className="cr-body">
 
-        {/* ── CAR IMAGE — CENTERED ── */}
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '24px 0', background: '#F5F5F5' }}>
-          {carImg && !imgError ? (
-            <div style={{ position: 'relative', cursor: 'zoom-in', width: '40%', maxWidth: '400px', borderRadius: 0, overflow: 'hidden', boxShadow: '8px 8px 0px rgba(0,0,0,0.1)', border: '4px solid #1B5E20' }} onClick={() => setSelectedImage(carImg)}>
-              <img
-                src={carImg}
-                alt={o.car?.name || o.carName || 'Vehicle'}
-                onError={() => setImgError(true)}
-                style={{ width: '100%', height: '240px', objectFit: 'cover', display: 'block' }}
-              />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(27,94,32,0.95))', padding: '24px 32px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            {/* SECTION 1 — Vehicle & Dates */}
+            <div className="cr-section">
+              <div className="cr-section-title"><Car size={16} /> Vehicle &amp; Rental Dates</div>
+              <div className="cr-two-col">
+                {/* left: image + car name */}
                 <div>
-                  <div style={{ color: '#A5D6A7', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>Vehicle</div>
-                <div style={{ color: '#FFF', fontSize: 'clamp(1rem, 4vw, 1.4rem)', fontWeight: 900, textTransform: 'uppercase' }}>{o.car?.name || o.carName || 'N/A'}</div>
+                  <div className="cr-car-image-wrap">
+                    {imgUrl && !imgError ? (
+                      <img
+                        src={imgUrl}
+                        alt={o.carName}
+                        className="cr-car-image"
+                        onError={() => setImgError(true)}
+                        onClick={() => setLightbox(imgUrl)}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#8D6E63' }}>
+                        <ImageIcon size={40} />
+                        <span style={{ fontSize: '0.85rem' }}>No Image</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1B5E20', marginBottom: '4px' }}>{o.carName || '—'}</div>
+                  <div style={{ fontSize: '0.9rem', color: '#424242' }}>Daily Rate: <strong style={{ color: '#2E8B57' }}>{fmtMoney(o.dailyRate)} ETB/day</strong></div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid #A5D6A7', padding: '6px 12px', color: '#FFF', fontSize: '0.75rem', fontWeight: 700, borderRadius: 0 }}>
-                  🔍 Zoom
+                {/* right: date rows */}
+                <div>
+                  <div className="cr-info-row">
+                    <span className="cr-info-label"><Calendar size={14} /> Pickup Date</span>
+                    <span className="cr-info-value">{fmtDate(o.pickupDate)}</span>
+                  </div>
+                  <div className="cr-info-row">
+                    <span className="cr-info-label"><Calendar size={14} /> Return Date</span>
+                    <span className="cr-info-value">{fmtDate(o.returnDate)}</span>
+                  </div>
+                  {o.extendedReturnDate && (
+                    <div className="cr-info-row">
+                      <span className="cr-info-label"><Calendar size={14} /> Extended Return</span>
+                      <span className="cr-info-value" style={{ color: '#FF9800' }}>{fmtDate(o.extendedReturnDate)}</span>
+                    </div>
+                  )}
+                  <div className="cr-info-row">
+                    <span className="cr-info-label"><Clock size={14} /> Duration</span>
+                    <span className="cr-info-value">{o.totalDays} {o.totalDays === 1 ? 'day' : 'days'}</span>
+                  </div>
+                  {o.actualReturnTime && (
+                    <div className="cr-info-row">
+                      <span className="cr-info-label">Actual Return</span>
+                      <span className="cr-info-value">{fmtDate(o.actualReturnTime)}</span>
+                    </div>
+                  )}
+                  {o.specialRequests && (
+                    <div className="cr-info-row">
+                      <span className="cr-info-label"><FileText size={14} /> Special Requests</span>
+                      <span className="cr-info-value" style={{ maxWidth: '220px', textAlign: 'right' }}>{o.specialRequests}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          ) : (
-            <div style={{ width: '40%', maxWidth: '400px', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: '4px dashed #A5D6A7', borderRadius: 0, background: '#FFF' }}>
-              <ImageIcon size={64} color="#A5D6A7" />
-              <div style={{ color: '#A5D6A7', fontSize: '1.2rem', fontWeight: 700 }}>{o.car?.name || o.carName || 'No Image Available'}</div>
-            </div>
-          )}
-        </div>
 
-        {/* ── FLAT INFO ROWS ── */}
-        <div style={{ background: '#FFFFFF', borderBottom: '4px solid #E0E0E0' }}>
-          
-          {/* ROW 1: Rental Dates */}
-          <div style={{ padding: '32px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <Calendar size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Rental Schedule</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0', borderTop: '3px solid #A5D6A7' }}>
-              {[
-                { label: 'Pickup Date',    value: new Date(o.pickupDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
-                { label: 'Return Date',    value: new Date(o.returnDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
-                { label: 'Duration',       value: `${o.totalDays} Days` },
-                { label: 'Daily Rate',     value: `${parseFloat(o.car?.dailyRate || o.dailyRate || 0).toFixed(2)} ETB/day` },
-              ].map((item, i) => (
-                <div key={i} style={{ padding: '20px 24px', borderRight: i < 3 ? '2px solid #F5F5F5' : 'none' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1B5E20' }}>{item.value}</div>
+            <hr className="cr-divider" />
+
+            {/* SECTION 2 — Customer & Driver */}
+            <div className="cr-two-col" style={{ marginBottom: '32px' }}>
+              <div className="cr-section">
+                <div className="cr-section-title"><User size={16} /> Customer Info</div>
+                <div className="cr-info-row">
+                  <span className="cr-info-label"><User size={14} /> Name</span>
+                  <span className="cr-info-value">{o.customerName || '—'}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ROW 2: Payment Details */}
-          <div style={{ padding: '0 48px 32px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <DollarSign size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Summary</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0', borderTop: '3px solid #87CEEB' }}>
-              {[
-                { label: 'Rental Amount',    value: `${parseFloat(o.rentalAmount || 0).toFixed(2)} ETB` },
-                { label: 'Security Deposit', value: `${parseFloat(o.securityDeposit || 0).toFixed(2)} ETB` },
-                ...(parseFloat(o.extensionFee || 0) > 0 ? [{ label: 'Extension Fee', value: `${parseFloat(o.extensionFee).toFixed(2)} ETB`, valueColor: '#FF9800' }] : []),
-                { label: 'Total Due',        value: `${parseFloat(o.totalAmount || 0).toFixed(2)} ETB`, valueColor: '#228B22' },
-              ].map((item, i, arr) => (
-                <div key={i} style={{ padding: '20px 24px', borderRight: i < arr.length - 1 ? '2px solid #F5F5F5' : 'none' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#0288D1', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: item.valueColor || '#424242' }}>{item.value}</div>
+                <div className="cr-info-row">
+                  <span className="cr-info-label"><Mail size={14} /> Email</span>
+                  <span className="cr-info-value">{o.customerEmail || '—'}</span>
                 </div>
-              ))}
+                <div className="cr-info-row">
+                  <span className="cr-info-label"><Phone size={14} /> Phone</span>
+                  <span className="cr-info-value">{o.customerPhone || '—'}</span>
+                </div>
+              </div>
+              <div className="cr-section">
+                <div className="cr-section-title"><Wrench size={16} /> Driver Info</div>
+                <div className="cr-info-row">
+                  <span className="cr-info-label">Driver Name</span>
+                  <span className="cr-info-value">{o.driverName || '—'}</span>
+                </div>
+                <div className="cr-info-row">
+                  <span className="cr-info-label">License #</span>
+                  <span className="cr-info-value">{o.driverLicense || '—'}</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* ACTIONS & UPLOADS */}
-          <div style={{ padding: '0 48px 48px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <Activity size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Manage Rental</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
+            <hr className="cr-divider" />
+
+            {/* SECTION 3 — Payment Summary */}
+            <div className="cr-section">
+              <div className="cr-section-title"><CreditCard size={16} /> Payment Summary</div>
+              <div style={{ maxWidth: '400px' }}>
+                <div className="cr-total-line">
+                  <span>Rental Amount</span>
+                  <span>{fmtMoney(o.rentalAmount)} ETB</span>
+                </div>
+                <div className="cr-total-line">
+                  <span>Security Deposit</span>
+                  <span>{fmtMoney(o.securityDeposit)} ETB</span>
+                </div>
+                {hasFees && (
+                  <>
+                    {o.extensionFee > 0 && (
+                      <div className="cr-total-line">
+                        <span>Extension Fee</span>
+                        <span style={{ color: '#FF9800' }}>{fmtMoney(o.extensionFee)} ETB</span>
+                      </div>
+                    )}
+                    {o.damageFee > 0 && (
+                      <div className="cr-total-line">
+                        <span>Damage Fee</span>
+                        <span style={{ color: '#F44336' }}>{fmtMoney(o.damageFee)} ETB</span>
+                      </div>
+                    )}
+                    {o.fuelFee > 0 && (
+                      <div className="cr-total-line">
+                        <span>Fuel Fee</span>
+                        <span style={{ color: '#F44336' }}>{fmtMoney(o.fuelFee)} ETB</span>
+                      </div>
+                    )}
+                    {o.lateFee > 0 && (
+                      <div className="cr-total-line">
+                        <span>Late Return Fee</span>
+                        <span style={{ color: '#F44336' }}>{fmtMoney(o.lateFee)} ETB</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {o.refundAmount > 0 && (
+                  <div className="cr-total-line">
+                    <span>Refund</span>
+                    <span style={{ color: '#4CAF50' }}>-{fmtMoney(o.refundAmount)} ETB</span>
+                  </div>
+                )}
+                <div className="cr-total-line grand">
+                  <span>Total Due</span>
+                  <span>{fmtMoney(o.totalAmount)} ETB</span>
+                </div>
+              </div>
+
+              {/* payment details */}
+              <div style={{ marginTop: '20px', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '0.82rem', color: '#757575', marginBottom: '4px' }}>Payment Method</div>
+                  <div style={{ fontWeight: 600, color: '#424242', textTransform: 'capitalize' }}>{o.paymentMethod || '—'}</div>
+                </div>
+                {o.paymentReference && (
+                  <div>
+                    <div style={{ fontSize: '0.82rem', color: '#757575', marginBottom: '4px' }}>Reference</div>
+                    <div style={{ fontWeight: 600, color: '#424242' }}>{o.paymentReference}</div>
+                  </div>
+                )}
+                {o.verifiedAmount && (
+                  <div>
+                    <div style={{ fontSize: '0.82rem', color: '#757575', marginBottom: '4px' }}>Verified Amount</div>
+                    <div style={{ fontWeight: 600, color: '#228B22' }}>{fmtMoney(o.verifiedAmount)} ETB</div>
+                  </div>
+                )}
+                {proofUrl && (
+                  <div>
+                    <div style={{ fontSize: '0.82rem', color: '#757575', marginBottom: '4px' }}>Payment Proof</div>
+                    <img src={proofUrl} alt="Proof" className="cr-proof-img" onClick={() => setLightbox(proofUrl)} />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
-              {/* Payment Upload */}
-              {o.status === 'APPROVED' && (
-                <div style={{ flex: '1 1 250px', minWidth: 0, background: '#FFF', border: '3px solid #A5D6A7', padding: '24px', borderRadius: 0 }}>
-                  <div style={{ fontWeight: 800, color: '#228B22', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1px' }}>Upload Payment Proof</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <input type="file" ref={fileRef} onChange={e => setSelectedFile(e.target.files[0])} style={{ padding: '12px', border: '2px dashed #A5D6A7', background: '#F5F5F5', color: '#424242', cursor: 'pointer', borderRadius: 0 }} />
-                    <button onClick={handleUploadProof} disabled={!selectedFile || uploadingFor} style={{ 
-                      background: '#2E8B57', border: '3px solid #1B5E20', color: '#FFF', padding: '12px 24px', 
-                      fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                      cursor: selectedFile ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                      boxShadow: selectedFile ? '4px 4px 0px #1B5E20' : 'none', transition: 'all 0.1s', borderRadius: 0
-                    }}
-                    onMouseDown={e => { if(selectedFile) { e.currentTarget.style.transform = 'translate(2px, 2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #1B5E20'; } }} 
-                    onMouseUp={e => { if(selectedFile) { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #1B5E20'; } }}>
-                      <Upload size={18} /> {uploadingFor ? 'UPLOADING...' : 'SUBMIT PROOF'}
-                    </button>
+            {/* notes / remarks from manager */}
+            {(o.managerNote || o.pickupRemarks || o.financeNotes || o.cancellationReason) && (
+              <>
+                <hr className="cr-divider" />
+                <div className="cr-section">
+                  <div className="cr-section-title"><FileText size={16} /> Notes &amp; Remarks</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {o.managerNote && (
+                      <div className="cr-info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                        <span className="cr-info-label">Manager Note</span>
+                        <span style={{ color: '#424242', lineHeight: 1.6 }}>{o.managerNote}</span>
+                      </div>
+                    )}
+                    {o.pickupRemarks && (
+                      <div className="cr-info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                        <span className="cr-info-label">Pickup Remarks</span>
+                        <span style={{ color: '#424242', lineHeight: 1.6 }}>{o.pickupRemarks}</span>
+                      </div>
+                    )}
+                    {o.financeNotes && (
+                      <div className="cr-info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                        <span className="cr-info-label">Finance Notes</span>
+                        <span style={{ color: '#424242', lineHeight: 1.6 }}>{o.financeNotes}</span>
+                      </div>
+                    )}
+                    {o.cancellationReason && (
+                      <div className="cr-info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                        <span className="cr-info-label" style={{ color: '#F44336' }}>Cancellation Reason</span>
+                        <span style={{ color: '#424242', lineHeight: 1.6 }}>{o.cancellationReason}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              </>
+            )}
 
-              {/* Extension */}
-              {o.status === 'ACTIVE' && (
-                <div style={{ flex: '1 1 250px', minWidth: 0, background: '#FFF', border: '3px solid #87CEEB', padding: '24px', borderRadius: 0 }}>
-                  <div style={{ fontWeight: 800, color: '#0288D1', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1px' }}>Extend Rental</div>
-                  {!extendPrompt ? (
-                    <button onClick={() => setExtendPrompt(true)} style={{ 
-                      width: '100%', background: '#FFF', border: '3px solid #0288D1', color: '#0288D1', padding: '12px 24px', 
-                      fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                      boxShadow: '4px 4px 0px #0288D1', transition: 'all 0.1s', borderRadius: 0
-                    }}
-                    onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px, 2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #0288D1'; }} 
-                    onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #0288D1'; }}>
-                      <Plus size={18} /> REQUEST EXTENSION
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: '0.8rem', color: '#424242', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>How many days?</div>
-                        <input type="number" min="1" value={extendDays} onChange={e => setExtendDays(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '12px', border: '2px solid #87CEEB', borderRadius: 0, fontWeight: 700, color: '#424242' }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                         <button onClick={handleExtend} style={{ flex: 1, background: '#87CEEB', color: '#0288D1', border: '3px solid #0288D1', padding: '12px', fontWeight: 900, cursor: 'pointer', borderRadius: 0, textTransform: 'uppercase' }}>SUBMIT</button>
-                         <button onClick={() => setExtendPrompt(false)} style={{ flex: 1, background: 'transparent', color: '#424242', border: '3px solid #E0E0E0', padding: '12px', fontWeight: 900, cursor: 'pointer', borderRadius: 0, textTransform: 'uppercase' }}>CANCEL</button>
+            {/* ── ACTIONS ── */}
+            {(canUpload || canExtend || canCancel) && (
+              <>
+                <hr className="cr-divider" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                  {/* Upload payment proof */}
+                  {canUpload && (
+                    <div className="cr-action-section">
+                      <div className="cr-section-title" style={{ marginBottom: '14px' }}><Upload size={16} /> Upload Payment Proof</div>
+                      <input
+                        type="file"
+                        ref={fileRef}
+                        accept="image/*,.pdf"
+                        onChange={e => setSelectedFile(e.target.files[0])}
+                        className="cr-input"
+                        style={{ padding: '8px 12px', cursor: 'pointer' }}
+                      />
+                      <button
+                        className="cr-btn-primary"
+                        style={{ marginTop: '12px' }}
+                        onClick={handleUploadProof}
+                        disabled={!selectedFile || uploading}
+                      >
+                        <Upload size={15} /> {uploading ? 'Uploading…' : 'Submit Proof'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Extend rental */}
+                  {canExtend && (
+                    <div className="cr-action-section">
+                      <div className="cr-section-title" style={{ marginBottom: '14px' }}><Plus size={16} /> Extend Rental</div>
+                      {!extendOpen ? (
+                        <button className="cr-btn-secondary" onClick={() => setExtendOpen(true)}>
+                          <Plus size={15} /> Request Extension
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '280px' }}>
+                          <label className="cr-form-label">Additional days:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={extendDays}
+                            onChange={e => setExtendDays(e.target.value)}
+                            className="cr-input"
+                          />
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <button className="cr-btn-primary" onClick={handleExtend}>Submit</button>
+                            <button className="cr-btn-secondary" onClick={() => setExtendOpen(false)}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Cancel rental */}
+                  {canCancel && cancelOpen && (
+                    <div className="cr-action-section" style={{ border: '1px solid #F44336' }}>
+                      <div className="cr-section-title" style={{ marginBottom: '14px', color: '#F44336' }}><XSquare size={16} /> Cancel Rental</div>
+                      <label className="cr-form-label">Reason for cancellation <span style={{ color: '#F44336' }}>*</span></label>
+                      <textarea
+                        rows={3}
+                        value={cancelReason}
+                        onChange={e => setCancelReason(e.target.value)}
+                        className="cr-input"
+                        placeholder="Please describe why you are cancelling…"
+                      />
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                        <button className="cr-btn-danger" onClick={handleCancel}>Confirm Cancellation</button>
+                        <button className="cr-btn-secondary" onClick={() => setCancelOpen(false)}>Back</button>
                       </div>
                     </div>
                   )}
                 </div>
-              )}
+              </>
+            )}
 
-              {/* Cancellation */}
-              {['PENDING_APPROVAL', 'APPROVED'].includes(o.status) && (
-                <div style={{ flex: '1 1 250px', minWidth: 0, background: '#FFF', border: '3px solid #F44336', padding: '24px', borderRadius: 0 }}>
-                  <div style={{ fontWeight: 800, color: '#B71C1C', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1px' }}>Cancel Rental</div>
-                  {!cancelPrompt ? (
-                    <button onClick={() => setCancelPrompt(true)} style={{ 
-                      width: '100%', background: '#F44336', border: '3px solid #B71C1C', color: '#FFF', padding: '12px 24px', 
-                      fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                      boxShadow: '4px 4px 0px #B71C1C', transition: 'all 0.1s', borderRadius: 0
-                    }}
-                    onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px, 2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #B71C1C'; }} 
-                    onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #B71C1C'; }}>
-                      <XSquare size={18} /> CANCEL RENTAL
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: '0.8rem', color: '#B71C1C', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Reason for cancellation:</div>
-                        <textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '12px', border: '2px solid #F44336', borderRadius: 0, minHeight: '80px', fontFamily: 'inherit', color: '#424242', fontWeight: 600 }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                         <button onClick={handleCancel} style={{ flex: 1, background: '#F44336', color: '#FFF', border: '3px solid #B71C1C', padding: '12px', fontWeight: 900, cursor: 'pointer', borderRadius: 0, textTransform: 'uppercase' }}>CONFIRM</button>
-                         <button onClick={() => setCancelPrompt(false)} style={{ flex: 1, background: 'transparent', color: '#B71C1C', border: '3px solid #F44336', padding: '12px', fontWeight: 900, cursor: 'pointer', borderRadius: 0, textTransform: 'uppercase' }}>BACK</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          </div>{/* /cr-body */}
+        </div>{/* /cr-detail-wrap */}
 
-        </div>
-
-        {/* Fullscreen Image Modal */}
-        {selectedImage && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }} onClick={() => setSelectedImage(null)}>
-            <button style={{ position: 'absolute', top: 20, right: 20, background: '#F44336', border: '4px solid #B71C1C', color: '#fff', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '4px 4px 0px #000', fontSize: '1.5rem', fontWeight: 900, borderRadius: 0 }} onClick={() => setSelectedImage(null)}>✕</button>
-            <img src={selectedImage} alt="Full View" style={{ maxWidth: '96%', maxHeight: '92vh', objectFit: 'contain', border: '4px solid #228B22', boxShadow: '0 0 60px rgba(0,0,0,0.8)', background: '#FFF' }} onClick={e => e.stopPropagation()} />
+        {/* lightbox */}
+        {lightbox && (
+          <div className="cr-modal" onClick={() => setLightbox(null)}>
+            <button className="cr-modal-close" onClick={() => setLightbox(null)}><XCircle size={32} /></button>
+            <img src={lightbox} alt="Full view" className="cr-modal-img" onClick={e => e.stopPropagation()} />
           </div>
         )}
       </div>
@@ -394,172 +662,73 @@ export default function CustomerRentals() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', fontFamily: "'Inter', sans-serif", width: '100%', boxSizing: 'border-box' }}>
-      
-      {/* Notification Toast */}
-      {notification && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          background: notification.type === 'error' ? '#F44336' : '#4CAF50',
-          color: '#FFF', padding: '16px 24px', fontWeight: 600, fontSize: '1rem',
-          boxShadow: '0 10px 20px rgba(0,0,0,0.3)', borderRadius: 0,
-          animation: 'slideIn 0.3s ease-out forwards'
-        }}>
-          {notification.msg}
+    <div className="cr-page">
+      <style>{STYLES}</style>
+      {notification && <div className={`cr-toast ${notification.type}`}>{notification.msg}</div>}
+
+      {/* header */}
+      <div className="cr-page-header">
+        <div>
+          <h1 className="cr-page-title">Vehicle Rentals</h1>
+          <p className="cr-page-sub">Track and manage your car rental bookings</p>
         </div>
-      )}
-
-      {/* ── HEADER ── */}
-      <div style={{ width: '100%', background: '#1B5E20', borderBottom: '4px solid #0A3A10' }}>
-        <div style={{ padding: '32px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '32px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{ background: '#FFF', border: '4px solid #228B22', padding: '16px', boxShadow: '6px 6px 0px #0A3A10', borderRadius: 0 }}>
-              <Car size={48} color="#228B22" />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 900, color: '#FFF', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>Car Rentals</h1>
-              <div style={{ fontSize: '1.1rem', color: '#A5D6A7', fontWeight: 700, marginTop: '8px' }}>Manage your vehicle reservations</div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '32px', flexWrap: 'wrap' }}>
-            
-            {/* Stat Box */}
-            <div style={{ background: '#2E8B57', border: '4px solid #0A3A10', padding: '16px 32px', textAlign: 'center', boxShadow: '6px 6px 0px #0A3A10', borderRadius: 0 }}>
-              <div style={{ fontSize: '3rem', fontWeight: 900, color: '#FFF', lineHeight: 1 }}>{orders.length}</div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#A5D6A7', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>Total</div>
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              <button onClick={() => navigate('/services/car-renting')} style={{ 
-                flex: '1 1 auto', minWidth: '140px',
-                background: '#8BC34A', border: '4px solid #558B2F', color: '#1B5E20', 
-                padding: '14px 16px', fontSize: 'clamp(0.85rem, 2.5vw, 1rem)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                boxShadow: '5px 5px 0px #558B2F', transition: 'all 0.1s', whiteSpace: 'nowrap', borderRadius: 0
-              }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(3px, 3px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #558B2F'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '5px 5px 0px #558B2F'; }}>
-                <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>+</span> NEW RENTAL
-              </button>
-              
-              <button onClick={handleRefresh} disabled={refreshing} style={{ 
-                flex: '1 1 auto', minWidth: '140px',
-                background: '#FFF', border: '4px solid #1B5E20', color: '#1B5E20', 
-                padding: '14px 16px', fontSize: 'clamp(0.85rem, 2.5vw, 1rem)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                cursor: refreshing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center',
-                boxShadow: '5px 5px 0px #0A3A10', transition: 'all 0.1s', whiteSpace: 'nowrap', borderRadius: 0
-              }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(3px, 3px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #0A3A10'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '5px 5px 0px #0A3A10'; }}>
-                <RefreshCw size={18} style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} /> REFRESH
-              </button>
-            </div>
-
-          </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="cr-btn-primary" onClick={() => navigate('/services/agrirent')}>
+            <Plus size={16} /> New Rental
+          </button>
+          <button className="cr-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'cr-spin' : ''} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
+      </div>
 
-        {/* ── TABS ── */}
-        <div style={{ display: 'flex', background: '#228B22', flexWrap: 'wrap', borderBottom: '4px solid #E0E0E0' }}>
-          {STATUS_TABS.map((tab) => {
-            const active = activeTab === tab.key;
-            const TabIcon = tab.Icon;
+      {/* tabs */}
+      <div className="cr-tabs">
+        {STATUS_TABS.map(({ key, label, Icon }) => (
+          <button key={key} className={`cr-tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>
+            <Icon size={16} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* list */}
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: '#757575' }}>Loading rentals…</div>
+      ) : filtered.length === 0 ? (
+        <div className="cr-empty">
+          <Car size={48} color="#A5D6A7" />
+          <h2 style={{ fontSize: '1.4rem', color: '#1B5E20', margin: 0 }}>No Rentals Found</h2>
+          <p style={{ color: '#757575', margin: 0 }}>You don't have any rentals in this category.</p>
+          <button className="cr-btn-primary" onClick={() => navigate('/services/agrirent')}>Rent a Vehicle</button>
+        </div>
+      ) : (
+        <div className="cr-list">
+          {filtered.map(order => {
+            const ost = ORDER_STATUS[order.status] || ORDER_STATUS.PENDING_APPROVAL;
             return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                flex: '1 1 auto', minWidth: '120px', justifyContent: 'center',
-                background: active ? '#FFFFFF' : 'transparent',
-                color: active ? '#1B5E20' : '#A5D6A7',
-                border: 'none', borderTop: active ? '4px solid #8BC34A' : '4px solid transparent',
-                padding: '18px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                fontWeight: 900, fontSize: 'clamp(0.8rem, 2.5vw, 0.95rem)', textTransform: 'uppercase', letterSpacing: '1px',
-                transition: 'all 0.2s', whiteSpace: 'nowrap', borderRadius: 0
-              }}>
-                <TabIcon size={20} /> {tab.label}
-              </button>
+              <div key={order.id} className="cr-card" onClick={() => openDetail(order)}>
+                <div className="cr-card-header">
+                  <span className="cr-order-num">#{order.orderNumber}</span>
+                  <span className="cr-badge" style={{ background: ost.bg, color: ost.color }}>{ost.label}</span>
+                </div>
+                <h3 className="cr-card-title">{order.carName || 'Vehicle'}</h3>
+                <div className="cr-card-meta">
+                  <span><Calendar size={14} /> {fmtDate(order.createdAt)}</span>
+                  <span><DollarSign size={14} /> {fmtMoney(order.totalAmount)} ETB</span>
+                </div>
+                <div className="cr-dates">
+                  {fmtDate(order.pickupDate)} → {fmtDate(order.returnDate)}
+                  <span style={{ marginLeft: '8px', fontWeight: 400, color: '#6B8E23' }}>({order.totalDays}d)</span>
+                </div>
+                <div className="cr-card-footer">
+                  <span className="cr-view-link">View Details →</span>
+                </div>
+              </div>
             );
           })}
         </div>
-      </div>
-
-      {/* ── MAIN CONTENT ── */}
-      <div style={{ padding: '48px', background: '#F5F5F5', minHeight: 'calc(100vh - 250px)' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ height: 160, background: '#E0E0E0', border: '3px solid #BDBDBD', boxShadow: '6px 6px 0px #BDBDBD', animation: 'pulse 1.5s infinite', borderRadius: 0 }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', background: '#FFF', border: '4px solid #228B22', boxShadow: '8px 8px 0px #228B22', borderRadius: 0 }}>
-            <Car size={80} color="#A5D6A7" style={{ marginBottom: '24px' }} />
-            <h2 style={{ fontSize: '2rem', color: '#1B5E20', margin: 0, textTransform: 'uppercase', fontWeight: 900 }}>No Rentals Found</h2>
-            <p style={{ fontSize: '1.2rem', color: '#424242', marginTop: '12px' }}>You don't have any car rentals in this category.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {filtered.map(order => {
-              const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING_APPROVAL;
-              
-              return (
-                <div key={order.id} onClick={() => setSelectedOrder(order)} style={{
-                  background: '#FFF',
-                  border: '3px solid #1B5E20',
-                  borderLeft: `12px solid ${cfg.bg}`,
-                  boxShadow: '6px 6px 0px #1B5E20',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  transition: 'all 0.1s',
-                  borderRadius: 0
-                }}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translate(-4px, -4px)'; e.currentTarget.style.boxShadow = '10px 10px 0px #1B5E20'; }}
-                onMouseOut={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '6px 6px 0px #1B5E20'; }}>
-                  
-                  {/* Info Section */}
-                  <div style={{ flex: 1, minWidth: 0, padding: 'clamp(16px, 3vw, 32px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '24px' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '1rem', color: '#6B8E23', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px' }}>Rental #{order.orderNumber}</div>
-                        <div style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', color: '#1B5E20', fontWeight: 900, marginTop: '8px', textTransform: 'uppercase', overflowWrap: 'break-word' }}>{order.car?.name || order.carName || 'Vehicle'}</div>
-                      </div>
-                      
-                      <div style={{ background: cfg.bg, color: cfg.color, border: `2px solid ${cfg.border}`, padding: '8px 16px', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', borderRadius: 0 }}>
-                        {cfg.label}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', background: '#F5F5F5', padding: '16px', border: '2px solid #A5D6A7' }}>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Total Amount</div>
-                        <div style={{ fontSize: '1.2rem', color: '#228B22', fontWeight: 900 }}>{parseFloat(order.totalAmount || 0).toFixed(2)} ETB</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Pickup Date</div>
-                        <div style={{ fontSize: '1.1rem', color: '#424242', fontWeight: 700 }}>{new Date(order.pickupDate).toLocaleDateString()}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Duration</div>
-                        <div style={{ fontSize: '1.1rem', color: '#424242', fontWeight: 700 }}>{order.totalDays} Days</div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Action arrow */}
-                  <div style={{ width: 'clamp(40px, 8vw, 80px)', flexShrink: 0, background: '#F5F5F5', borderLeft: '3px solid #1B5E20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChevronRight size={36} color="#1B5E20" style={{ maxWidth: '100%' }} />
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-      `}</style>
+      )}
     </div>
   );
 }
