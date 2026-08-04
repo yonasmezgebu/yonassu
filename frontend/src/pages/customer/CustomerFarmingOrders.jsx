@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
 import {
-  Tractor, Clock, CheckSquare, XSquare, PlaySquare, RefreshCw,
+  Tractor, Clock, CheckSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, MapPin, DollarSign, Image as ImageIcon,
-  AlertCircle, ChevronRight, FileText, Activity
+  Activity, Eye
 } from 'lucide-react';
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
@@ -16,19 +16,19 @@ const getImageUrl = (path) => {
 };
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',     color: '#FFFFFF', bg: '#8D6E63', border: '#5D4037' }, // Earth Brown
-  approved:  { label: 'Approved',    color: '#FFFFFF', bg: '#8BC34A', border: '#558B2F' }, // Lime Green
-  confirmed: { label: 'Confirmed',   color: '#FFFFFF', bg: '#2E8B57', border: '#1B5E20' }, // Emerald
-  active:    { label: 'Active',      color: '#FFFFFF', bg: '#87CEEB', border: '#0288D1' }, // Sky Blue
-  completed: { label: 'Completed',   color: '#FFFFFF', bg: '#228B22', border: '#006400' }, // Forest Green
-  cancelled: { label: 'Cancelled',   color: '#FFFFFF', bg: '#F44336', border: '#B71C1C' }, // Red
+  pending:   { label: 'Pending',     color: '#FFFFFF', bg: '#8D6E63' }, // Earth Brown
+  approved:  { label: 'Approved',    color: '#FFFFFF', bg: '#8BC34A' }, // Lime Green
+  confirmed: { label: 'Confirmed',   color: '#FFFFFF', bg: '#2E8B57' }, // Emerald
+  active:    { label: 'Active',      color: '#FFFFFF', bg: '#87CEEB' }, // Sky Blue
+  completed: { label: 'Completed',   color: '#FFFFFF', bg: '#228B22' }, // Forest Green
+  cancelled: { label: 'Cancelled',   color: '#FFFFFF', bg: '#F44336' }, // Red
 };
 
 const STATUS_TABS = [
-  { key: 'all',       label: 'ALL ORDERS', Icon: Tractor },
-  { key: 'pending',   label: 'PENDING',    Icon: Clock },
-  { key: 'active',    label: 'ACTIVE',     Icon: PlaySquare },
-  { key: 'completed', label: 'COMPLETED',  Icon: CheckSquare },
+  { key: 'all',       label: 'All Orders', Icon: Tractor },
+  { key: 'pending',   label: 'Pending',    Icon: Clock },
+  { key: 'active',    label: 'Active',     Icon: PlaySquare },
+  { key: 'completed', label: 'Completed',  Icon: CheckSquare },
 ];
 
 export default function CustomerFarmingOrders() {
@@ -76,7 +76,6 @@ export default function CustomerFarmingOrders() {
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const handleCancel = async (id) => {
-    if (!window.confirm('Cancel this AgriRent order?')) return;
     try {
       await axios.patch(`/agrirent-orders/${id}/status`, { status: 'cancelled' });
       showNotification('Order cancelled successfully.', 'success');
@@ -105,170 +104,153 @@ export default function CustomerFarmingOrders() {
     
     const tractorImg = getImageUrl(o.tractor_image);
 
-    const paymentStatusColor = 
-      o.payment_status === 'Confirmed' ? { bg: '#228B22', text: '#FFF', label: '✅ CONFIRMED — Recorded in Finance' } :
-      o.payment_status === 'Rejected'  ? { bg: '#F44336', text: '#FFF', label: '❌ REJECTED — Contact Support' } :
-                                         { bg: '#FF8F00', text: '#FFF', label: '⏳ PENDING — Awaiting Finance Verification' };
-
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F5', fontFamily: "'Inter', sans-serif", width: '100%', boxSizing: 'border-box' }}>
+      <div className="page-container">
         
-        {/* Notification Toast */}
         {notification && (
-          <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: notification.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFF', padding: '16px 24px', fontWeight: 600, fontSize: '1rem', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}>
+          <div className={`toast ${notification.type}`}>
             {notification.msg}
           </div>
         )}
 
-        {/* ── BACK BUTTON + ORDER HEADER ── */}
-        <div style={{ background: '#228B22', borderBottom: '4px solid #1B5E20', padding: '28px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <button onClick={() => setSelectedOrder(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#1B5E20', color: '#FFF', border: 'none', padding: '12px 20px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', boxShadow: '4px 4px 0px #0A3A10', textTransform: 'uppercase', letterSpacing: '1px' }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px,2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #0A3A10'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #0A3A10'; }}>
-              <ArrowLeft size={16} /> BACK
+        {/* ── HEADER ── */}
+        <div className="detail-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button className="btn-secondary" onClick={() => setSelectedOrder(null)}>
+              <ArrowLeft size={18} /> Back
             </button>
             <div>
-              <h1 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.8rem)', color: '#FFF', margin: 0, fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                ORDER #{o.order_number}
-              </h1>
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-block', padding: '6px 14px', background: cfg.bg, border: `2px solid ${cfg.border}`, color: cfg.color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  {cfg.label}
-                </span>
-                <span style={{ color: '#A5D6A7', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <Calendar size={14} style={{ display: 'inline', marginRight: 4 }} />
-                  {new Date(o.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
+              <h1 className="section-title" style={{ margin: 0, fontSize: '1.8rem' }}>Order #{o.order_number}</h1>
+              <div style={{ color: '#424242', fontSize: '0.95rem', marginTop: '4px' }}>
+                Placed on {new Date(o.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
           </div>
-          <div style={{ background: '#FFF', border: '3px solid #1B5E20', padding: '16px 28px', textAlign: 'right', boxShadow: '6px 6px 0px #1B5E20' }}>
-            <div style={{ fontSize: '0.75rem', color: '#424242', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Total Amount</div>
-            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#228B22', lineHeight: 1.1 }}>{parseFloat(o.total_amount || 0).toFixed(2)} ETB</div>
-          </div>
-        </div>
-
-        {/* ── PAYMENT STATUS BANNER ── */}
-        <div style={{ background: paymentStatusColor.bg, padding: '16px 48px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Activity size={20} color={paymentStatusColor.text} />
-          <span style={{ color: paymentStatusColor.text, fontWeight: 900, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            FINANCE PAYMENT STATUS: {paymentStatusColor.label}
-          </span>
-          {o.payment_status === 'Confirmed' && (
-            <span style={{ marginLeft: 'auto', color: '#A5D6A7', fontSize: '0.85rem', fontWeight: 600 }}>
-              Payment recorded in Finance Receivables Book
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ 
+              background: cfg.bg, color: cfg.color, padding: '6px 12px', 
+              borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 
+            }}>
+              {cfg.label}
             </span>
-          )}
+          </div>
         </div>
 
-        {/* ── TRACTOR IMAGE — CENTERED ── */}
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '16px 0', background: '#F5F5F5' }}>
-          {tractorImg && !imgError ? (
-            <div style={{ position: 'relative', cursor: 'zoom-in', width: '40%', maxWidth: '400px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '3px solid #1B5E20' }} onClick={() => setSelectedImage(tractorImg)}>
-              <img
-                src={tractorImg}
-                alt={o.tractor_name || 'Tractor'}
-                onError={() => setImgError(true)}
-                style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-              />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(27,94,32,0.95))', padding: '24px 32px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ color: '#A5D6A7', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>Machine</div>
-                  <div style={{ color: '#FFF', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase' }}>{o.tractor_name || 'N/A'}</div>
-                  <div style={{ color: '#A5D6A7', fontSize: '0.9rem', fontWeight: 600 }}>{o.tractor_type_label || 'Tractor'}</div>
+        {/* ── MAIN CONTENT ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '24px' }}>
+          
+          {/* Tractor Details Card */}
+          <div className="card">
+            <h2 className="section-title" style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Machine Information</h2>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <div className="image-container" onClick={() => setSelectedImage(tractorImg)} style={{ cursor: tractorImg && !imgError ? 'zoom-in' : 'default', height: '200px', background: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #F5F5F5' }}>
+                  {tractorImg && !imgError ? (
+                    <img src={tractorImg} alt={o.tractor_name} onError={() => setImgError(true)} />
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#8D6E63' }}>
+                      <ImageIcon size={48} style={{ opacity: 0.5, marginBottom: '8px' }} />
+                      <div>No Image Available</div>
+                    </div>
+                  )}
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid #A5D6A7', padding: '6px 12px', color: '#FFF', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px' }}>
-                  🔍 Zoom
+              </div>
+              <div style={{ flex: '2 1 400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 600, color: '#1B5E20' }}>{o.tractor_name || 'AgriRent Machine'}</div>
+                <div style={{ fontSize: '1rem', color: '#424242', marginTop: '8px' }}>{o.tractor_type_label || 'Tractor'}</div>
+                <div style={{ fontSize: '1rem', color: '#424242', marginTop: '16px' }}>
+                  <strong>Field Purpose:</strong> {o.farming_purpose || 'N/A'}
+                </div>
+                <div style={{ fontSize: '1rem', color: '#424242', marginTop: '8px' }}>
+                  <strong>Field Location:</strong> {o.field_location || 'N/A'}
+                </div>
+                <div style={{ fontSize: '1rem', color: '#424242', marginTop: '8px' }}>
+                  <strong>Field Size:</strong> {o.field_size_hectares ? `${o.field_size_hectares} ha` : 'N/A'}
                 </div>
               </div>
             </div>
-          ) : (
-            <div style={{ width: '40%', maxWidth: '400px', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: '3px dashed #A5D6A7', borderRadius: '8px', background: '#FFF' }}>
-              <ImageIcon size={64} color="#A5D6A7" />
-              <div style={{ color: '#A5D6A7', fontSize: '1.2rem', fontWeight: 700 }}>{o.tractor_name || 'No Image Available'}</div>
-              <div style={{ color: '#6B8E23', fontSize: '1rem' }}>{o.tractor_type_label || 'Tractor'}</div>
-            </div>
-          )}
-        </div>
-
-        {/* ── FLAT INFO ROWS ── */}
-        <div style={{ background: '#FFFFFF', borderBottom: '3px solid #E0E0E0' }}>
-          
-          {/* ROW 1: Rental Dates */}
-          <div style={{ padding: '32px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <Calendar size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Rental Schedule</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0', borderTop: '2px solid #A5D6A7' }}>
-              {[
-                { label: 'Start Date',     value: new Date(o.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
-                { label: 'End Date',       value: new Date(o.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
-                { label: 'Duration',       value: `${o.total_days} Days` },
-                { label: 'Daily Rate',     value: `${parseFloat(o.daily_rate || 0).toFixed(2)} ETB/day` },
-              ].map((item, i) => (
-                <div key={i} style={{ padding: '20px 24px', borderRight: i < 3 ? '2px solid #F5F5F5' : 'none' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1B5E20' }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* ROW 2: Field Information */}
-          <div style={{ padding: '0 48px 32px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <MapPin size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Field Information</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0', borderTop: '2px solid #BCAAA4' }}>
-              {[
-                { label: 'Field Location', value: o.field_location || 'N/A' },
-                { label: 'Size (Hectares)', value: o.field_size_hectares ? `${o.field_size_hectares} ha` : 'N/A' },
-                { label: 'Purpose',         value: o.farming_purpose || 'N/A' },
-              ].map((item, i) => (
-                <div key={i} style={{ padding: '20px 24px', borderRight: i < 2 ? '2px solid #F5F5F5' : 'none' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#8D6E63', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#424242' }}>{item.value}</div>
+          {/* Schedule & Payment Grids */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            
+            {/* Rental Schedule */}
+            <div className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <Calendar size={20} color="#228B22" />
+                <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>Rental Schedule</h2>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>Start Date</span>
+                  <strong style={{ color: '#424242' }}>{new Date(o.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
                 </div>
-              ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>End Date</span>
+                  <strong style={{ color: '#424242' }}>{new Date(o.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>Duration</span>
+                  <strong style={{ color: '#424242' }}>{o.total_days} Days</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#424242' }}>Daily Rate</span>
+                  <strong style={{ color: '#424242' }}>{parseFloat(o.daily_rate || 0).toFixed(2)} ETB/day</strong>
+                </div>
+              </div>
             </div>
+
+            {/* Payment Details */}
+            <div className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <DollarSign size={20} color="#228B22" />
+                <h2 className="section-title" style={{ fontSize: '1.2rem', margin: 0 }}>Payment Details</h2>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>Payment Method</span>
+                  <strong style={{ color: '#424242' }}>{o.payment_method || 'N/A'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>Transaction Ref</span>
+                  <strong style={{ color: '#424242' }}>{o.payment_reference || 'N/A'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F5F5F5', paddingBottom: '8px' }}>
+                  <span style={{ color: '#424242' }}>Status</span>
+                  <strong style={{ 
+                    color: o.payment_status === 'Confirmed' ? '#4CAF50' : o.payment_status === 'Rejected' ? '#F44336' : '#FF9800' 
+                  }}>
+                    {o.payment_status || 'Pending'}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#424242', fontWeight: 600 }}>Total Amount</span>
+                  <strong style={{ color: '#2E8B57', fontSize: '1.1rem' }}>{parseFloat(o.total_amount || 0).toFixed(2)} ETB</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Special Instructions & Actions */}
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             {o.special_instructions && (
-              <div style={{ padding: '0 0 20px 0', borderTop: '2px solid #F5F5F5' }}>
-                <div style={{ fontSize: '0.75rem', color: '#8D6E63', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, paddingTop: 16 }}>Special Instructions</div>
-                <div style={{ fontSize: '1rem', fontWeight: 500, color: '#424242', background: '#FFF8F5', padding: '14px', border: '2px solid #BCAAA4' }}>{o.special_instructions}</div>
+              <div className="card" style={{ flex: '1 1 300px' }}>
+                <h2 className="section-title" style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Special Instructions</h2>
+                <p style={{ color: '#424242', lineHeight: '1.5', margin: 0 }}>{o.special_instructions}</p>
               </div>
             )}
-          </div>
-
-          {/* ROW 3: Payment Details */}
-          <div style={{ padding: '0 48px 48px 48px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '24px' }}>
-              <DollarSign size={24} color="#1B5E20" />
-              <h2 style={{ margin: 0, color: '#1B5E20', fontSize: '1.4rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Details</h2>
-              <div style={{ flex: 1, height: '3px', background: '#1B5E20', marginLeft: '16px' }}></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0', borderTop: '2px solid #B3E5FC' }}>
-              {[
-                { label: 'Payment Method',    value: o.payment_method || 'N/A' },
-                { label: 'Transaction Ref',   value: o.payment_reference || 'Not provided' },
-                { label: 'Finance Verification', value: o.payment_status || 'Pending',
-                  valueColor: o.payment_status === 'Confirmed' ? '#228B22' : o.payment_status === 'Rejected' ? '#F44336' : '#FF8F00' },
-                { label: 'Total Amount',      value: `${parseFloat(o.total_amount || 0).toFixed(2)} ETB`, valueColor: '#228B22' },
-              ].map((item, i) => (
-                <div key={i} style={{ padding: '20px 24px', borderRight: i < 3 ? '2px solid #F5F5F5' : 'none' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#0288D1', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: item.valueColor || '#424242' }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Cancel action */}
+            
             {['pending', 'approved'].includes(o.status) && (
-              <div style={{ padding: '24px 0', borderTop: '2px solid #F5F5F5' }}>
-                <button onClick={() => handleCancel(o.id)} style={{ padding: '14px 32px', background: '#F44336', border: '3px solid #B71C1C', color: '#FFF', fontWeight: 900, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer', boxShadow: '4px 4px 0px #B71C1C', transition: 'all 0.1s' }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(2px, 2px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #B71C1C'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '4px 4px 0px #B71C1C'; }}>
-                  <XSquare size={20} /> CANCEL RENTAL
+              <div className="card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '1.1rem', marginBottom: '12px', color: '#F44336' }}>Danger Zone</h2>
+                <p style={{ color: '#424242', marginBottom: '16px', fontSize: '0.9rem' }}>You can cancel this order before it is confirmed or active.</p>
+                <button className="btn-danger" onClick={() => {
+                  if (window.confirm('Are you sure you want to cancel this order?')) {
+                    handleCancel(o.id);
+                  }
+                }}>
+                  Cancel Order
                 </button>
               </div>
             )}
@@ -278,11 +260,35 @@ export default function CustomerFarmingOrders() {
 
         {/* Fullscreen Image Modal */}
         {selectedImage && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }} onClick={() => setSelectedImage(null)}>
-            <button style={{ position: 'absolute', top: 20, right: 20, background: '#F44336', border: '4px solid #B71C1C', color: '#fff', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '4px 4px 0px #000', fontSize: '1.5rem', fontWeight: 900 }} onClick={() => setSelectedImage(null)}>✕</button>
-            <img src={selectedImage} alt="Full View" style={{ maxWidth: '96%', maxHeight: '92vh', objectFit: 'contain', border: '4px solid #228B22', boxShadow: '0 0 60px rgba(0,0,0,0.8)', background: '#FFF' }} onClick={e => e.stopPropagation()} />
+          <div className="modal-overlay" onClick={() => setSelectedImage(null)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', padding: '8px' }}>
+              <img src={selectedImage} alt="Full View" style={{ width: '100%', height: 'auto', borderRadius: '10px' }} />
+              <button className="btn-secondary" style={{ position: 'absolute', top: '-40px', right: '0' }} onClick={() => setSelectedImage(null)}>
+                Close
+              </button>
+            </div>
           </div>
         )}
+
+        <style>{`
+          .page-container { padding: 32px; background: #F5F5F5; min-height: calc(100vh - 60px); box-sizing: border-box; }
+          .section-title { color: #1B5E20; font-weight: 700; margin-bottom: 16px; }
+          .detail-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+          .card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 24px; }
+          .image-container { border-radius: 10px; overflow: hidden; transition: all 0.15s ease; }
+          .image-container img { width: 100%; height: 100%; object-fit: cover; transition: all 0.15s ease; }
+          .image-container:hover img { transform: scale(1.03); }
+          .btn-secondary { background: #6B8E23; color: #FFFFFF; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+          .btn-secondary:hover { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .btn-danger { background: #F44336; color: #FFFFFF; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease; }
+          .btn-danger:hover { background: #d32f2f; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .toast { position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px; color: #FFFFFF; padding: 16px 24px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out forwards; }
+          .toast.success { background: #4CAF50; }
+          .toast.error { background: #F44336; }
+          .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px; }
+          .modal-content { background: #FFF; border-radius: 14px; position: relative; }
+          @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        `}</style>
       </div>
     );
   }
@@ -291,173 +297,173 @@ export default function CustomerFarmingOrders() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', fontFamily: "'Inter', sans-serif", width: '100%', boxSizing: 'border-box' }}>
+    <div className="page-container">
       
-      {/* Notification Toast */}
       {notification && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          background: notification.type === 'error' ? '#F44336' : '#4CAF50',
-          color: '#FFF', padding: '16px 24px', fontWeight: 600, fontSize: '1rem',
-          boxShadow: '0 10px 20px rgba(0,0,0,0.3)',
-          animation: 'slideIn 0.3s ease-out forwards'
-        }}>
+        <div className={`toast ${notification.type}`}>
           {notification.msg}
         </div>
       )}
 
       {/* ── HEADER ── */}
-      <div style={{ width: '100%', background: '#228B22', borderBottom: '4px solid #1B5E20' }}>
-        <div style={{ padding: '32px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '32px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{ background: '#FFF', border: '4px solid #1B5E20', padding: '16px', boxShadow: '6px 6px 0px #1B5E20' }}>
-              <Tractor size={48} color="#228B22" />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)', fontWeight: 900, color: '#FFF', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>AgriRent Orders</h1>
-              <div style={{ fontSize: '1.1rem', color: '#A5D6A7', fontWeight: 700, marginTop: '8px' }}>Manage your machine rentals & field services</div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '32px', flexWrap: 'wrap' }}>
-            
-            {/* Stat Box */}
-            <div style={{ background: '#2E8B57', border: '4px solid #1B5E20', padding: '16px 32px', textAlign: 'center', boxShadow: '6px 6px 0px #1B5E20' }}>
-              <div style={{ fontSize: '3rem', fontWeight: 900, color: '#FFF', lineHeight: 1 }}>{orders.length}</div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#A5D6A7', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>Total</div>
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              <button onClick={() => navigate('/services/farming')} style={{ 
-                background: '#8BC34A', border: '4px solid #558B2F', color: '#1B5E20', 
-                padding: '14px 28px', fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
-                boxShadow: '5px 5px 0px #558B2F', transition: 'all 0.1s', whiteSpace: 'nowrap'
-              }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(3px, 3px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #558B2F'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '5px 5px 0px #558B2F'; }}>
-                <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>+</span> NEW RENTAL
-              </button>
-              
-              <button onClick={handleRefresh} disabled={refreshing} style={{ 
-                background: '#FFF', border: '4px solid #1B5E20', color: '#1B5E20', 
-                padding: '14px 28px', fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', 
-                cursor: refreshing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center',
-                boxShadow: '5px 5px 0px #1B5E20', transition: 'all 0.1s', whiteSpace: 'nowrap'
-              }} onMouseDown={e => { e.currentTarget.style.transform = 'translate(3px, 3px)'; e.currentTarget.style.boxShadow = '2px 2px 0px #1B5E20'; }} onMouseUp={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '5px 5px 0px #1B5E20'; }}>
-                <RefreshCw size={18} style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} /> REFRESH
-              </button>
-            </div>
-
-          </div>
+      <div className="page-header">
+        <div>
+          <h1 className="section-title" style={{ fontSize: '2rem', margin: 0, textTransform: 'none' }}>AgriRent Orders</h1>
+          <p style={{ color: '#424242', fontSize: '1rem', margin: '8px 0 0 0' }}>Manage your machine rentals & field services</p>
         </div>
-
-        {/* ── TABS ── */}
-        <div style={{ display: 'flex', background: '#1B5E20', overflowX: 'auto', overflowY: 'hidden' }}>
-          {STATUS_TABS.map((tab) => {
-            const active = activeTab === tab.key;
-            const TabIcon = tab.Icon;
-            return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                background: active ? '#FFFFFF' : 'transparent',
-                color: active ? '#1B5E20' : '#A5D6A7',
-                border: 'none', borderTop: active ? '4px solid #8BC34A' : '4px solid transparent',
-                padding: '18px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                fontWeight: 900, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '1px',
-                transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0
-              }}>
-                <TabIcon size={20} /> {tab.label}
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button className="btn-primary" onClick={() => navigate('/services/farming')}>
+            + New Rental
+          </button>
+          <button className="btn-secondary" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'spin' : ''} /> Refresh
+          </button>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
-      <div style={{ padding: '48px', background: '#F5F5F5', minHeight: 'calc(100vh - 250px)' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ height: 160, background: '#E0E0E0', border: '2px solid #BDBDBD', boxShadow: '6px 6px 0px #BDBDBD', animation: 'pulse 1.5s infinite' }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', background: '#FFF', border: '4px solid #228B22', boxShadow: '8px 8px 0px #228B22' }}>
-            <Tractor size={80} color="#A5D6A7" style={{ marginBottom: '24px' }} />
-            <h2 style={{ fontSize: '2rem', color: '#1B5E20', margin: 0, textTransform: 'uppercase', fontWeight: 900 }}>No Orders Found</h2>
-            <p style={{ fontSize: '1.2rem', color: '#424242', marginTop: '12px' }}>You don't have any farming orders in this category.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {filtered.map(order => {
-              const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-              
-              return (
-                <div key={order.id} onClick={() => setSelectedOrder(order)} style={{
-                  background: '#FFF',
-                  border: '2px solid #228B22',
-                  borderLeft: `12px solid ${cfg.bg}`,
-                  boxShadow: '6px 6px 0px #228B22',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  transition: 'all 0.1s',
-                }}
-                onMouseOver={e => { e.currentTarget.style.transform = 'translate(-4px, -4px)'; e.currentTarget.style.boxShadow = '10px 10px 0px #228B22'; }}
-                onMouseOut={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '6px 6px 0px #228B22'; }}>
-                  
-                  {/* Info Section */}
-                  <div style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '24px' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontSize: '1rem', color: '#6B8E23', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px' }}>Order #{order.order_number}</div>
-                        <div style={{ fontSize: '2rem', color: '#1B5E20', fontWeight: 900, marginTop: '8px', textTransform: 'uppercase' }}>{order.tractor_name || 'AgriRent Machine'}</div>
-                        <div style={{ fontSize: '1.1rem', color: '#424242', fontWeight: 700, marginTop: '4px' }}>{order.farming_purpose || 'General Farming'}</div>
-                      </div>
-                      
-                      <div style={{ background: cfg.bg, color: cfg.color, border: `2px solid ${cfg.border}`, padding: '8px 16px', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>
+      {/* ── TABS ── */}
+      <div className="tabs-container">
+        {STATUS_TABS.map((tab) => {
+          const active = activeTab === tab.key;
+          const TabIcon = tab.Icon;
+          return (
+            <button key={tab.key} className={`tab-btn ${active ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
+              <TabIcon size={18} /> {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── MAIN CONTENT (TABLE) ── */}
+      {loading ? (
+        <div style={{ padding: '48px', textAlign: 'center', color: '#424242' }}>Loading orders...</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">
+          <Tractor size={48} color="#A5D6A7" style={{ marginBottom: '16px' }} />
+          <h2 style={{ fontSize: '1.4rem', color: '#1B5E20', margin: '0 0 8px 0' }}>No Orders Found</h2>
+          <p style={{ color: '#424242', margin: 0 }}>You don't have any farming orders in this category.</p>
+        </div>
+      ) : (
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Tractor / Machine</th>
+                <th>Start Date</th>
+                <th>Duration</th>
+                <th style={{ textAlign: 'right' }}>Total Amount</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((order, i) => {
+                const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                return (
+                  <tr key={order.id} className="table-row" onClick={() => setSelectedOrder(order)}>
+                    <td>{order.order_number}</td>
+                    <td style={{ fontWeight: 600 }}>{order.tractor_name || 'AgriRent Machine'}</td>
+                    <td>{new Date(order.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                    <td>{order.total_days} Days</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#2E8B57' }}>
+                      {parseFloat(order.total_amount || 0).toFixed(2)} ETB
+                    </td>
+                    <td>
+                      <span style={{ 
+                        background: cfg.bg, color: cfg.color, padding: '4px 10px', 
+                        borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 
+                      }}>
                         {cfg.label}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', background: '#F5F5F5', padding: '16px', border: '2px solid #A5D6A7' }}>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Total Amount</div>
-                        <div style={{ fontSize: '1.2rem', color: '#228B22', fontWeight: 900 }}>{parseFloat(order.total_amount || 0).toFixed(2)} ETB</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Start Date</div>
-                        <div style={{ fontSize: '1.1rem', color: '#424242', fontWeight: 700 }}>{new Date(order.start_date).toLocaleDateString()}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Duration</div>
-                        <div style={{ fontSize: '1.1rem', color: '#424242', fontWeight: 700 }}>{order.total_days} Days</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase' }}>Payment</div>
-                        <div style={{ fontSize: '1.1rem', color: order.payment_status === 'Confirmed' ? '#228B22' : '#F59E0B', fontWeight: 700 }}>{order.payment_status}</div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Action arrow */}
-                  <div style={{ width: '80px', background: '#F5F5F5', borderLeft: '2px solid #228B22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChevronRight size={36} color="#228B22" />
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn-sm btn-secondary" onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}>
+                        <Eye size={14} /> View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <style>{`
+        .page-container {
+          padding: 32px;
+          background: #F5F5F5;
+          min-height: calc(100vh - 60px);
+          box-sizing: border-box;
+          font-family: 'Inter', sans-serif;
+        }
+        .section-title { color: #1B5E20; font-weight: 700; }
+        .page-header {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
+        }
+        
+        .tabs-container {
+          display: flex; gap: 8px; border-bottom: 1px solid #8D6E63; margin-bottom: 24px;
+          overflow-x: auto;
+        }
+        .tab-btn {
+          background: transparent; border: none; border-bottom: 2px solid transparent;
+          padding: 12px 24px; color: #424242; font-weight: 600; cursor: pointer;
+          display: flex; align-items: center; gap: 8px; transition: all 0.15s ease;
+          font-size: 0.95rem; white-space: nowrap;
+        }
+        .tab-btn.active { color: #228B22; border-bottom: 2px solid #228B22; }
+        .tab-btn:hover:not(.active) { color: #228B22; }
+
+        .btn-primary {
+          background: #2E8B57; color: #FFFFFF; padding: 10px 20px; border-radius: 8px;
+          border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+          display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease;
+        }
+        .btn-primary:hover { background: #267347; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        .btn-secondary {
+          background: #6B8E23; color: #FFFFFF; padding: 10px 20px; border-radius: 8px;
+          border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+          display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease;
+        }
+        .btn-secondary:hover { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .btn-sm { padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; }
+
+        .empty-state {
+          background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px;
+          padding: 64px 24px; text-align: center;
+        }
+
+        .table-container {
+          background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 10px;
+          overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .data-table th {
+          background: #1B5E20; color: #FFFFFF; padding: 14px 20px; font-weight: 500;
+          white-space: nowrap;
+        }
+        .data-table td { padding: 14px 20px; color: #424242; border-bottom: 1px solid #F5F5F5; }
+        .table-row { transition: background 0.15s ease; cursor: pointer; }
+        .table-row:nth-child(even) { background: #F5F5F5; }
+        .table-row:hover { background: #A5D6A7 !important; }
+
+        .toast {
+          position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px;
+          color: #FFFFFF; padding: 16px 24px; font-weight: 500;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out forwards;
+        }
+        .toast.success { background: #4CAF50; }
+        .toast.error { background: #F44336; }
+        .spin { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       `}</style>
     </div>
   );
 }
+
