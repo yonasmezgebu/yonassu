@@ -87,9 +87,7 @@ const AppRoutes = () => {
         <Route path="/gallery/workers" element={<PlaceholderPage />} />
         <Route path="/gallery/cars" element={<PlaceholderPage />} />
         <Route path="/gallery/other" element={<PlaceholderPage />} />
-        <Route path="/news/notice" element={<PlaceholderPage />} />
-        <Route path="/news/video" element={<PlaceholderPage />} />
-        <Route path="/news/gallery" element={<PlaceholderPage />} />
+
 
         <Route path="/marketplace/regular" element={<RegularMarketPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
