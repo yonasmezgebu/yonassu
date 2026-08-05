@@ -100,3 +100,60 @@ exports.getAllSuppliers = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
 };
+
+/**
+ * PUT /api/suppliers/:id/verify
+ * Staff fills in Stage 2 verification data → status becomes 'Verified'
+ */
+exports.verifySupplier = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      tax_id, payment_terms, credit_limit,
+      location_type, bank_name, bank_account, bank_holder, website
+    } = req.body;
+
+    const supplier = await db('self_registered_suppliers').where({ id }).first();
+    if (!supplier) return res.status(404).json({ status: 'error', message: 'Supplier not found' });
+
+    await db('self_registered_suppliers').where({ id }).update({
+      tax_id: tax_id || null,
+      payment_terms: payment_terms || null,
+      credit_limit: credit_limit || null,
+      location_type: location_type || null,
+      bank_name: bank_name || null,
+      bank_account: bank_account || null,
+      bank_holder: bank_holder || null,
+      website: website || null,
+      status: 'Verified',
+      updated_at: db.fn.now(),
+    });
+
+    const updated = await db('self_registered_suppliers').where({ id }).first();
+    return res.json({ status: 'success', message: 'Supplier verified successfully', data: updated });
+  } catch (error) {
+    console.error('Error verifying supplier:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
+
+/**
+ * PATCH /api/suppliers/:id/status
+ * Quick status change (Pending / Verified / Active / Rejected)
+ */
+exports.updateSupplierStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowed = ['Pending', 'Verified', 'Active', 'Rejected'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid status value' });
+    }
+    await db('self_registered_suppliers').where({ id }).update({ status, updated_at: db.fn.now() });
+    const updated = await db('self_registered_suppliers').where({ id }).first();
+    return res.json({ status: 'success', data: updated });
+  } catch (error) {
+    console.error('Error updating supplier status:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
