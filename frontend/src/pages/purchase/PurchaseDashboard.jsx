@@ -7,7 +7,6 @@ import PurchaseMarketResearch from './PurchaseMarketResearch';
 import PurchaseRequests from './PurchaseRequests';
 import PurchaseDrugTenders from './PurchaseDrugTenders';
 import PurchaseSupplierBids from './PurchaseSupplierBids';
-import PurchaseRFQ from './PurchaseRFQ';
 import PurchaseSupplierQuotations from './PurchaseSupplierQuotations';
 import PurchaseOrders from './PurchaseOrders';
 import PurchaseReturns from './PurchaseReturns';
@@ -17,8 +16,6 @@ import PurchaseSmartTenders from './PurchaseSmartTenders';
 // 2. Supplier Management
 import PurchaseSupplierList from './PurchaseSupplierList';
 import PurchaseAddSupplier from './PurchaseAddSupplier';
-import PurchaseSupplierPerformance from './PurchaseSupplierPerformance';
-import PurchaseSupplierContracts from './PurchaseSupplierContracts';
 
 // 3. Stock & Inventory
 import PurchaseStockRequests from './PurchaseStockRequests';
@@ -53,7 +50,7 @@ const PurchaseDashboard = () => {
         { label: '1. Market Research (M4)',    path: '/purchase/market-research', icon: 'search',       color: '#0284c7' },
         { label: '2. Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
         { label: '3. Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
-        { label: '4. Quotation',               path: '/purchase/rfq',             icon: 'file',         color: '#22c55e' },
+        { label: '4. Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
         { label: '5. Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
       ]
     },
@@ -61,8 +58,6 @@ const PurchaseDashboard = () => {
     { label: 'Supplier Management', icon: 'building',
       children: [
         { label: 'Supplier Directory',       path: '/purchase/suppliers',          icon: 'truck',      color: '#10b981' },
-        { label: 'Supplier Performance',     path: '/purchase/supplier-performance', icon: 'bar-chart-2', color: '#8b5cf6' },
-        { label: 'Contracts',                path: '/purchase/contracts',          icon: 'file-text',  color: '#0284c7' },
       ]
     },
     { type: 'divider' },
@@ -87,7 +82,6 @@ const PurchaseDashboard = () => {
             <Route path="market-research" element={<PurchaseMarketResearch />} />
             <Route path="requests" element={<PurchaseRequests />} />
             <Route path="smart-tenders" element={<PurchaseSmartTenders />} />
-            <Route path="rfq" element={<PurchaseRFQ />} />
             <Route path="quotations" element={<PurchaseSupplierQuotations />} />
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
@@ -96,8 +90,6 @@ const PurchaseDashboard = () => {
             {/* 2. Supplier Management */}
             <Route path="suppliers" element={<PurchaseSupplierList />} />
             <Route path="suppliers/add" element={<PurchaseAddSupplier />} />
-            <Route path="supplier-performance" element={<PurchaseSupplierPerformance />} />
-            <Route path="contracts" element={<PurchaseSupplierContracts />} />
 
             {/* 5. Reports */}
             <Route path="reports/purchase" element={<PurchaseReportPurchase />} />
