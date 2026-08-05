@@ -15,6 +15,9 @@ const PharmacyHealthPage = lazy(() => import('../pages/LandingPage/PharmacyHealt
 const FarmingServicePage = lazy(() => import('../pages/LandingPage/FarmingServicePage'));
 const PrintingServicePage = lazy(() => import('../pages/LandingPage/PrintingServicePage'));
 const PrivacyPolicyPage   = lazy(() => import('../pages/LandingPage/PrivacyPolicyPage'));
+const PublicSalesContactPage = lazy(() => import('../pages/LandingPage/PublicSalesContactPage'));
+const PublicRentalContactPage = lazy(() => import('../pages/LandingPage/PublicRentalContactPage'));
+const PublicPharmacyContactPage = lazy(() => import('../pages/LandingPage/PublicPharmacyContactPage'));
 const TermsOfServicePage  = lazy(() => import('../pages/LandingPage/TermsOfServicePage'));
 const AgriRentCreateOrder = lazy(() => import('../pages/car-renting/manager/AgriRentCreateOrder'));
 const PrintingPublicTrack = lazy(() => import('../pages/printing/PrintingPublicTrack'));
@@ -99,7 +102,10 @@ const AppRoutes = () => {
         <Route path="/tenders/smart-bids" element={<PublicSmartTendersPage />} />
         <Route path="/tenders/buy" element={<PublicBuyTendersPage />} />
         <Route path="/tenders/:id" element={<TenderDetailPage />} />
+        <Route path="/sales-contact" element={<PublicSalesContactPage />} />
         <Route path="/procurement-contact" element={<PublicProcurementContactPage />} />
+        <Route path="/rental-contact" element={<PublicRentalContactPage />} />
+        <Route path="/pharmacy-contact" element={<PublicPharmacyContactPage />} />
         <Route path="/prescription-viewer" element={<PrescriptionViewer />} />
 
         <Route path="/chat"     element={<GlobalChatPage />} />
