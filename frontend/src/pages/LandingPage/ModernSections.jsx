@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Package, Wallet, ShoppingCart, Truck,
   Printer, BarChart3, Key, Settings, Upload, Rocket,
@@ -372,8 +372,16 @@ export function TestimonialsSection() {
 
 
 export function SmartFooter() {
+  const location = useLocation();
+  const isBuyPage = location.pathname.startsWith('/tenders/buy') || location.pathname.startsWith('/services/retail');
+  const isRentalPage = location.pathname.startsWith('/fleet-gallery') || location.pathname.startsWith('/services/farming');
+  const isPharmacyPage = location.pathname.startsWith('/services/pharmacy');
+
   const [socialLinks, setSocialLinks] = useState([]);
   const [procContact, setProcContact] = useState({ contact_phone1: '', contact_email: '' });
+  const [salesContact, setSalesContact] = useState({ contact_phone1: '', contact_email: '' });
+  const [rentalContact, setRentalContact] = useState({ contact_phone1: '', contact_email: '' });
+  const [pharmacyContact, setPharmacyContact] = useState({ contact_phone1: '', contact_email: '' });
 
   useEffect(() => {
     const fetchSocials = async () => {
@@ -392,8 +400,29 @@ export function SmartFooter() {
         // ignore — footer renders without contact details
       }
     };
+    const fetchSalesContact = async () => {
+      try {
+        const res = await apiClient.get('/sales-settings');
+        if (res.data) setSalesContact(res.data);
+      } catch (_) {}
+    };
+    const fetchRentalContact = async () => {
+      try {
+        const res = await apiClient.get('/rental-settings');
+        if (res.data) setRentalContact(res.data);
+      } catch (_) {}
+    };
+    const fetchPharmacyContact = async () => {
+      try {
+        const res = await apiClient.get('/pharmacy-settings');
+        if (res.data) setPharmacyContact(res.data);
+      } catch (_) {}
+    };
     fetchSocials();
     fetchProcContact();
+    fetchSalesContact();
+    fetchRentalContact();
+    fetchPharmacyContact();
   }, []);
 
   const FacebookIcon = ({ size, color }) => (
@@ -429,7 +458,7 @@ export function SmartFooter() {
     e.currentTarget.style.textDecoration = 'underline';
   };
   const handleLinkLeave = (e) => {
-    e.currentTarget.style.color = '#87CEEB';
+    e.currentTarget.style.color = '#1B89B6';
     e.currentTarget.style.textDecoration = 'none';
   };
 
@@ -514,7 +543,7 @@ export function SmartFooter() {
             {['About', 'Admissions', 'Academics'].map((label, i) => (
               <a 
                 key={i} href="#" 
-                style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease', fontSize: '0.95rem' }} 
+                style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease', fontSize: '0.95rem' }} 
                 onMouseEnter={handleLinkHover} 
                 onMouseLeave={handleLinkLeave}
               >
@@ -526,33 +555,35 @@ export function SmartFooter() {
         <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
           <div className="sf-contact-list">
-            {procContact.contact_phone1 && (
+            {(isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1) && (
               <div className="sf-contact-item">
                 <Phone size={18} style={{ flexShrink: 0 }} />
-                <span>{procContact.contact_phone1}</span>
+                <span>{isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1}</span>
               </div>
             )}
-            {procContact.contact_email && (
+            {(isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email) && (
               <div className="sf-contact-item">
                 <Mail size={18} style={{ flexShrink: 0 }} />
-                <span>{procContact.contact_email}</span>
+                <span>{isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email}</span>
               </div>
             )}
             <div className="sf-contact-item" style={{ marginTop: '8px' }}>
               <Link
-                to="/procurement-contact"
+                to={isPharmacyPage ? "/pharmacy-contact" : isRentalPage ? "/rental-contact" : isBuyPage ? "/sales-contact" : "/procurement-contact"}
                 style={{
-                  display: 'inline-block',
-                  color: '#87CEEB',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#1B89B6',
+                  textDecoration: 'none',
                   fontWeight: 700,
                   fontSize: '0.9rem',
-                  textDecoration: 'none',
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#8BC34A'; e.currentTarget.style.textDecoration = 'underline'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#87CEEB'; e.currentTarget.style.textDecoration = 'none'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#1B89B6'; e.currentTarget.style.textDecoration = 'none'; }}
               >
-                Procurement Team
+                <Phone size={14} /> {isPharmacyPage ? "Pharmacy Team" : isRentalPage ? "Rental Team" : isBuyPage ? "Sales Team" : "Procurement Team"}
               </Link>
             </div>
           </div>
@@ -584,7 +615,7 @@ export function SmartFooter() {
               type="submit"
               style={{
                 background: 'transparent',
-                color: '#87CEEB',
+                color: '#1B89B6',
                 border: 'none',
                 fontWeight: 700, 
                 fontSize: '0.95rem',
@@ -598,7 +629,7 @@ export function SmartFooter() {
                 e.currentTarget.style.textDecoration = 'underline';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.color = '#87CEEB';
+                e.currentTarget.style.color = '#1B89B6';
                 e.currentTarget.style.textDecoration = 'none';
               }}
             >
@@ -622,8 +653,8 @@ export function SmartFooter() {
             &copy; 2026 SUTANA Enterprise Management System. All rights reserved.
           </span>
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Link to="/privacy" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</Link>
-              <Link to="/terms"   style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</Link>
+              <Link to="/privacy" style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</Link>
+              <Link to="/terms"   style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</Link>
             </div>
         </div>
       </div>
