@@ -814,7 +814,7 @@ export default () => {
 
 
   return (
-    <div className="tender-page-root" style={{ overflowX: 'hidden' }}>
+    <div className="tender-page-root">
       <style>{STYLES}</style>
       <PublicNav />
 
