@@ -200,6 +200,9 @@ const STYLES = `
 }
 `;
 
+// =========================================================================
+// MAIN PAGE COMPONENT
+// =========================================================================
 const PublicSmartTendersPage = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -209,7 +212,6 @@ const PublicSmartTendersPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTender, setSelectedTender] = useState(null);
   const [biddingStep, setBiddingStep] = useState(0); // 0: list, 2: bid form, 3: celebration
-  const [showContactChat, setShowContactChat] = useState(false);
   
   // Bid form state
   const [bidItems, setBidItems] = useState({});
@@ -224,7 +226,6 @@ const PublicSmartTendersPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // Procurement contact info derived from tenders (first tender with contact data set by Purchase team)
-  const [procurementContact, setProcurementContact] = useState({ phone1: '', phone2: '', email: '' });
 
   useEffect(() => { fetchTenders(); }, []);
 
@@ -256,17 +257,6 @@ const PublicSmartTendersPage = () => {
     } catch (err) {
       console.error(err);
     }
-
-    try {
-      const settingsRes = await api.get('/procurement-settings');
-      if (settingsRes.data) {
-        setProcurementContact({
-          phone1: settingsRes.data.contact_phone1 || '',
-          phone2: settingsRes.data.contact_phone2 || '',
-          email: settingsRes.data.contact_email || ''
-        });
-      }
-    } catch (err) { console.error('Failed to load contact settings', err); }
 
     setLoading(false);
   };
@@ -374,7 +364,7 @@ const PublicSmartTendersPage = () => {
   };
 
   return (
-    <div className="tender-page-root" style={{ overflowX: 'clip' }}>
+    <div className="tender-page-root">
       <style>{STYLES}</style>
       <PublicNav />
 
@@ -383,15 +373,6 @@ const PublicSmartTendersPage = () => {
         <CelebrationModal onClose={handleCelebrationClose} name={competitorName} />
       )}
 
-      {/* ===== Contact Chat Modal ===== */}
-      {showContactChat && (
-        <ContactChatModal 
-          onClose={() => setShowContactChat(false)} 
-          procurementContact={procurementContact} 
-          userEmail={user?.email} 
-          api={api} 
-        />
-      )}
 
       {/* Hero */}
       <div className="tender-hero-wrap">
@@ -593,14 +574,6 @@ const PublicSmartTendersPage = () => {
                   </div>
                 </div>
 
-                <hr style={{ border: 'none', borderTop: '1px solid #228B22', margin: 0 }} />
-                <div style={{ background: '#FFFFFF', padding: 'clamp(40px, 5vw, 64px) clamp(16px, 5vw, 40px)', textAlign: 'center' }}>
-                  <h3 style={{ fontWeight: 900, fontSize: '24px', color: '#1B5E20', margin: '0 0 12px' }}>Have Questions About a Tender?</h3>
-                  <p style={{ color: '#424242', margin: '0 0 24px', fontSize: '15px' }}>Our procurement team is ready to help clarify any requirements.</p>
-                  <button onClick={() => setShowContactChat(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 32px', background: '#2E8B57', color: '#FFFFFF', borderRadius: '8px', border: 'none', fontWeight: 600, fontSize: '14px', cursor: 'pointer', transition: 'transform 0.15s, background 0.15s' }} onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.background = '#228B22'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)'; }} onMouseOut={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = '#2E8B57'; e.currentTarget.style.boxShadow = 'none'; }}>
-                    <MessageCircle size={18} /> Contact Procurement Team
-                  </button>
-                </div>
               </div>
             )}
 
