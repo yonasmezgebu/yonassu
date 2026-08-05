@@ -574,30 +574,6 @@ const FarmingServicePage = () => {
           </div>
         </section>
 
-        {/* ── Trust, Legal & Contact ── */}
-        <section style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)', padding: '72px 24px', position: 'relative', overflow: 'hidden' }}>
-          {/* decorative glow */}
-          <div style={{ position: 'absolute', top: -120, right: -120, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(5,150,105,0.18) 0%,transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -80, left: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 70%)', pointerEvents: 'none' }} />
-
-          <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-            {/* Contact Strip - Primary Call to Action */}
-            <div style={{ marginTop: 40, background: 'rgba(5,150,105,0.12)', borderRadius: 20, padding: '32px 36px', border: '1px solid rgba(5,150,105,0.3)', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#34d399', marginBottom: 6 }}>Ready to Hire?</div>
-                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#fff', margin: 0 }}>Call us directly to book a machine & driver.</h3>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                <a href="tel:+251911000000" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', background: 'linear-gradient(135deg,#059669,#10b981)', borderRadius: 12, border: 'none', color: '#fff', textDecoration: 'none', fontSize: 16, fontWeight: 800, boxShadow: '0 4px 14px rgba(5,150,105,0.35)', transition: 'transform 0.2s' }}>
-                  <Phone size={20} color="#fff" /> +251 911 000 000
-                </a>
-                <a href="mailto:agrirent@sutana.com" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', background: 'rgba(255,255,255,0.08)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>
-                  <Mail size={18} color="#34d399" /> agrirent@sutana.com
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
         {/* ── STATIC SECTIONS END ── */}
       </section>
 
