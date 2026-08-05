@@ -75,99 +75,6 @@ const StatCard = ({ label, value, sub, color = '#3b82f6', icon }) => (
   </div>
 );
 
-// ─── Customer Message Inbox ──────────────────────────────────────────────────
-const CustomerMessageInbox = ({ api }) => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = async () => {
-    try {
-      const res = await api.get('/procurement-settings/messages');
-      setMessages(res.data || []);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
-
-  const markRead = async (id) => {
-    try {
-      await api.patch(`/procurement-settings/messages/${id}/read`);
-      setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
-      window.dispatchEvent(new Event('refreshNotifications'));
-    } catch (err) { console.error(err); }
-  };
-
-  const markAllRead = async () => {
-    try {
-      await api.patch('/procurement-settings/messages/mark-all-read');
-      setMessages(prev => prev.map(m => ({ ...m, is_read: true })));
-      window.dispatchEvent(new Event('refreshNotifications'));
-    } catch (err) { console.error(err); }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const unread = messages.filter(m => !m.is_read).length;
-
-  return (
-    <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ margin: '0 0 2px', fontSize: '16px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <MessageCircle size={18} color="#9333ea" />
-            Customer Inquiry Inbox
-            {unread > 0 && (
-              <span style={{ background: '#9333ea', color: 'white', borderRadius: '20px', fontSize: '11px', fontWeight: 700, padding: '2px 10px' }}>{unread} new</span>
-            )}
-          </h2>
-          <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Messages sent by customers from the public tender contact form.</p>
-        </div>
-        {unread > 0 && (
-          <button onClick={markAllRead} style={{ padding: '8px 14px', background: '#f5f3ff', color: '#6b21a8', border: '1px solid #e9d5ff', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}>
-            Mark All Read
-          </button>
-        )}
-      </div>
-      {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Loading messages...</div>
-      ) : messages.length === 0 ? (
-        <div style={{ padding: '48px', textAlign: 'center' }}>
-          <MessageCircle size={40} color="#e2e8f0" style={{ marginBottom: '12px' }} />
-          <p style={{ margin: 0, color: '#94a3b8', fontWeight: 600 }}>No messages yet</p>
-          <p style={{ margin: '4px 0 0', color: '#cbd5e1', fontSize: '13px' }}>Customer inquiries from the public tender page will appear here.</p>
-        </div>
-      ) : (
-        <div>
-          {messages.map(msg => (
-            <div key={msg.id} onClick={() => !msg.is_read && markRead(msg.id)}
-              style={{
-                padding: '16px 24px', borderBottom: '1px solid #f8fafc', cursor: msg.is_read ? 'default' : 'pointer',
-                background: msg.is_read ? 'white' : 'linear-gradient(135deg, #fdf4ff, #faf5ff)',
-                transition: 'background 0.2s'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {!msg.is_read && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9333ea', flexShrink: 0, display: 'inline-block' }} />}
-                  <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '14px' }}>{msg.sender_name}</span>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>•</span>
-                  <a href={`mailto:${msg.sender_email}`} style={{ fontSize: '13px', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>{msg.sender_email}</a>
-                  {msg.sender_phone && <span style={{ fontSize: '12px', color: '#64748b' }}>• {msg.sender_phone}</span>}
-                </div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{new Date(msg.created_at).toLocaleString()}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: '14px', color: '#374151', lineHeight: 1.6, paddingLeft: msg.is_read ? '0' : '16px' }}>{msg.message}</p>
-              {!msg.is_read && (
-                <div style={{ marginTop: '8px', paddingLeft: '16px' }}>
-                  <span style={{ fontSize: '11px', color: '#9333ea', fontWeight: 600 }}>Click to mark as read</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const PurchaseSmartTenders = () => {
@@ -225,13 +132,8 @@ const PurchaseSmartTenders = () => {
   const [submittingFund, setSubmittingFund] = useState(false);
   const [viewFundRequest, setViewFundRequest] = useState(null); // for detail modal
 
-  // Contact Settings (global procurement contact)
-  const [contactSettings, setContactSettings] = useState({ contactPhone1: '', contactPhone2: '', contactEmail: '' });
-  const [savingContact, setSavingContact] = useState(false);
-  const [contactSaved, setContactSaved] = useState(false);
-
   // ─── Fetch ────────────────────────────────────────────────────────────────
-  useEffect(() => { fetchTenders(); fetchContactSettings(); fetchFundRequests(); }, []);
+  useEffect(() => { fetchTenders(); fetchFundRequests(); }, []);
 
   const fetchTenders = async () => {
     setLoadingTenders(true);
@@ -250,30 +152,6 @@ const PurchaseSmartTenders = () => {
       setFundRequests(Array.isArray(list) ? list : []);
     } catch (err) { console.error(err); }
     finally { setLoadingFundRequests(false); }
-  };
-
-  const fetchContactSettings = async () => {
-    try {
-      const res = await api.get('/procurement-settings');
-      const d = res.data || {};
-      setContactSettings({
-        contactPhone1: d.contact_phone1 || '',
-        contactPhone2: d.contact_phone2 || '',
-        contactEmail: d.contact_email || '',
-      });
-    } catch (err) { console.error(err); }
-  };
-
-  const handleSaveContact = async (e) => {
-    e.preventDefault();
-    setSavingContact(true);
-    try {
-      await api.put('/procurement-settings', contactSettings);
-      setContactSaved(true);
-      setTimeout(() => setContactSaved(false), 3000);
-    } catch (err) {
-      showToast('Failed to save contact settings: ' + (err?.response?.data?.message || err.message), 'error');
-    } finally { setSavingContact(false); }
   };
 
   const loadBids = async (tender) => {
@@ -471,7 +349,6 @@ This is an official award notification from SUTANA's procurement system.
     { id: 'evaluate', label: 'Evaluate Bids', icon: <BarChart2 size={15} />, count: stats.totalBids },
     { id: 'fund_requests', label: 'Fund Requests', icon: <Wallet size={15} />, count: stats.awarded },
     { id: 'history', label: 'History & Logs', icon: <Clock size={15} />, count: stats.awarded },
-    { id: 'contact', label: 'Contact Settings', icon: <Phone size={15} /> },
   ];
 
   const inputStyle = {
@@ -1061,78 +938,7 @@ This is an official award notification from SUTANA's procurement system.
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          TAB: CONTACT SETTINGS
-      ══════════════════════════════════════════════════ */}
-      {activeTab === 'contact' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          {/* ── Contact Info Settings Card ── */}
-          <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '28px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Phone size={18} color="#3b82f6" /> Procurement Contact Settings
-              </h2>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>
-                Set the phone numbers and email address that will appear in the public "Contact Procurement Team" popup. Customers see this when they click the contact button on the tender page.
-              </p>
-            </div>
-            {contactSaved && (
-              <div style={{ marginBottom: '16px', padding: '10px 16px', background: '#ecfdf5', border: '1px solid #86efac', borderRadius: '8px', color: '#166534', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle size={16} /> Settings saved successfully!
-              </div>
-            )}
-            <form onSubmit={handleSaveContact}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-                <div>
-                  <label style={labelStyle}>Phone 1 <span style={{ color: '#64748b', fontWeight: 400 }}>(Primary)</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}><Phone size={14} color="#94a3b8" /></span>
-                    <input
-                      value={contactSettings.contactPhone1}
-                      onChange={e => setContactSettings({ ...contactSettings, contactPhone1: e.target.value })}
-                      style={{ ...inputStyle, paddingLeft: '36px' }} placeholder="+251 911 000 000"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>Phone 2 <span style={{ color: '#64748b', fontWeight: 400 }}>(Secondary)</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}><Phone size={14} color="#94a3b8" /></span>
-                    <input
-                      value={contactSettings.contactPhone2}
-                      onChange={e => setContactSettings({ ...contactSettings, contactPhone2: e.target.value })}
-                      style={{ ...inputStyle, paddingLeft: '36px' }} placeholder="+251 922 000 000"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>Email Address <span style={{ color: '#64748b', fontWeight: 400 }}>(Procurement)</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}><Mail size={14} color="#94a3b8" /></span>
-                    <input
-                      type="email"
-                      value={contactSettings.contactEmail}
-                      onChange={e => setContactSettings({ ...contactSettings, contactEmail: e.target.value })}
-                      style={{ ...inputStyle, paddingLeft: '36px' }} placeholder="procurement@sutana.com"
-                    />
-                  </div>
-                </div>
-              </div>
-              <button type="submit" disabled={savingContact} style={{
-                padding: '11px 28px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white',
-                border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontSize: '14px',
-                display: 'flex', alignItems: 'center', gap: '8px', opacity: savingContact ? 0.7 : 1
-              }}>
-                <Save size={16} /> {savingContact ? 'Saving...' : 'Save Contact Settings'}
-              </button>
-            </form>
-          </div>
-
-          {/* ── Customer Message Inbox ── */}
-          <CustomerMessageInbox inputStyle={inputStyle} api={api} />
-        </div>
-      )}
 
 
       {/* ══════════════════════════════════════════════════
