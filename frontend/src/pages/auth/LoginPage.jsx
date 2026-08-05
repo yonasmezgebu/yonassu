@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import authService from '../../services/authService';
 import styles from './LoginPage.module.css';
 
@@ -204,7 +204,13 @@ const LoginPage = () => {
                 className={`${styles.btnPrimary}${loading ? ' ' + styles.loading : ''}`}
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <style>{`@keyframes loginSpin { 100% { transform: rotate(360deg); } }`}</style>
+                    <Loader2 size={18} style={{ animation: 'loginSpin 1s linear infinite' }} />
+                    Signing in...
+                  </div>
+                ) : 'Sign In'}
               </button>
             </form>
 
