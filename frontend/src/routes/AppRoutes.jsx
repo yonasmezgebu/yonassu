@@ -45,6 +45,7 @@ const EmployeeDashboard = lazy(() => import('../pages/employee/EmployeePortalDas
 const PrescriptionViewer = lazy(() => import('../pages/shared/PrescriptionViewer'));
 const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
 const PublicSmartTendersPage = lazy(() => import('../pages/LandingPage/PublicSmartTendersPage'));
+const PublicProcurementContactPage = lazy(() => import('../pages/LandingPage/PublicProcurementContactPage'));
 const PublicBuyTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
 const TenderDetailPage = lazy(() => import('../pages/LandingPage/TenderDetailPage'));
 const TenderManagePage = lazy(() => import('../pages/admin/TenderManagePage'));
@@ -94,10 +95,11 @@ const AppRoutes = () => {
 
         <Route path="/news" element={<NewsPage />} />
         <Route path="/news/:type" element={<NewsPage />} />
-        <Route path="/tenders" element={<PublicTendersPage />} />
+        <Route path="/tenders" element={<PublicSmartTendersPage />} />
         <Route path="/tenders/smart-bids" element={<PublicSmartTendersPage />} />
         <Route path="/tenders/buy" element={<PublicBuyTendersPage />} />
         <Route path="/tenders/:id" element={<TenderDetailPage />} />
+        <Route path="/procurement-contact" element={<PublicProcurementContactPage />} />
         <Route path="/prescription-viewer" element={<PrescriptionViewer />} />
 
         <Route path="/chat"     element={<GlobalChatPage />} />
