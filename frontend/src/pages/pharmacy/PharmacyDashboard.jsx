@@ -23,6 +23,7 @@ import CEOReport from './CEOReport';
 import ExpiredDrugReport from './ExpiredDrugReport';
 import DrugHideForm from './DrugHideForm';
 import PharmacyPendingShipments from './PharmacyPendingShipments';
+import PharmacyContact from './PharmacyContact';
 
 // New Imports
 import PharmacyMedicines from './PharmacyMedicines';
@@ -60,7 +61,7 @@ const PharmacyDashboard = () => {
     '/pharmacy/store-inventory', '/pharmacy/stock-operations', 
     '/pharmacy/procurement-requests', '/pharmacy/stock-adjustment', 
     '/pharmacy/expiry-management', '/pharmacy/batches', '/pharmacy/health-publisher',
-    '/pharmacy/medicines'
+    '/pharmacy/medicines', '/pharmacy/contact'
   ];
   const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
   const hideBackButton = ['/pharmacy/overview', '/pharmacy'].includes(location.pathname) || isFullBleed;
@@ -80,10 +81,11 @@ const PharmacyDashboard = () => {
         { label: 'Health Publisher', path: '/pharmacy/health-publisher',      icon: 'globe',         color: '#059669' },
       ] },
 
-    { label: 'Staff', icon: 'users',
+    { label: 'Staff & Contact', icon: 'users',
       children: [
         { label: 'Staff Mgmt',      path: '/pharmacy/staff',          icon: 'settings' },
         { label: 'Branches',        path: '/pharmacy/branches',       icon: 'building',  color: '#f59e0b' },
+        { label: 'Contact',         path: '/pharmacy/contact',        icon: 'phone',     color: '#10b981' },
       ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
@@ -163,6 +165,7 @@ const PharmacyDashboard = () => {
             <Route path="warehouses"    element={<WarehouseManagement />} />
             <Route path="branch-drugs"  element={<BranchDrugs />} />
             <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
+            <Route path="contact"       element={<PharmacyContact />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
