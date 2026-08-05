@@ -373,6 +373,7 @@ export function TestimonialsSection() {
 
 export function SmartFooter() {
   const [socialLinks, setSocialLinks] = useState([]);
+  const [procContact, setProcContact] = useState({ contact_phone1: '', contact_email: '' });
 
   useEffect(() => {
     const fetchSocials = async () => {
@@ -383,7 +384,16 @@ export function SmartFooter() {
         // Server unavailable — footer renders without social icons
       }
     };
+    const fetchProcContact = async () => {
+      try {
+        const res = await apiClient.get('/procurement-settings');
+        if (res.data) setProcContact(res.data);
+      } catch (_) {
+        // ignore — footer renders without contact details
+      }
+    };
     fetchSocials();
+    fetchProcContact();
   }, []);
 
   const FacebookIcon = ({ size, color }) => (
@@ -501,7 +511,7 @@ export function SmartFooter() {
         <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Quick Links</h4>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {['About', 'Admissions', 'Academics', 'Contact Us'].map((label, i) => (
+            {['About', 'Admissions', 'Academics'].map((label, i) => (
               <a 
                 key={i} href="#" 
                 style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease', fontSize: '0.95rem' }} 
@@ -512,23 +522,38 @@ export function SmartFooter() {
               </a>
             ))}
           </nav>
-        </div>
-
-        {/* Column 3: Contact Info */}
+        </div>        {/* Column 3: Contact Info */}
         <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
           <div className="sf-contact-list">
-            <div className="sf-contact-item">
-              <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <span style={{ lineHeight: 1.5 }}>Injibara, Awi Zone<br />Amhara Region, Ethiopia</span>
-            </div>
-            <div className="sf-contact-item">
-              <Phone size={18} style={{ flexShrink: 0 }} />
-              <span>+251 911 234 567</span>
-            </div>
-            <div className="sf-contact-item">
-              <Mail size={18} style={{ flexShrink: 0 }} />
-              <span>info@sutana.com</span>
+            {procContact.contact_phone1 && (
+              <div className="sf-contact-item">
+                <Phone size={18} style={{ flexShrink: 0 }} />
+                <span>{procContact.contact_phone1}</span>
+              </div>
+            )}
+            {procContact.contact_email && (
+              <div className="sf-contact-item">
+                <Mail size={18} style={{ flexShrink: 0 }} />
+                <span>{procContact.contact_email}</span>
+              </div>
+            )}
+            <div className="sf-contact-item" style={{ marginTop: '8px' }}>
+              <Link
+                to="/procurement-contact"
+                style={{
+                  display: 'inline-block',
+                  color: '#87CEEB',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#8BC34A'; e.currentTarget.style.textDecoration = 'underline'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#87CEEB'; e.currentTarget.style.textDecoration = 'none'; }}
+              >
+                Procurement Team
+              </Link>
             </div>
           </div>
         </div>
@@ -539,49 +564,42 @@ export function SmartFooter() {
           <p style={{ fontSize: '0.9rem', marginBottom: '16px', color: '#FFFFFF', lineHeight: 1.5 }}>
             Subscribe to get the latest updates and news.
           </p>
-          <form onSubmit={e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <form onSubmit={e => e.preventDefault()} style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.4)', paddingBottom: '8px', transition: 'border-color 0.2s' }}>
             <input 
               type="email" 
               placeholder="Your email address" 
               required
               style={{
-                width: '100%', padding: '10px 14px',
-                background: '#FFFFFF',
-                border: '1px solid #8D6E63',
-                borderRadius: '6px',
-                color: '#424242',
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                color: '#FFFFFF',
                 fontSize: '0.95rem',
                 outline: 'none',
-                transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
               }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = '#047454';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(4,116,84,0.2)';
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = '#8D6E63';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              onFocus={e => { e.currentTarget.parentElement.style.borderColor = '#8BC34A'; }}
+              onBlur={e => { e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.4)'; }}
             />
             <button 
               type="submit"
               style={{
-                width: '100%', padding: '10px',
-                background: '#2E8B57', color: '#FFFFFF',
-                border: 'none', borderRadius: '8px',
-                fontWeight: 700, fontSize: '0.95rem',
+                background: 'transparent',
+                color: '#87CEEB',
+                border: 'none',
+                fontWeight: 700, 
+                fontSize: '0.95rem',
                 cursor: 'pointer',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
+                padding: '0 4px',
+                textDecoration: 'none',
+                transition: 'color 0.15s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                e.currentTarget.style.background = '#1B5E20';
+                e.currentTarget.style.color = '#8BC34A';
+                e.currentTarget.style.textDecoration = 'underline';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.background = '#2E8B57';
+                e.currentTarget.style.color = '#87CEEB';
+                e.currentTarget.style.textDecoration = 'none';
               }}
             >
               Subscribe
@@ -594,13 +612,16 @@ export function SmartFooter() {
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
         <div style={{
           maxWidth: 1200, margin: '0 auto', padding: '24px 40px',
-          display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '24px',
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center', gap: '24px',
           fontSize: '0.85rem'
         }}>
+          <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+            INJIBARA ETHIOPIA
+          </span>
           <span style={{ color: '#FFFFFF', textAlign: 'center' }}>
             &copy; 2026 SUTANA Enterprise Management System. All rights reserved.
           </span>
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <Link to="/privacy" style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</Link>
               <Link to="/terms"   style={{ color: '#87CEEB', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</Link>
             </div>
