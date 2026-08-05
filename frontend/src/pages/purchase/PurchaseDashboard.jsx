@@ -30,10 +30,9 @@ import PurchaseApprovalsRejected from './PurchaseApprovalsRejected';
 
 // 5. Reports
 import PurchaseReportPurchase from './PurchaseReportPurchase';
-import PurchaseReportSupplier from './PurchaseReportSupplier';
 import PurchaseReportDelivery from './PurchaseReportDelivery';
-import PurchaseReportOutstanding from './PurchaseReportOutstanding';
-import PurchaseReportMonthly from './PurchaseReportMonthly';
+import PurchaseReportCEO from './PurchaseReportCEO';
+import PurchaseReportFinancial from './PurchaseReportFinancial';
 
 // Flow 2
 import PurchaseApprovedRequests from './PurchaseApprovedRequests';
@@ -47,11 +46,11 @@ const PurchaseDashboard = () => {
     { type: 'divider' },
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
-        { label: '1. Market Research (M4)',    path: '/purchase/market-research', icon: 'search',       color: '#0284c7' },
-        { label: '2. Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
-        { label: '3. Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
-        { label: '4. Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
-        { label: '5. Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
+        { label: 'Market Research (M4)',    path: '/purchase/market-research', icon: 'search',       color: '#0284c7' },
+        { label: 'Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
+        { label: 'Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
+        { label: 'Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
+        { label: 'Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
       ]
     },
     { type: 'divider' },
@@ -63,10 +62,10 @@ const PurchaseDashboard = () => {
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart-2',
       children: [
-        { label: '22. Purchase Report',        path: '/purchase/reports/purchase',    icon: 'file-text',    color: '#0284c7' },
-        { label: '23. Supplier Report',        path: '/purchase/reports/supplier',    icon: 'users',        color: '#8b5cf6' },
-        { label: '24. Delivery Report',        path: '/purchase/reports/delivery',    icon: 'truck',        color: '#d97706' },
-        { label: '26. Monthly Summary',        path: '/purchase/reports/monthly',     icon: 'bar-chart-2',  color: '#4f46e5' },
+        { label: 'Purchase Report',         path: '/purchase/reports/purchase',    icon: 'file-text',    color: '#0284c7' },
+        { label: 'Delivery Report',         path: '/purchase/reports/delivery',    icon: 'truck',        color: '#d97706' },
+        { label: 'CEO Report',              path: '/purchase/reports/ceo',         icon: 'briefcase',    color: '#10b981' },
+        { label: 'Financial Review',        path: '/purchase/reports/financial',   icon: 'dollar-sign',  color: '#8b5cf6' },
       ]
     }
   ];
@@ -93,10 +92,9 @@ const PurchaseDashboard = () => {
 
             {/* 5. Reports */}
             <Route path="reports/purchase" element={<PurchaseReportPurchase />} />
-            <Route path="reports/supplier" element={<PurchaseReportSupplier />} />
             <Route path="reports/delivery" element={<PurchaseReportDelivery />} />
-            <Route path="reports/outstanding" element={<PurchaseReportOutstanding />} />
-            <Route path="reports/monthly" element={<PurchaseReportMonthly />} />
+            <Route path="reports/ceo" element={<PurchaseReportCEO />} />
+            <Route path="reports/financial" element={<PurchaseReportFinancial />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
