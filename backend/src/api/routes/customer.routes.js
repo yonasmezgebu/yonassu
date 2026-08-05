@@ -28,6 +28,15 @@ router.put(
 );
 
 router.post(
+  '/profile/photo',
+  authenticate,
+  authorizeRoles(['Customer']),
+  uploads.generic.single('photo'),
+  handleUploadError,
+  CustomerController.uploadProfilePhoto
+);
+
+router.post(
   '/change-password',
   authenticate,
   authorizeRoles(['Customer']),
