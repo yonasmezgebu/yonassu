@@ -19,6 +19,7 @@ import RentalReport from './manager/RentalReport';
 import RevenueReport from './manager/RevenueReport';
 import CarRentingStoreRequest from './manager/CarRentingStoreRequest';
 import OverdueNotifier from './manager/OverdueNotifier';
+import RentalContact from './manager/RentalContact';
 
 const CarRentingDashboard = () => {
   const menuItems = [
@@ -56,6 +57,13 @@ const CarRentingDashboard = () => {
         { label: 'Rental Report',      path: '/car-renting/manager/reports/rental',      icon: 'trending-up',  color: '#3b82f6' },
         { label: 'Revenue Report',     path: '/car-renting/manager/reports/revenue',     icon: 'dollar-sign',  color: '#10b981' },
       ]
+    },
+    { type: 'divider' },
+
+    { label: 'Settings', icon: 'settings',
+      children: [
+        { label: 'Contact Settings',   path: '/car-renting/manager/contact',             icon: 'phone-call',   color: '#228B22' },
+      ]
     }
   ];
 
@@ -86,6 +94,9 @@ const CarRentingDashboard = () => {
           {/* Reports */}
           <Route path="manager/reports/rental"      element={<RentalReport />} />
           <Route path="manager/reports/revenue"     element={<RevenueReport />} />
+
+          {/* Settings */}
+          <Route path="manager/contact" element={<RentalContact />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="manager/dashboard" replace />} />
