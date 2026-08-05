@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../../services/apiClient';
 import {
   Truck, User, Mail, Phone, Building2, Tag, MapPin, FileText,
   CheckCircle2, Clock, ChevronRight, AlertCircle, Loader2,
   ShieldCheck, Star, Package, ArrowRight
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const STYLES = `
@@ -146,6 +147,52 @@ const STYLES = `
     background: #DCEDC8; color: #33691E;
     font-size: 0.65rem; font-weight: 700; padding: 2px 8px;
     border-radius: 20px; letter-spacing: 0.08em;
+  }
+
+  /* ── Profile Avatar ── */
+  .bs-avatar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1.5px solid #bbf7d0;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .bs-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #228B22 0%, #2E8B57 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.75rem; font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(34,139,34,0.35);
+    letter-spacing: -0.02em;
+    position: relative;
+    overflow: hidden;
+  }
+  .bs-avatar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 50%; height: 100%;
+    background: rgba(255,255,255,0.18);
+    transform: skewX(-15deg);
+  }
+  .bs-avatar-img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+  }
+  .bs-avatar-info { flex: 1; min-width: 0; }
+  .bs-avatar-name {
+    font-size: 1.1rem; font-weight: 700; color: #14532d;
+    margin: 0 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bs-avatar-role {
+    font-size: 0.8rem; color: #16a34a; font-weight: 500;
+    background: #dcfce7; padding: 2px 10px; border-radius: 20px;
+    display: inline-block;
   }
   .bs-input, .bs-select, .bs-textarea {
     width: 100%; box-sizing: border-box;
@@ -299,6 +346,8 @@ const CustomerBecomeSupplier = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  const { user } = useAuth();
 
   const [form, setForm] = useState({
     company_name: '',
@@ -490,6 +539,31 @@ const CustomerBecomeSupplier = () => {
                 <div className="bs-form">
                   {/* Auto-filled section */}
                   <p className="bs-section-label"><User size={13} />Account Details (Auto-filled)</p>
+
+                  {/* ── Profile Avatar Block ── */}
+                  {(() => {
+                    const fullName = userProfile?.name || userProfile?.full_name || '';
+                    const initials = fullName.trim().split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || '?';
+                    const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
+                    const rawPic = userProfile?.profile_picture || user?.profilePhoto;
+                    const picUrl = rawPic
+                      ? (rawPic.startsWith('http') ? rawPic : `${baseUrl}${rawPic.startsWith('/') ? rawPic : `/${rawPic}`}`)
+                      : null;
+                    return (
+                      <div className="bs-avatar-wrap">
+                        <div className="bs-avatar">
+                          {picUrl
+                            ? <img src={picUrl} alt="Profile" className="bs-avatar-img" />
+                            : initials
+                          }
+                        </div>
+                        <div className="bs-avatar-info">
+                          <p className="bs-avatar-name">{fullName || 'Your Name'}</p>
+                          <span className="bs-avatar-role">Customer</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="bs-grid-2" style={{ marginBottom: 24 }}>
                     <div className="bs-field">
                       <p className="bs-label"><User size={14} />Full Name</p>
