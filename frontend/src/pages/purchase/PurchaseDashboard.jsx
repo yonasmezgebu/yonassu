@@ -12,6 +12,7 @@ import PurchaseOrders from './PurchaseOrders';
 import PurchaseReturns from './PurchaseReturns';
 import PurchaseHistory from './PurchaseHistory';
 import PurchaseSmartTenders from './PurchaseSmartTenders';
+import PurchaseContact from './PurchaseContact';
 
 // 2. Supplier Management
 import PurchaseSupplierList from './PurchaseSupplierList';
@@ -43,6 +44,7 @@ import styles from './PurchaseDashboard.module.css';
 const PurchaseDashboard = () => {
   const menuItems = [
     { label: 'Dashboard', path: '/purchase/overview', icon: 'home' },
+    { label: 'Contact Settings', path: '/purchase/contact', icon: 'phone' },
     { type: 'divider' },
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
@@ -72,7 +74,7 @@ const PurchaseDashboard = () => {
 
   return (
     <div className={styles.dashboardWrapper}>
-      <DashboardLayout menuItems={menuItems} title="Purchase Manager Dashboard — All Departments">
+      <DashboardLayout menuItems={menuItems} title="Purchase Manager Dashboard">
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Routes>
             <Route path="overview" element={<PurchaseHome />} />
@@ -82,6 +84,7 @@ const PurchaseDashboard = () => {
             <Route path="requests" element={<PurchaseRequests />} />
             <Route path="smart-tenders" element={<PurchaseSmartTenders />} />
             <Route path="quotations" element={<PurchaseSupplierQuotations />} />
+            <Route path="contact" element={<PurchaseContact />} />
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="history" element={<PurchaseHistory />} />
