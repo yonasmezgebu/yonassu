@@ -28,16 +28,17 @@ const STYLES = `
 
   .ppc-modal {
     width: 100%;
-    max-width: 960px;
-    max-height: 92vh;
+    max-width: 900px;
+    max-height: 90vh;
     overflow-y: auto;
     overflow-x: hidden;
+    background: #1B5E20;
     border-radius: 14px;
     display: flex;
     flex-direction: row;
-    align-items: stretch;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.35);
-    animation: ppcSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    align-items: flex-start;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    animation: ppcSlideUp 0.3s ease;
     scrollbar-width: thin;
     scrollbar-color: #A5D6A7 #1B5E20;
   }
@@ -46,127 +47,134 @@ const STYLES = `
   .ppc-modal::-webkit-scrollbar-track { background: #1B5E20; }
 
   @keyframes ppcSlideUp {
-    from { transform: translateY(40px) scale(0.97); opacity: 0; }
+    from { transform: translateY(20px) scale(0.98); opacity: 0; }
     to   { transform: translateY(0) scale(1);       opacity: 1; }
   }
 
-  /* Left panel — natural height, scrolls with the modal */
+  /* Left panel — always full green height */
   .ppc-left {
     background: #1B5E20;
-    color: #fff;
-    padding: 44px 36px;
+    color: #FFFFFF;
+    padding: 40px 32px;
     width: 320px;
+    min-width: 320px;
     flex-shrink: 0;
     border-radius: 14px 0 0 14px;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    min-height: 100%;
+    box-sizing: border-box;
   }
 
   .ppc-back-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.25);
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #A5D6A7;
+    padding: 0;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
     width: fit-content;
-    transition: background 0.15s ease, transform 0.15s ease;
-    text-decoration: none;
+    transition: color 0.15s ease, transform 0.15s ease;
     font-family: 'Inter', sans-serif;
   }
   .ppc-back-btn:hover {
-    background: rgba(255,255,255,0.22);
+    color: #FFFFFF;
     transform: translateY(-1px);
   }
 
   .ppc-brand {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #A5D6A7;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    background: transparent;
   }
 
   .ppc-title {
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 900;
-    color: #fff;
+    color: #FFFFFF;
     margin: 0 0 12px;
-    line-height: 1.2;
+    line-height: 1.15;
   }
 
   .ppc-subtitle {
     font-size: 14px;
-    color: rgba(255,255,255,0.75);
-    line-height: 1.65;
-    margin: 0 0 40px;
+    color: rgba(255,255,255,0.8);
+    line-height: 1.6;
+    margin: 0 0 32px;
+    background: transparent;
   }
 
   .ppc-divider {
     height: 1px;
     background: rgba(255,255,255,0.15);
-    margin-bottom: 36px;
+    margin-bottom: 32px;
   }
 
   .ppc-contact-block {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
     flex: 1;
   }
 
   .ppc-contact-row {
     display: flex;
     align-items: flex-start;
-    gap: 16px;
+    gap: 14px;
   }
 
   .ppc-icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.12);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    color: #A5D6A7;
   }
 
   .ppc-contact-label {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #A5D6A7;
-    margin: 0 0 4px;
+    margin: 0 0 2px;
+    background: transparent;
   }
 
   .ppc-contact-value {
     font-size: 15px;
-    font-weight: 700;
-    color: #fff;
+    font-weight: 600;
+    color: #FFFFFF;
     margin: 0;
     text-decoration: none;
     transition: color 0.15s ease;
+    background: transparent;
   }
-  .ppc-contact-value:hover { color: #A5D6A7; }
+  .ppc-contact-value:hover { color: #87CEEB; }
 
-  /* Right panel — no independent scroll, flows with modal */
+  /* Right panel */
   .ppc-right {
     flex: 1;
-    background: #fff;
-    padding: 44px 44px;
+    background: #FFFFFF;
+    padding: 40px;
     border-radius: 0 14px 14px 0;
     display: flex;
     flex-direction: column;
+    min-height: 100%;
+    box-sizing: border-box;
   }
 
   .ppc-form-title {
@@ -442,8 +450,8 @@ const ProcurementContactModal = () => {
                   <MapPin size={18} color="#A5D6A7" />
                 </div>
                 <div>
-                  <p className="ppc-contact-label">Location</p>
-                  <p className="ppc-contact-value" style={{ cursor: 'default' }}>Injibara, Ethiopia</p>
+                  <div className="ppc-contact-label">Location</div>
+                  <div className="ppc-contact-value" style={{ cursor: 'default', background: 'transparent', color: '#FFFFFF' }}>Injibara, Ethiopia</div>
                 </div>
               </div>
 
