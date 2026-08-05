@@ -76,6 +76,8 @@ router.use('/erp', erpRoutes);
 router.use('/procurement', procurementRoutes);
 router.use('/public-tenders', require('./publicTender.routes'));
 router.use('/procurement-settings', require('./procurementSettings.routes'));
+router.use('/sales-settings', require('./salesSettings.routes'));
+router.use('/rental-settings', require('./rentalSettings.routes'));
 router.use('/public-procurement', require('./publicProcurementFlow.routes'));
 router.use('/finance-cash', require('./financeCash.routes'));
 router.use('/finance-bank', require('./financeBank.routes'));
@@ -92,5 +94,7 @@ router.use('/pharmacy-inventory', require('./pharmacyInventory.routes'));
 router.use('/pharmacy-reports', require('./pharmacy.reports.routes'));
 router.use('/store-sales-requests', require('./storeSalesRequest.routes'));
 router.use('/suppliers', require('./selfSupplier.routes'));
+
+router.use('/pharmacy-settings', require('./pharmacySettings.routes'));
 
 module.exports = router;
