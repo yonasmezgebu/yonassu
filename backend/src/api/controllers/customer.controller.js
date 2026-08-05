@@ -34,6 +34,13 @@ const getOrCreateCustomer = async (user) => {
 };
 exports.getProfile = catchAsync(async (req, res) => {
   await getOrCreateCustomer(req.user);
+
+  // Ensure profile_picture column exists
+  const hasPic = await db.schema.hasColumn('customers', 'profile_picture');
+  if (!hasPic) {
+    await db.schema.alterTable('customers', t => t.string('profile_picture').nullable());
+  }
+
   const customer = await db('customers')
     .leftJoin('customer_types', 'customers.customer_type_id', 'customer_types.id')
     .select(
@@ -45,6 +52,7 @@ exports.getProfile = catchAsync(async (req, res) => {
       'customers.tax_id',
       'customers.credit_limit',
       'customers.current_balance',
+      'customers.profile_picture',
       'customer_types.name as customer_type',
       'customer_types.color_code as type_color'
     )
@@ -58,6 +66,17 @@ exports.getProfile = catchAsync(async (req, res) => {
     status: 'success',
     data: { customer }
   });
+});
+
+exports.uploadProfilePhoto = catchAsync(async (req, res) => {
+  if (!req.file) throw new AppError('No image file provided', 400);
+  const customer = await getOrCreateCustomer(req.user);
+  const photoUrl = `/uploads/${req.file.filename}`;
+  await db('customers').where('id', customer.id).update({
+    profile_picture: photoUrl,
+    updated_at: db.fn.now()
+  });
+  res.json({ status: 'success', profile_picture: photoUrl });
 });
 exports.updateProfile = catchAsync(async (req, res) => {
   const { name, email, phone, address } = req.body;
