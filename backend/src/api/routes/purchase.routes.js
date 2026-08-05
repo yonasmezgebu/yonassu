@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, query, param } = require('express-validator');
 const PurchaseController = require('../controllers/purchase.controller');
 const PurchaseWorkflowController = require('../controllers/purchaseWorkflow.controller');
+const QuotationController = require('../controllers/quotation.controller');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize, authorizeRoles } = require('../middleware/auth.middleware');
 const { uploads, handleUploadError } = require('../../config/multer');
@@ -326,5 +327,11 @@ router.patch('/workflow/:id/status', wfAuth([...storeRoles, ...poRoles, ...finRo
   body('remaining_payment_ref').optional().isString(),
   body('finance_payment_notes').optional().isString(),
 ], validate, PurchaseWorkflowController.updateStatus);
+
+// ── Quotations (Manual Record-Only) ──
+router.get('/quotations', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotations);
+router.post('/quotations', authenticate, authorize(['purchase_orders:create']), QuotationController.createQuotation);
+router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders:create']), QuotationController.convertQuotation);
+router.put('/quotations/:id/cancel', authenticate, authorize(['purchase_orders:update']), QuotationController.cancelQuotation);
 
 module.exports = router;
