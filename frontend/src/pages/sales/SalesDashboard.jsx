@@ -23,6 +23,8 @@ import SalesProductAdjust from './SalesProductAdjust';
 // import PharmacyReceive from '../procurement/PharmacyReceive';
 // import DirectDelivery from '../procurement/DirectDelivery';
 
+import SalesContact from './SalesContact';
+
 
 export const WorkerAuthContext = createContext();
 
@@ -83,6 +85,14 @@ const SalesDashboard = () => {
         { label: 'Daily Summary',  path: '/sales/daily-summary',  icon: 'shield',       color: '#6366f1' },
       ]
     },
+    { type: 'divider' },
+
+    // ── Settings ──
+    { label: 'Settings', icon: 'settings',
+      children: [
+        { label: 'Contact Settings', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
+      ]
+    },
   ];
 
   const [hasManagerPermission, setHasManagerPermission] = useState(true);
@@ -130,6 +140,9 @@ const SalesDashboard = () => {
             <Route path="daily-summary" element={<SalesDailySummary />} />
             
             <Route path="inventory/adjust/:id" element={<SalesProductAdjust />} />
+
+            {/* Settings */}
+            <Route path="contact" element={<SalesContact />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
