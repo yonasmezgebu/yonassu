@@ -859,8 +859,35 @@ export default () => {
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: 0 }}>Open Tenders</h2>
                 <p style={{ fontSize: 13, color: '#424242', margin: '4px 0 0', fontWeight: 600 }}>{filtered.length} tender{filtered.length !== 1 ? 's' : ''} available</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#228B22', fontSize: 13, fontWeight: 700 }}>
-                <Flame size={14} /> Live bidding open
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <a
+                  href="/sales-contact"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    background: '#E8F5E9',
+                    color: '#2E8B57',
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    borderRadius: '8px',
+                    border: '1px solid #A5D6A7',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#C8E6C9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#E8F5E9'; e.currentTarget.style.transform = 'none'; }}
+                  onClick={e => {
+                    e.preventDefault();
+                    navigate('/sales-contact');
+                  }}
+                >
+                  <Phone size={14} /> Sales Team
+                </a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#228B22', fontSize: 13, fontWeight: 700 }}>
+                  <Flame size={14} /> Live bidding open
+                </div>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '24px', width: '100%' }}>
