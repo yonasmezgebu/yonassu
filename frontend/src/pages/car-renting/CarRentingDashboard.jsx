@@ -6,6 +6,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import RentalDashboard from './manager/RentalDashboard';
 import RentalOrders from './manager/RentalOrders';
 import FleetManager from './FleetManager';
+import ManagerChat from '../../components/ManagerChat';
 import TractorRegister from './manager/TractorRegister';
 import AgriRentList from './manager/AgriRentList';
 import AgriRentOrders from './manager/AgriRentOrders';
@@ -62,7 +63,8 @@ const CarRentingDashboard = () => {
 
     { label: 'Settings', icon: 'settings',
       children: [
-        { label: 'Contact Settings',   path: '/car-renting/manager/contact',             icon: 'phone-call',   color: '#228B22' },
+        { label: 'Contact Settings', path: '/car-renting/manager/contact', icon: 'phone-call', color: '#228B22' },
+        { label: 'Chat', path: '/car-renting/manager/chat', icon: 'message-circle', color: '#6B8E23' },
       ]
     }
   ];
@@ -97,9 +99,10 @@ const CarRentingDashboard = () => {
 
           {/* Settings */}
           <Route path="manager/contact" element={<RentalContact />} />
+          <Route path="manager/chat" element={<ManagerChat />} />
 
           {/* Catch-all */}
-          <Route path="*" element={<Navigate to="manager/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/car-renting/manager/dashboard" replace />} />
         </Routes>
       </DashboardLayout>
     </div>
