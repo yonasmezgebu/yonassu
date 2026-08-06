@@ -27,6 +27,7 @@ import HRNotices from './HRNotices';
 import NewsManager from '../admin/NewsManager';
 import GalleryManager from '../admin/GalleryManager';
 import JobApplicationsManager from './JobApplicationsManager';
+import HRContact from './HRContact';
 import styles from './HRDashboard.module.css';
 
 const HRDashboard = () => {
@@ -58,6 +59,8 @@ const HRDashboard = () => {
     { label: 'Job Applications', path: '/hr/applications', icon: 'briefcase' },
     { label: 'News & Notices',   path: '/hr/news',         icon: 'file-text' },
     { label: 'Public Gallery',   path: '/hr/gallery',      icon: 'image' },
+    { type: 'divider' },
+    { label: 'Setting Contact',  path: '/hr/settings-contact', icon: 'settings' },
   ];
 
   const location = useLocation();
@@ -76,6 +79,7 @@ const HRDashboard = () => {
     '/hr/news',
     '/hr/gallery',
     '/hr/internal-notices',
+    '/hr/settings-contact',
   ];
   const isNoPadding = noPaddingPaths.includes(location.pathname);
 
@@ -106,6 +110,7 @@ const HRDashboard = () => {
       <Route path="news"                element={<NewsManager />} />
       <Route path="gallery"             element={<GalleryManager />} />
       <Route path="job-applications"    element={<JobApplicationsManager />} />
+      <Route path="settings-contact"    element={<HRContact />} />
       <Route path="/"                   element={<Navigate to="employee-summary" replace />} />
     </Routes>
   );
