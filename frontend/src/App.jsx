@@ -10,7 +10,7 @@ import './App.css';
 
 function App() {
   const location = useLocation();
-  const showFooter = ['/','/services','/gallery','/fleet-gallery','/news','/track-order','/about','/contact','/tenders','/search','/prescription-viewer'].some(p =>
+  const showFooter = ['/','/services','/gallery','/fleet-gallery','/news','/track-order','/about','/contact','/tenders','/search','/prescription-viewer','/services/printing','/printing-contact'].some(p =>
     p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
   );
   return (
