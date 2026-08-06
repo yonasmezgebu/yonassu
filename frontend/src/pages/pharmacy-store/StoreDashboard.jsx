@@ -77,7 +77,8 @@ const PharmacyStoreDashboard = () => {
           {/* Monitoring & Reports */}
           <Route path="reports"     element={<StoreReports />} />
 
-          <Route path="/" element={<Navigate to="overview" replace />} />
+          <Route path="chat" element={<ManagerChat />} />
+            <Route path="/" element={<Navigate to="overview" replace />} />
         </Routes>
       </DashboardLayout>
     </div>
