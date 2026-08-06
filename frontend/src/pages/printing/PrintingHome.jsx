@@ -178,6 +178,7 @@ export default function PrintingHome() {
 
   return (
     <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      <DecorPlants />
       {/* ── HEADER ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
         <div style={{ justifySelf: 'start' }}>
@@ -191,7 +192,7 @@ export default function PrintingHome() {
           </p>
         </div>
         <div style={{ justifySelf: 'end' }}>
-                    <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+                    <button onClick={loadData} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
             <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none', zIndex: 1, position: 'relative' }}>🔄</span>
             <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
