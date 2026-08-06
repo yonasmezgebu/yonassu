@@ -31,6 +31,7 @@ import PrintingMaterialConsumptionReport from './PrintingMaterialConsumptionRepo
 import PrintingCEOReport from './PrintingCEOReport';
 import PrintingFinanceReview from './PrintingFinanceReview';
 
+import PrintingContact from './PrintingContact';
 import styles from './PrintingDashboard.module.css';
 
 const PrintingDashboard = () => {
@@ -73,6 +74,8 @@ const PrintingDashboard = () => {
       ]
     },
 
+    { type: 'divider' },
+    { label: 'Contact', path: '/printing-manager/contact', icon: 'phone' },
   ];
 
   return (
@@ -110,6 +113,9 @@ const PrintingDashboard = () => {
             <Route path="reports/materials" element={<PrintingMaterialConsumptionReport />} />
             <Route path="reports/ceo" element={<PrintingCEOReport />} />
             <Route path="reports/finance" element={<PrintingFinanceReview />} />
+
+            {/* Contact Settings */}
+            <Route path="contact" element={<PrintingContact />} />
 
 
             <Route path="/" element={<Navigate to="overview" replace />} />
