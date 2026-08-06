@@ -97,5 +97,6 @@ router.use('/suppliers', require('./selfSupplier.routes'));
 
 router.use('/pharmacy-settings', require('./pharmacySettings.routes'));
 router.use('/printing-settings', require('./printingSettings.routes'));
+router.use('/hr-settings', require('./hrSettings.routes'));
 
 module.exports = router;
