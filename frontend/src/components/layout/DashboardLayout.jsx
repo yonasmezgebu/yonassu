@@ -94,7 +94,7 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -248,7 +248,8 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     purchaseNewBids +
     (agriRentPending || 0) +
     notifCount +
-    pcvUnread
+    pcvUnread +
+    (chatUnread || 0)
   );
 
   useEffect(() => {
@@ -525,6 +526,36 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 </div>
               </Link>
             )}
+            {/* Chat unread messages */}
+            {chatUnread > 0 && (
+              <div
+                onClick={() => {
+                  setOpen(false);
+                  if (setChatUnread) setChatUnread(0);
+                  // Navigate to the chat page based on current path
+                  const base = window.location.pathname.split('/').slice(0, 2).join('/');
+                  navigate(`${base}/chat`);
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#ECFDF5'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F0FDF4'}
+                style={{
+                  padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                  cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  backgroundColor: '#F0FDF4', transition: 'background 0.15s'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#BBF7D0' }}>
+                  <MessageCircle size={16} color="#16A34A" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '700', fontSize: '13px', color: '#065F46' }}>💬 New Chat Messages</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#16A34A' }}>{chatUnread} unread message{chatUnread > 1 ? 's' : ''} in Manager Chat</p>
+                </div>
+                <span style={{ background: '#ef4444', color: '#fff', borderRadius: '9999px', fontSize: 11, fontWeight: 800, minWidth: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>
+                  {chatUnread > 9 ? '9+' : chatUnread}
+                </span>
+              </div>
+            )}
             {((ceoPending && ceoPending.length > 0) || pharmacyPending > 0) && items.filter(i => !i.isRead).length > 0 && <div style={{ borderTop: '1px solid #E5E7EB' }} />}
             {/* PCV Notifications */}
             {pcvNotifications.filter(n => !n.read).map(n => (
@@ -645,6 +676,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [pageNotifs, setPageNotifs] = useState([]); // unread notifs for current page
   const [pcvNotifications, setPcvNotifications] = useState([]); // PCV approval notifications
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+  const chatUnreadRef = useRef(0);
   const profileRef = useRef(null);
   const photoInputRef = useRef(null);
   const socketRef = useRef(null);
@@ -727,6 +760,35 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   useEffect(() => {
     requestPermission();
   }, []);
+
+  // Poll total unread chat messages and fire browser notifications
+  useEffect(() => {
+    const pollChat = async () => {
+      try {
+        const res = await apiClient.get('/manager-chat/unread-count');
+        const count = Number(res?.count ?? res?.data?.count ?? 0);
+        if (count > chatUnreadRef.current && chatUnreadRef.current !== undefined) {
+          const diff = count - chatUnreadRef.current;
+          // Browser push notification
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification('💬 New Chat Message', {
+              body: `You have ${diff} new message${diff > 1 ? 's' : ''} in Manager Chat`,
+              icon: '/logo.png',
+              tag: 'manager-chat',
+              requireInteraction: false,
+            });
+          }
+          // In-app toast
+          showToast(`💬 ${diff} new chat message${diff > 1 ? 's' : ''}`, 'info');
+        }
+        chatUnreadRef.current = count;
+        setChatUnread(count);
+      } catch (_) {}
+    };
+    pollChat();
+    const chatInterval = setInterval(pollChat, 8000);
+    return () => clearInterval(chatInterval);
+  }, [showToast]);
 
   useEffect(() => {
     let socket = null;
@@ -912,6 +974,14 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     return () => window.removeEventListener('refreshNotifications', handleRefreshEvent);
   }, []);
 
+  // Reset chat unread badge when user opens the chat page
+  useEffect(() => {
+    if (location.pathname.endsWith('/chat')) {
+      setChatUnread(0);
+      chatUnreadRef.current = 0;
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -1006,7 +1076,16 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                     title={!isSidebarOpen ? item.label : ''}
                   >
                     <span className="nav-icon">{ICONS[item.icon] || ICONS.default}</span>
-                    <span>{item.label}</span>
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {/* Show unread chat badge on parent 'Contact'/'Chat' groups */}
+                    {chatUnread > 0 && item.children?.some(c => c.path?.endsWith('/chat')) && (
+                      <span style={{
+                        background: '#ef4444', color: '#fff', borderRadius: '9999px',
+                        fontSize: '10px', fontWeight: 800, minWidth: 18, height: 18,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '0 4px', marginRight: 4, flexShrink: 0
+                      }}>{chatUnread > 9 ? '9+' : chatUnread}</span>
+                    )}
                     <ChevronRight size={14} className={`dash-nav-chevron ${isExpanded ? 'open' : ''}`} />
                   </button>
                   {isExpanded && (
@@ -1018,7 +1097,16 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                           onClick={() => handleNav(child)}
                         >
                           {child.icon && <span className="nav-icon sub-icon" style={child.color ? { color: child.color } : undefined}>{ICONS[child.icon] || ICONS.default}</span>}
-                          {child.label}
+                          <span style={{ flex: 1 }}>{child.label}</span>
+                          {/* Badge on the 'Chat' leaf menu item */}
+                          {chatUnread > 0 && child.path?.endsWith('/chat') && (
+                            <span style={{
+                              background: '#ef4444', color: '#fff', borderRadius: '9999px',
+                              fontSize: '10px', fontWeight: 800, minWidth: 18, height: 18,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '0 4px', flexShrink: 0
+                            }}>{chatUnread > 9 ? '9+' : chatUnread}</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -1129,6 +1217,8 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               setPcvNotifications={setPcvNotifications}
               isFinanceRoute={location.pathname.startsWith('/finance')}
               isPharmacyManagerRoute={location.pathname === '/pharmacy' || location.pathname.startsWith('/pharmacy/')}
+              chatUnread={chatUnread}
+              setChatUnread={setChatUnread}
             />
             <div className="dash-profile-dropdown" ref={profileRef}>
               <button 
