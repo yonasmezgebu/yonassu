@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ManagerChat from '../../components/ManagerChat';
 import styles from './BoardDashboard.module.css';
 
 // Overview & Performance
@@ -77,6 +78,14 @@ const BoardDashboard = () => {
         { label: 'Major Investments',   path: '/board/major-investments',      icon: 'trending-up' },
         { label: 'Policy Changes',      path: '/board/policy-changes',         icon: 'settings' },
       ]
+    },
+    { type: 'divider' },
+    { 
+      label: 'Contact', 
+      icon: 'message-circle', 
+      children: [
+        { label: 'Chat', path: '/board/chat', icon: 'message-square', color: '#6B8E23' }
+      ] 
     }
   ];
 
@@ -108,6 +117,9 @@ const BoardDashboard = () => {
             <Route path="budget-approval"     element={<BudgetApproval />} />
             <Route path="major-investments"   element={<MajorInvestments />} />
             <Route path="policy-changes"      element={<PolicyChanges />} />
+
+            {/* Chat */}
+            <Route path="chat"                element={<ManagerChat />} />
 
             {/* Redirects */}
             <Route path="overview"            element={<Navigate to="executive" replace />} />
