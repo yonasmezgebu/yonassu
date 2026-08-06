@@ -18,6 +18,7 @@ const PrivacyPolicyPage   = lazy(() => import('../pages/LandingPage/PrivacyPolic
 const PublicSalesContactPage = lazy(() => import('../pages/LandingPage/PublicSalesContactPage'));
 const PublicRentalContactPage = lazy(() => import('../pages/LandingPage/PublicRentalContactPage'));
 const PublicPharmacyContactPage = lazy(() => import('../pages/LandingPage/PublicPharmacyContactPage'));
+const PublicPrintingContactPage = lazy(() => import('../pages/LandingPage/PublicPrintingContactPage'));
 const TermsOfServicePage  = lazy(() => import('../pages/LandingPage/TermsOfServicePage'));
 const AgriRentCreateOrder = lazy(() => import('../pages/car-renting/manager/AgriRentCreateOrder'));
 const PrintingPublicTrack = lazy(() => import('../pages/printing/PrintingPublicTrack'));
@@ -106,6 +107,7 @@ const AppRoutes = () => {
         <Route path="/procurement-contact" element={<PublicProcurementContactPage />} />
         <Route path="/rental-contact" element={<PublicRentalContactPage />} />
         <Route path="/pharmacy-contact" element={<PublicPharmacyContactPage />} />
+        <Route path="/printing-contact" element={<PublicPrintingContactPage />} />
         <Route path="/prescription-viewer" element={<PrescriptionViewer />} />
 
         <Route path="/chat"     element={<GlobalChatPage />} />
