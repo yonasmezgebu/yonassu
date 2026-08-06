@@ -24,6 +24,7 @@ import SalesProductAdjust from './SalesProductAdjust';
 // import DirectDelivery from '../procurement/DirectDelivery';
 
 import SalesContact from './SalesContact';
+import ManagerChat from '../../components/ManagerChat';
 
 
 export const WorkerAuthContext = createContext();
@@ -90,7 +91,10 @@ const SalesDashboard = () => {
     // ── Settings ──
     { label: 'Settings', icon: 'settings',
       children: [
-        { label: 'Contact Settings', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
+        { label: 'Contact Settings', icon: 'phone', color: '#14b8a6', children: [
+          { label: 'Setting Contact', path: '/sales/contact', icon: 'settings' },
+          { label: 'Chat', path: '/sales/chat', icon: 'message-circle', color: '#6B8E23' }
+        ] },
       ]
     },
   ];
@@ -143,6 +147,7 @@ const SalesDashboard = () => {
 
             {/* Settings */}
             <Route path="contact" element={<SalesContact />} />
+            <Route path="chat" element={<ManagerChat />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
