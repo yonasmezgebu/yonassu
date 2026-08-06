@@ -376,12 +376,14 @@ export function SmartFooter() {
   const isBuyPage = location.pathname.startsWith('/tenders/buy') || location.pathname.startsWith('/services/retail');
   const isRentalPage = location.pathname.startsWith('/fleet-gallery') || location.pathname.startsWith('/services/farming');
   const isPharmacyPage = location.pathname.startsWith('/services/pharmacy');
+  const isPrintingPage = location.pathname.startsWith('/services/printing');
 
   const [socialLinks, setSocialLinks] = useState([]);
   const [procContact, setProcContact] = useState({ contact_phone1: '', contact_email: '' });
   const [salesContact, setSalesContact] = useState({ contact_phone1: '', contact_email: '' });
   const [rentalContact, setRentalContact] = useState({ contact_phone1: '', contact_email: '' });
   const [pharmacyContact, setPharmacyContact] = useState({ contact_phone1: '', contact_email: '' });
+  const [printingContact, setPrintingContact] = useState({ contact_phone1: '', contact_email: '' });
 
   useEffect(() => {
     const fetchSocials = async () => {
@@ -418,11 +420,18 @@ export function SmartFooter() {
         if (res.data) setPharmacyContact(res.data);
       } catch (_) {}
     };
+    const fetchPrintingContact = async () => {
+      try {
+        const res = await apiClient.get('/printing-settings');
+        if (res.data) setPrintingContact(res.data);
+      } catch (_) {}
+    };
     fetchSocials();
     fetchProcContact();
     fetchSalesContact();
     fetchRentalContact();
     fetchPharmacyContact();
+    fetchPrintingContact();
   }, []);
 
   const FacebookIcon = ({ size, color }) => (
@@ -555,21 +564,21 @@ export function SmartFooter() {
         <div className="sf-col">
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
           <div className="sf-contact-list">
-            {(isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1) && (
+            {(isPrintingPage ? printingContact.contact_phone1 : isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1) && (
               <div className="sf-contact-item">
                 <Phone size={18} style={{ flexShrink: 0 }} />
-                <span>{isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1}</span>
+                <span>{isPrintingPage ? printingContact.contact_phone1 : isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1}</span>
               </div>
             )}
-            {(isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email) && (
+            {(isPrintingPage ? printingContact.contact_email : isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email) && (
               <div className="sf-contact-item">
                 <Mail size={18} style={{ flexShrink: 0 }} />
-                <span>{isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email}</span>
+                <span>{isPrintingPage ? printingContact.contact_email : isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email}</span>
               </div>
             )}
             <div className="sf-contact-item" style={{ marginTop: '8px' }}>
               <Link
-                to={isPharmacyPage ? "/pharmacy-contact" : isRentalPage ? "/rental-contact" : isBuyPage ? "/sales-contact" : "/procurement-contact"}
+                to={isPrintingPage ? "/printing-contact" : isPharmacyPage ? "/pharmacy-contact" : isRentalPage ? "/rental-contact" : isBuyPage ? "/sales-contact" : "/procurement-contact"}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -583,7 +592,7 @@ export function SmartFooter() {
                 onMouseEnter={e => { e.currentTarget.style.color = '#8BC34A'; e.currentTarget.style.textDecoration = 'underline'; }}
                 onMouseLeave={e => { e.currentTarget.style.color = '#1B89B6'; e.currentTarget.style.textDecoration = 'none'; }}
               >
-                <Phone size={14} /> {isPharmacyPage ? "Pharmacy Team" : isRentalPage ? "Rental Team" : isBuyPage ? "Sales Team" : "Procurement Team"}
+                <Phone size={14} /> {isPrintingPage ? "Printing Team" : isPharmacyPage ? "Pharmacy Team" : isRentalPage ? "Rental Team" : isBuyPage ? "Sales Team" : "Procurement Team"}
               </Link>
             </div>
           </div>
