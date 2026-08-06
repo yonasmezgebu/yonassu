@@ -44,6 +44,7 @@ import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
 import CEOAuditReport from './CEOAuditReport';
 
+import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
 
 const CEODashboard = () => {
@@ -82,6 +83,8 @@ const CEODashboard = () => {
         { label: 'HR Report',         path: '/ceo/reports/hr',         icon: 'users' },
         { label: 'Audit Report',      path: '/ceo/reports/audit',      icon: 'clipboard' },
       ] },
+    { type: 'divider' },
+    { label: 'Setting Contact', icon: 'settings', children: [{ label: 'Chat', path: '/ceo/chat', icon: 'message-circle', color: '#6B8E23' }] },
   ];
 
   return (
@@ -137,6 +140,7 @@ const CEODashboard = () => {
             <Route path="risk"      element={<CEORisk />} />
             <Route path="budget-workflow" element={<CEOPurchaseWorkflow />} />
 
+            <Route path="chat" element={<ManagerChat />} />
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
