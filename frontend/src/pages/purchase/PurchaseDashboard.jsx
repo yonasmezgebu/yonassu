@@ -39,12 +39,13 @@ import PurchaseReportFinancial from './PurchaseReportFinancial';
 import PurchaseApprovedRequests from './PurchaseApprovedRequests';
 import PurchaseHome from './PurchaseHome';
 
+import ManagerChat from '../../components/ManagerChat';
 import styles from './PurchaseDashboard.module.css';
 
 const PurchaseDashboard = () => {
   const menuItems = [
     { label: 'Dashboard', path: '/purchase/overview', icon: 'home' },
-    { label: 'Contact Settings', path: '/purchase/contact', icon: 'phone' },
+    { label: 'Contact Settings', icon: 'phone', children: [ { label: 'Setting Contact', path: '/purchase/contact', icon: 'settings' }, { label: 'Chat', path: '/purchase/chat', icon: 'message-circle', color: '#6B8E23' } ] },
     { type: 'divider' },
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
@@ -85,6 +86,7 @@ const PurchaseDashboard = () => {
             <Route path="smart-tenders" element={<PurchaseSmartTenders />} />
             <Route path="quotations" element={<PurchaseSupplierQuotations />} />
             <Route path="contact" element={<PurchaseContact />} />
+            <Route path="chat" element={<ManagerChat />} />
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="history" element={<PurchaseHistory />} />
