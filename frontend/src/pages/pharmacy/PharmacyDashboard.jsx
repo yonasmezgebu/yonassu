@@ -24,6 +24,7 @@ import ExpiredDrugReport from './ExpiredDrugReport';
 import DrugHideForm from './DrugHideForm';
 import PharmacyPendingShipments from './PharmacyPendingShipments';
 import PharmacyContact from './PharmacyContact';
+import ManagerChat from '../../components/ManagerChat';
 
 // New Imports
 import PharmacyMedicines from './PharmacyMedicines';
@@ -61,7 +62,7 @@ const PharmacyDashboard = () => {
     '/pharmacy/store-inventory', '/pharmacy/stock-operations', 
     '/pharmacy/procurement-requests', '/pharmacy/stock-adjustment', 
     '/pharmacy/expiry-management', '/pharmacy/batches', '/pharmacy/health-publisher',
-    '/pharmacy/medicines', '/pharmacy/contact'
+    '/pharmacy/medicines', '/pharmacy/contact', '/pharmacy/chat'
   ];
   const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
   const hideBackButton = ['/pharmacy/overview', '/pharmacy'].includes(location.pathname) || isFullBleed;
@@ -86,6 +87,7 @@ const PharmacyDashboard = () => {
         { label: 'Staff Mgmt',      path: '/pharmacy/staff',          icon: 'settings' },
         { label: 'Branches',        path: '/pharmacy/branches',       icon: 'building',  color: '#f59e0b' },
         { label: 'Contact',         path: '/pharmacy/contact',        icon: 'phone',     color: '#10b981' },
+        { label: 'Chat',            path: '/pharmacy/chat',           icon: 'message-circle', color: '#6B8E23' },
       ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
@@ -166,6 +168,7 @@ const PharmacyDashboard = () => {
             <Route path="branch-drugs"  element={<BranchDrugs />} />
             <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
             <Route path="contact"       element={<PharmacyContact />} />
+            <Route path="chat"          element={<ManagerChat />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
