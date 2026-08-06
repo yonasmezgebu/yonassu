@@ -28,6 +28,7 @@ import NewsManager from '../admin/NewsManager';
 import GalleryManager from '../admin/GalleryManager';
 import JobApplicationsManager from './JobApplicationsManager';
 import HRContact from './HRContact';
+import ManagerChat from '../../components/ManagerChat';
 import styles from './HRDashboard.module.css';
 
 const HRDashboard = () => {
@@ -60,7 +61,10 @@ const HRDashboard = () => {
     { label: 'News & Notices',   path: '/hr/news',         icon: 'file-text' },
     { label: 'Public Gallery',   path: '/hr/gallery',      icon: 'image' },
     { type: 'divider' },
-    { label: 'Setting Contact',  path: '/hr/settings-contact', icon: 'settings' },
+    { label: 'Setting Contact', icon: 'settings', children: [
+      { label: 'Contact Settings', path: '/hr/settings-contact', icon: 'settings' },
+      { label: 'Chat', path: '/hr/chat', icon: 'message-circle', color: '#6B8E23' }
+    ] },
   ];
 
   const location = useLocation();
@@ -111,6 +115,7 @@ const HRDashboard = () => {
       <Route path="gallery"             element={<GalleryManager />} />
       <Route path="job-applications"    element={<JobApplicationsManager />} />
       <Route path="settings-contact"    element={<HRContact />} />
+      <Route path="chat"                element={<ManagerChat />} />
       <Route path="/"                   element={<Navigate to="employee-summary" replace />} />
     </Routes>
   );
