@@ -734,17 +734,34 @@ const finalizePayrollProcess = async (id) => {
 const getDeductions = async (params) => {
   let q = db('hr_deductions as hd')
     .leftJoin('hr_employees as e', 'hd.employee_id', 'e.employee_id')
-    .select('hd.*', 'e.full_name as employeeName');
+    .select('hd.*', 'e.full_name as employeeName', 'e.base_salary');
   if (params && params.employeeId) q = q.where('hd.employee_id', params.employeeId);
   if (params && params.status) q = q.where('hd.status', params.status);
   return q.orderBy('hd.created_at', 'desc');
 };
 
 const createDeduction = async (data) => {
+  const amountType = data.amountType || 'Fixed';
+  let resolvedAmount = parseFloat(data.amount);
+  let percentage = null;
+
+  if (amountType === 'Percentage') {
+    percentage = parseFloat(data.percentage || data.amount);
+    // data.amount should already be the resolved ETB value (computed on frontend)
+    // but if not, try to compute from base salary
+    if (data.baseSalary && !data.resolvedAmount) {
+      resolvedAmount = (parseFloat(data.baseSalary) * percentage) / 100;
+    } else if (data.resolvedAmount) {
+      resolvedAmount = parseFloat(data.resolvedAmount);
+    }
+  }
+
   const [id] = await db('hr_deductions').insert({
     employee_id: data.employeeId,
     type: data.type || 'Tax/PAYE',
-    amount: parseFloat(data.amount),
+    amount: resolvedAmount,
+    amount_type: amountType,
+    percentage: percentage,
     frequency: data.frequency || 'Monthly',
     start_date: data.startDate,
     end_date: data.endDate || null,
