@@ -434,9 +434,12 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
   const deductionMap = {};
   for (const d of activeDeductions) {
     if (!deductionMap[d.employee_id]) deductionMap[d.employee_id] = { tax: 0, pension: 0, loan: 0 };
-    if (d.type === 'Tax/PAYE') deductionMap[d.employee_id].tax += parseFloat(d.amount || 0);
-    else if (d.type === 'Pension') deductionMap[d.employee_id].pension += parseFloat(d.amount || 0);
-    else deductionMap[d.employee_id].loan += parseFloat(d.amount || 0);
+    // For percentage-based deductions, we store the percentage and recompute at payroll time
+    // to always use the current base salary (handled per-employee below)
+    // For fixed, just use the stored amount
+    const deductionEntry = { ...d, resolvedAmount: parseFloat(d.amount || 0) };
+    if (!deductionMap[d.employee_id]._raw) deductionMap[d.employee_id]._raw = [];
+    deductionMap[d.employee_id]._raw.push(deductionEntry);
   }
 
   for (const emp of employees) {
@@ -456,10 +459,21 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
     const absentDed   = absentDays * dailyRate;
     const lateDed     = (lateMinutes / 60) * hourlyRate;
     
-    const empDeds = deductionMap[emp.employee_id] || { tax: 0, pension: 0, loan: 0 };
-    const taxDed      = empDeds.tax;
-    const pensionDed  = empDeds.pension;
-    const manualDeductions = empDeds.loan;
+    const empDeds = deductionMap[emp.employee_id] || {};
+    const rawDeds = empDeds._raw || [];
+    const empBaseSalary = parseFloat(emp.base_salary) || 0;
+
+    // Resolve each deduction (percentage uses current base salary)
+    let taxDed = 0, pensionDed = 0, manualDeductions = 0;
+    for (const d of rawDeds) {
+      let amt = parseFloat(d.amount || 0);
+      if (d.amount_type === 'Percentage' && d.percentage != null) {
+        amt = (empBaseSalary * parseFloat(d.percentage)) / 100;
+      }
+      if (d.type === 'Tax/PAYE') taxDed += amt;
+      else if (d.type === 'Pension') pensionDed += amt;
+      else manualDeductions += amt;
+    }
 
     const gross = parseFloat(emp.base_salary) + parseFloat(emp.housing_allowance || 0)
                 + parseFloat(emp.transport_allowance || 0) + parseFloat(emp.communication_allowance || 0)
