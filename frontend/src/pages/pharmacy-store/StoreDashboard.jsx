@@ -25,6 +25,7 @@ import StoreGoodsIssuedToday from './StoreGoodsIssuedToday';
 
 // Monitoring & Reports
 import StoreReports from './StoreReports';
+import ManagerChat from '../../components/ManagerChat';
 import styles from './StoreDashboard.module.css';
 
 const PharmacyStoreDashboard = () => {
@@ -78,7 +79,7 @@ const PharmacyStoreDashboard = () => {
           <Route path="reports"     element={<StoreReports />} />
 
           <Route path="chat" element={<ManagerChat />} />
-            <Route path="/" element={<Navigate to="overview" replace />} />
+            <Route path="/" element={<Navigate to="/pharmacy-store/overview" replace />} />
         </Routes>
       </DashboardLayout>
     </div>
