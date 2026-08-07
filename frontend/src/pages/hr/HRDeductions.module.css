@@ -557,3 +557,137 @@
   .footerBtns { width: 100%; justify-content: flex-end; }
   .modalFooter { flex-direction: column; align-items: flex-start; }
 }
+
+/* ────────────────────────────────────────────────
+   PERCENTAGE SUPPORT — new styles
+──────────────────────────────────────────────── */
+
+/* Badge shown in table "Deduction Basis" column */
+.pctBadge {
+  display: inline-block;
+  background: #E8F5E9;
+  color: #1B5E20;
+  border: 1px solid #4CAF50;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pctBase {
+  font-size: 10px;
+  color: #555;
+  margin-top: 2px;
+}
+
+.fixedBadge {
+  display: inline-block;
+  background: #F1F8E9;
+  color: #558B2F;
+  border: 1px solid #AED581;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Salary hint shown below employee select */
+.salaryHint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #388E3C;
+  font-weight: 600;
+  background: #F1F8E9;
+  border: 1px solid #C8E6C9;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+/* Live preview of computed ETB amount */
+.pctPreviewBox {
+  margin-top: 8px;
+  background: linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%);
+  border: 2px solid #4CAF50;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pctPreviewLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #388E3C;
+}
+
+.pctPreviewValue {
+  font-size: 20px;
+  font-weight: 900;
+  color: #1B5E20;
+  letter-spacing: -0.02em;
+}
+
+.pctPreviewSub {
+  font-size: 11px;
+  color: #66BB6A;
+  font-weight: 600;
+}
+
+.pctWarn {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #E65100;
+  font-weight: 700;
+  background: #FFF3E0;
+  border: 1px solid #FFCC80;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+/* ────────────────────────────────────────────────
+   IN-APP CONFIRM MODAL
+──────────────────────────────────────────────── */
+.confirmBox {
+  background: #FFFFFF;
+  border: 3px solid #228B22;
+  border-radius: 0;
+  box-shadow: 8px 8px 0px rgba(0,0,0,0.25);
+  padding: 36px 40px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.confirmIcon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.confirmTitle {
+  font-size: 18px;
+  font-weight: 900;
+  color: #1B5E20;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+
+.confirmText {
+  font-size: 13px;
+  color: #555;
+  margin: 0 0 24px;
+  line-height: 1.6;
+}
+
+.confirmBtns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
