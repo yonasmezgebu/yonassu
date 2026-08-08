@@ -154,7 +154,8 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     personal_phone: phone || req.body.personal_phone,
     physical_address: req.body.physical_address || null,
     personal_email: `${employee_id}@sutana.com`,
-    employment_status: 'Active',
+    employment_status: 'Inactive',
+    registration_status: 'pending_approval',
     employment_type: 'Permanent',
     date_of_birth: date_of_birth || null,
     marital_status: marital_status || 'Single',
@@ -1221,3 +1222,72 @@ function calculateTax(grossSalary) {
   if (grossSalary <= 10900)   return 1385 + (grossSalary - 7800) * 0.30;
   return 2315 + (grossSalary - 10900) * 0.35;
 }
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CEO EMPLOYEE REGISTRATION APPROVAL
+// ───────────────────────────────────────────────────────────────────────────────
+exports.getPendingRegistrations = catchAsync(async (req, res) => {
+  const rows = await db('hr_employees as e')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .leftJoin('roles as p', 'e.position_id', 'p.id')
+    .where('e.registration_status', 'pending_approval')
+    .select(
+      'e.employee_id', 'e.full_name', 'e.gender', 'e.personal_phone', 'e.personal_email',
+      'e.hire_date', 'e.employment_type', 'e.base_salary', 'e.housing_allowance',
+      'e.transport_allowance', 'e.bank_name', 'e.bank_account_number',
+      'e.emergency_contact_name', 'e.emergency_contact_phone',
+      'e.has_pc_access', 'e.shift_start_time', 'e.shift_end_time',
+      'e.marital_status', 'e.date_of_birth', 'e.national_id', 'e.physical_address',
+      'e.registration_status', 'e.created_date',
+      'd.name as dept_name', 'p.name as position_title'
+    )
+    .orderBy('e.created_date', 'desc');
+  res.json({ status: 'success', data: rows });
+});
+
+exports.approveRegistration = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const emp = await db('hr_employees').where('employee_id', id).first();
+  if (!emp) throw new AppError('Employee not found', 404);
+  if (emp.registration_status !== 'pending_approval') throw new AppError('Employee is not in pending state', 400);
+
+  await db('hr_employees').where('employee_id', id).update({
+    registration_status: 'ceo_approved',
+    employment_status: 'Inactive',
+    rejection_reason: null,
+  });
+  res.json({ status: 'success', message: `${emp.full_name} has been approved by CEO. Awaiting HR final completion.` });
+});
+
+exports.rejectRegistration = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  if (!reason?.trim()) throw new AppError('Rejection reason is required', 400);
+  const emp = await db('hr_employees').where('employee_id', id).first();
+  if (!emp) throw new AppError('Employee not found', 404);
+  if (emp.registration_status !== 'pending_approval') throw new AppError('Employee is not in pending state', 400);
+
+  await db('hr_employees').where('employee_id', id).update({
+    registration_status: 'rejected',
+    employment_status: 'Inactive',
+    rejection_reason: reason.trim(),
+  });
+  res.json({ status: 'success', message: `${emp.full_name}'s registration has been rejected.` });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// HR EMPLOYEE REGISTRATION FINAL COMPLETION
+// ───────────────────────────────────────────────────────────────────────────────
+exports.completeRegistration = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const emp = await db('hr_employees').where('employee_id', id).first();
+  if (!emp) throw new AppError('Employee not found', 404);
+  if (emp.registration_status !== 'ceo_approved') throw new AppError('Employee must be CEO approved before HR can complete registration', 400);
+
+  await db('hr_employees').where('employee_id', id).update({
+    registration_status: 'completed',
+    employment_status: 'Active',
+  });
+  res.json({ status: 'success', message: `${emp.full_name}'s registration is fully completed and active.` });
+});
+
