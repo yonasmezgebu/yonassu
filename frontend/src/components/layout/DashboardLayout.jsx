@@ -765,8 +765,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   useEffect(() => {
     const pollChat = async () => {
       try {
-        const res = await apiClient.get('/manager-chat/unread-count');
-        const count = Number(res?.count ?? res?.data?.count ?? 0);
+        const res = await apiClient.get('/manager-chat/unread-counts');
+        const map = res?.data || {};
+        const count = typeof map === 'object' && !Array.isArray(map)
+          ? Object.values(map).reduce((s, v) => s + Number(v || 0), 0)
+          : 0;
         if (count > chatUnreadRef.current && chatUnreadRef.current !== undefined) {
           const diff = count - chatUnreadRef.current;
           // Browser push notification
@@ -786,7 +789,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       } catch (_) {}
     };
     pollChat();
-    const chatInterval = setInterval(pollChat, 8000);
+    const chatInterval = setInterval(pollChat, 60000);
     return () => clearInterval(chatInterval);
   }, [showToast]);
 
