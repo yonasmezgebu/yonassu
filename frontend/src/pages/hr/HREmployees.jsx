@@ -131,6 +131,17 @@ const HREmployees = ({ onRegister, onEdit }) => {
     }
   };
 
+  /* ── Finalize CEO Approved Registration ────────────────────────────── */
+  const handleCompleteRegistration = async (id) => {
+    try {
+      await hrService.etp.completeRegistration(id);
+      showToast('Registration finalized successfully!');
+      fetchEmployees();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to complete registration', 'error');
+    }
+  };
+
   /* ── Filtered list ───────────────────────────────────────────────── */
   const filtered = employees.filter(e =>
     String(e.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -299,19 +310,37 @@ const HREmployees = ({ onRegister, onEdit }) => {
 
                       {/* Status */}
                       <td>
-                        <span className={isActive ? styles.statusActive : styles.statusInactive}>
-                          {emp.employment_status || 'Active'}
-                        </span>
+                        {emp.registration_status === 'pending_approval' ? (
+                          <span className={styles.statusInactive} style={{ background: '#FFF8E1', color: '#FF8F00', borderColor: '#FF8F00' }}>Pending CEO</span>
+                        ) : emp.registration_status === 'ceo_approved' ? (
+                          <span className={styles.statusActive} style={{ background: '#E3F2FD', color: '#1565C0', borderColor: '#1565C0' }}>CEO Approved</span>
+                        ) : emp.registration_status === 'rejected' ? (
+                          <span className={styles.statusInactive} style={{ background: '#FFEBEE', color: '#C62828', borderColor: '#C62828' }}>Rejected</span>
+                        ) : (
+                          <span className={isActive ? styles.statusActive : styles.statusInactive}>
+                            {emp.employment_status || 'Active'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Action */}
                       <td>
-                        <button
-                          className={isPending ? styles.rowBtnReg : styles.rowBtnEdit}
-                          onClick={() => openEdit(emp)}
-                        >
-                          {isPending ? 'Complete Setup' : 'Edit'}
-                        </button>
+                        {emp.registration_status === 'ceo_approved' ? (
+                          <button
+                            className={styles.rowBtnReg}
+                            style={{ background: '#1565C0' }}
+                            onClick={() => handleCompleteRegistration(emp.employee_id)}
+                          >
+                            Finalize Reg
+                          </button>
+                        ) : (
+                          <button
+                            className={isPending ? styles.rowBtnReg : styles.rowBtnEdit}
+                            onClick={() => openEdit(emp)}
+                          >
+                            {isPending ? 'Complete Setup' : 'Edit'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
