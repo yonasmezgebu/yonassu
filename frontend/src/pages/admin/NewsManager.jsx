@@ -164,6 +164,19 @@ const NewsManager = () => {
     }
   };
 
+  const toggleVisibility = async (p) => {
+    const newVisibility = p.visibility === 'public' ? 'employees_only' : 'public';
+    try {
+      // Optimistic update
+      setPosts(prev => prev.map(post => post.id === p.id ? { ...post, visibility: newVisibility } : post));
+      await axios.put(`/news/${p.id}`, { visibility: newVisibility });
+      showNotif('success', `Visibility changed to ${newVisibility === 'public' ? 'Public' : 'Employees Only'}`);
+    } catch (err) {
+      showNotif('error', 'Failed to change visibility');
+      fetchPosts(); // Revert on failure
+    }
+  };
+
   return (
     <div className={styles.container}>
       {/* ── HEADER ── */}
@@ -246,15 +259,23 @@ const NewsManager = () => {
                       </span>
                     </td>
                     <td>
-                      {p.visibility === 'public' ? (
-                        <div style={{ color: '#228B22', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Eye size={12} /> Public
-                        </div>
-                      ) : (
-                        <div style={{ color: '#C62828', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <EyeOff size={12} /> Employees
-                        </div>
-                      )}
+                      <div 
+                        onClick={() => toggleVisibility(p)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, background: p.visibility === 'public' ? '#E8F5E9' : '#FFEBEE', transition: 'background 0.2s' }}
+                        title="Click to toggle visibility"
+                      >
+                        {p.visibility === 'public' ? (
+                          <>
+                            <Eye size={14} color="#228B22" />
+                            <span style={{ color: '#228B22', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Public</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff size={14} color="#C62828" />
+                            <span style={{ color: '#C62828', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div className={styles.actionsList}>
