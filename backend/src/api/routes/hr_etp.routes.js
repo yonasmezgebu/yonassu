@@ -46,6 +46,7 @@ router.post('/etp/employees',      authenticate, authorizeRoles(hrCeo),         
 router.put('/etp/employees/:id',      authenticate, authorizeRoles(hrCeo),  C.updateETPEmployee);
 router.delete('/etp/employees/:id',   authenticate, authorizeRoles(hrCeo),  C.deleteETPEmployee);
 router.patch('/etp/employees/:id/terminate', authenticate, authorizeRoles(hrCeo), C.terminateEmployee);
+router.patch('/etp/employees/:id/complete-registration', authenticate, authorizeRoles(hrCeo), C.completeRegistration);
 
 router.get('/etp/attendance/daily',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getDailyAttendance);
 router.get('/etp/attendance/monthly', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getMonthlyAttendance);
