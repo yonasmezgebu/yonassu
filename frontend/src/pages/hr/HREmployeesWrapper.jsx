@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Users, UserPlus, Calendar } from 'lucide-react';
+import { Users, UserPlus, Clock } from 'lucide-react';
 import HREmployees from './HREmployees';
 import HRAddEmployee from './HRAddEmployee';
 import HREmployeeStatus from './HREmployeeStatus';
 import HREditEmployee from './HREditEmployee';
+import HREmployeesPending from './HREmployeesPending';
 
 const TABS = [
-  { key: 'list',       label: 'Employee List',  Icon: Users },
-  { key: 'add',        label: 'Add Employee',   Icon: UserPlus },
+  { key: 'list',    label: 'Employee List',    Icon: Users },
+  { key: 'add',     label: 'Add Employee',     Icon: UserPlus },
 ];
 
 const TAB_STYLES = `
@@ -130,9 +131,9 @@ const HREmployeesWrapper = () => {
 
       {/* ── CONTENT ── */}
       <div style={{ flex: 1, overflow: 'auto', background: '#F5F5F5' }}>
-        {activeTab === 'list'       && <HREmployees onRegister={handleRegisterExisting} onEdit={handleEditEmployee} />}
-        {activeTab === 'add'        && <HRAddEmployee />}
-        {activeTab === 'edit'       && <HREditEmployee prefillData={prefillData} onCancel={() => { setActiveTab('list'); }} />}
+        {activeTab === 'list'    && <HREmployees onRegister={handleRegisterExisting} onEdit={handleEditEmployee} />}
+        {activeTab === 'add'     && <HRAddEmployee onRegistered={() => setActiveTab('list')} />}
+        {activeTab === 'edit'    && <HREditEmployee prefillData={prefillData} onCancel={() => { setActiveTab('list'); }} />}
       </div>
     </div>
   );
