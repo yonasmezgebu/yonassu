@@ -76,6 +76,7 @@ router.post('/recruitment/jobs', authenticate, authorizeRoles(['HR Manager', 'Ad
 router.put('/recruitment/jobs/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateJobPost);
 router.get('/recruitment/applications', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getApplications);
 router.put('/recruitment/applications/:id/status', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateApplicationStatus);
+router.delete('/recruitment/applications/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.deleteApplication);
 router.get('/recruitment/interviews', authenticate, authorizeRoles(['HR Manager', 'Admin', 'CEO']), HRController.getInterviews);
 router.post('/recruitment/interviews', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.createInterview);
 router.put('/recruitment/interviews/:id', authenticate, authorizeRoles(['HR Manager', 'Admin']), HRController.updateInterview);
