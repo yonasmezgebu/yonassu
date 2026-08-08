@@ -438,7 +438,7 @@ const FinancePharmacyAssets = () => {
         {/* ── KPI CARDS ── */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: 36, color: G.olive, fontWeight: 800, fontSize: 15 }}>
-            <RefreshCw size={28} className="psa-spin" style={{ display: 'block', margin: '0 auto 12px', color: G.forest }} />
+            <SegmentedSpinner size={28} />
             Loading stats…
           </div>
         ) : (

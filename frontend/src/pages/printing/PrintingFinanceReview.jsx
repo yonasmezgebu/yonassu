@@ -181,7 +181,7 @@ export default function PrintingFinanceReview() {
           disabled={loading}
           style={{ padding: '7px 14px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
         >
-          <RefreshCw size={14} className={loading ? 'pr-spinner' : ''} />
+          <SegmentedSpinner size={14} />
           {loading ? 'Loading…' : 'Refresh'}
         </button>
       </div>
@@ -308,7 +308,7 @@ export default function PrintingFinanceReview() {
                             disabled={editVals[m.id] === undefined || savingId === m.id}
                             onClick={() => saveInternalValue(m.id, m.machine_id)}
                           >
-                            {savingId === m.id ? <RefreshCw size={12} className="pr-spinner" /> : <CheckCircle size={12} />}
+                            {savingId === m.id ? <SegmentedSpinner size={12} /> : <CheckCircle size={12} />}
                             Save
                           </button>
                         </td>

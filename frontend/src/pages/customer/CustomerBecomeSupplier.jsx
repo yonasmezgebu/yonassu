@@ -405,7 +405,7 @@ const CustomerBecomeSupplier = () => {
       <>
         <style>{STYLES}</style>
         <div className="bs-page">
-          <div className="bs-spinner"><Loader2 size={36} color="#2E8B57" style={{ animation: 'spin 1s linear infinite' }} /></div>
+          <div className="bs-spinner"><SegmentedSpinner size={36} /></div>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>
@@ -651,7 +651,7 @@ const CustomerBecomeSupplier = () => {
                     Your profile will be immediately visible to Purchase Managers.
                   </p>
                   <button className="bs-btn-primary" type="submit" disabled={submitting}>
-                    {submitting ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRight size={16} />}
+                    {submitting ? <SegmentedSpinner size={16} /> : <ArrowRight size={16} />}
                     {submitting ? 'Registering...' : 'Register as Supplier'}
                   </button>
                 </div>

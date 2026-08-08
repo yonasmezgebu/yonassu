@@ -638,7 +638,7 @@ export default function CustomerReceipts() {
           <p className="rec-sub">Completed transactions across all services</p>
         </div>
         <button className="rec-btn-secondary" onClick={fetchAll} disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'rec-spin' : ''} />
+          <SegmentedSpinner size={16} />
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
@@ -685,7 +685,7 @@ export default function CustomerReceipts() {
       {/* Content */}
       {loading ? (
         <div className="rec-empty">
-          <Loader2 size={40} className="rec-spin rec-empty-icon" />
+          <SegmentedSpinner size={40} />
           <div style={{fontWeight:600}}>Loading all completed transactions...</div>
         </div>
       ) : filtered.length === 0 ? (

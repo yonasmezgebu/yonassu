@@ -92,7 +92,7 @@ const PharmacyStockTransfer = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} style={{ padding: '60px 24px', textAlign: 'center' }}>
-                  <Loader2 size={32} style={{ ...spin, color: '#06b6d4' }} />
+                  <SegmentedSpinner size={32} />
                 </td></tr>
               ) : filteredTransfers.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: '60px 24px', textAlign: 'center', color: '#94a3b8' }}>

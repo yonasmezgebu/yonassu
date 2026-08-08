@@ -4,6 +4,17 @@ import hrService from '../../services/hrService';
 import { playSuccessSound } from '../../utils/playNotificationSound';
 import styles from './HRAddEmployee.module.css';
 
+const getDocIcon = (f) => {
+  if (!f) return '📎';
+  const ext = (f.name || '').split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼️';
+  if (ext === 'pdf') return '📄';
+  if (['doc','docx'].includes(ext)) return '📝';
+  if (['xls','xlsx'].includes(ext)) return '📊';
+  return '📎';
+};
+const fmtSize = (b) => !b ? '' : b < 1048576 ? `${(b/1024).toFixed(1)} KB` : `${(b/1048576).toFixed(1)} MB`;
+
 const INIT_FORM = {
   full_name: '', national_id: '', date_of_birth: '', gender: 'Male', marital_status: 'Single',
   personal_phone: '', personal_email: '', physical_address: '',
@@ -13,17 +24,73 @@ const INIT_FORM = {
   bank_name: '', bank_account_number: '',
   has_pc_access: 'No', shift_start_time: '08:00', shift_end_time: '17:00',
   emergency_contact_name: '', emergency_contact_phone: '',
+  // Education
+  education_level: '', institution_name: '', field_of_study: '', graduation_year: '',
 };
 
-const HRAddEmployee = () => {
+// Also extend buildInitForm inside the component to include education fields
+
+
+const HRAddEmployee = ({ prefillData, onRegistered }) => {
   const navigate = useNavigate();
-  const [form, setForm] = useState(INIT_FORM);
+
+  // Build initial form — merge INIT_FORM with any prefilled data from existing employee
+  const buildInitForm = (data) => ({
+    full_name:              data?.full_name || '',
+    national_id:            data?.national_id || '',
+    date_of_birth:          data?.date_of_birth ? data.date_of_birth.split('T')[0] : '',
+    gender:                 data?.gender || 'Male',
+    marital_status:         data?.marital_status || 'Single',
+    personal_phone:         data?.personal_phone || '',
+    personal_email:         data?.personal_email || '',
+    physical_address:       data?.physical_address || '',
+    dept_id:                data?.dept_id || '',
+    position_id:            data?.position_id || '',
+    hire_date:              data?.hire_date ? data.hire_date.split('T')[0] : '',
+    employment_type:        data?.employment_type || 'Permanent',
+    base_salary:            data?.base_salary || '',
+    housing_allowance:      data?.housing_allowance || '',
+    transport_allowance:    data?.transport_allowance || '',
+    bank_name:              data?.bank_name || '',
+    bank_account_number:    data?.bank_account_number || '',
+    has_pc_access:          data?.has_pc_access || 'No',
+    shift_start_time:       data?.shift_start_time || '08:00',
+    shift_end_time:         data?.shift_end_time || '17:00',
+    emergency_contact_name: data?.emergency_contact_name || '',
+    emergency_contact_phone:data?.emergency_contact_phone || '',
+    // Education
+    education_level:        data?.education_level || '',
+    institution_name:       data?.institution_name || '',
+    field_of_study:         data?.field_of_study || '',
+    graduation_year:        data?.graduation_year || '',
+  });
+
+  const [form, setForm] = useState(() => buildInitForm(prefillData));
   const [departments, setDepartments] = useState([]);
   const [positions, setPositions] = useState([]);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const idFrontRef = useRef(null);
+  const idBackRef  = useRef(null);
   const [file, setFile] = useState(null);
+  const [fileDragOver, setFileDragOver] = useState(false);
+  const [idPhotoFront, setIdPhotoFront] = useState(null); // File object
+  const [idPhotoBack,  setIdPhotoBack]  = useState(null); // File object
+  const [idFrontPreview, setIdFrontPreview] = useState(prefillData?.id_photo_front || null);
+  const [idBackPreview,  setIdBackPreview]  = useState(prefillData?.id_photo_back  || null);
   const [submitStatus, setSubmitStatus] = useState({ type: null, message: '' });
+
+  // When prefillData changes (user clicks another employee), re-populate form
+  useEffect(() => {
+    setForm(buildInitForm(prefillData));
+    setSubmitStatus({ type: null, message: '' });
+    setIdPhotoFront(null);
+    setIdPhotoBack(null);
+    // Build correct URL from stored path like "uploads\\hr\\id-photos\\file.jpg"
+    const toUrl = (path) => path ? '/' + path.replace(/\\/g, '/').replace(/^\//, '') : null;
+    setIdFrontPreview(prefillData?.id_photo_front ? toUrl(prefillData.id_photo_front) : null);
+    setIdBackPreview(prefillData?.id_photo_back   ? toUrl(prefillData.id_photo_back)  : null);
+  }, [prefillData?.employee_id]);
 
   useEffect(() => {
     const fetchFormOptions = async () => {
@@ -47,29 +114,66 @@ const HRAddEmployee = () => {
     }
   };
 
+  const handleIdPhoto = (side, e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    if (side === 'front') { setIdPhotoFront(f); setIdFrontPreview(url); }
+    else                  { setIdPhotoBack(f);  setIdBackPreview(url);  }
+  };
+
   const handleSave = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     setSaving(true);
     setSubmitStatus({ type: null, message: '' });
     try {
       const submitData = {
         ...form,
-        document_path: file ? `/uploads/documents/${file.name}` : null,
+        // Don't hardcode document_path — backend handles the upload
         date_of_birth: form.date_of_birth || null,
         base_salary: form.base_salary || null,
         housing_allowance: form.housing_allowance || null,
         transport_allowance: form.transport_allowance || null,
-        bank_account_number: form.bank_account_number.trim() || null,
+        bank_account_number: form.bank_account_number ? form.bank_account_number.toString().trim() : null,
         bank_name: form.bank_name || null,
         national_id: form.national_id || null,
+        // Education
+        education_level:  form.education_level  || null,
+        institution_name: form.institution_name || null,
+        field_of_study:   form.field_of_study   || null,
+        graduation_year:  form.graduation_year  || null,
+        // ID Photos as File objects — service will put into FormData
+        id_photo_front: idPhotoFront || undefined,
+        id_photo_back:  idPhotoBack  || undefined,
       };
+      // Remove the document_path field (set by backend via multer)
+      delete submitData.document_path;
 
-      await hrService.etp.createEmployee(submitData);
-      playSuccessSound();
-      setSubmitStatus({ type: 'success', message: `⏳ ${form.full_name} registered and sent for CEO approval! Awaiting review.` });
-      setTimeout(() => navigate(`/hr/employees?tab=pending`), 2000);
+      if (prefillData?.employee_id && prefillData?._source !== 'users_table') {
+        // Completing setup for an EXISTING employee (hr_employees) — update their record then request CEO approval
+        await hrService.etp.updateEmployee(prefillData.employee_id, { ...submitData, registration_status: 'pending_approval' });
+        playSuccessSound();
+        setSubmitStatus({ type: 'success', message: `⏳ ${form.full_name}'s registration completed and sent for CEO approval! Awaiting review.` });
+        setTimeout(() => {
+          if (onRegistered) onRegistered();
+          else navigate('/hr/employees?tab=list');
+        }, 2000);
+      } else {
+        // Brand new employee registration (or registering from an existing user account)
+        if (prefillData?._source === 'users_table') {
+          submitData.user_id = prefillData.employee_id;
+        }
+        await hrService.etp.createEmployee(submitData);
+        playSuccessSound();
+        setSubmitStatus({ type: 'success', message: `⏳ ${form.full_name} registered and sent for CEO approval! Awaiting review.` });
+        setTimeout(() => {
+          if (onRegistered) onRegistered();
+          else navigate('/hr/employees?tab=list');
+        }, 2000);
+      }
     } catch (err) {
-      setSubmitStatus({ type: 'error', message: err?.response?.data?.message || 'Failed to register employee. Please check the details.' });
+      setSubmitStatus({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to register employee. Please check the details.' });
       console.error(err);
     } finally {
       setSaving(false);
@@ -81,15 +185,45 @@ const HRAddEmployee = () => {
   return (
     <div className={styles.pageContainer}>
 
-      {/* ── TITLE BAR (clean, no big hero) ── */}
+      {/* ── COMPLETING SETUP BANNER ── */}
+      {prefillData?.employee_id && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
+          color: '#fff',
+          padding: '14px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          fontSize: 14,
+          fontWeight: 600,
+          borderRadius: '8px 8px 0 0',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 20 }}>📋</span>
+          <div>
+            <div>Completing Registration — {prefillData.full_name}</div>
+            <div style={{ fontWeight: 400, fontSize: 12, opacity: 0.85, marginTop: 2 }}>
+              Fields pre-filled from existing profile. Fill in any missing fields below and submit for CEO approval.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TITLE BAR ── */}
       <div className={styles.titlebar}>
         <div>
           <div className={styles.breadcrumb}>HR Module · Employee Registration</div>
-          <h1 className={styles.title}>New Employee Registration Form</h1>
-          <p className={styles.subtitle}>Complete all required fields to register a new team member.</p>
+          <h1 className={styles.title}>
+            {prefillData?.employee_id ? `Complete Setup — ${prefillData.full_name}` : 'New Employee Registration Form'}
+          </h1>
+          <p className={styles.subtitle}>
+            {prefillData?.employee_id
+              ? 'Review pre-filled information, complete any missing fields, then submit for CEO approval.'
+              : 'Complete all required fields to register a new team member.'}
+          </p>
         </div>
         <div className={styles.steps}>
-          {['Personal', 'Employment', 'Financial', 'Emergency'].map((s, i) => (
+          {['Personal', 'Employment', 'Financial', 'Education & Docs'].map((s, i) => (
             <div className={styles.step} key={s}>
               <span className={styles.stepNum}>{i + 1}</span>
               {s}
@@ -247,37 +381,132 @@ const HRAddEmployee = () => {
           </div>
         </div>
 
-        {/* ─── SECTION 4: EMERGENCY & DOCUMENTS ─── */}
+        {/* ─── SECTION 4: EDUCATION & DOCUMENTS ─── */}
         <div className={styles.section}>
           <div className={styles.sectionHdr}>
             <span className={styles.sectionNum}>4</span>
-            <h2 className={styles.sectionTitle}>Emergency Contact &amp; Documents</h2>
+            <h2 className={styles.sectionTitle}>Education &amp; Documents</h2>
           </div>
           <div className={styles.sectionBody}>
             <div className={styles.grid}>
               <div className={styles.field}>
-                <label>Emergency Contact Name</label>
-                <input value={form.emergency_contact_name} onChange={F('emergency_contact_name')} placeholder="Full name" />
+                <label>Education Level <span>*</span></label>
+                <select value={form.education_level} onChange={F('education_level')} required>
+                  <option value="">Select Level</option>
+                  <option value="High School">High School</option>
+                  <option value="Certificate">Certificate</option>
+                  <option value="Diploma">Diploma</option>
+                  <option value="Bachelor's Degree">Bachelor's Degree</option>
+                  <option value="Master's Degree">Master's Degree</option>
+                  <option value="Professor">Professor</option>
+                  <option value="PhD Doctor">PhD Doctor</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
               <div className={styles.field}>
-                <label>Emergency Contact Phone</label>
-                <input value={form.emergency_contact_phone} onChange={F('emergency_contact_phone')} placeholder="09XXXXXXXX" />
+                <label>Field of Study / What is Studied</label>
+                <input value={form.field_of_study} onChange={F('field_of_study')} placeholder="e.g. Accounting, IT, Management" />
               </div>
-              <div className={`${styles.field} ${styles.fullCol}`}>
-                <label>Upload Employee Documents <span style={{ color: '#BDBDBD', fontWeight: 400, textTransform: 'none', fontSize: 10, marginLeft: 6 }}>(ID, Contract — Optional)</span></label>
-                <div className={styles.upload} onClick={() => fileInputRef.current?.click()}>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    onChange={handleFileChange}
-                  />
-                  <div className={styles.uploadIcon}>📄</div>
-                  <div className={styles.uploadText}>
-                    {file ? file.name : 'Click to select a file'}
-                  </div>
-                  <div className={styles.uploadHint}>PDF, JPG, PNG accepted</div>
+              <div className={styles.field}>
+                <label>Institution Name</label>
+                <input value={form.institution_name} onChange={F('institution_name')} placeholder="University or School name" />
+              </div>
+              <div className={styles.field}>
+                <label>Graduation Year</label>
+                <input type="number" min="1950" max="2100" value={form.graduation_year} onChange={F('graduation_year')} placeholder="YYYY" />
+              </div>
+
+              {/* ID Card Uploads */}
+              <div className={styles.field}>
+                <label>ID Photo (Front) <span>*</span></label>
+                <div 
+                  className={styles.upload} 
+                  onClick={() => idFrontRef.current?.click()}
+                  style={idFrontPreview ? { padding: 4 } : {}}
+                >
+                  <input type="file" ref={idFrontRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleIdPhoto('front', e)} />
+                  {idFrontPreview ? (
+                    <img src={idFrontPreview} alt="ID Front" style={{ width: '100%', height: '100px', objectFit: 'contain', borderRadius: 4 }} />
+                  ) : (
+                    <>
+                      <div className={styles.uploadIcon}>📸</div>
+                      <div className={styles.uploadText}>Click to upload front of ID</div>
+                      <div className={styles.uploadHint}>JPG, PNG</div>
+                    </>
+                  )}
                 </div>
+              </div>
+
+              <div className={styles.field}>
+                <label>ID Photo (Back) <span>*</span></label>
+                <div 
+                  className={styles.upload} 
+                  onClick={() => idBackRef.current?.click()}
+                  style={idBackPreview ? { padding: 4 } : {}}
+                >
+                  <input type="file" ref={idBackRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleIdPhoto('back', e)} />
+                  {idBackPreview ? (
+                    <img src={idBackPreview} alt="ID Back" style={{ width: '100%', height: '100px', objectFit: 'contain', borderRadius: 4 }} />
+                  ) : (
+                    <>
+                      <div className={styles.uploadIcon}>📸</div>
+                      <div className={styles.uploadText}>Click to upload back of ID</div>
+                      <div className={styles.uploadHint}>JPG, PNG</div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className={`${styles.field} ${styles.fullCol}`}>
+                <label>Additional Documents <span style={{ color: '#BDBDBD', fontWeight: 400, textTransform: 'none', fontSize: 10, marginLeft: 6 }}>(Contract, Certificates — Optional)</span></label>
+
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileDragOver(false); } }}
+                />
+
+                {file ? (
+                  /* Telegram-style attachment card */
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    background: '#f0f9ff', border: '2px solid #7dd3fc',
+                    borderRadius: 12, padding: '12px 16px',
+                  }}>
+                    <span style={{ fontSize: 34, flexShrink: 0 }}>{getDocIcon(file)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0c4a6e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {file.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#0369a1', marginTop: 3 }}>
+                        {fmtSize(file.size)} &middot; Ready to upload
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 22, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}
+                      title="Remove file"
+                    >&times;</button>
+                  </div>
+                ) : (
+                  /* Drop zone */
+                  <div
+                    className={styles.upload}
+                    style={fileDragOver ? { borderColor: '#2563EB', background: '#EFF6FF' } : {}}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setFileDragOver(true); }}
+                    onDragLeave={() => setFileDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setFileDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setFile(f); }}
+                  >
+                    <div className={styles.uploadIcon}>📎</div>
+                    <div className={styles.uploadText}>Click to select or drag &amp; drop a file</div>
+                    <div className={styles.uploadHint}>PDF, DOCX, JPG, PNG accepted</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -295,7 +524,10 @@ const HRAddEmployee = () => {
           <button
             type="button"
             className={styles.btnCancel}
-            onClick={() => navigate('/hr/employees?tab=list')}
+            onClick={() => {
+              if (onRegistered) onRegistered();
+              else navigate('/hr/employees?tab=list');
+            }}
           >
             Cancel
           </button>
@@ -304,7 +536,11 @@ const HRAddEmployee = () => {
             className={styles.btnSubmit}
             disabled={saving}
           >
-            {saving ? 'Registering…' : 'Complete Registration'}
+            {saving
+              ? 'Submitting…'
+              : prefillData?.employee_id
+                ? 'Submit for CEO Approval'
+                : 'Complete Registration'}
           </button>
         </div>
 

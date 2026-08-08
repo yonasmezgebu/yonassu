@@ -510,7 +510,7 @@ export default function CustomerPrescriptions() {
             Browse Medications
           </button>
           <button className="cp-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw size={16} className={refreshing ? 'cp-spin' : ''} />
+            <SegmentedSpinner size={16} />
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>

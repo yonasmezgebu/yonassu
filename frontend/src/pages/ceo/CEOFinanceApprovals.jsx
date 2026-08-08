@@ -116,7 +116,7 @@ const RejectModal = ({ pcv, onClose, onReject }) => {
           <button onClick={onClose} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
           <button onClick={submit} disabled={!reason.trim() || loading}
             style={{ padding: '10px 20px', background: loading || !reason.trim() ? '#fca5a5' : '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: !reason.trim() ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {loading ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={16} />}
+            {loading ? <SegmentedSpinner size={16} /> : <XCircle size={16} />}
             Reject PCV
           </button>
         </div>
@@ -132,6 +132,7 @@ const CEOFinanceApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
+  const [confirmApproveTarget, setConfirmApproveTarget] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -160,6 +161,7 @@ const CEOFinanceApprovals = () => {
     try {
       await api.put(`/finance-cash/pcv/${pcv.id}/approve`);
       showToast(`✅ ${pcv.pcv_number} approved and sent to Finance!`, 'success');
+      setConfirmApproveTarget(null);
       load();
     } catch (e) {
       showToast('Failed to approve PCV', 'error');
@@ -227,7 +229,7 @@ const CEOFinanceApprovals = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}>
-          <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+          <SegmentedSpinner size={32} />
           <div>Loading pending PCVs...</div>
         </div>
       ) : pcvs.length === 0 ? (
@@ -275,10 +277,10 @@ const CEOFinanceApprovals = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#dc2626' }}>
                     <XCircle size={14} /> Reject
                   </button>
-                  <button onClick={() => handleApprove(pcv)}
+                  <button onClick={() => setConfirmApproveTarget(pcv)}
                     disabled={actionLoading === pcv.id}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,.3)', opacity: actionLoading === pcv.id ? 0.7 : 1 }}>
-                    {actionLoading === pcv.id ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
+                    {actionLoading === pcv.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />}
                     Approve
                   </button>
                 </div>
@@ -297,6 +299,38 @@ const CEOFinanceApprovals = () => {
           onClose={() => setRejectTarget(null)}
           onReject={handleReject}
         />
+      )}
+
+      {/* ── Confirm Approve Modal ── */}
+      {confirmApproveTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'white', padding: 32, borderRadius: 12, width: 400, boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+              <CheckCircle size={48} color="#10b981" />
+            </div>
+            <h3 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 'bold', color: '#0f172a', textAlign: 'center' }}>Confirm Approval</h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 14, textAlign: 'center', lineHeight: '1.5' }}>
+              Are you sure you want to approve PCV <b>{confirmApproveTarget.pcv_number}</b>? This action will forward it to Finance for payment.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setConfirmApproveTarget(null)}
+                style={{ flex: 1, padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, color: '#475569' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleApprove(confirmApproveTarget)}
+                style={{ flex: 1, padding: '10px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+              >
+                Confirm Approve
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -1,167 +1,150 @@
-/* ── Google Font ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* ── Enterprise ERP Design System ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-/* ════════════════════════════════════════════════
-   HR ADD EMPLOYEE PAGE (Rule 5: 100% width, stretch)
-════════════════════════════════════════════════ */
-.pageContainer {
-  background: #F5F5F5; /* Light Gray */
+.pageContainer, .container {
+  /* 2. Color Palette */
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page: #F5F6FA;
+  --color-bg-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-success: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-warning: #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-info: #0284C7;
+  --color-info-bg: #E0F2FE;
+
+  /* Basic setup */
+  background-color: var(--color-bg-page);
   min-height: 100vh;
   margin: -24px;
-  padding: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  font-family: 'Inter', "Segoe UI", Roboto, -apple-system, sans-serif;
+  color: var(--color-text-primary);
   box-sizing: border-box;
 }
 
-.pageContainer * {
-  box-sizing: border-box;
+.pageContainer *, .container * { 
+  box-sizing: inherit; 
 }
 
-/* ────────────────────────────────────────────────
-   TITLE BAR — Rule 2: Proper green background / clean
-──────────────────────────────────────────────── */
-.titlebar {
-  background: #FFFFFF;
-  border-bottom: 3px solid #228B22; /* Forest Green */
-  padding: 24px 36px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+/* 1. Typography */
+.titlebar, .header {
+  margin-bottom: 24px;
 }
 
 .breadcrumb {
-  font-size: 11px;
-  font-weight: 800;
-  color: #6B8E23; /* Olive Green */
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
 }
 
-.title {
-  font-size: 24px;
-  font-weight: 900;
-  color: #1B5E20; /* Dark Green */
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.subtitle {
-  font-size: 13px;
-  color: #6B8E23;
-  margin: 6px 0 0;
+.title, .pageTitle {
+  font-size: clamp(24px, 3vw, 28px);
   font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  margin: 0 0 4px 0;
 }
 
-/* Steps Indicator */
-.steps {
-  display: flex;
-  gap: 0;
-  border: 1px solid #A5D6A7; /* Sage Green */
-  border-radius: 0; /* Rule 8: No radius */
+.subtitle, .pageSubtitle {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
-.step {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-right: 1px solid #A5D6A7;
-  font-size: 11px;
-  font-weight: 800;
-  color: #6B8E23;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: #F5F5F5;
-}
-
-.step:last-child {
-  border-right: none;
-}
-
-.stepNum {
-  width: 20px;
-  height: 20px;
-  background: #228B22; /* Forest Green */
-  color: #fff;
-  font-size: 11px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* ────────────────────────────────────────────────
-   FORM WRAPPER
-──────────────────────────────────────────────── */
-.form {
-  padding: 24px 36px 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* ────────────────────────────────────────────────
-   SECTIONS
-──────────────────────────────────────────────── */
-.section {
-  background: #FFFFFF;
-  border: 2px solid #8D6E63; /* Earth Brown - Rule 14: bold border */
-  border-top: none;
-  padding: 0;
-  border-radius: 0; /* Rule 8: No radius */
-}
-
-.section:first-of-type {
-  border-top: 2px solid #8D6E63;
+.sectionTitle, .sectionHdr .sectionTitle, .sectionCard .sectionTitle, .sectionCard h2 {
+  font-size: clamp(16px, 2vw, 18px);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  margin: 0 0 20px 0;
 }
 
 .sectionHdr {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 28px 16px;
-  background: #FFFFFF;
-  border-bottom: 2px solid #E8F5E9;
-  border-left: 6px solid #228B22; /* Forest Green */
+  margin-bottom: 20px;
 }
-
-.sectionNum {
-  width: 28px;
-  height: 28px;
-  background: #F5F5F5;
-  border: 2px solid #A5D6A7;
-  color: #228B22;
-  font-size: 12px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 0;
-}
-
-.sectionTitle {
-  font-size: 14px;
-  font-weight: 900;
-  color: #1B5E20;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.sectionHdr .sectionTitle {
   margin: 0;
 }
 
-.sectionBody {
-  padding: 24px 28px;
+.sectionNum {
+  background: var(--color-primary);
+  color: white;
+  width: 24px; 
+  height: 24px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 12px; 
+  font-weight: 500;
 }
 
-/* ────────────────────────────────────────────────
-   FORM GRID & FIELDS
-   Rule 10 & 14: Sharp corner fields, bold border
-──────────────────────────────────────────────── */
-.grid {
+/* Steps Indicator */
+.steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-info-bg);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-info);
+}
+
+.stepNum {
+  background: var(--color-info);
+  color: white;
+  width: 18px; 
+  height: 18px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 11px; 
+  font-weight: 600;
+}
+
+/* 4. Cards (Sections) */
+.section, .sectionCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.form, .formContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. Spacing & Layout - Grid */
+.grid, .formGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
@@ -171,227 +154,214 @@
   grid-column: 1 / -1;
 }
 
-.field {
+/* 10. Inputs */
+.field, .formGroup {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.field label {
-  font-size: 11px;
-  font-weight: 800;
-  color: #424242; /* Dark Gray */
+.field label, .formGroup label {
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.03em;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
 }
 
-.field label span {
-  color: #F44336; /* Error Red */
+.field label span, .formGroup label span {
+  color: var(--color-danger);
   margin-left: 4px;
-  font-size: 14px;
-}
-
-.field input,
-.field select {
-  background: #F5F5F5;
-  border: 2px solid #8D6E63; /* Earth Brown - bold border for forms */
-  color: #424242;
-  padding: 12px 14px;
-  font-size: 14px;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-  border-radius: 0; /* No radius */
 }
 
-.field input:focus,
-.field select:focus {
-  border-color: #228B22;
-  background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
-}
-
-.field input::placeholder {
-  color: #BDBDBD;
+.field input, .field select, .formGroup input, .formGroup select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 0 12px;
+  font-size: 14px;
   font-weight: 400;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
 }
 
-.field select option {
-  background: #FFFFFF;
+.field input:focus, .field select:focus, .formGroup input:focus, .formGroup select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
 }
 
-/* ────────────────────────────────────────────────
-   UPLOAD AREA
-──────────────────────────────────────────────── */
+.field input::placeholder, .formGroup input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.field select, .formGroup select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px auto;
+  padding-right: 32px;
+}
+
+/* Upload Dropzone */
 .upload {
-  border: 2px dashed #8D6E63;
-  padding: 32px;
+  border: 1px dashed var(--color-border);
+  background: var(--color-bg-page);
+  border-radius: 8px;
+  padding: 24px;
   text-align: center;
-  background: #F5F5F5;
   cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 0;
+  transition: all 150ms ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
 }
 
 .upload:hover {
-  background: #E8F5E9;
-  border-color: #228B22;
+  border-color: var(--color-primary);
+  background: #EFF6FF;
 }
 
 .uploadIcon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  font-size: 24px;
+  margin-bottom: 8px;
+  opacity: 0.8;
 }
 
 .uploadText {
-  color: #6B8E23;
   font-size: 14px;
-  font-weight: 700;
+  color: var(--color-text-primary);
+  font-weight: 500;
 }
 
 .uploadHint {
-  color: #A5D6A7;
   font-size: 12px;
-  margin-top: 6px;
-  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 4px;
 }
 
-/* ────────────────────────────────────────────────
-   STATUS MESSAGE
-   Rule 6: Use in-app notifications
-──────────────────────────────────────────────── */
-.statusSuccess {
-  background: #E8F5E9;
-  border: 2px solid #4CAF50;
-  border-left: 6px solid #228B22;
-  color: #1B5E20;
-  padding: 16px 20px;
+/* 5. Buttons */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.btnSubmit, .submitBtn, .btnCancel, .cancelBtn {
+  height: 36px;
+  border-radius: 8px;
+  padding: 0 16px;
   font-size: 14px;
-  font-weight: 800;
-  margin: 24px 0 0;
-  border-radius: 0;
-  animation: slideDown 0.3s ease;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  min-width: 80px;
+}
+
+.btnSubmit, .submitBtn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+}
+
+.btnSubmit:hover, .submitBtn:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.btnSubmit:disabled, .submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btnCancel, .cancelBtn {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btnCancel:hover, .cancelBtn:hover {
+  background: #F9FAFB;
+}
+
+.btnCancel:disabled, .cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status messages */
+.statusSuccess, .statusError {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusSuccess {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-left: 4px solid var(--color-success);
 }
 
 .statusError {
-  background: #FFEBEE;
-  border: 2px solid #F44336;
-  border-left: 6px solid #D32F2F;
-  color: #C62828;
-  padding: 16px 20px;
-  font-size: 14px;
-  font-weight: 800;
-  margin: 24px 0 0;
-  border-radius: 0;
-  animation: slideDown 0.3s ease;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-left: 4px solid var(--color-danger);
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ────────────────────────────────────────────────
-   ACTIONS BAR
-   Rule 1, 15: Sharp corners, Hover effect
-──────────────────────────────────────────────── */
-.actions {
-  background: #FFFFFF;
-  border: 2px solid #8D6E63;
-  border-top: 4px solid #228B22;
-  padding: 20px 28px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: -2px; /* Pull up to merge borders */
-}
-
-.btnCancel {
-  background: transparent;
-  border: 2px solid #8D6E63;
-  color: #424242;
-  padding: 12px 28px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 0;
-  font-family: inherit;
-}
-
-.btnCancel:hover {
-  border-color: #228B22;
-  color: #228B22;
-  background: #E8F5E9;
-}
-
-.btnSubmit {
-  background: #228B22;
-  border: 2px solid #228B22;
-  color: #FFFFFF;
-  padding: 12px 36px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 0;
-  box-shadow: 3px 3px 0px #1B5E20;
-  font-family: inherit;
-}
-
-.btnSubmit:hover {
-  background: #2E8B57;
-  border-color: #2E8B57;
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px #1B5E20;
-}
-
-.btnSubmit:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0px #1B5E20;
-}
-
-.btnSubmit:disabled {
-  background: #A5D6A7;
-  border-color: #A5D6A7;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
-/* ────────────────────────────────────────────────
-   RESPONSIVE
-──────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .titlebar {
-    padding: 20px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .form {
-    padding: 20px 24px 32px;
-  }
-  .steps {
-    width: 100%;
-    overflow-x: auto;
+/* 13. Responsiveness */
+@media (max-width: 1024px) {
+  .pageContainer, .container {
+    padding: 16px;
+    margin: -16px;
   }
 }
 
-@media (max-width: 600px) {
-  .grid {
+@media (max-width: 768px) {
+  .pageContainer, .container {
+    padding: 12px;
+    margin: -12px;
+  }
+  
+  .section, .sectionCard {
+    padding: 16px;
+  }
+  
+  .grid, .formGrid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
+  
   .actions {
-    flex-direction: column;
-    padding: 20px;
+    flex-direction: column-reverse;
   }
-  .actions button {
+  
+  .btnSubmit, .submitBtn, .btnCancel, .cancelBtn {
     width: 100%;
+    height: 44px; /* Touch target size for mobile */
+  }
+
+  .field input, .field select, .formGroup input, .formGroup select {
+    height: 44px; /* Touch target size for inputs on mobile */
   }
 }

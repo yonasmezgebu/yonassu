@@ -264,7 +264,7 @@ const MatPanel = ({ showToast }) => {
       {/* Content */}
       {loading ? (
         <div style={{textAlign:'center',padding:80}}>
-          <div style={{width:48,height:48,border:`5px solid ${G.sage}`,borderTop:`5px solid ${G.dark}`,borderRadius:'50%',animation:'spin .8s linear infinite',margin:'0 auto 16px'}}/>
+          <SegmentedSpinner size={24} />
           <div style={{fontWeight:900,color:G.olive,textTransform:'uppercase',letterSpacing:2}}>Loading…</div>
         </div>
       ) : filtered.length === 0 ? (
@@ -445,7 +445,7 @@ const JobsPanel = ({ showToast }) => {
       {/* Table */}
       {loading ? (
         <div style={{textAlign:'center',padding:80}}>
-          <div style={{width:48,height:48,border:`5px solid ${G.sage}`,borderTop:`5px solid ${G.dark}`,borderRadius:'50%',animation:'spin .8s linear infinite',margin:'0 auto 16px'}}/>
+          <SegmentedSpinner size={24} />
           <div style={{fontWeight:900,color:G.olive,textTransform:'uppercase',letterSpacing:2}}>Loading Jobs…</div>
         </div>
       ) : orders.length === 0 ? (

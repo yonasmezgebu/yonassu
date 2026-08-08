@@ -269,7 +269,7 @@ const StoreStockMovement = () => {
             </button>
             {/* Refresh */}
             <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, fontSize: 12, fontFamily: "'Inter', sans-serif", boxShadow: `3px 3px 0 ${G.dark}` }}>
-              <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <SegmentedSpinner size={13} />
               Refresh
             </button>
           </div>
@@ -381,7 +381,7 @@ const StoreStockMovement = () => {
         <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
-              <div style={{ width: 36, height: 36, border: `4px solid ${G.sage}`, borderTop: `4px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+              <SegmentedSpinner size={24} />
               <div style={{ color: G.forest, fontWeight: 800, fontSize: 13 }}>Loading movement log…</div>
             </div>
           ) : filtered.length === 0 ? (

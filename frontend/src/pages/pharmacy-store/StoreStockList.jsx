@@ -255,7 +255,7 @@ const StoreStockList = () => {
               <Plus size={16} /> Add New Stock
             </button>
             <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 14px', cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
-              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <SegmentedSpinner size={14} />
             </button>
           </div>
         </div>
@@ -331,7 +331,7 @@ const StoreStockList = () => {
         <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
-              <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+              <SegmentedSpinner size={24} />
               <div style={{ color: G.forest, fontWeight: 800 }}>Loading inventory…</div>
             </div>
           ) : sorted.length === 0 ? (

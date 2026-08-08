@@ -316,7 +316,7 @@ export default function CustomerFarmingOrders() {
             + New Rental
           </button>
           <button className="btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw size={16} className={refreshing ? 'spin' : ''} /> Refresh
+            <SegmentedSpinner size={16} /> Refresh
           </button>
         </div>
       </div>

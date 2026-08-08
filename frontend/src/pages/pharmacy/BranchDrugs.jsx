@@ -212,7 +212,7 @@ const BranchDrugs = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={7} style={{ padding: '60px 24px', textAlign: 'center' }}>
-                    <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#059669' }} />
+                    <SegmentedSpinner size={32} />
                   </td></tr>
                 ) : inventory.length === 0 ? (
                   <tr><td colSpan={7} style={{ padding: '60px 24px', textAlign: 'center', color: '#94a3b8' }}>

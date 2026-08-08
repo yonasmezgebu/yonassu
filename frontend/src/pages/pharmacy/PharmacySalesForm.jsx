@@ -685,12 +685,7 @@ export default function PharmacySalesForm() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.35), 0 1px 2px rgba(255,255,255,0.6)'
                   }}>
-                    <RefreshCw
-                      size={22}
-                      color={refreshing ? '#059669' : '#3f3f46'}
-                      strokeWidth={2.5}
-                      style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}}
-                    />
+                    <SegmentedSpinner size={22} />
                   </div>
                 </button>
                 <span style={{

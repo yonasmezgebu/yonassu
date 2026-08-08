@@ -13,6 +13,8 @@ const HRPayrollDashboard = () => {
   const [employees, setEmployees] = useState([]);
   const [toast, setToast] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [submitBanner, setSubmitBanner] = useState(null);
+  const [activeTab, setActiveTab] = useState('sheet'); // 'sheet' | 'print'
 
   const fetchPayroll = async () => {
     setLoading(true);
@@ -39,8 +41,22 @@ const HRPayrollDashboard = () => {
   }, [month, year]);
 
   const handleClear = () => {
-    setSummary(null);
-    setEmployees([]);
+    if (summary || employees.length > 0) {
+      setConfirmModal({
+        title: 'Clear Payroll View',
+        message: 'This will clear the current payroll data from the screen. Any unsaved changes will be lost. Are you sure?',
+        onConfirm: () => {
+          setConfirmModal(null);
+          setSummary(null);
+          setEmployees([]);
+          setSubmitBanner(null);
+        }
+      });
+    } else {
+      setSummary(null);
+      setEmployees([]);
+      setSubmitBanner(null);
+    }
   };
 
   const showToast = (msg, type = 'success') => {
@@ -72,14 +88,19 @@ const HRPayrollDashboard = () => {
     if (!summary) return;
     setConfirmModal({
       title: 'Submit Payroll',
-      message: 'Submit this payroll to the CEO for approval?',
+      message: `Submit the ${new Date(2000, month - 1).toLocaleString('default', { month: 'long' })} ${year} payroll to the CEO for approval? This action cannot be undone.`,
       onConfirm: async () => {
         setConfirmModal(null);
         setSubmitting(true);
         try {
           await apiClient.post('/hr/etp/payroll/submit', { month, year });
-          showToast('Payroll submitted for CEO approval!');
-          await fetchPayroll();
+          // Show persistent in-app banner — stays until dismissed
+          setSubmitBanner({
+            title: 'Payroll Submitted for CEO Approval',
+            detail: `The ${new Date(2000, month - 1).toLocaleString('default', { month: 'long' })} ${year} payroll has been forwarded to the CEO. You will be notified once it is reviewed.`,
+            at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+          await fetchPayroll(); // refresh status badge — data stays visible
         } catch (err) {
           showToast(err.response?.data?.message || 'Failed to submit payroll', 'error');
         } finally {
@@ -91,13 +112,170 @@ const HRPayrollDashboard = () => {
 
   const isEditable = !summary || summary.approval_status === 'Draft' || summary.approval_status === 'Rejected';
 
+  const fmtN = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const monthName = new Date(2000, month - 1).toLocaleString('default', { month: 'long' });
+
+  const totalBase        = employees.reduce((s, e) => s + Number(e.base_salary || 0), 0);
+  const totalAllowances  = employees.reduce((s, e) => s + Number(e.housing_allowance || 0) + Number(e.transport_allowance || 0) + Number(e.communication_allowance || 0), 0);
+  const totalExtras      = employees.reduce((s, e) => s + Number(e.overtime_pay || 0) + Number(e.bonus_pay || 0), 0);
+  const totalDeductions  = employees.reduce((s, e) => s + Number(e.deduction_absent || 0) + Number(e.deduction_loan || 0) + Number(e.deduction_tax || 0) + Number(e.deduction_pension || 0), 0);
+  const totalNet         = employees.reduce((s, e) => s + Number(e.net_pay || 0), 0);
+
+  const handlePrint = () => {
+    const printWin = window.open('', '_blank', 'width=1100,height=800');
+    const rows = employees.map((emp, idx) => {
+      const allow = Number(emp.housing_allowance||0)+Number(emp.transport_allowance||0)+Number(emp.communication_allowance||0);
+      const extras = Number(emp.overtime_pay||0)+Number(emp.bonus_pay||0);
+      const deduct = Number(emp.deduction_absent||0)+Number(emp.deduction_loan||0)+Number(emp.deduction_tax||0)+Number(emp.deduction_pension||0);
+      return `<tr>
+        <td class="num">${idx+1}</td>
+        <td><div class="name">${emp.full_name}</div><div class="eid">#${emp.employee_id}</div></td>
+        <td class="dept">${emp.dept_name || emp.dept_id || '—'}</td>
+        <td class="r">${fmtN(emp.base_salary)}</td>
+        <td class="r plus">${allow > 0 ? '+'+fmtN(allow) : '—'}</td>
+        <td class="r plus">${extras > 0 ? '+'+fmtN(extras) : '—'}</td>
+        <td class="r minus">${deduct > 0 ? '-'+fmtN(deduct) : '—'}</td>
+        <td class="r bold">${fmtN(emp.net_pay)}</td>
+      </tr>`;
+    }).join('');
+
+    const now = new Date();
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Payroll — ${monthName} ${year}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#111827;padding:32px;font-size:12px}
+  .doc-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2563EB;padding-bottom:16px;margin-bottom:24px}
+  .org{font-size:20px;font-weight:700;color:#111827;margin-bottom:4px}
+  .sub{font-size:12px;color:#6B7280;margin-bottom:2px}
+  .badge{display:inline-block;background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:9999px;padding:2px 10px;font-size:11px;font-weight:600;margin-top:8px}
+  .meta{text-align:right;font-size:11px;color:#6B7280;line-height:1.8}
+  .meta strong{color:#111827;font-weight:600}
+  .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:24px}
+  .sc{padding:12px 16px;border-right:1px solid #E5E7EB}
+  .sc:last-child{border-right:none}
+  .sc-l{font-size:10px;font-weight:500;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .sc-v{font-size:16px;font-weight:700;color:#111827}
+  .sc-v.blue{color:#2563EB}.sc-v.green{color:#16A34A}.sc-v.red{color:#DC2626}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:#F9FAFB;border-bottom:1px solid #E5E7EB}
+  th{padding:10px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6B7280;text-align:left}
+  th.r{text-align:right}
+  td{padding:10px 12px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#F9FAFB}
+  td.r{text-align:right;font-variant-numeric:tabular-nums}
+  td.num{color:#9CA3AF;font-size:11px;text-align:right}
+  td.dept{color:#6B7280}
+  .name{font-weight:600;color:#111827;font-size:13px}
+  .eid{font-family:monospace;font-size:10px;color:#9CA3AF;margin-top:2px}
+  .plus{color:#16A34A}.minus{color:#DC2626}
+  .bold{font-weight:700;color:#111827}
+  tfoot td{font-weight:700;background:#F9FAFB;border-top:2px solid #E5E7EB;font-size:12px}
+  .sig-row{display:flex;justify-content:flex-end;gap:64px;margin-top:48px}
+  .sig{text-align:center}
+  .sig-line{border-top:1px solid #374151;width:160px;padding-top:6px;font-size:11px;color:#6B7280;margin-top:40px}
+  .footer{margin-top:24px;border-top:1px solid #E5E7EB;padding-top:12px;display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF}
+  .status-pill{display:inline-block;background:#DCFCE7;color:#16A34A;border-radius:9999px;padding:1px 8px;font-size:10px;font-weight:600}
+  @media print{
+    body{padding:16px}
+    @page{margin:15mm;size:A4 landscape}
+    .no-print{display:none!important}
+    thead tr{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#F9FAFB!important}
+  }
+</style></head><body>
+<div class="no-print" style="margin-bottom:20px;display:flex;gap:12px">
+  <button onclick="window.print()" style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer">🖨 Print / Save PDF</button>
+  <button onclick="window.close()" style="background:#F9FAFB;color:#374151;border:1px solid #E5E7EB;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer">Close</button>
+</div>
+<div class="doc-header">
+  <div>
+    <div class="org">SUTANA Enterprise</div>
+    <div class="sub">Enterprise Management System · Payroll Division</div>
+    <span class="badge">${monthName.toUpperCase()} ${year} · PAYROLL REGISTER</span>
+  </div>
+  <div class="meta">
+    <div>Printed: <strong>${now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</strong></div>
+    <div>Time: <strong>${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</strong></div>
+    <div>Status: <span class="status-pill">${summary?.approval_status || 'Draft'}</span></div>
+    <div>Employees: <strong>${employees.length}</strong></div>
+  </div>
+</div>
+<div class="summary">
+  <div class="sc"><div class="sc-l">Total Employees</div><div class="sc-v blue">${employees.length}</div></div>
+  <div class="sc"><div class="sc-l">Total Base Salary</div><div class="sc-v">${fmtN(totalBase)} ETB</div></div>
+  <div class="sc"><div class="sc-l">Allowances + Extras</div><div class="sc-v green">+${fmtN(totalAllowances+totalExtras)} ETB</div></div>
+  <div class="sc"><div class="sc-l">Total Deductions</div><div class="sc-v red">-${fmtN(totalDeductions)} ETB</div></div>
+  <div class="sc"><div class="sc-l">Total Net Pay</div><div class="sc-v green">${fmtN(totalNet)} ETB</div></div>
+</div>
+<table>
+<thead><tr>
+  <th class="r">#</th>
+  <th>Employee</th>
+  <th>Department</th>
+  <th class="r">Base Salary</th>
+  <th class="r">Allowances</th>
+  <th class="r">Extras</th>
+  <th class="r">Deductions</th>
+  <th class="r">Net Pay (ETB)</th>
+</tr></thead>
+<tbody>${rows}</tbody>
+<tfoot><tr>
+  <td colspan="3">TOTALS</td>
+  <td class="r">${fmtN(totalBase)}</td>
+  <td class="r plus">+${fmtN(totalAllowances)}</td>
+  <td class="r plus">+${fmtN(totalExtras)}</td>
+  <td class="r minus">-${fmtN(totalDeductions)}</td>
+  <td class="r bold">${fmtN(totalNet)}</td>
+</tr></tfoot>
+</table>
+<div class="sig-row">
+  <div class="sig"><div class="sig-line">Prepared by — HR Manager</div></div>
+  <div class="sig"><div class="sig-line">Approved by — CEO</div></div>
+  <div class="sig"><div class="sig-line">Finance Authorized</div></div>
+</div>
+<div class="footer">
+  <span>SUTANA Enterprise · Confidential Payroll Document</span>
+  <span>Generated by ERP System · ${now.toISOString()}</span>
+</div>
+</body></html>`;
+    if (printWin) { printWin.document.write(html); printWin.document.close(); }
+  };
+
   return (
     <div className={styles.container}>
-      
-      {/* ── NOTIFICATIONS ── */}
+
+      {/* ── TRANSIENT TOAST (errors / quick confirmations) ── */}
       {toast && (
         <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* ── PERSISTENT IN-APP SUBMISSION BANNER ── */}
+      {submitBanner && (
+        <div className={styles.submitBanner}>
+          <div className={styles.submitBannerIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="9" stroke="#16A34A" strokeWidth="1.5"/>
+              <path d="M6 10l3 3 5-5" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className={styles.submitBannerBody}>
+            <div className={styles.submitBannerTitle}>{submitBanner.title}</div>
+            <div className={styles.submitBannerDetail}>{submitBanner.detail}</div>
+          </div>
+          <div className={styles.submitBannerMeta}>
+            <span className={styles.submitBannerTime}>Sent at {submitBanner.at}</span>
+            <button
+              className={styles.submitBannerClose}
+              onClick={() => setSubmitBanner(null)}
+              title="Dismiss"
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
 
@@ -178,11 +356,29 @@ const HRPayrollDashboard = () => {
             {isEditable && (
               <>
                 <button className={styles.calcBtn} onClick={handleCalculate} disabled={calculating}>
-                  {calculating ? 'Calculating...' : 'Calculate Payroll'}
+                  {calculating ? (
+                    <span className={styles.btnInner}>
+                      <span className={styles.segSpinner} aria-hidden="true">
+                        {Array.from({length: 12}).map((_, i) => (
+                          <span key={i} className={styles.segTooth} style={{ '--i': i }} />
+                        ))}
+                      </span>
+                      Calculating…
+                    </span>
+                  ) : 'Calculate Payroll'}
                 </button>
                 {summary && (
                   <button className={styles.submitBtn} onClick={handleSubmit} disabled={submitting}>
-                    {submitting ? 'Submitting...' : 'Submit to CEO'}
+                    {submitting ? (
+                      <span className={styles.btnInner}>
+                        <span className={styles.segSpinner} aria-hidden="true">
+                          {Array.from({length: 12}).map((_, i) => (
+                            <span key={i} className={styles.segTooth} style={{ '--i': i }} />
+                          ))}
+                        </span>
+                        Submitting…
+                      </span>
+                    ) : 'Submit to CEO'}
                   </button>
                 )}
               </>
@@ -191,6 +387,25 @@ const HRPayrollDashboard = () => {
         </div>
       </div>
       
+      {/* ── TAB BAR ── */}
+      <div className={styles.tabBar}>
+        <button
+          className={`${styles.tab} ${activeTab === 'sheet' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('sheet')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Payroll Sheet
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'print' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('print')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print Preview
+          {employees.length > 0 && <span className={styles.tabBadge}>{employees.length}</span>}
+        </button>
+      </div>
+
       {/* ── MAIN BODY ── */}
       <div className={styles.bodyArea}>
         
@@ -202,58 +417,171 @@ const HRPayrollDashboard = () => {
         )}
 
         {loading ? (
-          <div className={styles.loading}>● Loading payroll data...</div>
-        ) : employees.length === 0 ? (
-          <div className={styles.empty}>
-            <p>No payroll data generated for {month}/{year}.</p>
-            {isEditable && <p style={{ fontSize: '12px', marginTop: '8px' }}>Click "Calculate Payroll" to draft the salary sheet.</p>}
+          <div className={styles.loading}>
+            <span className={styles.segSpinnerLg} aria-hidden="true">
+              {Array.from({length: 12}).map((_, i) => (
+                <span key={i} className={styles.segToothLg} style={{ '--i': i }} />
+              ))}
+            </span>
+            <span>Loading payroll data…</span>
+          </div>
+        ) : activeTab === 'print' ? (
+          /* ── PRINT PREVIEW TAB ── */
+          <div className={styles.printPreview}>
+            {employees.length === 0 ? (
+              <div className={styles.empty}>
+                <p>No payroll data to print. Load and calculate payroll first.</p>
+              </div>
+            ) : (
+              <>
+                {/* Toolbar */}
+                <div className={styles.printToolbar}>
+                  <div className={styles.printDocInfo}>
+                    <span className={styles.printDocTitle}>Payroll Register — {monthName} {year}</span>
+                    <span className={styles.printDocMeta}>{employees.length} employees · Status: <strong>{summary?.approval_status || 'Draft'}</strong></span>
+                  </div>
+                  <button className={styles.printBtn} onClick={handlePrint}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Print / Save PDF
+                  </button>
+                </div>
+
+                {/* Summary KPIs */}
+                <div className={styles.printKPIRow}>
+                  <div className={styles.printKPI}>
+                    <div className={styles.printKPILabel}>Employees</div>
+                    <div className={styles.printKPIValue} style={{color:'var(--color-primary)'}}>{employees.length}</div>
+                  </div>
+                  <div className={styles.printKPI}>
+                    <div className={styles.printKPILabel}>Total Base Salary</div>
+                    <div className={styles.printKPIValue}>{fmtN(totalBase)} <span>ETB</span></div>
+                  </div>
+                  <div className={styles.printKPI}>
+                    <div className={styles.printKPILabel}>Allowances + Extras</div>
+                    <div className={styles.printKPIValue} style={{color:'var(--color-success)'}}>+{fmtN(totalAllowances + totalExtras)} <span>ETB</span></div>
+                  </div>
+                  <div className={styles.printKPI}>
+                    <div className={styles.printKPILabel}>Total Deductions</div>
+                    <div className={styles.printKPIValue} style={{color:'var(--color-danger)'}}>-{fmtN(totalDeductions)} <span>ETB</span></div>
+                  </div>
+                  <div className={`${styles.printKPI} ${styles.printKPINet}`}>
+                    <div className={styles.printKPILabel}>Total Net Pay</div>
+                    <div className={styles.printKPIValue} style={{color:'var(--color-success)', fontSize:'20px', fontWeight:700}}>{fmtN(totalNet)} <span>ETB</span></div>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={{width:36}}>#</th>
+                        <th>Employee</th>
+                        <th>Department</th>
+                        <th className={styles.right}>Base Salary</th>
+                        <th className={styles.right}>Allowances</th>
+                        <th className={styles.right}>Extras</th>
+                        <th className={styles.right}>Deductions</th>
+                        <th className={styles.right}>Net Pay (ETB)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((emp, idx) => {
+                        const allow = Number(emp.housing_allowance||0)+Number(emp.transport_allowance||0)+Number(emp.communication_allowance||0);
+                        const extras = Number(emp.overtime_pay||0)+Number(emp.bonus_pay||0);
+                        const deduct = Number(emp.deduction_absent||0)+Number(emp.deduction_loan||0)+Number(emp.deduction_tax||0)+Number(emp.deduction_pension||0);
+                        return (
+                          <tr key={emp.employee_id}>
+                            <td className={styles.rowNum}>{idx+1}</td>
+                            <td>
+                              <div className={styles.empName}>{emp.full_name}</div>
+                              <div className={styles.empId}>#{emp.employee_id}</div>
+                            </td>
+                            <td className={styles.deptCell}>{emp.dept_name || emp.dept_id || '—'}</td>
+                            <td className={styles.right}>{fmtN(emp.base_salary)}</td>
+                            <td className={`${styles.right} ${styles.valPlus}`}>{allow > 0 ? `+${fmtN(allow)}` : '—'}</td>
+                            <td className={`${styles.right} ${styles.valExtra}`}>{extras > 0 ? `+${fmtN(extras)}` : '—'}</td>
+                            <td className={`${styles.right} ${styles.valMinus}`}>{deduct > 0 ? `-${fmtN(deduct)}` : '—'}</td>
+                            <td className={`${styles.right} ${styles.valNet}`}>{fmtN(emp.net_pay)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className={styles.totalRow}>
+                        <td colSpan={3} className={styles.totalLabel}>TOTALS</td>
+                        <td className={styles.right}>{fmtN(totalBase)}</td>
+                        <td className={`${styles.right} ${styles.valPlus}`}>+{fmtN(totalAllowances)}</td>
+                        <td className={`${styles.right} ${styles.valExtra}`}>+{fmtN(totalExtras)}</td>
+                        <td className={`${styles.right} ${styles.valMinus}`}>-{fmtN(totalDeductions)}</td>
+                        <td className={`${styles.right} ${styles.valNet}`} style={{fontWeight:700}}>{fmtN(totalNet)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Signature footer */}
+                <div className={styles.printSignatures}>
+                  <div className={styles.sigBox}><div className={styles.sigLine}>Prepared by — HR Manager</div></div>
+                  <div className={styles.sigBox}><div className={styles.sigLine}>Approved by — CEO</div></div>
+                  <div className={styles.sigBox}><div className={styles.sigLine}>Finance Authorized</div></div>
+                </div>
+              </>
+            )}
           </div>
         ) : (
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th className={styles.right}>Base Salary</th>
-                  <th className={styles.right}>Allowances</th>
-                  <th className={styles.right}>Extras</th>
-                  <th className={styles.right}>Deductions</th>
-                  <th className={styles.right}>Net Pay</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((emp) => {
-                  const totalAllowances = Number(emp.housing_allowance || 0) + Number(emp.transport_allowance || 0) + Number(emp.communication_allowance || 0);
-                  const totalExtras = Number(emp.overtime_pay || 0) + Number(emp.bonus_pay || 0);
-                  const totalDeductions = Number(emp.deduction_absent || 0) + Number(emp.deduction_loan || 0) + Number(emp.deduction_tax || 0) + Number(emp.deduction_pension || 0);
-                  
-                  return (
-                    <tr key={emp.employee_id}>
-                      <td>
-                        <div className={styles.empName}>{emp.full_name}</div>
-                        <div className={styles.empId}>#{emp.employee_id}</div>
-                      </td>
-                      <td className={styles.right}>
-                        <span className={styles.valBase}>{formatCurrency(emp.base_salary)}</span>
-                      </td>
-                      <td className={styles.right}>
-                        <span className={styles.valPlus}>{totalAllowances > 0 ? `+${formatCurrency(totalAllowances)}` : '—'}</span>
-                      </td>
-                      <td className={styles.right}>
-                        <span className={styles.valExtra}>{totalExtras > 0 ? `+${formatCurrency(totalExtras)}` : '—'}</span>
-                      </td>
-                      <td className={styles.right}>
-                        <span className={styles.valMinus}>{totalDeductions > 0 ? `-${formatCurrency(totalDeductions)}` : '—'}</span>
-                      </td>
-                      <td className={styles.right}>
-                        <span className={styles.valNet}>{formatCurrency(emp.net_pay)}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          /* ── PAYROLL SHEET TAB (original) ── */
+          employees.length === 0 ? (
+            <div className={styles.empty}>
+              <p>No payroll data generated for {month}/{year}.</p>
+              {isEditable && <p style={{ fontSize: '12px', marginTop: '8px' }}>Click "Calculate Payroll" to draft the salary sheet.</p>}
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th className={styles.right}>Base Salary</th>
+                    <th className={styles.right}>Allowances</th>
+                    <th className={styles.right}>Extras</th>
+                    <th className={styles.right}>Deductions</th>
+                    <th className={styles.right}>Net Pay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((emp) => {
+                    const totalAllowances = Number(emp.housing_allowance || 0) + Number(emp.transport_allowance || 0) + Number(emp.communication_allowance || 0);
+                    const totalExtras = Number(emp.overtime_pay || 0) + Number(emp.bonus_pay || 0);
+                    const totalDeductions = Number(emp.deduction_absent || 0) + Number(emp.deduction_loan || 0) + Number(emp.deduction_tax || 0) + Number(emp.deduction_pension || 0);
+                    return (
+                      <tr key={emp.employee_id}>
+                        <td>
+                          <div className={styles.empName}>{emp.full_name}</div>
+                          <div className={styles.empId}>#{emp.employee_id}</div>
+                        </td>
+                        <td className={styles.right}>
+                          <span className={styles.valBase}>{formatCurrency(emp.base_salary)}</span>
+                        </td>
+                        <td className={styles.right}>
+                          <span className={styles.valPlus}>{totalAllowances > 0 ? `+${formatCurrency(totalAllowances)}` : '—'}</span>
+                        </td>
+                        <td className={styles.right}>
+                          <span className={styles.valExtra}>{totalExtras > 0 ? `+${formatCurrency(totalExtras)}` : '—'}</span>
+                        </td>
+                        <td className={styles.right}>
+                          <span className={styles.valMinus}>{totalDeductions > 0 ? `-${formatCurrency(totalDeductions)}` : '—'}</span>
+                        </td>
+                        <td className={styles.right}>
+                          <span className={styles.valNet}>{formatCurrency(emp.net_pay)}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
 

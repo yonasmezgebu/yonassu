@@ -209,7 +209,7 @@ const PharmacyStockAdjustment = () => {
                 letterSpacing: '1.5px'
               }}
             >
-              <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+              <SegmentedSpinner size={17} />
               Refresh
             </button>
           </div>
@@ -261,7 +261,7 @@ const PharmacyStockAdjustment = () => {
             </div>
             <button disabled={!selectedId || !adjQty || !adjReason.trim() || saving} onClick={doSubmit} className={(!selectedId || !adjQty || !adjReason.trim() || saving) ? '' : 'action-btn-3d'}
               style={{ width: '100%', padding: '16px', background: selectedId && adjQty && adjReason.trim() && !saving ? GOLD : '#e2e8f0', color: selectedId && adjQty && adjReason.trim() && !saving ? DARK : '#94a3b8', border: selectedId && adjQty && adjReason.trim() && !saving ? `3px solid ${GOLD2}` : '3px solid transparent', fontWeight: 900, cursor: selectedId && adjQty && adjReason.trim() && !saving ? 'pointer' : 'not-allowed', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1.2px', boxShadow: selectedId && adjQty && adjReason.trim() && !saving ? `5px 5px 0 ${GOLD2}` : 'none' }}>
-              {saving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+              {saving && <SegmentedSpinner size={16} />}
               {saving ? 'Requesting...' : <><span className="icon-3d"><Save size={18} /></span> Request Adjustment</>}
             </button>
           </div>
@@ -300,7 +300,7 @@ const PharmacyStockAdjustment = () => {
               <span className="icon-3d"><ClipboardList size={18} color={YELLOW} /></span> Adjustment & Movement Audit Log
             </span>
             <span style={{ fontSize: 12, color: DARK, background: OLIVE, padding: '4px 10px', fontWeight: 900 }}>
-              {loading ? <><Loader2 size={14} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 6 }} />LOADING...</> : `${filteredMovements.length} RECORDS`}
+              {loading ? <><SegmentedSpinner size={14} />LOADING...</> : `${filteredMovements.length} RECORDS`}
             </span>
           </div>
           
@@ -332,7 +332,7 @@ const PharmacyStockAdjustment = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={5} style={{ padding: '60px 24px', textAlign: 'center' }}>
-                    <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+                    <SegmentedSpinner size={32} />
                   </td></tr>
                 ) : filteredMovements.length === 0 ? (
                   <tr><td colSpan={5} style={{ padding: '60px 24px', textAlign: 'center', color: DARK }}>

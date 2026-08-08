@@ -219,7 +219,7 @@ const AdjustmentForm = ({ onSuccess, onClose }) => {
               </label>
               <div style={{ position: 'relative' }}>
                 <input value={loadingNo ? 'Generating…' : form.adjustment_no} readOnly className="adj-input adj-input-readonly" />
-                {loadingNo && <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: `2px solid ${G.sage}`, borderTop: `2px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />}
+                {loadingNo && <SegmentedSpinner size={24} />}
               </div>
             </div>
             <div>
@@ -388,7 +388,7 @@ const StoreStockAdjustment = () => {
               <Plus size={17} /> New Adjustment
             </button>
             <button onClick={load} className="btn-ghost">
-              <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <SegmentedSpinner size={15} />
             </button>
           </div>
         </div>
@@ -424,7 +424,7 @@ const StoreStockAdjustment = () => {
         {/* List */}
         {loading ? (
           <div style={{ padding: 80, textAlign: 'center' }}>
-            <div style={{ width: 44, height: 44, border: `4px solid ${G.sage}`, borderTop: `4px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+            <SegmentedSpinner size={24} />
             <div style={{ color: G.forest, fontWeight: 700, fontSize: 14 }}>Loading adjustments…</div>
           </div>
         ) : filtered.length === 0 ? (

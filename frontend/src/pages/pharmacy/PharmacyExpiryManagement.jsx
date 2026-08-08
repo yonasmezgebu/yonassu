@@ -284,7 +284,7 @@ const PharmacyExpiryManagement = () => {
               alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1.5px',
             }}
           >
-            <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+            <SegmentedSpinner size={17} />
             Refresh
           </button>
         </div>
@@ -339,7 +339,7 @@ const PharmacyExpiryManagement = () => {
             </span>
             <span style={{ fontSize: 12, color: DARK, background: MINT, padding: '4px 12px', fontWeight: 900 }}>
               {loading
-                ? <><Loader2 size={13} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 6 }} />LOADING...</>
+                ? <><SegmentedSpinner size={13} />LOADING...</>
                 : `${searched.length} ITEMS`}
             </span>
           </div>
@@ -361,7 +361,7 @@ const PharmacyExpiryManagement = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={7} style={{ padding: '70px 24px', textAlign: 'center' }}>
-                    <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+                    <SegmentedSpinner size={36} />
                     <p style={{ color: DARK, margin: '14px 0 0', fontWeight: 800, textTransform: 'uppercase' }}>Loading products…</p>
                   </td></tr>
                 ) : searched.length === 0 ? (
@@ -489,7 +489,7 @@ const PharmacyExpiryManagement = () => {
                     className={!reportQty || reportSaving ? '' : 'btn3d'}
                     style={{ flex: 1, padding: '14px', background: !reportQty || reportSaving ? '#e2e8f0' : GOLD, color: !reportQty || reportSaving ? '#94a3b8' : DARK, border: `3px solid ${!reportQty || reportSaving ? 'transparent' : GOLD2}`, fontWeight: 900, fontSize: 13, cursor: !reportQty || reportSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: !reportQty || reportSaving ? 'none' : `4px 4px 0 ${GOLD2}`, textTransform: 'uppercase' }}
                   >
-                    {reportSaving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                    {reportSaving && <SegmentedSpinner size={16} />}
                     {reportSaving ? 'Submitting…' : <><span className="icon3d"><FileText size={16} /></span> Submit to CEO</>}
                   </button>
                   <button

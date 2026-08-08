@@ -142,7 +142,7 @@ export default function PharmacyStockOperations() {
               letterSpacing: '1.5px'
             }}
           >
-            <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+            <SegmentedSpinner size={17} />
             Refresh
           </button>
         </div>

@@ -252,7 +252,7 @@ export const GSHome = () => {
         </div>
         <div style={{ justifySelf: 'end' }}>
                     <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none', zIndex: 1, position: 'relative' }}>🔄</span>
+            {refreshing && <SegmentedSpinner size={16} />}
             <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
         </div>
@@ -1684,7 +1684,7 @@ export const GSIssueItem = () => {
                             <td colSpan={7} style={{ padding: 0, borderBottom: `2px solid ${G.forest}` }}>
                               <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${deptColor}`, padding: '18px 28px' }}>
                                 {loadingDet ? (
-                                  <div style={{ padding: '20px', textAlign: 'center', color: G.darkGray }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</div>
+                                  <div style={{ padding: '20px', textAlign: 'center', color: G.darkGray }}><SegmentedSpinner size={18} /> Loading...</div>
                                 ) : det ? (
                                   <>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>

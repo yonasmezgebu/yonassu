@@ -386,7 +386,7 @@ export default function StoreSalesRequests() {
           disabled={refreshing}
           style={{ background: G.forest, border: 'none', color: '#fff', padding: '10px 20px', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase' }}
         >
-          <RefreshCw size={15} style={refreshing ? { animation: 'spin 0.8s linear infinite' } : {}} />
+          <SegmentedSpinner size={15} />
           Refresh
         </button>
       </div>

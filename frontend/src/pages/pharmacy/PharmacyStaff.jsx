@@ -274,7 +274,7 @@ const AssignModal = ({ branches, unassigned, preSelectedWorker, onClose, onSucce
             <div style={{ display: 'flex', gap: 12 }}>
               <button type="button" onClick={onClose} className="btn-3d" style={{ flex: 1 }}>Cancel</button>
               <button type="submit" disabled={loading || !selectedUserId || !selectedBranchId} className="btn-3d-primary" style={{ flex: 2, opacity: loading || !selectedUserId || !selectedBranchId ? 0.6 : 1 }}>
-                {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <UserCheck size={16} />}
+                {loading ? <SegmentedSpinner size={16} /> : <UserCheck size={16} />}
                 {loading ? 'Saving...' : preSelectedWorker ? 'Update Role' : 'Assign Worker'}
               </button>
             </div>
@@ -377,7 +377,7 @@ const TaskModal = ({ worker, tasks, onClose, onRefresh }) => {
                 <textarea rows={4} className="inp-field" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Task details..." style={{ resize: 'vertical' }} />
               </div>
               <button type="submit" disabled={loading} className="btn-3d-primary" style={{ width: '100%', opacity: loading ? 0.7 : 1 }}>
-                {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={16} />}
+                {loading ? <SegmentedSpinner size={16} /> : <Plus size={16} />}
                 {loading ? 'Assigning...' : 'Assign Task'}
               </button>
             </form>
@@ -548,7 +548,7 @@ const PharmacyStaff = () => {
         </div>
         <div style={{ justifySelf: 'end', display: 'flex', gap: 12 }}>
           <button onClick={() => loadAll(true)} className="btn-3d" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <RefreshCw size={16} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+            <SegmentedSpinner size={16} />
             <span>Refresh</span>
           </button>
           <button onClick={() => setShowAssignModal(true)} className="btn-3d-primary">
@@ -754,7 +754,7 @@ const PharmacyStaff = () => {
                 <button onClick={() => setConfirmUnassign(null)} className="btn-3d" style={{ flex: 1 }}>Cancel</button>
                 <button onClick={handleUnassignConfirm} disabled={loading}
                   style={{ flex: 2, padding: '10px 20px', border: 'none', background: 'linear-gradient(135deg,#E07B54,#b85a38)', color: 'white', fontWeight: 900, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <UserX size={16} />}
+                  {loading ? <SegmentedSpinner size={16} /> : <UserX size={16} />}
                   {loading ? 'Processing...' : 'Yes, Unassign'}
                 </button>
               </div>

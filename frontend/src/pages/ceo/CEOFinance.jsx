@@ -269,7 +269,7 @@ const CEOFinance = () => {
 
           {loadingPcvs ? (
             <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}>
-              <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+              <SegmentedSpinner size={32} />
               <div>Loading pending PCVs...</div>
             </div>
           ) : pcvs.length === 0 ? (
@@ -312,7 +312,7 @@ const CEOFinance = () => {
                       </button>
                       <button onClick={() => handleApprovePcv(pcv)} disabled={actionLoading === pcv.id}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,.3)', opacity: actionLoading === pcv.id ? 0.7 : 1 }}>
-                        {actionLoading === pcv.id ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />} Approve
+                        {actionLoading === pcv.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
                       </button>
                     </div>
                   </div>
@@ -377,7 +377,7 @@ const CEOFinance = () => {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
               <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={handleRejectPcv} disabled={!rejectReason.trim() || actionLoading === rejectTarget.id} style={{ padding: '10px 20px', background: actionLoading === rejectTarget.id || !rejectReason.trim() ? '#fca5a5' : '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: !rejectReason.trim() ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {actionLoading === rejectTarget.id ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={16} />} Reject
+                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject
               </button>
             </div>
           </div>

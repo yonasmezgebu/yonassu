@@ -3,6 +3,7 @@ import { Sprout } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import hrService from '../../services/hrService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
@@ -124,12 +125,12 @@ const HRHome = () => {
       const actData = activitiesRes?.data || activitiesRes || {};
       const logs = actData.logs || [];
       setActivities(logs.map((log, i) => ({
-        id: log.record_id || i,
-        action_type: log.action_type === 'CLOCK_IN' ? 'Clock In' : 'Clock Out',
+        id: log.record_id || log.id || i,
+        action_type: (log.action || log.action_type) === 'CLOCK_IN' ? 'Clock In' : 'Clock Out',
         employee_id: log.employee_id,
-        time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: log.action_type === 'CLOCK_IN' ? 'hire' : 'leave',
-        date_time: log.timestamp
+        time: new Date(log.timestamp || log.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: (log.action || log.action_type) === 'CLOCK_IN' ? 'hire' : 'leave',
+        date_time: log.timestamp || log.created_at
       })).slice(0, 6));
       const lvData = leavesRes?.data?.leaves || leavesRes?.leaves || [];
       setPendingLeaves(lvData);
@@ -173,7 +174,7 @@ const HRHome = () => {
         </div>
         <div style={{ justifySelf: 'end' }}>
                     <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none', zIndex: 1, position: 'relative' }}>🔄</span>
+            {refreshing && <SegmentedSpinner size={16} />}
             <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
         </div>
@@ -256,8 +257,8 @@ const HRHome = () => {
           </div>
           {/* Header row */}
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
-            {['Department', '', 'Count', '%'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+            {['Department', '', 'Count', '%'].map((h, hi) => (
+              <div key={`header-${hi}`} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
             ))}
           </div>
           {deptBreakdown.length === 0 ? (
@@ -266,7 +267,7 @@ const HRHome = () => {
             const c = COLORS_ARR[i % COLORS_ARR.length];
             const pct = activeCount > 0 ? Math.round((row.count / activeCount) * 100) : 0;
             return (
-              <div key={row.department} className="cat-row" onClick={() => nav('/hr/employees')}>
+              <div key={row.department ?? `dept-${i}`} className="cat-row" onClick={() => nav('/hr/employees')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.department}</span>

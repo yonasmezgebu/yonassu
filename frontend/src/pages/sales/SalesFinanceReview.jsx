@@ -147,7 +147,7 @@ export default function SalesFinanceReview() {
           </p>
         </div>
         <button onClick={load} disabled={loading} className="ds-btn">
-          <RefreshCw size={14} style={{ animation:loading ? 'spin 1s linear infinite' : 'none' }} /> Sync
+          <SegmentedSpinner size={14} /> Sync
         </button>
       </div>
 

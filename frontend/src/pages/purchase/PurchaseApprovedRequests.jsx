@@ -139,7 +139,7 @@ const CreateTenderModal = ({ pr, onClose, onCreated }) => {
               Cancel
             </button>
             <button type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: loading ? '#94a3b8' : '#0891b2', color: 'white', border: 'none', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>
-              {loading ? <><RefreshCw size={14} className="spin" /> Creating...</> : <><Send size={14} /> Post Tender</>}
+              {loading ? <><SegmentedSpinner size={14} /> Creating...</> : <><Send size={14} /> Post Tender</>}
             </button>
           </div>
         </form>
@@ -320,7 +320,7 @@ const PurchaseApprovedRequests = () => {
       {/* Content */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>
-          <RefreshCw size={32} style={{ marginBottom: 12, animation: 'spin 1s linear infinite' }} />
+          <SegmentedSpinner size={32} />
           <div>Loading...</div>
         </div>
       ) : tab === 'pending' ? (

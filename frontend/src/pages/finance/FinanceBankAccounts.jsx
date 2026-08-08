@@ -545,7 +545,7 @@ const FinanceBankAccounts = () => {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="btn-outline" onClick={load} style={{ padding: '10px 16px', fontSize: 13 }}>
-            <RefreshCw size={15} style={loading ? { animation: 'spin 1s linear infinite' } : {}}/> Refresh
+            <SegmentedSpinner size={15} /> Refresh
           </button>
           {tab === 'accounts' && (
             <button type="button" className="btn-green" onClick={openAdd} style={{ padding: '10px 16px', fontSize: 13 }}>
@@ -563,7 +563,7 @@ const FinanceBankAccounts = () => {
         <button className={`fba-tab ${tab === 'history' ? 'active' : ''}`} onClick={() => setTab('history')}>History</button>
       </div>
 
-      {loading && <div style={{ color: '#1B5E20', padding: 48, textAlign: 'center', fontSize: 16, fontWeight: 700 }}><RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 16px', display: 'block' }}/> Loading data…</div>}
+      {loading && <div style={{ color: '#1B5E20', padding: 48, textAlign: 'center', fontSize: 16, fontWeight: 700 }}><SegmentedSpinner size={32} /> Loading data…</div>}
 
       {/* ══════ OVERVIEW ══════════════════════════════════════════════════════ */}
       {!loading && tab === 'overview' && (
@@ -817,7 +817,7 @@ const FinanceBankAccounts = () => {
                 <div style={{ flex: 1 }}><label className="fba-lbl">Period To</label><input type="date" className="fba-inp" value={reconTo} onChange={e=>setReconTo(e.target.value)}/></div>
               </div>
               <button type="button" className="btn-green" onClick={loadReconTx} disabled={loadingTx} style={{ padding: '12px 24px', fontSize: 14 }}>
-                {loadingTx ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> : '🔍 Load Data'}
+                {loadingTx ? <SegmentedSpinner size={18} /> : '🔍 Load Data'}
               </button>
             </div>
 

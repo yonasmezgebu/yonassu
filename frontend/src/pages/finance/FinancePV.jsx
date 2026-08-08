@@ -549,7 +549,7 @@ const FinancePV = () => {
 
             {pendingLoad ? (
               <div style={{ padding: 60, textAlign: 'center', color: '#1B5E20', fontWeight: 700 }}>
-                <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 16px', display: 'block' }} />
+                <SegmentedSpinner size={32} />
                 Loading pending payments...
               </div>
             ) : pendingList.length === 0 ? (
@@ -595,7 +595,7 @@ const FinancePV = () => {
                           <td style={{ padding: '16px', textAlign: 'center' }}>
                             {item.status === 'PENDING_FINANCE' && (
                               <button className="btn-primary" onClick={() => handleConfirm(item)} disabled={processId === item.id} style={{ padding: '10px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#FF9800' }}>
-                                {processId === item.id ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
+                                {processId === item.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />}
                                 Confirm Payment
                               </button>
                             )}
@@ -726,7 +726,7 @@ const FinancePV = () => {
               display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
               marginTop: 16
             }}>
-              {loading ? <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={24} />}
+              {loading ? <SegmentedSpinner size={24} /> : <CheckCircle size={24} />}
               {loading ? 'Processing...' : maintSource ? `Generate PV & Release Payment for \${maintSource.asset}` : 'Generate Payment Voucher'}
             </button>
           </form>

@@ -120,7 +120,7 @@ export default function SalesDailySummary() {
           </p>
         </div>
         <button onClick={load} disabled={loading} className="ds-btn">
-          <RefreshCw size={14} style={{ animation:loading ? 'spin 1s linear infinite' : 'none' }} /> Sync Today
+          <SegmentedSpinner size={14} /> Sync Today
         </button>
       </div>
 

@@ -427,7 +427,7 @@ export default function CustomerPrintingOrders() {
             </h1>
             <div className="po-actions">
               <button className="po-btn-icon" onClick={handleRefresh} disabled={refreshing} title="Refresh">
-                <RefreshCw size={18} className={refreshing ? 'spin' : ''} />
+                <SegmentedSpinner size={18} />
               </button>
               <button className="po-btn-primary" onClick={() => navigate('/services/printing')}>
                 + New Order

@@ -232,7 +232,7 @@ const PrintingHistory = () => {
               <Printer size={16} /> Print
             </button>
             <button onClick={fetchOrders} className="btn-3d">
-              <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <SegmentedSpinner size={16} />
               Refresh
             </button>
           </div>
@@ -262,7 +262,7 @@ const PrintingHistory = () => {
         <div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 16 }}>
-              <RefreshCw size={40} color={G.emerald} style={{ animation: 'spin 1s linear infinite', marginBottom: 16 }} />
+              <SegmentedSpinner size={40} />
               <p style={{ fontWeight: 700, color: G.olive, fontSize: 16 }}>Loading history...</p>
             </div>
           ) : orders.length === 0 ? (

@@ -63,7 +63,7 @@ const StoreRealTimeAccess = () => {
             </div>
           </div>
           <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
-            <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            <SegmentedSpinner size={14} />
             Refresh Feed
           </button>
         </div>
@@ -87,7 +87,7 @@ const StoreRealTimeAccess = () => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
-            <div style={{ width: 36, height: 36, border: `3px solid ${G.sage}`, borderTop: `3px solid ${G.forest}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+            <SegmentedSpinner size={24} />
             <div style={{ color: G.forest, fontWeight: 800 }}>Loading live feed…</div>
           </div>
         ) : (

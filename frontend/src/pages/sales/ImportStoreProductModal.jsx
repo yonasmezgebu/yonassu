@@ -517,7 +517,7 @@ function ListView({ loading, items, allItems, search, importedSkus, onSearch, on
       <div style={{ flex: 1, overflowY: 'auto', background: G.white }}>
         {loading ? (
           <CentreMsg>
-            <Loader2 size={34} color={G.forest} className="lucide-spin"/>
+            <SegmentedSpinner size={34} />
             <div style={{ marginTop: 14, color: G.darkGray, fontSize: 14, fontWeight: 600 }}>
               Loading store inventory…
             </div>
@@ -1015,7 +1015,7 @@ function PublishForm({
               onMouseLeave={e => { if (!saving) e.currentTarget.style.background = G.forest; }}
             >
               {saving
-                ? <><Loader2 size={15} className="lucide-spin"/> PUBLISHING TO RETAIL…</>
+                ? <><SegmentedSpinner size={15} /> PUBLISHING TO RETAIL…</>
                 : <><Plus size={15}/> PUBLISH TO RETAIL STORE</>}
             </button>
 

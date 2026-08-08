@@ -215,7 +215,7 @@ const UpdatePublicBidForm = ({ bid, onClose, onSaved }) => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button className="cp-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="cp-btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 size={18} className="cp-spin" /> : <Save size={18} />}
+            {saving ? <SegmentedSpinner size={18} /> : <Save size={18} />}
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
@@ -306,7 +306,7 @@ const UpdateSaleBidForm = ({ bid, onClose, onSaved }) => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button className="cp-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="cp-btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 size={18} className="cp-spin" /> : <Save size={18} />}
+            {saving ? <SegmentedSpinner size={18} /> : <Save size={18} />}
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
@@ -539,7 +539,7 @@ export default function CustomerBids() {
           <p className="cp-sub">Manage your bids for public and direct tenders</p>
         </div>
         <button onClick={fetchBids} className="cp-btn-secondary" disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'cp-spin' : ''} />
+          <SegmentedSpinner size={16} />
           {loading ? 'Syncing...' : 'Refresh Data'}
         </button>
       </div>
@@ -565,7 +565,7 @@ export default function CustomerBids() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#757575' }}>
-          <Loader2 size={32} className="cp-spin" style={{ marginBottom: '16px' }} />
+          <SegmentedSpinner size={32} />
           <div style={{ fontWeight: 600 }}>Loading your bids...</div>
         </div>
       ) : total === 0 ? (

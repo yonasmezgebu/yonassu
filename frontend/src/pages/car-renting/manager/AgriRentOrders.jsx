@@ -372,7 +372,7 @@ const AgriRentOrders = () => {
             onClick={handleRefresh}
             title="Refresh"
           >
-            <RefreshCw size={17} style={{ animation: spinning ? 'spin 0.6s linear' : 'none' }} />
+            <SegmentedSpinner size={17} />
           </button>
           <button
             style={S.btnGreen}
@@ -480,7 +480,7 @@ const AgriRentOrders = () => {
               <tr>
                 <td colSpan={7} style={{ ...S.td, textAlign: 'center', padding: '3.5rem', color: C.emerald, fontWeight: 700, fontSize: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                    <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', color: C.forestGreen }} />
+                    <SegmentedSpinner size={28} />
                     Loading orders...
                   </div>
                 </td>

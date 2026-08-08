@@ -350,7 +350,7 @@ const RetailBranches = () => {
 
             <div style={{ display:'flex',gap:12,marginTop:24 }}>
               <button type="submit" disabled={saving} className="btn-olive-primary">
-                {saving ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }}/> : <Save size={16}/>}
+                {saving ? <SegmentedSpinner size={16} /> : <Save size={16}/>}
                 {saving ? 'Saving...' : editing ? 'Update Branch' : 'Create Branch'}
               </button>
               <button type="button" onClick={handleCancel} className="btn-olive">

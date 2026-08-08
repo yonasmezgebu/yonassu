@@ -132,7 +132,7 @@ const HREmployeesWrapper = () => {
       {/* ── CONTENT ── */}
       <div style={{ flex: 1, overflow: 'auto', background: '#F5F5F5' }}>
         {activeTab === 'list'    && <HREmployees onRegister={handleRegisterExisting} onEdit={handleEditEmployee} />}
-        {activeTab === 'add'     && <HRAddEmployee onRegistered={() => setActiveTab('list')} />}
+        {activeTab === 'add'     && <HRAddEmployee prefillData={prefillData} onRegistered={() => { setPrefillData(null); setActiveTab('list'); }} />}
         {activeTab === 'edit'    && <HREditEmployee prefillData={prefillData} onCancel={() => { setActiveTab('list'); }} />}
       </div>
     </div>

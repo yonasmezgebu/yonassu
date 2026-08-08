@@ -19,6 +19,7 @@ import UserProfile from '../../pages/shared/UserProfile';
 import './DashboardLayout.css';
 
 const ICONS = {
+  default:       <Box size={18} strokeWidth={2.5} />,
   dashboard:     <Home size={18} strokeWidth={2.5} />,
   users:         <Users size={18} strokeWidth={2.5} />,
   clipboard:     <ClipboardList size={18} strokeWidth={2.5} />,
@@ -789,8 +790,6 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       } catch (_) {}
     };
     pollChat();
-    const chatInterval = setInterval(pollChat, 60000);
-    return () => clearInterval(chatInterval);
   }, [showToast]);
 
   useEffect(() => {
@@ -1241,7 +1240,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                   )}
                   {photoUploading && (
                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ width: 12, height: 12, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <SegmentedSpinner size={24} />
                     </div>
                   )}
                 </div>

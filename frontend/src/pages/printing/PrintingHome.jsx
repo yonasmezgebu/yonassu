@@ -193,7 +193,7 @@ export default function PrintingHome() {
         </div>
         <div style={{ justifySelf: 'end' }}>
                     <button onClick={loadData} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none', zIndex: 1, position: 'relative' }}>🔄</span>
+            {refreshing && <SegmentedSpinner size={16} />}
             <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
           </button>
         </div>

@@ -336,7 +336,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
                         ) : (
                           <button
                             className={isPending ? styles.rowBtnReg : styles.rowBtnEdit}
-                            onClick={() => openEdit(emp)}
+                            onClick={() => isPending ? onRegister(emp) : onEdit(emp)}
                           >
                             {isPending ? 'Complete Setup' : 'Edit'}
                           </button>
@@ -477,15 +477,29 @@ const HREmployees = ({ onRegister, onEdit }) => {
                 </div>
               </div>
 
-              {/* Emergency Contact */}
+              {/* Education */}
               <div className={styles.modalSection}>
-                <h3>Emergency Contact</h3>
+                <h3>Education Information</h3>
                 <div className={styles.modalGrid}>
-                  <label>Contact Name
-                    <input value={editing.form.emergency_contact_name} onChange={e => setField('emergency_contact_name', e.target.value)} />
+                  <label>Education Level
+                    <select value={editing.form.education_level || ''} onChange={e => setField('education_level', e.target.value)}>
+                      <option value="">Select</option>
+                      <option value="High School">High School</option>
+                      <option value="Certificate">Certificate</option>
+                      <option value="Diploma">Diploma</option>
+                      <option value="Bachelor's Degree">Bachelor's Degree</option>
+                      <option value="Master's Degree">Master's Degree</option>
+                      <option value="PhD">PhD</option>
+                    </select>
                   </label>
-                  <label>Contact Phone
-                    <input value={editing.form.emergency_contact_phone} onChange={e => setField('emergency_contact_phone', e.target.value)} />
+                  <label>Field of Study
+                    <input value={editing.form.field_of_study || ''} onChange={e => setField('field_of_study', e.target.value)} />
+                  </label>
+                  <label>Institution Name
+                    <input value={editing.form.institution_name || ''} onChange={e => setField('institution_name', e.target.value)} />
+                  </label>
+                  <label>Graduation Year
+                    <input type="number" min="1950" max="2100" value={editing.form.graduation_year || ''} onChange={e => setField('graduation_year', e.target.value)} />
                   </label>
                 </div>
               </div>

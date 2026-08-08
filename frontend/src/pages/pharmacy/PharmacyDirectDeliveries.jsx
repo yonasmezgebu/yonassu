@@ -38,7 +38,7 @@ const StatusBadge = ({ status }) => {
 
 const Spinner = () => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 40, justifyContent: 'center', color: C.gray }}>
-    <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} />
+    <SegmentedSpinner size={20} />
     <span style={{ fontWeight: 600 }}>Loading...</span>
   </div>
 );
@@ -205,7 +205,7 @@ const PharmacyDirectDeliveries = () => {
 
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" disabled={submitting} style={{ background: C.forest, border: `2px solid ${C.dark}`, color: C.white, padding: '10px 22px', fontWeight: 800, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, opacity: submitting ? 0.6 : 1 }}>
-                  {submitting ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Truck size={14} />}
+                  {submitting ? <SegmentedSpinner size={14} /> : <Truck size={14} />}
                   {submitting ? 'Submitting...' : 'Submit Delivery for CEO Confirmation'}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)} style={{ background: C.white, border: `2px solid ${C.border}`, color: C.gray, padding: '10px 18px', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>

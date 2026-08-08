@@ -184,7 +184,7 @@ const PrintingProdMachines = () => {
         <div style={{ display: 'flex', gap: 16 }}>
           <Btn3D color={G.emerald} icon={Plus} onClick={() => setShowModal(true)}>Register New Machine</Btn3D>
           <button onClick={load} disabled={loading} style={{ background: G.white+'33', border: 'none', color: '#fff', borderRadius: 8, padding: '12px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }} title="Refresh">
-            <RefreshCw size={20} className={loading ? 'spin-icon' : ''} />
+            <SegmentedSpinner size={20} />
           </button>
         </div>
       </div>

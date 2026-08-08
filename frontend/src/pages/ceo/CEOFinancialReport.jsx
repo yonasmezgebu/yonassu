@@ -152,7 +152,7 @@ const CEOFinancialReport = () => {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={loadData} disabled={loading} style={{ padding: '9px 18px', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-            <RefreshCcw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}/> Refresh
+            <SegmentedSpinner size={14} /> Refresh
           </button>
           <button onClick={handlePrint} style={{ padding: '9px 18px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
             <Printer size={14}/> Print Report

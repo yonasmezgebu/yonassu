@@ -404,7 +404,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
               onMouseUp={e => { if (!loading) { e.currentTarget.style.boxShadow = `0 4px 0 ${C.darkGreen}`; e.currentTarget.style.transform = 'translateY(0)'; } }}
             >
               {loading
-                ? <><Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> CREATING ORDER...</>
+                ? <><SegmentedSpinner size={16} /> CREATING ORDER...</>
                 : <><Car size={16} /> CREATE RENTAL ORDER</>
               }
             </button>

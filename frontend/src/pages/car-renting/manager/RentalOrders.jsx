@@ -272,7 +272,7 @@ const RentalOrders = () => {
             onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
             onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(0,0,0,0.3)'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <RefreshCw size={17} style={{ animation: spinning ? 'spin 0.6s linear' : 'none' }} />
+            <SegmentedSpinner size={17} />
           </button>
           <button
             style={S.btnGreen}
@@ -368,7 +368,7 @@ const RentalOrders = () => {
               <tr>
                 <td colSpan={7} style={{ ...S.td, textAlign: 'center', padding: '3.5rem', color: C.emerald, fontWeight: 700 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                    <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', color: C.forestGreen }} />
+                    <SegmentedSpinner size={28} />
                     Loading orders...
                   </div>
                 </td>

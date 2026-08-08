@@ -15,7 +15,9 @@ const STATUS_OPTIONS = ['Active', 'On Leave', 'Suspended', 'Terminated'];
 
 const resolvePhoto = (path) => {
   if (!path) return null;
-  return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.replace(/\\/g, '/').replace(/^\/?api\/v1\//, '').replace(/^\//, '');
+  return `${BACKEND_URL}/${cleanPath}`;
 };
 
 const avatarColor = (name = '') => {
@@ -49,19 +51,52 @@ const ProfilePage = ({ emp, onBack, onStatusChange, updatingId, onEditClick }) =
   const initials = (emp.full_name || '?').charAt(0).toUpperCase();
   const bgColor = avatarColor(emp.full_name);
 
-  const InfoRow = ({ icon: Icon, label, value, mono, salary, link }) => (
+  // Lightbox state — null = closed, {url, label, isPdf} = open
+  const [lightbox, setLightbox] = React.useState(null);
+  const [lightboxError, setLightboxError] = React.useState(null);
+
+  const openLightbox = async (url, label) => {
+    if (!url) return;
+    // Quick probe so we catch 404 before opening the viewer
+    try {
+      const r = await fetch(url, { method: 'HEAD' });
+      if (!r.ok) {
+        setLightboxError(`"${label}" — file not found on server (${r.status}). Re-upload the document to fix this.`);
+        return;
+      }
+    } catch (_) { /* network error — open anyway, let the browser show the error */ }
+    const isPdf = url.toLowerCase().endsWith('.pdf');
+    const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null;
+    const type = isPdf ? 'pdf' : isImage ? 'image' : 'other';
+    
+    setLightbox({ url, label, type });
+  };
+
+  const InfoRow = ({ icon: Icon, label, value, mono, salary, link, onClick }) => (
     <div className={styles.infoItem}>
       <span className={styles.infoLabel}>{label}</span>
       <span className={`${styles.infoValue} ${mono ? styles.infoValueMono : ''} ${salary ? styles.infoValueSalary : ''}`}>
         {Icon && <Icon size={13} />}
-        {link && value ? (
+        {onClick && value ? (
+          <button
+            onClick={onClick}
+            style={{
+              background: 'none', border: 'none', padding: 0,
+              color: '#2563EB', fontWeight: 500, fontSize: 'inherit',
+              cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3,
+              fontFamily: 'inherit'
+            }}
+          >{value}</button>
+        ) : link && value ? (
           <a href={link} target="_blank" rel="noreferrer" className={styles.infoValueLink}>{value}</a>
         ) : (value || '—')}
       </span>
     </div>
   );
 
+
   return (
+    <>
     <div className={styles.profileContainer}>
       {/* ── PROFILE HERO — Rules 2, 3, 11, 12 ── */}
       <div className={styles.profileHero}>
@@ -181,27 +216,310 @@ const ProfilePage = ({ emp, onBack, onStatusChange, updatingId, onEditClick }) =
           </div>
         </div>
 
-        {/* Emergency & Documents */}
+        {/* Education & Documents */}
         <div className={styles.sectionDivider}>
           <div className={styles.sectionDividerIcon}><AlertCircle size={16} color="#228B22" /></div>
-          <h2 className={styles.sectionDividerTitle}>Emergency &amp; Documents</h2>
+          <h2 className={styles.sectionDividerTitle}>Education &amp; Documents</h2>
         </div>
         <div className={styles.detailCard}>
           <div className={styles.infoGrid}>
-            <InfoRow icon={User}  label="Contact Name"  value={emp.emergency_contact_name} />
-            <InfoRow icon={Phone} label="Contact Phone" value={emp.emergency_contact_phone} />
+            <InfoRow icon={User}  label="Education Level"  value={emp.education_level} />
+            <InfoRow icon={User}  label="Field of Study" value={emp.field_of_study} />
             <div className={styles.infoGridFull}>
-              <InfoRow
-                label="Uploaded Document"
-                value={emp.document_path ? `📄 View Document (${emp.document_path.split('/').pop()})` : 'No document uploaded'}
-                link={emp.document_path || null}
-              />
+              {emp.document_path ? (
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>Uploaded Document</span>
+                  <span className={styles.infoValue}>
+                    {/* Opens document directly in a new browser tab */}
+                    <a
+                      href={resolvePhoto(emp.document_path)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Open document in new browser tab"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                        background: '#f0f9ff', border: '1.5px solid #bae6fd',
+                        borderRadius: 8, padding: '5px 12px',
+                        textDecoration: 'none', color: '#0369a1',
+                        fontWeight: 600, fontSize: 13,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>
+                        {/\.(pdf)$/i.test(emp.document_path) ? '📄' :
+                         /\.(jpe?g|png|gif|webp)$/i.test(emp.document_path) ? '🖼️' : '📎'}
+                      </span>
+                      {emp.document_path.split(/[\/\\]/).pop()}
+                      <span style={{ fontSize: 11, opacity: 0.7 }}>↗</span>
+                    </a>
+                  </span>
+                </div>
+              ) : (
+                <InfoRow label="Uploaded Document" value="No document uploaded" />
+              )}
             </div>
+
+            {/* ID Photos — lightbox buttons */}
+            {(emp.id_photo_front || emp.id_photo_back) && (
+              <div className={styles.infoGridFull} style={{ marginTop: 8 }}>
+                <div style={{
+                  display: 'flex', gap: 12, flexWrap: 'wrap', padding: '12px 0'
+                }}>
+                  {emp.id_photo_front ? (
+                    <div
+                      onClick={() => openLightbox(resolvePhoto(emp.id_photo_front), 'ID Photo — Front')}
+                      style={{
+                        cursor: 'pointer',
+                        border: '2px solid #E5E7EB',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                        width: 140,
+                        transition: 'border-color 150ms, box-shadow 150ms',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor='#2563EB'; e.currentTarget.style.boxShadow='0 4px 12px rgba(37,99,235,0.18)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor='#E5E7EB'; e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)'; }}
+                    >
+                      <img
+                        src={resolvePhoto(emp.id_photo_front)}
+                        alt="ID Front"
+                        style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block' }}
+                      />
+                      <div style={{
+                        padding: '6px 8px', fontSize: 11, fontWeight: 500,
+                        color: '#6B7280', background: '#F9FAFB',
+                        borderTop: '1px solid #E5E7EB', textAlign: 'center'
+                      }}>ID Front 🔍</div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: 140, height: 118, border: '2px dashed #E5E7EB',
+                      borderRadius: 10, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      color: '#9CA3AF', fontSize: 12, gap: 4
+                    }}>
+                      <span style={{ fontSize: 24 }}>🪪</span>
+                      <span>No Front ID</span>
+                    </div>
+                  )}
+
+                  {emp.id_photo_back ? (
+                    <div
+                      onClick={() => openLightbox(resolvePhoto(emp.id_photo_back), 'ID Photo — Back')}
+                      style={{
+                        cursor: 'pointer',
+                        border: '2px solid #E5E7EB',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                        width: 140,
+                        transition: 'border-color 150ms, box-shadow 150ms',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor='#2563EB'; e.currentTarget.style.boxShadow='0 4px 12px rgba(37,99,235,0.18)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor='#E5E7EB'; e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)'; }}
+                    >
+                      <img
+                        src={resolvePhoto(emp.id_photo_back)}
+                        alt="ID Back"
+                        style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block' }}
+                      />
+                      <div style={{
+                        padding: '6px 8px', fontSize: 11, fontWeight: 500,
+                        color: '#6B7280', background: '#F9FAFB',
+                        borderTop: '1px solid #E5E7EB', textAlign: 'center'
+                      }}>ID Back 🔍</div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: 140, height: 118, border: '2px dashed #E5E7EB',
+                      borderRadius: 10, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      color: '#9CA3AF', fontSize: 12, gap: 4
+                    }}>
+                      <span style={{ fontSize: 24 }}>🪪</span>
+                      <span>No Back ID</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
       </div>
     </div>
+
+    {/* Error toast for broken document links */}
+    {lightboxError && (
+      <div
+        onClick={() => setLightboxError(null)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: '#1F2937', borderRadius: 12, padding: '28px 32px',
+            maxWidth: 440, width: '100%', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            border: '1px solid rgba(239,68,68,0.3)',
+          }}
+        >
+          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <div style={{ color: '#F9FAFB', fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Document Not Found</div>
+          <div style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 1.6 }}>{lightboxError}</div>
+          <button
+            onClick={() => setLightboxError(null)}
+            style={{
+              marginTop: 20, padding: '8px 24px',
+              background: '#EF4444', border: 'none', borderRadius: 8,
+              color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >OK</button>
+        </div>
+      </div>
+    )}
+
+    {/* Lightbox / Document viewer */}
+    {lightbox && (
+      <div
+        onClick={() => setLightbox(null)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.82)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '24px',
+          backdropFilter: 'blur(6px)',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'relative',
+            background: '#111827',
+            borderRadius: 12,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+            width: lightbox.type === 'pdf' ? 'min(92vw, 900px)' : 'auto',
+            maxWidth: lightbox.type === 'pdf' ? 'min(92vw, 900px)' : '90vw',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', gap: 12,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            color: '#F9FAFB', fontSize: 13, fontWeight: 500,
+            flexShrink: 0,
+          }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {lightbox.label || 'Document'}
+            </span>
+            <button
+              onClick={() => setLightbox(null)}
+              style={{
+                background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6,
+                minWidth: 28, height: 28, cursor: 'pointer', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, lineHeight: 1, fontFamily: 'inherit', flexShrink: 0,
+              }}
+              aria-label="Close"
+            >✕</button>
+          </div>
+
+          {/* Content — PDF or Image */}
+          {lightbox.type === 'pdf' ? (
+            <iframe
+              src={lightbox.url}
+              title={lightbox.label || 'Document'}
+              style={{
+                width: '100%',
+                height: 'calc(92vh - 100px)',
+                border: 'none',
+                background: '#fff',
+                display: 'block',
+              }}
+            />
+          ) : lightbox.type === 'image' ? (
+            <img
+              src={lightbox.url}
+              alt={lightbox.label || 'Document'}
+              onError={e => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentNode.innerHTML = `
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                    height:280px;color:#9CA3AF;gap:12px;padding:24px;text-align:center">
+                    <span style="font-size:48px">📄</span>
+                    <span style="font-size:14px;font-weight:500;color:#F9FAFB">File not found on server</span>
+                    <span style="font-size:12px;color:#6B7280">The file may have been moved or deleted.<br/>
+                    Re-upload the document in Edit Employee to fix this.</span>
+                  </div>`;
+              }}
+              style={{
+                maxWidth: '88vw',
+                maxHeight: 'calc(92vh - 100px)',
+                objectFit: 'contain',
+                display: 'block',
+                margin: '0 auto',
+              }}
+            />
+          ) : (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              height: '300px', padding: '24px', textAlign: 'center', color: '#E5E7EB'
+            }}>
+              <span style={{ fontSize: 48, marginBottom: 16 }}>📁</span>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Preview not available</div>
+              <div style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 24, maxWidth: 320 }}>
+                This file type cannot be previewed in the browser. Please download it to view the contents.
+              </div>
+              <a
+                href={lightbox.url}
+                download
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  background: '#2563EB', color: '#fff', padding: '8px 24px',
+                  borderRadius: 6, textDecoration: 'none', fontSize: 13, fontWeight: 600
+                }}
+              >
+                Download File
+              </a>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{
+            padding: '10px 16px',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', justifyContent: 'flex-end', gap: 16,
+            flexShrink: 0,
+          }}>
+            <a
+              href={lightbox.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#93C5FD', fontSize: 12, textDecoration: 'none', fontWeight: 500 }}
+            >↗ Open in Tab</a>
+            <a
+              href={lightbox.url}
+              download
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#60A5FA', fontSize: 12, textDecoration: 'none', fontWeight: 500 }}
+            >⬇ Download</a>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

@@ -302,7 +302,7 @@ const RentalReport = () => {
             <Download size={14} /> Export CSV
           </button>
           <button className="rr-btn rr-btn-primary" onClick={handleRefresh} disabled={loading}>
-            <RefreshCw size={14} className={spinning ? 'rr-spin' : ''} /> Refresh
+            <SegmentedSpinner size={14} /> Refresh
           </button>
         </div>
       </div>
@@ -420,7 +420,7 @@ const RentalReport = () => {
           <tbody>
             {loading ? (
               <tr><td colSpan={13} className="rr-empty">
-                <RefreshCw size={28} className="rr-spin" style={{ color: C.forest }} /><br />Loading orders…
+                <SegmentedSpinner size={28} /><br />Loading orders…
               </td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={13} className="rr-empty">

@@ -278,7 +278,7 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
         <div className="vd-footer">
           <button className="vd-btn-cancel" onClick={onClose}>Cancel</button>
           <button className="vd-btn-verify" onClick={handleSubmit} disabled={saving}>
-            {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }}/> : <ShieldCheck size={16}/>}
+            {saving ? <SegmentedSpinner size={16} /> : <ShieldCheck size={16}/>}
             {saving ? 'Saving...' : 'Confirm Verified'}
           </button>
         </div>
@@ -456,7 +456,7 @@ const PurchaseSupplierList = () => {
             <div className="psl-card">
               {loading ? (
                 <div style={{display:'flex',justifyContent:'center',alignItems:'center',padding:60,gap:12,color:'#2E8B57'}}>
-                  <Loader2 size={28} style={{animation:'spin 1s linear infinite'}}/> <span style={{fontWeight:600}}>Loading suppliers...</span>
+                  <SegmentedSpinner size={28} /> <span style={{fontWeight:600}}>Loading suppliers...</span>
                 </div>
               ) : error ? (
                 <div className="psl-empty">

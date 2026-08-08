@@ -162,8 +162,30 @@ const hrService = {
     // Employees
     listEmployees: (params) => apiClient.get('/hr/etp/employees', { params }),
     getEmployee: (id) => apiClient.get(`/hr/etp/employees/${id}`),
-    createEmployee: (data) => apiClient.post('/hr/etp/employees', data),
-    updateEmployee: (id, data) => apiClient.put(`/hr/etp/employees/${id}`, data),
+    createEmployee: (data) => {
+      const fd = new FormData();
+      Object.entries(data).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && v !== '' && !(v instanceof File)) {
+          fd.append(k, v);
+        }
+      });
+      if (data.id_photo_front instanceof File) fd.append('id_photo_front', data.id_photo_front);
+      if (data.id_photo_back  instanceof File) fd.append('id_photo_back',  data.id_photo_back);
+      if (data.document_file  instanceof File) fd.append('document_file',  data.document_file);
+      return apiClient.post('/hr/etp/employees', fd);
+    },
+    updateEmployee: (id, data) => {
+      const fd = new FormData();
+      Object.entries(data).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && !(v instanceof File)) {
+          fd.append(k, v);
+        }
+      });
+      if (data.id_photo_front instanceof File) fd.append('id_photo_front', data.id_photo_front);
+      if (data.id_photo_back  instanceof File) fd.append('id_photo_back',  data.id_photo_back);
+      if (data.document_file  instanceof File) fd.append('document_file',  data.document_file);
+      return apiClient.put(`/hr/etp/employees/${id}`, fd);
+    },
     terminateEmployee: (id, data) => apiClient.patch(`/hr/etp/employees/${id}/terminate`, data),
     completeRegistration: (id) => apiClient.patch(`/hr/etp/employees/${id}/complete-registration`),
 

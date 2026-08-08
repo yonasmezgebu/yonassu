@@ -364,7 +364,7 @@ export default function CEOAgriAndCarRental() {
 
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+              <SegmentedSpinner size={28} />
               <div style={{ fontWeight: 700 }}>Loading requests...</div>
               <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
             </div>
@@ -641,7 +641,7 @@ export default function CEOAgriAndCarRental() {
         <div style={{ background: C.white, border: `2px solid ${C.midGray}` }}>
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite' }} />
+              <SegmentedSpinner size={28} />
             </div>
           ) : filteredHistory.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
@@ -705,7 +705,7 @@ export default function CEOAgriAndCarRental() {
                           <td colSpan={7} style={{ padding: 0, borderBottom: `2px solid ${C.forest}` }}>
                             <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${deptColor}`, padding: '18px 28px' }}>
                               {loadingDet ? (
-                                <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</div>
+                                <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><SegmentedSpinner size={18} /> Loading...</div>
                               ) : det ? (
                                 <>
                                   {det.isMaintenance ? (

@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { apiLoadingEvents } from '../components/ui/GlobalLoader';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -6,6 +8,7 @@ const apiClient = axios.create({
 });
 apiClient.interceptors.request.use(
   (config) => {
+    apiLoadingEvents.dispatchEvent(new Event('start'));
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -27,11 +30,18 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    apiLoadingEvents.dispatchEvent(new Event('stop'));
+    return Promise.reject(error);
+  }
 );
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    apiLoadingEvents.dispatchEvent(new Event('stop'));
+    return response.data;
+  },
   (error) => {
+    apiLoadingEvents.dispatchEvent(new Event('stop'));
     // Network error / backend is down — don't crash, just reject quietly
     if (!error.response) {
       return Promise.reject(new Error('Cannot connect to server. Please check your connection.'));

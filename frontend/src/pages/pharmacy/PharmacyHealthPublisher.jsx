@@ -367,7 +367,7 @@ const PharmacyHealthPublisher = () => {
                 alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1px',
               }}
             >
-              <RefreshCw size={16} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+              <SegmentedSpinner size={16} />
               Refresh
             </button>
 
@@ -382,7 +382,7 @@ const PharmacyHealthPublisher = () => {
                 <button onClick={handleToggleWorkerPost} disabled={togglingPost}
                   style={{ width: 44, height: 24, borderRadius: 0, border: `2px solid ${DARK}`, cursor: togglingPost ? 'not-allowed' : 'pointer', background: workerCanPost ? ICE : '#d1d5db', position: 'relative', transition: 'background 0.3s ease', padding: 0, outline: 'none' }}>
                   <span style={{ display: 'block', width: 16, height: 16, background: DARK, position: 'absolute', top: 2, left: workerCanPost ? 22 : 2, transition: 'left 0.3s ease' }} />
-                  {togglingPost && <Loader2 size={12} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'spin 1s linear infinite', color: 'white' }} />}
+                  {togglingPost && <SegmentedSpinner size={12} />}
                 </button>
               </div>
             )}
@@ -402,7 +402,7 @@ const PharmacyHealthPublisher = () => {
                 <button onClick={handleScrape} disabled={scraping}
                   className="btn3d-alt"
                   style={{ background: GOLD, color: DARK, border: `3px solid ${GOLD2}`, padding: '10px 16px', fontWeight: 900, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${GOLD2}` }}>
-                  {scraping ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><Search size={16} /></span>}
+                  {scraping ? <SegmentedSpinner size={16} /> : <span className="icon3d"><Search size={16} /></span>}
                   {scraping ? 'Scraping...' : 'Scrape & Import'}
                 </button>
               </>
@@ -550,7 +550,7 @@ const PharmacyHealthPublisher = () => {
                 <button type="submit" disabled={submitting}
                   className="btn3d"
                   style={{ background: ACCENT, color: ICE, border: `3px solid ${DARK}`, padding: '14px 24px', fontWeight: 900, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', boxShadow: `5px 5px 0 ${DARK}` }}>
-                  {submitting ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><ExternalLink size={18} /></span>}
+                  {submitting ? <SegmentedSpinner size={18} /> : <span className="icon3d"><ExternalLink size={18} /></span>}
                   {submitting ? 'Saving...' : (editingId ? 'Update Post' : 'Publish Post')}
                 </button>
               </div>
@@ -566,7 +566,7 @@ const PharmacyHealthPublisher = () => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: DARK }}>
-            <Loader2 size={40} style={{ animation: 'spin 1s linear infinite', marginBottom: 16, color: DARK }} />
+            <SegmentedSpinner size={40} />
             <p style={{ fontWeight: 900, textTransform: 'uppercase' }}>Loading posts...</p>
           </div>
         ) : (
@@ -808,7 +808,7 @@ const BranchManager = ({ pharmacyService: svc, refreshTrigger }) => {
               <button onClick={handleSave} disabled={submitting}
                 className="btn3d"
                 style={{ padding: '12px 24px', background: submitting ? '#94a3b8' : ACCENT, color: ICE, border: `3px solid ${DARK}`, fontWeight: 900, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>
-                {submitting ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <span className="icon3d"><Save size={16} /></span>}
+                {submitting ? <SegmentedSpinner size={16} /> : <span className="icon3d"><Save size={16} /></span>}
                 {submitting ? 'Saving...' : editId ? 'Update' : 'Create'}
               </button>
               <button onClick={resetForm} className="btn3d" style={{ padding: '12px 24px', background: 'white', color: DARK, border: `3px solid ${DARK}`, fontWeight: 900, fontSize: 13, cursor: 'pointer', textTransform: 'uppercase', boxShadow: `4px 4px 0 ${DARK}` }}>Cancel</button>
@@ -818,7 +818,7 @@ const BranchManager = ({ pharmacyService: svc, refreshTrigger }) => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
-            <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+            <SegmentedSpinner size={36} />
           </div>
         ) : items.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 24px', color: DARK }}>

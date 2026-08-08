@@ -239,7 +239,7 @@ const PrintingOrders = () => {
       {/* ── TABLE ── */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
-          <RefreshCw size={28} style={{ animation: 'spin 0.8s linear infinite', marginBottom: 12, display: 'block', margin: '0 auto 12px' }} />
+          <SegmentedSpinner size={28} />
           Loading orders...
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>

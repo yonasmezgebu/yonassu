@@ -144,7 +144,7 @@ const WarehouseManagement = () => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
-            <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: '#6366f1' }} />
+            <SegmentedSpinner size={36} />
           </div>
         ) : warehouses.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 24px', background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>

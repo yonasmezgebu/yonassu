@@ -248,7 +248,7 @@ const CEOApprovalPopup = ({ drugName, currentValue, requestType, onClose, onSubm
                   disabled={!requestedValue || !reason || submitting}
                   onClick={handleSubmit}
                 >
-                  {submitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Sending...</> : 'SEND REQUEST TO CEO'}
+                  {submitting ? <><SegmentedSpinner size={16} /> Sending...</> : 'SEND REQUEST TO CEO'}
                 </button>
               </div>
             </>

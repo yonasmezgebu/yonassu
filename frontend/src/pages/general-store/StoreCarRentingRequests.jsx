@@ -269,7 +269,7 @@ export default function StoreCarRentingRequests() {
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: 60, color: C.textSec }}>
-                <RefreshCw size={28} color={C.sage} style={{ animation: 'spin 1s linear infinite' }} />
+                <SegmentedSpinner size={28} />
                 <div style={{ marginTop: 12, fontSize: 14, fontWeight: 700 }}>Loading...</div>
                 <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               </div>
@@ -337,7 +337,7 @@ export default function StoreCarRentingRequests() {
                               <td colSpan={8} style={{ padding: 0, borderBottom: `2px solid ${C.forest}` }}>
                                 <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${C.forest}`, padding: '18px 28px' }}>
                                   {loadingDet ? (
-                                    <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading details...</div>
+                                    <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><SegmentedSpinner size={18} /> Loading details...</div>
                                   ) : det ? (
                                     <>
                                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>

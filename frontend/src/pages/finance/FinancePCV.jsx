@@ -361,7 +361,7 @@ const FinalizeModal = ({ pcv, onClose, onDone }) => {
 
   if (step === 'loading') return overlay(
     <div style={{ background: '#FFFFFF', border: '2px solid #1B5E20', padding: 40, textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,.3)' }}>
-      <RefreshCw size={40} color="#228B22" style={{ animation: 'spin 1s linear infinite', marginBottom: 16 }} />
+      <SegmentedSpinner size={40} />
       <p style={{ fontWeight: 700, color: '#1B5E20', fontSize: 16, margin: 0 }}>Recording in cashbook…</p>
     </div>
   );
@@ -508,7 +508,7 @@ const PCVStatusTab = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 80, color: '#1B5E20', fontWeight: 700 }}>
-          <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 12, display: 'block', margin: '0 auto 12px' }} />
+          <SegmentedSpinner size={32} />
           Loading PCVs…
         </div>
       ) : pcvs.length === 0 ? (
@@ -672,7 +672,7 @@ const NewVoucherTab = ({ onSubmitted }) => {
       </div>
 
       <button type="submit" disabled={loading} className="btn-green" style={{ width: '100%', padding: '18px', fontSize: 17, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, background: loading ? '#9E9E9E' : '#228B22', marginTop: 4 }}>
-        {loading ? <><RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} /> Processing…</> : <><CheckCircle size={20} /> Generate Petty Cash Voucher</>}
+        {loading ? <><SegmentedSpinner size={20} /> Processing…</> : <><CheckCircle size={20} /> Generate Petty Cash Voucher</>}
       </button>
     </form>
   );

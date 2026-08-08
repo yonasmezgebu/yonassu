@@ -545,7 +545,7 @@ export default function CarRentingStoreRequest() {
 
         {productsLoading ? (
           <div style={{ textAlign: 'center', padding: 60, color: C.textSec }}>
-            <RefreshCw size={28} color={C.sage} style={{ animation: 'spin 1s linear infinite' }} />
+            <SegmentedSpinner size={28} />
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
         ) : filteredProducts.length === 0 ? (
@@ -614,7 +614,7 @@ export default function CarRentingStoreRequest() {
         <SectionHeader accent={C.sky}>Past Store Requests</SectionHeader>
         {reqLoading ? (
           <div style={{ textAlign: 'center', padding: 60, color: C.textSec }}>
-            <RefreshCw size={28} color={C.sage} style={{ animation: 'spin 1s linear infinite' }} />
+            <SegmentedSpinner size={28} />
           </div>
         ) : requests.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 60, background: C.white, border: `2px dashed ${C.midGray}` }}>
@@ -688,7 +688,7 @@ export default function CarRentingStoreRequest() {
                             <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${C.forest}`, padding: '18px 28px' }}>
                               {loading ? (
                                 <div style={{ textAlign: 'center', padding: '20px 0', color: C.textSec, fontSize: 13, fontWeight: 700 }}>
-                                  <RefreshCw size={18} color={C.sage} style={{ animation: 'spin 1s linear infinite', marginRight: 8 }} />
+                                  <SegmentedSpinner size={18} />
                                   Loading details...
                                 </div>
                               ) : det ? (

@@ -158,7 +158,7 @@ const FinalizeModal = ({ pcv, onClose, onFinalized }) => {
           <button onClick={onClose} style={{ flex: 1, padding: '12px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
           <button onClick={handleFinalize} disabled={loading}
             style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '12px', background: 'linear-gradient(135deg,#eab308,#a16207)', color: 'white', border: 'none', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14, opacity: loading ? 0.7 : 1 }}>
-            {loading ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <ArrowRight size={18} />}
+            {loading ? <SegmentedSpinner size={18} /> : <ArrowRight size={18} />}
             {loading ? 'Recording...' : 'Continue PCV →'}
           </button>
         </div>
@@ -272,7 +272,7 @@ const FinancePendingPCVs = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}>
-          <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+          <SegmentedSpinner size={32} />
           <div>Loading...</div>
         </div>
       ) : pcvs.length === 0 ? (

@@ -194,7 +194,7 @@ export default function SalesProductAdjust() {
     }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Loader2 className="lucide-spin" size={32} /></div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><SegmentedSpinner size={32} /></div>;
 
   return (
     <div className="adjust-page">
@@ -254,7 +254,7 @@ export default function SalesProductAdjust() {
           <div style={{ marginTop: 40, display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
             <button className="btn-secondary" onClick={() => navigate('/sales/stock-operations')} disabled={saving}>Cancel</button>
             <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 size={16} className="lucide-spin" /> : <Save size={16} />} Save Changes
+              {saving ? <SegmentedSpinner size={16} /> : <Save size={16} />} Save Changes
             </button>
           </div>
         </div>

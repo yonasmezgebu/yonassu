@@ -236,7 +236,7 @@ const PharmacyMedicines = () => {
                 <button onClick={() => toggleWorkerHideSetting({ target: { checked: !workerCanHide } })} disabled={loadingSetting}
                   style={{ width: 48, height: 24, border: `2px solid ${workerCanHide ? DARK : '#dc2626'}`, cursor: loadingSetting ? 'not-allowed' : 'pointer', background: workerCanHide ? DARK : '#fecaca', position: 'relative', padding: 0, outline: 'none' }}>
                   <span style={{ display: 'block', width: 16, height: 16, background: workerCanHide ? LIME : '#dc2626', position: 'absolute', top: 2, left: workerCanHide ? 26 : 2, transition: 'left 0.25s ease' }} />
-                  {loadingSetting && <Loader2 size={11} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'spin 1s linear infinite', color: 'white' }} />}
+                  {loadingSetting && <SegmentedSpinner size={11} />}
                 </button>
               </div>
             )}
@@ -252,7 +252,7 @@ const PharmacyMedicines = () => {
                 letterSpacing: '1.5px'
               }}
             >
-              <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+              <SegmentedSpinner size={17} />
               Refresh
             </button>
           </div>
@@ -359,7 +359,7 @@ const PharmacyMedicines = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={8} style={{ padding: '60px 24px', textAlign: 'center', background: PEACH }}>
-                    <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+                    <SegmentedSpinner size={32} />
                     <p style={{ color: DARK, margin: '12px 0 0', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', fontSize: 12 }}>Loading drug catalog...</p>
                   </td></tr>
                 ) : showEmpty ? (
@@ -491,7 +491,7 @@ const PharmacyMedicines = () => {
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button disabled={!hideType || !hideReason.trim() || saving} onClick={doHide} className={(!hideType || !hideReason.trim() || saving) ? '' : 'action-btn'}
                     style={{ flex: 1, padding: '12px', background: hideType && hideReason.trim() && !saving ? DARK : '#e2e8f0', color: hideType && hideReason.trim() && !saving ? LIME : '#94a3b8', border: hideType && hideReason.trim() && !saving ? `2px solid ${DARK}` : '2px solid transparent', fontWeight: 800, textTransform: 'uppercase', cursor: hideType && hideReason.trim() && !saving ? 'pointer' : 'not-allowed', fontSize: 13, transition: 'all 0.2s', boxShadow: hideType && hideReason.trim() && !saving ? `3px 3px 0 ${GOLD}` : 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    {saving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                    {saving && <SegmentedSpinner size={16} />}
                     {saving ? 'Saving...' : 'Apply Hide'}
                   </button>
                   <button onClick={() => setHidingDrug(null)} disabled={saving} className={saving ? '' : 'action-btn'} style={{ flex: 1, padding: '12px', background: '#dc2626', color: 'white', border: '2px solid #991b1b', fontWeight: 800, textTransform: 'uppercase', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, boxShadow: saving ? 'none' : '3px 3px 0 #991b1b' }}>

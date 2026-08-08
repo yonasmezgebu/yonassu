@@ -517,7 +517,7 @@ export default function CustomerInvoices() {
           <p className="fin-sub">All your active orders & bids — across all services</p>
         </div>
         <button className="fin-btn" onClick={fetchAll} disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'fin-spin' : ''} />
+          <SegmentedSpinner size={16} />
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
@@ -575,7 +575,7 @@ export default function CustomerInvoices() {
       {/* Table */}
       {loading ? (
         <div className="fin-empty">
-          <Loader2 size={40} className="fin-spin fin-empty-icon" />
+          <SegmentedSpinner size={40} />
           <div style={{fontWeight:600}}>Loading all your records...</div>
         </div>
       ) : filtered.length === 0 ? (

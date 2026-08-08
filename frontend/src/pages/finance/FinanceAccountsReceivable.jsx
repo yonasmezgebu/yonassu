@@ -334,7 +334,7 @@ export default function FinanceAccountsReceivable() {
           <div className="ar-header-sub">Finance Module · Customer Invoices & Payment Tracking</div>
         </div>
         <button className="ar-btn-sync" onClick={loadData} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'ar-spin' : ''} />
+          <SegmentedSpinner size={14} />
           {loading ? 'Loading…' : 'Sync'}
         </button>
       </header>
@@ -385,7 +385,7 @@ export default function FinanceAccountsReceivable() {
         <div className="ar-table-box">
           {loading && receivables.length === 0 ? (
             <div className="ar-empty">
-              <RefreshCw size={36} className="ar-spin" style={{ color: G.forest, display: 'block', margin: '0 auto 12px' }} />
+              <SegmentedSpinner size={36} />
               <div className="ar-empty-msg">Loading receivables…</div>
             </div>
           ) : filtered.length === 0 ? (

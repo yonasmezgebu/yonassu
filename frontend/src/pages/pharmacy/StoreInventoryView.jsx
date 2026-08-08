@@ -413,7 +413,7 @@ export default function StoreInventoryView() {
               boxShadow:`4px 4px 0 ${DARK}`, display:'inline-flex',
               alignItems:'center', gap:8, textTransform:'uppercase', letterSpacing:'1px',
             }}>
-              <RefreshCw size={16} style={spinning || loading ? { animation:'spin .7s linear infinite' } : {}}/>
+              <SegmentedSpinner size={16} />
               Refresh
             </button>
           </div>
@@ -499,7 +499,7 @@ export default function StoreInventoryView() {
                   <tbody>
                     {loading ? (
                       <tr><td colSpan={5} style={{ padding:60, textAlign:'center' }}>
-                        <Loader2 size={40} color={DARK} style={{ animation:'spin 1s linear infinite' }}/>
+                        <SegmentedSpinner size={40} />
                         <div style={{ marginTop:12, fontWeight:900, color:DARK, textTransform:'uppercase' }}>Loading Store Inventory...</div>
                       </td></tr>
                     ) : filteredStock.length === 0 ? (
@@ -576,7 +576,7 @@ export default function StoreInventoryView() {
           <div style={{ animation:'fadeUp .4s ease' }}>
             {loading && myRequests.length===0 ? (
               <div style={{ textAlign:'center', padding:60 }}>
-                <Loader2 size={40} color={DARK} style={{ animation:'spin 1s linear infinite' }}/>
+                <SegmentedSpinner size={40} />
               </div>
             ) : myRequests.length === 0 ? (
               <div className="card3d" style={{ textAlign:'center', padding:60, background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}` }}>
@@ -667,7 +667,7 @@ export default function StoreInventoryView() {
                   onClick={() => submitRequest()}
                   disabled={submittingReq}
                   style={{ flex:2, padding:'14px', background:PURPLE, color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:13, textTransform:'uppercase', cursor: submittingReq ? 'not-allowed' : 'pointer', boxShadow:`4px 4px 0 ${DARK}`, display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity: submittingReq ? 0.7 : 1 }}>
-                  {submittingReq ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={16}/>}
+                  {submittingReq ? <SegmentedSpinner size={16} /> : <Send size={16}/>}
                   {submittingReq ? 'Submitting...' : 'Submit to CEO'}
                 </button>
               </div>

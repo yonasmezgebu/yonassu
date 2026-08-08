@@ -270,7 +270,7 @@ const RevenueReport = () => {
     <div className="rv-page" style={{ display:'flex',alignItems:'center',justifyContent:'center' }}>
       <Styles />
       <div style={{ textAlign:'center', color: C.textSec }}>
-        <RefreshCw size={36} className="rv-spin" style={{ color: C.forest }} />
+        <SegmentedSpinner size={36} />
         <p style={{ marginTop:12,fontWeight:700 }}>Loading revenue data…</p>
       </div>
     </div>
@@ -294,7 +294,7 @@ const RevenueReport = () => {
           )}
           <button className="rv-btn rv-btn-outline" onClick={exportCSV}><Download size={14} /> Export CSV</button>
           <button className="rv-btn rv-btn-primary" onClick={async () => { setSpinning(true); await load(); setTimeout(()=>setSpinning(false),600); }} disabled={spinning}>
-            <RefreshCw size={14} className={spinning ? 'rv-spin' : ''} /> Refresh
+            <SegmentedSpinner size={14} /> Refresh
           </button>
         </div>
       </div>

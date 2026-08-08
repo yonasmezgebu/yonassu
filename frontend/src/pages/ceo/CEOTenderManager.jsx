@@ -60,6 +60,8 @@ const CEOTenderManager = () => {
   const [fundRequests, setFundRequests] = useState([]);
   const [loadingFundRequests, setLoadingFundRequests] = useState(false);
   const [viewFundRequest, setViewFundRequest] = useState(null);
+  const [confirmApproveFund, setConfirmApproveFund] = useState(null);
+  const [approvingFund, setApprovingFund] = useState(false);
 
   // ─── In-app Toast Notification ───────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
@@ -103,6 +105,36 @@ const CEOTenderManager = () => {
       setLoadingFundRequests(false);
     }
   }, []);
+
+  const handleApproveFundRequest = async (id) => {
+    try {
+      setApprovingFund(true);
+      await api.put(`/public-procurement/fund-requests/${id}/approve`);
+      showToast('Fund Request approved and forwarded to Finance!', 'success');
+      setConfirmApproveFund(null);
+      setViewFundRequest(null);
+      fetchFundRequests();
+    } catch (err) {
+      showToast('Error approving Fund Request: ' + (err?.response?.data?.message || err.message), 'error');
+    } finally {
+      setApprovingFund(false);
+    }
+  };
+
+  const handleApproveFundRequest = async (id) => {
+    try {
+      setApprovingFund(true);
+      await api.put(`/public-procurement/fund-requests/${id}/approve`);
+      showToast('Fund Request approved and forwarded to Finance!', 'success');
+      setConfirmApproveFund(null);
+      setViewFundRequest(null);
+      fetchFundRequests();
+    } catch (err) {
+      showToast('Error approving Fund Request: ' + (err?.response?.data?.message || err.message), 'error');
+    } finally {
+      setApprovingFund(false);
+    }
+  };
 
   const fetchSalesTenders = useCallback(async () => {
     try {
@@ -1113,6 +1145,43 @@ const CEOTenderManager = () => {
                   </div>
                 ))}
               </div>
+              
+              {viewFundRequest.status === 'PENDING_CEO' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+                  <button 
+                    onClick={() => setConfirmApproveFund(viewFundRequest)}
+                    style={{ padding: '12px 24px', background: C.emerald, color: C.white, border: 'none', fontWeight: 800, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <CheckCircle size={18} /> APPROVE FUND REQUEST
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRM FUND REQUEST APPROVAL MODAL ── */}
+      {confirmApproveFund && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: C.white, padding: '32px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', textAlign: 'center', borderTop: `4px solid ${C.emerald}` }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+              <CheckCircle size={56} color={C.emerald} />
+            </div>
+            <h3 style={{ margin: '0 0 16px', fontWeight: 800, fontSize: '22px', color: C.darkGreen, textTransform: 'uppercase' }}>Confirm Approval</h3>
+            <p style={{ margin: '0 0 28px', color: C.darkGray, fontSize: '15px', lineHeight: '1.6', fontWeight: 600 }}>
+              Approve Fund Request <b>{confirmApproveFund.request_code}</b> for <b>ETB {Number(confirmApproveFund.total_amount).toLocaleString()}</b>? This will forward the request to Finance for payment.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setConfirmApproveFund(null)}
+                style={{ flex: 1, padding: '14px', border: `1px solid ${C.sage}`, background: C.lightGray, fontWeight: 800, cursor: 'pointer', color: C.darkGray, textTransform: 'uppercase', fontSize: 13 }}>
+                Cancel
+              </button>
+              <button onClick={() => handleApproveFundRequest(confirmApproveFund.id)}
+                disabled={approvingFund}
+                style={{ flex: 1, padding: '14px', background: C.emerald, color: C.white, border: 'none', fontWeight: 800, cursor: approvingFund ? 'not-allowed' : 'pointer', textTransform: 'uppercase', fontSize: 13, opacity: approvingFund ? 0.7 : 1 }}>
+                {approvingFund ? 'Approving...' : 'Confirm'}
+              </button>
             </div>
           </div>
         </div>

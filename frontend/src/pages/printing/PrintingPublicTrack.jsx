@@ -171,7 +171,7 @@ const PrintingPublicTrack = () => {
                   opacity: loading ? 0.7 : 1, whiteSpace: 'nowrap',
                 }}
               >
-                {loading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Search size={18} />}
+                {loading ? <SegmentedSpinner size={18} /> : <Search size={18} />}
                 {loading ? 'Tracking...' : 'Track Order'}
               </button>
             </div>

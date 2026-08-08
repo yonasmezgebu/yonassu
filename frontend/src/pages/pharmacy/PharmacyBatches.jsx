@@ -197,7 +197,7 @@ const PharmacyBatches = () => {
               alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1.5px',
             }}
           >
-            <RefreshCw size={17} style={spinning ? { animation: 'spin .7s linear infinite' } : {}} />
+            <SegmentedSpinner size={17} />
             Refresh
           </button>
         </div>
@@ -246,7 +246,7 @@ const PharmacyBatches = () => {
             </span>
             <span style={{ fontSize: 12, color: DARK, background: SAGE, padding: '4px 12px', fontWeight: 900 }}>
               {loading
-                ? <><Loader2 size={13} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 6 }} />LOADING...</>
+                ? <><SegmentedSpinner size={13} />LOADING...</>
                 : `${filtered.length} BATCH(ES)`}
             </span>
           </div>
@@ -266,7 +266,7 @@ const PharmacyBatches = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={5} style={{ padding: '70px 24px', textAlign: 'center' }}>
-                    <Loader2 size={36} style={{ animation: 'spin 1s linear infinite', color: DARK }} />
+                    <SegmentedSpinner size={36} />
                     <p style={{ color: DARK, margin: '14px 0 0', fontWeight: 800, textTransform: 'uppercase' }}>Loading batch data…</p>
                   </td></tr>
                 ) : filtered.length === 0 ? (

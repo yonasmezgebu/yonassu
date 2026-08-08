@@ -326,7 +326,7 @@ export default function PrintingOverview() {
           </div>
           
           <button className="btn-sync" onClick={loadData}>
-            <RefreshCw size={16} className={loading ? 'spinner' : ''} />
+            <SegmentedSpinner size={16} />
             SYNC
           </button>
         </div>
@@ -431,7 +431,7 @@ export default function PrintingOverview() {
           
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#A5D6A7' }}>
-              <RefreshCw size={24} className="spinner" />
+              <SegmentedSpinner size={24} />
             </div>
           ) : recentOrders.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#9E9E9E', fontSize: '0.9rem' }}>

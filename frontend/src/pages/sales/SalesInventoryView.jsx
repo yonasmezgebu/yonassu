@@ -361,7 +361,7 @@ export default function SalesStockView({ hideHeader = false, refreshTrigger = 0 
         <div style={{ flex: 1 }}>
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center', color: G.dark }}>
-              <Loader2 size={40} className="lucide-spin" style={{ margin: '0 auto 12px' }}/>
+              <SegmentedSpinner size={40} />
               <div style={{ fontWeight: 800 }}>LOADING RETAIL PRODUCTS...</div>
             </div>
           ) : filtered.length === 0 ? (
@@ -522,7 +522,7 @@ export default function SalesStockView({ hideHeader = false, refreshTrigger = 0 
               </div>
 
               <Btn full disabled={saving} onClick={handleUpdateSubmit}>
-                {saving ? <Loader2 size={16} className="lucide-spin"/> : <Save size={16}/>}
+                {saving ? <SegmentedSpinner size={16} /> : <Save size={16}/>}
                 {saving ? 'SAVING...' : 'SAVE CHANGES'}
               </Btn>
             </form>

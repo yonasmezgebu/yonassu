@@ -557,7 +557,7 @@ const FinanceCashBook = () => {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn-outline" onClick={fetchAll} style={{ padding: '10px 16px', fontSize: 13 }}>
-            <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
+            <SegmentedSpinner size={14} /> Refresh
           </button>
           <button className="btn-green" onClick={handlePrintAll} style={{ padding: '10px 16px', fontSize: 13 }}>
             <Printer size={14} /> Print All ({filtered.length})
@@ -651,7 +651,7 @@ const FinanceCashBook = () => {
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#1B5E20', fontWeight: 700 }}>
-                  <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', display: 'block' }} />
+                  <SegmentedSpinner size={28} />
                   Loading expense book data…
                 </td></tr>
               ) : paginated.length === 0 ? (

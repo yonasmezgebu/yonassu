@@ -477,7 +477,7 @@ const AgriRentCreateOrder = () => {
               onMouseUp={e => { if(!loading){ e.currentTarget.style.boxShadow = `0 4px 0 ${C.darkGreen}`; e.currentTarget.style.transform = 'translateY(0)'; } }}
               >
                 {loading ? (
-                  <><Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> PROCESSING...</>
+                  <><SegmentedSpinner size={16} /> PROCESSING...</>
                 ) : (
                   <><Tractor size={16} /> {isManager ? 'CREATE ORDER' : 'SUBMIT HIRE REQUEST'}</>
                 )}

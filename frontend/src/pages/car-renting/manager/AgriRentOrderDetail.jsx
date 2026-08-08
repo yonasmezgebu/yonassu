@@ -276,7 +276,7 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
   /* ─── Loading ─── */
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, fontFamily: '"Inter", sans-serif' }}>
-      <RefreshCw size={32} color={C.forestGreen} style={{ animation: 'spin 1s linear infinite' }} />
+      <SegmentedSpinner size={32} />
       <span style={{ color: C.textSec, fontWeight: 600 }}>Loading order details...</span>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -323,7 +323,7 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
       onMouseDown={e => { if (!disabled && actLoading !== id) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; } }}
       onMouseUp={e   => { if (!disabled && actLoading !== id) { e.currentTarget.style.boxShadow = `0 3px 0 ${border}`; e.currentTarget.style.transform = 'translateY(0)'; } }}
     >
-      {actLoading === id ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
+      {actLoading === id ? <SegmentedSpinner size={13} /> : null}
       {label}
     </button>
   );

@@ -121,7 +121,7 @@ const BranchDrugAssigner = ({ title = 'Branch Inventory Setup', onAssigned, defa
         </div>
         <button onClick={handleSetQty} disabled={!branchId || !drugId || quantity <= 0 || saving}
           style={{ padding: '10px 20px', background: branchId && drugId && quantity > 0 && !saving ? '#059669' : '#e2e8f0', color: branchId && drugId && quantity > 0 && !saving ? 'white' : '#94a3b8', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: branchId && drugId && quantity > 0 && !saving ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0 }}>
-          {saving ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Pill size={16} />}
+          {saving ? <SegmentedSpinner size={16} /> : <Pill size={16} />}
           {saving ? 'Saving...' : 'Assign Drug'}
         </button>
       </div>

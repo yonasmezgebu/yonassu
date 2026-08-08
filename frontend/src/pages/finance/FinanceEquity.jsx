@@ -340,7 +340,7 @@ export default function FinanceEquity() {
 
           {loading && transactions.length === 0 ? (
             <div style={{ padding: '80px 20px', textAlign: 'center', color: G.forest, fontWeight: 800, fontSize: 16 }}>
-              <RefreshCw size={32} className="fe-spin" style={{ display: 'block', margin: '0 auto 12px' }} />
+              <SegmentedSpinner size={32} />
               Loading Equity Data...
             </div>
           ) : listWithBalance.length === 0 ? (

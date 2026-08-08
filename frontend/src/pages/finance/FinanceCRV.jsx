@@ -538,7 +538,7 @@ const FinanceCRV = () => {
           display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
           boxShadow: '0 4px 14px rgba(34,197,94,.4)', opacity: loading ? 0.7 : 1,
         }}>
-          {loading ? <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={20} />}
+          {loading ? <SegmentedSpinner size={20} /> : <CheckCircle size={20} />}
           {loading ? 'Processing...' : 'Generate Cash Receipt Voucher'}
         </button>
       </form>

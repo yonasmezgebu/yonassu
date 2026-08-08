@@ -118,9 +118,9 @@ const EmployeePortal = () => {
             <div className={styles.detailRow}><span className={styles.detailLabel}>Communication Allow.</span><span>{formatCurrency(profile.communication_allowance || 0)}</span></div>
           </div>
           <div className={styles.detailSection}>
-            <h3 className={styles.sectionTitle}><Building size={14} /> Emergency Contact & Bank</h3>
-            <div className={styles.detailRow}><span className={styles.detailLabel}>Name</span><span>{profile.emergency_contact_name || '-'}</span></div>
-            <div className={styles.detailRow}><span className={styles.detailLabel}>Phone</span><span>{profile.emergency_contact_phone || '-'}</span></div>
+            <h3 className={styles.sectionTitle}><Building size={14} /> Education & Bank</h3>
+            <div className={styles.detailRow}><span className={styles.detailLabel}>Level</span><span>{profile.education_level || '-'}</span></div>
+            <div className={styles.detailRow}><span className={styles.detailLabel}>Field of Study</span><span>{profile.field_of_study || '-'}</span></div>
             <div className={styles.detailRow}><span className={styles.detailLabel}>Bank</span><span>{profile.bank_name || '-'}</span></div>
             <div className={styles.detailRow}><span className={styles.detailLabel}>Account</span><span>{profile.bank_account_number ? `****${profile.bank_account_number.slice(-4)}` : '-'}</span></div>
             <div className={styles.detailRow}><span className={styles.detailLabel}>Contract End</span><span>{profile.contract_end_date ? formatDate(profile.contract_end_date) : 'Open'}</span></div>

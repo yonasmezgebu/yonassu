@@ -301,7 +301,7 @@ export default function CEOReport() {
             style={{ padding: '9px 13px', border: `2px solid ${C}`, background: 'white', fontWeight: 800, color: '#0d1a30', outline: 'none', fontFamily: 'Inter', fontSize: 13, boxShadow: `0 4px 0 ${CD}`, borderRadius: 0 }}
           />
           <button onClick={load} disabled={loading} className="ceo-btn ceo-btn-ghost">
-            <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
+            <SegmentedSpinner size={14} /> Refresh
           </button>
         </div>
       </div>

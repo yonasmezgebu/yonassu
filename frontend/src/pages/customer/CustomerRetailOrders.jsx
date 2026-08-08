@@ -469,7 +469,7 @@ export default function CustomerRetailOrders() {
             + New Order
           </button>
           <button className="ro-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw size={16} className={refreshing ? 'ro-spin' : ''} />
+            <SegmentedSpinner size={16} />
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>

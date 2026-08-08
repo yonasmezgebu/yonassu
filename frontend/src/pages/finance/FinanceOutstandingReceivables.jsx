@@ -81,7 +81,7 @@ const ReceivableDetailView = ({ receivableId, onBack }) => {
 
   if (loading) return (
     <div style={{ padding: '80px 24px', textAlign: 'center', color: '#1B5E20' }}>
-      <RefreshCw size={32} style={{ animation: 'ror-spin 1s linear infinite', display: 'block', margin: '0 auto 16px', color: '#228B22' }} />
+      <SegmentedSpinner size={32} />
       <div style={{ fontSize: 16, fontWeight: 700 }}>Loading record details...</div>
       <style>{`@keyframes ror-spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
@@ -587,7 +587,7 @@ const FinanceOutstandingReceivables = () => {
             <div style={{ border: '2px solid #1B5E20', overflow: 'hidden' }}>
               {loading ? (
                 <div style={{ padding: '80px 24px', textAlign: 'center', color: '#1B5E20' }}>
-                  <RefreshCw size={32} style={{ animation: 'ror-spin 1s linear infinite', display: 'block', margin: '0 auto 14px', color: '#228B22' }} />
+                  <SegmentedSpinner size={32} />
                   <div style={{ fontSize: 16, fontWeight: 800 }}>Loading master ledger...</div>
                 </div>
               ) : (

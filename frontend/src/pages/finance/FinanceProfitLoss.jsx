@@ -115,7 +115,7 @@ const FinanceProfitLoss = () => {
               onMouseEnter={(e) => !loading && (e.currentTarget.style.background = colors.primary)}
               onMouseLeave={(e) => !loading && (e.currentTarget.style.background = colors.secondary)}
             >
-              <RefreshCw size={16} className={loading ? "spin" : ""} /> {loading ? 'Loading...' : 'Generate'}
+              <SegmentedSpinner size={16} /> {loading ? 'Loading...' : 'Generate'}
             </button>
             <button 
               style={btnSecondaryStyle}

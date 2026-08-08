@@ -152,7 +152,7 @@ const PharmacyWorkerHome = () => {
         </div>
         <div style={{ justifySelf: 'end' }}>
           <button onClick={fetchStats} className="btn-3d" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <RefreshCw size={18} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+            <SegmentedSpinner size={18} />
             <span className="btn-text-3d">Refresh</span>
           </button>
         </div>

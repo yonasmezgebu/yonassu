@@ -69,13 +69,13 @@ const CEOPendingApprovals = () => {
         </div>
         <button onClick={load} disabled={loading}
           style={{ padding: '10px 16px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 10, cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
+          <SegmentedSpinner size={14} /> Refresh
         </button>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Loader2 size={40} style={{ animation: 'spin 1s linear infinite', color: '#7c3aed' }} />
+          <SegmentedSpinner size={40} />
         </div>
       ) : requests.length === 0 ? (
         <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', padding: '60px 24px', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
@@ -104,12 +104,12 @@ const CEOPendingApprovals = () => {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => handleApprove(r.id)} disabled={processing === r.id}
                     style={{ padding: '10px 20px', background: processing === r.id ? '#d1fae5' : '#059669', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: processing === r.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {processing === r.id ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={15} />}
+                    {processing === r.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={15} />}
                     Approve
                   </button>
                   <button onClick={() => handleReject(r.id)} disabled={processing === r.id}
                     style={{ padding: '10px 20px', background: processing === r.id ? '#fef2f2' : '#dc2626', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: processing === r.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {processing === r.id ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <XCircle size={15} />}
+                    {processing === r.id ? <SegmentedSpinner size={14} /> : <XCircle size={15} />}
                     Reject
                   </button>
                 </div>

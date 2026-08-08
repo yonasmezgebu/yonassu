@@ -255,7 +255,7 @@ const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0
             <button onClick={handleToggleWorkerAdjust} disabled={togglingSetting}
               style={{ width: 48, height: 24, border: `2px solid ${workerCanAdjust ? '#2A3F08' : '#dc2626'}`, cursor: togglingSetting ? 'not-allowed' : 'pointer', background: workerCanAdjust ? '#2A3F08' : '#fecaca', position: 'relative', padding: 0, outline: 'none' }}>
               <span style={{ display: 'block', width: 16, height: 16, background: workerCanAdjust ? '#E5FBAD' : '#dc2626', position: 'absolute', top: 2, left: workerCanAdjust ? 26 : 2, transition: 'left 0.25s ease' }} />
-              {togglingSetting && <Loader2 size={11} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'spin 1s linear infinite', color: 'white' }} />}
+              {togglingSetting && <SegmentedSpinner size={11} />}
             </button>
           </div>
         )}
@@ -275,7 +275,7 @@ const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0
             <span style={{ animation: 'blink 1.6s ease-in-out infinite', color: '#4ade80' }}><Package size={16} /></span> Stock Levels
           </span>
           <span style={{ fontSize: 12, color: '#D4A843', fontWeight: 700, letterSpacing: '1px' }}>
-            {loading ? <><Loader2 size={13} style={{ display: 'inline', animation: 'spin 1s linear infinite', marginRight: 5 }} />Loading...</> : `${filtered.length} ITEMS`}
+            {loading ? <><SegmentedSpinner size={13} />Loading...</> : `${filtered.length} ITEMS`}
           </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -290,7 +290,7 @@ const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center', background: '#FEFACE' }}>
-                  <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', color: '#2A3F08' }} />
+                  <SegmentedSpinner size={32} />
                   <p style={{ color: '#2A3F08', margin: '12px 0 0', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', fontSize: 12 }}>Loading stock...</p>
                 </td></tr>
               ) : filtered.length === 0 ? (
@@ -337,7 +337,7 @@ const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0
                               style={{ width: 76, padding: '5px 7px', border: '2px solid #2A3F08', fontSize: 13, textAlign: 'center', outline: 'none', background: '#E5FBAD', fontWeight: 700 }} />
                             <button onClick={doRequest} disabled={saving || !adjQty || !adjReason.trim()} className="inv-action-btn"
                               style={{ padding: '5px 10px', background: saving ? '#e2e8f0' : '#2A3F08', color: saving ? '#94a3b8' : '#E5FBAD', border: `2px solid #2A3F08`, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 3, boxShadow: '2px 2px 0 #D4A843', textTransform: 'uppercase' }}>
-                              {saving ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={11} />} Apply
+                              {saving ? <SegmentedSpinner size={11} /> : <Send size={11} />} Apply
                             </button>
                             <button onClick={() => setAdjusting(null)} disabled={saving}
                               style={{ padding: '5px 8px', background: '#FEFACE', color: '#991b1b', border: '2px solid #dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 800, boxShadow: '2px 2px 0 #dc2626' }}>✕</button>
@@ -392,7 +392,7 @@ const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0
             <tbody>
               {branchStockLoading ? (
                 <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center' }}>
-                  <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#f59e0b' }} />
+                  <SegmentedSpinner size={28} />
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8' }}>

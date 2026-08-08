@@ -138,7 +138,7 @@ export default function SalesCEOReport() {
           </p>
         </div>
         <button onClick={load} disabled={loading} className="ds-btn">
-          <RefreshCw size={14} style={{ animation:loading ? 'spin 1s linear infinite' : 'none' }} /> Refresh
+          <SegmentedSpinner size={14} /> Refresh
         </button>
       </div>
 

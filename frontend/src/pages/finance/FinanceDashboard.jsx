@@ -9,6 +9,7 @@ import FinancePCV from './FinancePCV';
 import FinancePendingPCVs from './FinancePendingPCVs';
 import FinanceCashBook from './FinanceCashBook';
 import FinanceBankAccounts from './FinanceBankAccounts';
+import FinancePayrollPayment from './FinancePayrollPayment';
 
 // Receivables
 import FinanceOutstandingReceivables from './FinanceOutstandingReceivables';
@@ -44,10 +45,11 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
-        { label: 'Payment Voucher',      path: '/finance/pv',            icon: 'shopping-cart', color: '#f59e0b' },
-        { label: 'Petty Cash Voucher',   path: '/finance/pcv',           icon: 'wallet',        color: '#8b5cf6' },
-        { label: 'Expense Book',         path: '/finance/cash-book',     icon: 'book',          color: '#06b6d4' },
-        { label: 'Liabillites&accounts payable', path: '/finance/liabilities',   icon: 'alert-circle',  color: '#eab308' },
+        { label: 'Payment Voucher',      path: '/finance/pv',              icon: 'shopping-cart', color: '#f59e0b' },
+        { label: 'Petty Cash Voucher',   path: '/finance/pcv',             icon: 'wallet',        color: '#8b5cf6' },
+        { label: 'Expense Book',         path: '/finance/cash-book',       icon: 'book',          color: '#06b6d4' },
+        { label: 'Payroll Payment',      path: '/finance/payroll-payment', icon: 'users',         color: '#16A34A' },
+        { label: 'Liabillites&accounts payable', path: '/finance/liabilities', icon: 'alert-circle', color: '#eab308' },
       ] },
     { type: 'divider' },
     { label: 'Accounts and reconciliation', path: '/finance/bank-accounts', icon: 'building', color: '#3b82f6' },
@@ -96,6 +98,7 @@ const FinanceDashboard = () => {
             <Route path="pcv" element={<FinancePCV />} />
             <Route path="cash-book" element={<FinanceCashBook />} />
             <Route path="bank-accounts" element={<FinanceBankAccounts />} />
+            <Route path="payroll-payment" element={<FinancePayrollPayment />} />
 
             {/* Receivables */}
             <Route path="outstanding-ar" element={<FinanceOutstandingReceivables />} />

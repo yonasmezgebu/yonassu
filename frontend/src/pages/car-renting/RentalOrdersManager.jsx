@@ -266,7 +266,7 @@ const RentalOrdersManager = () => {
             onClick={handleRefresh}
             title="Refresh"
           >
-            <RefreshCw size={17} style={{ animation: spinning ? 'spin 0.6s linear' : 'none' }} />
+            <SegmentedSpinner size={17} />
           </button>
         </div>
       </div>
@@ -318,7 +318,7 @@ const RentalOrdersManager = () => {
 
       <div style={S.tableWrap}>
         {loading ? (
-          <div style={S.empty}><RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />Loading orders...</div>
+          <div style={S.empty}><SegmentedSpinner size={24} />Loading orders...</div>
         ) : filteredOrders.length === 0 ? (
           <div style={S.empty}>
             <Car size={40} style={S.emptyIcon} />

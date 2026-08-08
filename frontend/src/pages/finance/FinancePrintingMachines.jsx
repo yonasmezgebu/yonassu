@@ -272,7 +272,7 @@ const FinancePrintingMachines = () => {
         {/* ── TABLE ── */}
         {loading && machines.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 24px', color: G.forest, fontWeight: 800, fontSize: 18 }}>
-            <RefreshCw size={32} className="fpm-spin" style={{ display: 'block', margin: '0 auto 14px', color: G.forest }} />
+            <SegmentedSpinner size={32} />
             Loading Ledger…
           </div>
         ) : machines.length === 0 ? (

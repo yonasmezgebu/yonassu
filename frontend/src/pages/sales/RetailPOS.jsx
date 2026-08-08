@@ -1532,7 +1532,7 @@ const addToCart = (item) => {
                 transition: 'all 0.2s'
               }}
             >
-              <RefreshCw size={15} strokeWidth={2.5} style={refreshing ? { animation: 'spin 0.7s linear infinite' } : {}} />
+              <SegmentedSpinner size={15} />
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
@@ -2224,7 +2224,7 @@ const addToCart = (item) => {
                             }}
                           >
                             {loading ? (
-                              <><RefreshCw size={18} style={{ animation: 'spin 0.7s linear infinite' }} /> Processing...</>
+                              <><SegmentedSpinner size={18} /> Processing...</>
                             ) : posPaymentMethod === 'CASH' ? (
                               <><Package size={18} /> Send to Store (Cash) — {posCartTotal > 0 ? posCartTotal.toLocaleString() : '0'} ETB</>
                             ) : posPaymentMethod === 'BANK_TRANSFER' ? (
@@ -2281,7 +2281,7 @@ const addToCart = (item) => {
                       <>
                         {/* Animated waiting indicator */}
                         <div style={{ position: 'relative', width: 80, height: 80, marginBottom: 24 }}>
-                          <div style={{ width: 80, height: 80, border: '4px solid var(--sage-light)', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1.2s linear infinite' }} />
+                          <SegmentedSpinner size={24} />
                           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Package size={28} color="var(--primary)" />
                           </div>

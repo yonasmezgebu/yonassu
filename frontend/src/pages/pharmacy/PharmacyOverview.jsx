@@ -260,7 +260,7 @@ const PharmacyOverview = () => {
         </div>
         <div style={{ justifySelf: 'end' }}>
           <button onClick={() => fetchData(false)} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+            {refreshing && <SegmentedSpinner size={16} />}
             SYNC
           </button>
         </div>

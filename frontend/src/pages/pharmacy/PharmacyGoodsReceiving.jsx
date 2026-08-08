@@ -151,7 +151,7 @@ const PharmacyGoodsReceiving = () => {
       <div style={{ padding: 28, fontFamily: "'Inter',sans-serif", minHeight: '100vh', background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <style>{`@keyframes spin{100%{transform:rotate(360deg)}}@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '4px solid #e2e8f0', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <SegmentedSpinner size={24} />
           <p style={{ color: '#64748b', margin: 0 }}>Loading goods receiving data...</p>
         </div>
       </div>
@@ -287,7 +287,7 @@ const PharmacyGoodsReceiving = () => {
                 <button onClick={handleSubmit} disabled={!canSubmit || submitting}
                   style={{ padding: '12px 32px', background: canSubmit && !submitting ? '#059669' : '#e2e8f0', color: canSubmit && !submitting ? 'white' : '#94a3b8', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 15, cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {submitting ? (
-                    <><div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} /> Processing...</>
+                    <><SegmentedSpinner size={24} /> Processing...</>
                   ) : (
                     <><CheckCircle size={18} /> Confirm Receipt & Update Inventory</>
                   )}

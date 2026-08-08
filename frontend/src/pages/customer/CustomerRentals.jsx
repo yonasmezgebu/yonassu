@@ -677,7 +677,7 @@ export default function CustomerRentals() {
             <Plus size={16} /> New Rental
           </button>
           <button className="cr-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw size={16} className={refreshing ? 'cr-spin' : ''} />
+            <SegmentedSpinner size={16} />
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>

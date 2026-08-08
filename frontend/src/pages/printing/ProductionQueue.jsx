@@ -86,7 +86,7 @@ const ProductionQueue = () => {
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12, color: '#059669' }}>
-        <RefreshCw size={32} style={{ animation: 'spin 0.8s linear infinite' }} />
+        <SegmentedSpinner size={32} />
         <p style={{ margin: 0, fontWeight: 600 }}>Loading production queue...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>

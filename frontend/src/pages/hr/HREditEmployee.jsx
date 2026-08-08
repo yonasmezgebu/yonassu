@@ -4,6 +4,17 @@ import hrService from '../../services/hrService';
 import { playSuccessSound } from '../../utils/playNotificationSound';
 import styles from './HRAddEmployee.module.css';
 
+const getDocIcon = (f) => {
+  if (!f) return '📎';
+  const name = typeof f === 'string' ? f : (f.name || '');
+  const ext = name.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼️';
+  if (ext === 'pdf') return '📄';
+  if (['doc','docx'].includes(ext)) return '📝';
+  return '📎';
+};
+const fmtSize = (b) => !b ? '' : b < 1048576 ? `${(b/1024).toFixed(1)} KB` : `${(b/1048576).toFixed(1)} MB`;
+
 const HREditEmployee = ({ prefillData, onCancel }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -21,8 +32,26 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
   const [positions, setPositions] = useState([]);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const idFrontRef = useRef(null);
+  const idBackRef = useRef(null);
+
   const [file, setFile] = useState(null);
+  const [fileDragOver, setFileDragOver] = useState(false);
+  const [idPhotoFront, setIdPhotoFront] = useState(null);
+  const [idPhotoBack, setIdPhotoBack] = useState(null);
+  const [idFrontPreview, setIdFrontPreview] = useState(null);
+  const [idBackPreview, setIdBackPreview] = useState(null);
+
   const [submitStatus, setSubmitStatus] = useState({ type: null, message: '' });
+
+  // Build correct URL from stored path like "uploads\\hr\\id-photos\\file.jpg"
+  const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+  const toUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const cleanPath = path.replace(/\\/g, '/').replace(/^\/?api\/v1\//, '').replace(/^\//, '');
+    return `${BACKEND_URL}/${cleanPath}`;
+  };
 
   useEffect(() => {
     const fetchFormOptions = async () => {
@@ -66,6 +95,9 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
         emergency_contact_name: prefillData.emergency_contact_name || '',
         emergency_contact_phone: prefillData.emergency_contact_phone || '',
       });
+      
+      setIdFrontPreview(prefillData.id_photo_front ? toUrl(prefillData.id_photo_front) : null);
+      setIdBackPreview(prefillData.id_photo_back   ? toUrl(prefillData.id_photo_back)  : null);
     }
   }, [prefillData]);
 
@@ -75,6 +107,14 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
     }
   };
 
+  const handleIdPhoto = (side, e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    if (side === 'front') { setIdPhotoFront(f); setIdFrontPreview(url); }
+    else                  { setIdPhotoBack(f);  setIdBackPreview(url);  }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -82,7 +122,9 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
     try {
       const submitData = {
         ...form,
-        document_path: file ? `/uploads/documents/${file.name}` : prefillData?.document_path || null,
+        // Don't hardcode path — pass real File; backend multer saves it and derives the path
+        document_file: file || undefined,
+        document_path: file ? undefined : (prefillData?.document_path || null),
         // Ensure empty strings become null for date/numeric fields
         date_of_birth: form.date_of_birth || null,
         base_salary: form.base_salary || null,
@@ -91,6 +133,8 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
         bank_account_number: form.bank_account_number.trim() || null,
         bank_name: form.bank_name || null,
         national_id: form.national_id || null,
+        id_photo_front: idPhotoFront || undefined,
+        id_photo_back:  idPhotoBack  || undefined,
       };
 
       await hrService.etp.updateEmployee(prefillData.employee_id, submitData);
@@ -98,7 +142,7 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
       setSubmitStatus({ type: 'success', message: `✅ Profile updated successfully! Redirecting…` });
       setTimeout(() => onCancel(), 1500);
     } catch (err) {
-      setSubmitStatus({ type: 'error', message: err?.response?.data?.message || 'Failed to update employee. Please check the details.' });
+      setSubmitStatus({ type: 'error', message: err?.response?.data?.message || err?.message || 'Failed to update employee. Please check the details.' });
       console.error(err);
     } finally {
       setSaving(false);
@@ -247,32 +291,147 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
           </div>
         </div>
 
-        {/* SECTION: EMERGENCY & DOCUMENTS */}
+        {/* SECTION: EDUCATION & DOCUMENTS */}
         <div className={styles.sectionCard}>
-          <h2 className={styles.sectionTitle}>Emergency Contact &amp; Documents</h2>
+          <h2 className={styles.sectionTitle}>Education Information &amp; Documents</h2>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label>Emergency Contact Name</label>
-              <input value={form.emergency_contact_name} onChange={F('emergency_contact_name')} placeholder="Full name" />
+              <label>Education Level</label>
+              <select value={form.education_level || ''} onChange={F('education_level')}>
+                <option value="">Select Level</option>
+                <option value="High School">High School</option>
+                <option value="Certificate">Certificate</option>
+                <option value="Diploma">Diploma</option>
+                <option value="Bachelor's Degree">Bachelor's Degree</option>
+                <option value="Master's Degree">Master's Degree</option>
+                <option value="PhD">PhD</option>
+              </select>
             </div>
             <div className={styles.formGroup}>
-              <label>Emergency Contact Phone</label>
-              <input value={form.emergency_contact_phone} onChange={F('emergency_contact_phone')} placeholder="09XXXXXXXX" />
+              <label>Field of Study</label>
+              <input value={form.field_of_study || ''} onChange={F('field_of_study')} placeholder="e.g. Accounting, Nursing, IT" />
             </div>
-            <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-              <label>Upload Employee Documents (ID, Contract) <span style={{ color: '#6b7280', fontSize: '0.85em', fontWeight: 'normal' }}>(Optional)</span></label>
-              <div className={styles.uploadArea} onClick={() => fileInputRef.current?.click()}>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                />
-                <div className={styles.uploadIcon}>📄</div>
-                <div className={styles.uploadText}>
-                  {file ? file.name : (prefillData?.document_path ? `Current: ${prefillData.document_path.split('/').pop()}` : 'Click to select a file to upload')}
-                </div>
+            <div className={styles.formGroup}>
+              <label>Institution Name</label>
+              <input value={form.institution_name || ''} onChange={F('institution_name')} placeholder="University or School" />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Graduation Year</label>
+              <input type="number" min="1950" max="2100" value={form.graduation_year || ''} onChange={F('graduation_year')} placeholder="YYYY" />
+            </div>
+
+            {/* ID Card Uploads */}
+            <div className={styles.formGroup}>
+              <label>ID Photo (Front)</label>
+              <div 
+                className={styles.upload} 
+                onClick={() => idFrontRef.current?.click()}
+                style={idFrontPreview ? { padding: 4 } : {}}
+              >
+                <input type="file" ref={idFrontRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleIdPhoto('front', e)} />
+                {idFrontPreview ? (
+                  <img src={idFrontPreview} alt="ID Front" style={{ width: '100%', height: '100px', objectFit: 'contain', borderRadius: 4 }} />
+                ) : (
+                  <>
+                    <div className={styles.uploadIcon}>📸</div>
+                    <div className={styles.uploadText}>Click to upload front of ID</div>
+                  </>
+                )}
               </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>ID Photo (Back)</label>
+              <div 
+                className={styles.upload} 
+                onClick={() => idBackRef.current?.click()}
+                style={idBackPreview ? { padding: 4 } : {}}
+              >
+                <input type="file" ref={idBackRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleIdPhoto('back', e)} />
+                {idBackPreview ? (
+                  <img src={idBackPreview} alt="ID Back" style={{ width: '100%', height: '100px', objectFit: 'contain', borderRadius: 4 }} />
+                ) : (
+                  <>
+                    <div className={styles.uploadIcon}>📸</div>
+                    <div className={styles.uploadText}>Click to upload back of ID</div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+              <label>Upload Employee Documents <span style={{ color: '#6b7280', fontSize: '0.85em', fontWeight: 'normal' }}>(Optional)</span></label>
+
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileDragOver(false); } }}
+              />
+
+              {/* Existing document — shown as a new-tab link */}
+              {!file && prefillData?.document_path && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: '#f8fafc', border: '1px solid #e2e8f0',
+                  borderRadius: 8, padding: '8px 12px', marginBottom: 8,
+                }}>
+                  <span style={{ fontSize: 20 }}>{getDocIcon(prefillData.document_path)}</span>
+                  <span style={{ flex: 1, fontSize: 13, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {prefillData.document_path.split(/[\/\\]/).pop()}
+                  </span>
+                  <a
+                    href={toUrl(prefillData.document_path)}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 12, color: '#2563eb', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
+                  >Open ↗</a>
+                  <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>Current</span>
+                </div>
+              )}
+
+              {file ? (
+                /* Telegram-style attachment card */
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  background: '#f0f9ff', border: '2px solid #7dd3fc',
+                  borderRadius: 12, padding: '12px 16px',
+                }}>
+                  <span style={{ fontSize: 34, flexShrink: 0 }}>{getDocIcon(file)}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0c4a6e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {file.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#0369a1', marginTop: 3 }}>
+                      {fmtSize(file.size)} &middot; Will replace current document
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 22, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}
+                    title="Remove"
+                  >&times;</button>
+                </div>
+              ) : (
+                /* Drop zone */
+                <div
+                  className={styles.upload}
+                  style={fileDragOver ? { borderColor: '#2563EB', background: '#EFF6FF' } : {}}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setFileDragOver(true); }}
+                  onDragLeave={() => setFileDragOver(false)}
+                  onDrop={e => { e.preventDefault(); setFileDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setFile(f); }}
+                >
+                  <div className={styles.uploadIcon}>📎</div>
+                  <div className={styles.uploadText}>
+                    {prefillData?.document_path ? 'Click to replace document…' : 'Click to select or drag & drop'}
+                  </div>
+                  <div className={styles.uploadHint}>PDF, DOCX, JPG, PNG accepted</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
