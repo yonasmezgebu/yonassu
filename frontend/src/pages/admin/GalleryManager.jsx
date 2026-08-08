@@ -121,15 +121,31 @@ const GalleryManager = () => {
     setSaving(true);
     try {
       const res = await axios.delete(`/gallery/${confirmDelete.id}`);
-      if (res.status === 'success') { 
-        showNotif('success', 'Image deleted successfully'); 
-        fetchImages(); 
+      if (res.status === 'success' || res.message) {
+        showNotif('success', 'Image deleted successfully!');
+        fetchImages();
       }
     } catch (err) { 
       showNotif('error', err.response?.data?.message || 'Delete failed'); 
     } finally {
       setSaving(false);
       setConfirmDelete(null);
+    }
+  };
+
+  const toggleVisibility = async (img) => {
+    const newStatus = img.status === 'active' ? 'hidden' : 'active';
+    try {
+      setImages(prev => prev.map(i => i.id === img.id ? { ...i, status: newStatus } : i));
+      
+      const fd = new FormData();
+      fd.append('status', newStatus);
+      
+      await axios.put(`/gallery/${img.id}`, fd);
+      showNotif('success', `Image visibility changed to ${newStatus === 'active' ? 'Active' : 'Hidden'}`);
+    } catch (err) {
+      showNotif('error', 'Failed to change visibility');
+      fetchImages(); // Revert on failure
     }
   };
 
@@ -240,10 +256,23 @@ const GalleryManager = () => {
                       </div>
                     </td>
                     <td className={styles.center}>
-                      <span className={`${styles.statusBadge} ${img.status === 'active' ? styles.statusActive : styles.statusHidden}`}>
-                        {img.status === 'active' ? <Eye size={10} /> : <EyeOff size={10} />}
-                        {img.status === 'active' ? 'Active' : 'Hidden'}
-                      </span>
+                      <div 
+                        onClick={() => toggleVisibility(img)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, background: img.status === 'active' ? '#E8F5E9' : '#FFEBEE', transition: 'background 0.2s' }}
+                        title="Click to toggle visibility"
+                      >
+                        {img.status === 'active' ? (
+                          <>
+                            <Eye size={14} color="#228B22" />
+                            <span style={{ color: '#228B22', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Active</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff size={14} color="#C62828" />
+                            <span style={{ color: '#C62828', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div className={styles.actionsList}>
