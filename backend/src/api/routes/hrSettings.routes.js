@@ -15,5 +15,7 @@ router.get('/messages', authenticate, authorizeRoles(ROLES), settingsController.
 router.get('/messages/unread-count', authenticate, authorizeRoles(ROLES), settingsController.getUnreadCount);
 router.put('/messages/mark-all-read', authenticate, authorizeRoles(ROLES), settingsController.markAllRead);
 router.put('/messages/:id/read', authenticate, authorizeRoles(ROLES), settingsController.markRead);
+router.put('/messages/:id/status', authenticate, authorizeRoles(ROLES), settingsController.toggleReadStatus);
+router.delete('/messages/:id', authenticate, authorizeRoles(ROLES), settingsController.deleteMessage);
 
 module.exports = router;
