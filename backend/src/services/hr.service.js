@@ -879,6 +879,10 @@ const updateApplicationStatus = async (id, status, reason) => {
   }
 };
 
+const deleteApplication = async (id) => {
+  await db('job_applications').where({ id }).del();
+};
+
 const getInterviews = async (params) => { return mockInterviews; };
 const createInterview = async (data) => {
   const newInt = { id: Date.now().toString(), ...data, status: 'Scheduled' };
@@ -941,7 +945,7 @@ Object.assign(module.exports, {
   getDeductions, createDeduction, updateDeduction, deleteDeduction,
   getPayslips, generatePayslips, emailPayslip,
   getJobPosts, createJobPost, updateJobPost,
-  getApplications, updateApplicationStatus,
+  getApplications, updateApplicationStatus, deleteApplication,
   getInterviews, createInterview, updateInterview,
   getRecruitmentPipeline, hireCandidate,
   getEvaluations, createEvaluation, getReviews, approveReview, getFeedback, submitFeedback, acknowledgeFeedback
