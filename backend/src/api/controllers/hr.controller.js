@@ -404,6 +404,11 @@ exports.updateApplicationStatus = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Application status updated' });
 });
 
+exports.deleteApplication = catchAsync(async (req, res) => {
+  await hrService.deleteApplication(req.params.id);
+  res.json({ status: 'success', message: 'Application deleted successfully' });
+});
+
 exports.getInterviews = catchAsync(async (req, res) => {
   const interviews = await hrService.getInterviews(req.query);
   res.json({ status: 'success', data: { interviews } });
