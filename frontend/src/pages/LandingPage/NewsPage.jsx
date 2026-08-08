@@ -704,6 +704,8 @@ export default () => {
     full_name: '', phone_number: '', email: '',
     education_status: 'High School', national_id: '', sex: 'Male'
   });
+  const [idFront,       setIdFront]       = useState(null);
+  const [idBack,        setIdBack]        = useState(null);
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [showSuccess,   setShowSuccess]   = useState(false);
 
@@ -733,10 +735,16 @@ export default () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.post('/applications', { ...formData, post_id: applyingPost.id });
+      const fd = new FormData();
+      Object.entries({ ...formData, post_id: applyingPost.id }).forEach(([k, v]) => fd.append(k, v));
+      if (idFront) fd.append('id_front_image', idFront);
+      if (idBack)  fd.append('id_back_image',  idBack);
+      await axios.post('/applications', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setApplyingPost(null);
       setShowSuccess(true);
       setFormData({ full_name: '', phone_number: '', email: '', education_status: 'High School', national_id: '', sex: 'Male' });
+      setIdFront(null);
+      setIdBack(null);
     } catch (err) {
       alert('Failed to submit application. Please try again.');
     } finally {
@@ -971,6 +979,36 @@ export default () => {
                   <option value="PhD">PhD</option>
                 </select>
               </div>
+
+              {/* ── ID Images ── */}
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 10, color: '#1B5E20' }}>
+                  📷 National ID Images
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ border: '2px dashed #A5D6A7', borderRadius: 10, padding: 12, textAlign: 'center', background: '#F1F8E9' }}>
+                    <label style={{ cursor: 'pointer', display: 'block' }}>
+                      {idFront
+                        ? <img src={URL.createObjectURL(idFront)} alt="ID Front" style={{ width: '100%', maxHeight: 100, objectFit: 'cover', borderRadius: 6 }} />
+                        : <div style={{ fontSize: 12, color: '#558B2F', paddingTop: 8 }}>🪪 Front of ID<br /><span style={{ fontSize: 11, color: '#888' }}>Click to upload</span></div>
+                      }
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setIdFront(e.target.files[0])} />
+                    </label>
+                    {idFront && <button type="button" onClick={() => setIdFront(null)} style={{ marginTop: 4, fontSize: 11, color: '#D32F2F', background: 'none', border: 'none', cursor: 'pointer' }}>✕ Remove</button>}
+                  </div>
+                  <div style={{ border: '2px dashed #A5D6A7', borderRadius: 10, padding: 12, textAlign: 'center', background: '#F1F8E9' }}>
+                    <label style={{ cursor: 'pointer', display: 'block' }}>
+                      {idBack
+                        ? <img src={URL.createObjectURL(idBack)} alt="ID Back" style={{ width: '100%', maxHeight: 100, objectFit: 'cover', borderRadius: 6 }} />
+                        : <div style={{ fontSize: 12, color: '#558B2F', paddingTop: 8 }}>🪪 Back of ID<br /><span style={{ fontSize: 11, color: '#888' }}>Click to upload</span></div>
+                      }
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setIdBack(e.target.files[0])} />
+                    </label>
+                    {idBack && <button type="button" onClick={() => setIdBack(null)} style={{ marginTop: 4, fontSize: 11, color: '#D32F2F', background: 'none', border: 'none', cursor: 'pointer' }}>✕ Remove</button>}
+                  </div>
+                </div>
+              </div>
+
               <button type="submit" className="news-form-submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Submitting...' : 'Submit Application'}
               </button>
