@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail, Save, MessageCircle, PhoneCall, User, Clock, CheckCircle, XCircle, Inbox } from 'lucide-react';
+import { Phone, Mail, Save, MessageCircle, PhoneCall, User, Clock, CheckCircle, XCircle, Inbox, Trash2, Eye, EyeOff, Send, CheckCheck } from 'lucide-react';
 import api from '../../services/apiClient';
 
 /* ─── All 17 rules applied ───────────────────────────────────────────────────
@@ -382,6 +382,10 @@ const HRContact = () => {
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [saveStatus, setSaveStatus] = useState({ type: '', text: '' });
+  const [repliedIds, setRepliedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('hr_replied_msgs') || '[]')); }
+    catch { return new Set(); }
+  });
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -434,6 +438,43 @@ const HRContact = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleMessageStatus = async (msg) => {
+    const newStatus = msg.is_read ? 'unread' : 'read';
+    try {
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: !m.is_read } : m));
+      await api.put(`/hr-settings/messages/${msg.id}/status`, { status: newStatus });
+    } catch (err) {
+      console.error('Failed to toggle status', err);
+      // Revert optimistic update
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: msg.is_read } : m));
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    try {
+      await api.delete(`/hr-settings/messages/${id}`);
+      setMessages(prev => prev.filter(m => m.id !== id));
+      // also clear from replied
+      setRepliedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        localStorage.setItem('hr_replied_msgs', JSON.stringify([...next]));
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to delete message', err);
+    }
+  };
+
+  const markReplied = (id) => {
+    setRepliedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem('hr_replied_msgs', JSON.stringify([...next]));
+      return next;
+    });
   };
 
   const total   = messages.length;
@@ -621,19 +662,33 @@ const HRContact = () => {
                     <th>Message</th>
                     <th style={{ width: '16%' }}>Phone</th>
                     <th style={{ width: '14%' }}>Received</th>
+                    <th style={{ width: '14%', textAlign: 'center' }}>Status</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {messages.map((msg) => (
-                    <tr key={msg.id}>
+                    <tr key={msg.id} style={{ background: repliedIds.has(msg.id) ? '#F1F8E9' : (msg.is_read ? '#fff' : '#FFFDE7') }}>
                       {/* Sender */}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                           {!msg.is_read && <span className="hrc-unread-dot" title="Unread" />}
+                          {repliedIds.has(msg.id) && (
+                            <span title="Replied" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#228B22', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', letterSpacing: '0.06em', flexShrink: 0, alignSelf: 'flex-start', marginTop: 2 }}>
+                              <CheckCheck size={11} /> REPLIED
+                            </span>
+                          )}
                           <div>
                             <div className="hrc-sender-name">{msg.sender_name}</div>
-                            <a href={`mailto:${msg.sender_email}`} className="hrc-sender-email">
-                              {msg.sender_email}
+                            <a 
+                              href={`https://mail.google.com/mail/?view=cm&fs=1&to=${msg.sender_email}&su=${encodeURIComponent('Reply to your inquiry')}&body=${encodeURIComponent(`Dear ${msg.sender_name},\n\n\n\nBest regards,\nHR Team\n${settings.email}\n${settings.phone1}`)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hrc-sender-email"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', color: '#1B5E20' }}
+                              onClick={() => markReplied(msg.id)}
+                            >
+                              <Send size={12} /> {msg.sender_email}
                             </a>
                           </div>
                         </div>
@@ -654,6 +709,69 @@ const HRContact = () => {
                           {new Date(msg.created_at).toLocaleDateString()}<br />
                           <span style={{ color: '#A5D6A7' }}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </span>
+                      </td>
+                      {/* Status Column */}
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                          {repliedIds.has(msg.id) ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#228B22', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', letterSpacing: '0.06em' }}>
+                              <CheckCheck size={13} /> REPLIED
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#F5F5F5', color: '#9E9E9E', fontSize: 11, fontWeight: 700, padding: '3px 10px', letterSpacing: '0.06em' }}>
+                              PENDING
+                            </span>
+                          )}
+                          {msg.is_read ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#A5D6A7', fontSize: 10, fontWeight: 700 }}>
+                              <Eye size={10} /> READ
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#F57F17', fontSize: 10, fontWeight: 700 }}>
+                              <EyeOff size={10} /> UNREAD
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Actions */}
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {/* Toggle Replied */}
+                          <button
+                            onClick={() => {
+                              if (repliedIds.has(msg.id)) {
+                                setRepliedIds(prev => {
+                                  const next = new Set(prev);
+                                  next.delete(msg.id);
+                                  localStorage.setItem('hr_replied_msgs', JSON.stringify([...next]));
+                                  return next;
+                                });
+                              } else {
+                                markReplied(msg.id);
+                              }
+                            }}
+                            style={{ background: repliedIds.has(msg.id) ? '#228B22' : 'transparent', border: '1.5px solid #228B22', cursor: 'pointer', color: repliedIds.has(msg.id) ? '#fff' : '#228B22', padding: '3px 6px', display: 'flex', alignItems: 'center', gap: 3 }}
+                            title={repliedIds.has(msg.id) ? 'Unmark as replied' : 'Mark as replied'}
+                          >
+                            <CheckCheck size={13} />
+                          </button>
+                          {/* Toggle Read */}
+                          <button
+                            onClick={() => toggleMessageStatus(msg)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: msg.is_read ? '#A5D6A7' : '#228B22' }}
+                            title={msg.is_read ? 'Mark as unread' : 'Mark as read'}
+                          >
+                            {msg.is_read ? <Eye size={16} /> : <EyeOff size={16} />}
+                          </button>
+                          {/* Delete */}
+                          <button
+                            onClick={() => deleteMessage(msg.id)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#E53935' }}
+                            title="Delete message"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
