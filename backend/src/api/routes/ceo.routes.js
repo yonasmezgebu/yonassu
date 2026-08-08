@@ -323,4 +323,10 @@ router.get(
   authorize(['ceo:dashboard']),
   CEODashboardController.getEmployeeMonthlyAttendance
 );
+// ── Employee Registration Approval (HR → CEO) ────────────────────────────────────────────
+const ETPController = require('../controllers/hr_etp.controller');
+router.get('/employee-registrations/pending',          authenticate, authorize(['ceo:dashboard']), ETPController.getPendingRegistrations);
+router.patch('/employee-registrations/:id/approve',    authenticate, authorize(['ceo:dashboard']), ETPController.approveRegistration);
+router.patch('/employee-registrations/:id/reject',     authenticate, authorize(['ceo:dashboard']), ETPController.rejectRegistration);
+
 module.exports = router;
