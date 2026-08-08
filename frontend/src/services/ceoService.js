@@ -173,6 +173,12 @@ const ceoService = {
   getPendingApprovalsCount: async () => {
     return await apiClient.get('/ceo/pending-approvals-count');
   },
+  
+  // Employee Registration Approvals (ETP)
+  getPendingEmployeeRegistrations: async () => apiClient.get('/ceo/employee-registrations/pending'),
+  approveEmployeeRegistration: async (id) => apiClient.patch(`/ceo/employee-registrations/${id}/approve`),
+  rejectEmployeeRegistration: async (id, reason) => apiClient.patch(`/ceo/employee-registrations/${id}/reject`, { reason }),
+
 
   getFarmingAttendance: async () => {
     return await apiClient.get('/farming/attendance/today');
