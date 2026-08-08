@@ -9,6 +9,10 @@ exports.submitApplication = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Extract uploaded ID image paths from multer
+    const id_front_image = req.files?.id_front_image?.[0]?.filename || null;
+    const id_back_image  = req.files?.id_back_image?.[0]?.filename  || null;
+
     const [id] = await db('job_applications').insert({
       post_id,
       full_name,
@@ -17,6 +21,8 @@ exports.submitApplication = async (req, res) => {
       education_status,
       national_id,
       sex,
+      id_front_image,
+      id_back_image,
       status: 'PENDING'
     }).returning('id');
 
@@ -102,9 +108,20 @@ exports.updateStatus = async (req, res) => {
       }
     }
     
-    res.json({ success: true, message: 'Status updated' });
+    res.json({ success: true, message: 'Status updated successfully' });
   } catch (err) {
     console.error('Update status error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.deleteApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db('job_applications').where({ id }).del();
+    res.json({ success: true, message: 'Application deleted successfully' });
+  } catch (err) {
+    console.error('Delete application error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
