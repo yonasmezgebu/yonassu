@@ -7,6 +7,8 @@ const CEOApplicants = () => {
   const [loading, setLoading] = useState(true);
   const [rejectModal, setRejectModal] = useState({ show: false, appId: null, reason: '' });
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+  const [previewImage, setPreviewImage] = useState(null);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -114,6 +116,30 @@ const CEOApplicants = () => {
                       <td style={{ padding: '14px 16px', fontSize: 13, color: '#334155' }}>
                         <div><strong>Edu:</strong> {app.education_status}</div>
                         <div style={{ fontSize: 12, color: '#64748b' }}>ID: {app.national_id}</div>
+                        {(app.id_front_image || app.id_back_image) && (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                            {app.id_front_image && (
+                              <div onClick={() => setPreviewImage(`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_front_image}`)}>
+                                <img
+                                  src={`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_front_image}`}
+                                  alt="ID Front"
+                                  style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                                  title="ID Front"
+                                />
+                              </div>
+                            )}
+                            {app.id_back_image && (
+                              <div onClick={() => setPreviewImage(`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_back_image}`)}>
+                                <img
+                                  src={`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_back_image}`}
+                                  alt="ID Back"
+                                  style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                                  title="ID Back"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                       {/* Date */}
                       <td style={{ padding: '14px 16px', fontSize: 13, color: '#64748b', whiteSpace: 'nowrap' }}>
@@ -127,6 +153,11 @@ const CEOApplicants = () => {
                         }}>
                           {app.status.replace(/_/g, ' ')}
                         </span>
+                        {app.status === 'REJECTED' && app.rejection_reason && (
+                          <div style={{ fontSize: 11, color: '#D32F2F', marginTop: 4, fontStyle: 'italic', maxWidth: 150 }}>
+                            Reason: {app.rejection_reason}
+                          </div>
+                        )}
                       </td>
                       {/* Actions */}
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
@@ -163,19 +194,12 @@ const CEOApplicants = () => {
           <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 16, padding: 32, width: 420, boxShadow: '0 25px 50px rgba(0,0,0,0.25)' }}>
             <h2 style={{ margin: '0 0 20px', fontSize: 18, color: '#0f172a' }}>Reject Application</h2>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#334155', marginBottom: 8 }}>Reason *</label>
-            <select
+            <textarea
+              placeholder="Enter rejection reason manually..."
               value={rejectModal.reason}
               onChange={e => setRejectModal({ ...rejectModal, reason: e.target.value })}
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, marginBottom: 20, boxSizing: 'border-box' }}
-            >
-              <option value="">Select a reason...</option>
-              <option>Lacks required experience</option>
-              <option>Salary expectations too high</option>
-              <option>Not a culture fit</option>
-              <option>Position filled</option>
-              <option>Failed document verification</option>
-              <option>Other</option>
-            </select>
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 14, marginBottom: 20, boxSizing: 'border-box', minHeight: '80px', resize: 'vertical' }}
+            />
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setRejectModal({ show: false, appId: null, reason: '' })}
@@ -213,6 +237,40 @@ const CEOApplicants = () => {
           <style>{`@keyframes slideInToast { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
           {toast.type === 'error' ? <XCircle size={18} /> : <CheckCircle size={18} />}
           {toast.message}
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          onClick={() => { setPreviewImage(null); setIsZoomed(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 99999, display: 'flex', alignItems: isZoomed ? 'flex-start' : 'center', justifyContent: isZoomed ? 'flex-start' : 'center', padding: isZoomed ? 0 : 24, overflow: 'auto' }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: isZoomed ? 'max-content' : 'auto', height: isZoomed ? 'max-content' : 'auto', margin: isZoomed ? 'auto' : 0 }}>
+            {!isZoomed && (
+              <button 
+                onClick={() => { setPreviewImage(null); setIsZoomed(false); }}
+                style={{ position: 'absolute', top: -40, right: 0, background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }}
+              >
+                ✕
+              </button>
+            )}
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              onClick={() => setIsZoomed(!isZoomed)}
+              style={{ 
+                maxWidth: isZoomed ? 'none' : '100%', 
+                maxHeight: isZoomed ? 'none' : 'calc(100vh - 80px)', 
+                objectFit: 'contain', 
+                borderRadius: isZoomed ? 0 : 8, 
+                boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+                cursor: isZoomed ? 'zoom-out' : 'zoom-in',
+                display: 'block',
+                transition: 'transform 0.2s ease-out'
+              }} 
+            />
+          </div>
         </div>
       )}
     </div>
