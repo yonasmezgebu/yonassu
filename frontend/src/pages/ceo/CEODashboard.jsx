@@ -32,6 +32,7 @@ import CEOTenderManager from './CEOTenderManager';
 import CEOPrinting from './CEOPrinting';
 import CEOAgriAndCarRental from './CEOAgriAndCarRental';
 import CEOApplicants from './CEOApplicants';
+import HREmployeesPending from '../hr/HREmployeesPending';
 
 // 9 Additional Approval & Report Modules
 import CEOPendingApprovals from './CEOPendingApprovals';
@@ -68,6 +69,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
+        { label: 'Employee Approvals', path: '/ceo/employee-approvals', icon: 'user-check', color: '#10b981' },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
         { label: 'Fund Approvals (M9)', path: '/ceo/tenders?tab=Fund Requests', icon: 'check-circle', color: '#eab308' },
@@ -100,6 +102,7 @@ const CEODashboard = () => {
             <Route path="finance" element={<CEOFinance />} />
             <Route path="hr" element={<CEOHR />} />
             <Route path="applicants" element={<CEOApplicants />} />
+            <Route path="employee-approvals" element={<HREmployeesPending />} />
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
             
