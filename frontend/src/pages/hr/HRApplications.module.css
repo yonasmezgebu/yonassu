@@ -185,6 +185,9 @@
 .actionBtnReject { border-color: #F44336; color: #C62828; }
 .actionBtnReject:hover { background: #F44336; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
 
+.actionBtnDelete { border-color: #B71C1C; color: #B71C1C; margin-top: 4px; }
+.actionBtnDelete:hover { background: #B71C1C; color: #FFFFFF; box-shadow: 2px 2px 0px rgba(0,0,0,0.15); }
+
 
 .loading, .empty { padding: 60px; text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #A5D6A7; }
 
