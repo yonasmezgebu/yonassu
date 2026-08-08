@@ -126,8 +126,20 @@ exports.getETPEmployee = catchAsync(async (req, res) => {
 exports.createETPEmployee = catchAsync(async (req, res) => {
   const rawBank = (req.body.bank_account_number || '').toString().trim();
   const bank_account_number = rawBank || null;
-  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone, bank_name, emergency_contact_name, emergency_contact_phone, marital_status, document_path } = req.body;
+  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone, bank_name, emergency_contact_name, emergency_contact_phone, marital_status, document_path, user_id } = req.body;
   const date_of_birth = (req.body.date_of_birth || '').trim() || null;
+  const personal_email = (req.body.personal_email || '').trim() || null;
+  const physical_address = (req.body.physical_address || '').trim() || null;
+
+  // Education fields
+  const education_level   = req.body.education_level || null;
+  const institution_name  = req.body.institution_name || null;
+  const field_of_study    = req.body.field_of_study || null;
+  const graduation_year   = req.body.graduation_year || null;
+
+  // ID photo paths from multer (set by route middleware)
+  const id_photo_front = req.files?.id_photo_front?.[0]?.path || req.body.id_photo_front || null;
+  const id_photo_back  = req.files?.id_photo_back?.[0]?.path  || req.body.id_photo_back  || null;
 
   if (bank_account_number) {
     const existingBank = await db('hr_employees').where('bank_account_number', bank_account_number).first();
@@ -152,16 +164,20 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     shift_end_time: shift_end_time || '18:00',
     weekly_off_days: 'Friday,Saturday',
     personal_phone: phone || req.body.personal_phone,
-    physical_address: req.body.physical_address || null,
-    personal_email: `${employee_id}@sutana.com`,
+    physical_address: physical_address,
+    personal_email: personal_email || `${employee_id}@sutana.com`,
     employment_status: 'Inactive',
     registration_status: 'pending_approval',
-    employment_type: 'Permanent',
+    employment_type: req.body.employment_type || 'Permanent',
     date_of_birth: date_of_birth || null,
     marital_status: marital_status || 'Single',
     document_path: document_path || null,
-    hire_date: new Date(),
-    overtime_rate: 1.5
+    hire_date: req.body.hire_date || new Date(),
+    overtime_rate: 1.5,
+    // Education
+    education_level, institution_name, field_of_study, graduation_year,
+    // ID photos & Link
+    id_photo_front, id_photo_back, user_id: user_id || null
   });
 
   res.status(201).json({ status: 'success', data: { employee_id } });
@@ -172,12 +188,17 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
   const updates = {};
   const nullableFields = ['date_of_birth', 'bank_account_number', 'bank_name', 'national_id',
     'physical_address', 'personal_email', 'emergency_contact_name', 'emergency_contact_phone',
-    'document_path', 'housing_allowance', 'transport_allowance', 'overtime_rate'];
+    'document_path', 'housing_allowance', 'transport_allowance', 'overtime_rate',
+    'education_level', 'institution_name', 'field_of_study', 'graduation_year',
+    'id_photo_front', 'id_photo_back'];
   const fields = ['full_name', 'national_id', 'gender', 'dept_id', 'position_id',
     'base_salary', 'housing_allowance', 'transport_allowance', 'has_pc_access',
     'shift_start_time', 'shift_end_time', 'employment_status', 'employment_type',
     'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number',
-    'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path'];
+    'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path',
+    'registration_status', 'hire_date',
+    'education_level', 'institution_name', 'field_of_study', 'graduation_year',
+    'id_photo_front', 'id_photo_back'];
   for (const f of fields) {
     if (req.body[f] !== undefined) {
       const val = typeof req.body[f] === 'string' ? req.body[f].trim() : req.body[f];
@@ -189,6 +210,12 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
     }
   }
   if (req.body.phone) updates.personal_phone = req.body.phone;
+
+  // Handle ID photo uploads from multer (multipart)
+  if (req.files?.id_photo_front?.[0]) updates.id_photo_front = req.files.id_photo_front[0].path.replace(/\\/g, '/');
+  if (req.files?.id_photo_back?.[0])  updates.id_photo_back  = req.files.id_photo_back[0].path.replace(/\\/g, '/');
+  // Handle document file upload — override any body-sent path with the real saved path
+  if (req.files?.document_file?.[0])  updates.document_path  = req.files.document_file[0].path.replace(/\\/g, '/');
 
   // Only check bank duplicate if a non-empty bank account is being set
   if (updates.bank_account_number) {
@@ -425,7 +452,23 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
   const m = parseInt(month);
   const y = parseInt(year);
 
-  const employees = await db('hr_employees').where('employment_status', 'Active');
+  const employees = await db('hr_employees')
+    .where('employment_status', 'Active')
+    .whereIn('registration_status', ['ceo_approved', 'completed']);
+
+  const validEmployeeIds = employees.map(e => e.employee_id);
+
+  // Remove any previously calculated draft records for employees that are no longer eligible
+  if (validEmployeeIds.length > 0) {
+    await db('payroll_salary_components')
+      .where({ month_number: m, year_number: y })
+      .whereNotIn('employee_id', validEmployeeIds)
+      .del();
+  } else {
+    await db('payroll_salary_components')
+      .where({ month_number: m, year_number: y })
+      .del();
+  }
   let companyGross = 0, companyNet = 0, companyOT = 0, companyDeductions = 0;
   let companyHours = 0, companyLate = 0, companyAbsent = 0;
 
@@ -552,10 +595,12 @@ exports.getPayrollSummary = catchAsync(async (req, res) => {
     .leftJoin('departments as d', 'da.dept_id', 'd.id')
     .where({ 'da.month_number': m, 'da.year_number': y })
     .select('da.*', 'd.name as dept_name').orderBy('da.total_gross_pay', 'desc');
-  // Employee-level breakdown for HR payroll editor
+  // Employee-level breakdown — only CEO-approved/completed active employees
   const employees = await db('payroll_salary_components as ps')
     .leftJoin('hr_employees as e', 'ps.employee_id', 'e.employee_id')
     .where({ 'ps.month_number': m, 'ps.year_number': y })
+    .where('e.employment_status', 'Active')
+    .whereIn('e.registration_status', ['ceo_approved', 'completed'])
     .select('ps.*', 'e.full_name', 'e.dept_id')
     .orderBy('e.full_name');
   res.json({ status: 'success', data: { payrollSummary: company, company, departments: depts, employees } });
@@ -606,16 +651,55 @@ exports.approvePayroll = catchAsync(async (req, res) => {
   await db('payroll_company_aggregation')
     .where({ month_number: m, year_number: y })
     .update({ approval_status: status, approved_by: req.user?.email, approved_date: db.fn.now(), rejection_reason: reason || null });
+
   if (action === 'approve') {
+    // Update individual salary components
     await db('payroll_salary_components')
       .where({ month_number: m, year_number: y })
       .update({ status: 'Approved', approved_by: req.user?.email, approved_date: db.fn.now() });
+
+    // Auto-submit to Finance queue
+    const queueExists = await db('payroll_finance_queue')
+      .where({ month_number: m, year_number: y }).first();
+    if (!queueExists) {
+      await db('payroll_finance_queue').insert({
+        month_number: m,
+        year_number: y,
+        total_net_pay: existing.company_net_pay,
+        total_employees: existing.total_employees,
+        approved_by_ceo: req.user?.email,
+        ceo_approved_date: db.fn.now(),
+        payment_status: 'Pending Payment',
+        created_at: db.fn.now(),
+      });
+    } else {
+      await db('payroll_finance_queue')
+        .where({ month_number: m, year_number: y })
+        .update({ payment_status: 'Pending Payment', approved_by_ceo: req.user?.email, ceo_approved_date: db.fn.now() });
+    }
+
+    // HIGH priority Finance notification
+    await db('hr_notifications_log').insert({
+      rule_id: 'R-005',
+      notification_message: `⚠️ PAYROLL READY FOR PAYMENT: ${m}/${y} approved by CEO (${req.user?.email}). Total: ${parseFloat(existing.company_net_pay).toLocaleString()} ETB for ${existing.total_employees} employees. Action required: Process payment in Finance → Payroll Payment.`,
+      priority: 'HIGH', status: 'Pending', recipient_user: 'Finance', sent_date: db.fn.now(),
+    });
+
+    // Also notify HR
     await db('hr_notifications_log').insert({
       rule_id: 'R-004',
-      notification_message: `Payroll for ${m}/${y} has been approved by ${req.user?.email}. Total: ${existing.company_net_pay} ETB.`,
-      priority: 'MEDIUM', status: 'Pending', recipient_user: 'Finance', sent_date: db.fn.now(),
+      notification_message: `Payroll for ${m}/${y} approved by CEO. Submitted to Finance for payment processing.`,
+      priority: 'MEDIUM', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
+    });
+  } else {
+    // Rejected — notify HR
+    await db('hr_notifications_log').insert({
+      rule_id: 'R-004',
+      notification_message: `Payroll for ${m}/${y} was rejected by CEO. Reason: ${reason || 'No reason given'}. Please revise and resubmit.`,
+      priority: 'HIGH', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
     });
   }
+
   res.json({ status: 'success', message: `Payroll ${status.toLowerCase()}` });
 });
 
@@ -630,28 +714,83 @@ exports.markPayrollPaid = catchAsync(async (req, res) => {
   if (existing.approval_status === 'Paid') return res.status(400).json({ status: 'fail', message: 'Payroll is already marked as paid' });
 
   const paymentInfo = req.file ? `${payment_method || 'Bank Transfer'} | Proof: ${req.file.path}` : (payment_method || 'Bank Transfer');
+  const paidBy = req.user?.email || 'Finance';
+  const now = db.fn.now();
 
+  // 1. Mark payroll as Paid
   await db('payroll_company_aggregation')
     .where({ month_number: m, year_number: y })
-    .update({ 
+    .update({
       approval_status: 'Paid',
       payment_status: 'Paid',
       payment_method: paymentInfo,
-      paid_by: req.user?.email || 'Finance',
-      paid_date: db.fn.now()
+      paid_by: paidBy,
+      paid_date: now
     });
 
+  // 2. Mark individual salary components as Paid
   await db('payroll_salary_components')
     .where({ month_number: m, year_number: y })
     .update({ status: 'Paid' });
 
+  // 3. Update Finance queue record
+  await db('payroll_finance_queue')
+    .where({ month_number: m, year_number: y })
+    .update({
+      payment_status: 'Paid',
+      paid_by: paidBy,
+      paid_date: now,
+      payment_method: paymentInfo,
+      proof_file: req.file ? req.file.path : null,
+    })
+    .catch(() => {}); // graceful — queue entry may not exist on older records
+
+  // 4. Auto-record in expenses table for Finance audit trail
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthLabel = monthNames[(m - 1)] || m;
+  try {
+    // Find or create a 'Payroll' expense category
+    let cat = await db('expense_categories').where('name', 'Payroll').first();
+    if (!cat) {
+      const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: 0 });
+      cat = { id: catId };
+    }
+    // Find default payment method (Bank Transfer)
+    const pm = await db('payment_methods').where('name', 'like', '%Bank%').first();
+    await db('expenses').insert({
+      date: db.fn.now(),
+      amount: existing.company_net_pay,
+      description: `Staff Payroll — ${monthLabel} ${y} (${existing.total_employees} employees)`,
+      category_id: cat.id,
+      payment_method_id: pm ? pm.id : null,
+      reference_no: `PAYROLL-${y}-${String(m).padStart(2,'0')}`,
+      notes: `Processed by: ${paidBy} | Method: ${paymentInfo}`,
+      entered_by: req.user?.id || null,
+      approved_at: now,
+      approved_by: req.user?.id || null,
+      created_at: now,
+    });
+  } catch (expErr) {
+    console.error('Expense auto-record failed (non-fatal):', expErr.message);
+  }
+
+  // 5. Notify HR that payroll has been paid
   await db('hr_notifications_log').insert({
     rule_id: 'R-004',
-    notification_message: `Payroll for ${m}/${y} has been paid by ${req.user?.email}. Method: ${payment_method || 'Bank Transfer'}.`,
-    priority: 'MEDIUM', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
+    notification_message: `✅ Payroll for ${monthLabel} ${y} has been PAID by Finance (${paidBy}). Method: ${payment_method || 'Bank Transfer'}. Total: ${parseFloat(existing.company_net_pay).toLocaleString()} ETB. Expense record auto-created.`,
+    priority: 'HIGH', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
   });
 
-  res.json({ status: 'success', message: 'Payroll marked as paid' });
+  res.json({ status: 'success', message: 'Payroll marked as paid — expense recorded, HR notified.' });
+});
+
+exports.getFinancePayrollQueue = catchAsync(async (req, res) => {
+  // Finance payment queue — all Approved or Paid payrolls with queue details
+  const rows = await db('payroll_finance_queue as q')
+    .orderBy('q.year_number', 'desc')
+    .orderBy('q.month_number', 'desc')
+    .select('q.*');
+  res.json({ status: 'success', data: rows });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1235,7 +1374,8 @@ exports.getPendingRegistrations = catchAsync(async (req, res) => {
       'e.employee_id', 'e.full_name', 'e.gender', 'e.personal_phone', 'e.personal_email',
       'e.hire_date', 'e.employment_type', 'e.base_salary', 'e.housing_allowance',
       'e.transport_allowance', 'e.bank_name', 'e.bank_account_number',
-      'e.emergency_contact_name', 'e.emergency_contact_phone',
+      'e.education_level', 'e.institution_name', 'e.field_of_study', 'e.graduation_year',
+      'e.id_photo_front', 'e.id_photo_back', 'e.document_path',
       'e.has_pc_access', 'e.shift_start_time', 'e.shift_end_time',
       'e.marital_status', 'e.date_of_birth', 'e.national_id', 'e.physical_address',
       'e.registration_status', 'e.created_date',

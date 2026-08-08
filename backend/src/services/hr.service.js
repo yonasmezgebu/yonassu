@@ -602,11 +602,17 @@ const getTodayActivities = async () => {
   const today = new Date().toISOString().split('T')[0];
   let logs = [], leaves = [];
   try {
-    logs = await db('attendance_records').where('work_date', today).orderBy('timestamp', 'desc').limit(50);
-  } catch (e) { /* table may be empty or not exist yet */ }
+    const tableExists = await db.schema.hasTable('attendance_records');
+    if (tableExists) {
+      logs = await db('attendance_records').where('work_date', today).orderBy('timestamp', 'desc').limit(50);
+    }
+  } catch (e) { /* table not ready yet */ }
   try {
-    leaves = await db('leave_requests').where('start_date', '<=', today).where('end_date', '>=', today).limit(20);
-  } catch (e) { /* table may be empty */ }
+    const leaveTableExists = await db.schema.hasTable('leave_requests');
+    if (leaveTableExists) {
+      leaves = await db('leave_requests').where('start_date', '<=', today).where('end_date', '>=', today).limit(20);
+    }
+  } catch (e) { /* table not ready yet */ }
   return { logs, leaves };
 };
 

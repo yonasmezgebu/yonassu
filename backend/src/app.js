@@ -26,6 +26,7 @@ app.use(helmet({
       frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"]
     }
   },
+  xFrameOptions: { action: 'sameorigin' },  // Allow same-origin iframes (PDF viewer)
   crossOriginResourcePolicy: { policy: "cross-origin" },
   hsts: {
     maxAge: 31536000,

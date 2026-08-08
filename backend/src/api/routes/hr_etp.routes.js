@@ -23,6 +23,44 @@ const hrDocUpload = multer({
   },
 });
 
+// ID Photo uploads (front & back) — images only
+const HR_PHOTOS_DIR = './uploads/hr/id-photos';
+if (!fs.existsSync(HR_PHOTOS_DIR)) fs.mkdirSync(HR_PHOTOS_DIR, { recursive: true });
+const hrCombinedStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (file.fieldname === 'document_file') cb(null, HR_DOCS_DIR);
+    else cb(null, HR_PHOTOS_DIR);
+  },
+  filename: (req, file, cb) => {
+    if (file.fieldname === 'document_file') {
+      cb(null, 'hr-doc-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
+    } else {
+      cb(null, 'id-' + file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
+    }
+  },
+});
+const hrPhotoUpload = multer({
+  storage: hrCombinedStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'document_file') {
+      const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.txt'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (allowed.includes(ext)) cb(null, true);
+      else cb(new Error('Invalid file type for document'));
+    } else {
+      const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (allowed.includes(ext)) cb(null, true);
+      else cb(new Error('ID photos must be JPG, PNG, or WebP'));
+    }
+  },
+}).fields([
+  { name: 'id_photo_front', maxCount: 1 },
+  { name: 'id_photo_back',  maxCount: 1 },
+  { name: 'document_file',  maxCount: 1 },
+]);
+
 const ceoBoard = ['CEO', 'Admin', 'Board Member'];
 const hrCeo    = ['CEO', 'Admin', 'HR Manager'];
 
@@ -42,8 +80,8 @@ router.post('/etp/positions', authenticate, authorizeRoles(hrCeo),              
 
 router.get('/etp/employees',       authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployees);
 router.get('/etp/employees/:id',   authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getETPEmployee);
-router.post('/etp/employees',      authenticate, authorizeRoles(hrCeo),                       C.createETPEmployee);
-router.put('/etp/employees/:id',      authenticate, authorizeRoles(hrCeo),  C.updateETPEmployee);
+router.post('/etp/employees',      authenticate, authorizeRoles(hrCeo), hrPhotoUpload, C.createETPEmployee);
+router.put('/etp/employees/:id',   authenticate, authorizeRoles(hrCeo), hrPhotoUpload, C.updateETPEmployee);
 router.delete('/etp/employees/:id',   authenticate, authorizeRoles(hrCeo),  C.deleteETPEmployee);
 router.patch('/etp/employees/:id/terminate', authenticate, authorizeRoles(hrCeo), C.terminateEmployee);
 router.patch('/etp/employees/:id/complete-registration', authenticate, authorizeRoles(hrCeo), C.completeRegistration);
@@ -67,10 +105,11 @@ const financeUpload = multer({ storage: financePayrollStorage });
 
 router.post('/etp/payroll/calculate',          authenticate, authorizeRoles(hrCeo),     C.calculatePayroll);
 router.post('/etp/payroll/submit',             authenticate, authorizeRoles(hrCeo),     C.submitPayroll);
-router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getPayrollSummary);
+router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'Finance Manager', 'Finance']), C.getPayrollSummary);
 router.post('/etp/payroll/approve',            authenticate, authorizeRoles(ceoBoard),                     C.approvePayroll);
 router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markPayrollPaid);
 router.get('/etp/payroll/approved-list',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getApprovedPayrolls);
+router.get('/etp/payroll/finance-queue',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getFinancePayrollQueue);
 
 router.get('/etp/employees/:id/documents',             authenticate, authorizeRoles([...ceoBoard, 'HR Manager']), C.getEmployeeDocuments);
 router.post('/etp/employees/:id/documents',            authenticate, authorizeRoles(hrCeo), hrDocUpload.single('file'), C.uploadEmployeeDocument);
