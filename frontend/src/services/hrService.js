@@ -165,6 +165,7 @@ const hrService = {
     createEmployee: (data) => apiClient.post('/hr/etp/employees', data),
     updateEmployee: (id, data) => apiClient.put(`/hr/etp/employees/${id}`, data),
     terminateEmployee: (id, data) => apiClient.patch(`/hr/etp/employees/${id}/terminate`, data),
+    completeRegistration: (id) => apiClient.patch(`/hr/etp/employees/${id}/complete-registration`),
 
     // Attendance
     getDailyAttendance: (date) => apiClient.get('/hr/etp/attendance/daily', { params: { date } }),
