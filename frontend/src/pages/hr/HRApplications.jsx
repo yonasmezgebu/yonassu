@@ -10,6 +10,9 @@ const HRApplications = () => {
   
   // Modals & Notifications
   const [rejectModal, setRejectModal] = useState({ show: false, appId: null, reason: '' });
+  const [deleteModal, setDeleteModal] = useState({ show: false, appId: null });
+  const [previewImage, setPreviewImage] = useState(null);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [notif, setNotif] = useState({ type: null, text: '' });
 
   const showNotif = (type, text) => {
@@ -49,6 +52,17 @@ const HRApplications = () => {
       }
     } catch (err) {
       showNotif('error', 'Failed to update status');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await apiClient.delete(`/applications/${id}`);
+      fetchApplications();
+      setDeleteModal({ show: false, appId: null });
+      showNotif('success', 'Application deleted successfully');
+    } catch (err) {
+      showNotif('error', 'Failed to delete application');
     }
   };
 
@@ -115,6 +129,40 @@ const HRApplications = () => {
         </div>
       )}
 
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          onClick={() => { setPreviewImage(null); setIsZoomed(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 99999, display: 'flex', alignItems: isZoomed ? 'flex-start' : 'center', justifyContent: isZoomed ? 'flex-start' : 'center', padding: isZoomed ? 0 : 24, overflow: 'auto' }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: isZoomed ? 'max-content' : 'auto', height: isZoomed ? 'max-content' : 'auto', margin: isZoomed ? 'auto' : 0 }}>
+            {!isZoomed && (
+              <button 
+                onClick={() => { setPreviewImage(null); setIsZoomed(false); }}
+                style={{ position: 'absolute', top: -40, right: 0, background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: 8 }}
+              >
+                <X size={24} />
+              </button>
+            )}
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              onClick={() => setIsZoomed(!isZoomed)}
+              style={{ 
+                maxWidth: isZoomed ? 'none' : '100%', 
+                maxHeight: isZoomed ? 'none' : 'calc(100vh - 80px)', 
+                objectFit: 'contain', 
+                borderRadius: isZoomed ? 0 : 8, 
+                boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+                cursor: isZoomed ? 'zoom-out' : 'zoom-in',
+                display: 'block',
+                transition: 'transform 0.2s ease-out'
+              }} 
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── BODY AREA ── */}
       <div className={styles.bodyArea}>
         
@@ -162,6 +210,30 @@ const HRApplications = () => {
                     <td>
                       <div style={{ fontWeight: 600, color: '#1B5E20' }}>Edu: {app.education_status}</div>
                       <div className={styles.appSub}>ID: {app.national_id}</div>
+                      {(app.id_front_image || app.id_back_image) && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          {app.id_front_image && (
+                            <div onClick={() => setPreviewImage(`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_front_image}`)}>
+                              <img
+                                src={`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_front_image}`}
+                                alt="ID Front"
+                                style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #A5D6A7', cursor: 'pointer' }}
+                                title="ID Front"
+                              />
+                            </div>
+                          )}
+                          {app.id_back_image && (
+                            <div onClick={() => setPreviewImage(`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_back_image}`)}>
+                              <img
+                                src={`${import.meta.env.VITE_API_URL?.replace('/api/v1','') || 'http://localhost:5000'}/uploads/id-images/${app.id_back_image}`}
+                                alt="ID Back"
+                                style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #A5D6A7', cursor: 'pointer' }}
+                                title="ID Back"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div style={{ fontWeight: 600, color: '#424242' }}>
@@ -172,6 +244,11 @@ const HRApplications = () => {
                       <span className={`${styles.statusBadge} ${getStatusBadgeClass(app.status)}`}>
                         {app.status.replace(/_/g, ' ')}
                       </span>
+                      {app.status === 'REJECTED' && app.rejection_reason && (
+                        <div style={{ fontSize: 11, color: '#D32F2F', marginTop: 4, fontStyle: 'italic', maxWidth: 150 }}>
+                          Reason: {app.rejection_reason}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div className={styles.actionsList}>
@@ -186,23 +263,6 @@ const HRApplications = () => {
                         </a>
 
                         {app.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => updateStatus(app.id, 'IN_PERSON_INVITED')}
-                              className={`${styles.actionBtn} ${styles.actionBtnOk}`}
-                            >
-                              <CheckCircle size={12} /> Mark Informed
-                            </button>
-                            <button
-                              onClick={() => setRejectModal({ show: true, appId: app.id, reason: '' })}
-                              className={`${styles.actionBtn} ${styles.actionBtnReject}`}
-                            >
-                              <XCircle size={12} /> Reject
-                            </button>
-                          </>
-                        )}
-
-                        {app.status === 'IN_PERSON_INVITED' && (
                           <>
                             <button
                               onClick={() => updateStatus(app.id, 'SUBMITTED_TO_CEO')}
@@ -250,6 +310,13 @@ const HRApplications = () => {
                             ❌ Rejected
                           </div>
                         )}
+
+                        <button
+                          onClick={() => setDeleteModal({ show: true, appId: app.id })}
+                          className={`${styles.actionBtn} ${styles.actionBtnDelete}`}
+                        >
+                          <X size={12} /> Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -277,19 +344,14 @@ const HRApplications = () => {
             <div className={styles.modalBody}>
               <div className={styles.formGroup}>
                 <label>Rejection Reason *</label>
-                <select
+                <textarea
                   className={styles.input}
+                  placeholder="Enter rejection reason manually..."
+                  rows={4}
                   value={rejectModal.reason}
                   onChange={e => setRejectModal({ ...rejectModal, reason: e.target.value })}
-                >
-                  <option value="">Select a reason...</option>
-                  <option>Lacks required experience</option>
-                  <option>Salary expectations too high</option>
-                  <option>Not a culture fit</option>
-                  <option>Position filled</option>
-                  <option>Failed document verification</option>
-                  <option>Other</option>
-                </select>
+                  style={{ resize: 'vertical' }}
+                />
               </div>
             </div>
 
@@ -306,6 +368,45 @@ const HRApplications = () => {
                 className={styles.saveBtn}
               >
                 Confirm Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE CONFIRM MODAL ── */}
+      {deleteModal.show && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalWide} style={{ maxWidth: '400px' }}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete Application</h2>
+              <button 
+                className={styles.closeBtn} 
+                onClick={() => setDeleteModal({ show: false, appId: null })}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              <p style={{ padding: '20px', color: '#424242' }}>
+                Are you sure you want to delete this applicant? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button 
+                className={styles.cancelBtn} 
+                onClick={() => setDeleteModal({ show: false, appId: null })}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal.appId)}
+                className={`${styles.saveBtn} ${styles.deleteBtn}`}
+                style={{ backgroundColor: '#D32F2F' }}
+              >
+                Delete
               </button>
             </div>
           </div>
