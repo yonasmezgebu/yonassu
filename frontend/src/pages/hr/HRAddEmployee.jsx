@@ -66,8 +66,8 @@ const HRAddEmployee = () => {
 
       await hrService.etp.createEmployee(submitData);
       playSuccessSound();
-      setSubmitStatus({ type: 'success', message: `✅ ${form.full_name} registered successfully! Redirecting…` });
-      setTimeout(() => navigate(`/hr/employees?tab=list&registered=${encodeURIComponent(form.full_name)}`), 1500);
+      setSubmitStatus({ type: 'success', message: `⏳ ${form.full_name} registered and sent for CEO approval! Awaiting review.` });
+      setTimeout(() => navigate(`/hr/employees?tab=pending`), 2000);
     } catch (err) {
       setSubmitStatus({ type: 'error', message: err?.response?.data?.message || 'Failed to register employee. Please check the details.' });
       console.error(err);
