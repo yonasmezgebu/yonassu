@@ -11,6 +11,8 @@ const HRPayslips = () => {
   const [generating, setGenerating] = useState(false);
   const [genMsg, setGenMsg] = useState({ type: null, text: '' });
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState('All');
   const [viewPayslip, setViewPayslip] = useState(null);
 
   const fetchPayslips = async (month) => {
@@ -57,12 +59,36 @@ const HRPayslips = () => {
   const fmtN = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
 
-  const completedPayslips = payslips.filter(ps => ['Paid', 'Finalized'].includes(ps.payroll_status));
+  const uniqueDepartments = [...new Set(payslips.map(ps => ps.department || 'Unknown'))].sort();
+
+  const completedPayslips = payslips.filter(ps => {
+    if (!['Paid', 'Finalized'].includes(ps.payroll_status)) return false;
+    
+    // Filter 1: Month (already filtered by API usually, but good to have)
+    if (selectedMonth && ps.payroll_month !== selectedMonth.replace('-', '/')) {
+      // Actually API handles selectedMonth, but if we do local filtering:
+      // We'll rely on the API for month, so this is mostly covered. 
+    }
+    
+    // Filter 2: Name/ID
+    if (searchName) {
+      const term = searchName.toLowerCase();
+      const matchName = (ps.full_name || '').toLowerCase().includes(term);
+      const matchId = (ps.employee_id || '').toString().includes(term);
+      if (!matchName && !matchId) return false;
+    }
+    
+    // Filter 3: Department
+    if (filterDepartment !== 'All') {
+      const dept = ps.department || 'Unknown';
+      if (dept !== filterDepartment) return false;
+    }
+    
+    return true;
+  });
 
   const handlePrint = () => {
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     const periodLabel = selectedMonth ? `Period: ${selectedMonth}` : 'All Periods';
 
     const totalNet = completedPayslips.reduce((s, ps) => s + parseFloat(ps.net_salary || 0), 0);
@@ -74,154 +100,112 @@ const HRPayslips = () => {
     const rows = completedPayslips.map((ps, i) => {
       const ded = parseFloat(ps.absence_deduction || 0) + parseFloat(ps.tax_deduction || 0) +
                   parseFloat(ps.pension_deduction || 0) + parseFloat(ps.loan_deduction || 0);
+                  
+      const isCash = (ps.payment_method || '').toLowerCase().includes('cash');
+      const methodHtml = isCash 
+        ? '💵 Cash' 
+        : `🏦 Bank${`<br><span style="font-size:9px;color:#64748b;font-family:monospace">${ps.bank_name || 'CBE'}</span>`}${`<br><span style="font-size:9px;color:#64748b;font-family:monospace">A/C: ${ps.bank_account || ps.bank_account_number || '—'}</span>`}`;
+
       return `
-        <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
-          <td>${i + 1}</td>
-          <td>
-            <div class="emp-name">${ps.full_name || '—'}</div>
-            <div class="emp-id">#${ps.employee_id}</div>
+        <tr style="background:${i % 2 === 0 ? '#f0fdf4' : '#fff'}">
+          <td style="padding:5px 8px 5px 24px;color:#94a3b8">${i + 1}</td>
+          <td style="padding:5px 8px;font-weight:600">
+            <div style="font-size:12px;color:#0f172a">${ps.full_name || '—'}</div>
+            <div style="font-size:10px;color:#64748b;font-family:monospace">#${ps.employee_id}</div>
           </td>
-          <td>${ps.department || '—'}</td>
-          <td class="mono">${ps.payroll_month || '—'}</td>
-          <td>${ps.days_present ?? '—'}</td>
-          <td class="num">${fmtN(ps.base_salary)} ETB</td>
-          <td class="num red">-${fmtN(ded)} ETB</td>
-          <td class="num bold">${fmtN(ps.net_salary)} ETB</td>
-          <td class="status">${ps.payroll_status || '—'}</td>
+          <td style="padding:5px 8px;color:#475569">${ps.department || '—'}</td>
+          <td style="padding:5px 8px;font-family:monospace;color:#475569">${ps.payroll_month || '—'}</td>
+          <td style="padding:5px 8px;text-align:right">${ps.days_present ?? '—'}</td>
+          <td style="padding:5px 8px;text-align:right">${fmtN(ps.base_salary)}</td>
+          <td style="padding:5px 8px;text-align:right;color:#dc2626">-${fmtN(ded)}</td>
+          <td style="padding:5px 8px;text-align:right;font-weight:700;color:#15803d">${fmtN(ps.net_salary)}</td>
+          <td style="padding:5px 8px;text-align:center;line-height:1.2">${methodHtml}</td>
+          <td style="padding:5px 8px;text-align:center"><span style="background:#DCFCE7;color:#15803D;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700">✓ ${ps.payroll_status || '—'}</span></td>
         </tr>`;
     }).join('');
 
-    const html = `
-<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Payroll History — SUTANA Enterprise</title>
+  <meta charset="UTF-8"/>
+  <title>Payroll History — ${periodLabel}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #fff; color: #222; padding: 32px; font-size: 13px; }
-
-    /* HEADER */
-    .ph { border-bottom: 4px solid #228B22; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-    .org-name { font-size: 24px; font-weight: 900; color: #1B5E20; letter-spacing: -0.02em; }
-    .org-sub  { font-size: 12px; color: #6B8E23; font-weight: 700; margin-top: 4px; }
-    .meta { text-align: right; font-size: 11px; color: #424242; line-height: 1.8; }
-    .meta strong { color: #1B5E20; }
-
-    /* TITLE */
-    .report-title  { font-size: 18px; font-weight: 900; color: #228B22; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-    .report-period { font-size: 12px; color: #6B8E23; font-weight: 700; margin-bottom: 20px; }
-
-    /* SUMMARY */
-    .summary { display: flex; border: 1.5px solid #228B22; margin-bottom: 24px; }
-    .sc { flex: 1; padding: 12px 18px; border-right: 1px solid #228B22; }
-    .sc:last-child { border-right: none; }
-    .sc-lbl { font-size: 9px; font-weight: 800; color: #6B8E23; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 5px; }
-    .sc-val { font-size: 16px; font-weight: 900; color: #1B5E20; }
-    .sc-val.red { color: #C62828; }
-
-    /* TABLE */
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    thead tr { background: #1B5E20; }
-    thead th { padding: 10px 8px; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; font-size: 9px; }
-    thead th.num { text-align: right; }
-    tbody tr.even { background: #fff; }
-    tbody tr.odd  { background: #F1F8E9; }
-    tbody td { padding: 9px 8px; border-bottom: 1px solid #E8F5E9; vertical-align: middle; }
-    .emp-name { font-weight: 800; color: #1B5E20; font-size: 12px; }
-    .emp-id   { color: #6B8E23; font-size: 9px; font-family: monospace; margin-top: 2px; }
-    td.num    { text-align: right; font-weight: 700; }
-    td.mono   { font-family: monospace; font-weight: 700; }
-    td.red    { color: #C62828; font-weight: 800; }
-    td.bold   { font-weight: 900; color: #1B5E20; }
-    td.status { font-size: 9px; font-weight: 900; text-transform: uppercase; background: #E8F5E9; color: #1B5E20; padding: 4px 8px; }
-
-    /* SIGS */
-    .sigs { display: flex; justify-content: space-between; margin-top: 52px; }
-    .sig-line { border-top: 1px solid #424242; margin-top: 40px; width: 160px; font-size: 9px; padding-top: 5px; color: #424242; }
-
-    /* FOOTER */
-    .pf { margin-top: 32px; border-top: 2px solid #8D6E63; padding-top: 14px; display: flex; justify-content: space-between; font-size: 10px; color: #6B8E23; font-weight: 700; }
-
-    @media print {
-      body { padding: 16px; }
-      @page { margin: 15mm; size: A4 landscape; }
-      thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #1B5E20 !important; }
-      tbody tr.odd { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #F1F8E9 !important; }
-      td.status { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #E8F5E9 !important; }
-    }
+    @page { margin: 15mm; size: A4 landscape; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: Arial, sans-serif; background: #fff; color: #0f172a; margin: 0; padding: 24px; font-size: 13px; }
+    h1 { font-size: 22px; font-weight: 900; margin: 0 0 4px; }
+    .subtitle { font-size: 12px; color: #64748b; margin: 0 0 20px; }
+    .summary { display: flex; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
+    .card { padding: 12px 16px; border-radius: 8px; flex: 1; min-width: 140px; }
+    .card.green { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .card.gray  { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .card .lbl  { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin-bottom: 4px; }
+    .card .val  { font-size: 18px; font-weight: 900; color: #15803d; }
+    .card.gray .val { color: #334155; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+    thead tr { background: #bbf7d0; }
+    th { padding: 8px 10px; font-weight: 700; color: #166534; text-align: left; }
+    td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+    tfoot tr { background: #e2e8f0; font-weight: 800; }
+    .no-print { margin-bottom: 20px; }
+    @media print { .no-print { display: none; } }
   </style>
 </head>
 <body>
-  <div class="ph">
-    <div>
-      <div class="org-name">SUTANA Enterprise</div>
-      <div class="org-sub">Enterprise Management System</div>
-    </div>
-    <div class="meta">
-      <strong>Printed:</strong> ${dateStr} at ${timeStr}<br/>
-      <strong>Report:</strong> Payroll History<br/>
-      <strong>Filter:</strong> ${periodLabel}
-    </div>
+  <div class="no-print">
+    <button onclick="window.print()" style="padding:10px 22px;background:#1D4ED8;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button>
+    <button onclick="window.close()" style="margin-left:10px;padding:10px 20px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✕ Close</button>
   </div>
 
-  <div class="report-title">Payroll History Report</div>
-  <div class="report-period">${periodLabel} &nbsp;|&nbsp; ${completedPayslips.length} completed payslip(s)</div>
+  <h1>✅ HR Payroll History Report</h1>
+  <p class="subtitle"><strong>${periodLabel}</strong> &nbsp;|&nbsp; Printed: ${now.toLocaleString('en-GB')} &nbsp;|&nbsp; Filters: Dept(${filterDepartment}), Search(${searchName || 'None'})</p>
 
   <div class="summary">
-    <div class="sc">
-      <div class="sc-lbl">Total Records</div>
-      <div class="sc-val">${completedPayslips.length}</div>
-    </div>
-    <div class="sc">
-      <div class="sc-lbl">Total Base Salary</div>
-      <div class="sc-val">${fmtN(totalBase)} ETB</div>
-    </div>
-    <div class="sc">
-      <div class="sc-lbl">Total Deductions</div>
-      <div class="sc-val red">-${fmtN(totalDed)} ETB</div>
-    </div>
-    <div class="sc">
-      <div class="sc-lbl">Total Net Pay</div>
-      <div class="sc-val">${fmtN(totalNet)} ETB</div>
-    </div>
+    <div class="card green"><div class="lbl">Total Net Pay</div><div class="val">ETB ${fmtN(totalNet)}</div></div>
+    <div class="card gray"><div class="lbl">Total Base Salary</div><div class="val">ETB ${fmtN(totalBase)}</div></div>
+    <div class="card gray"><div class="lbl">Total Deductions</div><div class="val">ETB ${fmtN(totalDed)}</div></div>
+    <div class="card gray"><div class="lbl">Payslips Count</div><div class="val">${completedPayslips.length}</div></div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>#</th>
+        <th style="padding-left:24px">#</th>
         <th>Employee</th>
         <th>Department</th>
         <th>Period</th>
-        <th>Days</th>
-        <th class="num">Base Salary</th>
-        <th class="num">Deductions</th>
-        <th class="num">Net Pay</th>
-        <th>Status</th>
+        <th style="text-align:right">Days</th>
+        <th style="text-align:right">Base Salary</th>
+        <th style="text-align:right">Deductions</th>
+        <th style="text-align:right">Net Pay</th>
+        <th style="text-align:center">Bank / Account</th>
+        <th style="text-align:center">Status</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>
+      ${rows.length > 0 ? rows : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#64748b">No payslips found matching the filters.</td></tr>'}
+    </tbody>
+    ${rows.length > 0 ? `
+    <tfoot>
+      <tr>
+        <td colspan="5" style="text-align:right;padding-right:16px">Totals:</td>
+        <td style="text-align:right">${fmtN(totalBase)}</td>
+        <td style="text-align:right;color:#dc2626">-${fmtN(totalDed)}</td>
+        <td style="text-align:right;color:#15803d">${fmtN(totalNet)}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+    ` : ''}
   </table>
-
-  <div class="sigs">
-    <div><div class="sig-line">HR Manager Signature</div></div>
-    <div><div class="sig-line">Finance Manager Signature</div></div>
-    <div><div class="sig-line">CEO Approval</div></div>
-  </div>
-
-  <div class="pf">
-    <span>SUTANA Enterprise Management System — Confidential</span>
-    <span>Page 1 of 1</span>
-  </div>
-
-  <script>window.onload = function() { window.print(); }<\/script>
 </body>
 </html>`;
 
     const win = window.open('', '_blank', 'width=1100,height=800');
-    if (win) { win.document.write(html); win.document.close(); }
+    if (win) {
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    }
   };
 
   const openView = (ps) => {
@@ -271,17 +255,46 @@ const HRPayslips = () => {
       </div>
 
       {/* ── FILTERS ── */}
-      <div className={styles.filters}>
-        <label className={styles.filterLbl}>Filter by Month:</label>
-        <input
-          type="month"
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
-          className={styles.monthInput}
-        />
-        <span className={styles.filterCount}>
-          {payslips.filter(ps => ['Paid', 'Finalized'].includes(ps.payroll_status)).length} completed payslip(s) found
-        </span>
+      <div className={styles.filters} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div>
+          <label className={styles.filterLbl}>Month:</label>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className={styles.monthInput}
+            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+          />
+        </div>
+        <div>
+          <label className={styles.filterLbl}>Search Employee:</label>
+          <input
+            type="text"
+            placeholder="Name or ID..."
+            value={searchName}
+            onChange={e => setSearchName(e.target.value)}
+            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '200px' }}
+          />
+        </div>
+        <div>
+          <label className={styles.filterLbl}>Department:</label>
+          <select
+            value={filterDepartment}
+            onChange={e => setFilterDepartment(e.target.value)}
+            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '150px' }}
+          >
+            <option value="All">All Departments</option>
+            {uniqueDepartments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div style={{ marginLeft: 'auto', marginBottom: '8px' }}>
+          <span className={styles.filterCount} style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '99px', fontSize: '12px', fontWeight: 'bold' }}>
+            {completedPayslips.length} payslip(s) match
+          </span>
+        </div>
       </div>
 
       {/* ── BODY ── */}
@@ -298,6 +311,7 @@ const HRPayslips = () => {
                   <th className={styles.right}>Base Salary</th>
                   <th className={styles.right}>Deductions</th>
                   <th className={styles.right}>Net Pay</th>
+                  <th className={styles.left}>Bank / Account</th>
                   <th className={styles.center}>Status</th>
                   <th className={styles.right}>Actions</th>
                 </tr>
@@ -333,6 +347,17 @@ const HRPayslips = () => {
                           {fmtN(ps.net_salary)} ETB
                         </span>
                       </td>
+                      <td className={styles.left}>
+                        {!(ps.payment_method || '').toLowerCase().includes('cash') ? (
+                          <div>
+                            <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#F0FDF4', color:'#16A34A', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, marginBottom: 4 }}>🏦 Bank Transfer</div>
+                            <div style={{ fontSize:12, fontWeight:700, color:'#334155' }}>{ps.bank_name || 'CBE'}</div>
+                            <div style={{ fontSize:11, color:'#64748B', fontFamily:'monospace', letterSpacing:'.05em' }}>A/C: {ps.bank_account || ps.bank_account_number || '—'}</div>
+                          </div>
+                        ) : (
+                          <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#FEF3C7', color:'#92400E', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>💵 Cash</div>
+                        )}
+                      </td>
                       <td className={styles.center}>
                         <span className={`${styles.statusBadge} ${getStatusClass(ps.payroll_status)}`}>
                           {ps.payroll_status || 'Draft'}
@@ -359,7 +384,6 @@ const HRPayslips = () => {
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Payslip Details</h2>
               <div className={styles.payslipActions}>
-                <button className={styles.printBtn} onClick={() => window.print()}>Print</button>
                 <button className={styles.closeBtn} onClick={() => setViewPayslip(null)}>×</button>
               </div>
             </div>
@@ -377,7 +401,7 @@ const HRPayslips = () => {
                 </div>
                 <div className={styles.psBlock}>
                   <strong>Days Present:</strong> {viewPayslip.days_present ?? '—'} / {viewPayslip.days_absent !== undefined ? (viewPayslip.days_present + viewPayslip.days_absent) : '—'}<br />
-                  <strong>Bank Account:</strong> {viewPayslip.bank_account_number || '—'}
+                  <strong>Bank Account:</strong> {!(viewPayslip.payment_method || '').toLowerCase().includes('cash') ? `${viewPayslip.bank_name || 'CBE'} - ${viewPayslip.bank_account || viewPayslip.bank_account_number || '—'}` : 'Cash'}
                 </div>
               </div>
 
