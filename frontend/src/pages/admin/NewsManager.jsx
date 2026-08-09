@@ -201,11 +201,11 @@ const NewsManager = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATIONS ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
@@ -234,7 +234,7 @@ const NewsManager = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className={styles.loading}>Loading posts...</td></tr>
+                <tr><td colSpan={6}><div className={styles.loading}><span className={styles.segSpinnerLg} aria-hidden="true" /><span>Loading posts...</span></div></td></tr>
               ) : posts.length === 0 ? (
                 <tr><td colSpan={6} className={styles.empty}>No posts found. Click "New Post" to create one.</td></tr>
               ) : (
@@ -249,7 +249,7 @@ const NewsManager = () => {
                       <div className={styles.subjectTitle}>{p.title}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#424242' }}>
+                      <div className={styles.dateTxt}>
                         {new Date(p.created_at).toLocaleDateString('en-CA')}
                       </div>
                     </td>
@@ -259,23 +259,23 @@ const NewsManager = () => {
                       </span>
                     </td>
                     <td>
-                      <div 
+                      <button 
                         onClick={() => toggleVisibility(p)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, background: p.visibility === 'public' ? '#E8F5E9' : '#FFEBEE', transition: 'background 0.2s' }}
+                        className={`${styles.visibilityToggle} ${p.visibility === 'public' ? styles.visPublic : styles.visHidden}`}
                         title="Click to toggle visibility"
                       >
                         {p.visibility === 'public' ? (
                           <>
-                            <Eye size={14} color="#228B22" />
-                            <span style={{ color: '#228B22', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Public</span>
+                            <Eye size={14} />
+                            <span>Public</span>
                           </>
                         ) : (
                           <>
-                            <EyeOff size={14} color="#C62828" />
-                            <span style={{ color: '#C62828', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
+                            <EyeOff size={14} />
+                            <span>Hidden</span>
                           </>
                         )}
-                      </div>
+                      </button>
                     </td>
                     <td>
                       <div className={styles.actionsList}>
@@ -295,10 +295,10 @@ const NewsManager = () => {
         </div>
       </div>
 
-      {/* ── MODAL (Rule 10, 14, 17) ── */}
+      {/* ── MODAL ── */}
       {showForm && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{editing ? 'Edit Post' : 'New Post'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowForm(false)}>
@@ -307,7 +307,7 @@ const NewsManager = () => {
             </div>
             
             <div className={styles.modalBody}>
-              <form id="postForm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form id="postForm">
                 
                 <div className={styles.formGroup}>
                   <label>Post Type *</label>
@@ -360,7 +360,7 @@ const NewsManager = () => {
                       placeholder="https://youtube.com/watch?v=..."
                     />
                     {form.youtube_url && /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(form.youtube_url) && (
-                      <div style={{ marginTop: 8, aspectRatio: '16/9', background: '#F5F5F5', border: '1.5px solid #8D6E63', overflow: 'hidden' }}>
+                      <div style={{ marginTop: 8, aspectRatio: '16/9', background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
                         <iframe src={`https://www.youtube.com/embed/${form.youtube_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)[1]}`}
                           title="Preview" style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
                       </div>
@@ -369,7 +369,7 @@ const NewsManager = () => {
                 )}
 
                 {form.type === 'hiring' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     <div className={styles.formGroup}>
                       <label>Position *</label>
                       <input type="text" className={styles.input} value={form.hiring_position} onChange={e => setForm(f => ({ ...f, hiring_position: e.target.value }))} />
@@ -384,7 +384,7 @@ const NewsManager = () => {
                     </div>
                     <div className={styles.formGroup}>
                       <label>Company Stamp / Photo (Optional)</label>
-                      <input type="file" className={styles.input} accept="image/png, image/jpeg" style={{ padding: '8px' }} onChange={e => {
+                      <input type="file" className={styles.input} accept="image/png, image/jpeg" style={{ padding: '4px' }} onChange={e => {
                         if (e.target.files?.length > 0) {
                           setImageFiles(Array.from(e.target.files));
                           setImagePreview(URL.createObjectURL(e.target.files[0]));
@@ -394,10 +394,10 @@ const NewsManager = () => {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                   {imagePreview && (
-                    <div style={{ border: '2px solid #8D6E63', padding: 4, background: '#FFFFFF' }}>
-                      <img src={imagePreview} alt="Preview" style={{ maxWidth: '160px', maxHeight: '160px', objectFit: 'contain', display: 'block' }} />
+                    <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 4, background: 'var(--color-bg-page)' }}>
+                      <img src={imagePreview} alt="Preview" style={{ maxWidth: '120px', maxHeight: '120px', objectFit: 'contain', display: 'block', borderRadius: 4 }} />
                     </div>
                   )}
                   
@@ -452,15 +452,15 @@ const NewsManager = () => {
       {/* ── DELETE CONFIRMATION MODAL ── */}
       {confirmDelete && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalSmall}>
-            <div className={styles.modalHeaderSmall}>
+          <div className={`${styles.modal} ${styles.modalSmall}`}>
+            <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Confirm Deletion</h2>
-              <button className={styles.closeBtnSmall} onClick={() => setConfirmDelete(null)}>
+              <button className={styles.closeBtn} onClick={() => setConfirmDelete(null)}>
                 <X size={20} />
               </button>
             </div>
-            <div className={styles.modalBodySmall}>
-              <p style={{ margin: 0, fontSize: 14, color: '#424242', fontWeight: 600 }}>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
                 Are you sure you want to delete the post <strong>{confirmDelete.title}</strong>? This action cannot be undone.
               </p>
             </div>
