@@ -166,15 +166,15 @@ const HRPolicies = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATION ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
-      {/* ── BODY AREA ── */}
+      {/* ── BODY ── */}
       <div className={styles.bodyArea}>
         
         {/* Controls Bar */}
@@ -201,13 +201,13 @@ const HRPolicies = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={styles.input}
-              style={{ width: 250 }}
+              style={{ minWidth: 200 }}
             />
             <select 
               value={categoryFilter} 
               onChange={e => setCategoryFilter(e.target.value)}
               className={styles.input}
-              style={{ width: 200 }}
+              style={{ minWidth: 150 }}
             >
               <option value="">All Categories</option>
               <option value="Code of Conduct">Code of Conduct</option>
@@ -234,7 +234,14 @@ const HRPolicies = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className={styles.loading}>Loading policies...</td></tr>
+                <tr>
+                  <td colSpan={6}>
+                    <div className={styles.loading}>
+                      <span className={styles.segSpinnerLg} aria-hidden="true" />
+                      <span>Loading policies...</span>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={6} className={styles.empty}>No policies found.</td></tr>
               ) : (
@@ -251,40 +258,40 @@ const HRPolicies = () => {
                       <div className={styles.policyVer}>v{p.version_number}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#1B5E20' }}>
+                      <div className={styles.policyDate}>
                         {p.effective_date ? formatDate(p.effective_date, 'short') : '—'}
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{p.publisher_name || '—'}</div>
+                      <div className={styles.policyCat}>{p.publisher_name || '—'}</div>
                     </td>
                     <td className={styles.center}>
                       <span className={`${styles.statusBadge} ${
-                        p.status === 'Published' ? styles.statusPublished : 
+                        p.status === 'Published' ? styles.statusActive : 
                         p.status === 'Draft' ? styles.statusDraft : 
                         styles.statusArchived
                       }`}>
                         {p.status}
                       </span>
                     </td>
-                    <td>
-                      <div className={styles.actionsList}>
+                    <td className={styles.right}>
+                      <div className={styles.actionGroup}>
                         {isCEO && p.status === 'Draft' && (
-                          <button className={`${styles.actionBtn} ${styles.actionBtnPub}`} onClick={() => handlePublish(p.id)}>Publish</button>
+                          <button className={styles.publishBtn} onClick={() => handlePublish(p.id)}>Publish</button>
                         )}
                         <button 
-                          className={`${styles.actionBtn} ${styles.actionBtnView}`}
+                          className={styles.actionBtn}
                           onClick={() => window.open(p.file_ref ? (p.file_ref.startsWith('/') ? p.file_ref : `/uploads/documents/${p.file_ref}`) : '#', '_blank')}
                         >
                           View PDF
                         </button>
                         
                         {!isCEO && p.status === 'Published' && p.acknowledgment_required && (
-                          <button className={`${styles.actionBtn} ${styles.actionBtnAck}`} onClick={() => handleAcknowledge(p.id)}>Acknowledge</button>
+                          <button className={styles.ackBtn} onClick={() => handleAcknowledge(p.id)}>Acknowledge</button>
                         )}
                         
                         {isCEO && p.status === 'Published' && (
-                          <button className={`${styles.actionBtn} ${styles.actionBtnArch}`} onClick={() => handleArchive(p.id)}>Archive</button>
+                          <button className={styles.archiveBtn} onClick={() => handleArchive(p.id)}>Archive</button>
                         )}
                       </div>
                     </td>
@@ -296,10 +303,10 @@ const HRPolicies = () => {
         </div>
       </div>
 
-      {/* ── MODAL (Rule 10, 14, 17) ── */}
+      {/* ── MODAL ── */}
       {showModal && isCEO && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Create New Policy</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}><X size={20} /></button>
@@ -366,16 +373,16 @@ const HRPolicies = () => {
               </div>
 
               <div className={styles.formGroup} style={{ marginTop: 8 }}>
-                <label className={styles.checkboxLabel}>
+                <label className={styles.formCheck}>
                   <input type="checkbox" checked={formData.acknowledgment_required} onChange={e => setFormData({...formData, acknowledgment_required: e.target.checked})} />
-                  Require Employee Acknowledgment
+                  <span>Require Employee Acknowledgment</span>
                 </label>
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.checkboxLabel}>
+                <label className={styles.formCheck}>
                   <input type="checkbox" checked={formData.send_to_all} onChange={e => setFormData({...formData, send_to_all: e.target.checked})} />
-                  Send Announcement to All Employees
+                  <span>Send Announcement to All Employees</span>
                 </label>
               </div>
             </div>
@@ -383,7 +390,7 @@ const HRPolicies = () => {
             <div className={styles.modalFooter}>
               <button className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
               <button className={styles.draftBtn} onClick={(e) => handleCreate(e, false)}>Save as Draft</button>
-              <button className={styles.saveBtn} onClick={(e) => handleCreate(e, true)}>Publish Policy</button>
+              <button className={styles.publishFormBtn} onClick={(e) => handleCreate(e, true)}>Publish Policy</button>
             </div>
           </div>
         </div>
