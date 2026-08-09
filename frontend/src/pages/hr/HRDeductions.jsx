@@ -182,7 +182,10 @@ const HRDeductions = () => {
       {/* ── TABLE ── */}
       <div className={styles.bodyArea}>
         {loading ? (
-          <div className={styles.loading}>● Loading deductions...</div>
+          <div className={styles.loading}>
+            <span className={styles.segSpinnerLg} aria-hidden="true" />
+            <span>Loading deductions…</span>
+          </div>
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -462,7 +465,9 @@ const HRDeductions = () => {
                     Cancel
                   </button>
                   <button type="submit" className={styles.saveBtn} disabled={saving}>
-                    {saving ? 'Saving...' : '+ Add Deduction'}
+                    {saving
+                      ? <><span className={styles.segSpinner} aria-hidden="true" /> Saving…</>
+                      : '+ Add Deduction'}
                   </button>
                 </div>
               </div>
