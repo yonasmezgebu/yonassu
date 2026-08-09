@@ -328,6 +328,9 @@ exports.getPayslips = catchAsync(async (req, res) => {
     .select(
       'psc.*',
       'e.full_name',
+      'e.bank_name',
+      'e.bank_account_number',
+      'e.payment_method',
       'd.name as department'
     ).orderBy('psc.calculated_date', 'desc');
 
@@ -356,6 +359,9 @@ exports.getPayslips = catchAsync(async (req, res) => {
     net_salary: ps.net_pay,
     payroll_status: ps.status,
     days_present: 26,
+    bank_name: ps.bank_name,
+    bank_account_number: ps.bank_account_number,
+    payment_method: ps.payment_method,
   }));
 
   res.json({ status: 'success', data: { payslips } });
