@@ -159,11 +159,11 @@ const HRAnnouncements = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATIONS ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
@@ -183,7 +183,7 @@ const HRAnnouncements = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={styles.input}
-              style={{ width: 280 }}
+              style={{ minWidth: 200 }}
             />
           </div>
         </div>
@@ -203,7 +203,14 @@ const HRAnnouncements = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={isCEO ? 6 : 5} className={styles.loading}>Loading announcements...</td></tr>
+                <tr>
+                  <td colSpan={isCEO ? 6 : 5}>
+                    <div className={styles.loading}>
+                      <span className={styles.segSpinnerLg} aria-hidden="true" />
+                      <span>Loading announcements...</span>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={isCEO ? 6 : 5} className={styles.empty}>No announcements found.</td></tr>
               ) : (
@@ -236,10 +243,10 @@ const HRAnnouncements = () => {
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{a.author_name || '—'}</div>
+                      <div style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{a.author_name || '—'}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#1B5E20' }}>
+                      <div className={styles.textMuted}>
                         {a.created_at ? formatDate(a.created_at, 'short') : '—'}
                       </div>
                     </td>
@@ -248,11 +255,11 @@ const HRAnnouncements = () => {
                         <button className={`${styles.actionBtn} ${styles.actionBtnView}`} onClick={() => handleView(a)}>View</button>
                         
                         {isCEO && a.status === 'Published' && (
-                          <button className={`${styles.actionBtn} ${styles.actionBtnRetract}`} onClick={() => handleRetract(a.id)}>Retract</button>
+                          <button className={`${styles.actionBtn} ${styles.actionBtnArch}`} onClick={() => handleRetract(a.id)}>Retract</button>
                         )}
                         
                         {isCEO && (
-                          <button className={`${styles.actionBtn} ${styles.actionBtnDel}`} onClick={() => handleDelete(a.id)}>Delete</button>
+                          <button className={`${styles.actionBtn} ${styles.actionBtnArch}`} onClick={() => handleDelete(a.id)}>Delete</button>
                         )}
                       </div>
                     </td>
@@ -264,10 +271,10 @@ const HRAnnouncements = () => {
         </div>
       </div>
 
-      {/* ── CREATE MODAL (Rule 10, 14, 17) ── */}
+      {/* ── CREATE MODAL ── */}
       {showModal && isCEO && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Create Announcement</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}><X size={20} /></button>
@@ -332,26 +339,30 @@ const HRAnnouncements = () => {
 
             <div className={styles.modalFooter}>
               <button className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
-              <button type="submit" form="announcementForm" className={styles.saveBtn}>Post Announcement</button>
+              <button type="submit" form="announcementForm" className={styles.publishFormBtn}>Post Announcement</button>
             </div>
           </div>
         </div>
       )}
       
-      {/* ── VIEW MODAL (Rule 10, 14, 17) ── */}
+      {/* ── VIEW MODAL ── */}
       {viewModal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={`${styles.modal} ${styles.modalView}`}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle} style={{ textTransform: 'none', fontSize: 20 }}>{viewModal.title}</h2>
+              <h2 className={styles.viewTitle} style={{ margin: 0 }}>{viewModal.title}</h2>
               <button className={styles.closeBtn} onClick={() => setViewModal(null)}><X size={20} /></button>
             </div>
             <div className={styles.modalBody}>
-              <div style={{ marginBottom: '8px', color: '#6B8E23', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span>Posted on {formatDate(viewModal.created_at, 'long')}</span>
-                <span className={`${styles.badgeBadge} ${getBadgeClass(viewModal.priority)}`}>{viewModal.priority}</span>
+              <div className={styles.viewMeta}>
+                <div className={styles.viewMetaItem}>
+                  <strong>Posted:</strong> {formatDate(viewModal.created_at, 'long')}
+                </div>
+                <div className={styles.viewMetaItem}>
+                  <strong>Priority:</strong> <span className={`${styles.badgeBadge} ${getBadgeClass(viewModal.priority)}`}>{viewModal.priority}</span>
+                </div>
               </div>
-              <div style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#424242', fontSize: '14px', background: '#F5F5F5', padding: 24, border: '1px solid #8D6E63' }}>
+              <div className={styles.viewBody}>
                 {viewModal.body}
               </div>
             </div>
