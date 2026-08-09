@@ -21,14 +21,22 @@
 
   background: var(--color-bg-page);
   min-height: 100vh;
-  margin: -24px;
-  padding: 24px;
+  margin: 0 auto;
+  padding: 12px; /* Mobile safe edge */
   font-family: 'Inter', "Segoe UI", Roboto, -apple-system, sans-serif;
   color: var(--color-text-primary);
   box-sizing: border-box;
 }
 
 .container * { box-sizing: border-box; }
+
+/* Desktop safe edges */
+@media (min-width: 768px) {
+  .container { padding: 16px; }
+}
+@media (min-width: 1024px) {
+  .container { padding: 24px; max-width: 1600px; }
+}
 
 /* ── HEADER ── */
 .header {
@@ -141,6 +149,11 @@
   flex-direction: column;
   justify-content: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: all 150ms ease-in-out;
+}
+.metric:hover, .actionsMetric:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .metricLbl {
@@ -290,7 +303,7 @@
   color: var(--color-text-primary);
 }
 
-.loading, .empty {
+.empty {
   padding: 48px;
   text-align: center;
   color: var(--color-text-muted);
@@ -350,6 +363,10 @@
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.15);
   padding: 24px;
+  transition: all 150ms ease-in-out;
+}
+.modal:hover {
+  box-shadow: 0 24px 48px rgba(0,0,0,0.2);
 }
 
 .modal h3 {
@@ -406,7 +423,6 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
-  .container { padding: 16px; margin: -16px; }
   .topRow { flex-direction: column; align-items: stretch; }
   .controls { width: 100%; justify-content: space-between; }
   .controls input { flex: 1; }
@@ -486,6 +502,11 @@
   border-radius: 10px;
   padding: 16px 20px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: all 150ms ease-in-out;
+}
+.printToolbar:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 .printDocInfo { display: flex; flex-direction: column; gap: 4px; }
 .printDocTitle { font-size: 16px; font-weight: 600; color: var(--color-text-primary); }
@@ -522,6 +543,12 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: all 150ms ease-in-out;
+}
+.printKPIRow:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 .printKPI {
   background: var(--color-bg-card);
@@ -602,6 +629,7 @@
   padding: 16px 20px;
   margin-bottom: 24px;
   animation: bannerSlideDown 200ms ease-out;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 @keyframes bannerSlideDown {
@@ -688,26 +716,16 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+  background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.8) 100%);
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 6px, black 7px);
+  mask: radial-gradient(circle, transparent 6px, black 7px);
   animation: segRotate 1s steps(12, end) infinite;
-}
-
-.segTooth {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 2.5px;
-  height: 5px;
-  margin-left: -1.25px;
-  background: currentColor;
-  border-radius: 2px;
-  transform-origin: 50% 9px;           /* pivot = center of ring */
-  transform: rotate(calc(var(--i) * 30deg));
-  opacity: calc(0.15 + (var(--i) / 12) * 0.85);
 }
 
 /* ── Large: page-level loading state ── */
 .loading {
-  padding: 48px;
+  padding: 64px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -721,25 +739,14 @@
   display: inline-block;
   width: 48px;
   height: 48px;
+  background: conic-gradient(from 0deg, rgba(37, 99, 235, 0) 0%, rgba(37, 99, 235, 1) 100%);
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 18px, black 19px);
+  mask: radial-gradient(circle, transparent 18px, black 19px);
   animation: segRotate 1s steps(12, end) infinite;
-}
-
-.segToothLg {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 5px;
-  height: 12px;
-  margin-left: -2.5px;
-  background: var(--color-primary);
-  border-radius: 3px;
-  transform-origin: 50% 24px;           /* pivot = center of ring */
-  transform: rotate(calc(var(--i) * 30deg));
-  opacity: calc(0.12 + (var(--i) / 12) * 0.88);
 }
 
 @keyframes segRotate {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
-
