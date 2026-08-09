@@ -108,7 +108,7 @@ const HRPayrollProcess = () => {
       
       {/* ── HEADER ── */}
       <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Payroll Processing</h1>
+        <h1 className={styles.pageTitle}>Payroll <span>Processing</span></h1>
         <p className={styles.pageSubtitle}>Calculate, approve, and finalize monthly payroll runs.</p>
       </div>
 
@@ -210,25 +210,33 @@ const HRPayrollProcess = () => {
         <div className={styles.actions}>
           {!payrollData && (
             <button className={styles.primaryBtn} onClick={handleProcess} disabled={!month || loading || isFinalized}>
-              {loading ? 'Calculating...' : 'Calculate Payroll'}
+              {loading
+                ? <><span className={styles.segSpinner} aria-hidden="true" /> Calculating…</>
+                : '▶ Calculate Payroll'}
             </button>
           )}
 
           {payrollData && status === 'Calculated' && (
             <button className={styles.primaryBtn} onClick={handleGeneratePayslips} disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Payslips'}
+              {loading
+                ? <><span className={styles.segSpinner} aria-hidden="true" /> Generating…</>
+                : '📄 Generate Payslips'}
             </button>
           )}
 
           {payrollData && status === 'Payslips Generated' && (
             <button className={styles.primaryBtn} onClick={handleApprove} disabled={loading}>
-              {loading ? 'Approving...' : 'Approve Payroll'}
+              {loading
+                ? <><span className={styles.segSpinner} aria-hidden="true" /> Approving…</>
+                : '✓ Approve Payroll'}
             </button>
           )}
 
           {payrollData && status === 'Approved' && (
             <button className={styles.successBtn} onClick={handleFinalize} disabled={loading}>
-              {loading ? 'Finalizing...' : 'Finalize Payroll'}
+              {loading
+                ? <><span className={styles.segSpinner} aria-hidden="true" /> Finalizing…</>
+                : '🔒 Finalize Payroll'}
             </button>
           )}
 
