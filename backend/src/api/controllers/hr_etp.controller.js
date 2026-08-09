@@ -126,7 +126,7 @@ exports.getETPEmployee = catchAsync(async (req, res) => {
 exports.createETPEmployee = catchAsync(async (req, res) => {
   const rawBank = (req.body.bank_account_number || '').toString().trim();
   const bank_account_number = rawBank || null;
-  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone, bank_name, emergency_contact_name, emergency_contact_phone, marital_status, document_path, user_id } = req.body;
+  const { full_name, national_id, gender, dept_id, position_id, base_salary, housing_allowance, transport_allowance, has_pc_access, shift_start_time, shift_end_time, phone, bank_name, payment_method, emergency_contact_name, emergency_contact_phone, marital_status, document_path, user_id } = req.body;
   const date_of_birth = (req.body.date_of_birth || '').trim() || null;
   const personal_email = (req.body.personal_email || '').trim() || null;
   const physical_address = (req.body.physical_address || '').trim() || null;
@@ -157,6 +157,7 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     transport_allowance: transport_allowance || 0,
     bank_name: bank_name || null,
     bank_account_number: bank_account_number || null,
+    payment_method: payment_method || 'Bank Transfer',
     emergency_contact_name: emergency_contact_name || null,
     emergency_contact_phone: emergency_contact_phone || null,
     has_pc_access: has_pc_access || 'No',
@@ -194,7 +195,7 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
   const fields = ['full_name', 'national_id', 'gender', 'dept_id', 'position_id',
     'base_salary', 'housing_allowance', 'transport_allowance', 'has_pc_access',
     'shift_start_time', 'shift_end_time', 'employment_status', 'employment_type',
-    'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number',
+    'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number', 'payment_method',
     'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path',
     'registration_status', 'hire_date',
     'education_level', 'institution_name', 'field_of_study', 'graduation_year',
@@ -598,10 +599,22 @@ exports.getPayrollSummary = catchAsync(async (req, res) => {
   // Employee-level breakdown — only CEO-approved/completed active employees
   const employees = await db('payroll_salary_components as ps')
     .leftJoin('hr_employees as e', 'ps.employee_id', 'e.employee_id')
+    .leftJoin('departments as d', 'e.dept_id', 'd.id')
+    .leftJoin('roles as p', 'e.position_id', 'p.id')
     .where({ 'ps.month_number': m, 'ps.year_number': y })
     .where('e.employment_status', 'Active')
     .whereIn('e.registration_status', ['ceo_approved', 'completed'])
-    .select('ps.*', 'e.full_name', 'e.dept_id')
+    .select(
+      'ps.*',
+      'e.full_name',
+      'e.dept_id',
+      'e.personal_phone',
+      'e.bank_name',
+      'e.bank_account_number',
+      db.raw("COALESCE(e.payment_method, 'Bank Transfer') as payment_method"),
+      'd.name as dept_name',
+      'p.name as position'
+    )
     .orderBy('e.full_name');
   res.json({ status: 'success', data: { payrollSummary: company, company, departments: depts, employees } });
 });
@@ -782,6 +795,80 @@ exports.markPayrollPaid = catchAsync(async (req, res) => {
   });
 
   res.json({ status: 'success', message: 'Payroll marked as paid — expense recorded, HR notified.' });
+});
+
+exports.markEmployeePaid = catchAsync(async (req, res) => {
+  const { month, year, employee_id, payment_method } = req.body;
+  const m = parseInt(month);
+  const y = parseInt(year);
+
+  const existing = await db('payroll_company_aggregation').where({ month_number: m, year_number: y }).first();
+  if (!existing) return res.status(404).json({ status: 'fail', message: 'No payroll found' });
+  if (existing.approval_status !== 'Approved' && existing.approval_status !== 'Paid') return res.status(400).json({ status: 'fail', message: 'Payroll not approved' });
+
+  // Update specific employee
+  await db('payroll_salary_components')
+    .where({ month_number: m, year_number: y, employee_id })
+    .update({ status: 'Paid' });
+
+  // Check if ALL employees are now paid
+  const pendingCountData = await db('payroll_salary_components')
+    .where({ month_number: m, year_number: y })
+    .whereNot({ status: 'Paid' })
+    .count('* as count').first();
+  
+  if (Number(pendingCountData.count) === 0) {
+    // All paid! Mark the overall payroll as paid
+    const paymentInfo = req.file ? `${payment_method || 'Bank Transfer'} | Proof: ${req.file.path}` : (payment_method || 'Bank Transfer');
+    const paidBy = req.user?.email || 'Finance';
+    const now = db.fn.now();
+
+    await db('payroll_company_aggregation')
+      .where({ month_number: m, year_number: y })
+      .update({
+        approval_status: 'Paid',
+        payment_status: 'Paid',
+        payment_method: paymentInfo,
+        paid_by: paidBy,
+        paid_date: now
+      });
+
+    await db('payroll_finance_queue')
+      .where({ month_number: m, year_number: y })
+      .update({
+        payment_status: 'Paid',
+        paid_by: paidBy,
+        paid_date: now,
+        payment_method: paymentInfo,
+        proof_file: req.file ? req.file.path : null,
+      }).catch(() => {});
+      
+    // Record expense if possible
+    try {
+      let cat = await db('expense_categories').where('name', 'Payroll').first();
+      if (!cat) {
+        const [catId] = await db('expense_categories').insert({ name: 'Payroll', description: 'Monthly payroll payments', requires_approval: 0 });
+        cat = { id: catId };
+      }
+      const pm = await db('payment_methods').where('name', 'like', '%Bank%').first();
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      await db('expenses').insert({
+        date: db.fn.now(),
+        amount: existing.company_net_pay,
+        description: `Staff Payroll — ${monthNames[(m - 1)] || m} ${y} (${existing.total_employees} employees)`,
+        category_id: cat.id,
+        payment_method_id: pm ? pm.id : null,
+        reference_no: `PAYROLL-${y}-${String(m).padStart(2,'0')}`,
+        notes: `Processed by: ${paidBy} | Method: Individual Payments`,
+        entered_by: req.user?.id || null,
+        approved_at: now,
+        approved_by: req.user?.id || null,
+        created_at: now,
+      });
+    } catch (e) {}
+  }
+
+  res.json({ status: 'success', message: 'Employee marked as paid.' });
 });
 
 exports.getFinancePayrollQueue = catchAsync(async (req, res) => {
