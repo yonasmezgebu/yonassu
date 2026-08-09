@@ -306,7 +306,7 @@ const FinalizeModal = ({ pcv, onClose, onDone }) => {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>PCV ${pcv.pcv_number}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Times New Roman',serif;background:white;color:#000;padding:36px 48px;}.header{text-align:center;border-bottom:3px double #000;padding-bottom:16px;margin-bottom:20px;}.header h1{font-size:26px;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px;}.header h2{font-size:16px;font-weight:normal;color:#333;}.meta-row{display:flex;justify-content:space-between;margin-bottom:24px;font-size:13px;}.fields{line-height:2.8;font-size:15px;margin-bottom:24px;}.fields .field-line{display:flex;align-items:baseline;gap:8px;}.fields .underline{border-bottom:1px solid #000;display:inline-block;min-width:300px;flex:1;}.amount-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;}.amount-box{padding:12px 24px;border:2px solid #000;font-size:26px;font-weight:bold;}.payment-box{padding:12px 16px;border:1px solid #555;font-size:13px;min-width:220px;line-height:1.8;}.sigs{display:flex;justify-content:space-between;align-items:flex-end;margin-top:48px;}.sig-block{text-align:center;min-width:160px;}.sig-box{height:70px;border:1px solid #999;margin-bottom:6px;display:flex;align-items:center;justify-content:center;background:#fff;}.sig-line{border-top:1px solid #333;margin-bottom:4px;}.sig-name{font-size:13px;font-weight:700;}.sig-label{font-size:11px;color:#555;margin-top:2px;}@page{margin:14mm;size:A4;}</style>
     </head><body>
-    <div class="header"><h1>Sutana Enterprise</h1><h2>PETTY CASH VOUCHER (PCV)</h2></div>
+    <div class="header"><h1>Sutana Enterprise</h1><h2>Petty Cash (PCV)</h2></div>
     <div class="meta-row"><div><b>Voucher No:</b> <span style="font-family:monospace;font-size:15px">${pcv.pcv_number}</span><br/><b>Reference:</b> ${pcv.reference_no || 'N/A'}</div><div style="text-align:right"><b>Date:</b> ${new Date(pcv.date).toLocaleDateString('en-GB')}<br/><b>Payment Method:</b> ${pm}</div></div>
     <div class="fields"><div class="field-line"><b>PAID TO:</b>&nbsp;<span class="underline">${pcv.paid_to}</span></div><div class="field-line"><b>THE SUM OF:</b>&nbsp;<span class="underline" style="font-style:italic">${formatAmt(pcv.amount)} ETB Only</span></div><div class="field-line"><b>BEING PAYMENT FOR:</b>&nbsp;<span class="underline">${pcv.description || ''}</span></div></div>
     <div class="amount-row"><div class="amount-box">ETB ${formatAmt(pcv.amount)}</div>${paymentBlock}</div>
@@ -499,7 +499,7 @@ const PCVStatusTab = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: '0 0 4px' }}>PCV Status Tracker</h2>
-          <p style={{ color: '#424242', fontSize: 14, margin: 0, fontWeight: 600 }}>Track and finalize approved petty cash vouchers.</p>
+          <p style={{ color: '#424242', fontSize: 14, margin: 0, fontWeight: 600 }}>Track and finalize approved Petty Cashs.</p>
         </div>
         <button className="btn-green" onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', fontSize: 13 }}>
           <RefreshCw size={14} /> Refresh
@@ -672,7 +672,7 @@ const NewVoucherTab = ({ onSubmitted }) => {
       </div>
 
       <button type="submit" disabled={loading} className="btn-green" style={{ width: '100%', padding: '18px', fontSize: 17, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, background: loading ? '#9E9E9E' : '#228B22', marginTop: 4 }}>
-        {loading ? <><SegmentedSpinner size={20} /> Processing…</> : <><CheckCircle size={20} /> Generate Petty Cash Voucher</>}
+        {loading ? <><SegmentedSpinner size={20} /> Processing…</> : <><CheckCircle size={20} /> Generate Petty Cash</>}
       </button>
     </form>
   );
