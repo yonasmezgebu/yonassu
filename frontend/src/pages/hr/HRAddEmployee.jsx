@@ -21,7 +21,7 @@ const INIT_FORM = {
   dept_id: '', position_id: '',
   hire_date: '', employment_type: 'Permanent', base_salary: '',
   housing_allowance: '', transport_allowance: '',
-  bank_name: '', bank_account_number: '',
+  payment_method: 'Bank Transfer', bank_name: '', bank_account_number: '',
   has_pc_access: 'No', shift_start_time: '08:00', shift_end_time: '17:00',
   emergency_contact_name: '', emergency_contact_phone: '',
   // Education
@@ -51,6 +51,7 @@ const HRAddEmployee = ({ prefillData, onRegistered }) => {
     base_salary:            data?.base_salary || '',
     housing_allowance:      data?.housing_allowance || '',
     transport_allowance:    data?.transport_allowance || '',
+    payment_method:         data?.payment_method || 'Bank Transfer',
     bank_name:              data?.bank_name || '',
     bank_account_number:    data?.bank_account_number || '',
     has_pc_access:          data?.has_pc_access || 'No',
@@ -137,6 +138,7 @@ const HRAddEmployee = ({ prefillData, onRegistered }) => {
         transport_allowance: form.transport_allowance || null,
         bank_account_number: form.bank_account_number ? form.bank_account_number.toString().trim() : null,
         bank_name: form.bank_name || null,
+        payment_method: form.payment_method || 'Bank Transfer',
         national_id: form.national_id || null,
         // Education
         education_level:  form.education_level  || null,
@@ -360,22 +362,73 @@ const HRAddEmployee = ({ prefillData, onRegistered }) => {
                 <label>Transport Allowance</label>
                 <input type="number" min="0" value={form.transport_allowance} onChange={F('transport_allowance')} placeholder="0.00" />
               </div>
-              <div className={styles.field}>
-                <label>Bank Name</label>
-                <select value={form.bank_name} onChange={F('bank_name')}>
-                  <option value="">Select Bank</option>
-                  <option value="CBE">Commercial Bank of Ethiopia</option>
-                  <option value="Dashen">Dashen Bank</option>
-                  <option value="Awash">Awash Bank</option>
-                  <option value="Abyssinia">Bank of Abyssinia</option>
-                  <option value="Berhan">Berhan Bank</option>
-                  <option value="Hibret">Hibret Bank</option>
-                  <option value="Cooperative">Cooperative Bank</option>
-                </select>
+            </div>
+
+            {/* Bank / Payment sub-section */}
+            <div style={{ marginTop: 20, padding: '16px 20px', background: '#f0fdf4', borderRadius: 12, border: '1.5px solid #bbf7d0' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#15803d', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7 }}>
+                🏦 Payment Method &amp; Bank Details
               </div>
-              <div className={styles.field}>
-                <label>Bank Account Number</label>
-                <input value={form.bank_account_number} onChange={F('bank_account_number')} placeholder="Account number" />
+              <div className={styles.grid}>
+                <div className={styles.field}>
+                  <label>Payment Method <span>*</span></label>
+                  <select value={form.payment_method} onChange={F('payment_method')}>
+                    <option value="Bank Transfer">🏦 Bank Transfer</option>
+                    <option value="Cash">💵 Cash</option>
+                  </select>
+                </div>
+
+                {form.payment_method === 'Bank Transfer' && (
+                  <>
+                    <div className={styles.field}>
+                      <label>Bank Name</label>
+                      <select value={form.bank_name} onChange={F('bank_name')}>
+                        <option value="">— Select Bank —</option>
+                        <option value="Commercial Bank of Ethiopia">Commercial Bank of Ethiopia (CBE)</option>
+                        <option value="Dashen Bank">Dashen Bank</option>
+                        <option value="Awash Bank">Awash Bank</option>
+                        <option value="Bank of Abyssinia">Bank of Abyssinia</option>
+                        <option value="Berhan Bank">Berhan Bank</option>
+                        <option value="Hibret Bank">Hibret Bank (United Bank)</option>
+                        <option value="Cooperative Bank of Oromia">Cooperative Bank of Oromia</option>
+                        <option value="Oromia International Bank">Oromia International Bank (OIB)</option>
+                        <option value="Zemen Bank">Zemen Bank</option>
+                        <option value="Lion International Bank">Lion International Bank</option>
+                        <option value="Nib International Bank">Nib International Bank</option>
+                        <option value="Wegagen Bank">Wegagen Bank</option>
+                        <option value="Bunna International Bank">Bunna International Bank</option>
+                        <option value="Abay Bank">Abay Bank</option>
+                        <option value="Addis International Bank">Addis International Bank</option>
+                        <option value="Debub Global Bank">Debub Global Bank</option>
+                        <option value="Enat Bank">Enat Bank</option>
+                        <option value="Amhara Bank">Amhara Bank</option>
+                        <option value="Gadaa Bank">Gadaa Bank</option>
+                        <option value="Siinqee Bank">Siinqee Bank</option>
+                        <option value="Telebirr">Telebirr (Mobile)</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <label>Account Number</label>
+                      <input
+                        value={form.bank_account_number}
+                        onChange={F('bank_account_number')}
+                        placeholder="Enter full bank account number"
+                        style={{ fontFamily: 'monospace', letterSpacing: '.05em' }}
+                      />
+                      {form.bank_account_number && form.bank_account_number.length < 8 && (
+                        <span style={{ fontSize: 11, color: '#b45309', marginTop: 4, display: 'block' }}>⚠ Account number seems too short</span>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {form.payment_method === 'Cash' && (
+                  <div className={styles.field}>
+                    <label>Cash Note</label>
+                    <input value="Cash payment — no bank details required" disabled style={{ color: '#6b7280', background: '#f3f4f6' }} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
