@@ -129,11 +129,11 @@ const HRNotices = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATIONS ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
@@ -153,7 +153,6 @@ const HRNotices = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={styles.input}
-              style={{ width: 280 }}
             />
           </div>
         </div>
@@ -173,7 +172,7 @@ const HRNotices = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className={styles.loading}>Loading notices...</td></tr>
+                <tr><td colSpan={6}><div className={styles.loading}><span className={styles.segSpinnerLg} aria-hidden="true" /><span>Loading notices...</span></div></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={6} className={styles.empty}>No notices found.</td></tr>
               ) : (
@@ -186,7 +185,7 @@ const HRNotices = () => {
                       <div className={styles.deptSub}>{n.targetDepartment}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#424242' }}>
+                      <div className={styles.dateTxt}>
                         {n.date ? formatDate(n.date, 'short') : '—'}
                       </div>
                     </td>
@@ -196,7 +195,7 @@ const HRNotices = () => {
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{n.postedBy || 'System'}</div>
+                      <div className={styles.postedBy}>{n.postedBy || 'System'}</div>
                     </td>
                     <td>
                       <div className={styles.actionsList}>
@@ -215,17 +214,17 @@ const HRNotices = () => {
         </div>
       </div>
 
-      {/* ── CREATE MODAL (Rule 10, 14, 17) ── */}
+      {/* ── CREATE MODAL ── */}
       {showModal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Create Internal Notice</h2>
               <button className={styles.closeBtn} onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
             
             <div className={styles.modalBody}>
-              <form id="noticeForm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form id="noticeForm">
                 <div className={styles.formGroup}>
                   <label>Subject</label>
                   <input 
@@ -275,25 +274,29 @@ const HRNotices = () => {
         </div>
       )}
 
-      {/* ── VIEW MODAL (Rule 10, 14, 17) ── */}
+      {/* ── VIEW MODAL ── */}
       {viewModal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={`${styles.modal} ${styles.modalView}`}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle} style={{ textTransform: 'none', fontSize: 20 }}>{viewModal.subject}</h2>
+              <h2 className={styles.modalTitle}>{viewModal.subject}</h2>
               <button className={styles.closeBtn} onClick={() => setViewModal(null)}><X size={20} /></button>
             </div>
             <div className={styles.modalBody}>
-              <div style={{ marginBottom: '8px', color: '#6B8E23', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span>Posted on {viewModal.date ? formatDate(viewModal.date, 'long') : '—'}</span>
-                <span>To: {viewModal.targetDepartment}</span>
+              <div className={styles.viewMeta}>
+                <div className={styles.viewMetaItem}>
+                  <strong>Posted:</strong> {viewModal.date ? formatDate(viewModal.date, 'long') : '—'}
+                </div>
+                <div className={styles.viewMetaItem}>
+                  <strong>Target:</strong> {viewModal.targetDepartment}
+                </div>
               </div>
-              <div style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#424242', fontSize: '14px', background: '#F5F5F5', padding: 24, border: '1px solid #8D6E63' }}>
+              <div className={styles.viewBody}>
                 {viewModal.content}
               </div>
             </div>
             <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={() => setViewModal(null)}>Close Window</button>
+              <button className={styles.cancelBtn} onClick={() => setViewModal(null)}>Close</button>
             </div>
           </div>
         </div>
