@@ -188,7 +188,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
                 <div className={styles.metricLbl}>Total Staff</div>
               </div>
               <div className={styles.metric}>
-                <div className={styles.metricVal} style={{ color: '#c0a020' }}>
+                <div className={styles.metricVal} style={{ color: '#D97706' }}>
                   {loading ? '—' : employees.filter(e => e._source === 'users_table').length}
                 </div>
                 <div className={styles.metricLbl}>Pending Setup</div>
@@ -201,9 +201,14 @@ const HREmployees = ({ onRegister, onEdit }) => {
               </div>
             </div>
 
-            <button className={styles.btnSolid} onClick={fetchEmployees}>
-              ↻ Refresh
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className={styles.btnSolid} onClick={() => onRegister && onRegister(null)}>
+                + Add Employee
+              </button>
+              <button className={styles.btnCancel} onClick={fetchEmployees}>
+                ↻ Refresh
+              </button>
+            </div>
           </div>
         </div>
 
@@ -249,6 +254,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th style={{ width: '40px' }}>#</th>
                 <th>Employee</th>
                 <th>ID / Role</th>
                 <th>Department</th>
@@ -259,7 +265,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <div className={styles.emptyState}>
                       <div className={styles.emptyIcon}>◻</div>
                       No records match your search.
@@ -267,7 +273,7 @@ const HREmployees = ({ onRegister, onEdit }) => {
                   </td>
                 </tr>
               ) : (
-                filtered.map((emp) => {
+                filtered.map((emp, i) => {
                   const isPending    = emp._source === 'users_table';
                   const isActive     = (emp.employment_status || 'Active').toLowerCase() === 'active';
                   const avatarUrl    = resolvePhoto(emp.profile_photo_path) || resolvePhoto(emp.user_photo);
@@ -275,6 +281,11 @@ const HREmployees = ({ onRegister, onEdit }) => {
 
                   return (
                     <tr key={emp.employee_id}>
+                      {/* Number */}
+                      <td style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                        {i + 1}
+                      </td>
+                      
                       {/* Employee */}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
