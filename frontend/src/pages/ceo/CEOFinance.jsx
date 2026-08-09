@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Download, CheckCircle, XCircle, FileText, ArrowDownRight, ArrowUpRight, Banknote, Eye, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { DollarSign, Download, CheckCircle, XCircle, FileText, ArrowDownRight, ArrowUpRight, Banknote, Eye, ChevronDown, ChevronUp, RefreshCw, Users, CreditCard, Clock } from 'lucide-react';
 import api from '../../services/apiClient';
+import { formatCurrency } from '../../utils/formatters';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+
 
 /* ─── Shared Components from CEOFinanceApprovals ─── */
 const SigPreview = ({ label, name, sig }) => (
@@ -91,6 +94,60 @@ const CEOFinance = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Payroll payment tracking
+  const [payrollQueue, setPayrollQueue] = useState([]);
+  const [payrollLoading, setPayrollLoading] = useState(false);
+  const [payrollDetail, setPayrollDetail] = useState({});
+  const [payrollExpanded, setPayrollExpanded] = useState(null);
+  const [payrollDetailLoading, setPayrollDetailLoading] = useState(null);
+
+  const fetchPayrollQueue = async () => {
+    setPayrollLoading(true);
+    try {
+      let rows = [];
+      try {
+        const res = await api.get('/hr/etp/payroll/finance-queue');
+        rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      } catch {
+        const res2 = await api.get('/hr/etp/payroll/approved-list');
+        const all = Array.isArray(res2?.data) ? res2.data : (Array.isArray(res2) ? res2 : []);
+        rows = all.filter(p => p.approval_status === 'Approved' || p.approval_status === 'Paid')
+          .map(p => ({
+            month_number: p.month_number, year_number: p.year_number,
+            total_net_pay: p.company_net_pay, total_employees: p.total_employees,
+            approved_by_ceo: p.approved_by,
+            payment_status: p.approval_status === 'Paid' ? 'Paid' : 'Pending Payment',
+          }));
+      }
+      setPayrollQueue(rows);
+      // Auto-load employee details for all rows to show paid count immediately
+      rows.forEach(row => {
+        const key = `${row.month_number}-${row.year_number}`;
+        api.get(`/hr/etp/payroll/summary/${row.month_number}/${row.year_number}`)
+          .then(res => {
+            const d = res?.data || res;
+            setPayrollDetail(prev => ({ ...prev, [key]: d.employees || [] }));
+          }).catch(() => {});
+      });
+    } catch (e) { console.error(e); }
+    finally { setPayrollLoading(false); }
+  };
+
+  const loadPayrollDetail = async (row) => {
+    const key = `${row.month_number}-${row.year_number}`;
+    if (payrollExpanded === key) { setPayrollExpanded(null); return; }
+    setPayrollExpanded(key);
+    if (payrollDetail[key]) return;
+    setPayrollDetailLoading(key);
+    try {
+      const res = await api.get(`/hr/etp/payroll/summary/${row.month_number}/${row.year_number}`);
+      const d = res?.data || res;
+      setPayrollDetail(prev => ({ ...prev, [key]: d.employees || [] }));
+    } catch { } finally { setPayrollDetailLoading(null); }
+  };
+
+  const payrollMonthName = (m) => new Date(2000, parseInt(m) - 1).toLocaleString('default', { month: 'long' });
+
   const totalIncome = ledger.filter(l => l.direction === 'Income').reduce((sum, l) => sum + l.amount, 0);
   const totalExpense = ledger.filter(l => l.direction === 'Expense').reduce((sum, l) => sum + l.amount, 0);
   const profitLoss = totalIncome - totalExpense;
@@ -169,8 +226,8 @@ const CEOFinance = () => {
           <p style={{ color: '#64748b', margin: 0, fontSize: 15 }}>Oversee enterprise financials, reports, and pending approvals.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          {['Overview', 'PCV Approvals', 'Fund Requests'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+          {['Overview', 'PCV Approvals', 'Fund Requests', 'Payroll Status'].map(tab => (
+            <button key={tab} onClick={() => { setActiveTab(tab); if (tab === 'Payroll Status') fetchPayrollQueue(); }}
               style={{
                 padding: '10px 20px', borderRadius: 99, fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all .2s',
                 background: activeTab === tab ? '#0f172a' : 'white',
@@ -181,6 +238,9 @@ const CEOFinance = () => {
               {tab}
               {tab === 'PCV Approvals' && pcvs.length > 0 && (
                 <span style={{ marginLeft: 8, background: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>{pcvs.length}</span>
+              )}
+              {tab === 'Payroll Status' && payrollQueue.filter(q => q.payment_status === 'Pending Payment').length > 0 && (
+                <span style={{ marginLeft: 8, background: '#f59e0b', color: 'white', padding: '2px 8px', borderRadius: 99, fontSize: 11 }}>{payrollQueue.filter(q => q.payment_status === 'Pending Payment').length}</span>
               )}
             </button>
           ))}
@@ -260,7 +320,7 @@ const CEOFinance = () => {
         <div style={{ animation: 'fadeIn 0.3s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Banknote size={22} color="#eab308" /> Pending Petty Cash Vouchers
+              <Banknote size={22} color="#eab308" /> Pending Petty Cashs
             </h2>
             <button onClick={loadPcvs} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
               <RefreshCw size={14} /> Refresh
@@ -364,6 +424,156 @@ const CEOFinance = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* PAYROLL STATUS TAB */}
+      {activeTab === 'Payroll Status' && (
+        <div style={{ animation: 'fadeIn 0.3s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Users size={22} color="#16a34a" /> Payroll Payment Status
+            </h2>
+            <button onClick={fetchPayrollQueue} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+              <RefreshCw size={14} /> Refresh
+            </button>
+          </div>
+
+          {payrollLoading ? (
+            <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+              <SegmentedSpinner size={32} />
+              <div style={{ marginTop: 12, color: '#94a3b8' }}>Loading payroll status...</div>
+            </div>
+          ) : payrollQueue.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
+              <CheckCircle size={48} color="#22c55e" style={{ marginBottom: 16 }} />
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>No Payrolls Found</h3>
+              <p style={{ color: '#64748b', margin: 0 }}>Approved payrolls will appear here once HR submits them.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {payrollQueue.map(row => {
+                const key = `${row.month_number}-${row.year_number}`;
+                const isExp = payrollExpanded === key;
+                const emps = payrollDetail[key] || [];
+                const paidCount = emps.filter(e => e.payment_status === 'Paid').length;
+                const allPaid = row.payment_status === 'Paid' || (emps.length > 0 && paidCount === emps.length);
+                const isPending = row.payment_status === 'Pending Payment';
+
+                return (
+                  <div key={key} style={{ background: 'white', borderRadius: 16, border: `2px solid ${allPaid ? '#bbf7d0' : '#fde68a'}`, boxShadow: '0 2px 8px rgba(0,0,0,.05)', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '18px 24px', gap: 16, flexWrap: 'wrap' }}>
+                      <div style={{ flexShrink: 0, background: allPaid ? '#f0fdf4' : '#fefce8', padding: 12, borderRadius: 12, border: `1px solid ${allPaid ? '#86efac' : '#fde047'}` }}>
+                        <Users size={24} color={allPaid ? '#16a34a' : '#eab308'} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontWeight: 800, fontSize: 17, color: '#0f172a' }}>{payrollMonthName(row.month_number)} {row.year_number} Payroll</div>
+                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{row.total_employees} employees &mdash; Net: <strong style={{ color: '#0f172a' }}>{formatCurrency ? formatCurrency(row.total_net_pay) : `ETB ${parseFloat(row.total_net_pay||0).toLocaleString()}`}</strong></div>
+                        {/* Progress bar */}
+                        {emps.length > 0 && (
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden', width: 200 }}>
+                              <div style={{ height: '100%', width: `${(paidCount/emps.length)*100}%`, background: allPaid ? '#16a34a' : '#3b82f6', borderRadius: 99, transition: 'width 0.4s' }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Payment count badge — always visible */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: allPaid ? '#f0fdf4' : emps.length > 0 ? '#eff6ff' : '#f8fafc', padding: '10px 22px', borderRadius: 12, border: `2px solid ${allPaid ? '#86efac' : emps.length > 0 ? '#bfdbfe' : '#e2e8f0'}`, minWidth: 80 }}>
+                        <div style={{ fontSize: 26, fontWeight: 800, color: allPaid ? '#16a34a' : emps.length > 0 ? '#2563eb' : '#94a3b8', lineHeight: 1 }}>
+                          {emps.length > 0 ? `${paidCount}/${emps.length}` : `?/${row.total_employees || '?'}`}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: allPaid ? '#15803d' : emps.length > 0 ? '#1d4ed8' : '#94a3b8', textTransform: 'uppercase', marginTop: 3 }}>Paid</div>
+                      </div>
+                      {/* Status badge */}
+                      {allPaid ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 99, fontSize: 13, fontWeight: 700, background: '#dcfce7', color: '#16a34a', border: '1.5px solid #16a34a' }}>
+                          <CheckCircle size={14} /> Paid
+                        </span>
+                      ) : isPending ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 99, fontSize: 13, fontWeight: 700, background: '#FEF3C7', color: '#92400E', border: '1.5px solid #D97706' }}>
+                          <Clock size={14} /> Awaiting Finance
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 99, fontSize: 13, fontWeight: 700, background: '#dcfce7', color: '#15803d' }}>
+                          <CheckCircle size={14} /> Completed
+                        </span>
+                      )}
+                      <button onClick={() => loadPayrollDetail(row)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#475569' }}>
+                        <Eye size={14} /> {isExp ? 'Hide' : 'Detail'}
+                        {isExp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    </div>
+
+                    {/* Employee table */}
+                    {isExp && (
+                      <div style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '16px 24px' }}>
+                        {payrollDetailLoading === key ? (
+                          <div style={{ textAlign: 'center', padding: 24 }}><SegmentedSpinner size={28} /><div style={{ marginTop: 8, color: '#94a3b8', fontSize: 13 }}>Loading employees...</div></div>
+                        ) : emps.length === 0 ? (
+                          <p style={{ color: '#94a3b8', textAlign: 'center', fontSize: 13 }}>No employee data available yet.</p>
+                        ) : (
+                          <div style={{ overflowX: 'auto' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>
+                                  <span style={{ color: '#16a34a', fontWeight: 800 }}>{emps.filter(e => e.payment_status === 'Paid').length}</span> / {emps.length} employees paid
+                                </div>
+                              </div>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                  <tr style={{ background: '#f1f5f9' }}>
+                                    {['#', 'Employee', 'Department', 'Payment Method', 'Net Pay', 'Status'].map(h => (
+                                      <th key={h} style={{ padding: '10px 14px', textAlign: h === 'Net Pay' ? 'right' : 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {emps.map((e, idx) => {
+                                    const isPaid = e.payment_status === 'Paid';
+                                    const hasBank = e.bank_account_number || e.bank_name;
+                                    const payMethod = (e.payment_method || 'Bank Transfer').toLowerCase();
+                                    const isCash = payMethod.includes('cash');
+
+                                    return (
+                                      <tr key={e.employee_id} style={{ borderBottom: '1px solid #f1f5f9', background: isPaid ? '#f0fdf4' : idx%2===0 ? '#fff' : '#fafafa' }}>
+                                        <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: 12 }}>{idx+1}</td>
+                                        <td style={{ padding: '10px 14px' }}>
+                                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{e.full_name}</div>
+                                          <div style={{ fontSize: 11, color: '#94a3b8' }}>#{e.employee_id}</div>
+                                        </td>
+                                        <td style={{ padding: '10px 14px', color: '#475569' }}>{e.department || e.position || '—'}</td>
+                                        <td style={{ padding: '10px 14px' }}>
+                                          <div style={{ fontSize: 11, fontWeight: 700, color: isCash ? '#92400e' : '#0369a1', textTransform: 'uppercase' }}>
+                                            {isCash ? '💵 Cash' : '🏦 Bank'}
+                                          </div>
+                                          {hasBank && !isCash && (
+                                            <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                                              {e.bank_name} - {e.bank_account_number}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>ETB {parseFloat(e.net_pay||0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td style={{ padding: '10px 14px' }}>
+                                          {isPaid ? (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#dcfce7', color: '#15803d' }}><CheckCircle size={11} /> Paid</span>
+                                          ) : (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#92400e' }}><Clock size={11} /> Pending</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
