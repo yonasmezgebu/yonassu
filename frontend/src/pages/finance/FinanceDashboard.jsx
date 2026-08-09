@@ -45,10 +45,9 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
-        { label: 'Payment Voucher',      path: '/finance/pv',              icon: 'shopping-cart', color: '#f59e0b' },
-        { label: 'Petty Cash Voucher',   path: '/finance/pcv',             icon: 'wallet',        color: '#8b5cf6' },
+        { label: 'General Payments',      path: '/finance/pv',              icon: 'shopping-cart', color: '#f59e0b' },
+        { label: 'Petty Cash',   path: '/finance/pcv',             icon: 'wallet',        color: '#8b5cf6' },
         { label: 'Expense Book',         path: '/finance/cash-book',       icon: 'book',          color: '#06b6d4' },
-        { label: 'Payroll Payment',      path: '/finance/payroll-payment', icon: 'users',         color: '#16A34A' },
         { label: 'Liabillites&accounts payable', path: '/finance/liabilities', icon: 'alert-circle', color: '#eab308' },
       ] },
     { type: 'divider' },
