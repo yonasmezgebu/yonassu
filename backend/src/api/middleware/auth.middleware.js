@@ -195,7 +195,15 @@ const authorizeRoles = (requiredRoles) => {
       return next(new AppError('Authentication required', 401));
     }
     const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-    const hasRole = roles.some(role => req.user.roles.includes(role)) || req.user.roles.includes('Admin');
+    const userRolesLower = req.user.roles.map(r => r.toLowerCase());
+    const reqRolesLower = roles.map(r => r.toLowerCase());
+    
+    // Add Accountant implicitly for Finance-related roles, just in case
+    if (reqRolesLower.includes('finance') && !reqRolesLower.includes('accountant')) {
+        reqRolesLower.push('accountant');
+    }
+
+    const hasRole = reqRolesLower.some(role => userRolesLower.includes(role)) || userRolesLower.includes('admin');
     if (!hasRole) {
       return next(new AppError('Insufficient role privileges', 403));
     }
