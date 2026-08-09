@@ -173,11 +173,11 @@ const GalleryManager = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATIONS ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
@@ -204,7 +204,7 @@ const GalleryManager = () => {
           </div>
         </div>
 
-        {/* Table — Rule 3, 4, 8 */}
+        {/* Table */}
         <div className={styles.tableWrapper}>
           <table className={styles.table}>
             <thead>
@@ -219,7 +219,7 @@ const GalleryManager = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className={styles.loading}>Loading images...</td></tr>
+                <tr><td colSpan={6}><div className={styles.loading}><span className={styles.segSpinnerLg} aria-hidden="true" /><span>Loading images...</span></div></td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className={styles.empty}>
@@ -251,28 +251,28 @@ const GalleryManager = () => {
                       </div>
                     </td>
                     <td className={styles.center}>
-                      <div style={{ fontWeight: 800, color: '#424242' }}>
+                      <div className={styles.orderCell}>
                         {img.display_order}
                       </div>
                     </td>
                     <td className={styles.center}>
-                      <div 
+                      <button 
                         onClick={() => toggleVisibility(img)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 8px', borderRadius: 4, background: img.status === 'active' ? '#E8F5E9' : '#FFEBEE', transition: 'background 0.2s' }}
+                        className={`${styles.visibilityToggle} ${img.status === 'active' ? styles.visPublic : styles.visHidden}`}
                         title="Click to toggle visibility"
                       >
                         {img.status === 'active' ? (
                           <>
-                            <Eye size={14} color="#228B22" />
-                            <span style={{ color: '#228B22', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Active</span>
+                            <Eye size={14} />
+                            <span>Active</span>
                           </>
                         ) : (
                           <>
-                            <EyeOff size={14} color="#C62828" />
-                            <span style={{ color: '#C62828', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>Hidden</span>
+                            <EyeOff size={14} />
+                            <span>Hidden</span>
                           </>
                         )}
-                      </div>
+                      </button>
                     </td>
                     <td>
                       <div className={styles.actionsList}>
@@ -292,10 +292,10 @@ const GalleryManager = () => {
         </div>
       </div>
 
-      {/* ── MODAL (Rule 10, 14, 17) ── */}
+      {/* ── MODAL ── */}
       {showForm && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{editing ? 'Edit Image' : 'Add New Image'}</h2>
               <button className={styles.closeBtn} onClick={() => setShowForm(false)}>
@@ -351,7 +351,6 @@ const GalleryManager = () => {
                     value={form.description} 
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     placeholder="Enter image description..."
-                    style={{ resize: 'vertical' }}
                   />
                 </div>
 
@@ -434,7 +433,7 @@ const GalleryManager = () => {
       {/* ── DELETE CONFIRMATION MODAL ── */}
       {confirmDelete && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalSmall}>
+          <div className={`${styles.modal} ${styles.modalSmall}`}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Confirm Deletion</h2>
               <button className={styles.closeBtn} onClick={() => setConfirmDelete(null)}>
@@ -442,7 +441,7 @@ const GalleryManager = () => {
               </button>
             </div>
             <div className={styles.modalBody}>
-              <p style={{ margin: 0, fontSize: 14, color: '#424242', fontWeight: 600 }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
                 Are you sure you want to delete <strong>{confirmDelete.title}</strong>? This action cannot be undone.
               </p>
             </div>
