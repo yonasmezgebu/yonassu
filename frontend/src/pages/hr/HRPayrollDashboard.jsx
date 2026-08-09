@@ -111,6 +111,20 @@ const HRPayrollDashboard = () => {
   };
 
   const isEditable = !summary || summary.approval_status === 'Draft' || summary.approval_status === 'Rejected';
+  const isFullyPaid = summary?.approval_status === 'Paid';
+
+  // Advance to the next payroll month and reset all state
+  const handleStartNextMonth = () => {
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear  = month === 12 ? year + 1 : year;
+    setSummary(null);
+    setEmployees([]);
+    setSubmitBanner(null);
+    setActiveTab('sheet');
+    setMonth(nextMonth);
+    setYear(nextYear);
+    // fetchPayroll runs automatically via useEffect on month/year change
+  };
 
   const fmtN = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const monthName = new Date(2000, month - 1).toLocaleString('default', { month: 'long' });
@@ -354,7 +368,8 @@ const HRPayrollDashboard = () => {
 
           {/* Payment Status — shows how many employees are paid */}
           {summary && employees.length > 0 && (() => {
-            const paidCount = employees.filter(e => e.payment_status === 'Paid').length;
+            const isFullyPaid = summary.approval_status === 'Paid';
+            const paidCount = isFullyPaid ? employees.length : employees.filter(e => e.payment_status === 'Paid').length;
             const total = employees.length;
             const allPaid = paidCount === total;
             const pct = total > 0 ? Math.round((paidCount / total) * 100) : 0;
@@ -432,7 +447,7 @@ const HRPayrollDashboard = () => {
 
       {/* ── MAIN BODY ── */}
       <div className={styles.bodyArea}>
-        
+
         {summary && summary.rejection_reason && (
           <div className={styles.feedback}>
             <strong>CEO Feedback: </strong>
@@ -440,7 +455,85 @@ const HRPayrollDashboard = () => {
           </div>
         )}
 
-        {loading ? (
+        {/* ═══════════════════════════════════════════════════════
+            FULLY PAID — show archive card, clear path to next month
+            ═══════════════════════════════════════════════════════ */}
+        {isFullyPaid ? (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '60px 32px', textAlign: 'center',
+          }}>
+            {/* Trophy banner */}
+            <div style={{
+              width: 88, height: 88, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)',
+              border: '3px solid #86efac',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 40, marginBottom: 20,
+              boxShadow: '0 8px 32px rgba(22,163,74,0.18)',
+            }}>✅</div>
+
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: '#14532d', margin: '0 0 8px' }}>
+              {monthName} {year} Payroll — Fully Paid
+            </h2>
+            <p style={{ fontSize: 15, color: '#15803d', margin: '0 0 32px', fontWeight: 500 }}>
+              All {employees.length} employee{employees.length !== 1 ? 's' : ''} have been paid.
+              This payroll has been archived.
+            </p>
+
+            {/* Compact archive summary */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))',
+              gap: 1, background: '#e2e8f0', border: '1px solid #e2e8f0',
+              borderRadius: 14, overflow: 'hidden', marginBottom: 40, width: '100%', maxWidth: 680,
+            }}>
+              {[
+                { label: 'Period',       val: `${monthName} ${year}` },
+                { label: 'Employees',    val: employees.length },
+                { label: 'Total Net Pay',val: `${formatCurrency(summary.company_net_pay)} ETB` },
+                { label: 'Status',       val: '✓ Paid', green: true },
+              ].map((k, i) => (
+                <div key={i} style={{ background: '#fff', padding: '18px 20px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>{k.label}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: k.green ? '#16a34a' : '#0f172a' }}>{k.val}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA buttons */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button
+                onClick={handleStartNextMonth}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  padding: '14px 32px', background: 'linear-gradient(135deg,#16a34a,#15803d)',
+                  color: '#fff', border: 'none', borderRadius: 12,
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(22,163,74,0.35)',
+                  transition: 'transform .15s,box-shadow .15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow='0 6px 24px rgba(22,163,74,0.45)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform='scale(1)';    e.currentTarget.style.boxShadow='0 4px 16px rgba(22,163,74,0.35)'; }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Start {month === 12 ? `January ${year + 1}` : `${new Date(2000, month).toLocaleString('default', { month: 'long' })} ${year}`} Payroll
+              </button>
+              <button
+                onClick={handlePrint}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '14px 24px', background: '#fff',
+                  color: '#374151', border: '1.5px solid #e2e8f0', borderRadius: 12,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print Archive
+              </button>
+            </div>
+          </div>
+
+        ) : loading ? (
           <div className={styles.loading}>
             <span className={styles.segSpinnerLg} aria-hidden="true">
               {Array.from({length: 12}).map((_, i) => (
@@ -563,7 +656,7 @@ const HRPayrollDashboard = () => {
           ) : (
             <div className={styles.tableWrapper}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
-                <span style={{ color: '#16a34a', fontWeight: 800, marginRight: 4 }}>{employees.filter(e => e.payment_status === 'Paid').length}</span> / {employees.length} employees paid
+                <span style={{ color: '#16a34a', fontWeight: 800, marginRight: 4 }}>{summary?.approval_status === 'Paid' ? employees.length : employees.filter(e => e.payment_status === 'Paid').length}</span> / {employees.length} employees paid
               </div>
               <table className={styles.table}>
                 <thead>
@@ -583,7 +676,7 @@ const HRPayrollDashboard = () => {
                     const totalAllowances = Number(emp.housing_allowance || 0) + Number(emp.transport_allowance || 0) + Number(emp.communication_allowance || 0);
                     const totalExtras = Number(emp.overtime_pay || 0) + Number(emp.bonus_pay || 0);
                     const totalDeductions = Number(emp.deduction_absent || 0) + Number(emp.deduction_loan || 0) + Number(emp.deduction_tax || 0) + Number(emp.deduction_pension || 0);
-                    const isPaid = emp.payment_status === 'Paid';
+                    const isPaid = summary?.approval_status === 'Paid' || emp.payment_status === 'Paid';
                     const hasBank = emp.bank_account_number || emp.bank_name;
                     const payMethod = (emp.payment_method || 'Bank Transfer').toLowerCase();
                     const isCash = payMethod.includes('cash');
