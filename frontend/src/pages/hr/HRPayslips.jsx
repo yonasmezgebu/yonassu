@@ -263,7 +263,7 @@ const HRPayslips = () => {
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
             className={styles.monthInput}
-            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+            style={{ display: 'block', marginTop: '4px' }}
           />
         </div>
         <div>
@@ -273,7 +273,8 @@ const HRPayslips = () => {
             placeholder="Name or ID..."
             value={searchName}
             onChange={e => setSearchName(e.target.value)}
-            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '200px' }}
+            className={styles.monthInput}
+            style={{ display: 'block', marginTop: '4px', minWidth: '200px' }}
           />
         </div>
         <div>
@@ -281,7 +282,8 @@ const HRPayslips = () => {
           <select
             value={filterDepartment}
             onChange={e => setFilterDepartment(e.target.value)}
-            style={{ display: 'block', marginTop: '4px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '150px' }}
+            className={styles.monthInput}
+            style={{ display: 'block', marginTop: '4px', minWidth: '150px' }}
           >
             <option value="All">All Departments</option>
             {uniqueDepartments.map(dept => (
@@ -291,7 +293,7 @@ const HRPayslips = () => {
         </div>
         
         <div style={{ marginLeft: 'auto', marginBottom: '8px' }}>
-          <span className={styles.filterCount} style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '99px', fontSize: '12px', fontWeight: 'bold' }}>
+          <span className={styles.filterCount}>
             {completedPayslips.length} payslip(s) match
           </span>
         </div>
@@ -300,7 +302,10 @@ const HRPayslips = () => {
       {/* ── BODY ── */}
       <div className={styles.bodyArea}>
         {loading ? (
-          <div className={styles.loading}>● Loading payslips...</div>
+          <div className={styles.loading}>
+            <span className={styles.segSpinnerLg} aria-hidden="true" />
+            <span>Loading payslips…</span>
+          </div>
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -350,12 +355,12 @@ const HRPayslips = () => {
                       <td className={styles.left}>
                         {!(ps.payment_method || '').toLowerCase().includes('cash') ? (
                           <div>
-                            <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#F0FDF4', color:'#16A34A', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, marginBottom: 4 }}>🏦 Bank Transfer</div>
-                            <div style={{ fontSize:12, fontWeight:700, color:'#334155' }}>{ps.bank_name || 'CBE'}</div>
-                            <div style={{ fontSize:11, color:'#64748B', fontFamily:'monospace', letterSpacing:'.05em' }}>A/C: {ps.bank_account || ps.bank_account_number || '—'}</div>
+                            <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--color-success-bg)', color:'var(--color-success)', border: '1px solid #86EFAC', padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600, marginBottom: 4 }}>🏦 Bank Transfer</div>
+                            <div style={{ fontSize:12, fontWeight:600, color:'var(--color-text-primary)' }}>{ps.bank_name || 'CBE'}</div>
+                            <div style={{ fontSize:11, color:'var(--color-text-muted)', fontFamily:'monospace' }}>A/C: {ps.bank_account || ps.bank_account_number || '—'}</div>
                           </div>
                         ) : (
-                          <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#FEF3C7', color:'#92400E', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>💵 Cash</div>
+                          <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--color-warning-bg)', color:'var(--color-warning)', border: '1px solid #FDE68A', padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600 }}>💵 Cash</div>
                         )}
                       </td>
                       <td className={styles.center}>
