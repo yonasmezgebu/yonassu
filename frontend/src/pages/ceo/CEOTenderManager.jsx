@@ -121,20 +121,7 @@ const CEOTenderManager = () => {
     }
   };
 
-  const handleApproveFundRequest = async (id) => {
-    try {
-      setApprovingFund(true);
-      await api.put(`/public-procurement/fund-requests/${id}/approve`);
-      showToast('Fund Request approved and forwarded to Finance!', 'success');
-      setConfirmApproveFund(null);
-      setViewFundRequest(null);
-      fetchFundRequests();
-    } catch (err) {
-      showToast('Error approving Fund Request: ' + (err?.response?.data?.message || err.message), 'error');
-    } finally {
-      setApprovingFund(false);
-    }
-  };
+
 
   const fetchSalesTenders = useCallback(async () => {
     try {
