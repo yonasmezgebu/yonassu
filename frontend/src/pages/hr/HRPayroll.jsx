@@ -310,7 +310,10 @@ const HRPayroll = () => {
       {/* ── BODY & TABLE (Rule 4, 5, 15) ── */}
       <div className={styles.bodyArea}>
         {loading ? (
-          <div className={styles.loading}>● Loading salaries...</div>
+          <div className={styles.loading}>
+            <span className={styles.segSpinnerLg} aria-hidden="true" />
+            <span>Loading salaries…</span>
+          </div>
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -439,7 +442,9 @@ const HRPayroll = () => {
                 Cancel
               </button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving
+                  ? <><span className={styles.segSpinner} aria-hidden="true" /> Saving…</>
+                  : 'Save Changes'}
               </button>
             </div>
 
