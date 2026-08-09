@@ -456,9 +456,10 @@ const CEOFinance = () => {
                 const key = `${row.month_number}-${row.year_number}`;
                 const isExp = payrollExpanded === key;
                 const emps = payrollDetail[key] || [];
-                const paidCount = emps.filter(e => e.payment_status === 'Paid').length;
-                const allPaid = row.payment_status === 'Paid' || (emps.length > 0 && paidCount === emps.length);
                 const isPending = row.payment_status === 'Pending Payment';
+                const isFullyPaid = row.payment_status === 'Paid';
+                const paidCount = isFullyPaid ? emps.length : emps.filter(e => e.payment_status === 'Paid').length;
+                const allPaid = isFullyPaid || (emps.length > 0 && paidCount === emps.length);
 
                 return (
                   <div key={key} style={{ background: 'white', borderRadius: 16, border: `2px solid ${allPaid ? '#bbf7d0' : '#fde68a'}`, boxShadow: '0 2px 8px rgba(0,0,0,.05)', overflow: 'hidden' }}>
@@ -516,7 +517,7 @@ const CEOFinance = () => {
                           <div style={{ overflowX: 'auto' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                                 <div style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>
-                                  <span style={{ color: '#16a34a', fontWeight: 800 }}>{emps.filter(e => e.payment_status === 'Paid').length}</span> / {emps.length} employees paid
+                                  <span style={{ color: '#16a34a', fontWeight: 800 }}>{paidCount}</span> / {emps.length} employees paid
                                 </div>
                               </div>
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -529,7 +530,7 @@ const CEOFinance = () => {
                                 </thead>
                                 <tbody>
                                   {emps.map((e, idx) => {
-                                    const isPaid = e.payment_status === 'Paid';
+                                    const isPaid = row.payment_status === 'Paid' || e.payment_status === 'Paid';
                                     const hasBank = e.bank_account_number || e.bank_name;
                                     const payMethod = (e.payment_method || 'Bank Transfer').toLowerCase();
                                     const isCash = payMethod.includes('cash');
