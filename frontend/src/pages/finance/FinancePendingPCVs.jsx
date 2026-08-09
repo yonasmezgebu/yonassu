@@ -77,7 +77,7 @@ const FinalizeModal = ({ pcv, onClose, onFinalized }) => {
         <div className="print-only" style={{ display: 'none', padding: '36px 48px', background: 'white', fontFamily: "'Times New Roman', serif" }}>
           <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 20 }}>
             <h1 style={{ fontSize: 26, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 3 }}>Sutana Enterprise</h1>
-            <h2 style={{ fontSize: 16, margin: 0, fontWeight: 'normal', color: '#333' }}>PETTY CASH VOUCHER (PCV)</h2>
+            <h2 style={{ fontSize: 16, margin: 0, fontWeight: 'normal', color: '#333' }}>PETTY CASH (PCV)</h2>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, fontSize: 13 }}>
             <div>
@@ -263,7 +263,7 @@ const FinancePendingPCVs = () => {
             </span>
             PCV Status Tracker
           </h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Track approval status of petty cash vouchers and continue approved ones.</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Track approval status of petty cash requests and continue approved ones.</p>
         </div>
         <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
           <RefreshCw size={15} /> Refresh
@@ -279,7 +279,7 @@ const FinancePendingPCVs = () => {
         <div style={{ textAlign: 'center', padding: 80, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
           <CheckCircle size={48} color="#22c55e" style={{ marginBottom: 16 }} />
           <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>No pending PCVs</h3>
-          <p style={{ color: '#64748b', margin: 0 }}>All petty cash vouchers are up to date.</p>
+          <p style={{ color: '#64748b', margin: 0 }}>All petty cash requests are up to date.</p>
         </div>
       ) : (
         <>
