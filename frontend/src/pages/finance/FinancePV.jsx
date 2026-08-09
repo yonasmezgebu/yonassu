@@ -286,6 +286,7 @@ const FinancePV = () => {
     setTimeout(() => setPayrollToast(null), 5000);
   };
 
+  // Returns { queue, history } so callers can react to batch completion
   const fetchPayrollQueue = useCallback(async () => {
     setPayrollLoading(true);
     try {
@@ -306,10 +307,14 @@ const FinancePV = () => {
             payment_status: p.approval_status === 'Paid' ? 'Paid' : 'Pending Payment',
           }));
       }
-      setPayrollQueue(rows.filter(r => r.payment_status !== 'Paid'));
-      setPayrollHistory(rows.filter(r => r.payment_status === 'Paid'));
+      const queue   = rows.filter(r => r.payment_status !== 'Paid');
+      const history = rows.filter(r => r.payment_status === 'Paid');
+      setPayrollQueue(queue);
+      setPayrollHistory(history);
+      return { queue, history };
     } catch (e) {
       showPayrollToast('Failed to load payroll queue', 'error');
+      return { queue: [], history: [] };
     } finally {
       setPayrollLoading(false);
     }
@@ -334,7 +339,24 @@ const FinancePV = () => {
     setPayrollPhase(prev => ({ ...prev, [key]: 'paying' }));
   };
 
-  // Pay a single employee OR all selected
+  // Cleans up all stale state for a completed batch and navigates to history
+  const handleBatchComplete = (key, label) => {
+    // Clear detail cache, expanded state, phase, selections, and emp statuses for this batch
+    setPayrollDetail(prev => { const next = { ...prev }; delete next[key]; return next; });
+    setPayrollExpanded(prev => prev === key ? null : prev);
+    setPayrollPhase(prev => { const next = { ...prev }; delete next[key]; return next; });
+    setPayrollSelected({});
+    setEmpPayStatus(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => { if (k.startsWith(key)) delete next[k]; });
+      return next;
+    });
+    // Switch to history tab and celebrate
+    setActiveTab('history');
+    showPayrollToast(`🎉 ${label} payroll fully paid — moved to history!`, 'success');
+  };
+
+  // Pay a single employee
   const handlePayEmployee = async (row, emp) => {
     if (!payModal) return;
     setPaying(true);
@@ -348,16 +370,27 @@ const FinancePV = () => {
       if (payProof) form.append('payment_proof', payProof);
       await api.post('/hr/etp/payroll/mark-paid-employee', form, { headers: { 'Content-Type': 'multipart/form-data' } })
         .catch(() => api.post('/hr/etp/payroll/mark-paid', form, { headers: { 'Content-Type': 'multipart/form-data' } }));
+
+      // Optimistically mark paid in local state
       setEmpPayStatus(prev => ({ ...prev, [`${key}-${emp.employee_id}`]: 'paid' }));
-      showPayrollToast(`✅ ${emp.full_name} marked as paid`, 'success');
       setPayModal(null); setPayProof(null);
-      // Check if all paid — if so refresh queue
-      fetchPayrollQueue();
+
+      // Re-fetch queue — backend auto-marks batch as Paid when last employee is done
+      const { history } = await fetchPayrollQueue();
+      const batchMovedToHistory = history.some(
+        r => r.month_number === row.month_number && r.year_number === row.year_number
+      );
+      if (batchMovedToHistory) {
+        handleBatchComplete(key, `${monthName(row.month_number)} ${row.year_number}`);
+      } else {
+        showPayrollToast(`✅ ${emp.full_name} marked as paid`, 'success');
+      }
     } catch (err) {
       showPayrollToast(err?.response?.data?.message || 'Payment failed', 'error');
     } finally { setPaying(false); }
   };
 
+  // Pay all selected employees in one batch
   const handlePaySelected = async (row) => {
     if (!payModal) return;
     const key = `${row.month_number}-${row.year_number}`;
@@ -376,10 +409,19 @@ const FinancePV = () => {
           .catch(() => {});
         setEmpPayStatus(prev => ({ ...prev, [`${key}-${emp.employee_id}`]: 'paid' }));
       }
-      showPayrollToast(`✅ ${selected.length} employee(s) marked as paid`, 'success');
       setPayModal(null); setPayProof(null);
       setPayrollSelected({});
-      fetchPayrollQueue();
+
+      // Re-fetch and check if entire batch is now in history
+      const { history } = await fetchPayrollQueue();
+      const batchMovedToHistory = history.some(
+        r => r.month_number === row.month_number && r.year_number === row.year_number
+      );
+      if (batchMovedToHistory) {
+        handleBatchComplete(key, `${monthName(row.month_number)} ${row.year_number}`);
+      } else {
+        showPayrollToast(`✅ ${selected.length} employee(s) marked as paid`, 'success');
+      }
     } catch (err) {
       showPayrollToast(err?.response?.data?.message || 'Payment failed', 'error');
     } finally { setPaying(false); }
@@ -1299,17 +1341,23 @@ const FinancePV = () => {
               const mName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][row.month_number-1] || row.month_number;
               const hKey = `${row.month_number}-${row.year_number}`;
               const emps = payrollDetail[hKey] || [];
-              const empSubRows = emps.map((e,ei) => `
+              const empSubRows = emps.map((e,ei) => {
+                const isCash = (e.payment_method||'').toLowerCase().includes('cash');
+                const methodHtml = isCash 
+                  ? '💵 Cash' 
+                  : `🏦 Bank${`<br><span style="font-size:9px;color:#64748b;font-family:monospace">${e.bank_name || 'CBE'}</span>`}${`<br><span style="font-size:9px;color:#64748b;font-family:monospace">A/C: ${e.bank_account_number || '—'}</span>`}`;
+                
+                return `
                 <tr style="background:${ei%2===0?'#f0fdf4':'#fff'}">
                   <td style="padding:5px 8px 5px 24px;color:#94a3b8">${ei+1}</td>
                   <td style="padding:5px 8px;font-weight:600">${e.full_name||'—'}</td>
                   <td style="padding:5px 8px;color:#475569">${e.dept_name||e.dept_id||'—'}</td>
                   <td style="padding:5px 8px;text-align:right">${parseFloat(e.base_salary||0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                   <td style="padding:5px 8px;text-align:right;font-weight:700">${parseFloat(e.net_pay||0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-                  <td style="padding:5px 8px;text-align:center">${(e.payment_method||'').toLowerCase().includes('cash')?'💵 Cash':'🏦 Bank'}</td>
+                  <td style="padding:5px 8px;text-align:center;line-height:1.2">${methodHtml}</td>
                   <td style="padding:5px 8px;text-align:center"><span style="background:#DCFCE7;color:#15803D;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700">✓ Paid</span></td>
                 </tr>
-              `).join('');
+              `}).join('');
               return `
                 <tr style="background:#dcfce7;font-weight:800;border-top:2px solid #86efac">
                   <td>${idx+1}</td>
@@ -1329,7 +1377,7 @@ const FinancePV = () => {
                         <th style="padding:5px 8px;text-align:left">Department</th>
                         <th style="padding:5px 8px;text-align:right">Base Salary</th>
                         <th style="padding:5px 8px;text-align:right">Net Pay</th>
-                        <th style="padding:5px 8px;text-align:center">Method</th>
+                        <th style="padding:5px 8px;text-align:center">Bank / Account</th>
                         <th style="padding:5px 8px;text-align:center">Status</th>
                       </tr></thead>
                       <tbody>${empSubRows}</tbody>
@@ -1602,7 +1650,7 @@ const FinancePV = () => {
                                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                                     <thead>
                                       <tr style={{ background: '#E2E8F0' }}>
-                                        {['#','Employee','Department','Base Salary','Allowances','Extras','Deductions','Net Pay','Method','Status'].map(h => (
+                                        {['#','Employee','Department','Base Salary','Allowances','Extras','Deductions','Net Pay','Bank / Account','Status'].map(h => (
                                           <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', textAlign: ['Base Salary','Allowances','Extras','Deductions','Net Pay'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left' }}>{h}</th>
                                         ))}
                                       </tr>
@@ -1627,10 +1675,16 @@ const FinancePV = () => {
                                             <td style={{ padding: '10px 12px', textAlign: 'right', color: '#0369A1', fontWeight: 600 }}>{extra > 0 ? `+${extra.toLocaleString(undefined,{minimumFractionDigits:2})}` : '—'}</td>
                                             <td style={{ padding: '10px 12px', textAlign: 'right', color: '#DC2626', fontWeight: 600 }}>{deduct > 0 ? `-${deduct.toLocaleString(undefined,{minimumFractionDigits:2})}` : '—'}</td>
                                             <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#0F172A', fontSize: 14 }}>{parseFloat(emp.net_pay||0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-                                            <td style={{ padding: '10px 12px' }}>
-                                              <div style={{ fontSize: 11, fontWeight: 700, color: isCash ? '#92400E' : '#0369A1' }}>{isCash ? '💵 Cash' : '🏦 Bank'}</div>
-                                              {!isCash && emp.bank_name && <div style={{ fontSize: 10, color: '#94A3B8', fontFamily: 'monospace', marginTop: 1 }}>{emp.bank_name}</div>}
-                                              {!isCash && emp.bank_account_number && <div style={{ fontSize: 10, color: '#94A3B8', fontFamily: 'monospace' }}>{emp.bank_account_number}</div>}
+                                            <td style={{ padding: '10px 12px', minWidth: 140 }}>
+                                               {isCash ? (
+                                                 <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#FEF3C7', color:'#92400E', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>💵 Cash</div>
+                                               ) : (
+                                                 <div>
+                                                   <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:'#EFF6FF', color:'#1D4ED8', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, marginBottom: 4 }}>🏦 Bank Transfer</div>
+                                                   <div style={{ fontSize:12, fontWeight:700, color:'#334155', marginTop:3 }}>{emp.bank_name || 'CBE'}</div>
+                                                   <div style={{ fontSize:11, color:'#64748B', fontFamily:'monospace', letterSpacing:'.05em', marginTop:2 }}>A/C: {emp.bank_account_number || '—'}</div>
+                                                 </div>
+                                               )}
                                             </td>
                                             <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                                               {isPaid
