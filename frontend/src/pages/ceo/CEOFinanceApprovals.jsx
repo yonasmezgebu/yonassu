@@ -220,7 +220,7 @@ const CEOFinanceApprovals = () => {
             </span>
             PCV Approval Queue
           </h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Review and approve or reject petty cash vouchers submitted by Finance.</p>
+          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Review and approve or reject petty cash requests submitted by Finance.</p>
         </div>
         <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
           <RefreshCw size={15} /> Refresh
