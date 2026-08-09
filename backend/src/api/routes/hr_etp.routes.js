@@ -108,6 +108,7 @@ router.post('/etp/payroll/submit',             authenticate, authorizeRoles(hrCe
 router.get('/etp/payroll/summary/:month/:year', authenticate, authorizeRoles([...ceoBoard, 'HR Manager', 'Finance Manager', 'Finance']), C.getPayrollSummary);
 router.post('/etp/payroll/approve',            authenticate, authorizeRoles(ceoBoard),                     C.approvePayroll);
 router.post('/etp/payroll/mark-paid',          authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markPayrollPaid);
+router.post('/etp/payroll/mark-paid-employee', authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), financeUpload.single('payment_proof'), C.markEmployeePaid);
 router.get('/etp/payroll/approved-list',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getApprovedPayrolls);
 router.get('/etp/payroll/finance-queue',       authenticate, authorizeRoles([...ceoBoard, 'Finance Manager', 'Finance']), C.getFinancePayrollQueue);
 
