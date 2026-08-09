@@ -352,6 +352,30 @@ const HRPayrollDashboard = () => {
             </div>
           </div>
 
+          {/* Payment Status — shows how many employees are paid */}
+          {summary && employees.length > 0 && (() => {
+            const paidCount = employees.filter(e => e.payment_status === 'Paid').length;
+            const total = employees.length;
+            const allPaid = paidCount === total;
+            const pct = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+            return (
+              <div className={styles.metric} style={{ minWidth: 160 }}>
+                <div className={styles.metricLbl}>Payment Progress</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: allPaid ? '#16A34A' : '#2563EB', lineHeight: 1 }}>
+                    {paidCount}/{total}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: allPaid ? '#15803d' : '#1d4ed8', textTransform: 'uppercase' }}>
+                    {allPaid ? '✓ All Paid' : 'Paid'}
+                  </div>
+                </div>
+                <div style={{ marginTop: 6, height: 5, background: '#E5E7EB', borderRadius: 99, overflow: 'hidden', width: 140 }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: allPaid ? '#16A34A' : '#3b82f6', borderRadius: 99, transition: 'width 0.4s' }} />
+                </div>
+              </div>
+            );
+          })()}
+
           <div className={styles.actionsMetric}>
             {isEditable && (
               <>
@@ -538,6 +562,9 @@ const HRPayrollDashboard = () => {
             </div>
           ) : (
             <div className={styles.tableWrapper}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                <span style={{ color: '#16a34a', fontWeight: 800, marginRight: 4 }}>{employees.filter(e => e.payment_status === 'Paid').length}</span> / {employees.length} employees paid
+              </div>
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -547,6 +574,8 @@ const HRPayrollDashboard = () => {
                     <th className={styles.right}>Extras</th>
                     <th className={styles.right}>Deductions</th>
                     <th className={styles.right}>Net Pay</th>
+                    <th style={{ textAlign: 'left' }}>Payment Method</th>
+                    <th style={{ textAlign: 'center' }}>Payment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -554,8 +583,13 @@ const HRPayrollDashboard = () => {
                     const totalAllowances = Number(emp.housing_allowance || 0) + Number(emp.transport_allowance || 0) + Number(emp.communication_allowance || 0);
                     const totalExtras = Number(emp.overtime_pay || 0) + Number(emp.bonus_pay || 0);
                     const totalDeductions = Number(emp.deduction_absent || 0) + Number(emp.deduction_loan || 0) + Number(emp.deduction_tax || 0) + Number(emp.deduction_pension || 0);
+                    const isPaid = emp.payment_status === 'Paid';
+                    const hasBank = emp.bank_account_number || emp.bank_name;
+                    const payMethod = (emp.payment_method || 'Bank Transfer').toLowerCase();
+                    const isCash = payMethod.includes('cash');
+
                     return (
-                      <tr key={emp.employee_id}>
+                      <tr key={emp.employee_id} style={{ background: isPaid ? '#f0fdf4' : undefined }}>
                         <td>
                           <div className={styles.empName}>{emp.full_name}</div>
                           <div className={styles.empId}>#{emp.employee_id}</div>
@@ -575,12 +609,30 @@ const HRPayrollDashboard = () => {
                         <td className={styles.right}>
                           <span className={styles.valNet}>{formatCurrency(emp.net_pay)}</span>
                         </td>
+                        <td style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: isCash ? '#92400e' : '#0369a1', textTransform: 'uppercase' }}>
+                            {isCash ? '💵 Cash' : '🏦 Bank'}
+                          </div>
+                          {hasBank && !isCash && (
+                            <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace', marginTop: 2 }}>
+                              {emp.bank_name}<br/>{emp.bank_account_number}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {isPaid ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }}>✓ Paid</span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>⏳ Pending</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
+
           )
         )}
       </div>
