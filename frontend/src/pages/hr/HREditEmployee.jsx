@@ -23,7 +23,7 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
     dept_id: '', position_id: '',
     hire_date: '', employment_type: 'Permanent', base_salary: '',
     housing_allowance: '', transport_allowance: '',
-    bank_name: '', bank_account_number: '',
+    payment_method: 'Bank Transfer', bank_name: '', bank_account_number: '',
     has_pc_access: 'No', shift_start_time: '08:00', shift_end_time: '17:00',
     emergency_contact_name: '', emergency_contact_phone: '',
   });
@@ -87,6 +87,7 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
         base_salary: prefillData.base_salary || '',
         housing_allowance: prefillData.housing_allowance || '',
         transport_allowance: prefillData.transport_allowance || '',
+        payment_method: prefillData.payment_method || 'Bank Transfer',
         bank_name: prefillData.bank_name || '',
         bank_account_number: prefillData.bank_account_number || '',
         has_pc_access: prefillData.has_pc_access || 'No',
@@ -122,16 +123,15 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
     try {
       const submitData = {
         ...form,
-        // Don't hardcode path — pass real File; backend multer saves it and derives the path
         document_file: file || undefined,
         document_path: file ? undefined : (prefillData?.document_path || null),
-        // Ensure empty strings become null for date/numeric fields
         date_of_birth: form.date_of_birth || null,
         base_salary: form.base_salary || null,
         housing_allowance: form.housing_allowance || null,
         transport_allowance: form.transport_allowance || null,
         bank_account_number: form.bank_account_number.trim() || null,
         bank_name: form.bank_name || null,
+        payment_method: form.payment_method || 'Bank Transfer',
         national_id: form.national_id || null,
         id_photo_front: idPhotoFront || undefined,
         id_photo_back:  idPhotoBack  || undefined,
@@ -271,22 +271,69 @@ const HREditEmployee = ({ prefillData, onCancel }) => {
               <label>Transport Allowance</label>
               <input type="number" min="0" value={form.transport_allowance} onChange={F('transport_allowance')} placeholder="0.00" />
             </div>
-            <div className={styles.formGroup}>
-              <label>Bank Name</label>
-              <select value={form.bank_name} onChange={F('bank_name')}>
-                <option value="">Select Bank</option>
-                <option value="CBE">Commercial Bank of Ethiopia</option>
-                <option value="Dashen">Dashen Bank</option>
-                <option value="Awash">Awash Bank</option>
-                <option value="Abyssinia">Bank of Abyssinia</option>
-                <option value="Berhan">Berhan Bank</option>
-                <option value="Hibret">Hibret Bank</option>
-                <option value="Cooperative">Cooperative Bank</option>
-              </select>
-            </div>
-            <div className={styles.formGroup}>
-              <label>Bank Account Number</label>
-              <input value={form.bank_account_number} onChange={F('bank_account_number')} placeholder="Account number" />
+          </div>
+
+          {/* Bank / Payment sub-section */}
+          <div style={{ marginTop: 20, padding: '16px 20px', background: '#f0fdf4', borderRadius: 12, border: '1.5px solid #bbf7d0' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#15803d', marginBottom: 14 }}>🏦 Payment Method &amp; Bank Details</div>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label>Payment Method *</label>
+                <select value={form.payment_method} onChange={F('payment_method')}>
+                  <option value="Bank Transfer">🏦 Bank Transfer</option>
+                  <option value="Cash">💵 Cash</option>
+                </select>
+              </div>
+              {form.payment_method === 'Bank Transfer' && (
+                <>
+                  <div className={styles.formGroup}>
+                    <label>Bank Name</label>
+                    <select value={form.bank_name} onChange={F('bank_name')}>
+                      <option value="">— Select Bank —</option>
+                      <option value="Commercial Bank of Ethiopia">Commercial Bank of Ethiopia (CBE)</option>
+                      <option value="Dashen Bank">Dashen Bank</option>
+                      <option value="Awash Bank">Awash Bank</option>
+                      <option value="Bank of Abyssinia">Bank of Abyssinia</option>
+                      <option value="Berhan Bank">Berhan Bank</option>
+                      <option value="Hibret Bank">Hibret Bank (United Bank)</option>
+                      <option value="Cooperative Bank of Oromia">Cooperative Bank of Oromia</option>
+                      <option value="Oromia International Bank">Oromia International Bank (OIB)</option>
+                      <option value="Zemen Bank">Zemen Bank</option>
+                      <option value="Lion International Bank">Lion International Bank</option>
+                      <option value="Nib International Bank">Nib International Bank</option>
+                      <option value="Wegagen Bank">Wegagen Bank</option>
+                      <option value="Bunna International Bank">Bunna International Bank</option>
+                      <option value="Abay Bank">Abay Bank</option>
+                      <option value="Addis International Bank">Addis International Bank</option>
+                      <option value="Debub Global Bank">Debub Global Bank</option>
+                      <option value="Enat Bank">Enat Bank</option>
+                      <option value="Amhara Bank">Amhara Bank</option>
+                      <option value="Gadaa Bank">Gadaa Bank</option>
+                      <option value="Siinqee Bank">Siinqee Bank</option>
+                      <option value="Telebirr">Telebirr (Mobile)</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Account Number</label>
+                    <input
+                      value={form.bank_account_number}
+                      onChange={F('bank_account_number')}
+                      placeholder="Enter full bank account number"
+                      style={{ fontFamily: 'monospace', letterSpacing: '.05em' }}
+                    />
+                    {form.bank_account_number && form.bank_account_number.length < 8 && (
+                      <span style={{ fontSize: 11, color: '#b45309', marginTop: 4, display: 'block' }}>⚠ Account number seems too short</span>
+                    )}
+                  </div>
+                </>
+              )}
+              {form.payment_method === 'Cash' && (
+                <div className={styles.formGroup}>
+                  <label>Cash Note</label>
+                  <input value="Cash payment — no bank details required" disabled style={{ color: '#6b7280', background: '#f3f4f6' }} />
+                </div>
+              )}
             </div>
           </div>
         </div>
