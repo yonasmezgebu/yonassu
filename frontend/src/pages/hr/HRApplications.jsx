@@ -109,7 +109,6 @@ const HRApplications = () => {
             className={styles.input}
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            style={{ width: 220 }}
           >
             <option value="">All Applications</option>
             <option value="PENDING">Pending</option>
@@ -121,11 +120,11 @@ const HRApplications = () => {
         </div>
       </div>
 
-      {/* ── NOTIFICATIONS — Rule 6 ── */}
-      {notif.text && (
+      {/* ── NOTIFICATIONS ── */}
+      {notif.type && (
         <div className={`${styles.notification} ${notif.type === 'success' ? styles.notifSuccess : styles.notifError}`}>
-          <span>{notif.text}</span>
-          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>&times;</button>
+          <span>{notif.type === 'success' ? '✅' : '⚠️'} {notif.text}</span>
+          <button className={styles.notifDismiss} onClick={() => setNotif({ type: null, text: '' })}>×</button>
         </div>
       )}
 
@@ -188,7 +187,14 @@ const HRApplications = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className={styles.loading}>Loading applications...</td></tr>
+                <tr>
+                  <td colSpan={6}>
+                    <div className={styles.loading}>
+                      <span className={styles.segSpinnerLg} aria-hidden="true" />
+                      <span>Loading applications...</span>
+                    </div>
+                  </td>
+                </tr>
               ) : applications.length === 0 ? (
                 <tr><td colSpan={6} className={styles.empty}>No applications found. When candidates apply on the public Hiring page, they will appear here.</td></tr>
               ) : (
@@ -203,12 +209,12 @@ const HRApplications = () => {
                       <div className={styles.appSub}>{app.phone_number}</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#424242' }}>
+                      <div className={styles.appTitle}>
                         {app.hiring_position || app.post_title || '—'}
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#1B5E20' }}>Edu: {app.education_status}</div>
+                      <div className={styles.appTitle}>Edu: {app.education_status}</div>
                       <div className={styles.appSub}>ID: {app.national_id}</div>
                       {(app.id_front_image || app.id_back_image) && (
                         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
@@ -236,7 +242,7 @@ const HRApplications = () => {
                       )}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#424242' }}>
+                      <div className={styles.appTitle}>
                         {new Date(app.created_at).toLocaleDateString('en-CA')}
                       </div>
                     </td>
@@ -245,7 +251,7 @@ const HRApplications = () => {
                         {app.status.replace(/_/g, ' ')}
                       </span>
                       {app.status === 'REJECTED' && app.rejection_reason && (
-                        <div style={{ fontSize: 11, color: '#D32F2F', marginTop: 4, fontStyle: 'italic', maxWidth: 150 }}>
+                        <div className={styles.appSub} style={{ color: 'var(--color-danger)', maxWidth: 150, textTransform: 'none' }}>
                           Reason: {app.rejection_reason}
                         </div>
                       )}
@@ -257,7 +263,7 @@ const HRApplications = () => {
                           href={generateMailto(app)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`${styles.actionBtn} ${styles.actionBtnEmail}`}
+                          className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                         >
                           <Mail size={12} /> Email
                         </a>
@@ -266,13 +272,13 @@ const HRApplications = () => {
                           <>
                             <button
                               onClick={() => updateStatus(app.id, 'SUBMITTED_TO_CEO')}
-                              className={`${styles.actionBtn} ${styles.actionBtnSend}`}
+                              className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                             >
                               <ChevronRight size={12} /> Send to CEO
                             </button>
                             <button
                               onClick={() => setRejectModal({ show: true, appId: app.id, reason: '' })}
-                              className={`${styles.actionBtn} ${styles.actionBtnReject}`}
+                              className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                             >
                               <XCircle size={12} /> Reject
                             </button>
@@ -280,19 +286,19 @@ const HRApplications = () => {
                         )}
 
                         {app.status === 'SUBMITTED_TO_CEO' && (
-                          <div style={{ fontSize: 11, color: '#7B1FA2', fontWeight: 800, textTransform: 'uppercase', padding: '6px 0' }}>
+                          <div className={styles.appSub} style={{ color: 'var(--color-text-secondary)', padding: '6px 0' }}>
                             ⏳ Awaiting CEO
                           </div>
                         )}
 
                         {app.status === 'APPROVED' && (
                           <>
-                            <div style={{ fontSize: 11, color: '#228B22', fontWeight: 800, textTransform: 'uppercase', padding: '6px 8px' }}>
+                            <div className={styles.appSub} style={{ color: 'var(--color-success)', padding: '6px 8px' }}>
                               ✅ CEO Approved
                             </div>
                             <button
                               onClick={() => updateStatus(app.id, 'INFORMED')}
-                              className={`${styles.actionBtn} ${styles.actionBtnOk}`}
+                              className={`${styles.actionBtn} ${styles.actionBtnSuccess}`}
                             >
                               <CheckCircle size={12} /> Mark Informed
                             </button>
@@ -300,20 +306,20 @@ const HRApplications = () => {
                         )}
 
                         {app.status === 'INFORMED' && (
-                          <div style={{ fontSize: 11, color: '#1976D2', fontWeight: 800, textTransform: 'uppercase', padding: '6px 0' }}>
+                          <div className={styles.appSub} style={{ color: 'var(--color-primary)', padding: '6px 0' }}>
                             📬 Candidate Informed
                           </div>
                         )}
 
                         {app.status === 'REJECTED' && (
-                          <div style={{ fontSize: 11, color: '#D32F2F', fontWeight: 800, textTransform: 'uppercase', padding: '6px 0' }}>
+                          <div className={styles.appSub} style={{ color: 'var(--color-danger)', padding: '6px 0' }}>
                             ❌ Rejected
                           </div>
                         )}
 
                         <button
                           onClick={() => setDeleteModal({ show: true, appId: app.id })}
-                          className={`${styles.actionBtn} ${styles.actionBtnDelete}`}
+                          className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                         >
                           <X size={12} /> Delete
                         </button>
@@ -330,7 +336,7 @@ const HRApplications = () => {
       {/* ── REJECT MODAL ── */}
       {rejectModal.show && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide}>
+          <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Reject Application</h2>
               <button 
@@ -343,14 +349,14 @@ const HRApplications = () => {
             
             <div className={styles.modalBody}>
               <div className={styles.formGroup}>
-                <label>Rejection Reason *</label>
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Rejection Reason *</label>
                 <textarea
                   className={styles.input}
                   placeholder="Enter rejection reason manually..."
                   rows={4}
                   value={rejectModal.reason}
                   onChange={e => setRejectModal({ ...rejectModal, reason: e.target.value })}
-                  style={{ resize: 'vertical' }}
+                  style={{ marginTop: 6 }}
                 />
               </div>
             </div>
@@ -365,7 +371,8 @@ const HRApplications = () => {
               <button
                 disabled={!rejectModal.reason}
                 onClick={() => updateStatus(rejectModal.appId, 'REJECTED', rejectModal.reason)}
-                className={styles.saveBtn}
+                className={styles.confirmBtnDanger}
+                style={{ opacity: !rejectModal.reason ? 0.5 : 1, cursor: !rejectModal.reason ? 'not-allowed' : 'pointer' }}
               >
                 Confirm Reject
               </button>
@@ -377,7 +384,7 @@ const HRApplications = () => {
       {/* ── DELETE CONFIRM MODAL ── */}
       {deleteModal.show && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalWide} style={{ maxWidth: '400px' }}>
+          <div className={styles.modal} style={{ maxWidth: '400px' }}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Delete Application</h2>
               <button 
@@ -389,7 +396,7 @@ const HRApplications = () => {
             </div>
             
             <div className={styles.modalBody}>
-              <p style={{ padding: '20px', color: '#424242' }}>
+              <p>
                 Are you sure you want to delete this applicant? This action cannot be undone.
               </p>
             </div>
@@ -403,8 +410,7 @@ const HRApplications = () => {
               </button>
               <button
                 onClick={() => handleDelete(deleteModal.appId)}
-                className={`${styles.saveBtn} ${styles.deleteBtn}`}
-                style={{ backgroundColor: '#D32F2F' }}
+                className={styles.confirmBtnDanger}
               >
                 Delete
               </button>
