@@ -12,6 +12,7 @@ import {
   FileText,
   Info
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── PALETTE ──────────────────────────────────────────────────────────────────
 const G = {
