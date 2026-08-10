@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Truck, CheckCircle, XCircle, Search, RefreshCw, Eye, Package, Leaf, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
 import { triggerNotification } from '../../utils/ceoNotifications';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const api = axios.create({ baseURL: '' });
 api.interceptors.request.use(cfg => {
