@@ -8,8 +8,8 @@ const CentralAuditLog = () => {
   const { user } = useAuth();
 
   /* ── role helpers ── */
-  const roleStr = (user?.role_names || '').toLowerCase();
-  const deptStr = (user?.department_name || '').toLowerCase();
+  const roleStr = (Array.isArray(user?.roles) ? user.roles.join(',') : (user?.role_names || '')).toLowerCase();
+  const deptStr = (user?.department || user?.department_name || '').toLowerCase();
 
   const isSuperAdmin = roleStr.includes('super admin') || roleStr.includes('admin');
   const isCEO        = roleStr.includes('ceo') || roleStr.includes('owner');
@@ -17,9 +17,10 @@ const CentralAuditLog = () => {
   const isHR         = !isSuperAdmin && !isCEO && (
     roleStr.includes('hr') || deptStr.includes('human resource') || deptStr.includes('hr')
   );
+  const isStore      = !isSuperAdmin && !isCEO && roleStr.includes('store');
 
-  // HR users are locked to the HR module — they cannot change this
-  const lockedModule = isHR ? 'HR' : '';
+  // Lock modules based on role
+  const lockedModule = isHR ? 'HR' : (isStore ? 'Store' : '');
 
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -36,8 +37,10 @@ const CentralAuditLog = () => {
       // Always send the module filter — locked for HR, optional for others
       if (moduleFilter) params.module = moduleFilter;
 
+      // apiClient interceptor already returns response.data, so res = { status, data: [...] }
       const res = await auditService.getLogs(params);
-      setLogs(res.data?.data || []);
+      const logs = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setLogs(logs);
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,8 +66,13 @@ const CentralAuditLog = () => {
   };
 
   const safeParse = (val) => {
-    try { return JSON.stringify(JSON.parse(val), null, 2); }
-    catch { return val; }
+    if (!val) return 'None';
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return String(val);
+    }
   };
 
   return (
@@ -81,6 +89,8 @@ const CentralAuditLog = () => {
             <p className={styles.pageSubtitle}>
               {isHR
                 ? 'HR department activity log — your department records only.'
+                : isStore
+                ? 'General Store activity log — your module records only.'
                 : 'Append-only system record of all module activities.'}
             </p>
           </div>
@@ -134,7 +144,7 @@ const CentralAuditLog = () => {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {isHR ? 'HR Module Only' : 'Your Module Only'}
+            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : 'Your Module Only')}
           </div>
         )}
       </div>
@@ -177,7 +187,7 @@ const CentralAuditLog = () => {
                           )}
                           <td>
                             <div className={styles.actionText}>{log.action}</div>
-                            <div className={styles.recordId}>{log.record_identifier || '—'}</div>
+                            {log.action !== 'UPDATE' && <div className={styles.recordId}>{log.record_identifier || '—'}</div>}
                           </td>
                           <td>
                             <div className={styles.logDate}>{formatDate(log.created_at)}</div>
@@ -189,26 +199,70 @@ const CentralAuditLog = () => {
                             </button>
                           </td>
                         </tr>
-                        {expandedRow === log.id && (
-                          <tr className={styles.detailsRow}>
-                            <td colSpan={isHR ? 4 : 5}>
-                              <div className={styles.diffContainer}>
-                                <div className={styles.diffBox}>
-                                  <div className={styles.diffTitle}>Previous Value</div>
-                                  <pre className={styles.diffCode}>
-                                    {log.previous_value ? safeParse(log.previous_value) : 'None / Null'}
-                                  </pre>
+                        {expandedRow === log.id && (() => {
+                          const getObj = (val) => {
+                            if (!val) return null;
+                            try {
+                              const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+                              return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : null;
+                            } catch { return null; }
+                          };
+                          const pObj = getObj(log.previous_value);
+                          const nObj = getObj(log.new_value);
+                          
+                          if (pObj || nObj) {
+                            const keys = Array.from(new Set([...Object.keys(pObj || {}), ...Object.keys(nObj || {})]));
+                            return (
+                              <tr className={styles.detailsRow}>
+                                <td colSpan={isHR ? 4 : 5}>
+                                  <div className={styles.diffTableWrapper}>
+                                    <table className={styles.diffTable}>
+                                      <thead>
+                                        <tr>
+                                          <th>Field</th>
+                                          <th>Previous Value</th>
+                                          <th>New Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {keys.map(key => {
+                                          const pv = pObj && pObj[key] !== undefined && pObj[key] !== null ? String(pObj[key]) : '—';
+                                          const nv = nObj && nObj[key] !== undefined && nObj[key] !== null ? String(nObj[key]) : '—';
+                                          const isChanged = pv !== nv && pObj !== null && nObj !== null;
+                                          return (
+                                            <tr key={key} className={isChanged ? styles.diffChangedRow : ''}>
+                                              <td className={styles.diffField}>{key}</td>
+                                              <td className={styles.diffValue}>{pv}</td>
+                                              <td className={styles.diffValue}>{nv}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          // Fallback for arrays or raw strings
+                          return (
+                            <tr className={styles.detailsRow}>
+                              <td colSpan={isHR ? 4 : 5}>
+                                <div className={styles.diffContainer}>
+                                  <div className={styles.diffBox}>
+                                    <div className={styles.diffTitle}>Previous Value</div>
+                                    <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
+                                  </div>
+                                  <div className={styles.diffBox}>
+                                    <div className={styles.diffTitle}>New Value</div>
+                                    <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
+                                  </div>
                                 </div>
-                                <div className={styles.diffBox}>
-                                  <div className={styles.diffTitle}>New Value</div>
-                                  <pre className={styles.diffCode}>
-                                    {log.new_value ? safeParse(log.new_value) : 'None / Null'}
-                                  </pre>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                              </td>
+                            </tr>
+                          );
+                        })()}
                       </React.Fragment>
                     ))
                   )}
