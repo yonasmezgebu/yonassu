@@ -5,6 +5,7 @@ import AppRoutes from './routes/AppRoutes';
 import ScrollToTop from './components/ScrollToTop';
 import ContactPopup from './components/ContactPopup';
 import { SmartFooter } from './pages/LandingPage/ModernSections';
+import CentralAuditLog from './pages/admin/CentralAuditLog';
 import GlobalLoader from './components/ui/GlobalLoader';
 import './App.css';
 
