@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Download, Filter, CheckCircle, AlertCircle, X, TrendingUp, TrendingDown, RefreshCw, BarChart, Pencil, Trash2 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── GREEN UNIVERSITY PALETTE ─────────────────────────────────────────────────────────────
 const G = {
