@@ -9,6 +9,7 @@ const { testConnection } = require('./config/database');
 const { rateLimitMiddleware, authLimiter } = require('./api/middleware/rateLimit.middleware');
 const { errorHandler } = require('./api/middleware/errorHandler.middleware');
 const { securityHeaders } = require('./api/middleware/security.middleware');
+const { auditLog } = require('./api/middleware/audit.middleware');
 const routes = require('./api/routes');
 const cronService = require('./services/cronService');
 const app = express();
@@ -109,6 +110,7 @@ app.use('/api/v1', (req, res, next) => {
   });
   next();
 });
+app.use('/api/v1', auditLog);
 app.use('/api/v1', routes);
 app.get('/api/v1/ping', (req, res) => {
   res.json({
