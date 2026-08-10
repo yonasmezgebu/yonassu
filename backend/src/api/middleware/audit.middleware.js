@@ -23,10 +23,33 @@ const AUDIT_RESOURCES = [
   'suppliers',
   'products'
 ];
+const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+const MODULE_MAP = [
+  ['/hr-settings', 'HR'],
+  ['/hr', 'HR'],
+  ['/store-inventory', 'Inventory'],
+  ['/store', 'Store'],
+  ['/finance', 'Finance'],
+  ['/pharmacy', 'Pharmacy'],
+  ['/printing', 'Store'],
+  ['/procurement', 'Procurement'],
+  ['/purchase', 'Procurement'],
+  ['/suppliers', 'Procurement'],
+  ['/tenders', 'Procurement'],
+  ['/inventory', 'Inventory'],
+  ['/sales', 'Sales'],
+  ['/retail', 'Sales'],
+  ['/pos', 'Sales'],
+  ['/cars', 'Store'],
+  ['/tractors', 'Store'],
+  ['/rental', 'Store'],
+  ['/admin', 'Admin'],
+  ['/users', 'Admin'],
+  ['/auth', 'Admin'],
+  ['/audit-logs', 'Admin']
+];
 const shouldAudit = (req) => {
-  const method = req.method;
-  const isAuditMethod = Object.values(AUDIT_ACTIONS).flat().includes(method);
-  if (!isAuditMethod) return false;
+  if (MUTATING_METHODS.includes(req.method)) return true;
   const url = req.originalUrl;
   for (const resource of AUDIT_RESOURCES) {
     if (url.includes(`/${resource}`)) {
@@ -38,16 +61,28 @@ const shouldAudit = (req) => {
   }
   return false;
 };
+const extractModule = (url) => {
+  const clean = String(url || '').split('?')[0];
+  for (const [prefix, module] of MODULE_MAP) {
+    if (clean.startsWith('/api/v1' + prefix)) return module;
+  }
+  return 'General';
+};
 const extractResource = (url) => {
+  const clean = String(url || '').split('?')[0];
   for (const resource of AUDIT_RESOURCES) {
-    if (url.includes(`/${resource}`)) {
+    if (clean.includes(`/${resource}`)) {
       return resource;
     }
   }
-  if (url.includes('/auth/login')) return 'auth';
-  if (url.includes('/auth/logout')) return 'auth';
-  if (url.includes('/auth/change-password')) return 'auth';
-  if (url.includes('/auth/reset-password')) return 'auth';
+  if (clean.includes('/auth/login')) return 'auth';
+  if (clean.includes('/auth/logout')) return 'auth';
+  if (clean.includes('/auth/change-password')) return 'auth';
+  if (clean.includes('/auth/reset-password')) return 'auth';
+  const seg = clean.replace('/api/v1', '').split('/').filter(Boolean);
+  for (let i = seg.length - 1; i >= 0; i--) {
+    if (!/^\d+$/.test(seg[i])) return seg[i].replace(/-/g, '_') || 'unknown';
+  }
   return 'unknown';
 };
 const extractResourceId = (url) => {
@@ -162,6 +197,22 @@ const auditLog = async (req, res, next) => {
       error_message: errorMessage,
       created_at: new Date()
     };
+    if (MUTATING_METHODS.includes(method)) {
+      audit(action, userId, {
+        ip,
+        userAgent,
+        resource,
+        resourceId,
+        beforeState,
+        afterState,
+        status: isSuccess ? 'success' : 'failure',
+        reason: errorMessage,
+        responseTime: `${responseTime}ms`,
+        module: extractModule(url),
+        recordIdentifier: resourceId || (responseBody?.data?.id != null ? String(responseBody.data.id) : null)
+      });
+      return;
+    }
     if ((action === 'CREATE' || action === 'UPDATE') && req.body) {
       const safeBody = { ...req.body };
       delete safeBody.password;
@@ -170,17 +221,6 @@ const auditLog = async (req, res, next) => {
       delete safeBody.two_factor_code;
       auditEntry.request_body = safeBody;
     }
-    audit(action, userId, {
-      ip,
-      userAgent,
-      resource,
-      resourceId,
-      beforeState,
-      afterState,
-      status: isSuccess ? 'success' : 'failure',
-      reason: errorMessage,
-      responseTime: `${responseTime}ms`
-    });
     try {
       await db('audit_logs').insert(auditEntry);
     } catch (error) {
