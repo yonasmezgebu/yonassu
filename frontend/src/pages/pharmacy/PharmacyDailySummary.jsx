@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import authService from '../../services/authService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BG  = '#D5DCF0';
 const C   = '#5A6F9A';
