@@ -6,6 +6,7 @@ import {
   AlertCircle, CalendarCheck, Activity, TrendingUp,
   RefreshCcw, CheckCircle2
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const CEOFinancialReport = () => {
   const [loading, setLoading] = useState(true);
