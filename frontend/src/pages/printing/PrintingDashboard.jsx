@@ -33,6 +33,7 @@ import PrintingFinanceReview from './PrintingFinanceReview';
 
 import PrintingContact from './PrintingContact';
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './PrintingDashboard.module.css';
 
 const PrintingDashboard = () => {
@@ -77,6 +78,8 @@ const PrintingDashboard = () => {
 
     { type: 'divider' },
     { label: 'Contact', icon: 'phone', children: [ { label: 'Setting Contact', path: '/printing-manager/contact', icon: 'settings' }, { label: 'Chat', path: '/printing-manager/chat', icon: 'message-circle', color: '#6B8E23' } ] },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/printing-manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -118,6 +121,7 @@ const PrintingDashboard = () => {
             {/* Contact Settings */}
             <Route path="contact" element={<PrintingContact />} />
             <Route path="chat" element={<ManagerChat />} />
+            <Route path="audit-log" element={<CentralAuditLog />} />
 
 
             <Route path="/" element={<Navigate to="overview" replace />} />
