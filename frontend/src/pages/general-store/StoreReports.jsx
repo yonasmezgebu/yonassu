@@ -23,9 +23,218 @@ api.interceptors.request.use(cfg => {
 /* ─── Shared UI & Animations ────────────────────────────────────────────── */
 const GlobalStyles = () => (
   <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-warning: #D97706;
+      --color-danger: #DC2626;
+      --color-info: #0284C7;
+    }
+
     @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    .report-row:hover { background: ${G.sage}33 !important; }
+
+    /* Layout & Spacing */
+    .report-wrapper {
+      padding: 24px;
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-page);
+      min-height: 100vh;
+    }
+    @media (max-width: 1024px) { .report-wrapper { padding: 16px; } }
+    @media (max-width: 768px) { .report-wrapper { padding: 12px; } }
+
+    /* Cards */
+    .card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      min-width: 700px;
+      margin: 0 -24px;
+    }
+    .css-table {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    .css-table-header {
+      display: grid;
+      background: #F9FAFB;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .css-table-row {
+      display: grid;
+      align-items: center;
+      min-height: 48px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--color-border);
+      transition: background-color 150ms ease;
+      animation: rowIn 0.3s ease forwards;
+    }
+    .css-table-row:hover {
+      background-color: #FEF3C7; /* Yellow hover as requested */
+    }
+    .css-table-row:last-child {
+      border-bottom: none;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms ease-in-out;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--color-primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+    }
+
+    /* Tabs */
+    .tabs-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+    }
+    .tabs-container::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      padding: 0 16px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--color-text-secondary);
+      transition: all 150ms ease;
+      white-space: nowrap;
+      scroll-snap-align: start;
+    }
+    .tab-btn:hover {
+      background: #FEF3C7;
+      color: var(--color-warning);
+    }
+    .tab-btn.active {
+      background: #EFF6FF;
+      color: var(--color-primary);
+      border-color: rgba(37,99,235,0.2);
+    }
+    
+    /* Segmented Spinner */
+    .segmented-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      border-style: dashed;
+      animation: spin 1.2s linear infinite;
+      margin: 40px auto;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* Page title */
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    /* Outline button (e.g. Print) */
+    .btn-outline {
+      background: #fff;
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 150ms ease;
+      white-space: nowrap;
+    }
+    .btn-outline:hover {
+      background: #FEF3C7;
+      border-color: var(--color-warning);
+      color: var(--color-warning);
+    }
+
+    /* Form select */
+    .form-select {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--color-text-primary);
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .form-select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    /* Control Panel */
+    .control-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+
   `}</style>
 );
 
@@ -102,23 +311,23 @@ const StoreReports = () => {
     return (
       <div>
         {canViewValues && !filteredDept && (
-          <div style={{ background: G.dark, color: '#fff', padding: '20px 30px', marginBottom: 24, border: `3px solid ${G.lime}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: G.sage }}>Grand Total Value (All Departments)</div>
+          <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--color-bg-card)", borderLeft: "4px solid var(--color-primary)" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: "var(--color-text-secondary)" }}>Grand Total Value (All Departments)</div>
             <div style={{ fontSize: 28, fontWeight: 900 }}>ETB {grandTotalValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
           </div>
         )}
 
         {Object.entries(grouped).map(([d, g]) => (
-          <div key={d} style={{ marginBottom: 40, border: `3px solid ${G.sage}`, background: '#fff' }}>
-            <div style={{ background: G.sage, padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: G.dark, textTransform: 'uppercase' }}>{d} Department</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: G.dark }}>
+          <div key={d} className="card">
+            <div className="card-header">
+              <div style={{ fontSize: 18, fontWeight: 900, color: "var(--color-text-primary)", textTransform: 'uppercase' }}>{d} Department</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text-primary)" }}>
                 Total Items: {g.count.toLocaleString()}
                 {canViewValues && ` | Value: ETB ${g.totalValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`}
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: canViewValues ? '2fr 1fr 1fr 1fr 1fr 1fr' : '3fr 1fr 1fr 1fr', background: G.forest, color: '#fff', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
+            <div className="table-container"><div className="css-table"><div className="css-table-header" style={{ gridTemplateColumns: canViewValues ? "2fr 1fr 1fr 1fr 1fr 1fr" : "3fr 1fr 1fr 1fr" }}>
               <div style={{ padding: '12px 16px' }}>Item Name</div>
               <div style={{ padding: '12px 16px' }}>Category</div>
               <div style={{ padding: '12px 16px' }}>Quantity</div>
@@ -128,15 +337,17 @@ const StoreReports = () => {
             </div>
 
             {g.items.map((m, i) => (
-              <div key={m.id} className="report-row" style={{ display: 'grid', gridTemplateColumns: canViewValues ? '2fr 1fr 1fr 1fr 1fr 1fr' : '3fr 1fr 1fr 1fr', borderBottom: `1px solid ${G.light}`, fontSize: 14, color: G.darkGray, animation: `rowIn 0.3s ease forwards`, animationDelay: `${i*0.05}s`, opacity: 0 }}>
+              <div key={m.id} className="css-table-row" style={{ gridTemplateColumns: canViewValues ? '2fr 1fr 1fr 1fr 1fr 1fr' : '3fr 1fr 1fr 1fr' }}>
                 <div style={{ padding: '12px 16px', fontWeight: 800 }}>{m.material_name}</div>
                 <div style={{ padding: '12px 16px' }}>{m.category}</div>
-                <div style={{ padding: '12px 16px', fontWeight: 800, color: G.forest }}>{parseFloat(m.quantity_in_store).toLocaleString()}</div>
+                <div style={{ padding: '12px 16px', fontWeight: 800, color: "var(--color-success)" }}>{parseFloat(m.quantity_in_store).toLocaleString()}</div>
                 <div style={{ padding: '12px 16px' }}>{m.unit}</div>
                 {canViewValues && <div style={{ padding: '12px 16px' }}>{parseFloat(m.unit_value).toLocaleString()}</div>}
                 {canViewValues && <div style={{ padding: '12px 16px', fontWeight: 800 }}>{parseFloat(m.total_value).toLocaleString()}</div>}
               </div>
             ))}
+            </div>
+          </div>
           </div>
         ))}
       </div>
@@ -146,8 +357,9 @@ const StoreReports = () => {
   const renderIssuedItems = () => {
     const issues = logs.filter(l => l.action_type === 'Issue to Department');
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: '#fff' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1.5fr', background: G.forest, color: '#fff', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div className="card">
+        <div className="table-container"><div className="css-table">
+        <div className="css-table-header" style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1.5fr' }}>
           <div style={{ padding: '12px 16px' }}>Date</div>
           <div style={{ padding: '12px 16px' }}>Item ID</div>
           <div style={{ padding: '12px 16px' }}>Quantity</div>
@@ -155,17 +367,19 @@ const StoreReports = () => {
           <div style={{ padding: '12px 16px' }}>Issued By</div>
           <div style={{ padding: '12px 16px' }}>Notes (Req/Job)</div>
         </div>
-        {issues.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: G.olive, fontWeight: 700 }}>No items issued yet.</div> : null}
+        {issues.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: "var(--color-text-muted)", fontWeight: 700 }}>No items issued yet.</div> : null}
         {issues.map((l, i) => (
-          <div key={l.id} className="report-row" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1.5fr', borderBottom: `1px solid ${G.light}`, fontSize: 13, color: G.darkGray, animation: `rowIn 0.3s ease forwards`, animationDelay: `${i*0.05}s`, opacity: 0 }}>
+          <div key={l.id} className="css-table-row" style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1.5fr' }}>
             <div style={{ padding: '12px 16px', fontWeight: 800 }}>{new Date(l.date_time).toLocaleString()}</div>
             <div style={{ padding: '12px 16px' }}>{l.item_id}</div>
-            <div style={{ padding: '12px 16px', fontWeight: 800, color: G.orange }}>{l.quantity}</div>
+            <div style={{ padding: '12px 16px', fontWeight: 800, color: "var(--color-warning)" }}>{l.quantity}</div>
             <div style={{ padding: '12px 16px' }}><DeptBadge dept={l.department} /></div>
             <div style={{ padding: '12px 16px' }}>{l.moved_by}</div>
             <div style={{ padding: '12px 16px', fontSize: 11 }}>{l.notes}</div>
           </div>
         ))}
+        </div>
+        </div>
       </div>
     );
   };
@@ -173,24 +387,27 @@ const StoreReports = () => {
   const renderLowStock = () => {
     const low = materials.filter(m => parseFloat(m.quantity_in_store) <= parseFloat(m.reorder_level || 10));
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: '#fff' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', background: G.red, color: '#fff', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div className="card">
+        <div className="table-container"><div className="css-table">
+        <div className="css-table-header" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr' }}>
           <div style={{ padding: '12px 16px' }}>Item Name</div>
           <div style={{ padding: '12px 16px' }}>Department</div>
           <div style={{ padding: '12px 16px' }}>Current Qty</div>
           <div style={{ padding: '12px 16px' }}>Reorder Level</div>
           <div style={{ padding: '12px 16px' }}>Status</div>
         </div>
-        {low.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: G.olive, fontWeight: 700 }}>No items are low on stock.</div> : null}
+        {low.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: "var(--color-text-muted)", fontWeight: 700 }}>No items are low on stock.</div> : null}
         {low.map((m, i) => (
-          <div key={m.id} className="report-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', borderBottom: `1px solid ${G.light}`, fontSize: 14, color: G.darkGray, animation: `rowIn 0.3s ease forwards`, animationDelay: `${i*0.05}s`, opacity: 0 }}>
+          <div key={m.id} className="css-table-row" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr' }}>
             <div style={{ padding: '12px 16px', fontWeight: 800 }}>{m.material_name}</div>
             <div style={{ padding: '12px 16px' }}><DeptBadge dept={m.department} /></div>
-            <div style={{ padding: '12px 16px', fontWeight: 900, color: G.red }}>{parseFloat(m.quantity_in_store).toLocaleString()} {m.unit}</div>
+            <div style={{ padding: '12px 16px', fontWeight: 900, color: "var(--color-danger)" }}>{parseFloat(m.quantity_in_store).toLocaleString()} {m.unit}</div>
             <div style={{ padding: '12px 16px', fontWeight: 800 }}>{m.reorder_level} {m.unit}</div>
-            <div style={{ padding: '12px 16px', color: G.red, fontWeight: 800 }}>Reorder Needed!</div>
+            <div style={{ padding: '12px 16px', color: "var(--color-danger)", fontWeight: 800 }}>Reorder Needed!</div>
           </div>
         ))}
+        </div>
+        </div>
       </div>
     );
   };
@@ -199,8 +416,9 @@ const StoreReports = () => {
     // Include both 'Issue' and other physical movements
     const moves = logs.filter(l => ['Move to Production','Consume','Return to Store', 'Issue to Department'].includes(l.action_type));
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: '#fff' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr 0.8fr 1fr 1fr 1.5fr', background: G.forest, color: '#fff', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div className="card">
+        <div className="table-container"><div className="css-table">
+        <div className="css-table-header" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr 0.8fr 1fr 1fr 1.5fr' }}>
           <div style={{ padding: '12px 10px' }}>Date</div>
           <div style={{ padding: '12px 10px' }}>Type</div>
           <div style={{ padding: '12px 10px' }}>Item ID</div>
@@ -213,30 +431,33 @@ const StoreReports = () => {
           <div style={{ padding: '12px 10px' }}>Approved</div>
           <div style={{ padding: '12px 10px' }}>Notes</div>
         </div>
-        {moves.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: G.olive, fontWeight: 700 }}>No transfer movements found.</div> : null}
+        {moves.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: "var(--color-text-muted)", fontWeight: 700 }}>No transfer movements found.</div> : null}
         {moves.map((l, i) => (
-          <div key={l.id} className="report-row" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr 0.8fr 1fr 1fr 1.5fr', borderBottom: `1px solid ${G.light}`, fontSize: 11, color: G.darkGray, animation: `rowIn 0.3s ease forwards`, animationDelay: `${i*0.05}s`, opacity: 0 }}>
+          <div key={l.id} className="css-table-row" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr 0.8fr 1fr 1fr 1.5fr' }}>
             <div style={{ padding: '12px 10px', fontWeight: 800 }}>{new Date(l.date_time).toLocaleDateString()}</div>
             <div style={{ padding: '12px 10px', fontWeight: 800 }}>{l.item_type}</div>
             <div style={{ padding: '12px 10px', fontWeight: 800 }}>{l.item_id}</div>
-            <div style={{ padding: '12px 10px', fontWeight: 800, color: G.emerald }}>{l.action_type}</div>
+            <div style={{ padding: '12px 10px', fontWeight: 800, color: "var(--color-primary)" }}>{l.action_type}</div>
             <div style={{ padding: '12px 10px' }}><DeptBadge dept={l.department} /></div>
             <div style={{ padding: '12px 10px' }}>{l.from_location}</div>
             <div style={{ padding: '12px 10px' }}>{l.to_location}</div>
-            <div style={{ padding: '12px 10px', fontWeight: 800, color: G.orange }}>{l.quantity || '-'}</div>
+            <div style={{ padding: '12px 10px', fontWeight: 800, color: "var(--color-warning)" }}>{l.quantity || '-'}</div>
             <div style={{ padding: '12px 10px' }}>{l.moved_by}</div>
             <div style={{ padding: '12px 10px' }}>{l.approved_by || '-'}</div>
             <div style={{ padding: '12px 10px', fontSize: 10 }}>{l.notes}</div>
           </div>
         ))}
+        </div>
+        </div>
       </div>
     );
   };
 
   const renderAuditLog = () => {
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: '#fff' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 0.5fr 1fr 1.5fr', background: G.dark, color: '#fff', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div className="card">
+        <div className="table-container"><div className="css-table">
+        <div className="css-table-header" style={{ gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 0.5fr 1fr 1.5fr' }}>
           <div style={{ padding: '12px 10px' }}>Log ID</div>
           <div style={{ padding: '12px 10px' }}>Date / Time</div>
           <div style={{ padding: '12px 10px' }}>Action Type</div>
@@ -246,12 +467,12 @@ const StoreReports = () => {
           <div style={{ padding: '12px 10px' }}>User</div>
           <div style={{ padding: '12px 10px' }}>Notes (Immutable)</div>
         </div>
-        {logs.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: G.olive, fontWeight: 700 }}>Log is empty.</div> : null}
+        {logs.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: "var(--color-text-muted)", fontWeight: 700 }}>Log is empty.</div> : null}
         {logs.map((l, i) => (
-          <div key={l.id} className="report-row" style={{ display: 'grid', gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 0.5fr 1fr 1.5fr', borderBottom: `1px solid ${G.light}`, fontSize: 12, color: G.darkGray, animation: `rowIn 0.3s ease forwards`, animationDelay: `${i*0.03}s`, opacity: 0 }}>
-            <div style={{ padding: '12px 10px', fontWeight: 900, color: G.sage }}>#{l.id}</div>
+          <div key={l.id} className="css-table-row" style={{ gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 0.5fr 1fr 1.5fr' }}>
+            <div style={{ padding: '12px 10px', fontWeight: 900, color: "var(--color-text-secondary)" }}>#{l.id}</div>
             <div style={{ padding: '12px 10px' }}>{new Date(l.date_time).toLocaleString()}</div>
-            <div style={{ padding: '12px 10px', fontWeight: 800, color: G.forest }}>{l.action_type}</div>
+            <div style={{ padding: '12px 10px', fontWeight: 800, color: "var(--color-success)" }}>{l.action_type}</div>
             <div style={{ padding: '12px 10px', fontWeight: 700 }}>{l.item_id}</div>
             <div style={{ padding: '12px 10px' }}><DeptBadge dept={l.department} /></div>
             <div style={{ padding: '12px 10px', fontWeight: 800 }}>{l.quantity || '-'}</div>
@@ -259,6 +480,8 @@ const StoreReports = () => {
             <div style={{ padding: '12px 10px', fontSize: 10, fontStyle: 'italic' }}>{l.notes}</div>
           </div>
         ))}
+        </div>
+        </div>
       </div>
     );
   };
@@ -325,14 +548,14 @@ const StoreReports = () => {
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
-            h1 { font-size: 20px; color: #1B5E20; text-transform: uppercase; border-bottom: 3px solid #228B22; padding-bottom: 8px; margin-bottom: 4px; }
+            h1 { font-size: 20px; color: #111827; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px; margin-bottom: 4px; }
             h3 { font-size: 13px; }
             .meta { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 18px; padding-top: 4px; }
             table { width: 100%; border-collapse: collapse; margin-top: 4px; page-break-inside: auto; }
-            thead { background: #1B5E20; color: #fff; }
+            thead { background: #F9FAFB; color: #6B7280; }
             th { padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #aaa; }
             td { padding: 7px 10px; border: 1px solid #ddd; font-size: 11px; word-break: break-word; }
-            tr:nth-child(even) td { background: #f0fdf4; }
+            tr:nth-child(even) td { background: #F9FAFB; }
             tr { page-break-inside: avoid; }
             @page { margin: 15mm; }
           </style>
@@ -352,87 +575,73 @@ const StoreReports = () => {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', width: '100%', background: `linear-gradient(160deg, #eafaea, #f0f9f0 50%, ${G.light})`, fontFamily: "'Inter',sans-serif", paddingBottom: 60 }}>
+    <div className="report-wrapper"><GlobalStyles />
       
       {/* ── HEADER ── */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ background: `linear-gradient(90deg, ${G.dark} 0%, ${G.forest} 55%, ${G.emerald} 100%)`, padding: '28px 40px', borderBottom: `6px solid ${G.lime}`, boxShadow: `0 8px 32px ${G.dark}55`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="card">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:14 }}>
             <span style={{ fontSize: 40 }}>📊</span>
             <div>
-              <h1 style={{ margin:0, fontSize:32, fontWeight:900, color:'#fff', letterSpacing:1, textTransform:'uppercase' }}>Reports & Audit Log</h1>
-              <p style={{ margin:'6px 0 0', color: G.sage, fontSize:14, fontWeight:600, letterSpacing:0.5 }}>Comprehensive stock, value, and accountability tracking</p>
+              <h2 className="page-title">Reports & Audit Log</h2>
+              <p style={{ color: "var(--color-text-secondary)", fontSize:14 }}>Comprehensive stock, value, and accountability tracking</p>
             </div>
           </div>
           
-          <button onClick={handlePrint} style={{ background: '#fff', color: G.dark, padding: '12px 24px', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, border: 'none', borderRadius: 0, cursor: 'pointer', boxShadow: `4px 4px 0 ${G.sage}`, display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+          <button onClick={handlePrint} className="btn btn-outline">
             🖨️ Print Report
           </button>
         </div>
+      </div>
 
-        {/* ── ROLE SWITCHER (For testing Access Rules) ── */}
-        <div style={{ background: G.darkGray, padding: '16px 40px', display: 'flex', gap: 24, alignItems: 'center', color: '#fff', borderBottom: `4px solid ${G.dark}` }}>
-          <div style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, color: G.sage }}>Testing Control Panel:</div>
-          
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Current Role:</span>
-            <select value={role} onChange={e => setRole(e.target.value)} style={{ padding: '6px 12px', border: 'none', borderRadius: 0, fontWeight: 800, cursor: 'pointer', outline: 'none', color: G.dark }}>
-              {ROLES.map(r => <option key={r}>{r}</option>)}
+      {/* ── ROLE SWITCHER (For testing Access Rules) ── */}
+      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: "var(--color-text-secondary)" }}>Testing Panel:</div>
+        
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Role:</span>
+          <select value={role} onChange={e => setRole(e.target.value)} className="form-select">
+            {ROLES.map(r => <option key={r}>{r}</option>)}
+          </select>
+        </div>
+
+        {role === 'Supervisor' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Department:</span>
+            <select value={deptContext} onChange={e => setDeptContext(e.target.value)} className="form-select">
+              {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
             </select>
           </div>
+        )}
 
-          {role === 'Supervisor' && (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>Department:</span>
-              <select value={deptContext} onChange={e => setDeptContext(e.target.value)} style={{ padding: '6px 12px', border: 'none', borderRadius: 0, fontWeight: 800, cursor: 'pointer', outline: 'none', color: G.dark }}>
-                {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: G.lime }}>
-            {role === 'General Store Keeper' && 'Sees all departments, no values.'}
-            {role === 'Supervisor' && `Sees ONLY ${deptContext} department, no values.`}
-            {role === 'Finance' && 'Sees ALL departments AND internal values.'}
-            {role === 'CEO' && 'Sees ALL departments AND internal values (Read-only).'}
-          </div>
-        </div>
-
-        {/* ── MAIN CONTENT (100% WIDTH) ── */}
-        <div style={{ padding: '40px 0 0 0' }}>
-          
-          {/* TABS */}
-          <div style={{ display: 'flex', width: '100%', marginBottom: 24 }}>
-            {TABS.map(t => (
-              <button key={t} onClick={() => setActiveTab(t)} style={{
-                flex: 1, padding: '14px 0', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer',
-                border: 'none', borderRadius: 0, transition: 'all 0.2s',
-                background: activeTab === t ? G.forest : '#fff',
-                color: activeTab === t ? '#fff' : G.darkGray,
-                boxShadow: activeTab === t ? `4px 4px 0 ${G.dark}` : `4px 4px 0 ${G.sage}`,
-                borderBottom: activeTab === t ? 'none' : `3px solid ${G.sage}`,
-                borderRight: `1px solid ${G.light}`
-              }}>
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* TAB CONTENT */}
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 100, fontSize: 20, fontWeight: 900, color: G.olive }}>🍃 Loading {activeTab}...</div>
-          ) : (
-            <div id="report-print-area">
-              {activeTab === 'Current Stock' && renderCurrentStock()}
-              {activeTab === 'Issued Items'  && renderIssuedItems()}
-              {activeTab === 'Low Stock'     && renderLowStock()}
-              {activeTab === 'Movements'     && renderMovements()}
-              {activeTab === 'Audit Log'     && renderAuditLog()}
-            </div>
-          )}
-
+        <div style={{ marginLeft: 'auto', fontSize: 13, color: "var(--color-text-muted)" }}>
+          {role === 'General Store Keeper' && 'Sees all departments, no values.'}
+          {role === 'Supervisor' && `Sees ONLY ${deptContext} department, no values.`}
+          {role === 'Finance' && 'Sees ALL departments AND internal values.'}
+          {role === 'CEO' && 'Sees ALL departments AND internal values (Read-only).'}
         </div>
       </div>
+
+      {/* ── MAIN CONTENT ── */}
+      <div className="tabs-container">
+        {TABS.map(t => (
+          <button key={t} onClick={() => setActiveTab(t)} className={`tab-btn ${activeTab === t ? "active" : ""}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="segmented-spinner"></div>
+      ) : (
+        <div id="report-print-area">
+          {activeTab === 'Current Stock' && renderCurrentStock()}
+          {activeTab === 'Issued Items'  && renderIssuedItems()}
+          {activeTab === 'Low Stock'     && renderLowStock()}
+          {activeTab === 'Movements'     && renderMovements()}
+          {activeTab === 'Audit Log'     && renderAuditLog()}
+        </div>
+      )}
     </div>
   );
 };
