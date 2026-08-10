@@ -613,6 +613,9 @@ const GSI_CSS = `
   .gsi-refresh:hover { color: #B45309; border-color: #EAB308; box-shadow: 0 4px 12px rgba(234,179,8,0.18); transform: translateY(-1px); }
   .gsi-refresh:disabled { opacity: 0.55; cursor: not-allowed; }
   .gsi-refresh:focus-visible { outline: 3px solid rgba(234,179,8,0.45); outline-offset: 2px; }
+  .gsi-print { height: 36px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border, #E5E7EB); border-radius: 8px; background: var(--color-bg-card, #fff); color: var(--color-text-primary, #111827); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 150ms ease-in-out; }
+  .gsi-print:hover { color: #2563EB; border-color: #2563EB; background: #EFF6FF; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+
 
   /* ── Stat cards ── */
   .gsi-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
@@ -633,11 +636,13 @@ const GSI_CSS = `
   /* ── Table ── */
   .gsi-table-card { overflow: hidden; background: var(--color-bg-card, #fff); border: 1px solid var(--color-border, #E5E7EB); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
   .gsi-table-wrap { overflow-x: auto; }
-  .gsi-thead, .gsi-tr { display: grid; grid-template-columns: 48px 96px 1.8fr 1.1fr 1.2fr 0.8fr 0.7fr 0.7fr 1fr 1.1fr 0.85fr 0.9fr; min-width: 880px; width: 100%; align-items: center; }
+  .gsi-thead, .gsi-tr { display: grid; grid-template-columns: 48px 1.8fr 1.1fr 1.2fr 0.8fr 0.7fr 0.7fr 1fr 1.1fr 0.85fr 1fr; min-width: 880px; width: 100%; align-items: center; }
   .gsi-th { padding: 12px 10px; background: #F9FAFB; border-bottom: 1px solid var(--color-border, #E5E7EB); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-secondary, #6B7280); white-space: nowrap; }
   .gsi-th--num { text-align: right; }
   .gsi-tr { transition: background 150ms ease-in-out; border-bottom: 1px solid #F3F4F6; }
   .gsi-tr:hover { background: #FEFCE8; }
+  .gsi-tr--grand-total { background: #FEF3C7 !important; border-top: 2px solid #F59E0B; border-bottom: none; font-weight: 700; color: #92400E; }
+  .gsi-tr--grand-total .gsi-td { padding: 16px 10px; font-size: 14px; }
   .gsi-tr:hover .gsi-num { color: #CA8A04; }
   .gsi-tr--low { background: rgba(234,179,8,0.06); }
   .gsi-tr--low:hover { background: rgba(234,179,8,0.10); }
@@ -826,6 +831,83 @@ export const GSInventory = () => {
   ];
   const numCols = ['IN STORE', 'REORDER', 'UNIT', 'UNIT PRICE', 'TOTAL VALUE'];
 
+  const handlePrint = () => {
+    const totalVal = filtered.reduce((s, m) => s + parseFloat(m.total_value || 0), 0);
+    const dateStr = new Date().toLocaleString();
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Consumables Inventory</title>
+        <style>
+          @page { size: A4 landscape; margin: 15mm; }
+          body { font-family: 'Segoe UI', system-ui, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 11px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #111827; padding-bottom: 10px; }
+          .header h1 { margin: 0 0 5px 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+          .header p { margin: 0; color: #4B5563; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #F3F4F6; padding: 8px; text-align: left; border-bottom: 2px solid #D1D5DB; font-size: 10px; text-transform: uppercase; color: #374151; }
+          td { padding: 6px 8px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+          .num { text-align: right; font-variant-numeric: tabular-nums; }
+          .grand-total { background: #F9FAFB; font-weight: bold; border-top: 2px solid #111827; }
+          .grand-total td { padding: 10px 8px; font-size: 12px; }
+          .footer { text-align: center; font-size: 10px; color: #6B7280; margin-top: 30px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>SUTANA University</h1>
+          <p>General Store — Consumables Inventory</p>
+          <p>Generated on: ${dateStr} | Total Items: ${filtered.length}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Item ID</th>
+              <th>Item Name</th>
+              <th>Category</th>
+              <th>Department</th>
+              <th class="num">In Store</th>
+              <th class="num">Reorder</th>
+              <th>Unit</th>
+              <th class="num">Unit Price (ETB)</th>
+              <th class="num">Total Value (ETB)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map((m, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${m.material_id}</td>
+                <td><strong>${m.material_name}</strong></td>
+                <td>${m.category}</td>
+                <td>${m.department}</td>
+                <td class="num">${parseFloat(m.quantity_in_store).toLocaleString()}</td>
+                <td class="num">${parseInt(m.reorder_level) || 10}</td>
+                <td>${m.unit}</td>
+                <td class="num">${m.unit_value > 0 ? parseFloat(m.unit_value).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</td>
+                <td class="num"><strong>${m.total_value > 0 ? parseFloat(m.total_value).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</strong></td>
+              </tr>
+            `).join('')}
+            <tr class="grand-total">
+              <td colspan="9" class="num" style="padding-right: 15px;">GRAND TOTAL VALUE (ETB):</td>
+              <td class="num">${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="footer">Printed from SUTANA General Store Operations System</div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  };
+
   return (
     <div className="gsi-home">
       <style>{GSI_CSS}</style>
@@ -836,10 +918,20 @@ export const GSInventory = () => {
           <h1 className="gsi-title">📦 Consumables Inventory</h1>
           <p className="gsi-subtitle">University General Store · All Departments · All Materials</p>
         </div>
-        <button className="gsi-refresh" onClick={load} disabled={loading}>
-          {loading && <SegmentedSpinner size={16} color="#2563EB" />}
-          <span>REFRESH</span>
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="gsi-print" onClick={handlePrint}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>PRINT</span>
+          </button>
+          <button className="gsi-refresh" onClick={load} disabled={loading}>
+            {loading && <SegmentedSpinner size={16} color="#2563EB" />}
+            <span>REFRESH</span>
+          </button>
+        </div>
       </div>
 
       {/* ── STAT CARDS ── */}
@@ -887,7 +979,7 @@ export const GSInventory = () => {
         <div className="gsi-table-card">
           <div className="gsi-table-wrap">
             <div className="gsi-thead">
-              {['NO', 'ID', 'ITEM NAME', 'CATEGORY', 'DEPARTMENT', 'IN STORE', 'REORDER', 'UNIT', 'UNIT PRICE', 'TOTAL VALUE', 'STATUS', 'ACTION'].map(h => (
+              {['NO', 'ITEM NAME', 'CATEGORY', 'DEPARTMENT', 'IN STORE', 'REORDER', 'UNIT', 'UNIT PRICE', 'TOTAL VALUE', 'STATUS', 'ACTION'].map(h => (
                 <div key={h} className={`gsi-th${numCols.includes(h) ? ' gsi-th--num' : ''}`}>{h}</div>
               ))}
             </div>
@@ -901,9 +993,6 @@ export const GSInventory = () => {
               return (
                 <div key={m.id} className={`gsi-tr${low ? ' gsi-tr--low' : ''}`}>
                   <div className="gsi-td gsi-td--idx gsi-num">{i + 1}</div>
-                  <div className="gsi-td">
-                    <span className="gsi-badge gsi-badge--id">{m.material_id}</span>
-                  </div>
                   <div className="gsi-td gsi-td--strong">{m.material_name}</div>
                   <div className="gsi-td">
                     <span className="gsi-badge gsi-badge--cat">{m.category}</span>
@@ -922,17 +1011,29 @@ export const GSInventory = () => {
                       : <span className="gsi-badge gsi-badge--ok">✓ OK</span>}
                   </div>
                   <div className="gsi-td">
-                    <button className="gsi-upd-btn" onClick={() => setUpdatingItem({ ...m })}>✏ UPDATE</button>
+                    {m.pending_approval ? (
+                      <span className="gsi-badge" style={{ background: '#FEF3C7', color: '#92400E' }}>⏳ WAITING CEO</span>
+                    ) : (
+                      <button className="gsi-upd-btn" onClick={() => setUpdatingItem({ ...m })}>✏ UPDATE</button>
+                    )}
                   </div>
                 </div>
               );
             })}
+            {filtered.length > 0 && (
+              <div className="gsi-tr gsi-tr--grand-total">
+                <div className="gsi-td" style={{ gridColumn: '1 / 9', textAlign: 'right', paddingRight: '12px' }}>GRAND TOTAL VALUE:</div>
+                <div className="gsi-td gsi-td--num" style={{ gridColumn: '9 / 10' }}>
+                  ETB {filtered.reduce((s, m) => s + parseFloat(m.total_value || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ gridColumn: '10 / 12' }}></div>
+              </div>
+            )}
           </div>
 
           {filtered.length > 0 && (
             <div className="gsi-foot">
               <span>Showing {filtered.length} of {items.length} items</span>
-              <span className="gsi-foot-total">TOTAL STORE VALUE: ETB {filtered.reduce((s, m) => s + parseFloat(m.total_value || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           )}
         </div>
