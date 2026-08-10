@@ -178,7 +178,6 @@ export default function ContactMessagesManager() {
                 })
               )}
             </tbody>
-            </tbody>
           </table>
         </div>
       </div>
