@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import SignatureCanvas from 'react-signature-canvas';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const CYAN   = '#d1fae5'; // emerald-100
