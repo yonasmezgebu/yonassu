@@ -15,7 +15,9 @@ router.post('/messages', ctrl.submitMessage);
 router.get('/messages', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.getMessages);
 router.get('/messages/unread-count', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.getUnreadCount);
 router.patch('/messages/:id/read', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.markRead);
+router.patch('/messages/:id/status', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.toggleReadStatus);
 router.patch('/messages/mark-all-read', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.markAllRead);
+router.delete('/messages/:id', authenticate, authorizeRoles(['Sales Manager', 'Admin', 'CEO']), ctrl.deleteMessage);
 
 module.exports = router;
 
