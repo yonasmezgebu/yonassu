@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
@@ -35,7 +35,8 @@ import CEOApplicants from './CEOApplicants';
 import HREmployeesPending from '../hr/HREmployeesPending';
 import CEOPayrollApproval from './CEOPayrollApproval';
 
-// 9 Additional Approval & Report Modules
+// Approval & Report Modules
+import CEOApprovalsHub from './CEOApprovalsHub';
 import CEOPendingApprovals from './CEOPendingApprovals';
 import CEOApprovedApprovals from './CEOApprovedApprovals';
 import CEORejectedApprovals from './CEORejectedApprovals';
@@ -44,12 +45,40 @@ import CEOFinancialReport from './CEOFinancialReport';
 import CEOSalesReport from './CEOSalesReport';
 import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
+import CEOStoreApprovals from './CEOStoreApprovals';
 import CentralAuditLog from '../admin/CentralAuditLog';
 
 import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
+import apiClient from '../../services/apiClient';
 
 const CEODashboard = () => {
+  const [storeApprovalCount, setStoreApprovalCount] = useState(0);
+
+  // Poll for pending store update approvals
+  const fetchStoreApprovalCount = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/ceo/store-updates/pending');
+      if (res?.data?.updates) {
+        const count = Array.isArray(res.data.updates) ? res.data.updates.length : 0;
+        setStoreApprovalCount(count);
+      }
+    } catch (_) {
+      // Silently fail — don't break the dashboard
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStoreApprovalCount();
+    // Refresh every 60 seconds
+    const id = setInterval(fetchStoreApprovalCount, 60_000);
+    window.addEventListener('refreshNotifications', fetchStoreApprovalCount);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('refreshNotifications', fetchStoreApprovalCount);
+    };
+  }, [fetchStoreApprovalCount]);
+
   const menuItems = [
     { label: 'Dashboard', path: '/ceo/overview', icon: 'home' },
     { type: 'divider' },
@@ -70,7 +99,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { label: 'Approvals', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981' },
+        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981' },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
       ]
@@ -96,15 +125,21 @@ const CEODashboard = () => {
           <Routes>
             <Route path="overview" element={<CEOHome />} />
             
-            {/* 15 Modules */}
+            {/* Business Modules */}
             <Route path="sales" element={<CEOSales />} />
             <Route path="purchase" element={<CEOPurchase />} />
             <Route path="finance" element={<CEOFinance />} />
             <Route path="hr" element={<CEOHR />} />
             <Route path="applicants" element={<CEOApplicants />} />
-            <Route path="approvals" element={<Navigate to="/ceo/employee-approvals" replace />} />
+
+            {/* Approvals Hub — the central landing page for all approvals */}
+            <Route path="approvals" element={<CEOApprovalsHub />} />
+
+            {/* Individual approval flows */}
             <Route path="employee-approvals" element={<HREmployeesPending />} />
             <Route path="salary-approval" element={<CEOPayrollApproval />} />
+            <Route path="store-approvals" element={<CEOStoreApprovals />} />
+
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
             
@@ -121,13 +156,15 @@ const CEODashboard = () => {
             <Route path="printing" element={<CEOPrinting />} />
             <Route path="agri-and-car-rental" element={<CEOAgriAndCarRental />} />
 
-            {/* 9 Additional Approval & Report Modules */}
+            {/* Approval Lists */}
             <Route path="approvals/pending" element={<CEOPendingApprovals />} />
             <Route path="store-adjustments" element={<Navigate to="/ceo/pharmacy-hub?tab=adjustments" replace />} />
             <Route path="store-counts" element={<Navigate to="/ceo/pharmacy-hub?tab=counts" replace />} />
-            <Route path="store-update-approvals" element={<Navigate to="/ceo/pharmacy-hub?tab=updates" replace />} />
+            <Route path="store-update-approvals" element={<Navigate to="/ceo/store-approvals" replace />} />
             <Route path="approvals/approved" element={<CEOApprovedApprovals />} />
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
+
+            {/* Reports */}
             <Route path="reports/executive" element={<CEOExecutiveReport />} />
             <Route path="reports/financial" element={<CEOFinancialReport />} />
             <Route path="reports/sales" element={<CEOSalesReport />} />
@@ -135,7 +172,7 @@ const CEODashboard = () => {
             <Route path="reports/hr" element={<CEOHRReport />} />
             <Route path="reports/audit" element={<CentralAuditLog />} />
 
-            {/* Restored Old Routes (Kept for backwards compatibility) */}
+            {/* Legacy compatibility */}
             <Route path="reports"   element={<ExecutiveReports />} />
             <Route path="inventory-report" element={<CEOInventoryReport />} />
             <Route path="sales-report" element={<SalesReports />} />
