@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Loader2, RefreshCw, GitBranch, Building, Pill } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const CEOPendingApprovals = () => {
   const [requests, setRequests] = useState([]);
