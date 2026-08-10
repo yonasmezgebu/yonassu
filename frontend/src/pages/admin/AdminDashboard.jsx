@@ -4,7 +4,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import AdminHome from './AdminHome';
 import UserManagement from './UserManagement';
 import SystemSettings from './SystemSettings';
-import AuditLogs from './AuditLogs';
+import CentralAuditLog from './CentralAuditLog';
 import BackupManagement from './BackupManagement';
 import TenantManagement from './TenantManagement';
 import DisasterRecovery from './DisasterRecovery';
@@ -45,7 +45,7 @@ const AdminDashboard = () => {
             <Route path="dr" element={<DisasterRecovery />} />
             <Route path="api-keys" element={<ApiKeyManagement />} />
             <Route path="alerts" element={<AlertCenter />} />
-            <Route path="audit" element={<AuditLogs />} />
+            <Route path="audit" element={<CentralAuditLog />} />
             <Route path="contact-messages" element={<ContactMessagesManager />} />
             <Route path="chat" element={<ManagerChat />} />
             <Route path="backups" element={<BackupManagement />} />
