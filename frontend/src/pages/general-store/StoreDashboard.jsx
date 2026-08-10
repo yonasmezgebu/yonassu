@@ -14,7 +14,8 @@ import {
 
 import StoreReports from './StoreReports';
 import StoreCarRentingRequests from './StoreCarRentingRequests';
-
+import CentralAuditLog from '../admin/CentralAuditLog';
+import ManagerChat from '../../components/ManagerChat';
 import styles from './StoreDashboard.module.css';
 
 const GeneralStoreDashboard = () => {
@@ -36,9 +37,13 @@ const GeneralStoreDashboard = () => {
     {
       label: 'Monitoring & Reports', icon: 'shield',
       children: [
-        { label: 'Report',                path: '/general-store/reports',          icon: 'file-text', color: '#3b82f6' },
+        { label: 'Report', path: '/general-store/reports', icon: 'file-text', color: '#3b82f6' },
       ]
     },
+    { type: 'divider' },
+    { label: 'Chat', path: '/general-store/chat', icon: 'message-circle', color: '#10b981' },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/general-store/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -46,16 +51,18 @@ const GeneralStoreDashboard = () => {
       <DashboardLayout menuItems={menuItems} title="🏪 General Store Keeper Dashboard">
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Routes>
-            <Route path="overview"     element={<GSHome />} />
-            <Route path="inventory"    element={<GSInventory />} />
-            <Route path="register"     element={<GSRegisterItem />} />
-            <Route path="issue"        element={<GSIssueItem />} />
-            <Route path="alerts"           element={<GSAlerts />} />
-            <Route path="logs"             element={<GSLogs />} />
-            <Route path="valuation"        element={<GSValuation />} />
-            <Route path="reports"              element={<StoreReports />} />
+            <Route path="overview"            element={<GSHome />} />
+            <Route path="inventory"           element={<GSInventory />} />
+            <Route path="register"            element={<GSRegisterItem />} />
+            <Route path="issue"               element={<GSIssueItem />} />
+            <Route path="alerts"              element={<GSAlerts />} />
+            <Route path="logs"                element={<GSLogs />} />
+            <Route path="valuation"           element={<GSValuation />} />
+            <Route path="reports"             element={<StoreReports />} />
             <Route path="car-renting-requests" element={<StoreCarRentingRequests />} />
-            <Route path="*"                    element={<Navigate to="/general-store/overview" replace />} />
+            <Route path="chat"               element={<ManagerChat />} />
+            <Route path="audit-log"          element={<CentralAuditLog />} />
+            <Route path="*"                  element={<Navigate to="/general-store/overview" replace />} />
           </Routes>
         </div>
       </DashboardLayout>
