@@ -5,6 +5,7 @@ import {
   ShieldCheck, Zap, AlertTriangle
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── accent colour ──────────────────────────────────────────────────
 const C   = '#B9B979';            // primary accent
