@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
+import SegmentedSpinner from '../ui/SegmentedSpinner';
 
 const overlayStyle = {
   position: 'fixed',
