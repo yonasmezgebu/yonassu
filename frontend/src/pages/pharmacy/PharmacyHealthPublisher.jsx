@@ -3,6 +3,7 @@ import { Loader2, Plus, Image as ImageIcon, Trash2, Globe, ExternalLink, Search,
 import pharmacyService from '../../services/pharmacyService';
 import { useAuth } from '../../hooks/useAuth';
 import successSound from '../../assets/notification/info.mp3';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Palette ─────────────────────────────────────────── */
 const LAVENDER = '#E3E7FE';
