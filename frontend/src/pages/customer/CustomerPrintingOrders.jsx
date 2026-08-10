@@ -5,6 +5,7 @@ import {
   XCircle, Printer, RefreshCw,
   ArrowLeft, Calendar, FileText, BookOpen,
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BASE = 'http://localhost:5000';
 
