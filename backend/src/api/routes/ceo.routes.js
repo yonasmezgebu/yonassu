@@ -329,4 +329,9 @@ router.get('/employee-registrations/pending',          authenticate, authorize([
 router.patch('/employee-registrations/:id/approve',    authenticate, authorize(['ceo:dashboard']), ETPController.approveRegistration);
 router.patch('/employee-registrations/:id/reject',     authenticate, authorize(['ceo:dashboard']), ETPController.rejectRegistration);
 
+// ── Store Updates Approval (Store → CEO) ───────────────────────────────────────────────────
+router.get('/store-updates/pending',          authenticate, authorize(['ceo:dashboard']), CEODashboardController.getPendingStoreUpdates);
+router.patch('/store-updates/:id/approve',    authenticate, authorize(['ceo:dashboard']), CEODashboardController.approveStoreUpdate);
+router.patch('/store-updates/:id/reject',     authenticate, authorize(['ceo:dashboard']), CEODashboardController.rejectStoreUpdate);
+
 module.exports = router;
