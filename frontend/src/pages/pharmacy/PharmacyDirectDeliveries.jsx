@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Truck, Plus, RefreshCw, CheckCircle, XCircle, Clock, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Design tokens ── */
 const C = {
