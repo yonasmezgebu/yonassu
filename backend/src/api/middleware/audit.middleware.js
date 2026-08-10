@@ -31,6 +31,7 @@ const AUDIT_RESOURCES = [
 ];
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const MODULE_MAP = [
+  ['/store-sales-requests', 'Sales'],
   ['/hr-settings', 'HR'],
   ['/hr', 'HR'],
   ['/store-inventory', 'Inventory'],
