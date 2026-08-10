@@ -25,6 +25,7 @@ import SalesProductAdjust from './SalesProductAdjust';
 
 import SalesContact from './SalesContact';
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 
 
 export const WorkerAuthContext = createContext();
@@ -97,6 +98,8 @@ const SalesDashboard = () => {
         ] },
       ]
     },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/sales/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   const [hasManagerPermission, setHasManagerPermission] = useState(true);
@@ -148,6 +151,7 @@ const SalesDashboard = () => {
             {/* Settings */}
             <Route path="contact" element={<SalesContact />} />
             <Route path="chat" element={<ManagerChat />} />
+            <Route path="audit-log" element={<CentralAuditLog />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
