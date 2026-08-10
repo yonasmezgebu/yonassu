@@ -5,6 +5,7 @@ import {
   ArrowLeft, Loader2, X, Info, MapPin
 } from 'lucide-react';
 import api from '../../../services/apiClient';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
