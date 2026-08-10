@@ -6,6 +6,7 @@ import {
   XCircle, Loader2, Search, Filter, Printer, Leaf, Car, ShoppingBag,
   Pill, Award, Package, Calendar, CreditCard
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── shared CSS ────────────────────────────────────────────────────────── */
 const STYLES = `
