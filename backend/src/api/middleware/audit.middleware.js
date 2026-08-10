@@ -21,7 +21,13 @@ const AUDIT_RESOURCES = [
   'settings',
   'customers',
   'suppliers',
-  'products'
+  'products',
+  'receipts',
+  'issues',
+  'transfers',
+  'adjustments',
+  'counts',
+  'requisitions'
 ];
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const MODULE_MAP = [
@@ -128,6 +134,27 @@ const captureBeforeState = async (req, resource, resourceId) => {
       case 'products':
         tableName = 'products';
         break;
+      case 'inventory':
+        tableName = 'store_inventory';
+        break;
+      case 'receipts':
+        tableName = 'stock_receipts';
+        break;
+      case 'issues':
+        tableName = 'stock_issues';
+        break;
+      case 'transfers':
+        tableName = 'stock_transfers';
+        break;
+      case 'adjustments':
+        tableName = 'stock_adjustments';
+        break;
+      case 'counts':
+        tableName = 'stock_counts';
+        break;
+      case 'requisitions':
+        tableName = 'stock_requisitions';
+        break;
       default:
         return null;
     }
@@ -175,8 +202,13 @@ const auditLog = async (req, res, next) => {
       }
     }
     let afterState = null;
-    if ((action === 'CREATE' || action === 'UPDATE') && responseBody?.data?.id) {
-      afterState = await captureBeforeState(req, resource, responseBody.data.id);
+    let targetId = responseBody?.data?.id;
+    if (action === 'UPDATE' && !targetId && resourceId) {
+      targetId = resourceId;
+    }
+    
+    if ((action === 'CREATE' || action === 'UPDATE') && targetId) {
+      afterState = await captureBeforeState(req, resource, targetId);
       if (afterState && afterState.password) {
         delete afterState.password;
       }
@@ -198,19 +230,21 @@ const auditLog = async (req, res, next) => {
       created_at: new Date()
     };
     if (MUTATING_METHODS.includes(method)) {
-      audit(action, userId, {
-        ip,
-        userAgent,
-        resource,
-        resourceId,
-        beforeState,
-        afterState,
-        status: isSuccess ? 'success' : 'failure',
-        reason: errorMessage,
-        responseTime: `${responseTime}ms`,
-        module: extractModule(url),
-        recordIdentifier: resourceId || (responseBody?.data?.id != null ? String(responseBody.data.id) : null)
-      });
+      if (!req.res?.locals?.__centralAudited) {
+        audit(action, userId, {
+          ip,
+          userAgent,
+          resource,
+          resourceId,
+          beforeState,
+          afterState,
+          status: isSuccess ? 'success' : 'failure',
+          reason: errorMessage,
+          responseTime: `${responseTime}ms`,
+          module: extractModule(url),
+          recordIdentifier: resourceId || (responseBody?.data?.id != null ? String(responseBody.data.id) : null)
+        });
+      }
       return;
     }
     if ((action === 'CREATE' || action === 'UPDATE') && req.body) {
