@@ -71,7 +71,7 @@ const hrService = {
   getDeductions: async (params) => apiClient.get('/hr/payroll/deductions', { params }),
   createDeduction: async (data) => apiClient.post('/hr/payroll/deductions', data),
   updateDeduction: async (id, data) => apiClient.put(`/hr/payroll/deductions/${id}`, data),
-  deleteDeduction: async (id) => apiClient.delete(`/hr/payroll/deductions/${id}`),
+  deleteDeduction: async (id, permanent = false) => apiClient.delete(`/hr/payroll/deductions/${id}${permanent ? '?permanent=true' : ''}`),
   getPayslips: async (params) => apiClient.get('/hr/payroll/payslips', { params }),
   generatePayslips: async (data) => apiClient.post('/hr/payroll/payslips/generate', data),
   getPayslipPdfUrl: (id) => `${apiClient.defaults.baseURL}/hr/payroll/payslips/${id}/pdf`,
