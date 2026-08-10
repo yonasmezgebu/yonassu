@@ -7,6 +7,7 @@ import {
   FileText, MapPin, Hash, Wrench, AlertTriangle
 } from 'lucide-react';
 import carService from '../../services/carService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── helpers ──────────────────────────────────────────────── */
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
