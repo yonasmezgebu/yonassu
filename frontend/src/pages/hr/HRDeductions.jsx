@@ -5,22 +5,30 @@ import styles from './HRDeductions.module.css';
 
 const INIT_FORM = {
   employeeId: '', type: 'Tax/PAYE', amountType: 'Fixed', amount: '', percentage: '',
-  frequency: 'Monthly', startDate: '', endDate: '', description: ''
+  frequency: 'Monthly', startDate: '', endDate: '', description: '', status: 'Active'
 };
 
 /* ── helpers ──────────────────────────────────────────────────── */
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '—';
 const fmtAmt  = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
 
+// Convert a stored ISO date string to yyyy-mm-dd for <input type="date">
+const toDateInput = (d) => {
+  if (!d) return '';
+  try { return new Date(d).toISOString().slice(0, 10); } catch { return ''; }
+};
+
 const HRDeductions = () => {
-  const [deductions,  setDeductions]  = useState([]);
-  const [employees,   setEmployees]   = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [showAddModal,setShowAddModal]= useState(false);
-  const [formData,    setFormData]    = useState(INIT_FORM);
-  const [saving,      setSaving]      = useState(false);
-  const [statusMsg,   setStatusMsg]   = useState({ type: null, text: '' });
-  const [confirmId,   setConfirmId]   = useState(null);   // for delete confirm
+  const [deductions,    setDeductions]    = useState([]);
+  const [employees,     setEmployees]     = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showAddModal,  setShowAddModal]  = useState(false);
+  const [formData,      setFormData]      = useState(INIT_FORM);
+  const [editId,        setEditId]        = useState(null);   // null = Add mode, number = Edit mode
+  const [saving,        setSaving]        = useState(false);
+  const [statusMsg,     setStatusMsg]     = useState({ type: null, text: '' });
+  const [confirmId,     setConfirmId]     = useState(null);   // cancel confirm
+  const [clearId,       setClearId]       = useState(null);   // permanent delete confirm
 
   /* ── fetch ──────────────────────────────────────────────── */
   const fetchAll = useCallback(async () => {
@@ -61,7 +69,34 @@ const HRDeductions = () => {
     return null;
   })();
 
-  /* ── save ───────────────────────────────────────────────── */
+  /* ── open Add modal ─────────────────────────────────────── */
+  const openAdd = () => {
+    setEditId(null);
+    setFormData(INIT_FORM);
+    setStatusMsg({ type: null, text: '' });
+    setShowAddModal(true);
+  };
+
+  /* ── open Edit modal ────────────────────────────────────── */
+  const openEdit = (d) => {
+    setEditId(d.id);
+    setFormData({
+      employeeId:  d.employee_id  || '',
+      type:        d.type         || 'Tax/PAYE',
+      amountType:  d.amount_type  || 'Fixed',
+      amount:      d.amount_type === 'Fixed'      ? String(d.amount      || '') : '',
+      percentage:  d.amount_type === 'Percentage' ? String(d.percentage  || '') : '',
+      frequency:   d.frequency    || 'Monthly',
+      startDate:   toDateInput(d.start_date),
+      endDate:     toDateInput(d.end_date),
+      description: d.description  || '',
+      status:      d.status       || 'Active',
+    });
+    setStatusMsg({ type: null, text: '' });
+    setShowAddModal(true);
+  };
+
+  /* ── save (create or update) ────────────────────────────── */
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -71,34 +106,38 @@ const HRDeductions = () => {
       if (formData.amountType === 'Percentage') {
         const pct = parseFloat(formData.percentage);
         if (isNaN(pct) || pct <= 0) throw new Error('Please enter a valid percentage value.');
-        if (baseSalary <= 0) throw new Error('Selected employee has no base salary on record.');
-        const resolvedAmount = (baseSalary * pct) / 100;
-        payload = {
-          ...formData,
-          percentage: pct,
-          resolvedAmount,
-          amount: resolvedAmount,   // ETB stored in DB
-        };
+        if (baseSalary <= 0 && !editId) throw new Error('Selected employee has no base salary on record.');
+        const resolvedAmount = baseSalary > 0 ? (baseSalary * pct) / 100 : parseFloat(formData.amount || 0);
+        payload = { ...formData, percentage: pct, resolvedAmount, amount: resolvedAmount };
       } else {
         const fixed = parseFloat(formData.amount);
         if (isNaN(fixed) || fixed <= 0) throw new Error('Please enter a valid amount.');
         payload = { ...formData, amount: fixed };
       }
 
-      await hrService.createDeduction(payload);
-      playSuccessSound();
-      showNotif('success', 'Deduction added successfully.');
+      if (editId) {
+        // Include status in the update so HR can reactivate a cancelled deduction
+        await hrService.updateDeduction(editId, { ...payload, status: formData.status });
+        playSuccessSound();
+        showNotif('success', 'Deduction updated successfully.');
+      } else {
+        await hrService.createDeduction(payload);
+        playSuccessSound();
+        showNotif('success', 'Deduction added successfully.');
+      }
+
       setShowAddModal(false);
       setFormData(INIT_FORM);
+      setEditId(null);
       fetchAll();
     } catch (err) {
-      showNotif('error', err?.response?.data?.message || err?.message || 'Failed to add deduction.');
+      showNotif('error', err?.response?.data?.message || err?.message || 'Failed to save deduction.');
     } finally {
       setSaving(false);
     }
   };
 
-  /* ── cancel (with in-app confirm modal) ──────────────────── */
+  /* ── cancel (mark as Cancelled) ─────────────────────────── */
   const handleCancel = async (id) => {
     try {
       await hrService.deleteDeduction(id);
@@ -109,6 +148,20 @@ const HRDeductions = () => {
       showNotif('error', 'Failed to cancel deduction.');
     } finally {
       setConfirmId(null);
+    }
+  };
+
+  /* ── clear (permanently delete cancelled row) ───────────── */
+  const handleClear = async (id) => {
+    try {
+      await hrService.deleteDeduction(id, true);
+      playInfoSound();
+      showNotif('success', 'Cancelled deduction cleared.');
+      fetchAll();
+    } catch (err) {
+      showNotif('error', 'Failed to clear deduction.');
+    } finally {
+      setClearId(null);
     }
   };
 
@@ -136,10 +189,7 @@ const HRDeductions = () => {
             </p>
           </div>
           <div className={styles.headerActions}>
-            <button
-              className={styles.addBtn}
-              onClick={() => { setShowAddModal(true); setStatusMsg({ type: null, text: '' }); setFormData(INIT_FORM); }}
-            >
+            <button className={styles.addBtn} onClick={openAdd}>
               <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span>
               Add Deduction
             </button>
@@ -208,7 +258,7 @@ const HRDeductions = () => {
                   </tr>
                 ) : (
                   deductions.map((d) => (
-                    <tr key={d.id}>
+                    <tr key={d.id} className={d.status === 'Cancelled' ? styles.rowCancelled : ''}>
                       <td>
                         <div className={styles.empName}>{d.employeeName || 'Unknown'}</div>
                         <div className={styles.empId}>#{d.employee_id}</div>
@@ -247,11 +297,34 @@ const HRDeductions = () => {
                         </span>
                       </td>
                       <td className={styles.center}>
-                        {d.status === 'Active' && (
-                          <button className={styles.cancelRowBtn} onClick={() => setConfirmId(d.id)}>
-                            Cancel
+                        <div className={styles.actionGroup}>
+                          {/* Edit button — available for ALL deductions */}
+                          <button
+                            className={styles.editRowBtn}
+                            title="Edit deduction"
+                            onClick={() => openEdit(d)}
+                          >
+                            ✏️ Edit
                           </button>
-                        )}
+
+                          {/* Cancel button — Active only */}
+                          {d.status === 'Active' && (
+                            <button className={styles.cancelRowBtn} onClick={() => setConfirmId(d.id)}>
+                              Cancel
+                            </button>
+                          )}
+
+                          {/* Clear button — Cancelled only → permanently removes the row */}
+                          {d.status === 'Cancelled' && (
+                            <button
+                              className={styles.clearRowBtn}
+                              title="Permanently remove this cancelled record"
+                              onClick={() => setClearId(d.id)}
+                            >
+                              🗑 Clear
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -262,7 +335,7 @@ const HRDeductions = () => {
         )}
       </div>
 
-      {/* ── IN-APP DELETE CONFIRM MODAL ── */}
+      {/* ── CANCEL CONFIRM MODAL ── */}
       {confirmId && (
         <div className={styles.modalOverlay} onClick={() => setConfirmId(null)}>
           <div className={styles.confirmBox} onClick={e => e.stopPropagation()}>
@@ -279,7 +352,24 @@ const HRDeductions = () => {
         </div>
       )}
 
-      {/* ── ADD DEDUCTION MODAL ── */}
+      {/* ── CLEAR CONFIRM MODAL ── */}
+      {clearId && (
+        <div className={styles.modalOverlay} onClick={() => setClearId(null)}>
+          <div className={styles.confirmBox} onClick={e => e.stopPropagation()}>
+            <div className={styles.confirmIcon}>🗑️</div>
+            <h3 className={styles.confirmTitle}>Clear Cancelled Record?</h3>
+            <p className={styles.confirmText}>
+              This will <strong>permanently delete</strong> this cancelled deduction row from the list. This cannot be undone.
+            </p>
+            <div className={styles.confirmBtns}>
+              <button className={styles.cancelBtn} onClick={() => setClearId(null)}>No, Keep It</button>
+              <button className={styles.saveBtnDanger} onClick={() => handleClear(clearId)}>Yes, Clear It</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD / EDIT DEDUCTION MODAL ── */}
       {showAddModal && (
         <div className={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
           <div className={styles.modalWide} onClick={e => e.stopPropagation()}>
@@ -287,14 +377,14 @@ const HRDeductions = () => {
             {/* Modal Header */}
             <div className={styles.modalHeader}>
               <div className={styles.modalTitleBlock}>
-                <h2 className={styles.modalTitle}>Add New Deduction</h2>
-                <p>Fill in all required fields to assign a deduction to a staff member</p>
+                <h2 className={styles.modalTitle}>{editId ? '✏️ Edit Deduction' : 'Add New Deduction'}</h2>
+                <p>{editId ? 'Update the deduction details below.' : 'Fill in all required fields to assign a deduction to a staff member'}</p>
               </div>
               <button className={styles.closeBtn} onClick={() => setShowAddModal(false)}>×</button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSave}>
+            <form onSubmit={handleSave} className={styles.modalForm}>
               <div className={styles.modalGridBody}>
 
                 {/* Employee */}
@@ -305,6 +395,7 @@ const HRDeductions = () => {
                     className={styles.input}
                     value={formData.employeeId}
                     onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
+                    disabled={!!editId}   // cannot change employee when editing
                   >
                     <option value="">Select Staff Member...</option>
                     {employees
@@ -445,6 +536,31 @@ const HRDeductions = () => {
                   />
                 </div>
 
+                {/* Status — only shown when editing; allows reactivating a cancelled deduction */}
+                {editId && (
+                  <div className={styles.formGroup}>
+                    <label>Status</label>
+                    <select
+                      className={styles.input}
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                    {formData.status === 'Active' && (
+                      <div className={styles.salaryHint} style={{ color: '#16A34A', borderColor: '#86EFAC', background: '#DCFCE7' }}>
+                        ✅ Setting to <strong>Active</strong> will reactivate this deduction and include it in future payroll runs.
+                      </div>
+                    )}
+                    {formData.status === 'Cancelled' && (
+                      <div className={styles.salaryHint} style={{ color: '#DC2626', borderColor: '#FCA5A5', background: '#FEE2E2' }}>
+                        ⚠️ Setting to <strong>Cancelled</strong> will exclude this deduction from payroll.
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
 
               {/* Modal Footer */}
@@ -460,14 +576,14 @@ const HRDeductions = () => {
                   <button
                     type="button"
                     className={styles.cancelBtn}
-                    onClick={() => { setShowAddModal(false); setStatusMsg({ type: null, text: '' }); }}
+                    onClick={() => { setShowAddModal(false); setStatusMsg({ type: null, text: '' }); setEditId(null); }}
                   >
                     Cancel
                   </button>
                   <button type="submit" className={styles.saveBtn} disabled={saving}>
                     {saving
                       ? <><span className={styles.segSpinner} aria-hidden="true" /> Saving…</>
-                      : '+ Add Deduction'}
+                      : editId ? '✔ Save Changes' : '+ Add Deduction'}
                   </button>
                 </div>
               </div>
