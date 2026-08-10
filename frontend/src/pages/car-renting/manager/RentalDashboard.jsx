@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { rentalState } from '../../../utils/rentalManagerState';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
