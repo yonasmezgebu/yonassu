@@ -7,6 +7,7 @@ import {
   ShoppingBag, Loader2, ExternalLink, User, Phone, Mail, Truck, CreditCard,
   Building
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── shared CSS ──────────────────────────────────────────── */
 const STYLES = `
