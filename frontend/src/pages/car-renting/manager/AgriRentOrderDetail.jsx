@@ -6,6 +6,7 @@ import {
   MapPin, DollarSign, CheckCircle, Clock, XCircle, FileText,
   Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star
 } from 'lucide-react';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
