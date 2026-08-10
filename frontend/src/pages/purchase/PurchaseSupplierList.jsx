@@ -6,6 +6,7 @@ import {
   ShieldCheck, Clock, CheckSquare, X, CreditCard, MapPin, Globe,
   Landmark, BadgeCheck, CircleDot
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const STYLES = `
