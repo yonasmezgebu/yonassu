@@ -21,7 +21,7 @@
 
   background: var(--color-bg-page);
   min-height: 100vh;
-  margin: 0 auto;
+  width: 100%; max-width: 100%;
   padding: 12px; /* Mobile safe edge */
   font-family: 'Inter', "Segoe UI", Roboto, -apple-system, sans-serif;
   color: var(--color-text-primary);
@@ -35,7 +35,7 @@
   .container { padding: 16px; }
 }
 @media (min-width: 1024px) {
-  .container { padding: 24px; max-width: 1600px; }
+  .container { padding: 24px; }
 }
 
 /* ── HEADER ── */
