@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sliders, RefreshCw, Loader2, Search, Save, CheckCircle, XCircle, AlertTriangle, Package, ClipboardList } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import { useToast } from '../../components/Toast';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const OLIVE = '#B7C786';
 const YELLOW = '#FEF3A5';
