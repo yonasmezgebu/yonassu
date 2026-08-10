@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DollarSign, Package, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
 import authService from '../../services/authService';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 const CSS = `

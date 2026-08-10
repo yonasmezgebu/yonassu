@@ -5,6 +5,7 @@ import {
   AlertCircle, Loader2, TreePine, Leaf, Package, Clock
 } from 'lucide-react';
 import axios from 'axios';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const G = {
   forest:   '#228B22', dark: '#1B5E20', emerald: '#2E8B57',

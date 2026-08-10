@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import printingService from '../../services/printingService';
 import { RefreshCw } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ── Real DB status codes from order_statuses table ──
 const LANES = [

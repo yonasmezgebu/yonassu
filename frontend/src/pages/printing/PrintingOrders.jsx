@@ -6,6 +6,7 @@ import {
   CreditCard, Clock, CheckCircle, AlertTriangle, XCircle,
   Printer, User, Calendar, DollarSign, FileText, Eye
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const STATUSES = ['', 'received', 'in_queue', 'in_design', 'file_check', 'in_printing', 'in_progress', 'finishing', 'ready', 'delivered', 'cancelled'];
 const STATUS_LABELS = {
