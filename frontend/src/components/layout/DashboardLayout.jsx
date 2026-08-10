@@ -96,7 +96,7 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread }) => {
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, storeApprovalsPending = 0, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
@@ -242,6 +242,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const totalBadge = (
     (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
     (ceoFundRequestsPending || 0) +
+    (storeApprovalsPending || 0) +
     (isPharmacyManagerRoute ? pharmacyPending : 0) +
     (window.location.pathname.startsWith('/pharmacy-worker') ? (pharmacyOnlinePending || 0) : 0) +
     purchasePending +
@@ -356,6 +357,28 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#9D174D' }}>Fund Request Awaiting Approval</p>
                   <p style={{ margin: 0, fontSize: '12px', color: '#BE185D' }}>{ceoFundRequestsPending} request{ceoFundRequestsPending > 1 ? 's' : ''} need your decision</p>
+                </div>
+              </div>
+            )}
+
+            {/* Store Update Approvals pending CEO review */}
+            {isCeoRoute && storeApprovalsPending > 0 && (
+              <div
+                onClick={() => { setOpen(false); navigate('/ceo/store-approvals'); }}
+                style={{
+                  padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
+                  cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
+                  backgroundColor: '#FFF7ED', transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FFEDD5'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFF7ED'}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FED7AA' }}>
+                  <span style={{ fontSize: '18px' }}>📦</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#C2410C' }}>Store Inventory Update Pending</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#EA580C' }}>{storeApprovalsPending} item update{storeApprovalsPending > 1 ? 's' : ''} awaiting your approval</p>
                 </div>
               </div>
             )}
@@ -666,6 +689,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [notifRefresh, setNotifRefresh] = useState(0);
   const [ceoPending, setCeoPending] = useState([]);
   const [ceoPendingSnapshot, setCeoPendingSnapshot] = useState(0);
+  const [storeApprovalsPending, setStoreApprovalsPending] = useState(0);
   const [pharmacyPending, setPharmacyPending] = useState(0);
   const [pharmacyOnlinePending, setPharmacyOnlinePending] = useState(0);
   const [purchasePending, setPurchasePending] = useState(0);
@@ -859,10 +883,16 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         const requests = res?.data?.data || res?.data || [];
         setCeoFundRequestsPending(Array.isArray(requests) ? requests.filter(r => r.status === 'PENDING_CEO').length : 0);
       }).catch(() => {});
+      // Fetch store updates pending CEO approval
+      apiClient.get('/ceo/store-updates/pending').then(res => {
+        const updates = res?.data?.updates || [];
+        setStoreApprovalsPending(Array.isArray(updates) ? updates.length : 0);
+      }).catch(() => {});
     } else {
       setCeoPending([]);
       setCeoPendingSnapshot(0);
       setCeoFundRequestsPending(0);
+      setStoreApprovalsPending(0);
     }
     
     if (isFinanceRoute) {
@@ -1101,6 +1131,15 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                         >
                           {child.icon && <span className="nav-icon sub-icon" style={child.color ? { color: child.color } : undefined}>{ICONS[child.icon] || ICONS.default}</span>}
                           <span style={{ flex: 1 }}>{child.label}</span>
+                          {/* Generic badge from menu item definition */}
+                          {child.badge > 0 && (
+                            <span style={{
+                              background: '#f97316', color: '#fff', borderRadius: '9999px',
+                              fontSize: '10px', fontWeight: 800, minWidth: 18, height: 18,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '0 4px', flexShrink: 0
+                            }}>{child.badge > 99 ? '99+' : child.badge}</span>
+                          )}
                           {/* Badge on the 'Chat' leaf menu item */}
                           {chatUnread > 0 && child.path?.endsWith('/chat') && (
                             <span style={{
@@ -1202,6 +1241,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               isCeoRoute={isCeoRoute}
               ceoPendingSnapshot={ceoPendingSnapshot}
               setCeoPendingSnapshot={setCeoPendingSnapshot}
+              storeApprovalsPending={storeApprovalsPending}
               pharmacyPending={pharmacyPending}
               pharmacyOnlinePending={pharmacyOnlinePending}
               setPharmacyOnlinePending={setPharmacyOnlinePending}
