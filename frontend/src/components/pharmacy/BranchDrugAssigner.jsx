@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Building, Pill, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../ui/SegmentedSpinner';
 
 const BranchDrugAssigner = ({ title = 'Branch Inventory Setup', onAssigned, defaultBranchId = '' }) => {
   const [branches, setBranches] = useState([]);
