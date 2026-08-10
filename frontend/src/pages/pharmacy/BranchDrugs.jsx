@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, Plus, Trash2, Building, Pill } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import BranchDrugAssigner from '../../components/pharmacy/BranchDrugAssigner';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BranchDrugs = () => {
   const [branches, setBranches] = useState([]);
