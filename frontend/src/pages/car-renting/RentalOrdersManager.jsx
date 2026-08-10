@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, XCircle, Clock, Mail, AlertTriangle, Car, Search, RefreshCw, ChevronRight } from 'lucide-react';
 import carService from '../../services/carService';
 import { useNavigate } from 'react-router-dom';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─────────────── CONSTANTS & THEME ─────────────── */
 const C = {
