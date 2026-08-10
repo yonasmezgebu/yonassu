@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import pharmacyService from '../../services/pharmacyService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 const resolvePhoto = (url) => {
