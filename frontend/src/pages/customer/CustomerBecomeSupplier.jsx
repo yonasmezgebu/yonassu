@@ -6,6 +6,7 @@ import {
   ShieldCheck, Star, Package, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const STYLES = `
