@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import CarRentalOrderDetail  from './CarRentalOrderDetail';
 import CarRentalCreateOrder  from './CarRentalCreateOrder';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
