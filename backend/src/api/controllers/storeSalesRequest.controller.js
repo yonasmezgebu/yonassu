@@ -3,6 +3,7 @@
  * Handles: Sales Manager creates signed request → Store Keeper releases → Auto Sale record
  */
 const { db } = require('../../config/database');
+const { log } = require('../../services/salesAudit.service');
 
 // ─── Helper: generate a unique code ────────────────────────────────────────
 function genCode(prefix) {
@@ -59,6 +60,7 @@ exports.createRequest = async (req, res) => {
     });
 
     const created = await db('store_sales_requests').where('id', id).first();
+    log(req, 'Store Sale Request Created', id, null, { request_code, product_name, quantity_requested, customer_name });
     res.status(201).json({ status: 'success', data: created });
   } catch (e) {
     res.status(500).json({ status: 'error', message: e.message });
@@ -92,6 +94,7 @@ exports.rejectRequest = async (req, res) => {
       updated_at: new Date(),
     });
 
+    log(req, 'Store Sale Request Rejected', req.params.id, { status: existing.status }, { status: 'Rejected', rejection_reason });
     res.json({ status: 'success', message: 'Request rejected' });
   } catch (e) {
     res.status(500).json({ status: 'error', message: e.message });
@@ -191,6 +194,8 @@ exports.releaseRequest = async (req, res) => {
     });
 
     await trx.commit();
+
+    log(req, 'Store Sale Released', reqId, { status: storeReq.status }, { status: 'Sold', quantity_released: storeReq.quantity_requested, request_code: storeReq.request_code });
 
     // Fetch full result
     const updatedReq = await db('store_sales_requests').where('id', reqId).first();
