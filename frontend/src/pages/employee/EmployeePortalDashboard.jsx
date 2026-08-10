@@ -8,6 +8,7 @@ import { AttendancePage } from './attendance/AttendancePage';
 import { AssignedMaterials, RequestMaterials, ReturnItems } from './resources/ResourcePages';
 import { Messages, SupervisorNotes, Announcements, NotificationsInbox } from './communication/CommunicationPages';
 import EmployeePayslips from './EmployeePayslips';
+import CentralAuditLog from '../admin/CentralAuditLog';
 
 const EmployeePortalDashboard = () => {
   const menuItems = [
@@ -29,6 +30,8 @@ const EmployeePortalDashboard = () => {
         { label: 'Announcements', path: '/employee/comm/announcements', icon: 'bell' },
       ]
     },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/employee/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -60,6 +63,7 @@ const EmployeePortalDashboard = () => {
         <Route path="comm/messages"       element={<Messages />} />
         <Route path="comm/notes"          element={<SupervisorNotes />} />
         <Route path="comm/announcements"  element={<Announcements />} />
+        <Route path="audit-log"           element={<CentralAuditLog />} />
 
         <Route path="/"                   element={<Navigate to="overview" replace />} />
       </Routes>
