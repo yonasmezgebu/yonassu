@@ -6,6 +6,7 @@ import {
   Filter, ChevronLeft, ChevronRight, Clock, CheckCircle,
   XCircle, AlertCircle, Download, User, Phone, Mail
 } from 'lucide-react';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─── Color Tokens ───────────────────────────────────────────────────────── */
 const C = {
