@@ -6,6 +6,7 @@ import {
   Printer, Leaf, Car, ShoppingBag, Pill, Award, Package,
   Calendar, CreditCard, X
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── shared CSS (same token set) ───────────────────────────────────────── */
 const STYLES = `
