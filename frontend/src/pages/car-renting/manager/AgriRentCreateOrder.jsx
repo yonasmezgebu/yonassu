@@ -8,6 +8,7 @@ import {
 import api from '../../../services/apiClient';
 import authService from '../../../services/authService';
 import { PublicNav } from '../../LandingPage/PublicNavFooter';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
