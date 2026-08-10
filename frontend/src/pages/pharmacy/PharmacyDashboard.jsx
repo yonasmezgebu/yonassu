@@ -53,6 +53,7 @@ import PharmacyHealthPublisher from './PharmacyHealthPublisher';
 // Sales & Ops Imports
 import PharmacyStaff from './PharmacyStaff';
 import PharmacyDailySummary from './PharmacyDailySummary';
+import CentralAuditLog from '../admin/CentralAuditLog';
 
 const PharmacyDashboard = () => {
   const location = useLocation();
@@ -96,6 +97,8 @@ const PharmacyDashboard = () => {
         { label: 'Finance Review', path: '/pharmacy/finance-review', icon: 'dollar-sign',  color: '#D97706' },
         { label: 'Daily Summary',    path: '/pharmacy/daily-summary',     icon: 'file-text' },
       ] },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/pharmacy/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -169,6 +172,7 @@ const PharmacyDashboard = () => {
             <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
             <Route path="contact"       element={<PharmacyContact />} />
             <Route path="chat"          element={<ManagerChat />} />
+            <Route path="audit-log"     element={<CentralAuditLog />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
