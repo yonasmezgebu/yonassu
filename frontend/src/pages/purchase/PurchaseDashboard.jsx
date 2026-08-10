@@ -40,6 +40,7 @@ import PurchaseApprovedRequests from './PurchaseApprovedRequests';
 import PurchaseHome from './PurchaseHome';
 
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './PurchaseDashboard.module.css';
 
 const PurchaseDashboard = () => {
@@ -70,7 +71,9 @@ const PurchaseDashboard = () => {
         { label: 'CEO Report',              path: '/purchase/reports/ceo',         icon: 'briefcase',    color: '#10b981' },
         { label: 'Financial Review',        path: '/purchase/reports/financial',   icon: 'dollar-sign',  color: '#8b5cf6' },
       ]
-    }
+    },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/purchase/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -100,6 +103,7 @@ const PurchaseDashboard = () => {
             <Route path="reports/delivery" element={<PurchaseReportDelivery />} />
             <Route path="reports/ceo" element={<PurchaseReportCEO />} />
             <Route path="reports/financial" element={<PurchaseReportFinancial />} />
+            <Route path="audit-log" element={<CentralAuditLog />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
