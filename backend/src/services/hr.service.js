@@ -585,26 +585,20 @@ const getManagerAccuracyReport = async () => {
   return report;
 };
 
-module.exports = {
-  createEmployee, updateEmployee, getEmployees, getEmployeeById,
-  authenticateEmployee, isComputerRegistered, registerClock,
-  getTodayAttendance, getMonthlyAttendance, getDailyAttendances,
-  registerComputer, getRegisteredComputers,
-  createLeaveRequest, getLeaveRequests, approveLeave,
-  getHRSummary, calculatePayroll, getPayroll,
-  sendPayrollToFinance, approvePayroll, markPayrollPaid,
-  getManagerAccuracyReport,
-  getAttritionData, getCompensationData, getSuccessionPipeline, getDEIMetrics,
-};
 
 // ---- NEW HR DASHBOARD SERVICES ----
+
 const getTodayActivities = async () => {
   const today = new Date().toISOString().split('T')[0];
   let logs = [], leaves = [];
   try {
-    const tableExists = await db.schema.hasTable('attendance_records');
+    const tableExists = await db.schema.hasTable('central_audit_logs');
     if (tableExists) {
-      logs = await db('attendance_records').where('work_date', today).orderBy('timestamp', 'desc').limit(50);
+      logs = await db('central_audit_logs')
+        .where('module', 'HR')
+        .where('created_at', '>=', today)
+        .orderBy('created_at', 'desc')
+        .limit(50);
     }
   } catch (e) { /* table not ready yet */ }
   try {
@@ -638,7 +632,11 @@ const getSalaries = async (params) => {
       'd.name as department',
       'r.name as role',
       'e.base_salary as baseSalary',
-      'e.housing_allowance as allowances',
+      'e.housing_allowance as housingAllowance',
+      'e.transport_allowance as transportAllowance',
+      'e.communication_allowance as communicationAllowance',
+      'e.overtime_rate as overtimeRate',
+      'e.overtime_payment as overtimePayment',
       'e.bank_account_number as bankAccount',
       'e.bank_name'
     )
@@ -646,17 +644,25 @@ const getSalaries = async (params) => {
   if (params && params.department) q = q.where('e.dept_id', params.department);
   const emps = await q.orderBy('e.full_name');
   return emps.map(e => {
-    const allowances = parseFloat(e.allowances || 0);
+    const housing = parseFloat(e.housingAllowance || 0);
+    const transport = parseFloat(e.transportAllowance || 0);
+    const comm = parseFloat(e.communicationAllowance || 0);
     const baseSalary = parseFloat(e.baseSalary || 0);
+    const totalAllowances = housing + transport + comm;
     return {
       id: e.id,
       name: e.name,
       department: e.department || '—',
       role: e.role || '—',
       baseSalary,
-      allowances,
+      housingAllowance: housing,
+      transportAllowance: transport,
+      communicationAllowance: comm,
+      totalAllowances,
+      overtimeRate: parseFloat(e.overtimeRate || 1.5),
+      overtimePayment: parseFloat(e.overtimePayment || 0),
       deductions: 0,
-      netSalary: baseSalary + allowances,
+      netSalary: baseSalary + totalAllowances + parseFloat(e.overtimePayment || 0),
       paymentMethod: 'Bank Transfer',
       bankAccount: e.bankAccount || 'N/A',
       bank_name: e.bank_name || ''
@@ -667,7 +673,11 @@ const getSalaries = async (params) => {
 const updateSalary = async (id, data) => {
   const updates = {};
   if (data.baseSalary  !== undefined) updates.base_salary          = data.baseSalary;
-  if (data.allowances  !== undefined) updates.housing_allowance     = data.allowances;
+  if (data.housingAllowance !== undefined) updates.housing_allowance   = data.housingAllowance;
+  if (data.transportAllowance !== undefined) updates.transport_allowance = data.transportAllowance;
+  if (data.communicationAllowance !== undefined) updates.communication_allowance = data.communicationAllowance;
+  if (data.overtimeRate !== undefined) updates.overtime_rate       = data.overtimeRate;
+  if (data.overtimePayment !== undefined) updates.overtime_payment = data.overtimePayment;
   if (data.bank_name   !== undefined) updates.bank_name             = data.bank_name || null;
   if (data.bank_account_number !== undefined) {
     // Check uniqueness (skip own record)
@@ -778,11 +788,44 @@ const createDeduction = async (data) => {
 };
 
 const updateDeduction = async (id, data) => {
-  await db('hr_deductions').where('id', id).update(data);
+  const amountType = data.amountType || data.amount_type || 'Fixed';
+  let resolvedAmount = parseFloat(data.amount);
+  let percentage = null;
+
+  if (amountType === 'Percentage') {
+    percentage = parseFloat(data.percentage || data.amount);
+    if (data.resolvedAmount) {
+      resolvedAmount = parseFloat(data.resolvedAmount);
+    }
+  }
+
+  const updatePayload = {
+    type: data.type,
+    amount: resolvedAmount,
+    amount_type: amountType,
+    percentage: percentage,
+    frequency: data.frequency,
+    start_date: data.startDate || data.start_date || null,
+    end_date: data.endDate || data.end_date || null,
+    description: data.description,
+    status: data.status || 'Active'
+  };
+
+  if (updatePayload.start_date === '') updatePayload.start_date = null;
+  if (updatePayload.end_date === '') updatePayload.end_date = null;
+
+  // Remove undefined fields so we only update what's provided
+  Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
+
+  await db('hr_deductions').where('id', id).update(updatePayload);
 };
 
-const deleteDeduction = async (id) => {
-  await db('hr_deductions').where('id', id).update({ status: 'Cancelled' });
+const deleteDeduction = async (id, isPermanent = false) => {
+  if (isPermanent) {
+    await db('hr_deductions').where('id', id).del();
+  } else {
+    await db('hr_deductions').where('id', id).update({ status: 'Cancelled' });
+  }
 };
 
 // --- Payslips: Real DB ---
@@ -1052,13 +1095,6 @@ const createPolicy = async (data, userId) => {
     description: data.description
   });
   
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'CREATE_POLICY',
-    target_module: 'policies',
-    target_id: String(id),
-    after_state: JSON.stringify(data)
-  });
   
   return id;
 };
@@ -1070,14 +1106,6 @@ const updatePolicy = async (id, data, userId) => {
     updated_at: db.fn.now()
   });
 
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'UPDATE_POLICY',
-    target_module: 'policies',
-    target_id: String(id),
-    before_state: JSON.stringify(oldPolicy),
-    after_state: JSON.stringify(data)
-  });
 };
 
 const publishPolicy = async (id, userId) => {
@@ -1088,12 +1116,6 @@ const publishPolicy = async (id, userId) => {
     updated_at: db.fn.now() 
   });
   
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'PUBLISH_POLICY',
-    target_module: 'policies',
-    target_id: String(id)
-  });
 };
 
 const archivePolicy = async (id, userId) => {
@@ -1102,12 +1124,6 @@ const archivePolicy = async (id, userId) => {
     updated_at: db.fn.now()
   });
 
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'ARCHIVE_POLICY',
-    target_module: 'policies',
-    target_id: String(id)
-  });
 };
 
 const sendPolicyToAll = async (id, userId) => {
@@ -1156,14 +1172,7 @@ const createAnnouncement = async (data, userId) => {
     linked_policy_id: data.linked_policy_id || null
   });
 
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'CREATE_ANNOUNCEMENT',
-    target_module: 'announcements',
-    target_id: String(id),
-    after_state: JSON.stringify(data)
-  });
-
+  
   return id;
 };
 
@@ -1177,25 +1186,11 @@ const updateAnnouncement = async (id, data, userId) => {
     updated_at: db.fn.now()
   });
 
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'UPDATE_ANNOUNCEMENT',
-    target_module: 'announcements',
-    target_id: String(id),
-    before_state: JSON.stringify(oldAnnounce),
-    after_state: JSON.stringify(data)
-  });
 };
 
 const deleteAnnouncement = async (id, userId) => {
   await db('hr_announcements').where('id', id).delete();
   
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'DELETE_ANNOUNCEMENT',
-    target_module: 'announcements',
-    target_id: String(id)
-  });
 };
 
 const retractAnnouncement = async (id, userId) => {
@@ -1204,12 +1199,6 @@ const retractAnnouncement = async (id, userId) => {
     updated_at: db.fn.now()
   });
 
-  await db('hr_audit_logs').insert({
-    actor_id: userId,
-    action: 'RETRACT_ANNOUNCEMENT',
-    target_module: 'announcements',
-    target_id: String(id)
-  });
 };
 
 const readAnnouncement = async (id, userId) => {
@@ -1272,12 +1261,51 @@ const deleteMessage = async (id, userId) => {
   mockMessages = mockMessages.filter(m => m.id !== id);
 };
 
-Object.assign(module.exports, {
+// All exports are consolidated in the main module.exports block above.
+
+module.exports = {
+  // Core employees
+  createEmployee, updateEmployee, getEmployees, getEmployeeById,
+  authenticateEmployee, isComputerRegistered, registerClock,
+  // Attendance
+  getTodayAttendance, getMonthlyAttendance, getDailyAttendances,
+  registerComputer, getRegisteredComputers,
+  getTodayActivities,
+  // Leave
+  createLeaveRequest, getLeaveRequests, approveLeave,
+  // Payroll (legacy)
+  getHRSummary, calculatePayroll, getPayroll,
+  sendPayrollToFinance, approvePayroll, markPayrollPaid,
+  getManagerAccuracyReport,
+  // Payroll (extended)
+  getSalaries, updateSalary, getPayrollPeriods, processPayroll,
+  approvePayrollProcess, finalizePayrollProcess,
+  getDeductions, createDeduction, updateDeduction, deleteDeduction,
+  generatePayslips, emailPayslip,
+  // Departments
+  getDepartments, createDepartment, updateDepartment,
+  // Analytics
+  getAttritionData, getCompensationData, getSuccessionPipeline, getDEIMetrics,
+  // Recruitment
+  getJobPosts, createJobPost, updateJobPost,
+  getApplications, updateApplicationStatus, deleteApplication,
+  getInterviews, createInterview, updateInterview,
+  getRecruitmentPipeline, hireCandidate,
+  // Performance
+  getEvaluations, createEvaluation,
+  getReviews, approveReview,
+  getFeedback, submitFeedback, acknowledgeFeedback,
+  // Contracts
   getContracts, createContract, approveContract, renewContract, terminateContract,
+  // Employee Files
   getEmployeeFiles, uploadEmployeeFile, deleteEmployeeFile, archiveEmployeeFile,
-  getPolicies, createPolicy, updatePolicy, publishPolicy, archivePolicy, sendPolicyToAll,
-  getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, readAnnouncement,
+  // Policies
+  getPolicies, createPolicy, updatePolicy, publishPolicy, archivePolicy, sendPolicyToAll, acknowledgePolicy,
+  // Announcements
+  getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, retractAnnouncement, readAnnouncement,
+  // Notices
   getNotices, createNotice, publishNotice, deleteNotice,
-  getInboxMessages, getSentMessages, sendMessage, readMessage, replyMessage, deleteMessage
-});
+  // Messages
+  getInboxMessages, getSentMessages, sendMessage, readMessage, replyMessage, deleteMessage,
+};
 
