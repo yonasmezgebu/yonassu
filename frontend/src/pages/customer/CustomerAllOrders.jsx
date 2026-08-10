@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import apiClient from '../../services/apiClient';
 import carService from '../../services/carService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
