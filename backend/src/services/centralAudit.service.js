@@ -169,6 +169,7 @@ const getLogs = async (user, filters = {}) => {
   const isManager    = roleStr.includes('manager') || roleStr.includes('head');
   const isHR         = roleStr.includes('hr') || deptName.includes('human resource') || deptName.includes('hr');
   const isStore      = roleStr.includes('store');
+  const isSales      = roleStr.includes('sales') || deptName.includes('sales') || deptName.includes('retail');
 
   if (isSuperAdmin || isCEO) {
     // Full visibility — no WHERE clause
@@ -180,6 +181,15 @@ const getLogs = async (user, filters = {}) => {
     q = q.where('module', 'Store')
           .andWhere('user_name', '!=', 'System')
           .andWhere('user_name', '!=', 'System Backfill');
+  } else if (isSales) {
+    // Sales Manager/Head sees every Sales module activity plus their own
+    // actions anywhere (covers bids/chat/etc. triggered from the sales dashboard)
+    q = q.where((builder) => {
+      builder
+        .where('module', 'Sales')
+        .andWhere('user_name', '!=', 'System')
+        .orWhere('user_id', user.id);
+    });
   } else if (isManager && deptFullName) {
     // Dept manager sees only their department's logs
     q = q.where('department', deptFullName);
