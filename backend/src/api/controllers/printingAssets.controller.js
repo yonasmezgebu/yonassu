@@ -1,8 +1,27 @@
 const { db } = require('../../config/database');
+const centralAudit = require('../../services/centralAudit.service');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const ok  = (res, data, msg = 'success') => res.json({ success: true, message: msg, data });
 const err = (res, msg, status = 500)     => res.status(status).json({ success: false, message: msg });
+
+/* Non-blocking audit log helper — mirrors hr.controller.js */
+const storeLog = (req, action, recordIdentifier, previousValue, newValue) => {
+  const u = req.user || {};
+  centralAudit.createLog({
+    userId:           u.id || null,
+    userName:         u.fullName || u.full_name || u.username || 'System',
+    role:             Array.isArray(u.roles) ? u.roles.join(', ') : (u.role_names || u.role || 'Unknown'),
+    department:       u.departmentName || u.department_name || 'Store',
+    module:           'Store',
+    action,
+    recordIdentifier: String(recordIdentifier || ''),
+    previousValue,
+    newValue,
+    ipAddress:        req.ip,
+  }).catch(() => {});
+  if (req.res) req.res.locals.__centralAudited = true;
+};
 
 function genMachineId() {
   return db('printing_assets_machines').max('id as maxId').first().then(r => {
@@ -86,7 +105,16 @@ exports.listStoreMaterials = async (req, res) => {
     let query = db('general_store_materials').orderBy('id', 'desc');
     if (department) query = query.where('department', department);
     const rows = await query;
-    ok(res, rows);
+    
+    const pendingRequests = await db('store_update_approvals').where('status', 'PENDING').select('material_id');
+    const pendingIds = pendingRequests.map(r => String(r.material_id));
+
+    const data = rows.map(r => ({
+      ...r,
+      pending_approval: pendingIds.includes(String(r.id))
+    }));
+
+    ok(res, data);
   } catch (e) { err(res, e.message); }
 };
 
@@ -121,13 +149,30 @@ exports.registerMaterial = async (req, res) => {
 exports.updateMaterialQuantity = async (req, res) => {
   try {
     const { id } = req.params;
-    const { quantity_in_store } = req.body;
-    const qty = parseFloat(quantity_in_store) || 0;
+    const { quantity_in_store, add_quantity } = req.body;
     const mat = await db('general_store_materials').where({ id }).first();
     if (!mat) return err(res, 'Material not found', 404);
+    
+    const pending = await db('store_update_approvals').where({ material_id: id, status: 'PENDING' }).first();
+    if (pending) return err(res, 'An update request is already pending CEO approval for this item.', 400);
+
+    const previousValue = { ...mat };
+    let qty = parseFloat(mat.quantity_in_store || 0);
+    if (add_quantity !== undefined) qty += parseFloat(add_quantity);
+    else if (quantity_in_store !== undefined) qty = parseFloat(quantity_in_store);
     const total_value = qty * parseFloat(mat.unit_value || 0);
-    await db('general_store_materials').where({ id }).update({ quantity_in_store: qty, total_value, updated_at: db.fn.now() });
-    ok(res, null, 'Quantity updated');
+    
+    const afterValue = { ...mat, quantity_in_store: qty, total_value };
+
+    await db('store_update_approvals').insert({
+      material_id: id,
+      requested_by: req.user ? req.user.id : null,
+      update_type: 'STORE_QUANTITY_UPDATE',
+      before_state: JSON.stringify(previousValue),
+      after_state: JSON.stringify(afterValue)
+    });
+
+    ok(res, null, 'Quantity update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
 
@@ -137,18 +182,25 @@ exports.updateMaterialValue = async (req, res) => {
     const { unit_value } = req.body;
     const mat = await db('general_store_materials').where({ id }).first();
     if (!mat) return err(res, 'Material not found', 404);
+
+    const pending = await db('store_update_approvals').where({ material_id: id, status: 'PENDING' }).first();
+    if (pending) return err(res, 'An update request is already pending CEO approval for this item.', 400);
+
+    const previousValue = { ...mat };
     const uv = parseFloat(unit_value) || 0;
     const total_value = parseFloat(mat.quantity_in_store || 0) * uv;
-    await db('general_store_materials').where({ id }).update({ unit_value: uv, total_value, updated_at: db.fn.now() });
-    await db('general_movement_log').insert({
-      item_type: 'Material', item_id: mat.material_id,
-      from_location: 'Finance', to_location: 'Finance',
-      department: mat.department,
-      action_type: 'Value Update',
-      moved_by: (req.user && req.user.fullName) || 'Finance Officer',
-      notes: `Unit value updated to ETB ${uv}, total: ETB ${total_value}`,
+    
+    const afterValue = { ...mat, unit_value: uv, total_value };
+
+    await db('store_update_approvals').insert({
+      material_id: id,
+      requested_by: req.user ? req.user.id : null,
+      update_type: 'STORE_VALUE_UPDATE',
+      before_state: JSON.stringify(previousValue),
+      after_state: JSON.stringify(afterValue)
     });
-    ok(res, null, 'Unit value updated');
+
+    ok(res, null, 'Unit value update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
 
@@ -158,24 +210,30 @@ exports.updateMaterialFull = async (req, res) => {
     const { material_name, category, department, unit, quantity_in_store, unit_value, reorder_level } = req.body;
     const mat = await db('general_store_materials').where({ id }).first();
     if (!mat) return err(res, 'Material not found', 404);
+
+    const pending = await db('store_update_approvals').where({ material_id: id, status: 'PENDING' }).first();
+    if (pending) return err(res, 'An update request is already pending CEO approval for this item.', 400);
+
+    const previousValue = { ...mat };
     const qty = parseFloat(quantity_in_store) || 0;
     const uv = parseFloat(unit_value) || 0;
     const total_value = qty * uv;
     const reorder = parseInt(reorder_level) || 10;
-    await db('general_store_materials').where({ id }).update({
-      material_name, category, department, unit,
-      quantity_in_store: qty, unit_value: uv, total_value, reorder_level: reorder,
-      updated_at: db.fn.now()
+    
+    const afterValue = {
+      ...mat, material_name, category, department, unit,
+      quantity_in_store: qty, unit_value: uv, total_value, reorder_level: reorder
+    };
+
+    await db('store_update_approvals').insert({
+      material_id: id,
+      requested_by: req.user ? req.user.id : null,
+      update_type: 'STORE_MATERIAL_UPDATE',
+      before_state: JSON.stringify(previousValue),
+      after_state: JSON.stringify(afterValue)
     });
-    await db('general_movement_log').insert({
-      item_type: 'Material', item_id: mat.material_id,
-      from_location: 'General Store', to_location: 'General Store',
-      department: department || mat.department,
-      action_type: 'Value Update',
-      moved_by: (req.user && req.user.fullName) || 'Store Keeper',
-      notes: `Item fully updated via UI.`,
-    });
-    ok(res, null, 'Material fully updated successfully');
+
+    ok(res, null, 'Update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
 
