@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DollarSign, AlertTriangle, Clock, ShoppingBag, Lock, Target, TrendingUp, CheckCircle, RefreshCw } from 'lucide-react';
 import salesService from '../../services/salesService';
 import authService from '../../services/authService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BG  = '#FFF7ED';
 const C   = '#D97706'; // amber-600

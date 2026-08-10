@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Layers, ShoppingCart, Tag, Check, X, Building2, Package, RefreshCw, AlertTriangle, Briefcase, Box } from 'lucide-react';
 import salesService from '../../services/salesService';
 import authService from '../../services/authService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BG  = '#D5DCF0';
 const C   = '#064e3b'; // dark green

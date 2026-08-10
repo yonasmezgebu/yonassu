@@ -5,6 +5,7 @@ import {
   ChevronRight, Info,
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ═══════════════════════════════════════════════════════════════════════
 // DESIGN SYSTEM — Natural University Green Palette

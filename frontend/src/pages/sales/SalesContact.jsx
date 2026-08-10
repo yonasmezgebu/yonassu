@@ -1,177 +1,219 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Mail, Save, MessageCircle, PhoneCall, User, Clock, CheckCircle, XCircle, Inbox } from 'lucide-react';
+import { Phone, Mail, Save, MessageCircle, PhoneCall, User, Clock, CheckCircle, XCircle, Inbox, Trash2, Eye, EyeOff, Send, CheckCheck } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import api from '../../services/apiClient';
 
-/* ─── All 17 rules applied ───────────────────────────────────────────────────
-  1.  No plant bg animation. Buttons on setting section only (not inside big table).
-  2.  Natural green palette throughout.
-  3.  Sharp corners everywhere — zero border-radius.
-  4.  Rows and columns properly laid out with grid.
-  5.  100% width — no centered container with side margins.
-  6.  In-app inline notification only — no alert().
-  7.  Responsive mobile breakpoints via CSS.
-  8.  NO border-radius on anything.
-  9.  White text on green, dark text on light bg.
-  10. Form fields: sharp corners, bold 2px Forest-Green border.
-  11. White text on all green surfaces.
-  12. No gap between page and sidebar/navbar — padding 0 on root.
-  13. Content starts below navbar naturally (DashboardLayout handles it).
-  14. Bold border on every input — only because form exists here.
-  15. Hover effects on rows, buttons, links.
-  16. No bold-color "section header container" in the middle.
-  17. N/A — this IS the page; form is on the same page.
-──────────────────────────────────────────────────────────────────────────── */
+/* ─── Enterprise design pass — mirrors HR Contact Settings ──────────────────
+   Blue accent (#2563EB), safe-edge, stats row, settings form + message inbox
+   with read/unread toggle, replied/pending state, delete, and Gmail-prefilled
+   compose. Sales-backend logic: /sales-settings + /sales-settings/messages.
+────────────────────────────────────────────────────────────────────────────── */
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
   .sc-root {
-    width: 100%;
-    min-height: 100%;
-    background: #F5F5F5;
-    font-family: 'Inter', system-ui, sans-serif;
-    color: #424242;
+    --color-primary:        #2563EB;
+    --color-primary-hover:  #1D4ED8;
+    --color-bg-page:        #F5F6FA;
+    --color-bg-card:        #FFFFFF;
+    --color-border:         #E5E7EB;
+    --color-text-primary:   #111827;
+    --color-text-secondary: #6B7280;
+    --color-text-muted:     #9CA3AF;
+    --color-success:        #16A34A;
+    --color-success-bg:     #DCFCE7;
+    --color-danger:         #DC2626;
+    --color-danger-bg:      #FEE2E2;
+    --color-warning:        #D97706;
+    --color-warning-bg:     #FEF3C7;
+    --color-info:           #0284C7;
+    --color-info-bg:        #E0F2FE;
+
+    background: var(--color-bg-page);
+    min-height: 100vh;
+    padding: 12px;
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-primary);
     box-sizing: border-box;
   }
+  .sc-root * { box-sizing: border-box; }
 
-  /* ── Top bar — Forest Green strip ── */
-  .sc-topbar {
-    width: 100%;
-    background: #1B5E20;
-    padding: 18px 28px;
+  @media (min-width: 768px)  { .sc-root { padding: 16px; } }
+  @media (min-width: 1024px) { .sc-root { padding: 24px; } }
+
+  /* ══════════════ HEADER CARD ══════════════ */
+  .sc-header {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    transition: all 150ms ease;
+  }
+  .sc-header:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-1px);
+  }
+  .sc-header-left { flex: 1; min-width: 280px; }
+  .sc-badge {
+    display: inline-flex;
     align-items: center;
-    gap: 14px;
-    border-bottom: 3px solid #228B22;
-    box-sizing: border-box;
+    gap: 6px;
+    background: var(--color-info-bg);
+    border: 1px solid #BAE6FD;
+    border-radius: 9999px;
+    padding: 2px 10px;
+    margin-bottom: 8px;
   }
-  .sc-topbar-icon {
-    background: #228B22;
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .sc-badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-info);
   }
-  .sc-topbar-title {
-    font-size: 18px;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-  .sc-topbar-sub {
-    font-size: 13px;
-    color: #A5D6A7;
-    margin: 0;
-    font-weight: 500;
-  }
-
-  /* ── Body area ── */
-  .sc-body {
-    padding: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* ── Section wrapper ── */
-  .sc-section {
-    width: 100%;
-    background: #FFFFFF;
-    border-bottom: 1px solid #8D6E63;
-    box-sizing: border-box;
-  }
-
-  /* ── Section inner content ── */
-  .sc-section-inner {
-    padding: 28px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  /* ── Section label strip ── */
-  .sc-section-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 28px;
-    background: #228B22;
-    border-bottom: 1px solid #1B5E20;
-    border-top: 1px solid #1B5E20;
-  }
-  .sc-section-label span {
-    font-size: 12px;
-    font-weight: 800;
-    color: #FFFFFF;
+  .sc-badge-txt {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-info);
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+  }
+  .sc-page-title {
+    font-size: clamp(24px, 3vw, 28px);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text-primary);
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .sc-page-title span { color: var(--color-primary); }
+  .sc-page-subtitle {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ══════════════ CARD SECTIONS ══════════════ */
+  .sc-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    overflow: hidden;
+    transition: all 150ms ease;
+  }
+  .sc-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-1px);
+  }
+  .sc-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+    background: #F9FAFB;
+  }
+  .sc-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+  .sc-card-badge {
+    margin-left: auto;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    letter-spacing: 0.03em;
+  }
+  .sc-card-body { padding: 24px; }
+  .sc-card-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin: 0 0 20px;
+    line-height: 1.5;
   }
 
   /* ── Form grid ── */
   .sc-form-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-    width: 100%;
-    box-sizing: border-box;
   }
-  @media (max-width: 900px) {
-    .sc-form-grid { grid-template-columns: 1fr 1fr; }
+  .sc-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
-  @media (max-width: 600px) {
-    .sc-form-grid { grid-template-columns: 1fr; }
-    .sc-topbar { padding: 14px 16px; }
-    .sc-section-inner { padding: 20px 16px; }
-    .sc-section-label { padding: 10px 16px; }
-  }
-
-  /* ── Field ── */
-  .sc-field label {
-    display: block;
+  .sc-form-group label {
     font-size: 12px;
-    font-weight: 700;
-    color: #1B5E20;
-    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.03em;
   }
-  .sc-field-wrap {
+  .sc-input-wrap {
     display: flex;
     align-items: center;
-    border: 2px solid #228B22;
-    background: #FFFFFF;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    background: var(--color-bg-page);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    height: 36px;
+    overflow: hidden;
+    transition: all 150ms ease-in-out;
   }
-  .sc-field-wrap:focus-within {
-    border-color: #1B5E20;
-    box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
+  .sc-input-wrap:focus-within {
+    border-color: var(--color-primary);
+    background: var(--color-bg-card);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
   }
-  .sc-field-icon {
-    padding: 0 10px;
+  .sc-input-icon {
     display: flex;
     align-items: center;
-    background: #F5F5F5;
-    border-right: 2px solid #228B22;
-    height: 100%;
-    align-self: stretch;
     justify-content: center;
-    min-width: 40px;
+    width: 36px;
+    height: 100%;
+    color: var(--color-text-muted);
+    background: #F9FAFB;
+    border-right: 1px solid var(--color-border);
+    flex-shrink: 0;
   }
-  .sc-field input {
+  .sc-input-wrap:focus-within .sc-input-icon {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+  .sc-input {
     flex: 1;
     border: none;
+    background: transparent;
     outline: none;
-    padding: 12px 14px;
+    padding: 0 12px;
     font-size: 14px;
-    font-weight: 500;
-    color: #424242;
-    background: #FFFFFF;
-    font-family: 'Inter', sans-serif;
+    color: var(--color-text-primary);
+    font-family: inherit;
     width: 100%;
-    box-sizing: border-box;
+    min-width: 0;
   }
-  .sc-field input::placeholder { color: #A5D6A7; font-weight: 400; }
+  .sc-input::placeholder { color: var(--color-text-muted); }
 
-  /* ── Save button row ── */
+  /* ── Save row ── */
   .sc-save-row {
     display: flex;
     align-items: center;
@@ -179,201 +221,285 @@ const STYLES = `
     margin-top: 24px;
     flex-wrap: wrap;
   }
-  .sc-btn-save {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #2E8B57;
-    color: #FFFFFF;
-    border: none;
-    padding: 12px 28px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    letter-spacing: 0.04em;
-    transition: background 0.15s, transform 0.15s;
-    border-left: 4px solid #1B5E20;
-  }
-  .sc-btn-save:hover:not(:disabled) {
-    background: #1B5E20;
-    transform: translateY(-1px);
-  }
-  .sc-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* ── Inline status badge ── */
-  .sc-status {
+  /* ══════════════ BUTTONS — yellow scatter-from-point hover ══════════════ */
+  .sc-save-btn, .sc-action-btn {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .sc-save-btn::after, .sc-action-btn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 180%;
+    padding-top: 180%;
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.55), rgba(255,255,255,.12) 70%);
+    transition: transform .4s ease, opacity .2s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .sc-save-btn > *, .sc-action-btn > * { position: relative; z-index: 1; }
+
+  .sc-save-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .sc-save-btn:hover:not(:disabled) {
+    background: #F59E0B !important;
+    color: #78350F !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .sc-save-btn:hover:not(:disabled)::after { transform: translate(-50%, -50%) scale(1); }
+  .sc-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .sc-status-msg {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-size: 13px;
-    font-weight: 700;
-    animation: scSlide 0.25s ease;
-    border-left: 4px solid;
+    font-weight: 500;
+    animation: scSlideIn 150ms ease-out;
   }
-  .sc-status.success {
-    background: #f0fdf4;
-    color: #166534;
-    border-left-color: #4CAF50;
-  }
-  .sc-status.error {
-    background: #fef2f2;
-    color: #991b1b;
-    border-left-color: #F44336;
-  }
-  @keyframes scSlide {
-    from { opacity: 0; transform: translateX(-10px); }
+  @keyframes scSlideIn {
+    from { opacity: 0; transform: translateX(-6px); }
     to   { opacity: 1; transform: translateX(0); }
   }
+  .sc-status-success { background: var(--color-success-bg); color: #166534; }
+  .sc-status-error   { background: var(--color-danger-bg); color: #991B1B; }
 
-  /* ── Inbox table ── */
-  .sc-table-wrap {
-    width: 100%;
-    overflow-x: auto;
+  /* ══════════════ STATS ROW ══════════════ */
+  .sc-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .sc-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .sc-table thead tr {
-    background: #1B5E20;
-  }
-  .sc-table thead th {
-    color: #FFFFFF;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 12px 16px;
-    text-align: left;
-    border-right: 1px solid #228B22;
-  }
-  .sc-table thead th:last-child { border-right: none; }
-  .sc-table tbody tr {
-    border-bottom: 1px solid #E8F5E9;
-    transition: background 0.15s;
-  }
-  .sc-table tbody tr:hover { background: #F1F8E9; }
-  .sc-table tbody tr:nth-child(even) { background: #FAFFF9; }
-  .sc-table tbody tr:nth-child(even):hover { background: #F1F8E9; }
-  .sc-table td {
-    padding: 13px 16px;
-    color: #424242;
-    vertical-align: top;
-    border-right: 1px solid #E8F5E9;
-  }
-  .sc-table td:last-child { border-right: none; }
-
-  /* ── Name cell ── */
-  .sc-sender-name {
-    font-weight: 700;
-    color: #1B5E20;
-    font-size: 14px;
-  }
-  .sc-sender-email {
-    font-size: 12px;
-    color: #2E8B57;
-    text-decoration: none;
-    display: block;
-    margin-top: 2px;
-  }
-  .sc-sender-email:hover { color: #1B5E20; text-decoration: underline; }
-  .sc-sender-phone {
-    font-size: 12px;
-    color: #6B8E23;
-    display: block;
-    margin-top: 2px;
-  }
-
-  /* ── Message cell ── */
-  .sc-msg-text {
-    color: #424242;
-    line-height: 1.6;
-    margin: 0;
-    white-space: pre-wrap;
-  }
-
-  /* ── Time cell ── */
-  .sc-time {
-    font-size: 12px;
-    color: #8D6E63;
-    white-space: nowrap;
-  }
-
-  /* ── Unread badge ── */
-  .sc-unread-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: #8BC34A;
-    margin-right: 6px;
-    vertical-align: middle;
-    flex-shrink: 0;
-  }
-
-  /* ── Empty / loading states ── */
-  .sc-empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: #8D6E63;
-    background: #FAFFF9;
-    border-top: 1px solid #E8F5E9;
-  }
-  .sc-empty-icon {
-    margin-bottom: 12px;
-    opacity: 0.4;
-  }
-  .sc-empty p { margin: 4px 0; }
-  .sc-empty .sc-empty-title { font-weight: 700; font-size: 16px; color: #424242; }
-  .sc-empty .sc-empty-sub { font-size: 13px; }
-
-  /* ── Stats bar ── */
-  .sc-stats-bar {
+  .sc-stat-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 20px;
     display: flex;
     align-items: center;
-    gap: 0;
-    border-bottom: 1px solid #E8F5E9;
-    background: #FAFFF9;
+    gap: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    transition: all 150ms ease;
   }
-  .sc-stat-cell {
-    flex: 1;
-    padding: 14px 20px;
-    border-right: 1px solid #E8F5E9;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sc-stat-cell:last-child { border-right: none; }
-  .sc-stat-num {
-    font-size: 22px;
-    font-weight: 800;
-    color: #228B22;
-    line-height: 1;
-  }
-  .sc-stat-lbl {
-    font-size: 11px;
-    font-weight: 600;
-    color: #8D6E63;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .sc-stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-1px);
   }
   .sc-stat-icon {
-    background: #E8F5E9;
-    padding: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--color-bg-page);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
     flex-shrink: 0;
   }
-
-  @media (max-width: 600px) {
-    .sc-stats-bar { flex-wrap: wrap; }
-    .sc-stat-cell { min-width: 50%; border-bottom: 1px solid #E8F5E9; }
-    .sc-table { font-size: 12px; }
-    .sc-table td, .sc-table thead th { padding: 10px 10px; }
+  .sc-stat-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
+  .sc-stat-val {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+  }
+  .sc-stat-lbl {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  @media (max-width: 640px) {
+    .sc-stats-row { grid-template-columns: 1fr; }
+  }
+
+  /* ══════════════ TABLE ══════════════ */
+  .sc-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sc-table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+  }
+  .sc-table thead tr { border-bottom: 1px solid var(--color-border); }
+  .sc-table th {
+    padding: 12px 16px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .sc-table th.right  { text-align: right; }
+  .sc-table th.center { text-align: center; }
+  .sc-table tbody tr {
+    border-bottom: 1px solid #F3F4F6;
+    transition: background 150ms ease-in-out;
+  }
+  .sc-table tbody tr:hover { background: #F9FAFB; }
+  .sc-table tbody tr:last-child { border-bottom: none; }
+  .sc-row-unread { background: #F8FAFC !important; }
+  .sc-row-replied { background: var(--color-success-bg) !important; }
+  .sc-table td {
+    padding: 12px 16px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    vertical-align: top;
+  }
+  .sc-table td.right  { text-align: right; }
+  .sc-table td.center { text-align: center; }
+
+  .sc-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .sc-sender-name {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 14px;
+  }
+  .sc-sender-email {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-primary);
+    text-decoration: none;
+    margin-top: 4px;
+  }
+  .sc-sender-email:hover { text-decoration: underline; color: var(--color-primary-hover); }
+  .sc-sender-phone {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+  .sc-msg-text {
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 13px;
+  }
+  .sc-time-text {
+    font-size: 13px;
+    color: var(--color-text-primary);
+  }
+  .sc-time-text-sub {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
+  .sc-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .sc-pill-replied { background: var(--color-success); color: #fff; }
+  .sc-pill-pending {
+    background: var(--color-bg-page);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .sc-actions-list {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .sc-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .sc-action-btn:hover {
+    background: #F59E0B !important;
+    color: #78350F !important;
+    border-color: #F59E0B !important;
+  }
+  .sc-action-btn:hover::after { transform: translate(-50%, -50%) scale(1); }
+  .sc-action-btn.active {
+    background: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
+  }
+  .sc-action-btn.active:hover {
+    background: var(--color-success) !important;
+    color: #fff !important;
+    border-color: var(--color-success) !important;
+  }
+  .sc-action-btn-del:hover {
+    background: var(--color-danger-bg) !important;
+    color: var(--color-danger) !important;
+    border-color: var(--color-danger) !important;
+  }
+
+  /* ── Loading / Empty ── */
+  .sc-loading, .sc-empty {
+    padding: 64px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    text-align: center;
+  }
+  .sc-empty-title {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    margin: 0;
+  }
+  .sc-empty-sub { font-size: 13px; margin: 0; }
 `;
 
 const SalesContact = () => {
@@ -382,6 +508,10 @@ const SalesContact = () => {
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [saveStatus, setSaveStatus] = useState({ type: '', text: '' });
+  const [repliedIds, setRepliedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('sales_replied_msgs') || '[]')); }
+    catch { return new Set(); }
+  });
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -436,6 +566,41 @@ const SalesContact = () => {
     }
   };
 
+  const toggleMessageStatus = async (msg) => {
+    const newStatus = msg.is_read ? false : true;
+    try {
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: newStatus } : m));
+      await api.patch(`/sales-settings/messages/${msg.id}/status`, { is_read: newStatus });
+    } catch (err) {
+      console.error('Failed to toggle status', err);
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: msg.is_read } : m));
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    try {
+      await api.delete(`/sales-settings/messages/${id}`);
+      setMessages(prev => prev.filter(m => m.id !== id));
+      setRepliedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        localStorage.setItem('sales_replied_msgs', JSON.stringify([...next]));
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to delete message', err);
+    }
+  };
+
+  const markReplied = (id) => {
+    setRepliedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem('sales_replied_msgs', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const total   = messages.length;
   const unread  = messages.filter(m => !m.is_read).length;
   const today   = messages.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString()).length;
@@ -444,225 +609,243 @@ const SalesContact = () => {
     <div className="sc-root">
       <style>{STYLES}</style>
 
-      {/* ── Top Bar ── */}
-      <div className="sc-topbar">
-        <div className="sc-topbar-icon">
-          <PhoneCall size={20} color="#FFFFFF" />
-        </div>
-        <div>
-          <p className="sc-topbar-title">Sales Contact Settings</p>
-          <p className="sc-topbar-sub">Manage public contact info &amp; customer messages</p>
+      {/* ══════════════ HEADER ══════════════ */}
+      <div className="sc-header">
+        <div className="sc-header-left">
+          <div className="sc-badge">
+            <span className="sc-badge-dot" />
+            <span className="sc-badge-txt">Sales Administration</span>
+          </div>
+          <h1 className="sc-page-title">Sales Contact <span>Settings</span></h1>
+          <p className="sc-page-subtitle">Manage public contact info &amp; customer messages</p>
         </div>
       </div>
 
-      <div className="sc-body">
-
-        {/* ════════════════════════════════════════
-            SECTION 1 — Contact Settings Form
-        ════════════════════════════════════════ */}
-        <div className="sc-section">
-          <div className="sc-section-label">
-            <PhoneCall size={14} color="#FFFFFF" />
-            <span>Public Contact Information</span>
-          </div>
-          <div className="sc-section-inner">
-            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#6B8E23', fontWeight: 500, lineHeight: 1.6 }}>
-              These details appear in the <strong style={{ color: '#228B22' }}>"Sales Team"</strong> contact popup on the public tender buy page.
-              Keep them up to date so customers can reach the right team.
-            </p>
-
-            <div className="sc-form-grid">
-
-              {/* Phone 1 */}
-              <div className="sc-field">
-                <label htmlFor="sc-phone1">Primary Phone</label>
-                <div className="sc-field-wrap">
-                  <div className="sc-field-icon">
-                    <Phone size={15} color="#228B22" />
-                  </div>
-                  <input
-                    id="sc-phone1"
-                    type="text"
-                    name="phone1"
-                    value={settings.phone1}
-                    onChange={handleChange}
-                    placeholder="+251 9XX XXX XXX"
-                  />
-                </div>
-              </div>
-
-              {/* Phone 2 */}
-              <div className="sc-field">
-                <label htmlFor="sc-phone2">Secondary Phone</label>
-                <div className="sc-field-wrap">
-                  <div className="sc-field-icon">
-                    <Phone size={15} color="#228B22" />
-                  </div>
-                  <input
-                    id="sc-phone2"
-                    type="text"
-                    name="phone2"
-                    value={settings.phone2}
-                    onChange={handleChange}
-                    placeholder="+251 9XX XXX XXX"
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="sc-field">
-                <label htmlFor="sc-email">Sales Email Address</label>
-                <div className="sc-field-wrap">
-                  <div className="sc-field-icon">
-                    <Mail size={15} color="#228B22" />
-                  </div>
-                  <input
-                    id="sc-email"
-                    type="email"
-                    name="email"
-                    value={settings.email}
-                    onChange={handleChange}
-                    placeholder="sales@sutana.com"
-                  />
-                </div>
-              </div>
-
-            </div>
-
-            {/* Save Row */}
-            <div className="sc-save-row">
-              <button
-                className="sc-btn-save"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                <Save size={16} />
-                {saving ? 'Saving…' : 'Save Contact Settings'}
-              </button>
-
-              {saveStatus.text && (
-                <div className={`sc-status ${saveStatus.type}`}>
-                  {saveStatus.type === 'success'
-                    ? <CheckCircle size={15} />
-                    : <XCircle size={15} />}
-                  {saveStatus.text}
-                </div>
-              )}
-            </div>
+      {/* ══════════════ STATS ROW ══════════════ */}
+      <div className="sc-stats-row">
+        <div className="sc-stat-card">
+          <div className="sc-stat-icon"><Inbox size={20} /></div>
+          <div className="sc-stat-info">
+            <span className="sc-stat-val">{total}</span>
+            <span className="sc-stat-lbl">Total Messages</span>
           </div>
         </div>
-
-        {/* ════════════════════════════════════════
-            SECTION 2 — Stats Bar
-        ════════════════════════════════════════ */}
-        <div className="sc-stats-bar">
-          <div className="sc-stat-cell">
-            <div className="sc-stat-icon"><Inbox size={16} color="#228B22" /></div>
-            <div>
-              <div className="sc-stat-num">{total}</div>
-              <div className="sc-stat-lbl">Total Messages</div>
-            </div>
-          </div>
-          <div className="sc-stat-cell">
-            <div className="sc-stat-icon"><MessageCircle size={16} color="#8BC34A" /></div>
-            <div>
-              <div className="sc-stat-num" style={{ color: unread > 0 ? '#8BC34A' : '#228B22' }}>{unread}</div>
-              <div className="sc-stat-lbl">Unread</div>
-            </div>
-          </div>
-          <div className="sc-stat-cell">
-            <div className="sc-stat-icon"><Clock size={16} color="#6B8E23" /></div>
-            <div>
-              <div className="sc-stat-num">{today}</div>
-              <div className="sc-stat-lbl">Today</div>
-            </div>
+        <div className="sc-stat-card">
+          <div className="sc-stat-icon"><MessageCircle size={20} color={unread > 0 ? 'var(--color-primary)' : undefined} /></div>
+          <div className="sc-stat-info">
+            <span className="sc-stat-val" style={{ color: unread > 0 ? 'var(--color-primary)' : 'inherit' }}>{unread}</span>
+            <span className="sc-stat-lbl">Unread</span>
           </div>
         </div>
+        <div className="sc-stat-card">
+          <div className="sc-stat-icon"><Clock size={20} /></div>
+          <div className="sc-stat-info">
+            <span className="sc-stat-val">{today}</span>
+            <span className="sc-stat-lbl">Today</span>
+          </div>
+        </div>
+      </div>
 
-        {/* ════════════════════════════════════════
-            SECTION 3 — Inbox Table
-        ════════════════════════════════════════ */}
-        <div className="sc-section">
-          <div className="sc-section-label">
-            <MessageCircle size={14} color="#FFFFFF" />
-            <span>Customer Inquiry Inbox</span>
-            {unread > 0 && (
-              <span style={{
-                marginLeft: 'auto',
-                background: '#8BC34A',
-                color: '#FFFFFF',
-                fontSize: '11px',
-                fontWeight: 800,
-                padding: '2px 10px',
-                letterSpacing: '0.06em'
-              }}>
-                {unread} UNREAD
-              </span>
+      {/* ══════════════ SETTINGS FORM CARD ══════════════ */}
+      <div className="sc-card">
+        <div className="sc-card-header">
+          <PhoneCall size={16} color="var(--color-text-secondary)" />
+          <h2 className="sc-card-title">Public Contact Information</h2>
+        </div>
+        <div className="sc-card-body">
+          <p className="sc-card-desc">
+            These details appear in the "Sales Team" contact popup on the public tender buy page.
+            Keep them up to date so customers can reach the sales team directly.
+          </p>
+
+          <div className="sc-form-grid">
+            <div className="sc-form-group">
+              <label htmlFor="sc-phone1">Primary Phone</label>
+              <div className="sc-input-wrap">
+                <div className="sc-input-icon"><Phone size={14} /></div>
+                <input
+                  className="sc-input"
+                  id="sc-phone1"
+                  type="text"
+                  name="phone1"
+                  value={settings.phone1}
+                  onChange={handleChange}
+                  placeholder="+251 9XX XXX XXX"
+                />
+              </div>
+            </div>
+
+            <div className="sc-form-group">
+              <label htmlFor="sc-phone2">Secondary Phone</label>
+              <div className="sc-input-wrap">
+                <div className="sc-input-icon"><Phone size={14} /></div>
+                <input
+                  className="sc-input"
+                  id="sc-phone2"
+                  type="text"
+                  name="phone2"
+                  value={settings.phone2}
+                  onChange={handleChange}
+                  placeholder="+251 9XX XXX XXX"
+                />
+              </div>
+            </div>
+
+            <div className="sc-form-group">
+              <label htmlFor="sc-email">Sales Email Address</label>
+              <div className="sc-input-wrap">
+                <div className="sc-input-icon"><Mail size={14} /></div>
+                <input
+                  className="sc-input"
+                  id="sc-email"
+                  type="email"
+                  name="email"
+                  value={settings.email}
+                  onChange={handleChange}
+                  placeholder="sales@sutana.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="sc-save-row">
+            <button className="sc-save-btn" onClick={handleSave} disabled={saving}>
+              {saving ? <SegmentedSpinner size={16} /> : <Save size={16} />}
+              {saving ? 'Saving…' : 'Save Contact Settings'}
+            </button>
+            {saveStatus.text && (
+              <div className={`sc-status-msg ${saveStatus.type === 'success' ? 'sc-status-success' : 'sc-status-error'}`}>
+                {saveStatus.type === 'success' ? <CheckCircle size={15} /> : <XCircle size={15} />}
+                {saveStatus.text.replace('✓ ', '').replace('✗ ', '')}
+              </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {loadingMessages ? (
-            <div className="sc-empty">
-              <div className="sc-empty-icon"><MessageCircle size={40} color="#A5D6A7" /></div>
-              <p className="sc-empty-title">Loading messages…</p>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="sc-empty">
-              <div className="sc-empty-icon"><Inbox size={48} color="#A5D6A7" /></div>
-              <p className="sc-empty-title">No messages yet</p>
-              <p className="sc-empty-sub">Customer inquiries from the public Sales Team contact form will appear here.</p>
-            </div>
-          ) : (
-            <div className="sc-table-wrap">
-              <table className="sc-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '22%' }}>Sender</th>
-                    <th>Message</th>
-                    <th style={{ width: '16%' }}>Phone</th>
-                    <th style={{ width: '14%' }}>Received</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {messages.map((msg) => (
-                    <tr key={msg.id}>
-                      {/* Sender */}
+      {/* ══════════════ INBOX TABLE CARD ══════════════ */}
+      <div className="sc-card">
+        <div className="sc-card-header">
+          <MessageCircle size={16} color="var(--color-text-secondary)" />
+          <h2 className="sc-card-title">Customer Inquiry Inbox</h2>
+          {unread > 0 && <span className="sc-card-badge">{unread} UNREAD</span>}
+        </div>
+
+        {loadingMessages ? (
+          <div className="sc-loading">
+            <SegmentedSpinner size={48} />
+            <p className="sc-empty-title">Loading messages…</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="sc-empty">
+            <Inbox size={40} />
+            <p className="sc-empty-title">No messages yet</p>
+            <p className="sc-empty-sub">Customer inquiries from the public Sales Team contact form will appear here.</p>
+          </div>
+        ) : (
+          <div className="sc-table-wrapper">
+            <table className="sc-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '22%' }}>Sender</th>
+                  <th>Message</th>
+                  <th style={{ width: '16%' }}>Phone</th>
+                  <th style={{ width: '14%' }}>Received</th>
+                  <th className="center" style={{ width: '14%' }}>Status</th>
+                  <th className="right" style={{ width: '10%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {messages.map((msg) => {
+                  const isReplied = repliedIds.has(msg.id);
+                  return (
+                    <tr key={msg.id} className={isReplied ? 'sc-row-replied' : (!msg.is_read ? 'sc-row-unread' : '')}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          {!msg.is_read && <span className="sc-unread-dot" title="Unread" />}
+                        <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                          {!msg.is_read && <span className="sc-dot" title="Unread" />}
                           <div>
                             <div className="sc-sender-name">{msg.sender_name}</div>
-                            <a href={`mailto:${msg.sender_email}`} className="sc-sender-email">
-                              {msg.sender_email}
+                            <a
+                              href={`https://mail.google.com/mail/?view=cm&fs=1&to=${msg.sender_email}&su=${encodeURIComponent('Reply to your inquiry')}&body=${encodeURIComponent(`Dear ${msg.sender_name},\n\n\n\nBest regards,\nSales Team\n${settings.email}\n${settings.phone1}`)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="sc-sender-email"
+                              onClick={() => markReplied(msg.id)}
+                            >
+                              <Send size={12} /> {msg.sender_email}
                             </a>
                           </div>
                         </div>
                       </td>
-                      {/* Message */}
                       <td>
                         <p className="sc-msg-text">{msg.message}</p>
                       </td>
-                      {/* Phone */}
                       <td>
                         <span className="sc-sender-phone">
-                          {msg.sender_phone || <span style={{ color: '#A5D6A7', fontStyle: 'italic' }}>—</span>}
+                          {msg.sender_phone || <span style={{ fontStyle: 'italic', opacity: 0.5 }}>—</span>}
                         </span>
                       </td>
-                      {/* Time */}
                       <td>
-                        <span className="sc-time">
-                          {new Date(msg.created_at).toLocaleDateString()}<br />
-                          <span style={{ color: '#A5D6A7' }}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </span>
+                        <div className="sc-time-text">{new Date(msg.created_at).toLocaleDateString()}</div>
+                        <div className="sc-time-text-sub">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                      </td>
+                      <td className="center">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                          {isReplied ? (
+                            <span className="sc-status-pill sc-pill-replied">
+                              <CheckCheck size={12} /> REPLIED
+                            </span>
+                          ) : (
+                            <span className="sc-status-pill sc-pill-pending">
+                              PENDING
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="right">
+                        <div className="sc-actions-list">
+                          <button
+                            onClick={() => {
+                              if (isReplied) {
+                                setRepliedIds(prev => {
+                                  const next = new Set(prev);
+                                  next.delete(msg.id);
+                                  localStorage.setItem('sales_replied_msgs', JSON.stringify([...next]));
+                                  return next;
+                                });
+                              } else {
+                                markReplied(msg.id);
+                              }
+                            }}
+                            className={`sc-action-btn ${isReplied ? 'active' : ''}`}
+                            title={isReplied ? 'Unmark as replied' : 'Mark as replied'}
+                          >
+                            <CheckCheck size={14} />
+                          </button>
+                          <button
+                            onClick={() => toggleMessageStatus(msg)}
+                            className="sc-action-btn"
+                            style={{ color: msg.is_read ? 'var(--color-success)' : 'var(--color-primary)' }}
+                            title={msg.is_read ? 'Mark as unread' : 'Mark as read'}
+                          >
+                            {msg.is_read ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </button>
+                          <button
+                            onClick={() => deleteMessage(msg.id)}
+                            className="sc-action-btn sc-action-btn-del"
+                            title="Delete message"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

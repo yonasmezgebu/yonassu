@@ -13,6 +13,7 @@ import {
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import ImportStoreProductModal from './ImportStoreProductModal';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── AuditRow: Expandable transaction detail row in audit trail ───────────────
 function AuditRow({ log, idx }) {
@@ -22,41 +23,42 @@ function AuditRow({ log, idx }) {
   const saleType = log.sale_type ? log.sale_type.replace('_', ' ').toUpperCase() : 'WALK-IN';
 
   return (
-    <div style={{ borderBottom: '1px solid #F1F5F9', marginBottom: 0 }}>
+    <div style={{ borderBottom: '1px solid #F3F4F6', marginBottom: 0 }}>
       {/* Transaction Row */}
       <div
         onClick={() => setOpen(!open)}
         style={{
           display: 'grid', gridTemplateColumns: '80px 1fr 110px 130px 80px',
-          alignItems: 'center', padding: '10px 4px', cursor: 'pointer',
-          background: open ? '#F0FDF4' : (idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'),
-          transition: 'background 0.15s'
+          alignItems: 'center', padding: '10px 8px', cursor: 'pointer',
+          background: open ? '#EFF6FF' : (idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'),
+          transition: 'background 0.15s',
+          borderRadius: 8,
         }}
       >
-        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{time}</div>
+        <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500 }}>{time}</div>
         <div>
-          <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13 }}>
+          <div style={{ fontWeight: 700, color: '#111827', fontSize: 13 }}>
             {log.recipient || log.invoice_number || `Sale #${log.sale_id}`}
           </div>
-          <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{saleType} · {payMethod}</div>
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{saleType} · {payMethod}</div>
         </div>
         <div>
           <span style={{
-            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 0,
-            background: '#D1FAE5', color: '#065F46'
+            fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 999,
+            background: '#DCFCE7', color: '#166534'
           }}>SUBMITTED</span>
         </div>
-        <div style={{ fontWeight: 800, color: '#059669', fontSize: 14, textAlign: 'right' }}>
+        <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
           {parseFloat(log.amount || 0).toFixed(2)} ETB
         </div>
-        <div style={{ textAlign: 'center', color: '#94A3B8' }}>
+        <div style={{ textAlign: 'center', color: '#6B7280' }}>
           {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
         </div>
       </div>
 
       {/* Expanded Detail */}
       {open && (
-        <div style={{ padding: '12px 16px 16px', background: '#F8FAFC', borderTop: '1px dashed #E2E8F0' }}>
+        <div style={{ padding: '12px 16px 16px', background: '#F9FAFB', borderTop: '1px dashed #E5E7EB', borderRadius: 8 }}>
           {/* Info Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             {[
@@ -68,15 +70,15 @@ function AuditRow({ log, idx }) {
               { label: 'Status', value: log.status_name || 'Completed' },
             ].map((item, i) => (
               <div key={i}>
-                <div style={{ fontSize: 10, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B' }}>{item.value}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>{item.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{item.value}</div>
               </div>
             ))}
           </div>
 
           {/* Payment Notes */}
           {log.payment_notes && (
-            <div style={{ fontSize: 11, color: '#475569', background: '#EFF6FF', padding: '6px 10px', marginBottom: 12, borderLeft: '3px solid #2563EB' }}>
+            <div style={{ fontSize: 11, color: '#374151', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '6px 10px', marginBottom: 12 }}>
               {log.payment_notes}
             </div>
           )}
@@ -84,14 +86,14 @@ function AuditRow({ log, idx }) {
           {/* Items */}
           {log.items && log.items.length > 0 ? (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Items</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Items</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                    <th style={{ padding: '4px 0', textAlign: 'left', color: '#64748B', fontWeight: 600 }}>Product</th>
-                    <th style={{ padding: '4px 0', textAlign: 'center', color: '#64748B', fontWeight: 600 }}>Qty</th>
-                    <th style={{ padding: '4px 0', textAlign: 'right', color: '#64748B', fontWeight: 600 }}>Unit Price</th>
-                    <th style={{ padding: '4px 0', textAlign: 'right', color: '#64748B', fontWeight: 600 }}>Total</th>
+                  <tr style={{ borderBottom: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                    <th style={{ padding: '6px 0', textAlign: 'left', color: '#6B7280', fontWeight: 600 }}>Product</th>
+                    <th style={{ padding: '6px 0', textAlign: 'center', color: '#6B7280', fontWeight: 600 }}>Qty</th>
+                    <th style={{ padding: '6px 0', textAlign: 'right', color: '#6B7280', fontWeight: 600 }}>Unit Price</th>
+                    <th style={{ padding: '6px 0', textAlign: 'right', color: '#6B7280', fontWeight: 600 }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -99,19 +101,19 @@ function AuditRow({ log, idx }) {
                     const qty = parseFloat(it.quantity) || 0;
                     const price = parseFloat(it.unit_price) || 0;
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #F8FAFC' }}>
-                        <td style={{ padding: '5px 0', color: '#1E293B', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
-                        <td style={{ padding: '5px 0', textAlign: 'center', color: '#475569' }}>{qty}</td>
-                        <td style={{ padding: '5px 0', textAlign: 'right', color: '#475569' }}>{price.toFixed(2)} ETB</td>
-                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{(qty * price).toFixed(2)} ETB</td>
+                      <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', background: '#FFFFFF' }}>
+                        <td style={{ padding: '5px 0', color: '#111827', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
+                        <td style={{ padding: '5px 0', textAlign: 'center', color: '#4B5563' }}>{qty}</td>
+                        <td style={{ padding: '5px 0', textAlign: 'right', color: '#4B5563' }}>{price.toFixed(2)} ETB</td>
+                        <td style={{ padding: '5px 0', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{(qty * price).toFixed(2)} ETB</td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr style={{ borderTop: '1px solid #E2E8F0' }}>
-                    <td colSpan={3} style={{ padding: '5px 0', fontWeight: 700, color: '#1E293B', textAlign: 'right' }}>Total</td>
-                    <td style={{ padding: '5px 0', fontWeight: 800, color: '#059669', textAlign: 'right' }}>
+                  <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                    <td colSpan={3} style={{ padding: '5px 0', fontWeight: 700, color: '#111827', textAlign: 'right' }}>Total</td>
+                    <td style={{ padding: '5px 0', fontWeight: 700, color: 'var(--primary)', textAlign: 'right' }}>
                       {parseFloat(log.amount || 0).toFixed(2)} ETB
                     </td>
                   </tr>
@@ -119,7 +121,7 @@ function AuditRow({ log, idx }) {
               </table>
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>No item details available</div>
+            <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>No item details available</div>
           )}
         </div>
       )}
@@ -169,7 +171,7 @@ function SignatureCanvas({ onSignatureChange }) {
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = '#1B5E20';
+    ctx.strokeStyle = '#2563EB';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -196,8 +198,8 @@ function SignatureCanvas({ onSignatureChange }) {
         width={400}
         height={100}
         style={{
-          border: `2px solid ${signed ? '#228B22' : '#8D6E63'}`,
-          background: signed ? '#F0FFF0' : '#FAFFF8',
+          border: `2px solid ${signed ? '#2563EB' : '#D1D5DB'}`,
+          background: signed ? '#EFF6FF' : '#F9FAFB',
           cursor: 'crosshair',
           display: 'block',
           width: '100%',
@@ -224,9 +226,9 @@ function SignatureCanvas({ onSignatureChange }) {
           onClick={clearCanvas}
           style={{
             position: 'absolute', top: 6, right: 6,
-            background: '#fff', border: `1px solid #8D6E63`,
+            background: '#fff', border: `1px solid #D1D5DB`,
             padding: '3px 8px', fontSize: 11, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 4, color: '#8D6E63',
+            display: 'flex', alignItems: 'center', gap: 4, color: '#6B7280',
           }}
         >
           <RotateCcw size={11} /> Clear
@@ -1022,24 +1024,29 @@ const addToCart = (item) => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         :root {
-          --primary: #228B22;
-          --header: #1B5E20;
-          --emerald: #2E8B57;
-          --success: #4CAF50;
-          --sage: #A5D6A7;
-          --sage-light: #E8F5E9;
-          --lime: #8BC34A;
-          --accent: #87CEEB;
+          --primary: #2563EB;
+          --primary-hover: #1D4ED8;
+          --header: #1D4ED8;
+          --emerald: #2563EB;
+          --success: #16A34A;
+          --sage: #BFDBFE;
+          --sage-light: #EFF6FF;
+          --lime: #93C5FD;
+          --accent: #93C5FD;
           --bg-main: #FFFFFF;
-          --bg-page: #F1F8F1;
-          --text-main: #424242;
-          --text-muted: #757575;
-          --earth: #8D6E63;
-          --earth-light: #EFEBE9;
-          --olive: #6B8E23;
-          --mint: #F1FFF1;
-          --danger: #C62828;
-          --danger-light: #FFEBEE;
+          --bg-page: #F5F6FA;
+          --text-main: #111827;
+          --text-muted: #6B7280;
+          --earth: #6B7280;
+          --earth-light: #F9FAFB;
+          --olive: #2563EB;
+          --mint: #EFF6FF;
+          --danger: #DC2626;
+          --danger-light: #FEE2E2;
+          --amber: #F59E0B;
+          --amber-text: #78350F;
+          --amber-bg: #FEF3C7;
+          --ring: rgba(37,99,235,.1);
         }
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -1048,142 +1055,158 @@ const addToCart = (item) => {
         @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(34,139,34,0.4)} 50%{box-shadow:0 0 0 6px rgba(34,139,34,0)} }
         
         .btn-forest {
-          background: var(--header);
+          background: var(--primary);
           color: white;
-          border: none;
-          border-bottom: 4px solid #0d3d0d;
-          padding: 11px 22px;
+          border: 1px solid var(--primary);
+          padding: 10px 18px;
           cursor: pointer;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 13px;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          transition: all 0.12s ease;
+          letter-spacing: 0.02em;
+          border-radius: 8px;
+          transition: all 0.15s ease;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          height: 36px;
         }
         .btn-forest:hover:not(:disabled) {
-          background: #153d15;
-          transform: translateY(2px);
-          border-bottom-width: 2px;
+          background: var(--primary-hover);
+          border-color: var(--primary-hover);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(37,99,235,0.2);
         }
-        .btn-forest:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 0; }
-        .btn-forest:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .btn-forest:active:not(:disabled) { transform: translateY(0); }
+        .btn-forest:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .btn-3d {
-          background: var(--emerald);
+          background: var(--primary);
           color: white;
-          border: none;
-          border-bottom: 4px solid var(--header);
-          padding: 10px 20px;
+          border: 1px solid var(--primary);
+          padding: 9px 18px;
           cursor: pointer;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 13px;
-          transition: all 0.12s ease;
+          border-radius: 8px;
+          transition: all 0.15s ease;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          height: 36px;
         }
-        .btn-3d:hover:not(:disabled) { background: var(--primary); transform: translateY(2px); border-bottom-width: 2px; }
-        .btn-3d:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 0; }
-        .btn-3d:disabled { opacity: 0.55; cursor: not-allowed; }
+        .btn-3d:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+        .btn-3d:active:not(:disabled) { transform: translateY(0); }
+        .btn-3d:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .btn-earth {
           background: white;
-          color: var(--earth);
-          border: 2px solid var(--earth);
-          padding: 9px 18px;
+          color: var(--text-main);
+          border: 1px solid #D1D5DB;
+          padding: 8px 16px;
           cursor: pointer;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          transition: all 0.12s;
+          border-radius: 8px;
+          transition: all 0.15s;
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          height: 36px;
         }
-        .btn-earth:hover { background: var(--earth-light); }
+        .btn-earth:hover { background: var(--earth-light); border-color: #9CA3AF; }
 
         .btn-danger {
           background: var(--danger);
           color: white;
-          border: none;
-          border-bottom: 3px solid #8B0000;
-          padding: 9px 18px;
+          border: 1px solid var(--danger);
+          padding: 8px 16px;
           cursor: pointer;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 12px;
-          text-transform: uppercase;
-          transition: all 0.12s;
+          border-radius: 8px;
+          transition: all 0.15s;
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          height: 36px;
         }
-        .btn-danger:hover { background: #B71C1C; transform: translateY(1px); border-bottom-width: 2px; }
+        .btn-danger:hover { background: #B91C1C; border-color: #B91C1C; }
 
         .rsp-card {
           background: white;
           overflow: hidden;
-          border-left: 4px solid transparent;
-          box-shadow: 0 2px 0 rgba(27,94,32,0.12), 0 1px 4px rgba(0,0,0,0.06);
+          border: 1px solid #E5E7EB;
+          border-radius: 10px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
           cursor: pointer;
-          transition: all 0.18s ease;
+          transition: all 0.15s ease;
           display: flex;
           flex-direction: column;
           animation: fadeUp 0.3s ease both;
         }
         .rsp-card:hover {
-          transform: translateY(-4px);
-          border-left-color: var(--primary);
-          box-shadow: 0 6px 0 rgba(27,94,32,0.25), 0 4px 16px rgba(0,0,0,0.1);
+          transform: translateY(-1px);
+          border-color: var(--amber);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(245,158,11,0.35);
         }
-        .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; background: var(--bg-page); display: flex; align-items: center; justify-content: center; }
+        .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; background: #F9FAFB; display: flex; align-items: center; justify-content: center; }
         .rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .rsp-card:hover .rsp-card-img { transform: scale(1.04); }
-        .rsp-card-oos { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: white; letter-spacing: 0.08em; text-transform: uppercase; }
+        .rsp-card-oos { position: absolute; inset: 0; background: rgba(17,24,39,0.6); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 10px; }
         .rsp-card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
-        .rsp-card-name { font-size: 14px; font-weight: 800; color: var(--text-main); margin: 0 0 6px; line-height: 1.3; }
+        .rsp-card-name { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
         .rsp-card-desc { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-        .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--sage-light); }
-        .rsp-price { font-size: 17px; font-weight: 900; color: var(--primary); letter-spacing: -0.02em; }
-        .rsp-stock-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; letter-spacing: 0.05em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; }
-        .rsp-stock-normal { background: #E8F5E9; color: #1B5E20; }
-        .rsp-stock-low { background: #FFF8E1; color: #F57F17; }
-        .rsp-stock-oos { background: #FFEBEE; color: #C62828; }
+        .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid #F3F4F6; }
+        .rsp-price { font-size: 16px; font-weight: 800; color: var(--primary); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+        .rsp-stock-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+        .rsp-stock-normal { background: #DCFCE7; color: #166534; }
+        .rsp-stock-low { background: #FEF3C7; color: #B45309; }
+        .rsp-stock-oos { background: #FEE2E2; color: #B91C1C; }
 
         .rsp-add-btn {
-          background: var(--emerald);
+          background: var(--primary);
           color: white;
-          border: none;
-          border-bottom: 3px solid var(--header);
-          padding: 7px 14px;
+          border: 1px solid var(--primary);
+          border-radius: 8px;
+          padding: 8px 16px;
+          min-height: 36px;
           cursor: pointer;
           display: flex;
           align-items: center;
           gap: 5px;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 12px;
           text-transform: uppercase;
-          letter-spacing: 0.04em;
-          transition: all 0.12s;
+          letter-spacing: 0.03em;
+          transition: all 0.15s;
         }
-        .rsp-add-btn:hover:not(:disabled) { transform: translateY(1px); border-bottom-width: 2px; }
+        .rsp-add-btn:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); transform: translateY(-1px); }
         .rsp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .rsp-add-btn.in-cart { background: var(--primary); }
+        .rsp-add-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+        .rsp-add-btn.in-cart { background: var(--primary-hover); border-color: var(--primary-hover); }
 
-        .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-        @media (max-width: 900px) { .pos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+        /* Product card manager controls */
+        .rsp-card-cat { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+        .rsp-card-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #F3F4F6; }
+        .rsp-actions-btns { display: flex; gap: 6px; }
+        .rsp-icon-btn { width: 30px; height: 30px; border-radius: 8px; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1.5px solid var(--primary); color: var(--primary); transition: all 0.15s; }
+        .rsp-icon-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .rsp-icon-btn.hide { border-color: var(--text-muted); color: var(--text-muted); }
+        .rsp-icon-btn.hide:hover { background: #F3F4F6; border-color: #6B7280; color: #374151; }
+        .rsp-icon-btn.danger { background: var(--danger); border-color: var(--danger); color: white; }
+        .rsp-icon-btn.danger:hover { background: #B91C1C; border-color: #B91C1C; }
+
+        .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+        @media (max-width: 1024px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; } }
         @media (max-width: 580px) { .pos-grid { grid-template-columns: 1fr; gap: 10px; } }
 
         /* Cart section */
-        .cart-section { background: white; border-top: 5px solid var(--primary); box-shadow: 0 4px 0 rgba(27,94,32,0.15); }
-        .cart-header { background: var(--header); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-        .cart-item-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--sage-light); transition: background 0.15s; }
-        .cart-item-row:hover { background: var(--mint); }
+        .cart-section { background: white; border: 1px solid #E5E7EB; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .cart-header { background: var(--header); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .cart-item-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #F3F4F6; transition: background 0.15s; border-radius: 6px; }
+        .cart-item-row:hover { background: #FEFCE8; }
 
         /* Payment method cards */
         .pay-method {
@@ -1191,33 +1214,36 @@ const addToCart = (item) => {
           min-width: 120px;
           padding: 14px 10px;
           cursor: pointer;
-          border: 2px solid #E0E0E0;
+          border: 1px solid #D1D5DB;
+          border-radius: 8px;
           background: white;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 6px;
           transition: all 0.15s;
-          font-weight: 700;
+          font-weight: 600;
           font-size: 12px;
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.03em;
           color: var(--text-main);
         }
-        .pay-method:hover { border-color: var(--emerald); background: var(--mint); }
-        .pay-method.active { border-color: var(--primary); border-width: 2px; background: var(--sage-light); color: var(--header); }
+        .pay-method:hover { border-color: var(--amber); background: #FEFCE8; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .pay-method.active { border-color: var(--primary); background: var(--sage-light); color: var(--header); box-shadow: 0 0 0 3px var(--ring); }
         .pay-method.active .pay-icon { color: var(--primary); }
         .pay-icon { font-size: 22px; line-height: 1; }
 
         /* Section headers */
-        .sect-lbl { font-size: 10px; font-weight: 800; color: var(--earth); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; display: block; }
-        .field-lbl { font-size: 11px; font-weight: 700; color: var(--header); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; display: block; }
+        .sect-lbl { font-size: 12px; font-weight: 600; color: var(--text-secondary, #6B7280); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; }
+        .field-lbl { font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; display: block; }
 
         /* Nature input */
         .nature-input {
           width: 100%;
-          padding: 11px 14px;
-          border: 1.5px solid #BDBDBD;
+          height: 36px;
+          padding: 0 12px;
+          border: 1px solid #D1D5DB;
+          border-radius: 8px;
           background: white;
           font-size: 14px;
           color: var(--text-main);
@@ -1226,30 +1252,39 @@ const addToCart = (item) => {
         }
         .nature-input:focus {
           border-color: var(--primary);
-          border-width: 2px;
-          box-shadow: inset 0 0 0 1px rgba(34,139,34,0.2);
+          box-shadow: 0 0 0 3px var(--ring);
         }
-        .nature-input::placeholder { color: #BDBDBD; }
+        .nature-input::placeholder { color: #9CA3AF; }
 
         /* Table */
         .nature-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .nature-table thead tr { background: var(--header); }
-        .nature-table th { padding: 12px 16px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: white; border-right: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-        .nature-table td { padding: 12px 16px; color: var(--text-main); border-bottom: 1px solid var(--sage-light); }
-        .nature-table tbody tr:nth-child(even) { background: var(--mint); }
-        .nature-table tbody tr:hover { background: var(--sage-light); }
+        .nature-table thead tr { background: #F9FAFB; }
+        .nature-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; border-bottom: 1px solid #E5E7EB; white-space: nowrap; }
+        .nature-table td { padding: 12px 16px; color: var(--text-main); border-bottom: 1px solid #F3F4F6; }
+        .nature-table tbody tr { transition: background 0.15s; }
+        .nature-table tbody tr:hover { background: #FEFCE8; }
 
         /* Notification badge */
-        .n-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; background: #F44336; color: white; font-size: 10px; font-weight: 800; }
+        .n-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 8px; background: #DC2626; color: white; font-size: 10px; font-weight: 700; border-radius: 999px; }
 
         /* Signature area */
-        .sig-area { border: 2px dashed var(--earth); background: #FAFFF8; padding: 4px; position: relative; }
-        .sig-area.signed { border-style: solid; border-color: var(--primary); background: #F1FFF1; }
+        .sig-area { border: 1px dashed #D1D5DB; border-radius: 8px; background: #FAFAFA; padding: 4px; position: relative; }
+        .sig-area.signed { border-style: solid; border-color: var(--primary); background: #EFF6FF; }
 
         @media (max-width: 700px) {
           .cart-header { padding: 12px 16px; }
-          .cart-item-row { padding: 12px 16px; }
+          .cart-item-row { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
         }
+
+        /* Safe-edge + responsive content area */
+        .pos-content { padding: 16px 20px; margin-left: 2vw; }
+        @media (min-width: 1536px) {
+          .pos-content { max-width: 1600px; margin: 0 auto; padding: 20px 32px; }
+        }
+        @media (max-width: 1280px) { .pos-content { padding: 16px 20px; } }
+        @media (max-width: 1024px) { .pos-content { padding: 14px 16px; } }
+        @media (max-width: 768px) { .pos-content { padding: 12px 12px; } }
+        @media (max-width: 480px) { .pos-content { padding: 10px 8px; } }
 
         @keyframes slideInRight {
           from { transform: translateX(100%); }
@@ -1262,9 +1297,9 @@ const addToCart = (item) => {
       {showPendingDrawer && (
         <>
           {/* Full-screen overlay as a Page (No backdrop) */}
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#F5F5F5', zIndex: 3001, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'var(--bg-page)', zIndex: 3001, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             {/* Overlay header */}
-            <div style={{ background: '#1B5E20', padding: '24px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '4px solid #2E8B57' }}>
+            <div style={{ background: 'var(--header)', padding: '24px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '4px solid var(--amber)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ fontSize: 16, fontWeight: 900, color: 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   ⏳ Pending Requests
@@ -1273,34 +1308,34 @@ const addToCart = (item) => {
                   {pendingQueue.length} {pendingQueue.length === 1 ? 'cart' : 'carts'} in queue
                 </div>
               </div>
-              <button onClick={() => setShowPendingDrawer(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, borderRadius: 0 }}>✕</button>
+              <button onClick={() => setShowPendingDrawer(false)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, borderRadius: 8 }}>✕</button>
             </div>
 
             {/* Overlay body */}
             <div style={{ flex: 1, padding: '20px', width: '100%' }}>
               {pendingQueue.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#424242', fontSize: 16, background: 'white', width: '100%' }}>
+                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#374151', fontSize: 16, background: 'white', width: '100%' }}>
                   No pending requests
                 </div>
               ) : (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {pendingQueue.map((item) => (
-                    <div key={item.id} style={{ background: 'white', border: '1px solid #E5E7EB', borderTop: `4px solid ${item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800'}`, overflow: 'hidden' }}>
+                    <div key={item.id} style={{ background: 'white', border: '1px solid #E5E7EB', borderTop: `4px solid ${item.status === 'rejected' ? 'var(--danger)' : item.status === 'approved' ? 'var(--success)' : 'var(--amber)'}`, overflow: 'hidden', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                       {/* Item header */}
                       <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E5E7EB' }}>
                         <div>
-                          <div style={{ fontWeight: 900, fontSize: 18, color: '#424242' }}>
+                          <div style={{ fontWeight: 900, fontSize: 18, color: '#111827' }}>
                             {item.payerName && item.payerName !== 'Walk-in Customer' ? item.payerName : 'Walk-in Customer'}
                           </div>
-                          <div style={{ fontSize: 12, color: '#8D6E63', marginTop: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             {item.cart_code} · {item.type === 'store' ? '🏪 STORE REQUEST' : '🏦 FINANCE'} · {new Date(item.submitted_at).toLocaleTimeString()}
                           </div>
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', padding: '6px 16px', border: `2px solid ${item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800'}`, color: item.status === 'rejected' ? '#F44336' : item.status === 'approved' ? '#4CAF50' : '#FF9800', letterSpacing: '0.05em', textAlign: 'center' }}>
+                        <span style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', padding: '6px 16px', borderRadius: 999, border: `2px solid ${item.status === 'rejected' ? 'var(--danger)' : item.status === 'approved' ? 'var(--success)' : 'var(--amber)'}`, color: item.status === 'rejected' ? 'var(--danger)' : item.status === 'approved' ? 'var(--success)' : 'var(--amber)', letterSpacing: '0.05em', textAlign: 'center' }}>
                           {item.status === 'approved' ? 'READY TO FINALIZE' : 
                            item.status === 'rejected' ? 'REJECTED' : 
                            item.type === 'finance' ? 'WAITING: FINANCE VERIFICATION' :
-                           (<span style={{display: 'inline-flex', alignItems: 'center'}}>WAITING: STORE RELEASE <span style={{ fontSize: 12, fontWeight: 900, color: '#1B5E20', background: '#E8F5E9', padding: '2px 8px', borderRadius: 4, marginLeft: 8 }}>PAYMENT {item.payment_method === 'CASH' ? 'CASH' : 'VERIFIED'}</span></span>)}
+                           (<span style={{display: 'inline-flex', alignItems: 'center'}}>WAITING: STORE RELEASE <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--header)', background: '#DBEAFE', padding: '2px 8px', borderRadius: 999, marginLeft: 8 }}>PAYMENT {item.payment_method === 'CASH' ? 'CASH' : 'VERIFIED'}</span></span>)}
                         </span>
                       </div>
 
@@ -1308,35 +1343,35 @@ const addToCart = (item) => {
                       <div style={{ padding: '0' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                           <thead>
-                            <tr style={{ background: '#A5D6A7' }}>
-                              <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 800, color: '#1B5E20' }}>Item</th>
-                              <th style={{ padding: '12px 24px', textAlign: 'center', fontWeight: 800, color: '#1B5E20' }}>Qty</th>
-                              <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 800, color: '#1B5E20' }}>Price</th>
-                              <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 800, color: '#1B5E20' }}>Total</th>
+                            <tr style={{ background: '#F9FAFB' }}>
+                              <th style={{ padding: '12px 24px', textAlign: 'left', fontWeight: 800, color: '#111827' }}>Item</th>
+                              <th style={{ padding: '12px 24px', textAlign: 'center', fontWeight: 800, color: '#111827' }}>Qty</th>
+                              <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 800, color: '#111827' }}>Price</th>
+                              <th style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 800, color: '#111827' }}>Total</th>
                             </tr>
                           </thead>
                           <tbody>
                             {item.items.map((i, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', background: idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB' }}>
-                                <td style={{ padding: '12px 24px', fontWeight: 600, color: '#424242' }}>{i.name}</td>
-                                <td style={{ padding: '12px 24px', textAlign: 'center', color: '#424242' }}>{i.qty}</td>
-                                <td style={{ padding: '12px 24px', textAlign: 'right', color: '#424242' }}>{i.price.toLocaleString()} ETB</td>
-                                <td style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 700, color: '#424242' }}>{(i.price * i.qty).toLocaleString()} ETB</td>
+                              <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                                <td style={{ padding: '12px 24px', fontWeight: 600, color: '#374151' }}>{i.name}</td>
+                                <td style={{ padding: '12px 24px', textAlign: 'center', color: '#374151' }}>{i.qty}</td>
+                                <td style={{ padding: '12px 24px', textAlign: 'right', color: '#374151' }}>{i.price.toLocaleString()} ETB</td>
+                                <td style={{ padding: '12px 24px', textAlign: 'right', fontWeight: 700, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{(i.price * i.qty).toLocaleString()} ETB</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
-                        <div style={{ background: '#FFFFFF', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid #2E8B57' }}>
-                          <span style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 16, color: '#424242' }}>Grand Total</span>
-                          <span style={{ fontWeight: 900, fontSize: 22, color: '#1B5E20' }}>{(item.total || 0).toLocaleString()} ETB</span>
+                        <div style={{ background: '#FFFFFF', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid var(--primary)' }}>
+                          <span style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 16, color: '#111827' }}>Grand Total</span>
+                          <span style={{ fontWeight: 900, fontSize: 22, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{(item.total || 0).toLocaleString()} ETB</span>
                         </div>
                       </div>
 
                       {/* Payment Details & Signature */}
                       <div style={{ padding: '16px 24px', borderBottom: '1px solid #E5E7EB', display: 'flex', gap: 24, flexWrap: 'wrap', background: '#F9FAFB' }}>
                         <div style={{ flex: 1, minWidth: 200 }}>
-                          <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#8D6E63', fontWeight: 800 }}>Payment Details</h4>
-                          <div style={{ fontSize: 14, color: '#424242', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#6B7280', fontWeight: 800 }}>Payment Details</h4>
+                          <div style={{ fontSize: 14, color: '#374151', display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <div><span style={{ fontWeight: 700 }}>Receiver:</span> {item.payerName || 'Walk-in Customer'}</div>
                             {item.payerPhone && <div><span style={{ fontWeight: 700 }}>Phone:</span> {item.payerPhone}</div>}
                             <div><span style={{ fontWeight: 700 }}>Method:</span> {item.payment_method || 'CASH'}</div>
@@ -1346,11 +1381,11 @@ const addToCart = (item) => {
                         </div>
                         {item.cartSignature && (
                           <div style={{ flex: 1, minWidth: 200 }}>
-                            <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#8D6E63', fontWeight: 800 }}>Manager Signature</h4>
-                            <div style={{ background: '#FFFFFF', border: '2px solid #2E8B57', padding: 8, display: 'inline-block' }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: 12, textTransform: 'uppercase', color: '#6B7280', fontWeight: 800 }}>Manager Signature</h4>
+                            <div style={{ background: '#FFFFFF', border: '2px solid var(--primary)', borderRadius: 8, padding: 8, display: 'inline-block' }}>
                               <img src={item.cartSignature} alt="Manager Signature" style={{ height: 60, objectFit: 'contain', maxWidth: 200 }} />
                             </div>
-                            <div style={{ fontSize: 11, color: '#2E8B57', fontWeight: 700, marginTop: 4 }}>✅ Signed & Authorized</div>
+                            <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700, marginTop: 4 }}>✅ Signed & Authorized</div>
                           </div>
                         )}
                       </div>
@@ -1375,7 +1410,7 @@ const addToCart = (item) => {
                                 showToast('Could not check status', 'error');
                               }
                             }}
-                            style={{ flex: 1, padding: '14px 0', background: '#FFFFFF', color: '#1B5E20', border: '2px solid #1B5E20', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 0 }}
+                            style={{ flex: 1, padding: '14px 0', minHeight: 44, background: '#FFFFFF', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
                           >
                             <RefreshCw size={16} /> Check Store Status
                           </button>
@@ -1404,13 +1439,13 @@ const addToCart = (item) => {
                               
                               removeFromQueue(item.id);
                             }}
-                            style={{ flex: 2, padding: '14px 0', background: '#2E8B57', color: 'white', border: 'none', borderBottom: '4px solid #1B5E20', cursor: 'pointer', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 0 }}
+                            style={{ flex: 2, padding: '14px 0', minHeight: 44, background: 'var(--primary)', color: 'white', border: 'none', borderBottom: '4px solid var(--primary-hover)', borderRadius: 8, cursor: 'pointer', fontWeight: 900, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
                           >
                             <CheckCircle size={16} /> Continue Process
                           </button>
                         )}
                         {item.status === 'rejected' && (
-                          <div style={{ flex: 2, fontSize: 14, color: '#F44336', fontWeight: 700, padding: '10px 16px', background: '#FFFFFF', border: '2px solid #F44336', borderRadius: 0 }}>
+                          <div style={{ flex: 2, fontSize: 14, color: 'var(--danger)', fontWeight: 700, padding: '10px 16px', background: '#FFFFFF', border: '2px solid var(--danger)', borderRadius: 8 }}>
                             Reason: {item.reject_reason || 'No reason given'}
                           </div>
                         )}
@@ -1423,14 +1458,14 @@ const addToCart = (item) => {
                                 showToast('Still waiting for finance approval...', 'info');
                               }, 1000);
                             }}
-                            style={{ flex: 1, padding: '14px 0', background: '#FFFFFF', color: '#1B5E20', border: '2px solid #1B5E20', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 0 }}
+                            style={{ flex: 1, padding: '14px 0', minHeight: 44, background: '#FFFFFF', color: 'var(--primary)', border: '2px solid var(--primary)', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
                           >
                             <RefreshCw size={16} /> Check Finance Status
                           </button>
                         )}
                         <button
                           onClick={() => setDismissTarget(item)}
-                          style={{ padding: '14px 32px', background: '#FFFFFF', color: '#C62828', border: '2px solid #C62828', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', borderRadius: 0 }}
+                          style={{ padding: '14px 32px', minHeight: 44, background: '#FFFFFF', color: 'var(--danger)', border: '2px solid var(--danger)', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', transition: 'all 0.15s' }}
                         >
                           Dismiss
                         </button>
@@ -1451,61 +1486,63 @@ const addToCart = (item) => {
         paddingTop: 16,
         paddingBottom: 16,
       }}>
-        <div style={{ padding: '0 32px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           
           {/* Left: Icon + Title + Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* Leaf Icon */}
             <div style={{
-              width: 44, height: 44, background: 'rgba(255,255,255,0.12)',
+              width: 40, height: 40, background: 'rgba(255,255,255,0.14)',
+              borderRadius: 8,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.5rem', flexShrink: 0
+              fontSize: '1.3rem', flexShrink: 0
             }}>
               🌿
             </div>
             {/* Title */}
             <h1 style={{
               fontFamily: "'Inter', sans-serif",
-              fontSize: '1.3rem',
-              fontWeight: 900,
+              fontSize: '1.15rem',
+              fontWeight: 700,
               color: '#FFFFFF',
               margin: 0,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              lineHeight: 1,
-              textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              letterSpacing: '0.01em',
+              lineHeight: 1.1,
             }}>
               Retail Sales — POS
             </h1>
             {/* Sales Counter — no border, just a subtle pill */}
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              width: 52, height: 52,
-              background: 'rgba(139,195,74,0.25)',
+              width: 48, height: 44,
+              background: 'rgba(255,255,255,0.12)',
+              borderRadius: 8,
               color: 'white',
               lineHeight: 1,
               flexShrink: 0,
             }}>
-              <span style={{ fontSize: '1.4rem', fontWeight: 900, lineHeight: 1 }}>{sales.length}</span>
-              <span style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2, opacity: 0.85 }}>SALES</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1 }}>{sales.length}</span>
+              <span style={{ fontSize: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2, opacity: 0.85 }}>SALES</span>
             </div>
 
             {/* Global WAITING button — always visible for Sales Manager */}
             <button
               onClick={() => { setShowPendingDrawer(true); loadPendingQueue(); }}
               style={{
-                padding: '8px 16px',
-                background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#10B981' : 'rgba(255,255,255,0.15)',
+                padding: '8px 14px',
+                borderRadius: 8,
+                background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#16A34A' : 'rgba(255,255,255,0.14)',
                 color: 'white',
-                border: pendingQueue.length === 0 ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                border: pendingQueue.length === 0 ? '1px solid rgba(255,255,255,0.25)' : 'none',
                 cursor: 'pointer',
-                fontWeight: 800,
+                fontWeight: 600,
                 fontSize: 12,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.03em',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                transition: 'all 0.15s',
                 animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
               }}
             >
@@ -1520,16 +1557,17 @@ const addToCart = (item) => {
               disabled={refreshing}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                padding: '9px 16px',
-                background: 'rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.9)',
+                padding: '8px 14px',
+                height: 36,
+                background: 'rgba(255,255,255,0.1)',
+                color: '#FFFFFF',
                 border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 0,
+                borderRadius: 8,
                 cursor: refreshing ? 'not-allowed' : 'pointer',
                 fontWeight: 600,
                 fontSize: 13,
-                letterSpacing: '0.02em',
-                transition: 'all 0.2s'
+                letterSpacing: '0.01em',
+                transition: 'all 0.15s'
               }}
             >
               <SegmentedSpinner size={15} />
@@ -1575,23 +1613,27 @@ const addToCart = (item) => {
                   }}
                   style={{
                     flex: '1 0 auto',
-                    padding: '14px 16px',
+                    padding: '12px 16px',
+                    minHeight: 44,
                     border: 'none',
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     position: 'relative',
-                    transition: 'background 0.2s',
+                    transition: 'background 0.15s ease',
                     background: active ? 'var(--header)' : 'transparent',
-                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
-                    fontWeight: active ? 800 : 600,
+                    color: active ? '#FFFFFF' : 'rgba(255,255,255,0.8)',
+                    fontWeight: active ? 700 : 600,
                     fontSize: '0.8rem',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0.03em',
                     borderRadius: 0,
+                    borderBottom: active ? '2px solid #F59E0B' : '2px solid transparent',
                   }}
+                  onMouseOver={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+                  onMouseOut={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                 >
                   <TabIcon
                     size={16}
-                    color={active ? '#8BC34A' : 'rgba(255,255,255,0.75)'}
+                    color={active ? '#FDE68A' : 'rgba(255,255,255,0.8)'}
                     strokeWidth={active ? 2.5 : 2}
                   />
                   <span>{t.label}</span>
@@ -1604,12 +1646,12 @@ const addToCart = (item) => {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4,
                         marginLeft: 6,
-                        background: posCart.length > 0 ? '#8BC34A' : 'rgba(255,255,255,0.2)',
-                        color: 'white',
-                        borderRadius: 0,
+                        background: posCart.length > 0 ? '#F59E0B' : 'rgba(255,255,255,0.2)',
+                        color: '#fff',
+                        borderRadius: 999,
                         padding: '2px 8px',
                         fontSize: 11,
-                        fontWeight: 800,
+                        fontWeight: 700,
                         cursor: 'pointer',
                       }}
                     >
@@ -1625,12 +1667,12 @@ const addToCart = (item) => {
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         marginLeft: 6,
-                        background: '#F44336',
+                        background: '#F59E0B',
                         color: '#fff',
-                        borderRadius: 0,
+                        borderRadius: 999,
                         padding: '2px 8px',
                         fontSize: 11,
-                        fontWeight: 800,
+                        fontWeight: 700,
                       }}
                     >
                       {pendingOrders.length}
@@ -1643,8 +1685,8 @@ const addToCart = (item) => {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         marginLeft: 6,
                         background: 'rgba(255,255,255,0.15)',
-                        color: 'rgba(255,255,255,0.7)',
-                        borderRadius: 0,
+                        color: 'rgba(255,255,255,0.75)',
+                        borderRadius: 999,
                         padding: '2px 8px',
                         fontSize: 10,
                         fontWeight: 600,
@@ -1660,18 +1702,18 @@ const addToCart = (item) => {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '24px 32px', background: 'var(--bg-page)', width: '100%', boxSizing: 'border-box', minHeight: 'calc(100vh - 200px)' }}>
+      <div className="pos-content" style={{ padding: '16px 20px', background: 'var(--bg-page)', width: '100%', boxSizing: 'border-box', minHeight: 'calc(100vh - 200px)' }}>
 
       {tab === 'retail-walkin' && !showAudit && (
         <div style={{ background: 'var(--bg-page)', minHeight: '60vh' }}>
           {!showCart ? (
               <>
                 {/* Products toolbar */}
-                <div style={{ background: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid var(--primary)', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: 'var(--sage-light)', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Package size={15} color="var(--header)" strokeWidth={2.5} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--header)' }}>{products.length} Products</span>
+                    <div style={{ background: 'var(--sage-light)', borderRadius: 8, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Package size={15} color="var(--primary)" strokeWidth={2} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--header)' }}>{products.length} Products</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -1686,7 +1728,7 @@ const addToCart = (item) => {
                   </div>
                 </div>
 
-                <div style={{ padding: '20px 24px' }}>
+                <div style={{ padding: '16px 0' }}>
                   <div className="pos-grid">
                   {/* Product Grid */}
                   {(() => {
@@ -1698,12 +1740,12 @@ const addToCart = (item) => {
 
                     if (visibleProducts.length === 0) {
                       return (
-                        <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: 'white', border: '2px dashed var(--sage)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ width: 64, height: 64, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                            <Package size={28} color="var(--emerald)" />
+                        <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: 'white', border: '1px dashed #D1D5DB', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <div style={{ width: 56, height: 56, borderRadius: 10, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                            <Package size={26} color="var(--primary)" />
                           </div>
-                          <h3 style={{ margin: '0 0 8px', color: 'var(--header)', fontSize: 18, fontWeight: 800 }}>No Retail Products Found</h3>
-                          <p style={{ margin: 0, color: 'var(--earth)', fontSize: 13, maxWidth: 380, lineHeight: 1.5 }}>
+                          <h3 style={{ margin: '0 0 8px', color: 'var(--header)', fontSize: 17, fontWeight: 700 }}>No Retail Products Found</h3>
+                          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13, maxWidth: 380, lineHeight: 1.5 }}>
                             {navSearch ? `No products match "${navSearch}".` : 'Import products from the General Store to start selling.'}
                           </p>
                         </div>
@@ -1755,23 +1797,20 @@ const addToCart = (item) => {
                               </button>
                             </div>
                             {isManager && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--sage-light)' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--earth)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                              <div className="rsp-card-actions">
+                                <span className="rsp-card-cat">
                                   {item.category || 'Uncategorized'}
                                 </span>
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleToggleHide(item); }}
-                                    style={{ width: 26, height: 26, border: '1.5px solid var(--earth)', background: 'white', color: 'var(--earth)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                <div className="rsp-actions-btns">
+                                  <button type="button" className="rsp-icon-btn hide" onClick={(e) => { e.stopPropagation(); handleToggleHide(item); }}
                                     title={item.is_active === false ? 'Show' : 'Hide'}>
                                     {item.is_active === false ? <EyeOff size={13} /> : <Eye size={13} />}
                                   </button>
-                                  <button type="button" onClick={(e) => { e.stopPropagation(); setEditingProduct({...item, price: priceVal, stock: stockVal}); }}
-                                    style={{ width: 26, height: 26, border: '1.5px solid var(--emerald)', background: 'white', color: 'var(--emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                  <button type="button" className="rsp-icon-btn" onClick={(e) => { e.stopPropagation(); setEditingProduct({...item, price: priceVal, stock: stockVal}); }}
                                     title="Edit">
                                     <Edit3 size={13} />
                                   </button>
-                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteProduct(item.id); }}
-                                    style={{ width: 26, height: 26, border: '1.5px solid var(--danger)', background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                  <button type="button" className="rsp-icon-btn danger" onClick={(e) => { e.stopPropagation(); handleDeleteProduct(item.id); }}
                                     title="Delete">
                                     <Trash2 size={13} />
                                   </button>
@@ -1792,40 +1831,42 @@ const addToCart = (item) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0, animation: 'fadeUp 0.2s ease' }}>
 
                {/* Cart top bar */}
-               <div style={{ background: 'white', borderBottom: '2px solid var(--sage)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+               <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                   <div style={{ width: 36, height: 36, background: 'var(--sage-light)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                   <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--sage-light)', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                      <ShoppingCart size={18} color="var(--primary)" />
                    </div>
                    <div>
-                     <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--header)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cart & Checkout</div>
-                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{posCart.length} item{posCart.length !== 1 ? 's' : ''} · {posCartTotal.toLocaleString()} ETB total</div>
+                     <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--header)', letterSpacing: '0.01em' }}>Cart & Checkout</div>
+                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{posCart.length} item{posCart.length !== 1 ? 's' : ''} · {posCartTotal.toLocaleString()} ETB total</div>
                    </div>
                  </div>
-                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* WAITING button — always visible */}
                     <button
                       onClick={() => { setShowPendingDrawer(true); loadPendingQueue(); }}
                       style={{
                         padding: '8px 14px',
-                        background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#10B981' : '#E5E7EB',
-                        color: pendingQueue.length === 0 ? '#424242' : 'white',
+                        borderRadius: 8,
+                        background: pendingQueue.some(q => q.status === 'pending') ? '#F59E0B' : pendingQueue.some(q => q.status === 'approved') ? '#16A34A' : '#F3F4F6',
+                        color: pendingQueue.length === 0 ? '#4B5563' : 'white',
                         border: 'none',
                         cursor: 'pointer',
-                        fontWeight: 800,
+                        fontWeight: 600,
                         fontSize: 12,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        letterSpacing: '0.03em',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6,
+                        transition: 'all 0.15s',
                         animation: pendingQueue.some(q => q.status === 'pending') ? 'pulse 2s infinite' : 'none',
                       }}
                     >
                       ⏳ Waiting ({pendingQueue.length})
                     </button>
                    <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }}
-                     style={{ padding: '9px 18px', background: 'white', color: 'var(--header)', border: '2px solid var(--header)', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                     style={{ padding: '9px 16px', height: 36, borderRadius: 8, background: 'white', color: 'var(--primary)', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
                      ← Back to Products
                    </button>
                  </div>
@@ -1834,40 +1875,43 @@ const addToCart = (item) => {
                {/* ── Online Order Banner ── */}
                {activeOnlineOrder && (
                  <div style={{
-                   background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                   borderRadius: 0,
-                   padding: '18px 24px',
+                   background: '#EFF6FF',
+                   border: '1px solid #BFDBFE',
+                   borderRadius: 10,
+                   padding: '16px 20px',
+                   marginBottom: 16,
                    display: 'flex',
                    alignItems: 'center',
                    justifyContent: 'space-between',
                    gap: 20,
-                   boxShadow: '0 8px 24px rgba(5,150,105,0.25)',
+                   boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                   flexWrap: 'wrap',
                  }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                      <div style={{
-                       width: 48, height: 48, borderRadius: 0,
-                       background: 'linear-gradient(135deg, #059669, #10b981)',
+                       width: 44, height: 44, borderRadius: 8,
+                       background: 'var(--primary)',
                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                       fontSize: 22, flexShrink: 0
+                       fontSize: 20, flexShrink: 0
                      }}>📦</div>
                      <div>
-                       <div style={{ fontSize: 11, color: '#6ee7b7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                       <div style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                          🌐 Online Order — Auto-Filled
                        </div>
-                       <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>
+                       <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
                          {activeOnlineOrder.sale_code || `Order #${activeOnlineOrder.id}`}
                        </div>
-                       <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
+                       <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
                          👤 {activeOnlineOrder.customer_name || 'Guest'} &nbsp;·&nbsp; 📱 {activeOnlineOrder.customer_phone || '—'}
                        </div>
                      </div>
                    </div>
                    <div style={{ textAlign: 'right' }}>
-                     <div style={{ fontSize: 11, color: '#6ee7b7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Total</div>
-                     <div style={{ fontSize: 24, fontWeight: 900, color: '#34d399' }}>
+                     <div style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total</div>
+                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>
                        {parseFloat(activeOnlineOrder.total_amount || 0).toFixed(2)} ETB
                      </div>
-                     <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>All fields pre-filled ✓</div>
+                     <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>All fields pre-filled ✓</div>
                    </div>
                  </div>
                )}
@@ -1876,14 +1920,14 @@ const addToCart = (item) => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
                     {/* ── Cart Items Table ── */}
-                    <div style={{ background: 'white', borderBottom: '2px solid var(--sage-light)' }}>
-                      <div style={{ padding: '14px 24px', background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--header)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                      <div style={{ padding: '12px 16px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--header)', letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 8 }}>
                           <ShoppingCart size={15} /> Cart Items ({posCart.length})
                         </span>
                         {posCart.length > 0 && (
                           <button onClick={() => setPosCart([])}
-                            style={{ background: 'none', border: 'none', color: 'var(--danger)', padding: '5px 10px', fontWeight: 700, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            style={{ background: 'none', border: 'none', color: 'var(--danger)', padding: '5px 10px', fontWeight: 600, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, borderRadius: 6, transition: 'background 0.15s' }}>
                             <X size={13}/> Clear All
                           </button>
                         )}
@@ -1891,7 +1935,7 @@ const addToCart = (item) => {
 
                       {posCart.length === 0 ? (
                         <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                          <ShoppingCart size={32} color="#BDBDBD" style={{ marginBottom: 10 }} />
+                          <ShoppingCart size={32} color="#D1D5DB" style={{ marginBottom: 10 }} />
                           <div style={{ fontSize: 14, fontWeight: 600 }}>Your cart is empty</div>
                           <div style={{ fontSize: 12, marginTop: 4 }}>Go back to products to add items</div>
                         </div>
@@ -1900,14 +1944,14 @@ const addToCart = (item) => {
                           {posCart.map((item, ci) => (
                             <div key={item.id} className="cart-item-row">
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
                                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{parseFloat(item.price).toLocaleString()} ETB / unit</div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                                 {/* Qty controls */}
-                                <div style={{ display: 'flex', alignItems: 'center', border: '2px solid var(--sage)', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
                                   <button onClick={() => updateQty(item.id, item.qty - 1)}
-                                    style={{ width: 32, height: 34, border: 'none', background: 'var(--sage-light)', color: 'var(--header)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16 }}>
+                                    style={{ width: 32, height: 34, border: 'none', background: '#F3F4F6', color: 'var(--header)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, transition: 'background 0.15s' }}>
                                     <Minus size={12}/>
                                   </button>
                                   <input
@@ -1922,16 +1966,16 @@ const addToCart = (item) => {
                                       const v = parseInt(e.target.value, 10);
                                       if (isNaN(v) || v < 1) updateQty(item.id, 1);
                                     }}
-                                    style={{ width: 46, height: 34, border: 'none', textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--text-main)', background: 'white', outline: 'none', padding: 0 }}
+                                    style={{ width: 46, height: 34, border: 'none', textAlign: 'center', fontWeight: 700, fontSize: 14, color: 'var(--text-main)', background: 'white', outline: 'none', padding: 0 }}
                                   />
                                   <button onClick={() => updateQty(item.id, item.qty + 1)}
-                                    style={{ width: 32, height: 34, border: 'none', background: 'var(--sage-light)', color: 'var(--header)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16 }}>
+                                    style={{ width: 32, height: 34, border: 'none', background: '#F3F4F6', color: 'var(--header)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, transition: 'background 0.15s' }}>
                                     <Plus size={12}/>
                                   </button>
                                 </div>
-                                <div style={{ fontWeight: 900, color: 'var(--primary)', width: 96, textAlign: 'right', fontSize: 15, letterSpacing: '-0.02em' }}>{(item.price * item.qty).toLocaleString()} ETB</div>
+                                <div style={{ fontWeight: 800, color: 'var(--primary)', width: 96, textAlign: 'right', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toLocaleString()} ETB</div>
                                 <button onClick={() => setPosCart(posCart.filter(c => c.id !== item.id))}
-                                  style={{ width: 30, height: 30, background: 'var(--danger-light)', border: '1.5px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  style={{ width: 30, height: 30, borderRadius: 6, background: 'var(--danger-light)', border: '1px solid #FECACA', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
                                   <Trash2 size={13}/>
                                 </button>
                               </div>
@@ -1942,9 +1986,9 @@ const addToCart = (item) => {
 
                       {/* Cart Total Bar */}
                       {posCart.length > 0 && (
-                        <div style={{ padding: '14px 24px', background: 'var(--sage-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid var(--primary)' }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-main)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{posCart.length} item{posCart.length !== 1 ? 's' : ''}</span>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--header)', letterSpacing: '-0.02em' }}>
+                        <div style={{ padding: '12px 16px', background: '#F9FAFB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E5E7EB' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{posCart.length} item{posCart.length !== 1 ? 's' : ''}</span>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--header)', fontVariantNumeric: 'tabular-nums' }}>
                             Total: <span style={{ color: 'var(--primary)' }}>{posCartTotal.toLocaleString()} ETB</span>
                           </div>
                         </div>
@@ -1953,14 +1997,14 @@ const addToCart = (item) => {
 
                     {/* ── Payment Section ── */}
                     {posCart.length > 0 && (
-                      <div style={{ background: 'white', padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '20px', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
 
                         {/* Payment Method Selection with flow labels */}
                         <div>
                           <span className="sect-lbl">💳 Select Payment Method</span>
-                          <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', border: '2px solid #E0E0E0' }}>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {[
-                              { value: 'CASH', label: 'Cash', icon: '💵', route: '→ Store Direct', routeColor: '#1B5E20' },
+                              { value: 'CASH', label: 'Cash', icon: '💵', route: '→ Store Direct', routeColor: '#1D4ED8' },
                               { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: '🏦', route: '→ Finance First', routeColor: '#1565C0' },
                               { value: 'TELBIR', label: 'Telebirr', icon: '📱', route: '→ Finance First', routeColor: '#7B1FA2' },
                             ].map((pm, idx) => (
@@ -1968,24 +2012,21 @@ const addToCart = (item) => {
                                 key={pm.value}
                                 type="button"
                                 onClick={() => setPosPaymentMethod(pm.value)}
+                                className={`pay-method${posPaymentMethod === pm.value ? ' active' : ''}`}
                                 style={{
-                                  flex: 1, minWidth: 100, padding: '12px 8px',
+                                  flex: 1, minWidth: 110,
                                   background: posPaymentMethod === pm.value
-                                    ? (pm.value === 'CASH' ? '#E8F5E9' : pm.value === 'BANK_TRANSFER' ? '#E3F2FD' : '#F3E5F5')
+                                    ? (pm.value === 'CASH' ? '#EFF6FF' : pm.value === 'BANK_TRANSFER' ? '#E3F2FD' : '#F3E5F5')
                                     : 'white',
-                                  border: 'none',
-                                  borderLeft: idx > 0 ? '2px solid #E0E0E0' : 'none',
-                                  borderBottom: posPaymentMethod === pm.value
-                                    ? `4px solid ${pm.value === 'CASH' ? '#228B22' : pm.value === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2'}`
-                                    : '4px solid transparent',
-                                  cursor: 'pointer',
-                                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                                  transition: 'all 0.15s',
+                                  border: posPaymentMethod === pm.value
+                                    ? `1.5px solid ${pm.value === 'CASH' ? '#2563EB' : pm.value === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2'}`
+                                    : '1px solid #D1D5DB',
+                                  boxShadow: posPaymentMethod === pm.value ? '0 0 0 3px rgba(37,99,235,0.08)' : 'none',
                                 }}
                               >
                                 <span style={{ fontSize: 20 }}>{pm.icon}</span>
-                                <span style={{ fontWeight: 800, fontSize: 13, color: posPaymentMethod === pm.value ? pm.routeColor : '#424242' }}>{pm.label}</span>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: pm.routeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pm.route}</span>
+                                <span style={{ fontWeight: 700, fontSize: 13, color: posPaymentMethod === pm.value ? pm.routeColor : '#374151' }}>{pm.label}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: pm.routeColor, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{pm.route}</span>
                               </button>
                             ))}
                           </div>
@@ -1995,14 +2036,14 @@ const addToCart = (item) => {
                         {posPaymentMethod === 'CASH' && (
                           <div>
                             {/* Info banner */}
-                            <div style={{ background: '#E8F5E9', border: '2px solid #388E3C', padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: 16 }}>💵</span>
                               <div>
-                                <div style={{ fontWeight: 800, fontSize: 12, color: '#1B5E20', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cash Flow: Direct to Store</div>
-                                <div style={{ fontSize: 11, color: '#2E7D32' }}>Sales Manager signs → Request goes directly to Store Keeper for release → Cash sale recorded in transactions</div>
+                                <div style={{ fontWeight: 700, fontSize: 12, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Cash Flow: Direct to Store</div>
+                                <div style={{ fontSize: 11, color: '#374151' }}>Sales Manager signs → Request goes directly to Store Keeper for release → Cash sale recorded in transactions</div>
                               </div>
                             </div>
-                            <div style={{ background: 'var(--mint)', border: '2px solid var(--success)', padding: 18 }}>
+                            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                                 <div>
                                   <label className="field-lbl">Amount Received (ETB) *</label>
@@ -2024,14 +2065,14 @@ const addToCart = (item) => {
                         {posPaymentMethod === 'BANK_TRANSFER' && (
                           <div>
                             {/* Info banner */}
-                            <div style={{ background: '#E3F2FD', border: '2px solid #1565C0', padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ background: '#E3F2FD', border: '1px solid #90CAF9', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: 16 }}>🏦</span>
                               <div>
-                                <div style={{ fontWeight: 800, fontSize: 12, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bank Transfer Flow: Finance Verification Required</div>
-                                <div style={{ fontSize: 11, color: '#1976D2' }}>Submit → Finance verifies bank transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
+                                <div style={{ fontWeight: 700, fontSize: 12, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Bank Transfer Flow: Finance Verification Required</div>
+                                <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies bank transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
                               </div>
                             </div>
-                            <div style={{ background: '#EFF6FF', border: '2px solid #1565C0', padding: 18 }}>
+                            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                                 <div>
                                   <label className="field-lbl">Amount (ETB) *</label>
@@ -2082,14 +2123,14 @@ const addToCart = (item) => {
                         {posPaymentMethod === 'TELBIR' && (
                           <div>
                             {/* Info banner */}
-                            <div style={{ background: '#F3E5F5', border: '2px solid #7B1FA2', padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ background: '#F3E5F5', border: '1px solid #CE93D8', borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: 16 }}>📱</span>
                               <div>
-                                <div style={{ fontWeight: 800, fontSize: 12, color: '#7B1FA2', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Telebirr Flow: Finance Verification Required</div>
-                                <div style={{ fontSize: 11, color: '#6A1B9A' }}>Submit → Finance verifies Telebirr transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
+                                <div style={{ fontWeight: 700, fontSize: 12, color: '#7B1FA2', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Telebirr Flow: Finance Verification Required</div>
+                                <div style={{ fontSize: 11, color: '#374151' }}>Submit → Finance verifies Telebirr transfer → Writes to Receivable Book → Sends to Store → Store releases → Audit record only (not in cash transactions)</div>
                               </div>
                             </div>
-                            <div style={{ background: '#F3E5F5', border: '2px solid #7B1FA2', padding: 18 }}>
+                            <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16 }}>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                                 <div>
                                   <label className="field-lbl">Amount (ETB) *</label>
@@ -2134,7 +2175,7 @@ const addToCart = (item) => {
 
                         {/* Payment Confirmation Checkbox — only for CASH */}
                         {posPaymentMethod === 'CASH' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: paymentStatus === 'PAID' ? 'var(--sage-light)' : '#FFF8E1', border: `2px solid ${paymentStatus === 'PAID' ? 'var(--success)' : '#FFB300'}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: paymentStatus === 'PAID' ? '#EFF6FF' : '#FEF3C7', border: `1px solid ${paymentStatus === 'PAID' ? '#BFDBFE' : '#FCD34D'}` }}>
                             <input
                               type="checkbox"
                               id="paidCheckboxPOS"
@@ -2142,8 +2183,8 @@ const addToCart = (item) => {
                               onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
                               style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
                             />
-                            <label htmlFor="paidCheckboxPOS" style={{ fontWeight: 700, fontSize: 14, color: paymentStatus === 'PAID' ? 'var(--header)' : '#E65100', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
-                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? 'var(--primary)' : '#FFC107'} />
+                            <label htmlFor="paidCheckboxPOS" style={{ fontWeight: 600, fontSize: 14, color: paymentStatus === 'PAID' ? 'var(--header)' : '#92400E', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? 'var(--primary)' : '#F59E0B'} />
                               {paymentStatus === 'PAID' ? 'Cash Received & Confirmed' : 'Confirm Cash Received'}
                             </label>
                           </div>
@@ -2151,7 +2192,7 @@ const addToCart = (item) => {
 
                         {/* For Bank/Telebirr — auto-confirm checkbox */}
                         {(posPaymentMethod === 'BANK_TRANSFER' || posPaymentMethod === 'TELBIR') && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#E3F2FD', border: '2px solid #1565C0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: '#E3F2FD', border: '1px solid #90CAF9' }}>
                             <input
                               type="checkbox"
                               id="digitalPayConfirm"
@@ -2159,8 +2200,8 @@ const addToCart = (item) => {
                               onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
                               style={{ width: 18, height: 18, cursor: 'pointer', accentColor: posPaymentMethod === 'TELBIR' ? '#7B1FA2' : '#1565C0', flexShrink: 0 }}
                             />
-                            <label htmlFor="digitalPayConfirm" style={{ fontWeight: 700, fontSize: 14, color: '#1565C0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
-                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? '#1565C0' : '#FFC107'} />
+                            <label htmlFor="digitalPayConfirm" style={{ fontWeight: 600, fontSize: 14, color: '#1565C0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? '#1565C0' : '#F59E0B'} />
                               {paymentStatus === 'PAID' ? 'Payment details confirmed — ready to submit for Finance' : 'Confirm payment details are correct'}
                             </label>
                           </div>
@@ -2203,15 +2244,16 @@ const addToCart = (item) => {
                             onClick={handleProcessPayment}
                             style={{
                               width: '100%',
-                              padding: '18px 24px',
+                              padding: '14px 24px',
+                              minHeight: 48,
                               background: posPaymentMethod === 'CASH'
-                                ? 'var(--header)'
+                                ? 'var(--primary)'
                                 : posPaymentMethod === 'BANK_TRANSFER' ? '#1565C0' : '#7B1FA2',
                               color: 'white',
                               border: 'none',
-                              borderBottom: `5px solid ${posPaymentMethod === 'CASH' ? '#0d3d0d' : posPaymentMethod === 'BANK_TRANSFER' ? '#0D47A1' : '#4A148C'}`,
-                              fontWeight: 900,
-                              fontSize: 15,
+                              borderRadius: 8,
+                              fontWeight: 700,
+                              fontSize: 14,
                               cursor: loading ? 'not-allowed' : 'pointer',
                               opacity: (loading || !paymentStatus || (posPaymentMethod === 'CASH' && !cartSignature)) ? 0.55 : 1,
                               display: 'flex',
@@ -2219,8 +2261,9 @@ const addToCart = (item) => {
                               justifyContent: 'center',
                               gap: 10,
                               textTransform: 'uppercase',
-                              letterSpacing: '0.06em',
+                              letterSpacing: '0.03em',
                               transition: 'all 0.15s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                             }}
                           >
                             {loading ? (
@@ -2242,20 +2285,20 @@ const addToCart = (item) => {
 
                 ) : posStep === 5 ? (
                   /* ── WAITING FOR STORE APPROVAL ── */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 24px', background: 'white', minHeight: 400 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 24px', background: 'white', borderRadius: 10, border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', minHeight: 400 }}>
                     
                     {storeRequestStatus === 'rejected' ? (
                       /* REJECTED */
                       <>
-                        <div style={{ width: 80, height: 80, background: '#FFF3F3', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '4px solid #EF4444' }}>
-                          <X size={44} color="#EF4444" />
+                        <div style={{ width: 72, height: 72, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '1px solid #FECACA' }}>
+                          <X size={40} color="#DC2626" />
                         </div>
-                        <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 900, color: '#B91C1C', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Store Rejected</h3>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 700, color: '#B91C1C', letterSpacing: '0.01em' }}>Store Rejected</h3>
                         <p style={{ color: '#6B7280', fontSize: 13, marginBottom: 16, textAlign: 'center', maxWidth: 360 }}>
                           The store has rejected this request.
                         </p>
-                        <div style={{ background: '#FEF2F2', border: '2px solid #FCA5A5', padding: '12px 20px', marginBottom: 24, width: '100%', maxWidth: 400 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#991B1B', marginBottom: 4, textTransform: 'uppercase' }}>Rejection Reason</div>
+                        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 20px', marginBottom: 24, width: '100%', maxWidth: 400 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#B91C1C', marginBottom: 4, textTransform: 'uppercase' }}>Rejection Reason</div>
                           <div style={{ fontSize: 13, color: '#7F1D1D' }}>{storeRejectReason}</div>
                         </div>
                         <button onClick={() => {
@@ -2263,17 +2306,17 @@ const addToCart = (item) => {
                           setStoreRequestStatus(null);
                           setStoreRequestId(null);
                           setStoreRejectReason('');
-                        }} style={{ padding: '13px 32px', background: 'var(--primary)', color: 'white', border: 'none', borderBottom: '4px solid var(--header)', cursor: 'pointer', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        }} style={{ padding: '12px 32px', minHeight: 44, borderRadius: 8, background: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}>
                           Edit & Resubmit
                         </button>
                       </>
                     ) : storeRequestStatus === 'approved' ? (
                       /* APPROVED — transitioning */
                       <>
-                        <div style={{ width: 80, height: 80, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '4px solid var(--success)', animation: 'pulse 1s infinite' }}>
-                          <CheckCircle size={44} color="var(--primary)" />
+                        <div style={{ width: 72, height: 72, borderRadius: 10, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '1px solid #BFDBFE', animation: 'pulse 1s infinite' }}>
+                          <CheckCircle size={40} color="var(--primary)" />
                         </div>
-                        <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 900, color: 'var(--header)', textTransform: 'uppercase' }}>Store Approved!</h3>
+                        <h3 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 700, color: 'var(--header)' }}>Store Approved!</h3>
                         <p style={{ color: '#6B7280', fontSize: 13 }}>Finalizing transaction...</p>
                       </>
                     ) : (
@@ -2287,38 +2330,38 @@ const addToCart = (item) => {
                           </div>
                         </div>
                         
-                        <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 900, color: 'var(--header)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Waiting for Store Approval</h3>
+                        <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: 'var(--header)', letterSpacing: '0.01em' }}>Waiting for Store Approval</h3>
                         <p style={{ color: '#6B7280', fontSize: 13, marginBottom: 24, textAlign: 'center', maxWidth: 340 }}>
                           Your cart has been sent to the store. This page will update automatically when the store approves or rejects the request.
                         </p>
 
                         {/* Cart summary — locked/read-only */}
-                        <div style={{ width: '100%', maxWidth: 480, border: '2px solid var(--sage)', background: 'var(--sage-light)', marginBottom: 20 }}>
-                          <div style={{ padding: '10px 16px', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ width: '100%', maxWidth: 480, border: '1px solid #E5E7EB', borderRadius: 10, background: '#F9FAFB', marginBottom: 20, overflow: 'hidden' }}>
+                          <div style={{ padding: '10px 16px', background: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: 13, letterSpacing: '0.02em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span>🛒 Cart — Pending Release</span>
-                            <span style={{ background: '#F59E0B', color: 'white', padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>PENDING</span>
+                            <span style={{ background: '#F59E0B', color: 'white', padding: '2px 10px', fontSize: 11, fontWeight: 600, borderRadius: 999 }}>PENDING</span>
                           </div>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
-                              <tr style={{ background: 'rgba(34,139,34,0.08)' }}>
-                                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--header)' }}>Item</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: 'var(--header)' }}>Qty</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--header)' }}>Total</th>
+                              <tr style={{ background: '#F3F4F6' }}>
+                                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>Item</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#374151' }}>Qty</th>
+                                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>Total</th>
                               </tr>
                             </thead>
                             <tbody>
                               {posCart.map((item, idx) => (
-                                <tr key={idx} style={{ borderBottom: '1px solid var(--sage)' }}>
+                                <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB', background: '#FFFFFF' }}>
                                   <td style={{ padding: '8px 12px', color: 'var(--text-main)', fontWeight: 600 }}>{item.name}</td>
                                   <td style={{ padding: '8px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>{item.qty}</td>
-                                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{(item.price * item.qty).toLocaleString()} ETB</td>
+                                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{(item.price * item.qty).toLocaleString()} ETB</td>
                                 </tr>
                               ))}
                             </tbody>
                             <tfoot>
-                              <tr style={{ borderTop: '2px solid var(--primary)' }}>
-                                <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 800, color: 'var(--header)', textTransform: 'uppercase', fontSize: 13 }}>Total</td>
-                                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 900, color: 'var(--primary)', fontSize: 16 }}>{posCartTotal.toLocaleString()} ETB</td>
+                              <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                                <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--header)', fontSize: 13 }}>Total</td>
+                                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: 'var(--primary)', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{posCartTotal.toLocaleString()} ETB</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -2347,7 +2390,7 @@ const addToCart = (item) => {
                                 } catch(e) { showToast('Could not check status', 'error'); }
                               }
                             }}
-                            style={{ flex: 1, padding: '12px 0', background: 'white', color: 'var(--header)', border: '2px solid var(--header)', cursor: 'pointer', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                            style={{ flex: 1, minHeight: 44, padding: '12px 0', borderRadius: 8, background: 'white', color: 'var(--primary)', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                           >
                             <RefreshCw size={14} /> Check Status
                           </button>
@@ -2358,7 +2401,7 @@ const addToCart = (item) => {
                               setStoreRequestStatus(null);
                               setStoreRequestId(null);
                             }}
-                            style={{ flex: 1, padding: '12px 0', background: '#FEF3C7', color: '#92400E', border: '2px solid #F59E0B', cursor: 'pointer', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                            style={{ flex: 1, minHeight: 44, padding: '12px 0', borderRadius: 8, background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', cursor: 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
                           >
                             ↩ Cancel & Go Back
                           </button>
@@ -2368,35 +2411,35 @@ const addToCart = (item) => {
                   </div>
 
                 ) : posStep === 4 ? (
-                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center', background: 'white' }}>
-                     <div style={{ width: 80, height: 80, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '4px solid var(--success)' }}>
-                       <CheckCircle size={44} color="var(--primary)" />
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center', background: 'white', borderRadius: 10, border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                     <div style={{ width: 72, height: 72, borderRadius: 10, background: 'var(--sage-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, border: '1px solid #BFDBFE' }}>
+                       <CheckCircle size={40} color="var(--primary)" />
                      </div>
-                     <h3 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 900, color: 'var(--header)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Transaction Complete!</h3>
+                     <h3 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 700, color: 'var(--header)', letterSpacing: '0.01em' }}>Transaction Complete!</h3>
                      <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>Inventory updated. CRV and Model 22 generated.</p>
                      {completedSale && (
-                       <div style={{ background: 'var(--sage-light)', border: '2px solid var(--success)', padding: '16px 28px', marginBottom: 24, width: '100%', maxWidth: 420 }}>
-                         <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: 15, marginBottom: 6 }}>Receipt: {completedSale.invoice_number}</div>
+                       <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '16px 28px', marginBottom: 24, width: '100%', maxWidth: 420 }}>
+                         <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 15, marginBottom: 6 }}>Receipt: {completedSale.invoice_number}</div>
                          <div style={{ fontSize: 13, color: 'var(--text-main)' }}>Customer: <strong>{completedSale.recipient_name || 'Walk-In'}</strong></div>
-                         <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--header)', marginTop: 8, letterSpacing: '-0.02em' }}>Total: {(completedSale.total_amount || 0).toLocaleString()} ETB</div>
+                         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--header)', marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>Total: {(completedSale.total_amount || 0).toLocaleString()} ETB</div>
                        </div>
                      )}
                      <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 420, marginBottom: 12 }}>
                        <button type='button' onClick={printReceipt}
-                         style={{ flex: 1, padding: '13px 0', background: '#1565C0', color: 'white', border: 'none', borderBottom: '4px solid #0D47A1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, textTransform: 'uppercase' }}>
+                         style={{ flex: 1, minHeight: 44, padding: '12px 0', borderRadius: 8, background: '#1565C0', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}>
                          <Printer size={16} /> Print Receipt
                        </button>
                        <button type='button' onClick={() => { setTab('list'); setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); }}
-                         style={{ flex: 1, padding: '13px 0', background: 'white', color: 'var(--header)', border: '2px solid var(--header)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, textTransform: 'uppercase' }}>
+                         style={{ flex: 1, minHeight: 44, padding: '12px 0', borderRadius: 8, background: 'white', color: 'var(--primary)', border: '1px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}>
                          <List size={16} /> View Sales
                        </button>
                      </div>
                      <button type='button'
                        onClick={() => { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); setCompletedSale(null); resetForm(); }}
-                       style={{ width: '100%', maxWidth: 420, padding: '13px 0', background: 'var(--primary)', color: 'white', border: 'none', borderBottom: '4px solid var(--header)', cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                       style={{ width: '100%', maxWidth: 420, minHeight: 44, padding: '12px 0', borderRadius: 8, background: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: 700, fontSize: 14, letterSpacing: '0.01em', transition: 'all 0.15s' }}
                      >🔄 Start New Transaction</button>
-                  </div>
-               ) : null}
+                   </div>
+                ) : null}
             </div>
           )}
         </div>
@@ -2404,22 +2447,22 @@ const addToCart = (item) => {
 
       {/* SALES LIST TAB */}
       {tab === 'list' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'white', borderRadius: 10, overflow: 'hidden', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           {/* Header */}
-          <div style={{ padding: '24px 32px', background: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '20px 24px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
              <div>
-               <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                 <List size={24} color="#059669" /> Unsubmitted Sales
+               <h2 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                 <List size={22} color="var(--primary)" /> Unsubmitted Sales
                </h2>
-               <p style={{ margin: 0, fontSize: 14, color: '#64748B' }}>Sales waiting to be submitted to Finance for the audit log.</p>
+               <p style={{ margin: 0, fontSize: 13, color: '#6B7280' }}>Sales waiting to be submitted to Finance for the audit log.</p>
              </div>
              {sales.length > 0 && (
                <button
                  onClick={() => setShowSubmitConfirm(true)}
                  style={{
-                   padding: '12px 24px', background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                   color: 'white', border: 'none', borderRadius: 0, fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                   display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 12px rgba(5,150,105,0.25)'
+                   minHeight: 44, padding: '10px 20px', background: 'var(--primary)',
+                   color: 'white', border: '1px solid var(--primary)', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                   display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s'
                  }}
                >
                  <CheckCircle size={18} /> Submit to Finance ({sales.length})
@@ -2427,82 +2470,77 @@ const addToCart = (item) => {
              )}
           </div>
           
-          <div style={{ padding: '24px 32px' }}>
+          <div style={{ padding: '20px 24px' }}>
              {sales.length === 0 ? (
-               <div style={{ textAlign: 'center', padding: '80px 24px', background: '#F8FAFC', borderRadius: 0 }}>
+               <div style={{ textAlign: 'center', padding: '80px 24px', background: '#FAFAFA', borderRadius: 10 }}>
                   <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
-                  <h3 style={{ fontWeight: 800, color: '#1E293B', marginBottom: 8, fontSize: 20 }}>All Caught Up!</h3>
-                  <p style={{ color: '#64748B', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
+                  <h3 style={{ fontWeight: 700, color: '#1E293B', marginBottom: 8, fontSize: 19 }}>All Caught Up!</h3>
+                  <p style={{ color: '#6B7280', maxWidth: 400, margin: '0 auto', lineHeight: 1.5 }}>
                     There are no unsubmitted sales. Any completed sales have already been moved to the Audit Log.
                   </p>
                </div>
              ) : (
-               <div style={{ overflowX: 'auto', borderRadius: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+               <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #E5E7EB' }}>
                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800, background: 'white' }}>
                     <thead>
-                      <tr style={{ background: '#F1F5F9' }}>
-                        <th style={{...thStyle, color: '#334155'}}>Receipt No</th>
-                        <th style={{...thStyle, color: '#334155'}}>Date</th>
-                        <th style={{...thStyle, color: '#334155'}}>Type</th>
-                        <th style={{...thStyle, color: '#334155'}}>Customer</th>
-                        <th style={{...thStyle, color: '#334155'}}>Cashier</th>
-                        <th style={{...thStyle, color: '#334155'}}>Payment</th>
-                        <th style={{...thStyle, color: '#334155', textAlign: 'right'}}>Total Amount</th>
-                        <th style={{...thStyle, color: '#334155', textAlign: 'center'}}>Actions</th>
+                      <tr style={{ background: '#F9FAFB' }}>
+                        <th style={{...thStyle, color: '#6B7280'}}>Receipt No</th>
+                        <th style={{...thStyle, color: '#6B7280'}}>Date</th>
+                        <th style={{...thStyle, color: '#6B7280'}}>Type</th>
+                        <th style={{...thStyle, color: '#6B7280'}}>Customer</th>
+                        <th style={{...thStyle, color: '#6B7280'}}>Cashier</th>
+                        <th style={{...thStyle, color: '#6B7280'}}>Payment</th>
+                        <th style={{...thStyle, color: '#6B7280', textAlign: 'right'}}>Total Amount</th>
+                        <th style={{...thStyle, color: '#6B7280', textAlign: 'center'}}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sales.map((sale, idx) => {
-                        const isEven = idx % 2 === 0;
+                      {sales.map((sale) => {
                         const dateStr = sale.sale_date ? new Date(sale.sale_date).toLocaleString() : 'N/A';
                         
                         return (
-                        <tr key={sale.id} style={{ background: isEven ? '#FFFFFF' : '#FAFAFA', transition: 'background 0.2s' }}>
-                           <td style={tdStyle}><strong style={{ color: '#0F172A', fontWeight: 700 }}>{sale.invoice_number || `REC-${sale.id}`}</strong></td>
+                        <tr key={sale.id} style={{ background: '#FFFFFF', transition: 'background 0.15s' }}>
+                           <td style={tdStyle}><strong style={{ color: '#111827', fontWeight: 700 }}>{sale.invoice_number || `REC-${sale.id}`}</strong></td>
                            <td style={{...tdStyle, color: '#475569'}}>{dateStr}</td>
                            <td style={tdStyle}>
                              <span style={{
-                               background: sale.sale_type === 'ONLINE' ? '#F3E8FF' : '#D1FAE5',
-                               color: sale.sale_type === 'ONLINE' ? '#7E22CE' : '#047857',
-                               padding: '4px 10px', borderRadius: 0, fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4
+                               background: sale.sale_type === 'ONLINE' ? '#F3E8FF' : '#DBEAFE',
+                               color: sale.sale_type === 'ONLINE' ? '#7E22CE' : '#1D4ED8',
+                               padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4
                              }}>
                                {sale.sale_type === 'ONLINE' ? <><Smartphone size={12}/> ONLINE</> : <><ShoppingCart size={12}/> WALK-IN</>}
                              </span>
                            </td>
                            <td style={tdStyle}>
-                             <div style={{ fontWeight: 600, color: '#334155' }}>{sale.customer_name || 'Walk-in Customer'}</div>
-                             {sale.customer_phone && <div style={{ fontSize: 11, color: '#94A3B8' }}>{sale.customer_phone}</div>}
+                             <div style={{ fontWeight: 600, color: '#374151' }}>{sale.customer_name || 'Walk-in Customer'}</div>
+                             {sale.customer_phone && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{sale.customer_phone}</div>}
                            </td>
                            <td style={tdStyle}>
-                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F1F5F9', color: '#475569', borderRadius: 0, padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
+                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F3F4F6', color: '#4B5563', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
                                <User size={12} /> {sale.cashier_name || 'Retail Staff'}
                              </span>
                            </td>
                            <td style={tdStyle}>
                              <span style={{
-                               background: '#F8FAFC', color: '#334155', padding: '4px 10px', borderRadius: 0, fontSize: 12, fontWeight: 700
+                               background: '#F9FAFB', color: '#374151', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600
                              }}>
                                {sale.payment_method_name || 'CASH'}
                              </span>
                            </td>
                            <td style={{...tdStyle, textAlign: 'right'}}>
-                             <strong style={{ color: '#059669', fontSize: 14 }}>{parseFloat(sale.total_amount || 0).toLocaleString()} ETB</strong>
+                             <strong style={{ color: 'var(--primary)', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(sale.total_amount || 0).toLocaleString()} ETB</strong>
                            </td>
                            <td style={{...tdStyle, textAlign: 'center'}}>
                               <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                                 <button
                                   onClick={() => viewSaleDetail(sale)}
-                                  style={{ background: '#EFF6FF', color: '#2563EB', border: 'none', padding: '6px 14px', borderRadius: 0, cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.2s' }}
-                                  onMouseOver={e => e.currentTarget.style.background = '#DBEAFE'}
-                                  onMouseOut={e => e.currentTarget.style.background = '#EFF6FF'}
+                                  style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.15s' }}
                                 >
                                   View
                                 </button>
                                 <button
                                   onClick={() => handleVoidSaleInit(sale)}
-                                  style={{ background: '#FEF2F2', color: '#DC2626', border: 'none', padding: '6px 14px', borderRadius: 0, cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.2s' }}
-                                  onMouseOver={e => e.currentTarget.style.background = '#FEE2E2'}
-                                  onMouseOut={e => e.currentTarget.style.background = '#FEF2F2'}
+                                  style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12, transition: 'all 0.15s' }}
                                 >
                                   Cancel
                                 </button>
@@ -2517,22 +2555,22 @@ const addToCart = (item) => {
              )}
 
              {sales.length > 0 && (
-               <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#f8fafc', borderRadius: 0 }}>
-                 <div style={{ fontSize: 13, color: '#64748b' }}>
-                    <strong style={{ color: '#0f172a' }}>{sales.length}</strong> transactions · <strong style={{ color: '#059669' }}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
+               <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB', flexWrap: 'wrap', gap: 12 }}>
+                 <div style={{ fontSize: 13, color: '#6B7280' }}>
+                    <strong style={{ color: '#111827' }}>{sales.length}</strong> transactions · <strong style={{ color: 'var(--primary)' }}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
                  </div>
                  <button 
                    onClick={() => setShowSubmitConfirm(true)}
                    disabled={loading}
                    style={{
-                     padding: '12px 24px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                     color: 'white', border: 'none', borderRadius: 0, cursor: loading ? 'not-allowed' : 'pointer',
-                     fontWeight: 800, fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 8,
-                     boxShadow: '0 4px 12px rgba(5,150,105,0.3)', opacity: loading ? 0.7 : 1
+                     minHeight: 44, padding: '10px 20px', background: 'var(--primary)',
+                     color: 'white', border: '1px solid var(--primary)', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer',
+                     fontWeight: 700, fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 8,
+                     transition: 'all 0.15s', opacity: loading ? 0.7 : 1
                    }}
                  >
                    <CheckCircle size={18} />
-                   <span style={{ fontSize: 13, fontWeight: 700 }}>
+                   <span style={{ fontSize: 13, fontWeight: 600 }}>
                     {loading ? 'Submitting...' : 'Submit to Finance'}
                   </span>
                 </button>
@@ -2544,11 +2582,11 @@ const addToCart = (item) => {
 
       {/* ONLINE TAB */}
       {tab === 'retail-online' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>📦 Pending Online Orders</h2>
-              <button onClick={loadPendingOrders} disabled={loadingPendingOrders} style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 0, cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
+        <div style={{ background: 'white', borderRadius: 10, overflow: 'hidden', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 }}>📦 Pending Online Orders</h2>
+              <button onClick={loadPendingOrders} disabled={loadingPendingOrders} style={{ minHeight: 36, padding: '8px 16px', background: '#F3F4F6', borderRadius: 8, border: '1px solid #E5E7EB', cursor: 'pointer', fontWeight: 600, color: '#4B5563', transition: 'all 0.15s' }}>
                 {loadingPendingOrders ? 'Refreshing...' : '🔄 Refresh'}
               </button>
             </div>
@@ -2562,12 +2600,12 @@ const addToCart = (item) => {
                 <p style={{ fontSize: 13 }}>All online customer orders have been processed.</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
                 {pendingOrders.map(order => (
-                  <div key={order.id} style={{ background: '#f8fafc', borderRadius: 0, padding: 16, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div key={order.id} style={{ background: '#F9FAFB', borderRadius: 10, border: '1px solid #E5E7EB', padding: 16, transition: 'all 0.15s' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontWeight: 800, color: '#2563eb', fontSize: 15, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
-                      <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 0, }}>ONLINE</span>
+                      <span style={{ fontWeight: 700, color: '#2563eb', fontSize: 15, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
+                      <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, }}>ONLINE</span>
                     </div>
                     <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
                       👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
@@ -2576,7 +2614,7 @@ const addToCart = (item) => {
                     {order.order_ref && (
                       <div style={{ fontSize: 12, color: '#7c3aed', marginBottom: 8 }}>📋 Rx: {order.order_ref}</div>
                     )}
-                    <div style={{ marginBottom: 12, background: 'white', padding: '8px 12px', borderRadius: 0 }}>
+                    <div style={{ marginBottom: 12, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px' }}>
                       {(order.items || []).map(item => (
                         <div key={item.id || item.product_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569', padding: '3px 0' }}>
                           <span>💊 {item.product_name} × {item.quantity}</span>
@@ -2587,19 +2625,19 @@ const addToCart = (item) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
                       <div>
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
-                        <div style={{ fontWeight: 800, fontSize: 17, color: '#059669', marginTop: 2 }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button 
                           onClick={() => setDeleteTarget(order.id)} 
-                          style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '10px 14px', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(220,38,38,0.15)' }}
+                          style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}
                           title="Delete Order Permanently"
                         >
                           🗑️
                         </button>
                         <button 
                           onClick={() => processOnlineOrder(order)} 
-                          style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(5,150,105,0.2)' }}
+                          style={{ background: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}
                         >
                           Process Payment →
                         </button>
@@ -2626,24 +2664,48 @@ const addToCart = (item) => {
 
         const AUDIT_PERIOD_LABELS = { day:'Day', week:'Week', month:'Month', quarter:'Quarter', year:'Year' };
         const AUDIT_PERIOD_FULL   = { day:'Today', week:'This Week', month:'This Month', quarter:'This Quarter', year:'This Year' };
-
         return (
-          <div style={{ background: 'white', overflow: 'hidden' }}>
+          <div style={{ background: 'white', borderRadius: 10, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
             {/* Header */}
-            <div style={{ padding: '18px 24px', borderBottom: '2px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC' }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F9FAFB', flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                 📜 Retail Audit Trail
-                <span style={{ fontSize: 12, fontWeight: 600, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 10px', borderRadius: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 10px', borderRadius: 999 }}>
                   {auditTrail.length} records &mdash; {AUDIT_PERIOD_FULL[auditPeriod]}
                 </span>
               </h2>
-              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 16px', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              <button onClick={() => setShowAudit(false)} style={{ minHeight: 32, padding: '6px 16px', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 8, border: '1px solid #E5E7EB', transition: 'all 0.15s' }}>
                 ✕ Close
               </button>
             </div>
 
+            {/* ── Period Filter Bar — above records ───────────────────────────── */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '12px 20px', borderBottom: '1px solid #E5E7EB',
+              background: '#F9FAFB', flexWrap: 'wrap'
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.05em', marginRight: 6 }}>Filter:</span>
+              {Object.entries(AUDIT_PERIOD_LABELS).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => { setAuditPeriod(key); loadAuditTrail(key); }}
+                  style={{
+                    minHeight: 32, padding: '6px 16px', fontSize: 11, fontWeight: 700, border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '.03em',
+                    background: auditPeriod === key ? 'var(--primary)' : '#fff',
+                    color:      auditPeriod === key ? '#fff'    : '#374151',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {/* Records */}
-            <div style={{ padding: '20px 24px' }}>
+            <div style={{ padding: '16px 20px' }}>
               {auditTrail.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
                   <div style={{ fontSize: 52, marginBottom: 12 }}>📭</div>
@@ -2654,20 +2716,21 @@ const addToCart = (item) => {
                 const entries = grouped[day];
                 const dayTotal = entries.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
                 const txCount = entries.length;
+
                 return (
-                  <div key={day} style={{ marginBottom: 28 }}>
+                  <div key={day} style={{ marginBottom: 24 }}>
                     {/* Date Group Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid #E2E8F0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #E5E7EB' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 8, height: 8, background: '#059669', borderRadius: 0 }} />
-                        <span style={{ fontWeight: 800, fontSize: 14, color: '#1E293B' }}>{day}</span>
-                        <span style={{ fontSize: 12, color: '#64748B', background: '#F1F5F9', padding: '2px 8px', borderRadius: 0 }}>
+                        <div style={{ width: 8, height: 8, background: 'var(--primary)', borderRadius: 4 }} />
+                        <span style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>{day}</span>
+                        <span style={{ fontSize: 12, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: 999 }}>
                           {txCount} transaction{txCount !== 1 ? 's' : ''}
                         </span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 11, color: '#64748B', marginBottom: 2 }}>Accumulated Total</div>
-                        <div style={{ fontSize: 17, fontWeight: 800, color: '#059669' }}>{dayTotal.toFixed(2)} ETB</div>
+                        <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 2 }}>Accumulated Total</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{dayTotal.toFixed(2)} ETB</div>
                       </div>
                     </div>
 
@@ -2679,32 +2742,6 @@ const addToCart = (item) => {
                 );
               })}
             </div>
-
-            {/* ── Period Filter Bar — bottom of audit tab ─────────────────────── */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '12px 24px', borderTop: '2px solid #E2E8F0',
-              background: '#F8FAFC', flexWrap: 'wrap'
-            }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '.08em', marginRight: 6 }}>Filter:</span>
-              {Object.entries(AUDIT_PERIOD_LABELS).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => { setAuditPeriod(key); loadAuditTrail(key); }}
-                  style={{
-                    padding: '7px 18px', fontSize: 11, fontWeight: 900, border: 'none',
-                    cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '.08em',
-                    background: auditPeriod === key ? '#1B5E20' : '#fff',
-                    color:      auditPeriod === key ? '#fff'    : '#1B5E20',
-                    boxShadow:  auditPeriod === key ? '0 3px 0 #0a3d0a' : '0 1px 0 #ccc',
-                    outline:    auditPeriod === key ? 'none' : '1px solid #D1D5DB',
-                    transition: 'all .12s',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
         );
       })()}
@@ -2712,16 +2749,16 @@ const addToCart = (item) => {
 
       {/* DETAIL TAB */}
       {tab === 'detail' && detail && (
-        <div style={{ background: 'white', borderRadius: 0, overflow: 'hidden' }}>
+        <div style={{ background: 'white', borderRadius: 10, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '2px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC' }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-              <Eye size={16} color="#059669" /> Sale Detail — {detail.invoice_number || `#${detail.id}`}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F9FAFB', flexWrap: 'wrap', gap: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 15, color: '#111827', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+              <Eye size={16} color="var(--primary)" /> Sale Detail — {detail.invoice_number || `#${detail.id}`}
             </h3>
             <button className="btn-3d" onClick={() => setTab('list')}>← Back to List</button>
           </div>
 
-          <div style={{ padding: '1.25rem' }}>
+          <div style={{ padding: '20px' }}>
             {/* Top summary cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
               {[
@@ -2730,9 +2767,9 @@ const addToCart = (item) => {
                 { label: 'Cashier', value: detail.cashier_name || '—' },
                 { label: 'Total Amount', value: `${parseFloat(detail.total_amount || 0).toFixed(2)} ETB`, green: true },
               ].map((card, i) => (
-                <div key={i} style={{ background: '#F8FAFC', padding: '10px 14px' }}>
-                  <div style={{ fontSize: 10, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{card.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: card.green ? '#059669' : '#1E293B', wordBreak: 'break-all' }}>{card.value}</div>
+                <div key={i} style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{card.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: card.green ? 'var(--primary)' : '#111827', wordBreak: 'break-all', fontVariantNumeric: card.green ? 'tabular-nums' : 'normal' }}>{card.value}</div>
                 </div>
               ))}
             </div>
@@ -2740,33 +2777,33 @@ const addToCart = (item) => {
             {/* Payment + Recipient */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
               {/* Recipient */}
-              <div style={{ background: '#F0FDF4', padding: 16 }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-                  <User size={14} color="#059669" /> Recipient / Customer
+              <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: 16 }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <User size={14} color="var(--primary)" /> Recipient / Customer
                 </h4>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 4 }}>
                   {detail.customer_name || (detail.notes && detail.notes.match(/Recipient: ([^|]+)/)?.[1]?.trim()) || 'Walk-In Customer'}
                 </div>
                 <div style={{ fontSize: 12, color: '#374151' }}>
                   {detail.customer_phone || ''}
                 </div>
                 {detail.notes && detail.notes.includes('Recipient:') && (
-                  <div style={{ fontSize: 12, color: '#059669', marginTop: 4 }}>
+                  <div style={{ fontSize: 12, color: 'var(--primary)', marginTop: 4 }}>
                     {detail.notes}
                   </div>
                 )}
               </div>
 
               {/* Payment */}
-              <div style={{ background: '#EFF6FF', padding: 16 }}>
+              <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: 16 }}>
                 <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                   <DollarSign size={14} color="#2563EB" /> Payment Info
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: 13, color: '#1E293B' }}>
+                  <div style={{ fontSize: 13, color: '#111827' }}>
                     <strong>Method:</strong> {detail.payment_method_name || '—'}
                   </div>
-                  <div style={{ fontSize: 13, color: '#1E293B' }}>
+                  <div style={{ fontSize: 13, color: '#111827' }}>
                     <strong>Amount Paid:</strong> {parseFloat(detail.amount_paid || detail.total_amount || 0).toFixed(2)} ETB
                   </div>
                   {detail.payment_reference && (
@@ -2776,9 +2813,9 @@ const addToCart = (item) => {
                   )}
                   <div style={{ marginTop: 4 }}>
                     <span style={{
-                      background: detail.status_name === 'Completed' ? '#D1FAE5' : '#FEF3C7',
-                      color: detail.status_name === 'Completed' ? '#065F46' : '#92400E',
-                      padding: '2px 10px', fontSize: 11, fontWeight: 700, borderRadius: 0
+                      background: detail.status_name === 'Completed' ? '#DCFCE7' : '#FEF3C7',
+                      color: detail.status_name === 'Completed' ? '#166534' : '#92400E',
+                      padding: '2px 10px', fontSize: 11, fontWeight: 600, borderRadius: 999
                     }}>{detail.status_name || 'Completed'}</span>
                   </div>
                 </div>
@@ -2787,14 +2824,14 @@ const addToCart = (item) => {
 
             {/* Items Table */}
             <div style={{ marginTop: 20 }}>
-              <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Items Purchased</h4>
+              <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#111827' }}>Items Purchased</h4>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
-                    <th style={{ padding: '8px 0', textAlign: 'left', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Product</th>
-                    <th style={{ padding: '8px 0', textAlign: 'center', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Qty</th>
-                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Unit Price</th>
-                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#64748B', fontSize: 12 }}>Total</th>
+                  <tr style={{ borderBottom: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                    <th style={{ padding: '8px 0', textAlign: 'left', fontWeight: 600, color: '#6B7280', fontSize: 12 }}>Product</th>
+                    <th style={{ padding: '8px 0', textAlign: 'center', fontWeight: 600, color: '#6B7280', fontSize: 12 }}>Qty</th>
+                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#6B7280', fontSize: 12 }}>Unit Price</th>
+                    <th style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: '#6B7280', fontSize: 12 }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2802,23 +2839,23 @@ const addToCart = (item) => {
                     const qty = parseFloat(it.quantity) || 0;
                     const price = parseFloat(it.unit_price) || 0;
                     return (
-                      <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '10px 0', color: '#1E293B', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
-                        <td style={{ padding: '10px 0', textAlign: 'center', color: '#475569' }}>{qty}</td>
-                        <td style={{ padding: '10px 0', textAlign: 'right', color: '#475569' }}>{price.toFixed(2)} ETB</td>
-                        <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{(qty * price).toFixed(2)} ETB</td>
+                      <tr key={idx} style={{ borderBottom: '1px solid #F3F4F6', background: '#FFFFFF' }}>
+                        <td style={{ padding: '10px 0', color: '#111827', fontWeight: 500 }}>{it.product_name || `Product #${it.product_id}`}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'center', color: '#4B5563' }}>{qty}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', color: '#4B5563' }}>{price.toFixed(2)} ETB</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{(qty * price).toFixed(2)} ETB</td>
                       </tr>
                     );
                   }) : (
                     <tr>
-                      <td colSpan={4} style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8' }}>No items found</td>
+                      <td colSpan={4} style={{ padding: '16px 0', textAlign: 'center', color: '#9ca3af' }}>No items found</td>
                     </tr>
                   )}
                 </tbody>
                 <tfoot>
-                  <tr style={{ borderTop: '2px solid #E2E8F0' }}>
-                    <td colSpan={3} style={{ padding: '10px 0', fontWeight: 700, color: '#1E293B', textAlign: 'right' }}>Grand Total</td>
-                    <td style={{ padding: '10px 0', fontWeight: 800, color: '#059669', textAlign: 'right', fontSize: 15 }}>
+                  <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                    <td colSpan={3} style={{ padding: '10px 0', fontWeight: 700, color: '#111827', textAlign: 'right' }}>Grand Total</td>
+                    <td style={{ padding: '10px 0', fontWeight: 700, color: 'var(--primary)', textAlign: 'right', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
                       {parseFloat(detail.total_amount || 0).toFixed(2)} ETB
                     </td>
                   </tr>
@@ -2833,26 +2870,26 @@ const addToCart = (item) => {
 
       {/* Submit to Manager Confirmation Modal */}
       {showSubmitConfirm && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'white', padding: 36, borderRadius: 0, maxWidth: 460, width: '90%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.15)' }}>
-            <div style={{ width: 64, height: 64, background: 'rgba(16,185,129,0.1)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <CheckCircle size={32} color="#059669" />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'white', padding: 28, borderRadius: 12, maxWidth: 460, width: '90%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.12)' }}>
+            <div style={{ width: 60, height: 60, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <CheckCircle size={30} color="var(--primary)" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Submit Daily Sales?</h3>
-            <p style={{ color: '#475569', marginBottom: 8, fontSize: 15 }}>
-              You are about to submit <strong style={{ color: '#0f172a' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
+            <h3 style={{ fontSize: 19, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Submit Daily Sales?</h3>
+            <p style={{ color: '#4B5563', marginBottom: 8, fontSize: 14 }}>
+              You are about to submit <strong style={{ color: '#111827' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
             </p>
-            <p style={{ fontSize: 24, fontWeight: 800, color: '#059669', marginBottom: 8 }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>
               {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
             </p>
-            <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 28 }}>
+            <p style={{ color: '#9CA3AF', fontSize: 13, marginBottom: 24 }}>
               This will be recorded in the audit log and sent to the Sales Manager. The sales list will be cleared after submission.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setShowSubmitConfirm(false)}
                 disabled={loading}
-                style={{ flex: 1, padding: '12px 0', background: 'white', color: '#475569', border: '1.5px solid #e2e8f0', borderRadius: 0, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                style={{ flex: 1, minHeight: 44, padding: '12px 0', background: 'white', color: '#4B5563', border: '1px solid #E5E7EB', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s' }}
               >
                 Cancel
               </button>
@@ -2875,7 +2912,7 @@ const addToCart = (item) => {
                   }
                 }}
                 disabled={loading}
-                style={{ flex: 1, padding: '12px 0', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', borderRadius: 0, fontWeight: 700, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ flex: 1, minHeight: 44, padding: '12px 0', background: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
               >
                 <CheckCircle size={18} />
                 {loading ? 'Submitting...' : 'Yes, Submit'}
@@ -2887,25 +2924,25 @@ const addToCart = (item) => {
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'white', padding: 36, borderRadius: 0, maxWidth: 460, width: '90%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.15)' }}>
-            <div style={{ width: 64, height: 64, background: 'rgba(220,38,38,0.1)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <Trash2 size={32} color="#dc2626" />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'white', padding: 28, borderRadius: 12, maxWidth: 460, width: '90%', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.12)' }}>
+            <div style={{ width: 60, height: 60, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Trash2 size={30} color="#DC2626" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Delete Order?</h3>
-            <p style={{ color: '#475569', marginBottom: 28, fontSize: 15 }}>
+            <h3 style={{ fontSize: 19, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Delete Order?</h3>
+            <p style={{ color: '#4B5563', marginBottom: 24, fontSize: 14 }}>
               Are you sure you want to completely delete this online order? It will be removed permanently from the customer page as well.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setDeleteTarget(null)}
-                style={{ flex: 1, padding: '12px 0', background: 'white', color: '#475569', border: '1.5px solid #e2e8f0', borderRadius: 0, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                style={{ flex: 1, minHeight: 44, padding: '12px 0', background: 'white', color: '#4B5563', border: '1px solid #E5E7EB', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s' }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteOrder(deleteTarget)}
-                style={{ flex: 1, padding: '12px 0', background: '#dc2626', color: 'white', border: 'none', borderRadius: 0, fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ flex: 1, minHeight: 44, padding: '12px 0', background: '#DC2626', color: 'white', border: '1px solid #DC2626', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}
               >
                 <Trash2 size={18} /> Yes, Delete
               </button>
@@ -2916,178 +2953,178 @@ const addToCart = (item) => {
 
       {/* Edit Product Full Page Overlay */}
       {editingProduct && (
-        <div style={{ position: 'fixed', inset: 0, background: '#F5F5F5', zIndex: 9999, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', height: '100%' }}>
+        <div style={{ position: 'fixed', inset: 0, background: '#F5F6FA', zIndex: 9999, display: 'flex', flexDirection: 'column', overflowY: 'auto', width: '100%', height: '100%' }}>
           
           {/* Header */}
-          <div style={{ background: '#1B5E20', color: '#FFFFFF', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: 'var(--header)', color: '#FFFFFF', padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 32, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 16, color: '#FFFFFF' }}>
-                <Edit3 size={32} color="#FFFFFF" /> Update Retail Product
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 12, color: '#FFFFFF' }}>
+                <Edit3 size={26} color="#FFFFFF" /> Update Retail Product
               </h2>
-              <p style={{ margin: '8px 0 0 0', color: '#A5D6A7', fontSize: 16 }}>Edit all product details. Form fields support sharp focus.</p>
+              <p style={{ margin: '6px 0 0 0', color: 'rgba(255,255,255,0.75)', fontSize: 14 }}>Edit all product details. Form fields support sharp focus.</p>
             </div>
-            <button onClick={() => setEditingProduct(null)} style={{ background: '#2E8B57', border: 'none', color: 'white', cursor: 'pointer', padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 2px 0 rgba(0,0,0,0.2)' }}>
-              <X size={28}/>
+            <button onClick={() => setEditingProduct(null)} style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 8, border: 'none', color: 'white', cursor: 'pointer', padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+              <X size={22}/>
             </button>
           </div>
           
           {/* Body */}
-          <div style={{ flex: 1, padding: '40px', width: '100%', boxSizing: 'border-box' }}>
-            <form id="update-prod-form" onSubmit={handleUpdateProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 32, background: 'white', padding: 40, borderTop: '6px solid #228B22', boxSizing: 'border-box' }}>
+          <div style={{ flex: 1, padding: '24px', width: '100%', boxSizing: 'border-box' }}>
+            <form id="update-prod-form" onSubmit={handleUpdateProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, padding: 28, boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               
               {/* Column 1 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Product Name</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Product Name</label>
                   <input
                     required
                     type="text"
                     value={editingProduct.name || ''}
                     onChange={e => setEditingProduct({...editingProduct, name: e.target.value})}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>SKU (Stock Keeping Unit)</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>SKU (Stock Keeping Unit)</label>
                   <input
                     required
                     type="text"
                     value={editingProduct.sku || ''}
                     onChange={e => setEditingProduct({...editingProduct, sku: e.target.value})}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Category ID</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Category ID</label>
                   <input
                     type="text"
                     value={editingProduct.category_id || ''}
                     onChange={e => setEditingProduct({...editingProduct, category_id: e.target.value})}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Description</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Description</label>
                   <textarea
                     rows={4}
                     value={editingProduct.description || ''}
                     onChange={e => setEditingProduct({...editingProduct, description: e.target.value})}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', resize: 'vertical', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', resize: 'vertical', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
                 
               </div>
 
               {/* Column 2 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Selling Price (ETB)</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Selling Price (ETB)</label>
                     <input
                       required
                       type="number"
                       step="0.01"
                       value={editingProduct.price || ''}
                       onChange={e => setEditingProduct({...editingProduct, price: e.target.value})}
-                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Cost Price (ETB)</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Cost Price (ETB)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={editingProduct.cost_price || ''}
                       onChange={e => setEditingProduct({...editingProduct, cost_price: e.target.value})}
-                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                     />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Stock Quantity</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Stock Quantity</label>
                     <input
                       disabled
                       type="number"
                       value={editingProduct.stock || ''}
                       title="Stock cannot be manually edited here. It is synced from the main store inventory."
-                      style={{ width: '100%', padding: '16px', border: '1px solid #ccc', borderRadius: 0, fontSize: 16, background: '#F5F5F5', outline: 'none', cursor: 'not-allowed', color: '#888', boxSizing: 'border-box' }}
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, background: '#F9FAFB', outline: 'none', cursor: 'not-allowed', color: '#9CA3AF', boxSizing: 'border-box' }}
                     />
-                    <div style={{ fontSize: 11, color: '#8D6E63', marginTop: 4 }}>Syncs from store inventory</div>
+                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Syncs from store inventory</div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Reorder Level</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Reorder Level</label>
                     <input
                       required
                       type="number"
                       value={editingProduct.reorder_level || ''}
                       onChange={e => setEditingProduct({...editingProduct, reorder_level: e.target.value})}
-                      style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                      onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                      onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                      onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                      onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>Expiry Date (Optional)</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Expiry Date (Optional)</label>
                   <input
                     type="date"
                     value={editingProduct.expiry_date ? editingProduct.expiry_date.split('T')[0] : ''}
                     onChange={e => setEditingProduct({...editingProduct, expiry_date: e.target.value})}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#424242', marginBottom: 8, textTransform: 'uppercase' }}>New Product Image (Optional)</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.02em' }}>New Product Image (Optional)</label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={e => setEditingProduct({...editingProduct, new_image: e.target.files[0]})}
-                    style={{ width: '100%', padding: '12px', border: '1px solid #8D6E63', borderRadius: 0, fontSize: 16, background: '#FFFFFF', outline: 'none', color: '#424242', boxSizing: 'border-box' }}
-                    onFocus={(e) => { e.target.style.border = '2px solid #228B22'; e.target.style.fontWeight = 'bold'; }}
-                    onBlur={(e) => { e.target.style.border = '1px solid #8D6E63'; e.target.style.fontWeight = 'normal'; }}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box', cursor: 'pointer' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
+                    onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
 
               </div>
 
               {/* Form Actions */}
-              <div style={{ gridColumn: '1 / -1', marginTop: 16, paddingTop: 32, borderTop: '2px solid #8D6E63', display: 'flex', gap: 24, justifyContent: 'flex-end' }}>
+              <div style={{ gridColumn: '1 / -1', marginTop: 16, paddingTop: 24, borderTop: '1px solid #E5E7EB', display: 'flex', gap: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setEditingProduct(null)}
-                  style={{ padding: '16px 40px', border: '2px solid #8D6E63', background: '#FFFFFF', color: '#424242', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', cursor: 'pointer', borderRadius: 0 }}
+                  style={{ minHeight: 44, padding: '12px 28px', border: '1px solid #D1D5DB', borderRadius: 8, background: '#FFFFFF', color: '#374151', fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingProduct}
-                  style={{ padding: '16px 40px', border: 'none', background: '#228B22', color: 'white', fontWeight: 900, fontSize: 16, textTransform: 'uppercase', cursor: savingProduct ? 'not-allowed' : 'pointer', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '4px 4px 0 #1B5E20' }}
+                  style={{ minHeight: 44, padding: '12px 28px', border: '1px solid var(--primary)', borderRadius: 8, background: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: 14, cursor: savingProduct ? 'not-allowed' : 'pointer', opacity: savingProduct ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}
                 >
-                  <CheckCircle size={20} />
+                  <CheckCircle size={18} />
                   {savingProduct ? 'Saving...' : 'Save Product Updates'}
                 </button>
               </div>
@@ -3099,28 +3136,28 @@ const addToCart = (item) => {
 
       {/* Void Modal */}
       {showVoidModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', border: 'none', width: 400, borderRadius: 0, padding: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-            <div style={{ padding: '16px 24px', background: 'var(--header)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--primary)' }}>
-              <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><XCircle size={18} /> Void Transaction</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', border: 'none', width: 400, borderRadius: 12, padding: 0, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}>
+            <div style={{ padding: '14px 20px', background: 'var(--header)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+              <h3 style={{ margin: 0, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}><XCircle size={18} /> Void Transaction</h3>
               <button onClick={() => setShowVoidModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={20}/></button>
             </div>
-            <div style={{ padding: '24px' }}>
-              <p style={{ margin: '0 0 16px', color: 'var(--text-main)', fontSize: 14 }}>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: '0 0 16px', color: 'var(--text-main)', fontSize: 14, lineHeight: 1.6 }}>
                 Are you sure you want to void transaction <strong>{voidSaleTarget?.invoice_number || voidSaleTarget?.id}</strong>?
                 <br/><br/>
                 Stock will be returned. This action cannot be undone.
               </p>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-main)', margin: '0 0 6px' }}>Reason for Voiding *</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', margin: '0 0 6px' }}>Reason for Voiding *</label>
               <textarea
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
                 placeholder="Enter void reason..."
-                style={{ width: '100%', height: 80, padding: 10, border: '1px solid #E2E8F0', borderRadius: 0, fontSize: 13, resize: 'vertical' }}
+                style={{ width: '100%', height: 80, padding: 10, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'vertical', outline: 'none' }}
               />
-              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                <button onClick={() => setShowVoidModal(false)} style={{ flex: 1, padding: 12, border: '1px solid #E2E8F0', background: '#F5F5F5', color: 'var(--text-main)', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={confirmVoidSale} disabled={loading} style={{ flex: 1, padding: 12, border: 'none', background: '#F44336', color: 'white', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                <button onClick={() => setShowVoidModal(false)} style={{ flex: 1, minHeight: 44, padding: 12, border: '1px solid #E5E7EB', borderRadius: 8, background: '#F9FAFB', color: '#374151', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Cancel</button>
+                <button onClick={confirmVoidSale} disabled={loading} style={{ flex: 1, minHeight: 44, padding: 12, border: '1px solid #DC2626', borderRadius: 8, background: '#DC2626', color: 'white', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 0.15s' }}>
                   {loading ? 'Voiding...' : 'Confirm Void'}
                 </button>
               </div>
@@ -3145,17 +3182,20 @@ const addToCart = (item) => {
       {dismissTarget && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.65)',
+          background: 'rgba(0,0,0,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16,
         }}>
           <div style={{
             background: '#FFFFFF', width: 440, maxWidth: '95vw',
-            border: '3px solid #C62828',
-            boxShadow: '0 8px 40px rgba(198,40,40,0.25)',
+            borderRadius: 12,
+            border: '1px solid #FECACA',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
             fontFamily: "'Inter', sans-serif",
+            overflow: 'hidden',
           }}>
             {/* Header */}
-            <div style={{ background: '#C62828', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: 'var(--danger)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 22 }}>⚠️</span>
               <span style={{ color: '#FFFFFF', fontWeight: 900, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Permanently Dismiss Queue?
@@ -3163,38 +3203,38 @@ const addToCart = (item) => {
             </div>
             {/* Body */}
             <div style={{ padding: '24px 24px 8px' }}>
-              <p style={{ margin: '0 0 12px', color: '#424242', fontSize: 14, lineHeight: 1.6 }}>
-                You are about to <strong style={{ color: '#C62828' }}>permanently delete</strong> this store request from{' '}
+              <p style={{ margin: '0 0 12px', color: '#374151', fontSize: 14, lineHeight: 1.6 }}>
+                You are about to <strong style={{ color: 'var(--danger)' }}>permanently delete</strong> this store request from{' '}
                 <strong>both the Store queue and the Sales Manager queue</strong>.
               </p>
-              <div style={{ background: '#FFF3F3', border: '1.5px solid #FFCDD2', padding: '12px 16px', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#C62828', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 8, padding: '12px 16px', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                   Items to be deleted:
                 </div>
                 {(dismissTarget.items || []).map((it, i) => (
-                  <div key={i} style={{ fontSize: 13, color: '#424242', padding: '2px 0' }}>
+                  <div key={i} style={{ fontSize: 13, color: '#374151', padding: '2px 0' }}>
                     • {it.name || it.product_name} × {it.qty || it.quantity}
                   </div>
                 ))}
                 {(!dismissTarget.items || dismissTarget.items.length === 0) && (
-                  <div style={{ fontSize: 13, color: '#424242' }}>
+                  <div style={{ fontSize: 13, color: '#374151' }}>
                     Cart: {dismissTarget.cart_code || dismissTarget.request_code || '#' + dismissTarget.id}
                   </div>
                 )}
               </div>
-              <p style={{ margin: '8px 0 20px', color: '#757575', fontSize: 12 }}>
+              <p style={{ margin: '8px 0 20px', color: '#6B7280', fontSize: 12 }}>
                 This action <strong>cannot be undone</strong>. The data will be completely removed from the database.
               </p>
             </div>
             {/* Buttons */}
-            <div style={{ display: 'flex', borderTop: '2px solid #FFCDD2' }}>
+            <div style={{ display: 'flex', borderTop: '1px solid #FECACA' }}>
               <button
                 onClick={() => setDismissTarget(null)}
                 disabled={dismissing}
                 style={{
-                  flex: 1, padding: '16px', background: '#FFFFFF', color: '#424242',
-                  border: 'none', borderRight: '2px solid #FFCDD2',
-                  cursor: 'pointer', fontWeight: 800, fontSize: 14, textTransform: 'uppercase',
+                  flex: 1, padding: '16px', minHeight: 44, background: '#FFFFFF', color: '#374151',
+                  border: 'none', borderRight: '1px solid #FECACA',
+                  cursor: 'pointer', fontWeight: 700, fontSize: 14, textTransform: 'uppercase',
                 }}
               >
                 Cancel
@@ -3203,8 +3243,8 @@ const addToCart = (item) => {
                 onClick={handleDismissConfirm}
                 disabled={dismissing}
                 style={{
-                  flex: 1, padding: '16px',
-                  background: dismissing ? '#EF9A9A' : '#C62828',
+                  flex: 1, padding: '16px', minHeight: 44,
+                  background: dismissing ? '#F87171' : 'var(--danger)',
                   color: '#FFFFFF', border: 'none',
                   cursor: dismissing ? 'not-allowed' : 'pointer',
                   fontWeight: 900, fontSize: 14, textTransform: 'uppercase',
@@ -3221,14 +3261,15 @@ const addToCart = (item) => {
   );
 }
 
-const labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, color: '#1B5E20', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' };
-const inputStyle = () => ({ width: '100%', padding: '10px 13px', border: '1.5px solid #BDBDBD', fontSize: 13, boxSizing: 'border-box', outline: 'none', background: '#fff', color: '#424242' });
-const thStyle = { padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#FFFFFF', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', background: '#1B5E20', borderRight: '1px solid rgba(255,255,255,0.1)' };
-const tdStyle = { padding: '12px 16px', color: '#424242', borderBottom: '1px solid #E8F5E9' };
+const labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' };
+const inputStyle = () => ({ width: '100%', padding: '10px 13px', border: '1.5px solid #D1D5DB', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none', background: '#fff', color: '#111827', fontFamily: 'inherit' });
+const thStyle = { padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#6B7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', background: '#F9FAFB', borderRight: '1px solid #E5E7EB' };
+const tdStyle = { padding: '12px 16px', color: '#374151', borderBottom: '1px solid #E5E7EB' };
 const tabBtn = (active) => ({
-  background: active ? '#228B22' : 'white',
-  color: active ? 'white' : '#424242',
-  border: active ? 'none' : '1px solid #E0E0E0',
+  background: active ? 'var(--primary)' : 'white',
+  color: active ? 'white' : '#374151',
+  border: active ? 'none' : '1px solid #E5E7EB',
+  borderRadius: 8,
   padding: '8px 14px', cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 700 : 500,
 });

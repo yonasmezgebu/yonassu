@@ -9,6 +9,7 @@ import SalesInventoryView    from './SalesInventoryView';
 import SalesWorkerLowStock   from './SalesWorkerLowStock';
 import SalesWorkerExpiringProducts from './SalesWorkerExpiringProducts';
 import ExpiredproductReport        from './ExpiredproductReport';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── colour tokens ─────────────────────────────────────── */
 const LIME  = '#A5D6A7';   // light lime green

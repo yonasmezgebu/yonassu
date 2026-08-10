@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Target, TrendingUp, Clock, Package, AlertCircle, ShoppingCart, RefreshCw, BarChart2 } from 'lucide-react';
 import salesService from '../../services/salesService';
 import authService from '../../services/authService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const BG  = '#EEF2FF';
 const C   = '#4338ca'; // indigo-700

@@ -92,10 +92,8 @@ const SalesDashboard = () => {
     // ── Settings ──
     { label: 'Settings', icon: 'settings',
       children: [
-        { label: 'Contact Settings', icon: 'phone', color: '#14b8a6', children: [
-          { label: 'Setting Contact', path: '/sales/contact', icon: 'settings' },
-          { label: 'Chat', path: '/sales/chat', icon: 'message-circle', color: '#6B8E23' }
-        ] },
+        { label: 'Contact Settings', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
+        { label: 'Chat', path: '/sales/chat', icon: 'message-circle', color: '#6B8E23' },
       ]
     },
     { type: 'divider' },
@@ -117,7 +115,7 @@ const SalesDashboard = () => {
             location.pathname.includes('/sales/bids')           ? '#F5F5F5' :
             (
               location.pathname.includes('/sales/store-inventory')
-            ) ? '#1B5E20' :
+            ) ? '#F5F6FA' :
             '#F5F5F5',
           minHeight: '100vh',
           boxSizing: 'border-box',

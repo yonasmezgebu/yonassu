@@ -5,105 +5,123 @@ import {
   ShieldCheck, Zap, AlertTriangle
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── accent colour ──────────────────────────────────────────────────
-const C   = '#228B22';            // Forest Green
-const CD  = '#1B5E20';            // Dark Green
-const CL  = 'rgba(34, 139, 34, 0.15)'; // light tint
+const C   = '#2563EB';            // Primary Blue
+const CD  = '#1D4ED8';            // Primary Hover / Deep Blue
+const CL  = 'rgba(37, 99, 235, 0.15)'; // light tint
 
 const SHARED_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse    { 0%,100%{opacity:1;transform:scale(1)}     50%{opacity:.5;transform:scale(.9)} }
-  @keyframes spin     { to{transform:rotate(360deg)} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeIn   { to{opacity:1} }
-  @keyframes laserSweep { 0%{left:-150%} 100%{left:150%} }
+  @keyframes toastIn  { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes spin     { to{transform:rotate(360deg)} }
+
+  .b-page {
+    max-width:1536px;margin:0 auto;padding:24px 24px;
+    box-sizing:border-box;width:100%;
+  }
 
   .b-card {
-    --hc:${C};
-    position:relative;overflow:hidden;background:white;border-radius: 0;
-    box-shadow:0 2px 14px rgba(0,80,0,0.07);
-    transition:background-size .4s,box-shadow .4s;animation:fadeUp .5s ease both;
-    background-image:linear-gradient(to right,var(--hc),var(--hc)),
-                     linear-gradient(to bottom,var(--hc),var(--hc)),
-                     linear-gradient(to left,var(--hc),var(--hc)),
-                     linear-gradient(to top,var(--hc),var(--hc));
-    background-position:0 0,100% 0,100% 100%,0 100%;
-    background-repeat:no-repeat;
-    background-size:0% 4px,4px 0%,0% 4px,4px 0%;
+    position:relative;overflow:hidden;background:white;border-radius:10px;
+    border:1px solid #E5E7EB;box-shadow:0 1px 3px rgba(0,0,0,.06);
+    transition:all .15s ease;animation:fadeUp .5s ease both;
   }
   .b-card:hover{
-    box-shadow:0 8px 28px rgba(0,80,0,0.13),0 0 18px var(--hc);
-    background-size:100% 4px,4px 100%,100% 4px,4px 100%;
+    border-color:#F59E0B;box-shadow:0 4px 12px rgba(0,0,0,.08);transform:translateY(-1px);
   }
-  .b-card::before{
-    content:'';position:absolute;top:0;left:-150%;width:60%;height:100%;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);
-    transform:skewX(-20deg);transition:none;pointer-events:none;z-index:1;
-  }
-  .b-card:hover::before{ animation:laserSweep 0.7s ease forwards; }
 
   .btn-olive {
-    display:inline-flex;align-items:center;gap:8px;
-    padding:11px 22px;font-weight:900;font-size:14px;cursor:pointer;
-    letter-spacing:.08em;text-transform:uppercase;
-    background:linear-gradient(135deg,#fff,#f5f5dc);color:#3a3a00;
-    border:2px solid ${C};border-radius: 0;
-    box-shadow:0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1);
-    transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:44px;padding:0 20px;font-weight:500;font-size:14px;cursor:pointer;
+    color:#6B7280;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:8px;
+    transition:all .15s ease;font-family:'Inter','Segoe UI',sans-serif;
   }
-  .btn-olive:active:not(:disabled){ transform:translateY(5px);box-shadow:0 0 0 ${CD}; }
-  .btn-olive:hover:not(:disabled) { filter:brightness(1.05); }
-  .btn-olive:disabled             { filter:grayscale(.7) opacity(.7);cursor:not-allowed;transform:translateY(5px);box-shadow:0 0 0 ${CD}; }
+  .btn-olive:hover:not(:disabled){ background:#F9FAFB;border-color:#D1D5DB;transform:translateY(-1px); }
+  .btn-olive:active:not(:disabled){ transform:translateY(0); }
+  .btn-olive:focus-visible{ outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25); }
+  .btn-olive:disabled{ opacity:.5;cursor:not-allowed; }
 
   .btn-olive-primary {
-    display:inline-flex;align-items:center;gap:10px;
-    padding:12px 28px;font-weight:900;font-size:15px;cursor:pointer;
-    letter-spacing:.12em;text-transform:uppercase;
-    background:linear-gradient(135deg,${C},${CD});color:white;
-    border:2px solid ${CD};border-radius: 0;
-    box-shadow:0 5px 0 #5c5c22,0 8px 15px rgba(92,92,34,.28),inset 0 2px 0 rgba(255,255,255,.2);
-    transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    height:44px;padding:0 24px;font-weight:500;font-size:14px;cursor:pointer;
+    background:#2563EB;color:white;border:none;border-radius:8px;
+    transition:all .15s ease;font-family:'Inter','Segoe UI',sans-serif;
   }
-  .btn-olive-primary:active:not(:disabled){ transform:translateY(5px);box-shadow:0 0 0 #5c5c22; }
-  .btn-olive-primary:hover:not(:disabled) { filter:brightness(1.08); }
-  .btn-olive-primary:disabled             { filter:grayscale(.8) opacity(.7);cursor:not-allowed;transform:translateY(5px);box-shadow:none; }
+  .btn-olive-primary:hover:not(:disabled){ background:#1D4ED8;transform:translateY(-1px); }
+  .btn-olive-primary:active:not(:disabled){ transform:translateY(0); }
+  .btn-olive-primary:focus-visible{ outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.25); }
+  .btn-olive-primary:disabled{ opacity:.5;cursor:not-allowed; }
 
-  .b-row { border-bottom:1px solid rgba(185,185,121,.15);transition:background .2s,transform .2s; }
-  .b-row:hover { background:rgba(185,185,121,.08);transform:translateX(3px); }
+  .btn-danger {
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:44px;padding:0 16px;font-weight:500;font-size:14px;cursor:pointer;
+    background:#DC2626;color:white;border:none;border-radius:8px;
+    transition:all .15s ease;font-family:'Inter','Segoe UI',sans-serif;
+  }
+  .btn-danger:hover:not(:disabled){ background:#B91C1C;transform:translateY(-1px); }
+  .btn-danger:active:not(:disabled){ transform:translateY(0); }
+  .btn-danger:focus-visible{ outline:none;box-shadow:0 0 0 3px rgba(220,38,38,.25); }
+  .btn-danger:disabled{ opacity:.5;cursor:not-allowed; }
+
+  .btn-gold { position:relative;overflow:hidden;transition:all .15s ease; }
+  .btn-gold:hover:not(:disabled){ background:#F59E0B;color:#78350F; }
+  .btn-gold::after{
+    content:'';position:absolute;top:0;left:-150%;width:50%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,214,0,.5),transparent);
+    transform:skewX(-20deg);pointer-events:none;opacity:0;z-index:0;
+  }
+  .btn-gold > * { position:relative;z-index:1; }
+  .btn-gold:hover::after{ animation:goldScratch .6s ease forwards; }
+  @keyframes goldScratch { 0%{left:-150%;opacity:1} 100%{left:150%;opacity:1} }
 
   .b-input {
-    width:100%;padding:12px 12px 12px 38px;border:2px solid #8D6E63;border-radius: 0;
-    font-size:14px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;
-    transition:border-color .2s,box-shadow .2s;
+    width:100%;height:36px;padding:0 12px 0 38px;border:1px solid #E5E7EB;border-radius:8px;
+    font-size:14px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;color:#111827;background:#fff;
+    transition:all .15s ease;
   }
-  .b-input:focus { border-color:#2E8B57;box-shadow:none; }
+  .b-input:focus { border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+  .b-input::placeholder { color:#9CA3AF; }
 
-  .b-label { display:block;font-size:11px;font-weight:900;color:#6b6b3a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em; }
+  .b-label { display:block;font-size:12px;font-weight:500;color:#6B7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em; }
 
-  .b-badge-active   { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#4CAF50;color:white;display:inline-flex;align-items:center;gap:5px; }
-  .b-badge-inactive { padding:4px 12px;border-radius: 0;font-size:11px;font-weight:900;background:#F5F5F5;color:#424242;border:2px dashed #8D6E63;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-active   { padding:4px 12px;border-radius:999px;font-size:12px;font-weight:500;background:#DCFCE7;color:#16A34A;display:inline-flex;align-items:center;gap:5px; }
+  .b-badge-inactive { padding:4px 12px;border-radius:999px;font-size:12px;font-weight:500;background:#F3F4F6;color:#6B7280;border:1px dashed #E5E7EB;display:inline-flex;align-items:center;gap:5px; }
 
   .artistic-title {
-    font-size:2.8rem;font-weight:900;color:#1B5E20;letter-spacing:-.02em;
-    margin:0;display:flex;align-items:center;gap:12px;line-height:1.1;
+    font-size:26px;font-weight:600;color:#111827;letter-spacing:-.01em;
+    margin:0;display:flex;align-items:center;gap:12px;line-height:1.3;
   }
   .artistic-subtitle {
-    font-size:.95rem;color:#424242;font-weight:800;text-align:center;
-    text-transform:uppercase;letter-spacing:.15em;margin:0;
+    font-size:12px;color:#6B7280;font-weight:500;
+    text-transform:uppercase;letter-spacing:.08em;margin:0;
+  }
+
+  @media(max-width:768px){
+    .b-page{ padding:16px 16px; }
+    .b-head{ flex-direction:column;align-items:flex-start !important; }
+    .btn-olive,.btn-olive-primary,.btn-danger{ min-height:44px; }
+  }
+  @media(max-width:480px){
+    .b-page{ padding:12px 12px; }
+    .b-input{ height:44px; }
   }
 `;
 
 // ─── Confirm delete modal ────────────────────────────────────────────
 const ConfirmModal = ({ text, onConfirm, onCancel }) => (
-  <div style={{ position:'fixed',inset:0,background:'rgba(42,42,0,.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,animation:'fadeIn .2s ease' }}>
-    <div style={{ background:'white',padding:'32px 40px',borderRadius: 0,boxShadow:'0 20px 40px rgba(0,0,0,.2)',maxWidth:420,animation:'fadeUp .3s ease' }}>
-      <AlertTriangle size={36} color={C} style={{ marginBottom:14 }} />
-      <h2 style={{ margin:'0 0 12px',fontSize:20,fontWeight:900,color:'#1B5E20' }}>Are you sure?</h2>
-      <p style={{ margin:'0 0 24px',fontSize:14,color:'#424242',lineHeight:1.6 }}>{text}</p>
+  <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,animation:'fadeIn .2s ease',padding:16 }}>
+    <div style={{ background:'white',padding:24,borderRadius:12,boxShadow:'0 24px 48px rgba(0,0,0,0.2)',maxWidth:420,width:'100%',animation:'fadeUp .3s ease' }}>
+      <div style={{ width:48,height:48,borderRadius:999,background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:14 }}>
+        <AlertTriangle size={24} color="#DC2626" />
+      </div>
+      <h2 style={{ margin:'0 0 8px',fontSize:18,fontWeight:600,color:'#111827',lineHeight:1.3 }}>Are you sure?</h2>
+      <p style={{ margin:'0 0 24px',fontSize:14,color:'#6B7280',lineHeight:1.5 }}>{text}</p>
       <div style={{ display:'flex',gap:12,justifyContent:'flex-end' }}>
-        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius: 0,border:'2px solid #8D6E63',background:'transparent',color:'#424242',fontWeight:800,cursor:'pointer' }}>Cancel</button>
-        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius: 0,border:'none',background:'#F44336',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(244,67,54,.3)' }}>Delete</button>
+        <button onClick={onCancel} className="btn-olive">Cancel</button>
+        <button onClick={onConfirm} className="btn-danger">Delete</button>
       </div>
     </div>
   </div>
@@ -111,27 +129,27 @@ const ConfirmModal = ({ text, onConfirm, onCancel }) => (
 
 // ─── Inline Toast ────────────────────────────────────────────────────
 const Toast = ({ msg }) => msg?.text ? (
-  <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 22px',borderRadius: 0,
-    background: msg.type==='success' ? '#E8F5E9' : '#FFEBEE',
-    border:`2px solid ${msg.type==='success' ? '#4CAF50' : '#F44336'}`,
-    color: msg.type==='success' ? '#1B5E20' : '#B71C1C',
-    fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:10,
-    boxShadow:`0 8px 24px rgba(0,0,0,.12)`,animation:'fadeUp .3s ease'
+  <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 18px',borderRadius:8,
+    background:'#FFFFFF',borderLeft:`4px solid ${msg.type==='success' ? '#16A34A' : '#DC2626'}`,
+    color:'#111827',fontWeight:500,fontSize:14,display:'flex',alignItems:'center',gap:12,
+    boxShadow:'0 8px 24px rgba(0,0,0,0.12)',animation:'toastIn .3s ease',minWidth:280,maxWidth:400
   }}>
-    {msg.type==='success' ? <CheckCircle size={18}/> : <XCircle size={18}/>}
-    {msg.text}
+    <span style={{ color: msg.type==='success' ? '#16A34A' : '#DC2626', flexShrink:0 }}>
+      {msg.type==='success' ? <CheckCircle size={18}/> : <XCircle size={18}/>}
+    </span>
+    <span>{msg.text}</span>
   </div>
 ) : null;
 
 const Field = ({ label, icon: Icon, name, value, onChange, placeholder, required, type='text', rows }) => (
   <div>
-    <label className="b-label">{label}{required && <span style={{ color:'#F44336',marginLeft:3 }}>*</span>}</label>
+    <label className="b-label">{label}{required && <span style={{ color:'#DC2626',marginLeft:3 }}>*</span>}</label>
     <div style={{ position:'relative' }}>
-      <Icon size={15} style={{ position:'absolute',left:12,top:14,color:C,opacity:.8 }} />
+      <Icon size={15} style={{ position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:C,opacity:.8 }} />
       {rows ? (
         <textarea name={name} value={value} onChange={onChange} rows={rows}
           className="b-input" placeholder={placeholder}
-          style={{ minHeight:64,resize:'vertical',paddingLeft:38 }} />
+          style={{ minHeight:64,resize:'vertical',paddingLeft:38,height:'auto' }} />
       ) : (
         <input type={type} name={name} value={value} onChange={onChange} required={required}
           className="b-input" placeholder={placeholder} style={{ paddingLeft:38 }} />
@@ -143,14 +161,14 @@ const Field = ({ label, icon: Icon, name, value, onChange, placeholder, required
 // ─── Branch Card ─────────────────────────────────────────────────────
 const BranchCard = ({ b, onEdit, onDelete, idx }) => (
   <div className="b-card" style={{ padding:24,animationDelay:`${idx*0.07}s` }}>
-    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16 }}>
+    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,gap:12,flexWrap:'wrap' }}>
       <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:48,height:48,borderRadius: 0,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(34,139,34,.45)`,flexShrink:0 }}>
+        <div style={{ width:48,height:48,borderRadius:10,background:'#2563EB',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
           <Building2 size={24} color="white" />
         </div>
         <div>
-          <h3 style={{ fontSize:16,fontWeight:900,margin:0,color:'#1B5E20' }}>{b.name}</h3>
-          {b.code && <span style={{ fontSize:12,color:C,fontWeight:800,fontFamily:'monospace' }}>#{b.code}</span>}
+          <h3 style={{ fontSize:16,fontWeight:600,margin:0,color:'#111827',lineHeight:1.3 }}>{b.name}</h3>
+          {b.code && <span style={{ fontSize:12,color:'#2563EB',fontWeight:600,fontFamily:'monospace' }}>#{b.code}</span>}
         </div>
       </div>
       <span className={b.is_active ? 'b-badge-active' : 'b-badge-inactive'}>
@@ -159,7 +177,7 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
       </span>
     </div>
 
-    <div style={{ display:'flex',flexDirection:'column',gap:8,fontSize:13,color:'#424242' }}>
+    <div style={{ display:'flex',flexDirection:'column',gap:8,fontSize:13,color:'#6B7280',lineHeight:1.5 }}>
       {b.phone        && <div style={{ display:'flex',alignItems:'center',gap:8 }}><Phone   size={14} color={C} />{b.phone}</div>}
       {b.manager_name && <div style={{ display:'flex',alignItems:'center',gap:8 }}><User    size={14} color={C} />{b.manager_name}</div>}
       {b.working_hours&& <div style={{ display:'flex',alignItems:'center',gap:8 }}><Clock   size={14} color={C} />{b.working_hours}</div>}
@@ -167,31 +185,11 @@ const BranchCard = ({ b, onEdit, onDelete, idx }) => (
     </div>
 
     <div style={{ display:'flex',gap:10,marginTop:18,paddingTop:14,borderTop:`1px solid ${CL}` }}>
-      <button onClick={() => onEdit(b)} style={{
-        flex:1,padding:'10px 12px',
-        background:`linear-gradient(135deg,#A5D6A7,#F5F5F5)`,color:CD,
-        border:`2px solid ${C}`,borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
-        display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-        boxShadow:`0 3px 0 ${CD}`,transition:'all .1s'
-      }}
-        onMouseDown={e => { e.currentTarget.style.transform='translateY(3px)'; e.currentTarget.style.boxShadow='0 0 0 transparent'; }}
-        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 3px 0 ${CD}`; }}
-        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 3px 0 ${CD}`; }}
-      >
-        <Edit3 size={13}/> Edit
+      <button onClick={() => onEdit(b)} className="btn-olive btn-gold" style={{ flex:1,height:40 }}>
+        <Edit3 size={14}/> Edit
       </button>
-      <button onClick={() => onDelete(b.id)} style={{
-        flex:1,padding:'10px 12px',
-        background:'linear-gradient(135deg,#FFEBEE,#FFFFFF)',color:'#F44336',
-        border:'2px solid #F44336',borderRadius: 0,cursor:'pointer',fontWeight:800,fontSize:12,
-        display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-        boxShadow:'0 3px 0 #F44336',transition:'all .1s'
-      }}
-        onMouseDown={e => { e.currentTarget.style.transform='translateY(3px)'; e.currentTarget.style.boxShadow='0 0 0 transparent'; }}
-        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #F44336'; }}
-        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #F44336'; }}
-      >
-        <Trash2 size={13}/> Delete
+      <button onClick={() => onDelete(b.id)} className="btn-danger" style={{ flex:1,height:40 }}>
+        <Trash2 size={14}/> Delete
       </button>
     </div>
   </div>
@@ -267,119 +265,111 @@ const RetailBranches = () => {
 
   // ── render ──────────────────────────────────────────────────────────
   return (
-    <div style={{ padding:0,margin:0,boxSizing:'border-box',width:'100%',minHeight:'100vh',background:'#F5F5F5',fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ padding:0,margin:0,boxSizing:'border-box',width:'100%',minHeight:'100vh',background:'#F5F6FA',fontFamily:"'Inter','Segoe UI',sans-serif" }}>
       <style>{SHARED_CSS}</style>
       <Toast msg={msg} />
       {confirmDel && <ConfirmModal text="Delete this branch? This action cannot be undone." onConfirm={confirmDelete} onCancel={() => setConfirmDel(null)} />}
 
-      {/* ── HEADER ── */}
-      <div style={{ display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:'2.5rem',marginTop:'0.5rem',animation:'fadeUp .35s ease' }}>
-        <div style={{ justifySelf:'start' }}>
-          <h1 className="artistic-title">
-            Branches. <Building2 style={{ color:C,filter:`drop-shadow(0 0 8px ${C})` }} size={38}/>
-          </h1>
-        </div>
-        <div style={{ justifySelf:'center' }}>
-          <p className="artistic-subtitle">Sales Location Network</p>
-        </div>
-        <div style={{ justifySelf:'end',display:'flex',gap:12 }}>
-          <button onClick={fetchBranches} style={{
-            display:'inline-flex',alignItems:'center',gap:8,padding:'11px 22px',
-            background:'linear-gradient(135deg,#FFFFFF,#F5F5F5)',color:'#1B5E20',
-            border:`2px solid ${C}`,borderRadius: 0,fontWeight:900,fontSize:14,cursor:'pointer',
-            letterSpacing:'.08em',textTransform:'uppercase',
-            boxShadow:`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`,
-            transition:'all .1s',fontFamily:"'Inter',sans-serif"
-          }}
-            onMouseDown={e=>{e.currentTarget.style.transform='translateY(5px)';e.currentTarget.style.boxShadow=`0 0 0 ${CD}`;}}
-            onMouseUp={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(34,139,34,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
-          >
-            <RotateCcw size={16}/> Refresh
-          </button>
-          <button onClick={() => showForm ? handleCancel() : openForm()} className="btn-olive-primary">
-            {showForm ? <X size={18}/> : <Plus size={18}/>}
-            {showForm ? 'Cancel' : 'Add Branch'}
-          </button>
-        </div>
-      </div>
-
-      {/* ── INFO BAR ── */}
-      <div style={{ background:'rgba(255,255,255,.55)',border:'2px solid rgba(255,255,255,1)',borderRadius: 0,padding:'18px 28px',marginBottom:24,display:'flex',gap:16,alignItems:'center',boxShadow:'0 10px 30px rgba(0,80,0,.04)',animation:'fadeUp .4s ease' }}>
-        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius: 0,boxShadow:`0 4px 12px rgba(34,139,34,.45)`,flexShrink:0 }}>
-          <ShieldCheck size={22}/>
-        </div>
-        <div>
-          <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:900,color:'#1B5E20',textTransform:'uppercase',letterSpacing:'.05em' }}>Manage Your Branch Network</h3>
-          <p style={{ margin:0,fontSize:13,color:'#424242',fontWeight:600 }}>
-            Add, edit, or remove sales locations. Each branch has its own contact details and working hours.
-            <span style={{ marginLeft:10,padding:'2px 10px',borderRadius: 0,background:CL,color:CD,fontWeight:800,fontSize:12 }}>
-              {branches.length} {branches.length===1?'Branch':'Branches'}
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {/* ── FORM ── */}
-      {showForm && (
-        <div className="b-card" style={{ padding:28,marginBottom:28,animationDelay:'0s',overflow:'visible' }}>
-          <div style={{ padding:'18px 28px',background:`linear-gradient(135deg,${C},${CD})`,color:'white',display:'flex',alignItems:'center',gap:12,margin:'-28px -28px 24px',borderRadius: 0 }}>
-            {editing ? <Edit3 size={20}/> : <Plus size={20}/>}
-            <span style={{ fontSize:16,fontWeight:900,letterSpacing:'.05em',textTransform:'uppercase' }}>
-              {editing ? 'Edit Branch' : 'New Branch'}
-            </span>
+      <div className="b-page">
+        {/* ── HEADER ── */}
+        <div className="b-head" style={{ display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',marginBottom:24,animation:'fadeUp .35s ease' }}>
+          <div>
+            <h1 className="artistic-title">
+              Branches <Building2 style={{ color:C }} size={30}/>
+            </h1>
+            <p className="artistic-subtitle">Sales Location Network</p>
           </div>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:18 }}>
-              <Field label="Branch Name" icon={Building2} name="name"         value={formData.name}          onChange={handleChange} placeholder="e.g. Downtown Sales" required />
-              <Field label="Code"        icon={Hash}       name="code"         value={formData.code}          onChange={handleChange} placeholder="e.g. DTP" />
-              <Field label="Phone"       icon={Phone}      name="phone"        value={formData.phone}         onChange={handleChange} placeholder="+251-XXX-XXXX" />
-              <Field label="Manager Name"icon={User}       name="manager_name" value={formData.manager_name}  onChange={handleChange} placeholder="Manager name" />
-              <Field label="Working Hours"icon={Clock}     name="working_hours"value={formData.working_hours} onChange={handleChange} placeholder="Mon-Sat 8AM-6PM" />
-              <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
-                <label style={{ display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'12px 0',userSelect:'none' }}>
-                  <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleChange}
-                    style={{ width:18,height:18,accentColor:C,cursor:'pointer', borderRadius: 0 }}/>
-                  <span style={{ fontSize:14,fontWeight:800,color:'#424242' }}>Active Branch</span>
-                </label>
-              </div>
-              <div style={{ gridColumn:'1 / -1' }}>
-                <Field label="Address" icon={MapPin} name="address" value={formData.address} onChange={handleChange} placeholder="Full address" rows={2} />
-              </div>
-            </div>
+          <div style={{ display:'flex',gap:10,flexWrap:'wrap' }}>
+            <button onClick={fetchBranches} className="btn-olive">
+              {loading ? <SegmentedSpinner size={16} /> : <RotateCcw size={16}/>}
+              Refresh
+            </button>
+            <button onClick={() => showForm ? handleCancel() : openForm()} className="btn-olive-primary btn-gold">
+              {showForm ? <X size={16}/> : <Plus size={16}/>}
+              {showForm ? 'Cancel' : 'Add Branch'}
+            </button>
+          </div>
+        </div>
 
-            <div style={{ display:'flex',gap:12,marginTop:24 }}>
-              <button type="submit" disabled={saving} className="btn-olive-primary">
-                {saving ? <SegmentedSpinner size={16} /> : <Save size={16}/>}
-                {saving ? 'Saving...' : editing ? 'Update Branch' : 'Create Branch'}
-              </button>
-              <button type="button" onClick={handleCancel} className="btn-olive">
-                <X size={16}/> Cancel
-              </button>
-            </div>
-          </form>
+        {/* ── INFO BAR ── */}
+        <div className="b-card" style={{ padding:20,marginBottom:24,display:'flex',gap:16,alignItems:'center',animationDelay:'0s' }}>
+          <div style={{ background:'#2563EB',color:'white',padding:12,borderRadius:10,flexShrink:0 }}>
+            <ShieldCheck size={22}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:600,color:'#111827',textTransform:'uppercase',letterSpacing:'.04em' }}>Manage Your Branch Network</h3>
+            <p style={{ margin:0,fontSize:13,color:'#6B7280',lineHeight:1.5 }}>
+              Add, edit, or remove sales locations. Each branch has its own contact details and working hours.
+            </p>
+          </div>
+          <span style={{ marginLeft:'auto',padding:'4px 12px',borderRadius:999,background:'#EFF6FF',color:'#2563EB',fontWeight:600,fontSize:13,whiteSpace:'nowrap' }}>
+            {branches.length} {branches.length===1?'Branch':'Branches'}
+          </span>
         </div>
-      )}
 
-      {/* ── BRANCH GRID ── */}
-      {loading ? (
-        <div style={{ padding:'80px 20px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center' }}>
-          <Zap size={40} style={{ color:C,marginBottom:16,animation:'pulse 1.5s ease-in-out infinite' }}/>
-          <div style={{ fontSize:18,color:'#1B5E20',fontWeight:900 }}>Loading Branches...</div>
-        </div>
-      ) : branches.length === 0 ? (
-        <div className="b-card" style={{ padding:'80px 24px',textAlign:'center' }}>
-          <Building2 size={56} style={{ color:C,opacity:.4,marginBottom:16 }}/>
-          <h3 style={{ fontSize:18,fontWeight:900,color:'#1B5E20',margin:'0 0 6px' }}>No Branches Yet</h3>
-          <p style={{ color:'#424242',fontSize:14,margin:0 }}>Click <strong>Add Branch</strong> to register your first sales location.</p>
-        </div>
-      ) : (
-        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:20 }}>
-          {branches.map((b, i) => (
-            <BranchCard key={b.id} b={b} idx={i} onEdit={openForm} onDelete={handleDelete} />
-          ))}
-        </div>
-      )}
+        {/* ── FORM ── */}
+        {showForm && (
+          <div className="b-card" style={{ padding:24,marginBottom:28,animationDelay:'0s',overflow:'visible' }}>
+            <div style={{ padding:'16px 24px',background:'#1D4ED8',color:'white',display:'flex',alignItems:'center',gap:12,margin:'-24px -24px 24px',borderRadius:'10px 10px 0 0' }}>
+              {editing ? <Edit3 size={18}/> : <Plus size={18}/>}
+              <span style={{ fontSize:15,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase' }}>
+                {editing ? 'Edit Branch' : 'New Branch'}
+              </span>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:16 }}>
+                <Field label="Branch Name" icon={Building2} name="name"         value={formData.name}          onChange={handleChange} placeholder="e.g. Downtown Sales" required />
+                <Field label="Code"        icon={Hash}       name="code"         value={formData.code}          onChange={handleChange} placeholder="e.g. DTP" />
+                <Field label="Phone"       icon={Phone}      name="phone"        value={formData.phone}         onChange={handleChange} placeholder="+251-XXX-XXXX" />
+                <Field label="Manager Name"icon={User}       name="manager_name" value={formData.manager_name}  onChange={handleChange} placeholder="Manager name" />
+                <Field label="Working Hours"icon={Clock}     name="working_hours"value={formData.working_hours} onChange={handleChange} placeholder="Mon-Sat 8AM-6PM" />
+                <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
+                  <label style={{ display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'12px 0',userSelect:'none' }}>
+                    <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleChange}
+                      style={{ width:18,height:18,accentColor:C,cursor:'pointer' }}/>
+                    <span style={{ fontSize:14,fontWeight:500,color:'#6B7280' }}>Active Branch</span>
+                  </label>
+                </div>
+                <div style={{ gridColumn:'1 / -1' }}>
+                  <Field label="Address" icon={MapPin} name="address" value={formData.address} onChange={handleChange} placeholder="Full address" rows={2} />
+                </div>
+              </div>
+
+              <div style={{ display:'flex',gap:12,marginTop:24,flexWrap:'wrap' }}>
+                <button type="submit" disabled={saving} className="btn-olive-primary btn-gold">
+                  {saving ? <SegmentedSpinner size={16} /> : <Save size={16}/>}
+                  {saving ? 'Saving...' : editing ? 'Update Branch' : 'Create Branch'}
+                </button>
+                <button type="button" onClick={handleCancel} className="btn-olive">
+                  <X size={16}/> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── BRANCH GRID ── */}
+        {loading ? (
+          <div style={{ padding:'80px 20px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center' }}>
+            <SegmentedSpinner size={40} />
+            <div style={{ fontSize:14,color:'#6B7280',marginTop:12,fontWeight:500 }}>Loading Branches…</div>
+          </div>
+        ) : branches.length === 0 ? (
+          <div className="b-card" style={{ padding:'80px 24px',textAlign:'center' }}>
+            <div style={{ width:64,height:64,borderRadius:999,background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px' }}>
+              <Building2 size={30} color="#2563EB"/>
+            </div>
+            <h3 style={{ fontSize:18,fontWeight:600,color:'#111827',margin:'0 0 6px' }}>No Branches Yet</h3>
+            <p style={{ color:'#6B7280',fontSize:14,margin:0 }}>Click <strong style={{ fontWeight:600 }}>Add Branch</strong> to register your first sales location.</p>
+          </div>
+        ) : (
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:20 }}>
+            {branches.map((b, i) => (
+              <BranchCard key={b.id} b={b} idx={i} onEdit={openForm} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
