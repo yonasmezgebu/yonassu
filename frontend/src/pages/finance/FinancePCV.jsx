@@ -4,6 +4,7 @@ import {
   ArrowRight, RefreshCw, PenTool, Trash2, User, Printer
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Global CSS ─────────────────────────────────────────────── */
 const G = `
