@@ -1679,7 +1679,7 @@ module.exports.getDailyEmployees = catchAsync(async (req, res) => {
   });
 });
 
-// â”€â”€ CEO-only: Monthly attendance for an employee â”€â”€
+// ── CEO-only: Monthly attendance for an employee ──
 module.exports.getEmployeeMonthlyAttendance = catchAsync(async (req, res) => {
   const { employeeId } = req.params;
   const month = req.query.month || new Date().toISOString().slice(0, 7);
@@ -1708,4 +1708,76 @@ module.exports.getEmployeeMonthlyAttendance = catchAsync(async (req, res) => {
 
   const records = recordsRaw[0] || [];
   res.json({ status: 'success', data: { records } });
+});
+
+// ── Store Updates Approvals (Store -> CEO) ────────────────────────────────────────────────
+module.exports.getPendingStoreUpdates = catchAsync(async (req, res) => {
+  const updates = await db('store_update_approvals').where('status', 'PENDING').orderBy('created_at', 'desc');
+  res.json({ status: 'success', data: { updates } });
+});
+
+module.exports.approveStoreUpdate = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const updateReq = await db('store_update_approvals').where({ id, status: 'PENDING' }).first();
+  if (!updateReq) throw new AppError('Update request not found or already processed', 404);
+
+  let afterState = updateReq.after_state;
+  let beforeState = updateReq.before_state;
+  if (typeof afterState === 'string') afterState = JSON.parse(afterState);
+  if (typeof beforeState === 'string') beforeState = JSON.parse(beforeState);
+
+  // Apply to general_store_materials
+  if (updateReq.update_type === 'STORE_QUANTITY_UPDATE' || updateReq.update_type === 'STORE_VALUE_UPDATE' || updateReq.update_type === 'STORE_MATERIAL_UPDATE') {
+    const { material_name, category, department, unit, quantity_in_store, unit_value, total_value, reorder_level } = afterState;
+    await db('general_store_materials').where({ material_id: updateReq.material_id }).update({
+      material_name, category, department, unit, quantity_in_store, unit_value, total_value, reorder_level, updated_at: db.fn.now()
+    });
+  }
+
+  await db('store_update_approvals').where({ id }).update({
+    status: 'APPROVED',
+    approved_by: req.user.id,
+    approved_at: db.fn.now()
+  });
+
+  const materialName = afterState.material_name || updateReq.material_id;
+  await audit(updateReq.update_type, req.user.id, {
+    ip: req.ip,
+    resource: 'STORE_MATERIAL',
+    resourceId: updateReq.material_id,
+    details: { action: 'approved', material: materialName },
+    before_state: beforeState,
+    after_state: afterState
+  });
+
+  if (updateReq.update_type === 'STORE_VALUE_UPDATE' || updateReq.update_type === 'STORE_MATERIAL_UPDATE') {
+    await db('general_movement_log').insert({
+      item_type: 'Material', item_id: updateReq.material_id,
+      from_location: 'General Store', to_location: 'General Store',
+      department: afterState.department || 'General',
+      action_type: 'Value Update',
+      moved_by: 'CEO Approved',
+      notes: `Update request approved by CEO`,
+    });
+  }
+
+  res.json({ status: 'success', message: 'Store update approved and applied' });
+});
+
+module.exports.rejectStoreUpdate = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { rejectionReason } = req.body;
+  if (!rejectionReason) throw new AppError('Rejection reason is required', 400);
+
+  const updateReq = await db('store_update_approvals').where({ id, status: 'PENDING' }).first();
+  if (!updateReq) throw new AppError('Update request not found or already processed', 404);
+
+  await db('store_update_approvals').where({ id }).update({
+    status: 'REJECTED',
+    rejection_reason: rejectionReason,
+    approved_by: req.user.id,
+    approved_at: db.fn.now()
+  });
+
+  res.json({ status: 'success', message: 'Store update rejected' });
 });
