@@ -589,14 +589,15 @@ const getManagerAccuracyReport = async () => {
 // ---- NEW HR DASHBOARD SERVICES ----
 
 const getTodayActivities = async () => {
-  const today = new Date().toISOString().split('T')[0];
+  // created_at is stored in the MySQL server's local time, so "today" is
+  // resolved entirely in SQL (CURDATE) to stay immune to JS/MySQL tz skew.
   let logs = [], leaves = [];
   try {
     const tableExists = await db.schema.hasTable('central_audit_logs');
     if (tableExists) {
       logs = await db('central_audit_logs')
         .where('module', 'HR')
-        .where('created_at', '>=', today)
+        .whereRaw('DATE(created_at) = CURDATE()')
         .orderBy('created_at', 'desc')
         .limit(50);
     }
@@ -604,7 +605,10 @@ const getTodayActivities = async () => {
   try {
     const leaveTableExists = await db.schema.hasTable('leave_requests');
     if (leaveTableExists) {
-      leaves = await db('leave_requests').where('start_date', '<=', today).where('end_date', '>=', today).limit(20);
+      leaves = await db('leave_requests')
+        .whereRaw('start_date <= CURDATE()')
+        .whereRaw('end_date >= CURDATE()')
+        .limit(20);
     }
   } catch (e) { /* table not ready yet */ }
   return { logs, leaves };
