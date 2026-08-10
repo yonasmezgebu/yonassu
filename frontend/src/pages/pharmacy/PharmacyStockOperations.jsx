@@ -9,6 +9,7 @@ import PharmacyInventoryView    from './PharmacyInventoryView';
 import PharmacyWorkerLowStock   from './PharmacyWorkerLowStock';
 import PharmacyWorkerExpiringMedicines from './PharmacyWorkerExpiringMedicines';
 import ExpiredDrugReport        from './ExpiredDrugReport';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── colour tokens ─────────────────────────────────────── */
 const LIME  = '#E5FBAD';   // light lime green
