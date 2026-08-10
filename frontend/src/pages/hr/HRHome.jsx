@@ -124,14 +124,18 @@ const HRHome = () => {
       setSummary(summaryRes?.data || summaryRes || {});
       const actData = activitiesRes?.data || activitiesRes || {};
       const logs = actData.logs || [];
-      setActivities(logs.map((log, i) => ({
-        id: log.record_id || log.id || i,
-        action_type: (log.action || log.action_type) === 'CLOCK_IN' ? 'Clock In' : 'Clock Out',
-        employee_id: log.employee_id,
-        time: new Date(log.timestamp || log.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: (log.action || log.action_type) === 'CLOCK_IN' ? 'hire' : 'leave',
-        date_time: log.timestamp || log.created_at
-      })).slice(0, 6));
+      setActivities(logs.map((log, i) => {
+        const rawAction = log.action || log.action_type || 'System Action';
+        const isPositive = rawAction.includes('Clock In') || rawAction.includes('CLOCK_IN') || rawAction.includes('Created') || rawAction.includes('Approved') || rawAction.includes('Hired');
+        return {
+          id: log.id || log.record_id || i,
+          action_type: rawAction,
+          employee_id: log.user_name || log.record_identifier || log.employee_id || 'System',
+          time: new Date(log.created_at || log.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: isPositive ? 'hire' : 'leave',
+          date_time: log.created_at || log.timestamp
+        };
+      }).slice(0, 6));
       const lvData = leavesRes?.data?.leaves || leavesRes?.leaves || [];
       setPendingLeaves(lvData);
     } catch (err) {
@@ -267,7 +271,7 @@ const HRHome = () => {
             const c = COLORS_ARR[i % COLORS_ARR.length];
             const pct = activeCount > 0 ? Math.round((row.count / activeCount) * 100) : 0;
             return (
-              <div key={row.department ?? `dept-${i}`} className="cat-row" onClick={() => nav('/hr/employees')}>
+              <div key={`dept-${row.department || 'Unknown'}-${i}`} className="cat-row" onClick={() => nav('/hr/employees')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.department}</span>
