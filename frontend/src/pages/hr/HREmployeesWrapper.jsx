@@ -16,7 +16,7 @@ const TAB_STYLES = `
   .hr-tabbar {
     display: flex;
     background: #FFFFFF;
-    border-bottom: 3px solid #228B22;
+    border-bottom: 2px solid #E5E7EB;
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -24,7 +24,7 @@ const TAB_STYLES = `
     flex: 1;
     padding: 0;
     border: none;
-    border-right: 1px solid #A5D6A7;
+    border-right: 1px solid #E5E7EB;
     background: #FFFFFF;
     cursor: pointer;
     display: flex;
@@ -33,13 +33,13 @@ const TAB_STYLES = `
     gap: 10px;
     font-family: 'Inter', 'Segoe UI', sans-serif;
     font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #6B8E23;
-    height: 54px;
+    color: #6B7280;
+    height: 52px;
     position: relative;
-    transition: background 0.15s, color 0.15s;
+    transition: background 150ms ease-in-out, color 150ms ease-in-out;
     border-radius: 0 !important;
   }
   .hr-tab-btn:last-child { border-right: none; }
@@ -49,18 +49,21 @@ const TAB_STYLES = `
     bottom: 0; left: 0; right: 0;
     height: 3px;
     background: transparent;
-    transition: background 0.15s;
+    transition: background 150ms ease-in-out;
   }
   .hr-tab-btn.active {
-    background: #1B5E20;
-    color: #FFFFFF;
+    background: #EFF6FF;
+    color: #2563EB;
   }
   .hr-tab-btn.active::after {
-    background: #8BC34A;
+    background: #2563EB;
   }
   .hr-tab-btn:not(.active):hover {
-    background: #F5F5F5;
-    color: #228B22;
+    background: #FFFBEB;
+    color: #B45309;
+  }
+  .hr-tab-btn:not(.active):hover::after {
+    background: #F59E0B;
   }
   .hr-tab-icon { flex-shrink: 0; }
 `;
@@ -121,7 +124,7 @@ const HREmployeesWrapper = () => {
                 className="hr-tab-icon"
                 size={17}
                 strokeWidth={active ? 2.5 : 2}
-                color={active ? '#8BC34A' : '#6B8E23'}
+                color={active ? '#2563EB' : '#9CA3AF'}
               />
               <span>{tab.label}</span>
             </button>
