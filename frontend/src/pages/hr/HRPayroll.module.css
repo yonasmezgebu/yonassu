@@ -37,7 +37,7 @@
 /* tablet */
 @media (min-width: 768px)  { .container { padding: 16px; } }
 /* desktop */
-@media (min-width: 1024px) { .container { padding: 24px; max-width: 1600px; margin: 0 auto; } }
+@media (min-width: 1024px) { .container { padding: 24px; } }
 
 /* ════════════════════════════════════════════════
    HEADER
@@ -610,6 +610,103 @@
   font-size: 13px;
   color: #166534;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.netEstimate strong {
+  font-size: 15px;
+  color: #14532D;
+}
+.netBreakdown {
+  font-size: 12px;
+  color: #166534;
+  font-weight: 400;
+}
+
+/* Modal status inline */
+.modalStatus {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 3px solid;
+}
+
+/* Modal 2-col grid */
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+@media (max-width: 600px) { .modalGrid { grid-template-columns: 1fr; } }
+
+/* Overtime badge */
+.otBadge {
+  display: inline-flex;
+  align-items: center;
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Bank name sub-label */
+.bankName {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+/* Count badge */
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 28px;
+}
+
+/* Department summary section */
+.deptSummarySection {
+  margin-top: 24px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: #F9FAFB;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Grand total row */
+.totalRow {
+  background: #EFF6FF !important;
+  border-top: 2px solid var(--color-primary);
+}
+.totalRow td {
+  color: var(--color-primary);
+  font-size: 13px;
 }
 
 .modalActions {
