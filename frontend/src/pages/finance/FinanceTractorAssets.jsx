@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tractor, DollarSign, CheckCircle, AlertCircle, RefreshCw, Save, TrendingUp, X } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── PALETTE ────────────────────────────────────────────────────────────────
 const G = {
