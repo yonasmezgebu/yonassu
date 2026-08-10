@@ -5,6 +5,7 @@ import {
   RefreshCw, TrendingUp, TrendingDown, DollarSign, Car, Tractor,
   Wrench, Droplets, Download, PieChart, BarChart2, AlertCircle, ShieldAlert
 } from 'lucide-react';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─── Color Tokens ───────────────────────────────────────────────────────── */
 const C = {
