@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Palette ─────────────────────────────────────────── */
 const MINT   = '#E0FDF0';   // light mint green
