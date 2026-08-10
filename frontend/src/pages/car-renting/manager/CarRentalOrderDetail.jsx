@@ -8,6 +8,7 @@ import {
   Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star,
   MapPin, Key, Shield, Fuel, ToggleLeft
 } from 'lucide-react';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
