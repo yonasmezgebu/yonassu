@@ -6,6 +6,7 @@ import {
   AlertCircle, Info, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Global CSS ─────────────────────────────────────────────── */
 const G = `
