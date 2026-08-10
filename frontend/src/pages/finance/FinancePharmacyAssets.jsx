@@ -5,6 +5,7 @@ import {
   Warehouse, Store, RefreshCw,
   CheckCircle, AlertTriangle, Info, X, ShieldAlert
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── PALETTE ────────────────────────────────────────────────────────────────
 const G = {
