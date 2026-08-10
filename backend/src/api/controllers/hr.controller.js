@@ -2,6 +2,7 @@ const hrService   = require('../../services/hr.service');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError    = require('../../utils/AppError');
 const centralAudit = require('../../services/centralAudit.service');
+const { db } = require('../../config/database');
 
 /* ─────────────────────────────────────────────────────────────
    Helper: fire a central audit log entry in a non-blocking way.
@@ -21,6 +22,9 @@ const log = (req, action, recordIdentifier, previousValue, newValue) => {
     newValue,
     ipAddress:        req.ip,
   }).catch(() => {}); // never block
+  // Tell the global audit middleware this request was already recorded,
+  // so it won't write a second generic CREATE/UPDATE/DELETE row.
+  if (req.res) req.res.locals.__centralAudited = true;
 };
 
 // ─── DASHBOARD / ANALYTICS ──────────────────────────────────
@@ -106,8 +110,9 @@ exports.createDepartment = catchAsync(async (req, res) => {
 });
 
 exports.updateDepartment = catchAsync(async (req, res) => {
+  const before = await db('hr_departments').where('id', req.params.id).first();
   await hrService.updateDepartment(req.params.id, req.body);
-  log(req, 'Department Updated', `Department #${req.params.id}`, null, req.body);
+  log(req, 'Department Updated', `Department #${req.params.id}`, before, req.body);
   res.json({ status: 'success', message: 'Department updated' });
 });
 
@@ -332,8 +337,9 @@ exports.createDeduction = catchAsync(async (req, res) => {
 });
 
 exports.updateDeduction = catchAsync(async (req, res) => {
+  const before = await db('hr_deductions').where('id', req.params.id).first();
   await hrService.updateDeduction(req.params.id, req.body);
-  log(req, 'Deduction Updated', `Deduction #${req.params.id}`, null, req.body);
+  log(req, 'Deduction Updated', `Deduction #${req.params.id}`, before, req.body);
   res.json({ status: 'success', message: 'Deduction updated' });
 });
 
@@ -597,8 +603,9 @@ exports.createPolicy = catchAsync(async (req, res) => {
 });
 
 exports.updatePolicy = catchAsync(async (req, res) => {
+  const before = await db('hr_policies').where('id', req.params.id).first();
   await hrService.updatePolicy(req.params.id, req.body, req.user.id);
-  log(req, 'Policy Updated', `Policy #${req.params.id}`, null, req.body);
+  log(req, 'Policy Updated', `Policy #${req.params.id}`, before, req.body);
   res.json({ status: 'success', message: 'Policy updated' });
 });
 
@@ -640,8 +647,9 @@ exports.createAnnouncement = catchAsync(async (req, res) => {
 });
 
 exports.updateAnnouncement = catchAsync(async (req, res) => {
+  const before = await db('hr_announcements').where('id', req.params.id).first();
   await hrService.updateAnnouncement(req.params.id, req.body, req.user.id);
-  log(req, 'Announcement Updated', `Announcement #${req.params.id}`, null, req.body);
+  log(req, 'Announcement Updated', `Announcement #${req.params.id}`, before, req.body);
   res.json({ status: 'success', message: 'Announcement updated' });
 });
 
