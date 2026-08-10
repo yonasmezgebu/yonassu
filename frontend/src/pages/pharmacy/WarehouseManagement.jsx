@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Warehouse, Plus, X, Edit3, Trash2, MapPin, Phone, User, Hash, Loader2, CheckCircle, XCircle, Save } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const WarehouseManagement = () => {
   const [warehouses, setWarehouses] = useState([]);
