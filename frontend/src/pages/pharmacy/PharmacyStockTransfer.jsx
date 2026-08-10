@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { History, GitBranch, Loader2, Search } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const spin = { animation: 'spin 1s linear infinite' };
 const fade = { animation: 'fadeSlide 0.4s ease-out' };
