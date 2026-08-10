@@ -4,6 +4,7 @@ import {
   User, FileText, PenTool, Eye, ChevronDown, ChevronUp, RefreshCw, Bell
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Signature Preview ─── */
 const SigPreview = ({ label, name, sig }) => (
