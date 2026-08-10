@@ -6,6 +6,7 @@ import {
   ArrowLeft, Calendar, DollarSign, Truck, Package,
   ShoppingCart, Eye, MapPin, CreditCard, Phone, Mail, User, Hash, FileText
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
