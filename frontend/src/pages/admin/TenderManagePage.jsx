@@ -1,59 +1,58 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import {
   Plus, Edit3, Send, Check, X, Clock, Award, Search, FileText,
   Trash2, RefreshCw, ChevronDown, ChevronUp, Image as ImageIcon,
   AlertCircle, CheckCircle2, Info, XCircle, Eye, Filter, Calendar, PlusCircle
 } from 'lucide-react';
 
-/* ─── Natural Green Palette ─── */
+/* ─── Enterprise Blue Palette ─── */
 const C = {
-  forestGreen:  '#228B22',
-  darkGreen:    '#1B5E20',
-  emerald:      '#2E8B57',
-  leafGreen:    '#4CAF50',
-  sage:         '#A5D6A7',
-  olive:        '#6B8E23',
-  mint:         '#E8F5E9',
+  forestGreen:  '#2563EB',
+  darkGreen:    '#1D4ED8',
+  emerald:      '#2563EB',
+  leafGreen:    '#16A34A',
+  sage:         '#DBEAFE',
+  olive:        '#6B7280',
+  mint:         '#EFF6FF',
   limeGreen:    '#8BC34A',
-  earthBrown:   '#8D6E63',
-  skyBlue:      '#87CEEB',
+  earthBrown:   '#E5E7EB',
+  skyBlue:      '#0284C7',
   white:        '#FFFFFF',
-  lightGray:    '#F5F5F5',
-  darkGray:     '#424242',
-  orange:       '#FF9800',
-  red:          '#F44336',
+  lightGray:    '#F5F6FA',
+  darkGray:     '#111827',
+  orange:       '#D97706',
+  red:          '#DC2626',
 };
 
 /* ─── Status config ─── */
 const STATUS_CFG = {
-  draft:            { bg: '#E8F5E9', color: '#1B5E20', label: 'Draft' },
-  open:             { bg: '#E3F2FD', color: '#0D47A1', label: 'Open' },
-  closed:           { bg: '#FFF8E1', color: '#E65100', label: 'Closed' },
-  awarded:          { bg: '#E8F5E9', color: '#2E7D32', label: 'Awarded' },
-  cancelled:        { bg: '#FFEBEE', color: '#B71C1C', label: 'Cancelled' },
-  pending_approval: { bg: '#FFF8E1', color: '#F57F17', label: 'Pending Approval' },
+  draft:            { bg: '#F3F4F6', color: '#4B5563', label: 'Draft' },
+  open:             { bg: '#DCFCE7', color: '#16A34A', label: 'Open' },
+  closed:           { bg: '#FEF3C7', color: '#D97706', label: 'Closed' },
+  awarded:          { bg: '#DCFCE7', color: '#16A34A', label: 'Awarded' },
+  cancelled:        { bg: '#FEE2E2', color: '#DC2626', label: 'Cancelled' },
+  pending_approval: { bg: '#E0F2FE', color: '#0284C7', label: 'Pending Approval' },
 };
 
 const BID_STATUS_CFG = {
-  pending:        { bg: '#E3F2FD', color: '#0D47A1' },
-  awarded:        { bg: '#E8F5E9', color: '#2E7D32' },
-  not_selected:   { bg: '#FFF8E1', color: '#E65100' },
-  disqualified:   { bg: '#FFEBEE', color: '#B71C1C' },
+  pending:        { bg: '#E0F2FE', color: '#0284C7' },
+  awarded:        { bg: '#DCFCE7', color: '#16A34A' },
+  not_selected:   { bg: '#FEF3C7', color: '#D97706' },
+  disqualified:   { bg: '#FEE2E2', color: '#DC2626' },
 };
 
 /* ─── Global styles ─── */
 const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: ${C.lightGray}; color: ${C.darkGray}; }
+  body { font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; background: ${C.lightGray}; color: ${C.darkGray}; }
 
-  /* ── 17-Rule Design System Radii ── */
-  input, textarea, select { border-radius: 6px !important; }
-  button { border-radius: 8px !important; }
-  .btn-icon, .btn-sm { border-radius: 6px !important; }
+  input, textarea, select { border-radius: 8px !important; }
 
   .tm-page { width: 100%; min-height: 100vh; background: ${C.lightGray}; }
 
+  /* Header */
   .tm-header {
     background: ${C.darkGreen};
     color: ${C.white};
@@ -63,39 +62,38 @@ const GLOBAL_CSS = `
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    border-bottom: 1px solid ${C.earthBrown};
   }
-  .tm-header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; color: #FFFFFF !important; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .tm-header h1 { font-size: 22px; font-weight: 600; letter-spacing: .01em; display: flex; align-items: center; gap: 10px; color: #FFFFFF !important; }
 
+  /* Toolbar tabs */
   .tm-toolbar {
-    background: ${C.forestGreen};
+    background: ${C.white};
     padding: 10px 24px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     border-bottom: 1px solid ${C.earthBrown};
   }
-
   .tm-tab {
-    padding: 7px 18px;
+    padding: 0 18px; height: 36px;
     background: transparent;
-    color: rgba(255,255,255,0.75);
-    border: 1px solid rgba(255,255,255,0.3);
+    color: ${C.darkGray};
+    border: 1px solid ${C.earthBrown};
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 13px;
     border-radius: 8px;
-    transition: all 0.15s;
+    transition: all .15s ease;
+    display: inline-flex; align-items: center;
+    white-space: nowrap;
   }
-  .tm-tab.active {
-    background: ${C.white};
-    color: ${C.darkGreen};
-    border-color: ${C.white};
-  }
-  .tm-tab:hover:not(.active) { background: rgba(255,255,255,0.15); color: ${C.white}; }
+  .tm-tab.active { background: ${C.forestGreen}; color: ${C.white}; border-color: ${C.forestGreen}; }
+  .tm-tab:hover:not(.active) { background: ${C.mint}; border-color: ${C.forestGreen}; color: ${C.darkGreen}; }
+  .tm-tab-count { margin-left: auto; color: #6B7280; font-size: 12px; }
 
-  .tm-body { padding: 20px 24px 60px; }
+  /* Body / safe edge */
+  .tm-body { max-width: 1536px; margin: 0 auto; padding: 24px; box-sizing: border-box; width: 100%; }
 
   /* Search */
   .tm-search-bar {
@@ -104,27 +102,33 @@ const GLOBAL_CSS = `
     gap: 8px;
     background: ${C.white};
     border: 1px solid ${C.earthBrown};
-    border-radius: 6px;
-    padding: 8px 14px;
+    border-radius: 8px;
+    padding: 0 14px;
+    height: 40px;
     max-width: 420px;
     width: 100%;
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
+  .tm-search-bar:focus-within { border-color: ${C.forestGreen}; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
   .tm-search-bar input { border: none; outline: none; flex: 1; font-size: 14px; color: ${C.darkGray}; background: transparent; }
+  .tm-search-clear { cursor: pointer; color: #9CA3AF; display: flex; transition: color .15s; }
+  .tm-search-clear:hover { color: #111827; }
 
   /* Cards grid */
-  .tm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 16px; }
+  .tm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
 
   /* Tender Card */
   .tm-card {
     background: ${C.white};
     border: 1px solid ${C.earthBrown};
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
-    transition: box-shadow 0.15s, transform 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
     cursor: pointer;
   }
-  .tm-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
-  .tm-card.selected { border-color: ${C.emerald}; background: #F1F8E9; }
+  .tm-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .tm-card.selected { border-color: ${C.forestGreen}; background: #EFF6FF; }
 
   .tm-card-img {
     width: 100%;
@@ -136,27 +140,27 @@ const GLOBAL_CSS = `
     justify-content: center;
     color: ${C.sage};
     font-size: 13px;
-    border-bottom: 1px solid ${C.sage};
+    border-bottom: 1px solid ${C.earthBrown};
     position: relative;
   }
   .tm-card-img img { width: 100%; height: 100%; object-fit: cover; }
-  .tm-card-img .placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: ${C.emerald}; }
+  .tm-card-img .placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: ${C.forestGreen}; }
 
   .tm-card-body { padding: 14px 16px 10px; }
-  .tm-card-ref { font-size: 11px; font-weight: 700; color: ${C.olive}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  .tm-card-title { font-size: 15px; font-weight: 700; color: ${C.darkGreen}; margin-bottom: 6px; line-height: 1.3; }
-  .tm-card-item { font-size: 12px; color: ${C.earthBrown}; margin-bottom: 8px; }
+  .tm-card-ref { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  .tm-card-title { font-size: 16px; font-weight: 600; color: ${C.darkGray}; margin-bottom: 6px; line-height: 1.3; }
+  .tm-card-item { font-size: 12px; color: #6B7280; margin-bottom: 8px; }
   .tm-card-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .tm-card-price { font-size: 16px; font-weight: 800; color: ${C.forestGreen}; }
-  .tm-card-deadline { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; }
+  .tm-card-price { font-size: 16px; font-weight: 700; color: ${C.forestGreen}; font-variant-numeric: tabular-nums; }
+  .tm-card-deadline { font-size: 11px; color: #6B7280; display: flex; align-items: center; gap: 4px; }
 
   .tm-card-footer {
-    border-top: 1px solid ${C.sage};
+    border-top: 1px solid ${C.earthBrown};
     padding: 8px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #FAFAFA;
+    background: #F9FAFB;
     flex-wrap: wrap;
     gap: 6px;
   }
@@ -164,74 +168,100 @@ const GLOBAL_CSS = `
 
   /* Buttons */
   .btn {
-    padding: 7px 14px;
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: opacity 0.15s, background 0.15s;
+    position: relative; overflow: hidden;
+    height: 36px; padding: 0 16px;
+    border: none; cursor: pointer;
+    font-size: 14px; font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 8px;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
   }
-  .btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-primary   { background: ${C.emerald}; color: ${C.white}; }
-  .btn-emerald   { background: ${C.emerald}; color: ${C.white}; }
-  .btn-blue      { background: #1565C0; color: ${C.white}; }
+  .btn-primary, .btn-emerald { background: ${C.forestGreen}; color: ${C.white}; }
+  .btn-blue      { background: #1D4ED8; color: ${C.white}; }
   .btn-orange    { background: ${C.orange}; color: ${C.white}; }
   .btn-red       { background: ${C.red}; color: ${C.white}; }
-  .btn-ghost     { background: ${C.lightGray}; color: ${C.darkGray}; border: 1px solid ${C.earthBrown}; }
-  .btn-sm { padding: 5px 10px; font-size: 12px; }
-  .btn-icon { padding: 6px; background: transparent; border: 1px solid ${C.earthBrown}; cursor: pointer; display: inline-flex; align-items: center; transition: all 0.15s; }
-  .btn-icon:hover { background: ${C.mint}; border-color: ${C.emerald}; color: ${C.darkGreen}; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-  .btn-icon.danger:hover { background: #FFEBEE; border-color: ${C.red}; color: ${C.red}; }
+  .btn-ghost     { background: ${C.white}; color: ${C.darkGray}; border: 1px solid ${C.earthBrown}; }
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; }
+  .btn-icon {
+    position: relative; overflow: hidden;
+    width: 32px; height: 32px; padding: 0;
+    background: transparent; border: 1px solid ${C.earthBrown}; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:disabled, .btn-icon:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Yellow hover + scatter-from-point on every button */
+  .tm-page button { position: relative; overflow: hidden; }
+  .tm-page button::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 160%; padding-top: 160%;
+    transform: translate(-50%,-50%) scale(0);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.55), rgba(255,255,255,.12) 70%);
+    opacity: 0;
+    transition: transform .4s ease, opacity .2s ease;
+    pointer-events: none;
+  }
+  .tm-page button:hover:not(:disabled)::after { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  .tm-page button:hover:not(:disabled):not(.filter-pill):not(.tm-tab) {
+    background: #F59E0B !important; color: #78350F !important;
+    border-color: #F59E0B !important; transform: translateY(-1px);
+  }
 
   /* Status badge */
   .status-badge {
-    padding: 3px 10px;
+    display: inline-block;
+    padding: 2px 10px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: .04em;
+    border-radius: 999px;
+    white-space: nowrap;
   }
 
   /* Section panel */
   .tm-panel {
     background: ${C.white};
     border: 1px solid ${C.earthBrown};
-    border-radius: 12px;
+    border-radius: 10px;
     margin-top: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    overflow: hidden;
   }
   .tm-panel-header {
     padding: 14px 20px;
-    background: #F9FBF9;
-    border-bottom: 1px solid ${C.sage};
+    background: #F9FAFB;
+    border-bottom: 1px solid ${C.earthBrown};
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
   }
-  .tm-panel-header h3 { font-size: 15px; font-weight: 700; color: ${C.darkGreen}; }
-  .tm-panel-body { padding: 16px 20px; }
+  .tm-panel-header h3 { font-size: 16px; font-weight: 600; color: ${C.darkGray}; display: flex; align-items: center; gap: 6px; }
+  .tm-panel-body { padding: 16px 20px; overflow-x: auto; }
 
   /* Bids table */
-  .bids-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .bids-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
   .bids-table th {
-    padding: 10px 12px;
+    padding: 12px 14px;
     text-align: left;
-    background: ${C.darkGreen};
-    color: ${C.white};
-    font-size: 11px;
-    font-weight: 700;
+    background: #F9FAFB;
+    color: #6B7280;
+    font-size: 12px;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: .04em;
+    border-bottom: 1px solid ${C.earthBrown};
+    white-space: nowrap;
   }
-  .bids-table td { padding: 10px 12px; border-bottom: 1px solid ${C.mint}; vertical-align: middle; }
-  .bids-table tr:hover td { background: #F9FBF9; }
-  .bids-table tr.awarded td { background: #F1F8E9; }
-  .bids-table tr.disqualified td { background: #FFEBEE; opacity: 0.75; }
+  .bids-table td { padding: 12px 14px; border-bottom: 1px solid ${C.earthBrown}; vertical-align: middle; line-height: 1.5; }
+  .bids-table tr:hover td { background: #F9FAFB; }
+  .bids-table tr.awarded td { background: #F0FDF4; }
+  .bids-table tr.disqualified td { background: #FEF2F2; opacity: .75; }
 
   /* Bid image */
   .bid-img {
@@ -243,41 +273,38 @@ const GLOBAL_CSS = `
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 1px solid ${C.sage};
+    border: 1px solid ${C.earthBrown};
+    border-radius: 8px;
   }
 
   /* Form */
-  .tm-form { background: ${C.white}; border: 1px solid ${C.earthBrown}; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 28px; border-radius: 12px; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tm-form { background: ${C.white}; border: 1px solid ${C.earthBrown}; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 24px; border-radius: 10px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
   .form-grid .full { grid-column: 1 / -1; }
-  .form-group { margin-bottom: 4px; }
-  .form-group label { display: block; font-size: 12px; font-weight: 800; color: ${C.darkGreen}; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: #6B7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
   .form-group input,
   .form-group textarea,
   .form-group select {
     width: 100%;
-    padding: 10px 14px;
-    border: 2px solid #9E9E9E;
-    border-radius: 0 !important;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
     background: ${C.white};
-    font-size: 13px;
+    font-size: 14px;
     color: ${C.darkGray};
     outline: none;
-    transition: border-color 0.15s, border-left-width 0.1s;
-    box-shadow: none !important;
+    transition: border-color .15s ease, box-shadow .15s ease;
     -webkit-appearance: none;
     appearance: none;
   }
+  .form-group textarea { height: auto; padding: 10px 14px; resize: vertical; line-height: 1.5; }
   .form-group input:focus,
   .form-group textarea:focus,
-  .form-group select:focus {
-    border-color: ${C.forestGreen};
-    border-left: 4px solid ${C.darkGreen};
-    background: #FAFFF8;
-  }
+  .form-group select:focus { border-color: ${C.forestGreen}; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
   .form-group input:hover,
   .form-group textarea:hover,
-  .form-group select:hover { border-color: ${C.emerald}; }
+  .form-group select:hover { border-color: ${C.forestGreen}; }
 
   /* Notification */
   .tm-notify {
@@ -297,66 +324,86 @@ const GLOBAL_CSS = `
     gap: 10px;
     padding: 12px 16px;
     background: ${C.white};
+    border: 1px solid ${C.earthBrown};
     border-left: 4px solid;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    animation: slideIn 0.25s ease;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    animation: slideIn .25s ease;
   }
-  .tm-notify-item.success { border-color: ${C.leafGreen}; }
-  .tm-notify-item.error   { border-color: ${C.red}; }
-  .tm-notify-item.info    { border-color: ${C.skyBlue}; }
-  .tm-notify-item.warning { border-color: ${C.orange}; }
-  .tm-notify-text { flex: 1; font-size: 13px; font-weight: 600; color: ${C.darkGray}; }
-  .tm-notify-close { cursor: pointer; color: #888; flex-shrink: 0; }
+  .tm-notify-item.success { border-left-color: #16A34A; }
+  .tm-notify-item.error   { border-left-color: #DC2626; }
+  .tm-notify-item.info    { border-left-color: #0284C7; }
+  .tm-notify-item.warning { border-left-color: #D97706; }
+  .tm-notify-text { flex: 1; font-size: 13px; font-weight: 500; color: ${C.darkGray}; line-height: 1.5; }
+  .tm-notify-close { cursor: pointer; color: #9CA3AF; flex-shrink: 0; display: flex; transition: color .15s; }
+  .tm-notify-close:hover { color: #111827; }
 
   @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
 
   /* Modal */
   .tm-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000;
     display: flex; align-items: center; justify-content: center; padding: 16px;
   }
   .tm-modal {
-    background: ${C.white}; border-top: 5px solid ${C.darkGreen}; border: 2px solid ${C.forestGreen}; border-top: 5px solid ${C.darkGreen};
     background: ${C.white}; border: 1px solid ${C.earthBrown}; border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.15);
     width: 100%; max-width: 420px; padding: 24px;
   }
-  .tm-modal h3 { font-size: 16px; font-weight: 700; color: ${C.darkGreen}; margin-bottom: 16px; }
+  .tm-modal h3 { font-size: 16px; font-weight: 600; color: ${C.darkGray}; margin-bottom: 16px; }
   .tm-modal textarea, .tm-modal input {
-    width: 100%; padding: 10px 14px; border: 1px solid ${C.earthBrown}; border-radius: 6px;
-    font-size: 13px; color: ${C.darkGray}; outline: none; resize: vertical;
+    width: 100%; height: 36px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 8px;
+    font-size: 14px; color: ${C.darkGray}; outline: none; box-sizing: border-box;
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
-  .tm-modal textarea:focus, .tm-modal input:focus { border-color: ${C.emerald}; box-shadow: 0 0 0 3px rgba(46,139,87,0.15); }
+  .tm-modal textarea { height: auto; padding: 10px 14px; resize: vertical; }
+  .tm-modal textarea:focus, .tm-modal input:focus { border-color: ${C.forestGreen}; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 
   /* Filter pills */
   .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
   .filter-pill {
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
+    height: 32px; padding: 0 14px;
+    font-size: 12px; font-weight: 500;
     cursor: pointer;
-    border: 2px solid transparent;
+    border: 1px solid ${C.earthBrown};
     background: ${C.white};
     color: ${C.darkGray};
-    transition: all 0.15s;
+    display: inline-flex; align-items: center;
+    border-radius: 999px;
+    transition: all .15s ease;
   }
   .filter-pill.active { background: ${C.forestGreen}; color: ${C.white}; border-color: ${C.forestGreen}; }
-  .filter-pill:hover:not(.active) { border-color: ${C.emerald}; color: ${C.darkGreen}; }
+  .filter-pill:hover:not(.active) { background: #FEF3C7; border-color: #F59E0B; color: #78350F; }
+
+  /* Attachments grid */
+  .attach-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 
   /* Skeleton */
-  .skeleton { background: linear-gradient(90deg, #e8f5e9 25%, #f1f8f1 50%, #e8f5e9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  .skeleton { background: linear-gradient(90deg, #EFF6FF 25%, #F9FAFB 50%, #EFF6FF 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
   @keyframes shimmer { 0% { background-position: -200px 0 } 100% { background-position: calc(200px + 100%) 0 } }
 
   /* Responsive */
-  @media (max-width: 700px) {
-    .tm-header { padding: 12px 14px; }
-    .tm-toolbar { padding: 8px 14px; }
-    .tm-body { padding: 14px 12px 60px; }
-    .tm-cards { grid-template-columns: 1fr; }
+  @media (max-width: 1024px) {
+    .tm-body { padding: 16px; }
+  }
+  @media (max-width: 768px) {
+    .tm-header { padding: 12px 16px; }
+    .tm-toolbar { padding: 8px 16px; overflow-x: auto; flex-wrap: nowrap; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+    .tm-tab { scroll-snap-align: start; flex-shrink: 0; }
+    .tm-body { padding: 16px; }
+    .tm-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
     .form-grid { grid-template-columns: 1fr; }
-    .form-grid .full { grid-column: 1; }
-    .bids-table { font-size: 11px; }
-    .bids-table th, .bids-table td { padding: 7px 8px; }
+    .attach-grid { grid-template-columns: repeat(2, 1fr); }
     .tm-notify { top: auto; bottom: 16px; right: 12px; left: 12px; max-width: 100%; }
+  }
+  @media (max-width: 480px) {
+    .tm-body { padding: 12px; }
+    .tm-header h1 { font-size: 18px; }
+    .btn, .btn-sm, .btn-icon { height: 44px; }
+    .btn-icon { width: 44px; }
+    .btn-sm { padding: 0 16px; }
+    .filter-bar { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+    .filter-pill { flex-shrink: 0; scroll-snap-align: start; height: 40px; }
   }
 `;
 
@@ -375,10 +422,10 @@ function useNotify() {
 
 function NotifyIcon({ type }) {
   const s = { size: 18 };
-  if (type === 'success') return <CheckCircle2 {...s} color={C.leafGreen} />;
-  if (type === 'error')   return <XCircle {...s} color={C.red} />;
-  if (type === 'warning') return <AlertCircle {...s} color={C.orange} />;
-  return <Info {...s} color={C.skyBlue} />;
+  if (type === 'success') return <CheckCircle2 {...s} color="#16A34A" />;
+  if (type === 'error')   return <XCircle {...s} color="#DC2626" />;
+  if (type === 'warning') return <AlertCircle {...s} color="#D97706" />;
+  return <Info {...s} color="#0284C7" />;
 }
 
 /* ─── Tender Card ─── */
@@ -497,39 +544,39 @@ function TenderCard({ tender, selected, onClick, onEdit, onDelete, onPublish, on
           {/* Approve pending */}
           {tender.status === 'pending_approval' && isCEOorAdmin && (
             <button className="btn-icon" title="Approve" onClick={() => onApprove(tender.id)}
-              style={{ border: '1px solid #4CAF50', background: '#E8F5E9' }}>
-              <Check size={14} color={C.leafGreen} />
+              style={{ border: '1px solid #16A34A', background: '#DCFCE7' }}>
+              <Check size={14} color="#16A34A" />
             </button>
           )}
           {/* Force Close */}
           {canClose && (
             <button className="btn-icon" title="Force Close Bidding" onClick={() => onClose(tender.id)}
-              style={{ border: '1px solid #FF9800', background: '#FFF8E1' }}>
-              <Clock size={14} color={C.orange} />
+              style={{ border: '1px solid #D97706', background: '#FEF3C7' }}>
+              <Clock size={14} color="#D97706" />
             </button>
           )}
           {/* Cancel */}
           {canCancel && (
             <button className="btn-icon" title="Cancel Tender" onClick={() => onCancel(tender)}
-              style={{ border: '1px solid #E53935', background: '#FFEBEE' }}>
-              <X size={14} color="#E53935" />
+              style={{ border: '1px solid #DC2626', background: '#FEE2E2' }}>
+              <X size={14} color="#DC2626" />
             </button>
           )}
           {/* Hide / Show toggle */}
           <button className="btn-icon" title={isHidden ? 'Show to Public' : 'Hide from Public'}
             onClick={() => onToggleHidden(tender)}
-            style={{ border: `1px solid ${isHidden ? '#1565C0' : '#757575'}`, background: isHidden ? '#E3F2FD' : '#F5F5F5' }}>
-            <Eye size={14} color={isHidden ? '#1565C0' : '#757575'} />
+            style={{ border: `1px solid ${isHidden ? '#0284C7' : '#6B7280'}`, background: isHidden ? '#E0F2FE' : '#F3F4F6' }}>
+            <Eye size={14} color={isHidden ? '#0284C7' : '#6B7280'} />
           </button>
           {/* Edit */}
           <button className="btn-icon" title="Edit Tender" onClick={() => onEdit(tender)}
-            style={{ border: '1px solid #1565C0', background: '#E3F2FD' }}>
-            <Edit3 size={14} color="#1565C0" />
+            style={{ border: '1px solid #2563EB', background: '#EFF6FF' }}>
+            <Edit3 size={14} color="#2563EB" />
           </button>
           {/* Delete */}
           <button className="btn-icon danger" title="Delete Tender" onClick={() => onDelete(tender)}
-            style={{ border: '1px solid #F44336', background: '#FFEBEE' }}>
-            <Trash2 size={14} color="#F44336" />
+            style={{ border: '1px solid #DC2626', background: '#FEE2E2' }}>
+            <Trash2 size={14} color="#DC2626" />
           </button>
         </div>
       </div>
@@ -898,7 +945,7 @@ export default function TenderManagePage() {
               {label}
             </button>
           ))}
-          <span style={{ marginLeft: 'auto', color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>
+          <span className="tm-tab-count">
             {filtered.length} tender{filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -987,7 +1034,7 @@ export default function TenderManagePage() {
                       {['open', 'closed', 'cancelled'].includes(selectedTender.status) && (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <input type="datetime-local" value={extendDate} onChange={e => setExtendDate(e.target.value)}
-                            style={{ padding: '6px 10px', border: `2px solid ${C.sage}`, fontSize: 12, borderRadius: 0, outline: 'none', color: C.darkGray }} />
+                            style={{ padding: '0 10px', height: 32, border: '1px solid #D1D5DB', fontSize: 12, borderRadius: 8, outline: 'none', color: C.darkGray, background: C.white }} />
                           <button className="btn btn-blue btn-sm" disabled={!extendDate} onClick={handleExtend}>
                             <Clock size={12} /> Extend
                           </button>
@@ -995,7 +1042,7 @@ export default function TenderManagePage() {
                       )}
                       {/* Submit to CEO */}
                       {['closed', 'open'].includes(selectedTender.status) && bids.some(b => b.status === 'submitted' || b.status === 'pending' || b.status === 'under_review') && (
-                        <button className="btn btn-primary btn-sm" style={{ background: '#7c3aed', border: 'none' }} onClick={handleForwardToCeo}>
+                        <button className="btn btn-primary btn-sm" style={{ background: '#1D4ED8', border: 'none' }} onClick={handleForwardToCeo}>
                           <Award size={13} /> Submit to CEO
                         </button>
                       )}
@@ -1033,7 +1080,7 @@ export default function TenderManagePage() {
                         // Group bids per product, rank by highest bid for that product
                         return (
                           <div>
-                            <div style={{ padding: '10px 16px', background: '#f0fdf4', borderBottom: '2px solid #bbf7d0', fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                            <div style={{ padding: '10px 16px', background: '#EFF6FF', borderBottom: '1px solid #BFDBFE', fontSize: 13, fontWeight: 600, color: '#1D4ED8' }}>
                               📦 Multi-Product Tender — Bids grouped by product, ranked highest to lowest
                             </div>
                             {tenderItems.map((item, itemIdx) => {
@@ -1048,7 +1095,7 @@ export default function TenderManagePage() {
 
                               return (
                                 <div key={itemIdx} style={{ marginBottom: 20, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                                  <div style={{ background: 'linear-gradient(135deg,#0f172a,#1e293b)', color: 'white', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ background: '#1D4ED8', color: 'white', padding: '10px 16px', fontWeight: 600, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span>#{itemIdx + 1} — {item.objectType || '—'} ({item.unit}, qty {item.quantity})</span>
                                     <span style={{ fontSize: 11, opacity: 0.7 }}>Start Price: {item.startPrice ? parseFloat(item.startPrice).toLocaleString() + ' ETB' : '—'} | {productBids.length} bid(s)</span>
                                   </div>
@@ -1078,7 +1125,7 @@ export default function TenderManagePage() {
                                                   <span style={{ fontWeight: 800, fontSize: 15, color: rank === 0 ? '#059669' : '#94a3b8' }}>
                                                     {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
                                                   </span>
-                                                  {rank === 0 && <span style={{ marginLeft: 6, fontSize: 10, background: '#dcfce7', color: '#166534', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>SUGGESTED</span>}
+                                                  {rank === 0 && <span style={{ marginLeft: 6, fontSize: 10, background: '#dcfce7', color: '#166534', padding: '2px 6px', borderRadius: 999, fontWeight: 700 }}>SUGGESTED</span>}
                                                 </td>
                                                 <td>
                                                   <div style={{ fontWeight: 700, color: C.darkGreen }}>{b.bidder_full_name || b.customer_name || `User #${b.customer_id}`}</div>
@@ -1101,10 +1148,10 @@ export default function TenderManagePage() {
                                                 <td>
                                                   <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
                                                     <button className="btn-icon" title="View Details" onClick={() => handleOpenBidDetail(b)}>
-                                                      <Eye size={13} color="#1565C0" />
+                                                      <Eye size={13} color="#2563EB" />
                                                     </button>
                                                     {b.status === 'awarded' && (
-                                                      <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#10b981' : '#3b82f6', color: 'white', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                      <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
                                                         {b.notification_sent ? 'Email Sent' : 'Send Email'}
                                                       </button>
                                                     )}
@@ -1150,7 +1197,7 @@ export default function TenderManagePage() {
 
                                   <td style={{ fontWeight: 800, fontSize: 16, textAlign: 'center' }}>
                                     {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}
-                                    {rank === 0 && <div style={{ fontSize: 9, background: '#dcfce7', color: '#166534', padding: '1px 4px', borderRadius: 3, fontWeight: 700, marginTop: 2 }}>SUGGESTED</div>}
+                                    {rank === 0 && <div style={{ fontSize: 9, background: '#dcfce7', color: '#166534', padding: '1px 4px', borderRadius: 999, fontWeight: 700, marginTop: 2 }}>SUGGESTED</div>}
                                   </td>
                                   <td>
                                     <div style={{ fontWeight: 700, color: C.darkGreen }}>{b.bidder_full_name || b.customer_name || `User #${b.customer_id}`}</div>
@@ -1176,7 +1223,7 @@ export default function TenderManagePage() {
                                   <td>
                                     <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
                                       <button className="btn-icon" title="View Details" onClick={() => handleOpenBidDetail(b)}>
-                                        <Eye size={13} color="#1565C0" />
+                                        <Eye size={13} color="#2563EB" />
                                       </button>
                                       {b.status !== 'disqualified' && b.status !== 'awarded' && (
                                         <button className="btn-icon danger" title="Disqualify"
@@ -1185,7 +1232,7 @@ export default function TenderManagePage() {
                                         </button>
                                       )}
                                       {b.status === 'awarded' && (
-                                        <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#10b981' : '#3b82f6', color: 'white', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                        <button onClick={() => handleSendAwardEmail(b)} style={{ fontSize: 11, background: b.notification_sent ? '#16A34A' : '#2563EB', color: 'white', padding: '4px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
                                           {b.notification_sent ? 'Email Sent' : 'Send Email'}
                                         </button>
                                       )}
@@ -1218,16 +1265,16 @@ export default function TenderManagePage() {
                   <label>Tender Format</label>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button type="button" onClick={() => setPostType('single')} style={{
-                      flex: 1, padding: '14px', borderRadius: '8px', border: `2px solid ${postType === 'single' ? C.forestGreen : '#e2e8f0'}`,
-                      background: postType === 'single' ? '#F2FFF5' : C.white, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                      fontWeight: 700, color: postType === 'single' ? C.darkGreen : '#64748b'
+                      flex: 1, padding: '0 16px', height: 44, borderRadius: '8px', border: `2px solid ${postType === 'single' ? C.forestGreen : '#E5E7EB'}`,
+                      background: postType === 'single' ? '#EFF6FF' : C.white, cursor: 'pointer', textAlign: 'center', transition: 'all .15s ease',
+                      fontWeight: 600, color: postType === 'single' ? C.darkGreen : '#6B7280'
                     }}>
                       Single Product (with Images)
                     </button>
                     <button type="button" onClick={() => setPostType('multiple')} style={{
-                      flex: 1, padding: '14px', borderRadius: '8px', border: `2px solid ${postType === 'multiple' ? C.forestGreen : '#e2e8f0'}`,
-                      background: postType === 'multiple' ? '#F2FFF5' : C.white, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                      fontWeight: 700, color: postType === 'multiple' ? C.darkGreen : '#64748b'
+                      flex: 1, padding: '0 16px', height: 44, borderRadius: '8px', border: `2px solid ${postType === 'multiple' ? C.forestGreen : '#E5E7EB'}`,
+                      background: postType === 'multiple' ? '#EFF6FF' : C.white, cursor: 'pointer', textAlign: 'center', transition: 'all .15s ease',
+                      fontWeight: 600, color: postType === 'multiple' ? C.darkGreen : '#6B7280'
                     }}>
                       Multiple Products (Smart Table)
                     </button>
@@ -1292,10 +1339,10 @@ export default function TenderManagePage() {
                     <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
                         <thead>
-                          <tr style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', textAlign: 'left' }}>
+                          <tr style={{ background: '#1D4ED8', textAlign: 'left' }}>
                             {['No', 'Object Type', 'Unit', 'Quantity', 'Start Price (Birr)', 'Bid / Obj (Birr)', 'Bid / Obj (Cent)', 'Total (Birr)', 'Total (Cent)', 'Checkup', ''].map((h, i) => (
-                              <th key={i} style={{ padding: '12px 14px', color: i <= 4 ? 'white' : '#94a3b8', fontWeight: 600, fontSize: '12px', fontStyle: i >= 5 && i <= 9 ? 'italic' : 'normal' }}>
-                                {h}{i >= 5 && i <= 9 ? ' ← competitor fills' : ''}
+                              <th key={i} style={{ padding: '12px 14px', color: i <= 4 ? 'white' : 'rgba(255,255,255,0.8)', fontWeight: 600, fontSize: '12px' }}>
+                                {h}
                               </th>
                             ))}
                           </tr>
@@ -1345,7 +1392,7 @@ export default function TenderManagePage() {
                   <div className="form-group full">
                     <label>Attachments — up to 5 files (PDF / JPG / PNG, max 10MB each)</label>
                     <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>First image is used as the tender card thumbnail. Click each slot to pick a file.</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                    <div className="attach-grid">
                       {[0,1,2,3,4].map(i => {
                         const newFile = files[i];
                         const existingFile = existingFiles[i];
@@ -1359,15 +1406,16 @@ export default function TenderManagePage() {
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             height: 90, cursor: 'pointer',
                             border: `2px dashed ${hasAny ? C.leafGreen : C.sage}`,
-                            background: hasAny ? '#E8F5E9' : C.white,
-                            transition: 'all .2s', overflow: 'hidden',
+                            background: hasAny ? '#F0FDF4' : C.white,
+                            transition: 'all .15s', overflow: 'hidden',
+                            borderRadius: 10,
                           }}>
                             {hasNew && isImage(newFile) ? (
                               <img src={URL.createObjectURL(newFile)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : hasExisting && isImage(existingFile) ? (
                               <img src={`${API_BASE.replace('/api/v1','')}/uploads/tenders/${existingFile.split('/').pop()}`} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                              <ImageIcon size={22} color={hasAny ? C.forestGreen : C.sage} />
+                              <ImageIcon size={22} color={hasAny ? '#16A34A' : C.sage} />
                             )}
                             <div style={{
                               position: 'relative', zIndex: 1,
@@ -1414,7 +1462,7 @@ export default function TenderManagePage() {
 
               <div style={{ display: 'flex', gap: 12, marginTop: 24, borderTop: `1px solid ${C.sage}`, paddingTop: 20 }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : editId ? '✔ Update Tender' : '✔ Create Tender'}
+                  {saving ? <SegmentedSpinner size={16} /> : editId ? '✔ Update Tender' : '✔ Create Tender'}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setTab('list')}>Cancel</button>
               </div>
