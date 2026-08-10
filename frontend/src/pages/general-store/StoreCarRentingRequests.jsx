@@ -4,6 +4,7 @@ import {
   Car, Package, Truck, CheckCircle, XCircle, Clock,
   ChevronRight, ChevronDown, ChevronUp, AlertCircle, ArrowLeft, RefreshCw, X
 } from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Axios instance ───────────────────────────────────────────────────────── */
 const api = axios.create({ baseURL: '' });
