@@ -7,6 +7,7 @@ import RentalDashboard from './manager/RentalDashboard';
 import RentalOrders from './manager/RentalOrders';
 import FleetManager from './FleetManager';
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 import TractorRegister from './manager/TractorRegister';
 import AgriRentList from './manager/AgriRentList';
 import AgriRentOrders from './manager/AgriRentOrders';
@@ -66,7 +67,9 @@ const CarRentingDashboard = () => {
         { label: 'Contact Settings', path: '/car-renting/manager/contact', icon: 'phone-call', color: '#228B22' },
         { label: 'Chat', path: '/car-renting/manager/chat', icon: 'message-circle', color: '#6B8E23' },
       ]
-    }
+    },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/car-renting/manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -100,6 +103,7 @@ const CarRentingDashboard = () => {
           {/* Settings */}
           <Route path="manager/contact" element={<RentalContact />} />
           <Route path="manager/chat" element={<ManagerChat />} />
+          <Route path="manager/audit-log" element={<CentralAuditLog />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/car-renting/manager/dashboard" replace />} />
