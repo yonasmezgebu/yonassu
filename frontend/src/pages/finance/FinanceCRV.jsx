@@ -4,6 +4,7 @@ import {
   Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Native Canvas Signature Pad ────────────────────────────── */
 const SigPad = ({ label, onSave }) => {
