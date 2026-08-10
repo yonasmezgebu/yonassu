@@ -7,6 +7,7 @@ import {
   Calendar, FileText, MapPin, Plus, Leaf
 } from 'lucide-react';
 import AgriRentOrderDetail from './AgriRentOrderDetail';
+import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
