@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, Search, Loader2, CheckCircle, XCircle, RefreshCw, Package } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Palette ─────────────────────────────────────────── */
 const WHITE  = '#F4FDF7';   // near-white mint
