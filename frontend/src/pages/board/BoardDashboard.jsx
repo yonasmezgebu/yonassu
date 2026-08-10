@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './BoardDashboard.module.css';
 
 // Overview & Performance
@@ -86,7 +87,9 @@ const BoardDashboard = () => {
       children: [
         { label: 'Chat', path: '/board/chat', icon: 'message-square', color: '#6B8E23' }
       ] 
-    }
+    },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/board/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -120,6 +123,7 @@ const BoardDashboard = () => {
 
             {/* Chat */}
             <Route path="chat"                element={<ManagerChat />} />
+            <Route path="audit-log"           element={<CentralAuditLog />} />
 
             {/* Redirects */}
             <Route path="overview"            element={<Navigate to="executive" replace />} />
