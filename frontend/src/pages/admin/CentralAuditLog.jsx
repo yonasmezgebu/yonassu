@@ -18,6 +18,9 @@ const CentralAuditLog = () => {
     roleStr.includes('hr') || deptStr.includes('human resource') || deptStr.includes('hr')
   );
   const isStore      = !isSuperAdmin && !isCEO && roleStr.includes('store');
+  const isSales      = !isSuperAdmin && !isCEO && (
+    roleStr.includes('sales') || deptStr.includes('sales') || deptStr.includes('retail')
+  );
 
   // Lock modules based on role
   const lockedModule = isHR ? 'HR' : (isStore ? 'Store' : '');
@@ -91,6 +94,8 @@ const CentralAuditLog = () => {
                 ? 'HR department activity log — your department records only.'
                 : isStore
                 ? 'General Store activity log — your module records only.'
+                : isSales
+                ? 'Sales activity log — all sales module records plus your own actions.'
                 : 'Append-only system record of all module activities.'}
             </p>
           </div>
@@ -144,7 +149,7 @@ const CentralAuditLog = () => {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : 'Your Module Only')}
+            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : (isSales ? 'Sales Module + Your Activity' : 'Your Module Only'))}
           </div>
         )}
       </div>
