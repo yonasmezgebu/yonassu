@@ -5,6 +5,7 @@ import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import { FileText, Package, Printer, ArrowLeft, Plus, Trash2, AlertTriangle, PenLine, RefreshCw } from 'lucide-react';
 import SignatureCanvas from '../../components/SignatureCanvas';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const STATUS_BADGES = {
   DRAFT: { bg: '#F1F5F9', color: '#475569', text: 'Draft' },
