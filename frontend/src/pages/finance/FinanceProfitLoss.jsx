@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Download, Printer, RefreshCw } from 'lucide-react';
 import api from '../../services/apiClient';
 import { submitNotification } from '../../utils/pharmacyNotifications';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const fmt = (n) => {
   if (n === null || n === undefined) return '';
