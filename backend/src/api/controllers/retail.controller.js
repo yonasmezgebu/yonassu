@@ -2,6 +2,7 @@ const { db, transaction } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const { generateOrderNumber } = require('../../utils/orderNumber');
+const { log } = require('../../services/salesAudit.service');
 
 const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 
@@ -230,6 +231,7 @@ exports.openShift = catchAsync(async (req, res) => {
     opened_at: db.fn.now(), created_at: db.fn.now(), updated_at: db.fn.now()
   });
   const shift = await db('retail_shifts').where({ id }).first();
+  log(req, 'Shift Opened', id, null, { shift_type: shift_type || 'morning', opening_float: parseFloat(opening_float || 0) });
   res.status(201).json({ status: 'success', data: shift });
 });
 
@@ -295,6 +297,7 @@ exports.posCheckout = catchAsync(async (req, res) => {
     transfer_collected: payments.bank_transfer, credit_collected: payments.credit
   });
 
+  log(req, 'POS Sale Completed', result.txId, null, { invoice_number: result.invoice_number, total_amount: result.total_amount, payment_method, items: items.length });
   res.status(201).json({ status: 'success', message: 'Sale completed!', data: result });
 });
 
@@ -313,6 +316,7 @@ exports.closeShift = catchAsync(async (req, res) => {
     status: 'CLOSED', closed_at: db.fn.now(), updated_at: db.fn.now()
   });
 
+  log(req, 'Shift Closed', shift.id, { physical_cash_counted: shift.physical_cash_counted, status: shift.status }, { physical_cash_counted: counted, status: 'CLOSED', difference });
   res.json({ status: 'success', message: 'Shift closed', data: { opening_float: shift.opening_float, cash_collected: shift.cash_collected, expected_cash: expectedCash, physical_cash_counted: counted, difference, cash_to_handover: shift.cash_collected } });
 });
 
@@ -353,6 +357,7 @@ exports.updateStock = catchAsync(async (req, res) => {
 
   await db('retail_products').where({ id }).update({ stock_quantity: newQty, updated_at: db.fn.now() });
   await db('products').where({ sku: product.sku, business_unit: 'retail' }).update({ stock_quantity: newQty });
+  log(req, 'Stock Updated', id, { stock_quantity: product.stock_quantity }, { stock_quantity: newQty });
   res.json({ status: 'success', message: `Stock updated to ${newQty}`, data: { id, new_quantity: newQty, previous: product.stock_quantity } });
 });
 
@@ -383,6 +388,7 @@ exports.createProduct = catchAsync(async (req, res) => {
     await db('products').insert(syncData);
   } catch (_) { /* sync is best-effort */ }
   const product = await db('retail_products').where({ id }).first();
+  log(req, 'Product Created', id, null, { name, sku, price: parseFloat(price), stock_quantity: parseInt(stock_quantity || 0) });
   res.status(201).json({ status: 'success', message: 'Product created', data: product });
 });
 
@@ -444,6 +450,7 @@ exports.updateProduct = catchAsync(async (req, res) => {
   }
 
   const updated = await db('retail_products').where({ id }).first();
+  log(req, 'Product Updated', id, { name: product.name, sku: product.sku }, updated);
   res.json({ status: 'success', message: 'Product updated', data: updated });
 });
 
@@ -455,6 +462,7 @@ exports.deleteProduct = catchAsync(async (req, res) => {
   try {
     await db('retail_products').where({ id }).del();
     try { await db('products').where({ sku: product.sku, business_unit: 'retail' }).del(); } catch (_) {}
+    log(req, 'Product Deleted', id, { name: product.name, sku: product.sku }, null);
     res.json({ status: 'success', message: 'Product deleted' });
   } catch (err) {
     if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED' || err.message.includes('foreign key constraint fails')) {
@@ -512,6 +520,7 @@ exports.getCashierActivity = catchAsync(async (req, res) => {
 exports.approveDiscount = catchAsync(async (req, res) => {
   const { transaction_id, approval_code } = req.body;
   if (approval_code !== 'MGR-APPROVE') throw new AppError('Invalid approval code', 400);
+  log(req, 'Discount Approved', transaction_id, null, { approval_code });
   res.json({ status: 'success', message: 'Discount approved' });
 });
 
@@ -519,13 +528,16 @@ exports.approveRefund = catchAsync(async (req, res) => {
   const { transaction_id, amount, reason } = req.body;
   const tx = await db('retail_transactions').where({ id: transaction_id }).first();
   if (!tx) throw new AppError('Transaction not found', 404);
+  log(req, 'Refund Approved', transaction_id, { invoice_number: tx.invoice_number, status: tx.status }, { amount, reason });
   res.json({ status: 'success', message: `Refund of ${amount} ETB approved for transaction ${tx.invoice_number}` });
 });
 
 exports.verifyShift = catchAsync(async (req, res) => {
   const { shift_id, verified } = req.body;
   const status = verified ? 'VERIFIED' : 'CLOSED';
+  const shift = await db('retail_shifts').where({ id: shift_id }).first();
   await db('retail_shifts').where({ id: shift_id }).update({ status, updated_at: db.fn.now() });
+  log(req, 'Shift ' + (verified ? 'Verified' : 'Rejected'), shift_id, { status: shift ? shift.status : null }, { status });
   res.json({ status: 'success', message: `Shift ${verified ? 'verified' : 'rejected'}` });
 });
 
@@ -552,6 +564,7 @@ exports.getReconciliation = catchAsync(async (req, res) => {
 
 exports.recordDeposit = catchAsync(async (req, res) => {
   const { amount, bank_account, reference, notes } = req.body;
+  log(req, 'Bank Deposit Recorded', null, null, { amount, bank_account, reference, notes });
   res.status(201).json({ status: 'success', message: `Deposit of ${amount} ETB recorded to ${bank_account}`, data: { amount, bank_account, reference, notes, recorded_at: new Date().toISOString() } });
 });
 
@@ -567,6 +580,7 @@ exports.approveVoid = catchAsync(async (req, res) => {
   const { transaction_id, reason } = req.body;
   const tx = await db('retail_transactions').where({ id: transaction_id }).first();
   if (!tx) throw new AppError('Transaction not found', 404);
+  log(req, 'Transaction Voided', transaction_id, { invoice_number: tx.invoice_number, status: tx.status }, { status: 'voided', reason });
   res.json({ status: 'success', message: `Transaction ${tx.invoice_number} voided. Reason: ${reason || 'No reason given'}` });
 });
 
@@ -618,6 +632,7 @@ exports.checkoutDirect = catchAsync(async (req, res) => {
     }
   });
 
+  log(req, 'Retail Sale Completed', null, null, { sale_no, total_amount, payment_method, sale_type, items: items.length });
   res.status(201).json({ status: 'success', data: { sale_no } });
 });
 
@@ -678,6 +693,7 @@ exports.submitDailyRetail = catchAsync(async (req, res) => {
     });
   });
 
+  log(req, 'Daily Sales Submitted to Finance', null, null, { sub_no, totalTransactions: unsubmitted.length, totalAmount });
   res.json({
     status: 'success',
     message: 'Submitted successfully to Finance',
@@ -725,6 +741,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   if (!allowed.includes(status)) throw new AppError(`Invalid status. Must be one of: ${allowed.join(', ')}`, 400);
   const updated = await db('retail_orders').where({ id }).update({ status, updated_at: db.fn.now() });
   if (!updated) throw new AppError('Order not found', 404);
+  log(req, 'Order Status Updated', id, null, { status });
   res.json({ status: 'success', message: 'Order status updated' });
 });
 
@@ -738,17 +755,22 @@ exports.getBranches = catchAsync(async (req, res) => {
 exports.createBranch = catchAsync(async (req, res) => {
   const [id] = await db('retail_branches').insert(req.body);
   const branch = await db('retail_branches').where({ id }).first();
+  log(req, 'Branch Created', id, null, req.body);
   res.status(201).json({ status: 'success', data: branch });
 });
 
 exports.updateBranch = catchAsync(async (req, res) => {
+  const before = await db('retail_branches').where({ id: req.params.id }).first();
   await db('retail_branches').where({ id: req.params.id }).update(req.body);
   const branch = await db('retail_branches').where({ id: req.params.id }).first();
+  log(req, 'Branch Updated', req.params.id, before, branch);
   res.json({ status: 'success', data: branch });
 });
 
 exports.deleteBranch = catchAsync(async (req, res) => {
+  const before = await db('retail_branches').where({ id: req.params.id }).first();
   await db('retail_branches').where({ id: req.params.id }).del();
+  log(req, 'Branch Deleted', req.params.id, before, null);
   res.status(204).send();
 });
 
@@ -809,12 +831,14 @@ exports.registerStoreItem = catchAsync(async (req, res) => {
     date_registered: new Date().toISOString().split('T')[0],
   });
   const row = await db('general_store_materials').where({ id }).first();
+  log(req, 'Store Item Registered', id, null, { material_id, material_name, quantity_in_store: qty, unit_value: price });
   res.status(201).json({ status: 'success', data: row });
 });
 
 exports.updateStoreItem = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { material_name, category, unit, quantity_in_store, unit_value, reorder_level } = req.body;
+  const before = await db('general_store_materials').where({ id, department: 'Sales' }).first();
   const qty   = parseFloat(quantity_in_store) || 0;
   const price = parseFloat(unit_value) || 0;
   const total = qty * price;
@@ -827,12 +851,15 @@ exports.updateStoreItem = catchAsync(async (req, res) => {
     updated_at: db.fn.now(),
   });
   const row = await db('general_store_materials').where({ id }).first();
+  log(req, 'Store Item Updated', id, before ? { material_name: before.material_name, quantity_in_store: before.quantity_in_store, unit_value: before.unit_value } : null, { material_name, quantity_in_store: qty, unit_value: price });
   res.json({ status: 'success', data: row });
 });
 
 exports.deleteStoreItem = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const before = await db('general_store_materials').where({ id, department: 'Sales' }).first();
   await db('general_store_materials').where({ id, department: 'Sales' }).del();
+  log(req, 'Store Item Deleted', id, before ? { material_name: before.material_name } : null, null);
   res.status(204).send();
 });
 
@@ -866,6 +893,7 @@ exports.createStoreRequest = catchAsync(async (req, res) => {
     signature: signature || null
   });
   const row = await db('sales_store_requests').where({ id }).first();
+  log(req, 'Store Request Created', id, null, { request_code, product_id, requested_qty, urgency });
   res.status(201).json({ status: 'success', data: row });
 });
 
@@ -881,6 +909,7 @@ exports.receiveStoreRequest = catchAsync(async (req, res) => {
     updated_at: db.fn.now()
   });
 
+  log(req, 'Store Request Received', id, { status: reqRow.status }, { status: 'Received', received_qty });
   res.json({ status: 'success', message: 'Request received' });
 });
 
@@ -930,10 +959,9 @@ exports.setBranchProductQuantity = catchAsync(async (req, res) => {
     });
   }
 
+  log(req, 'Branch Stock Updated', null, { branch_id, product_id, quantity: currentQty }, { branch_id, product_id, quantity: qty, transfer_from_branch_id });
   res.json({ status: 'success', message: 'Product stock updated for branch' });
-});
-
-// =============================================================
+});// =============================================================
 // RETAIL PRODUCT UPDATE REQUESTS (CEO APPROVAL FLOW)
 // =============================================================
 
@@ -992,6 +1020,7 @@ exports.partialAdjustProduct = catchAsync(async (req, res) => {
     msg = 'Price/Stock changes sent to CEO for approval.';
   }
 
+  log(req, 'Product Adjusted', id, { price: product.price, stock_quantity: product.stock_quantity }, { ...immediateUpdates, ...pendingUpdates });
   res.json({ status: 'success', message: msg });
 });
 
@@ -1016,6 +1045,7 @@ exports.createProductUpdateRequest = catchAsync(async (req, res) => {
   });
 
   const request = await db('retail_update_requests').where({ id: reqId }).first();
+  log(req, 'Product Update Requested', reqId, null, { product_id: id, ...newData });
   res.status(201).json({ status: 'success', message: 'Update request sent to CEO', data: request });
 });
 
@@ -1074,6 +1104,7 @@ exports.approveProductUpdateRequest = catchAsync(async (req, res) => {
     });
   });
 
+  log(req, 'Product Update Approved', id, null, { requestId: id });
   res.json({ status: 'success', message: 'Product update approved and applied' });
 });
 
@@ -1092,5 +1123,6 @@ exports.rejectProductUpdateRequest = catchAsync(async (req, res) => {
     updated_at: db.fn.now()
   });
 
+  log(req, 'Product Update Rejected', id, null, { reason });
   res.json({ status: 'success', message: 'Product update rejected' });
 });
