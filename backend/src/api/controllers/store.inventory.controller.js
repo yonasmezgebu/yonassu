@@ -1,5 +1,6 @@
 const { db } = require('../../config/database');
 const notificationRepository = require('../../repositories/notification.repository');
+const audit = require('../../services/centralAudit.service');
 
 // ================================================================
 // INVENTORY (store_inventory)
@@ -415,6 +416,16 @@ exports.createIssue = async (req, res) => {
     }
 
     await trx.commit();
+
+    // ── Central Audit Log ──
+    await audit.captureLegacy('STORE_ISSUE_TO_DEPT', req.user?.id, {
+      module: 'Store',
+      department: department || 'Unknown',
+      recordIdentifier: issue_no,
+      afterState: { issue_no, department, issued_to, items, remarks },
+      ip: req.ip,
+    });
+
     res.status(201).json({ success: true, message: 'Issue created', data: { id: issue_id } });
   } catch (e) {
     await trx.rollback();
@@ -526,6 +537,15 @@ exports.createTransfer = async (req, res) => {
       });
     }
     await trx.commit();
+
+    // ── Central Audit Log ──
+    await audit.captureLegacy('STORE_MOVEMENT_TRANSFER', req.user?.id, {
+      module: 'Store',
+      recordIdentifier: transfer_no,
+      afterState: { transfer_no, from_location, to_location, transfer_type, items, remarks },
+      ip: req.ip,
+    });
+
     res.status(201).json({ success: true, message: 'Transfer created', data: { id: transfer_id } });
   } catch (e) {
     await trx.rollback();
@@ -654,6 +674,15 @@ exports.addNewStock = async (req, res) => {
     await trx.commit();
 
     const drug = await db('drugs').where('id', drugId).first();
+
+    // ── Central Audit Log ──
+    await audit.captureLegacy('STORE_NEW_ITEM_REGISTERED', req.user?.id, {
+      module: 'Store',
+      recordIdentifier: `drug-${drugId}`,
+      afterState: { name: name.trim(), batch_no: batch_no.trim(), initial_quantity: qty, category, unit },
+      ip: req.ip,
+    });
+
     res.status(201).json({
       success: true,
       message: `New stock item "${name.trim()}" registered with Batch No ${batch_no.trim()}`,
@@ -849,6 +878,15 @@ exports.approveAdjustment = async (req, res) => {
     }
 
     await trx.commit();
+
+    // ── Central Audit Log ──
+    await audit.captureLegacy('STORE_ADJUSTMENT_APPROVED', req.user?.id, {
+      module: 'Store',
+      recordIdentifier: refAdj.adjustment_no,
+      afterState: { adjustment_no: refAdj.adjustment_no, lines_approved: pendingLines.length },
+      ip: req.ip,
+    });
+
     res.json({ success: true, message: 'Adjustment group approved and applied' });
   } catch (e) {
     await trx.rollback();
