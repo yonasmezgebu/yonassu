@@ -5,6 +5,7 @@ import {
   RefreshCw, Search, Tag, Hash, Calendar, DollarSign
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ── Status Badge ──
 const StatusBadge = ({ status }) => {
