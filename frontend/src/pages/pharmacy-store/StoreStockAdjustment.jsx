@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Sliders, Plus, Trash2, Search, Eye, EyeOff, RefreshCw, CheckCircle, XCircle, Package, Calendar, Hash, AlertCircle, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react';
 import { NotifStore } from './StoreHomeNew';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ─────────────────────────────────────────── */
 const G = {
