@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, Search, Filter
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Global CSS ─────────────────────────────────────────────── */
 const G = `
