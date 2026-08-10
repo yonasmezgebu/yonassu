@@ -147,6 +147,12 @@ const audit = (action, userId, details = {}) => {
     resource: details.resource,
     resourceId: details.resourceId
   });
+  try {
+    const centralAuditService = require('../services/centralAudit.service');
+    centralAuditService.captureLegacy(action, userId, details);
+  } catch (error) {
+    logger.error(`Failed to mirror audit log to central table: ${error.message}`);
+  }
 };
 const logError = (error, req = null, context = {}) => {
   const errorLog = {
