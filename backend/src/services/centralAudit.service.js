@@ -168,12 +168,18 @@ const getLogs = async (user, filters = {}) => {
   const isCEO        = roleStr.includes('ceo') || roleStr.includes('owner');
   const isManager    = roleStr.includes('manager') || roleStr.includes('head');
   const isHR         = roleStr.includes('hr') || deptName.includes('human resource') || deptName.includes('hr');
+  const isStore      = roleStr.includes('store');
 
   if (isSuperAdmin || isCEO) {
     // Full visibility — no WHERE clause
   } else if (isHR) {
-    // HR staff see all HR module logs
-    q = q.where('module', 'HR');
+    // HR staff see all HR module logs, excluding automated system actions
+    q = q.where('module', 'HR').andWhere('user_name', '!=', 'System');
+  } else if (isStore) {
+    // Store Keepers see all Store module logs, excluding automated system actions
+    q = q.where('module', 'Store')
+          .andWhere('user_name', '!=', 'System')
+          .andWhere('user_name', '!=', 'System Backfill');
   } else if (isManager && deptFullName) {
     // Dept manager sees only their department's logs
     q = q.where('department', deptFullName);
