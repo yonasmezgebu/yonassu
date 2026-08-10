@@ -4,6 +4,7 @@ import {
   RefreshCw, Printer, Building, Smartphone, PenTool
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Signature Block for Print ─── */
 const PrintSigBlock = ({ label, name, sigImage }) => (
