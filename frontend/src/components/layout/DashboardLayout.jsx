@@ -17,6 +17,7 @@ import { playSound, sendPushNotification, requestPermission } from '../../servic
 import { io } from 'socket.io-client';
 import UserProfile from '../../pages/shared/UserProfile';
 import './DashboardLayout.css';
+import SegmentedSpinner from '../ui/SegmentedSpinner';
 
 const ICONS = {
   default:       <Box size={18} strokeWidth={2.5} />,
