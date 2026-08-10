@@ -4,6 +4,7 @@ import { Package, Truck, Printer, CheckCircle, AlertCircle, RotateCw, Clock } fr
 import apiClient from '../../services/apiClient';
 import pharmacyService from '../../services/pharmacyService';
 import { useToast } from '../../components/Toast';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const PharmacyGoodsReceiving = () => {
   const { id } = useParams();
