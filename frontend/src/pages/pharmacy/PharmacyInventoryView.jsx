@@ -5,6 +5,7 @@ import pharmacyService from '../../services/pharmacyService';
 import apiClient from '../../services/apiClient';
 import infoSound from '../../assets/notification/info.mp3';
 import { useAuth } from '../../hooks/useAuth';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const PharmacyStockView = ({ hideHeader = false, themeColors, refreshTrigger = 0 }) => {
   const { user } = useAuth();
