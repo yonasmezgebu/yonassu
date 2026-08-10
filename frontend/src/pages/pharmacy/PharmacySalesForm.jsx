@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash', icon: <DollarSign size={16} /> },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: <CreditCard size={16} /> },
