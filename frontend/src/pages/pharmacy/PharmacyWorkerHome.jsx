@@ -6,6 +6,7 @@ import {
   Layers, Tag, DollarSign, RefreshCw, Sparkles, Sprout
 } from 'lucide-react';
 import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n) => Number(n || 0).toLocaleString();
