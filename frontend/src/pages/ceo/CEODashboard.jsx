@@ -44,7 +44,7 @@ import CEOFinancialReport from './CEOFinancialReport';
 import CEOSalesReport from './CEOSalesReport';
 import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
-import CEOAuditReport from './CEOAuditReport';
+import CentralAuditLog from '../admin/CentralAuditLog';
 
 import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
@@ -133,7 +133,7 @@ const CEODashboard = () => {
             <Route path="reports/sales" element={<CEOSalesReport />} />
             <Route path="reports/inventory" element={<CEOInventoryReportFull />} />
             <Route path="reports/hr" element={<CEOHRReport />} />
-            <Route path="reports/audit" element={<CEOAuditReport />} />
+            <Route path="reports/audit" element={<CentralAuditLog />} />
 
             {/* Restored Old Routes (Kept for backwards compatibility) */}
             <Route path="reports"   element={<ExecutiveReports />} />
