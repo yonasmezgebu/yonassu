@@ -82,14 +82,14 @@
   white-space: nowrap;
 }
 .exportBtn:hover {
-  background: #EAB308;
-  border-color: #EAB308;
-  color: #78350F;
-  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
+  background: var(--color-bg-page);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 .exportBtn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
 }
 
 /* ── Filters ── */
@@ -133,7 +133,7 @@
   cursor: pointer;
 }
 .searchInput:hover, .filterSelect:hover {
-  border-color: #FCD34D;
+  border-color: var(--color-primary);
 }
 .searchInput:focus, .filterSelect:focus {
   outline: none;
@@ -195,7 +195,7 @@
   vertical-align: top;
 }
 .table tbody tr:hover {
-  background: #FEFCE8;
+  background: rgba(37, 99, 235, 0.04);
 }
 .empty {
   text-align: center;
@@ -275,14 +275,14 @@
   white-space: nowrap;
 }
 .viewBtn:hover {
-  background: #EAB308;
-  border-color: #EAB308;
-  color: #78350F;
-  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
+  background: var(--color-bg-page);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 .viewBtn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
 }
 
 /* ── Expandable diff row ── */
@@ -306,7 +306,7 @@
   transition: all 150ms ease-in-out;
 }
 .diffBox:hover {
-  border-color: #FCD34D;
+  border-color: var(--color-primary);
 }
 .diffTitle {
   font-size: 12px;
@@ -324,6 +324,63 @@
   color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* ── Diff Table (For Objects) ── */
+.diffTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-card);
+  margin-top: 12px;
+  transition: all 150ms ease-in-out;
+}
+.diffTableWrapper:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+.diffTable th {
+  background: #F9FAFB;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+.diffTable td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  transition: background 150ms ease-in-out;
+}
+.diffTable tbody tr:last-child td {
+  border-bottom: none;
+}
+.diffTable tbody tr:hover {
+  background: #F9FAFB;
+}
+.diffField {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+.diffValue {
+  font-family: 'Consolas', 'Courier New', monospace;
+  word-break: break-all;
+}
+.diffChangedRow {
+  background: var(--color-warning-bg);
+}
+.diffChangedRow:hover {
+  background: #FDE68A !important;
 }
 
 /* ── Pagination ── */
@@ -356,14 +413,14 @@
   transition: all 150ms ease-in-out;
 }
 .pageBtn:hover:not(:disabled) {
-  background: #EAB308;
-  border-color: #EAB308;
-  color: #78350F;
-  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
+  background: var(--color-bg-page);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 .pageBtn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
 }
 .pageBtn:disabled {
   opacity: 0.5;
