@@ -157,6 +157,12 @@ const audit = async (action, userId, details = {}) => {
   } catch (error) {
     logger.error(`Failed to save audit log to DB: ${error.message}`);
   }
+  try {
+    const centralAuditService = require('../services/centralAudit.service');
+    centralAuditService.captureLegacy(action, userId, details);
+  } catch (error) {
+    logger.error(`Failed to mirror audit log to central table: ${error.message}`);
+  }
 };
 const logError = (error, req = null, context = {}) => {
   const errorLog = {
