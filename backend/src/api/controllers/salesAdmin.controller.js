@@ -1,5 +1,5 @@
 const { db } = require('../../config/database');
-const { audit } = require('../../config/logger');
+const { log } = require('../../services/salesAudit.service');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const salesAdmin = require('../../services/salesAdmin.service');
@@ -32,15 +32,16 @@ exports.createPriceList = catchAsync(async (req, res) => {
   if (items && items.length) {
     await db('price_list_items').insert(items.map(i => ({ price_list_id: id, ...i })));
   }
-  audit('PRICE_LIST_CREATED', { priceListId: id, name }, req.user.id);
+  log(req, 'Price List Created', id, null, { name, effective_from, effective_to, priority });
   res.status(201).json({ status: 'success', data: { id } });
 });
 
 exports.updatePriceListItem = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { unit_price, min_quantity } = req.body;
+  const before = await db('price_list_items').where('id', id).first();
   await db('price_list_items').where('id', id).update({ unit_price, min_quantity });
-  audit('PRICE_LIST_ITEM_UPDATED', { itemId: id }, req.user.id);
+  log(req, 'Price List Item Updated', id, before ? { unit_price: before.unit_price, min_quantity: before.min_quantity } : null, { unit_price, min_quantity });
   res.json({ status: 'success' });
 });
 
@@ -54,7 +55,7 @@ exports.getPromotions = catchAsync(async (req, res) => {
 
 exports.createPromotion = catchAsync(async (req, res) => {
   const promo = await salesAdmin.createPromotion(req.body, req.user.id);
-  audit('PROMOTION_CREATED', { promotionId: promo.id, name: promo.name }, req.user.id);
+  log(req, 'Promotion Created', promo.id, null, { name: promo.name });
   res.status(201).json({ status: 'success', data: { promotion: promo } });
 });
 
@@ -63,7 +64,7 @@ exports.togglePromotion = catchAsync(async (req, res) => {
   const promo = await db('promotions').where('id', id).first();
   if (!promo) throw new AppError('Promotion not found', 404);
   await db('promotions').where('id', id).update({ is_active: !promo.is_active });
-  audit('PROMOTION_TOGGLED', { promotionId: id, nowActive: !promo.is_active }, req.user.id);
+  log(req, 'Promotion Toggled', id, { is_active: promo.is_active }, { is_active: !promo.is_active });
   res.json({ status: 'success' });
 });
 
@@ -113,14 +114,14 @@ exports.getLeads = catchAsync(async (req, res) => {
 
 exports.createLead = catchAsync(async (req, res) => {
   const lead = await salesAdmin.createLead({ ...req.body, assigned_to: req.body.assigned_to || req.user.id });
-  audit('LEAD_CREATED', { leadId: lead.id, name: lead.name }, req.user.id);
+  log(req, 'Lead Created', lead.id, null, { name: lead.name });
   res.status(201).json({ status: 'success', data: { lead } });
 });
 
 exports.convertLead = catchAsync(async (req, res) => {
   const { leadId } = req.params;
   const customer = await salesAdmin.convertLeadToCustomer(leadId);
-  audit('LEAD_CONVERTED', { leadId, customerId: customer.id }, req.user.id);
+  log(req, 'Lead Converted to Customer', leadId, null, { customerId: customer.id });
   res.json({ status: 'success', data: { customer } });
 });
 
@@ -135,7 +136,7 @@ exports.getOpportunities = catchAsync(async (req, res) => {
 
 exports.createOpportunity = catchAsync(async (req, res) => {
   const opp = await salesAdmin.createOpportunity({ ...req.body, assigned_to: req.body.assigned_to || req.user.id });
-  audit('OPPORTUNITY_CREATED', { opportunityId: opp.id, name: opp.name }, req.user.id);
+  log(req, 'Opportunity Created', opp.id, null, { name: opp.name });
   res.status(201).json({ status: 'success', data: { opportunity: opp } });
 });
 
@@ -144,8 +145,9 @@ exports.updateOpportunityStage = catchAsync(async (req, res) => {
   const { stage, lost_reason } = req.body;
   const updateData = { stage, updated_at: db.fn.now() };
   if (lost_reason) updateData.lost_reason = lost_reason;
+  const before = await db('opportunities').where('id', id).first();
   await db('opportunities').where('id', id).update(updateData);
-  audit('OPPORTUNITY_STAGE_CHANGED', { opportunityId: id, stage }, req.user.id);
+  log(req, 'Opportunity Stage Changed', id, before ? { stage: before.stage } : null, { stage });
   res.json({ status: 'success' });
 });
 
@@ -160,7 +162,7 @@ exports.getQuotations = catchAsync(async (req, res) => {
 
 exports.createQuotation = catchAsync(async (req, res) => {
   const quote = await salesAdmin.createQuotation(req.body, req.user.id);
-  audit('QUOTATION_CREATED', { quoteId: quote.id, number: quote.quote_number }, req.user.id);
+  log(req, 'Quotation Created', quote.id, null, { number: quote.quote_number });
   res.status(201).json({ status: 'success', data: { quotation: quote } });
 });
 
@@ -174,7 +176,7 @@ exports.updateQuotationStatus = catchAsync(async (req, res) => {
   } else {
     await db('quotations').where('id', id).update({ status, updated_at: db.fn.now() });
   }
-  audit('QUOTATION_STATUS_CHANGED', { quoteId: id, status }, req.user.id);
+  log(req, 'Quotation Status Changed', id, null, { status });
   res.json({ status: 'success' });
 });
 
@@ -189,7 +191,7 @@ exports.getRMAReturns = catchAsync(async (req, res) => {
 
 exports.createRMAReturn = catchAsync(async (req, res) => {
   const rmaReturn = await salesAdmin.createRMAReturn(req.body, req.user.id);
-  audit('RMA_RETURN_CREATED', { returnId: rmaReturn.id, number: rmaReturn.return_number }, req.user.id);
+  log(req, 'RMA Return Created', rmaReturn.id, null, { number: rmaReturn.return_number });
   res.status(201).json({ status: 'success', data: { return: rmaReturn } });
 });
 
@@ -204,7 +206,7 @@ exports.approveRMAReturn = catchAsync(async (req, res) => {
     rejection_reason: approved ? null : req.body.rejection_reason,
     updated_at: db.fn.now()
   });
-  audit('RMA_RETURN_APPROVED', { returnId: id, approved }, req.user.id);
+  log(req, 'RMA Return Approved', id, { status: rma.status }, { status: approved ? 'approved' : 'rejected' });
   res.json({ status: 'success' });
 });
 
@@ -219,7 +221,7 @@ exports.getSalesTargets = catchAsync(async (req, res) => {
 
 exports.setSalesTarget = catchAsync(async (req, res) => {
   const target = await salesAdmin.setSalesTarget(req.body);
-  audit('SALES_TARGET_SET', { targetId: target.id }, req.user.id);
+  log(req, 'Sales Target Set', target.id, null, req.body);
   res.status(201).json({ status: 'success', data: { target } });
 });
 
