@@ -9,6 +9,7 @@ import FarmingReorderRequest from './FarmingReorderRequest';
 import FarmingShiftReports from './FarmingShiftReports';
 import FarmingCropCalendar from './FarmingCropCalendar';
 import FarmingStoreRequest from './FarmingStoreRequest';
+import CentralAuditLog from '../admin/CentralAuditLog';
 
 const FarmingManagerDashboard = () => {
   const menuItems = [
@@ -22,6 +23,8 @@ const FarmingManagerDashboard = () => {
     { label: 'Reorder Request', path: '/farming-manager/reorder-request', icon: 'shopping-cart' },
     { label: 'Shift Reports',  path: '/farming-manager/shift-reports', icon: 'clock' },
     { label: 'Store Request',  path: '/farming-manager/store-request', icon: 'building' },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/farming-manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -39,6 +42,7 @@ const FarmingManagerDashboard = () => {
         <Route path="shift-reports" element={<FarmingShiftReports />} />
         <Route path="crop-calendar" element={<FarmingCropCalendar />} />
         <Route path="store-request" element={<FarmingStoreRequest />} />
+        <Route path="audit-log" element={<CentralAuditLog />} />
         <Route path="/"        element={<Navigate to="overview" replace />} />
       </Routes>
     </DashboardLayout>
