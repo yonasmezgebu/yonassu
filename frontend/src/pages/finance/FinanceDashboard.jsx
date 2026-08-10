@@ -36,7 +36,7 @@ import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
 import FinanceVehicleAssets from './FinanceVehicleAssets';
 import FinanceTractorAssets from './FinanceTractorAssets';
-
+import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './FinanceDashboard.module.css';
 
 const FinanceDashboard = () => {
@@ -76,6 +76,8 @@ const FinanceDashboard = () => {
         { label: 'Income Statement', path: '/finance/profit-loss',  icon: 'trending-up', color: '#059669' },
         { label: 'Balance Sheet',    path: '/finance/balance-sheet', icon: 'scale',      color: '#7c3aed' },
       ] },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/finance/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -120,6 +122,7 @@ const FinanceDashboard = () => {
             <Route path="cash-flow" element={<FinanceCashFlow />} />
             <Route path="profit-loss" element={<FinanceProfitLoss />} />
             <Route path="balance-sheet" element={<FinanceBalanceSheet />} />
+            <Route path="audit-log" element={<CentralAuditLog />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
