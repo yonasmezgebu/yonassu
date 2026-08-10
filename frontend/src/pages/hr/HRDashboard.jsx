@@ -29,6 +29,7 @@ import GalleryManager from '../admin/GalleryManager';
 import JobApplicationsManager from './JobApplicationsManager';
 import HRContact from './HRContact';
 import ManagerChat from '../../components/ManagerChat';
+import CentralAuditLog from '../admin/CentralAuditLog';
 import styles from './HRDashboard.module.css';
 
 const HRDashboard = () => {
@@ -65,6 +66,8 @@ const HRDashboard = () => {
       { label: 'Contact Settings', path: '/hr/settings-contact', icon: 'settings' },
       { label: 'Chat', path: '/hr/chat', icon: 'message-circle', color: '#6B8E23' }
     ] },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/hr/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   const location = useLocation();
@@ -116,6 +119,7 @@ const HRDashboard = () => {
       <Route path="job-applications"    element={<JobApplicationsManager />} />
       <Route path="settings-contact"    element={<HRContact />} />
       <Route path="chat"                element={<ManagerChat />} />
+      <Route path="audit-log"           element={<CentralAuditLog />} />
       <Route path="/"                   element={<Navigate to="employee-summary" replace />} />
     </Routes>
   );
