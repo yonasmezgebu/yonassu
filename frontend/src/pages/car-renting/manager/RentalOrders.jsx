@@ -8,6 +8,7 @@ import {
 import CarRentalOrderDetail  from './CarRentalOrderDetail';
 import CarRentalCreateOrder  from './CarRentalCreateOrder';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './RentalOrders.css';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -490,9 +491,6 @@ const RentalOrders = () => {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @media (max-width: 768px) { table { font-size: 12px !important; } th, td { padding: 10px 8px !important; } }
-        select:focus { outline: 2px solid ${C.forestGreen}; }
-        input:focus { outline: none; }
       `}</style>
     </div>
   );
