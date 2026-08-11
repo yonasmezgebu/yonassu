@@ -3,6 +3,7 @@ const AppError = require('../../utils/AppError');
 const { getFileInfo, deleteFile } = require('../middleware/upload.middleware');
 const { audit } = require('../../config/logger');
 const settingsRepository = new (require('../../repositories/settings.repository'))();
+const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 
 const pharmacyController = {
   // ==============================
@@ -220,6 +221,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('CREATE_PHARMACY_CATEGORY', req.user.id, { details: { categoryId: id, name } });
     }
+    logPharmacyAction(req, 'Category Created', name, null, category, 'Pharmacy Store');
 
     res.status(201).json({ status: 'success', data: category });
   },
@@ -252,6 +254,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('UPDATE_PHARMACY_CATEGORY', req.user.id, { details: { categoryId: id } });
     }
+    logPharmacyAction(req, 'Category Updated', existing.name, existing, category, 'Pharmacy Store');
 
     res.json({ status: 'success', data: category });
   },
@@ -276,6 +279,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('DELETE_PHARMACY_CATEGORY', req.user.id, { details: { categoryId: id } });
     }
+    logPharmacyAction(req, 'Category Deleted', existing.name, existing, null, 'Pharmacy Store');
 
     res.status(204).send();
   },
@@ -407,6 +411,7 @@ const pharmacyController = {
     if (!product) throw new AppError('Product not found', 404);
 
     await db('pharmacy_medications').where('id', id).update({ is_hidden: true, updated_at: db.fn.now() });
+    logPharmacyAction(req, 'Product Hidden', product.name, { is_hidden: false }, { is_hidden: true }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Product hidden from public view' });
   },
 
@@ -416,6 +421,7 @@ const pharmacyController = {
     if (!product) throw new AppError('Product not found', 404);
 
     await db('pharmacy_medications').where('id', id).update({ is_hidden: false, updated_at: db.fn.now() });
+    logPharmacyAction(req, 'Product Restored', product.name, { is_hidden: true }, { is_hidden: false }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Product restored to public view' });
   },
 
@@ -447,6 +453,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('CREATE_PHARMACY_PRODUCT', req.user.id, { details: { productId: id, name: data.name } });
     }
+    logPharmacyAction(req, 'Product Created', data.name, null, product, 'Pharmacy Store');
 
     res.status(201).json({ status: 'success', data: product });
   },
@@ -481,6 +488,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('UPDATE_PHARMACY_PRODUCT', req.user.id, { details: { productId: id } });
     }
+    logPharmacyAction(req, 'Product Updated', existing.name, existing, product, 'Pharmacy Store');
 
     res.json({ status: 'success', data: product });
   },
@@ -515,6 +523,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('DELETE_PHARMACY_PRODUCT', req.user.id, { details: { productId: id } });
     }
+    logPharmacyAction(req, 'Product Deleted', existing.name, existing, null, 'Pharmacy Store');
 
     res.status(204).send();
   },
@@ -550,6 +559,7 @@ const pharmacyController = {
     if (req.user) {
       await audit('UPDATE_PHARMACY_STOCK', req.user.id, { details: { productId: id, quantity_change, newStock } });
     }
+    logPharmacyAction(req, 'Stock Adjusted', product.name, { stock_quantity: product.stock_quantity }, { stock_quantity: newStock, quantity_change, reason }, 'Pharmacy Store');
 
     res.json({ status: 'success', data: updatedProduct });
   },
@@ -611,6 +621,7 @@ const pharmacyController = {
 
       const [id] = await db('branches').insert(data);
       const branch = await db('branches').where({ id }).first();
+      logPharmacyAction(req, 'Branch Created', branch.name, null, branch, 'Pharmacy Store');
       res.status(201).json({ status: 'success', data: branch });
     } catch (err) {
       res.status(500).json({ status: 'error', message: err.message });
@@ -640,6 +651,7 @@ const pharmacyController = {
 
       await db('branches').where({ id }).update(data);
       const branch = await db('branches').where({ id }).first();
+      logPharmacyAction(req, 'Branch Updated', existing.name, existing, branch, 'Pharmacy Store');
       res.json({ status: 'success', data: branch });
     } catch (err) {
       res.status(500).json({ status: 'error', message: err.message });
@@ -656,6 +668,7 @@ const pharmacyController = {
       if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
 
       await db('branches').where({ id }).del();
+      logPharmacyAction(req, 'Branch Deleted', existing.name, existing, null, 'Pharmacy Store');
       res.status(204).send();
     } catch (err) {
       res.status(500).json({ status: 'error', message: err.message });
