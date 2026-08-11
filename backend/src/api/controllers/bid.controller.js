@@ -156,7 +156,8 @@ exports.disqualify = catchAsync(async (req, res) => {
     status: 'disqualified', disqualification_reason: reason, evaluation_label: 'disqualified',
     updated_at: db.fn.now(),
   });
-  log(req, 'Bid Disqualified', req.params.bidId, { status: bid.status }, { status: 'disqualified', reason });
+  const disqualified = await db('bids').where('id', req.params.bidId).first();
+  log(req, 'Bid Disqualified', `Bid #${req.params.bidId}`, bid, disqualified);
   res.json({ status: 'success', message: 'Bid disqualified' });
 });
 
@@ -169,7 +170,8 @@ exports.addEvaluation = catchAsync(async (req, res) => {
   if (evaluation_label !== undefined) updates.evaluation_label = evaluation_label;
   if (evaluation_label) updates.status = 'under_review';
   await db('bids').where('id', req.params.bidId).update(updates);
-  log(req, 'Bid Evaluation Updated', req.params.bidId, { evaluation_label: bid.evaluation_label }, { evaluation_label, evaluation_notes });
+  const evaluated = await db('bids').where('id', req.params.bidId).first();
+  log(req, 'Bid Evaluation Updated', `Bid #${req.params.bidId}`, bid, evaluated);
   res.json({ status: 'success', message: 'Evaluation updated' });
 });
 
@@ -204,7 +206,8 @@ exports.award = catchAsync(async (req, res) => {
   }
   await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Awarded', message: `Tender ${tender.reference_number} — ${tender.title} has been awarded.` });
 
-  log(req, 'Bid Awarded', req.params.tenderId, { tender_status: tender.status }, { status: 'awarded', awarded_bids: bid_ids.length });
+  const awardedTender = await db('tenders').where('id', req.params.tenderId).first();
+  log(req, 'Bid Awarded', `Tender ${tender.reference_number} — ${tender.title}`, tender, { ...awardedTender, awarded_bids: bids.map(b => ({ bid_id: b.id, customer_id: b.customer_id, bid_price_per_unit: b.bid_price_per_unit, total_bid_value: b.total_bid_value })) });
   res.json({ status: 'success', message: 'Bid(s) awarded', data: { awarded: bids.length } });
 });
 
@@ -246,7 +249,8 @@ exports.forwardToCeo = catchAsync(async (req, res) => {
   });
   
   await notificationRepository.create({ roleTarget: 'CEO', title: 'Tender Bids Forwarded', message: `Bids for tender ${tender.reference_number} have been forwarded for your approval.` });
-  log(req, 'Bids Forwarded to CEO', req.params.tenderId, { tender_status: tender.status }, { status: 'awaiting_ceo_approval' });
+  const forwarded = await db('tenders').where('id', req.params.tenderId).first();
+  log(req, 'Bids Forwarded to CEO', `Tender ${tender.reference_number} — ${tender.title}`, tender, forwarded);
   res.json({ status: 'success', message: 'Bids forwarded to CEO successfully' });
 });
 
@@ -302,19 +306,23 @@ exports.ceoApprove = catchAsync(async (req, res) => {
 });
 
 exports.markOpened = catchAsync(async (req, res) => {
+  const bid = await db('bids').where('id', req.params.bidId).first();
   await db('bids').where('id', req.params.bidId).update({
     opened_at: db.fn.now()
   });
-  log(req, 'Bid Marked Opened', req.params.bidId, null, { opened_at: new Date().toISOString() });
+  const opened = await db('bids').where('id', req.params.bidId).first();
+  log(req, 'Bid Marked Opened', `Bid #${req.params.bidId}`, bid, opened);
   res.json({ status: 'success' });
 });
 
 exports.markEmailSent = catchAsync(async (req, res) => {
+  const bid = await db('bids').where('id', req.params.bidId).first();
   await db('bids').where('id', req.params.bidId).update({
     notification_sent: true,
     updated_at: db.fn.now()
   });
-  log(req, 'Bid Notification Sent', req.params.bidId, { notification_sent: false }, { notification_sent: true });
+  const emailed = await db('bids').where('id', req.params.bidId).first();
+  log(req, 'Bid Notification Sent', `Bid #${req.params.bidId}`, bid, emailed);
   res.json({ status: 'success' });
 });
 
