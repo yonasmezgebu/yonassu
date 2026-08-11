@@ -63,7 +63,7 @@ exports.create = catchAsync(async (req, res) => {
     items: items ? items : null
   });
   const tender = await db('tenders').where('id', id).first();
-  log(req, 'Tender Created', id, null, { reference_number: ref, title, status: 'open' });
+  log(req, 'Tender Created', `Tender ${ref} — ${title}`, null, tender);
   res.status(201).json({ status: 'success', data: tender });
 });
 
@@ -121,7 +121,7 @@ exports.update = catchAsync(async (req, res) => {
   updates.updated_at = db.fn.now();
   await db('tenders').where('id', req.params.id).update(updates);
   const updated = await db('tenders').where('id', req.params.id).first();
-  log(req, 'Tender Updated', req.params.id, { title: tender.title, status: tender.status }, { title: updated.title, status: updated.status });
+  log(req, 'Tender Updated', `Tender ${tender.reference_number} — ${tender.title}`, tender, updated);
   res.json({ status: 'success', data: updated });
 });
 
@@ -135,7 +135,7 @@ exports.publish = catchAsync(async (req, res) => {
   else if (value > 100000) newStatus = 'pending_approval';
   await db('tenders').where('id', req.params.id).update({ status: newStatus, updated_at: db.fn.now() });
   const updated = await db('tenders').where('id', req.params.id).first();
-  log(req, 'Tender Published', req.params.id, { status: tender.status }, { status: newStatus });
+  log(req, 'Tender Published', `Tender ${tender.reference_number} — ${tender.title}`, tender, updated);
   if (newStatus === 'pending_approval') {
     await notificationRepository.create({ roleTarget: 'Admin', title: 'Tender Approval Needed', message: `Tender ${tender.reference_number} — ${tender.title} requires approval (value: ETB ${value.toLocaleString()})` });
     await notificationRepository.create({ roleTarget: 'CEO', title: 'Tender Approval Needed', message: `Tender ${tender.reference_number} — ${tender.title} requires approval (value: ETB ${value.toLocaleString()})` });
@@ -151,7 +151,7 @@ exports.approve = catchAsync(async (req, res) => {
   if (tender.status !== 'pending_approval') throw AppError.badRequest('Tender is not pending approval');
   await db('tenders').where('id', req.params.id).update({ status: 'open', approved_by: req.user.id, updated_at: db.fn.now() });
   const updated = await db('tenders').where('id', req.params.id).first();
-  log(req, 'Tender Approved', req.params.id, { status: tender.status }, { status: 'open', approved_by: req.user.id });
+  log(req, 'Tender Approved', `Tender ${tender.reference_number} — ${tender.title}`, tender, updated);
   await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Approved', message: `Tender ${tender.reference_number} — ${tender.title} has been approved and is now open` });
   res.json({ status: 'success', data: updated });
 });
@@ -162,7 +162,8 @@ exports.close = catchAsync(async (req, res) => {
   const closeable = ['open', 'draft', 'pending_approval'];
   if (!closeable.includes(tender.status)) throw AppError.badRequest('Tender cannot be closed from its current status');
   await db('tenders').where('id', req.params.id).update({ status: 'closed', updated_at: db.fn.now() });
-  log(req, 'Tender Closed', req.params.id, { status: tender.status }, { status: 'closed' });
+  const closed = await db('tenders').where('id', req.params.id).first();
+  log(req, 'Tender Closed', `Tender ${tender.reference_number} — ${tender.title}`, tender, closed);
   res.json({ status: 'success', message: 'Tender closed' });
 });
 
@@ -183,7 +184,8 @@ exports.extend = catchAsync(async (req, res) => {
   }
   
   await db('tenders').where('id', req.params.id).update(updates);
-  log(req, 'Tender Deadline Extended', req.params.id, { deadline: tender.deadline }, { deadline });
+  const extended = await db('tenders').where('id', req.params.id).first();
+  log(req, 'Tender Deadline Extended', `Tender ${tender.reference_number} — ${tender.title}`, tender, extended);
   res.json({ status: 'success', message: 'Deadline extended' });
 });
 
@@ -199,7 +201,8 @@ exports.cancel = catchAsync(async (req, res) => {
     await notificationRepository.create({ userId: b.customer_id, title: 'Tender Cancelled', message: `Tender ${tender.reference_number} — ${tender.title} has been cancelled. Reason: ${reason}` });
   }
   await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Cancelled', message: `Tender ${tender.reference_number} — ${tender.title} was cancelled: ${reason}` });
-  log(req, 'Tender Cancelled', req.params.id, { status: tender.status }, { status: 'cancelled', reason });
+  const cancelled = await db('tenders').where('id', req.params.id).first();
+  log(req, 'Tender Cancelled', `Tender ${tender.reference_number} — ${tender.title}`, tender, cancelled);
   res.json({ status: 'success', message: 'Tender cancelled' });
 });
 
@@ -208,7 +211,8 @@ exports.toggleHidden = catchAsync(async (req, res) => {
   if (!tender) throw AppError.notFound('Tender not found');
   const newValue = !tender.is_hidden;
   await db('tenders').where('id', req.params.id).update({ is_hidden: newValue, updated_at: db.fn.now() });
-  log(req, 'Tender Visibility Toggled', req.params.id, { is_hidden: tender.is_hidden }, { is_hidden: newValue });
+  const toggled = await db('tenders').where('id', req.params.id).first();
+  log(req, 'Tender Visibility Toggled', `Tender ${tender.reference_number} — ${tender.title}`, tender, toggled);
   res.json({ status: 'success', is_hidden: newValue, message: newValue ? 'Tender hidden from public' : 'Tender visible to public' });
 });
 
@@ -218,6 +222,6 @@ exports.delete = catchAsync(async (req, res) => {
   
   await db('bids').where('tender_id', req.params.id).del();
   await db('tenders').where('id', req.params.id).del();
-  log(req, 'Tender Deleted', req.params.id, { title: tender.title, reference_number: tender.reference_number }, null);
+  log(req, 'Tender Deleted', `Tender ${tender.reference_number} — ${tender.title}`, tender, null);
   res.json({ status: 'success', message: 'Tender deleted' });
 });
