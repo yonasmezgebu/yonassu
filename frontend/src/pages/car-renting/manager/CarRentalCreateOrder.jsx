@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../../services/apiClient';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './CarRentalCreateOrder.css';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -21,6 +22,16 @@ const C = {
   border:      '#8D6E63',
   textSec:     '#616161',
 };
+
+/* ── Image URL helper (matches FleetManager/AgriRent) ── */
+const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+  return `${base}${path.startsWith('/') ? path : '/' + path}`;
+};
+const carLabel = (car) => car ? `${car.name}` : '';
+const carRate = (car) => parseFloat(car?.dailyRate || car?.daily_rate || car?.pricePerDay || 0) || 0;
 
 const INPUT = {
   width: '100%', padding: '11px 14px',
@@ -79,7 +90,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
   useEffect(() => {
     api.get('/cars').then(res => {
       const list = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
-      setCars(list.filter(c => c.isAvailable !== false && c.status !== 'unavailable' && c.status !== 'maintenance'));
+      setCars(list.filter(c => c.availability !== 'Maintenance' && c.availability !== 'Booked'));
     }).catch(() => {});
   }, []);
 
@@ -90,8 +101,8 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
     if (end <= start) { setPricing(null); return; }
     const days     = Math.max(1, Math.ceil((end - start) / 86400000));
     const car      = cars.find(c => String(c.id) === String(form.carId));
-    const dailyRate = car ? parseFloat(car.dailyRate || car.daily_rate || car.pricePerDay || 0) : 0;
-    setPricing({ days, dailyRate, total: days * dailyRate, carName: car ? `${car.brand} ${car.model}` : '' });
+    const dailyRate = carRate(car);
+    setPricing({ days, dailyRate, total: days * dailyRate, carName: carLabel(car) });
   }, [form.startDate, form.endDate, form.carId, cars]);
 
   const handleScreenshot = (e) => {
@@ -152,7 +163,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
   const selectedCar = cars.find(c => String(c.id) === String(form.carId));
 
   return (
-    <div style={{ minHeight: '100vh', background: C.white, fontFamily: 'Inter, sans-serif', color: C.darkGray }}>
+    <div className="crco-page" style={{ minHeight: '100vh', background: C.white, fontFamily: 'Inter, sans-serif', color: C.darkGray }}>
 
       {/* ── TOAST CONTAINER ── */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -231,7 +242,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
                   <option value="">— Choose an available vehicle —</option>
                   {cars.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.brand} {c.model} {c.year ? `(${c.year})` : ''} · {c.licensePlate || ''} · {parseFloat(c.dailyRate || c.daily_rate || c.pricePerDay || 0).toFixed(0)} ETB/day
+                      {carLabel(c)} · {c.carType || ''} · {carRate(c).toFixed(0)} ETB/day
                     </option>
                   ))}
                 </select>
@@ -242,12 +253,19 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
             {/* Selected car preview */}
             {selectedCar && (
               <div style={{ padding: '12px 16px', background: C.lightGray, border: `1px solid ${C.border}`, borderLeft: `4px solid ${C.emerald}`, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {getImageUrl(selectedCar.image1) && (
+                  <img src={getImageUrl(selectedCar.image1)} alt={selectedCar.name}
+                    style={{ width: 64, height: 48, objectFit: 'cover', border: `1px solid ${C.border}`, background: C.white, flexShrink: 0 }}
+                    onError={e => { e.currentTarget.style.display = 'none'; }} />
+                )}
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: C.darkGreen }}>{selectedCar.brand} {selectedCar.model} {selectedCar.year && `(${selectedCar.year})`}</div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: C.darkGreen }}>{selectedCar.name}</div>
                   <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
-                    Plate: <strong>{selectedCar.licensePlate || 'N/A'}</strong>&nbsp;·&nbsp;
+                    {selectedCar.carType || 'Car'}&nbsp;·&nbsp;
+                    {selectedCar.seats} seats&nbsp;·&nbsp;
+                    {selectedCar.transmission || 'Manual'}&nbsp;·&nbsp;
                     Fuel: {selectedCar.fuelType || 'N/A'}&nbsp;·&nbsp;
-                    Rate: <strong>{parseFloat(selectedCar.dailyRate || selectedCar.daily_rate || selectedCar.pricePerDay || 0).toFixed(2)} ETB/day</strong>
+                    Rate: <strong>{carRate(selectedCar).toFixed(2)} ETB/day</strong>
                   </div>
                 </div>
                 <div style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: C.forestGreen, background: C.white, border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
