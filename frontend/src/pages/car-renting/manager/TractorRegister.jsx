@@ -6,6 +6,7 @@ import {
   X, DollarSign, Layers, Fuel, Leaf, RefreshCw, Send
 } from 'lucide-react';
 import tractorService from '../../../services/tractorService';
+import './TractorRegister.css';
 
 /* ══════════════════════════════════════════════════
    GREEN UNIVERSITY PALETTE
@@ -40,27 +41,34 @@ const getImageUrl = (path) => {
    IN-APP TOAST  (No native alert/confirm)
 ══════════════════════════════════════════════════ */
 const TCONF = {
-  success: { bg: G.dark,    border: G.leaf,    Icon: CheckCircle },
-  error:   { bg: G.error,   border: '#b71c1c', Icon: AlertCircle },
-  warning: { bg: G.warning, border: '#e65100', Icon: AlertTriangle },
+  success: { bg: '#DCFCE7', border: '#16A34A', Icon: CheckCircle },
+  error:   { bg: '#FEE2E2', border: '#DC2626', Icon: AlertCircle },
+  warning: { bg: '#FEF3C7', border: '#D97706', Icon: AlertTriangle },
 };
 
 const Toast = ({ toasts, remove }) => (
-  <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
+  <div className="tr-toast" style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
     {toasts.map(t => {
       const s = TCONF[t.type] || TCONF.success;
       return (
         <div key={t.id} onClick={() => remove(t.id)} style={{
           display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'all', cursor: 'pointer',
-          background: s.bg, color: '#fff', padding: '13px 18px',
-          borderLeft: `5px solid ${s.border}`,
-          boxShadow: '0 4px 0 rgba(0,0,0,.3), 0 10px 24px rgba(0,0,0,.2)',
-          fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700,
-          minWidth: 300, animation: 'fmSlideIn .28s ease',
+          background: '#FFFFFF', color: '#111827', padding: '12px 16px',
+          borderTop: '1px solid #E5E7EB',
+          borderRight: '1px solid #E5E7EB',
+          borderBottom: '1px solid #E5E7EB',
+          borderLeft: `4px solid ${s.border}`,
+          borderRadius: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 500,
+          minWidth: 280, maxWidth: 'calc(100vw - 32px)',
+          animation: 'fmSlideIn .28s ease',
         }}>
-          <s.Icon size={16} />
+          <span style={{ width: 28, height: 28, borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <s.Icon size={15} color={s.border} />
+          </span>
           <span style={{ flex: 1 }}>{t.message}</span>
-          <X size={14} style={{ opacity: 0.7 }} />
+          <X size={15} style={{ color: '#9CA3AF', flexShrink: 0 }} />
         </div>
       );
     })}
@@ -73,42 +81,39 @@ const Toast = ({ toasts, remove }) => (
 const ConfirmModal = ({ open, title, message, danger, onConfirm, onCancel, content }) => {
   if (!open) return null;
   return (
-    <div style={{
+    <div className="tr-modal" style={{
       position: 'fixed', inset: 0, background: 'rgba(27,94,32,0.75)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 10000, padding: 20,
     }}>
       <div style={{
-        background: G.white, maxWidth: 440, width: '100%',
-        border: `3px solid ${danger ? G.error : G.forest}`,
-        borderTop: `8px solid ${danger ? G.error : G.forest}`,
-        boxShadow: `0 8px 0 ${danger ? '#b71c1c' : G.dark}, 0 16px 32px rgba(0,0,0,.25)`,
-        padding: '32px 28px', fontFamily: "'Inter',sans-serif",
+        background: '#FFFFFF', maxWidth: 440, width: '100%',
+        borderRadius: 12,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+        padding: '24px', fontFamily: "'Inter',sans-serif",
         animation: 'fmSlideIn .25s ease',
       }}>
         <div style={{
-          width: 48, height: 48, background: danger ? '#FFEBEE' : '#E8F5E9',
+          width: 44, height: 44, borderRadius: '50%', background: danger ? '#FEE2E2' : '#EFF6FF',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 16,
         }}>
-          {danger ? <AlertTriangle size={26} color={G.error} /> : <CheckCircle size={26} color={G.forest} />}
+          {danger ? <AlertTriangle size={22} color="#DC2626" /> : <CheckCircle size={22} color="#2563EB" />}
         </div>
-        <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 900, color: G.dark }}>{title}</h3>
-        <p style={{ margin: '0 0 20px', fontSize: 14, color: G.text, lineHeight: 1.6 }}>{message}</p>
+        <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 600, color: '#111827' }}>{title}</h3>
+        <p style={{ margin: '0 0 20px', fontSize: 14, color: '#6B7280', lineHeight: 1.5 }}>{message}</p>
         
         {content && <div style={{ marginBottom: 24 }}>{content}</div>}
 
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button onClick={onCancel} className="fm-btn" style={{
-            padding: '10px 22px', border: `2px solid ${G.sage}`,
-            background: G.white, color: G.text, fontWeight: 700, cursor: 'pointer', fontSize: 13,
-            boxShadow: `0 4px 0 ${G.sage}`,
+            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+            background: '#FFFFFF', color: '#111827', fontWeight: 500, cursor: 'pointer', fontSize: 14,
           }}>Cancel</button>
           <button onClick={onConfirm} className="fm-btn" style={{
-            padding: '10px 22px', border: `2px solid ${danger ? '#b71c1c' : G.dark}`,
-            background: danger ? G.error : G.forest, color: '#fff',
-            fontWeight: 800, cursor: 'pointer', fontSize: 13,
-            boxShadow: `0 4px 0 ${danger ? '#7f0000' : G.dark}`,
+            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid transparent',
+            background: danger ? '#DC2626' : '#2563EB', color: '#fff',
+            fontWeight: 500, cursor: 'pointer', fontSize: 14,
           }}>Confirm</button>
         </div>
       </div>
@@ -259,15 +264,22 @@ const TractorRegister = () => {
     s.textContent = `
       @keyframes fmSlideIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
       @keyframes fmSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-      .fm-btn { transition: transform .08s, box-shadow .08s; }
-      .fm-btn:hover { transform: translateY(-2px); }
-      .fm-btn:active { transform: translateY(4px) !important; box-shadow: none !important; }
-      .fm-row:hover { background: #E8F5E9 !important; }
+      .fm-btn { transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+      .fm-btn:hover:not(:disabled) { background: #EAB308 !important; color: #111827 !important; border-color: #B45309 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transform: translateY(-1px); }
+      .fm-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+      .fm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .fm-row:hover td { background: #F9FAFB; }
+      .fm-kpi:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+      .fm-imgdrop:hover { border-color: #2563EB; background: #F8FAFC; }
+      .fm-table { min-width: 700px; }
       @media (max-width: 768px) {
+        .fm-btn { min-height: 44px; }
+        .fm-table { min-width: 0 !important; width: 100% !important; }
         .fm-table thead { display: none; }
-        .fm-table tr { display: block; margin-bottom: 16px; border: 2px solid ${G.sage}; background: #fff; }
-        .fm-table td { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid ${G.sage}; font-size: 13px; }
-        .fm-table td::before { content: attr(data-label); font-weight: 800; color: ${G.dark}; margin-right: 8px; }
+        .fm-table tr { display: block; margin-bottom: 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #FFFFFF; }
+        .fm-table td { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
+        .fm-table td::before { content: attr(data-label); font-weight: 500; color: #6B7280; margin-right: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .fm-table tr:last-child td:last-child { border-bottom: none; }
         .fm-grid { grid-template-columns: 1fr !important; }
       }
     `;
@@ -279,7 +291,7 @@ const TractorRegister = () => {
     <>
       <style>{`
         * { box-sizing: border-box; }
-        input:focus, select:focus, textarea:focus { outline: 2px solid ${G.emerald}; outline-offset: 1px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
       `}</style>
       <Toast toasts={toasts} remove={removeToast} />
       <ConfirmModal
@@ -288,52 +300,50 @@ const TractorRegister = () => {
       />
 
       {/* ══ FULL-WIDTH CONTAINER ══ */}
-      <div style={{
-        minHeight: '100vh', background: G.forest,
-        fontFamily: "'Inter',sans-serif", color: G.text,
+      <div className="tr-page" style={{
+        minHeight: '100vh', background: 'transparent',
+        fontFamily: "'Inter',sans-serif", color: '#111827',
         width: '100%', margin: 0, padding: 0,
       }}>
 
         {/* ── TOP HEADER BAR ── */}
         <div style={{
-          background: G.dark, padding: '0 28px',
-          borderBottom: `4px solid ${G.olive}`,
+          background: '#FFFFFF', padding: '24px 28px',
+          border: '1px solid #E5E7EB',
+          borderRadius: 10,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}>
-          <div style={{ height: 4, background: `linear-gradient(90deg, ${G.mint}, ${G.lime}, ${G.leaf}, ${G.mint})`, backgroundSize: '400% 100%', animation: 'shimmerG 3s linear infinite' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: G.mint, letterSpacing: 1, textTransform: 'uppercase' }}>
+              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#111827', letterSpacing: 'normal', textTransform: 'none', lineHeight: 1.3 }}>
                 📋 Tractor & Machinery Register
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: G.sage }}>
+              <p style={{ margin: '6px 0 0', fontSize: 14, color: '#6B7280' }}>
                 Full inventory of all farming machines. Add assets here to publish to the AgriRent page.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="fm-btn" onClick={() => fetchTractors(true)} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: G.emerald, color: '#fff', border: `2px solid ${G.olive}`,
-                padding: '10px 18px', cursor: 'pointer',
-                fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 16px', borderRadius: 8,
+                background: '#FFFFFF', color: '#111827', border: '1px solid #E5E7EB',
+                fontWeight: 500, fontSize: 14, cursor: 'pointer',
               }}>
                 <RefreshCw size={14} style={{ animation: isRefreshing ? 'fmSpin 1s linear infinite' : 'none' }} /> Refresh
               </button>
               <button className="fm-btn" onClick={() => navigate('/car-renting/manager/agrirent-list')} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: G.white, color: G.dark, border: `2px solid ${G.olive}`,
-                padding: '10px 18px', cursor: 'pointer',
-                fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 16px', borderRadius: 8,
+                background: '#FFFFFF', color: '#111827', border: '1px solid #E5E7EB',
+                fontWeight: 500, fontSize: 14, cursor: 'pointer',
               }}>
                 🚜 Go to AgriRent
               </button>
               <button className="fm-btn" onClick={() => { resetForm(); setEditingTractor(null); setIsFormOpen(true); }} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: G.lime, color: G.dark, border: `2px solid ${G.olive}`,
-                padding: '10px 20px', cursor: 'pointer',
-                fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 16px', borderRadius: 8,
+                background: '#2563EB', color: '#FFFFFF', border: '1px solid transparent',
+                fontWeight: 500, fontSize: 14, cursor: 'pointer',
               }}>
                 <Plus size={15} /> Add Machine
               </button>
@@ -343,58 +353,59 @@ const TractorRegister = () => {
 
         {/* ── KPI SUMMARY STRIP ── */}
         <div style={{
-          background: G.forest, padding: '20px 28px',
-          borderBottom: `3px solid ${G.olive}`,
+          background: 'transparent', padding: 0, marginTop: 16,
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16,
         }} className="fm-grid">
           {[
-            { icon: Layers,     label: 'Total Assets',      value: tractors.length,         color: G.mint   },
-            { icon: CheckCircle,label: 'Published Online',  value: activeTractorsCount,     color: G.lime   },
-            { icon: EyeOff,     label: 'Internal/Hidden',   value: hiddenTractorsCount,     color: '#FFCC80' },
-            { icon: DollarSign, label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}`, color: G.mint },
+            { icon: Layers,     label: 'Total Assets',      value: tractors.length,         color: '#0284C7', bg: '#E0F2FE' },
+            { icon: CheckCircle,label: 'Published Online',  value: activeTractorsCount,     color: '#16A34A', bg: '#DCFCE7' },
+            { icon: EyeOff,     label: 'Internal/Hidden',   value: hiddenTractorsCount,     color: '#D97706', bg: '#FEF3C7' },
+            { icon: DollarSign, label: 'Total Asset Value', value: `ETB ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 0 })}`, color: '#2563EB', bg: '#EFF6FF' },
           ].map((k, i) => (
-            <div key={i} style={{
-              background: G.dark, border: `2px solid ${G.olive}`,
-              borderTop: `4px solid ${k.color}`,
+            <div key={i} className="fm-kpi" style={{
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderRadius: 10,
               padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-              boxShadow: `0 4px 0 ${G.olive}`,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: 10 }}>
+              <div style={{ background: k.bg, borderRadius: 8, padding: 10 }}>
                 <k.icon size={20} color={k.color} />
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: G.sage, textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{k.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>{k.value}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* ── MAIN CONTENT AREA ── */}
-        <div style={{ background: G.lightGray, minHeight: 'calc(100vh - 200px)' }}>
+        <div style={{ background: 'transparent', minHeight: 0 }}>
 
           {/* ═══ FORM PANEL ═══ */}
           {isFormOpen && (
             <div style={{
-              background: G.white,
-              borderBottom: `4px solid ${G.forest}`,
-              padding: '28px 28px',
-              boxShadow: `0 6px 0 ${G.sage}`,
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: 10,
+              padding: '24px 28px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              marginBottom: 16,
               animation: 'fmSlideIn .25s ease',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#111827', textTransform: 'none', letterSpacing: 'normal' }}>
                     {editingTractor ? '✏️ Edit Asset' : '📋 Register New Asset'}
                   </h2>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: G.olive }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>
                     {editingTractor ? 'Update asset details below' : 'Fill in the details to add a new machine to the registry'}
                   </p>
                 </div>
                 <button className="fm-btn" onClick={() => setIsFormOpen(false)} style={{
-                  background: '#FFEBEE', border: `2px solid ${G.error}`,
-                  padding: 8, cursor: 'pointer', color: G.error,
-                  boxShadow: `0 3px 0 #b71c1c`,
+                  width: 36, height: 36, borderRadius: 8, border: '1px solid #E5E7EB',
+                  background: '#FFFFFF', color: '#6B7280',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <X size={18} />
                 </button>
@@ -437,7 +448,7 @@ const TractorRegister = () => {
                 <div style={{ marginBottom: 16 }}>
                   <label style={lbl}>Description</label>
                   <textarea name="description" value={formData.description} onChange={handleInputChange}
-                    style={{ ...inp, minHeight: 80, resize: 'vertical' }} placeholder="Machine features, condition, attachments..." />
+                    style={{ ...inp, minHeight: 80, resize: 'vertical', padding: '10px 12px' }} placeholder="Machine features, condition, attachments..." />
                 </div>
 
                 {/* Images */}
@@ -449,22 +460,23 @@ const TractorRegister = () => {
                       const hasExisting = !!existingImages[`image${num}`];
                       const hasImg = hasNew || hasExisting;
                       return (
-                        <label key={num} style={{
+                        <label key={num} className="fm-imgdrop" style={{
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                          border: `2px dashed ${hasImg ? G.leaf : G.sage}`,
+                          border: `1px dashed ${hasImg ? '#16A34A' : '#CBD5E1'}`,
+                          borderRadius: 8,
                           padding: '12px', textAlign: 'center', cursor: 'pointer',
-                          background: hasImg ? '#E8F5E9' : G.white,
-                          transition: 'all .2s',
+                          background: hasImg ? '#F0FDF4' : '#FFFFFF',
+                          transition: 'border-color .15s ease, background .15s ease',
                           overflow: 'hidden'
                         }}>
                           {hasNew ? (
-                            <ImageIcon size={22} color={G.forest} />
+                            <ImageIcon size={22} color="#16A34A" />
                           ) : hasExisting ? (
-                            <img src={getImageUrl(existingImages[`image${num}`])} alt="img" style={{ width: 40, height: 40, objectFit: 'cover' }} />
+                            <img src={getImageUrl(existingImages[`image${num}`])} alt="img" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
                           ) : (
-                            <ImageIcon size={22} color={G.sage} />
+                            <ImageIcon size={22} color="#9CA3AF" />
                           )}
-                          <div style={{ fontSize: 12, color: hasImg ? G.forest : G.sage, marginTop: 8, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                          <div style={{ fontSize: 12, color: hasImg ? '#16A34A' : '#6B7280', marginTop: 8, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                             {hasNew ? images[`image${num}`].name : hasExisting ? 'Current Image' : `Photo ${num}`}
                           </div>
                           <input type="file" style={{ display: 'none' }} accept="image/*"
@@ -475,33 +487,27 @@ const TractorRegister = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button type="button" className="fm-btn" onClick={() => setIsFormOpen(false)} style={{
-                    padding: '11px 24px', border: `2px solid ${G.sage}`,
-                    background: G.white, color: G.text, fontWeight: 700, cursor: 'pointer', fontSize: 13,
-                    boxShadow: `0 4px 0 ${G.sage}`,
+                    height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+                    background: '#FFFFFF', color: '#111827', fontWeight: 500, cursor: 'pointer', fontSize: 14,
                   }}>Cancel</button>
 
                   {!editingTractor && (
                     <button type="button" className="fm-btn" onClick={() => submitForm('internal')} disabled={submitting} style={{
-                      padding: '11px 24px', border: `2px solid ${G.dark}`,
-                      background: submitting ? G.sage : G.dark, color: '#fff',
-                      fontWeight: 900, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13,
-                      textTransform: 'uppercase', letterSpacing: 0.5,
-                      boxShadow: submitting ? 'none' : `0 5px 0 ${G.forest}`,
-                      opacity: submitting ? 0.7 : 1,
+                      height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+                      background: '#FFFFFF', color: '#111827',
+                      fontWeight: 500, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14,
                     }}>
                       {submitting ? '⏳ Saving…' : '📋 Register Asset Only'}
                     </button>
                   )}
 
                   <button type="button" className="fm-btn" onClick={() => submitForm('public')} disabled={submitting} style={{
-                    padding: '11px 28px', border: `2px solid ${G.dark}`,
-                    background: submitting ? G.sage : G.forest, color: '#fff',
-                    fontWeight: 900, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13,
-                    textTransform: 'uppercase', letterSpacing: 0.5,
-                    boxShadow: submitting ? 'none' : `0 5px 0 ${G.dark}`,
-                    opacity: submitting ? 0.7 : 1,
+                    height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid transparent',
+                    background: submitting ? '#9CA3AF' : '#2563EB', color: '#fff',
+                    fontWeight: 500, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14,
+                    opacity: submitting ? 0.6 : 1,
                   }}>
                     {submitting ? '⏳ Saving…' : editingTractor ? '✅ Update Machine' : '🚀 Register & Publish to AgriRent'}
                   </button>
@@ -511,34 +517,36 @@ const TractorRegister = () => {
           )}
 
           {/* ═══ VEHICLE TABLE ═══ */}
-          <div style={{ padding: '24px 28px' }}>
+          <div style={{ padding: '16px 0 24px' }}>
 
             {/* Table wrapper */}
             <div style={{
-              background: G.white, border: `2px solid ${G.sage}`,
-              overflow: 'hidden', boxShadow: `0 6px 0 ${G.sage}`,
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
               {/* Table header label */}
               <div style={{
-                background: G.dark, padding: '14px 20px',
+                background: '#FFFFFF', padding: '16px 20px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                borderBottom: `3px solid ${G.olive}`,
+                borderBottom: '1px solid #E5E7EB',
               }}>
-                <span style={{ fontSize: 13, fontWeight: 900, color: G.mint, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#111827', textTransform: 'none', letterSpacing: 'normal' }}>
                   📋 Full Master Asset List — {tractors.length} Asset{tractors.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
               {loading ? (
-                <div style={{ padding: '60px 20px', textAlign: 'center', color: G.emerald }}>
-                  <Leaf size={36} color={G.sage} style={{ marginBottom: 12, animation: 'fmSpin 2s linear infinite' }} />
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Loading master asset data…</div>
+                <div style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', border: '4px solid #E5E7EB', borderTop: '4px solid #2563EB', borderRight: '4px solid #2563EB', animation: 'fmSpin 1s linear infinite', margin: '0 auto 16px' }} />
+                  <div style={{ fontWeight: 500, fontSize: 14, color: '#6B7280' }}>Loading master asset data…</div>
                 </div>
               ) : tractors.length === 0 ? (
-                <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-                  <Tractor size={48} color={G.sage} style={{ marginBottom: 14 }} />
-                  <div style={{ fontWeight: 900, fontSize: 16, color: G.dark }}>No machines in registry</div>
-                  <div style={{ color: G.olive, fontSize: 13, marginTop: 6 }}>
+                <div style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <Tractor size={26} color="#2563EB" />
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: '#111827' }}>No machines in registry</div>
+                  <div style={{ color: '#6B7280', fontSize: 14, marginTop: 6 }}>
                     Click "Add Machine" to register the first farming equipment.
                   </div>
                 </div>
@@ -546,14 +554,14 @@ const TractorRegister = () => {
                 <div style={{ overflowX: 'auto' }}>
                   <table className="fm-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ background: '#E8F5E9', borderBottom: `2px solid ${G.sage}` }}>
+                      <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                         {['#', 'Machine', 'Daily Rate', 'Asset Value', 'Publication Status', 'Actions'].map((h, i) => (
                           <th key={h} style={{
                             padding: '12px 16px',
                             textAlign: i >= 5 ? 'center' : 'left',
-                            fontSize: 11, fontWeight: 900, color: G.dark,
-                            textTransform: 'uppercase', letterSpacing: 0.8,
-                            borderRight: i < 5 ? `1px solid ${G.sage}` : 'none',
+                            fontSize: 12, fontWeight: 500, color: '#6B7280',
+                            textTransform: 'uppercase', letterSpacing: '0.03em',
+                            borderRight: 'none',
                             whiteSpace: 'nowrap',
                           }}>{h}</th>
                         ))}
@@ -564,89 +572,87 @@ const TractorRegister = () => {
                         const isPublic = !tractor.deleted_at;
                         return (
                           <tr key={tractor.id} className="fm-row" style={{
-                            borderBottom: `1px solid ${G.sage}`,
-                            background: idx % 2 === 0 ? G.white : '#F9FBE7',
                             transition: 'background .15s',
                           }}>
                             {/* # */}
-                            <td data-label="#" style={{ padding: '12px 16px', fontSize: 13, color: G.olive, fontWeight: 700, borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="#" style={{ padding: '12px 16px', fontSize: 14, color: '#9CA3AF', fontWeight: 500, whiteSpace: 'nowrap' }}>
                               {idx + 1}
                             </td>
                             {/* Machine info */}
-                            <td data-label="Machine" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 46, height: 46, background: G.sage, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <td data-label="Machine" style={{ padding: '12px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, background: '#EFF6FF', borderRadius: 8, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {tractor.image1
                                     ? <img src={getImageUrl(tractor.image1)} alt={tractor.name} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    : <Tractor size={20} color={G.dark} />}
+                                    : <Tractor size={18} color="#2563EB" />}
                                 </div>
                                 <div>
-                                  <div style={{ fontWeight: 900, fontSize: 14, color: G.dark }}>{tractor.name}</div>
-                                  <div style={{ fontSize: 11, fontWeight: 700, color: G.olive, marginTop: 2 }}>{tractor.tractorType || '—'} • {tractor.transmission} • {tractor.fuelType}</div>
+                                  <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{tractor.name}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', marginTop: 2 }}>{tractor.tractorType || '—'} • {tractor.transmission} • {tractor.fuelType}</div>
                                 </div>
                               </div>
                             </td>
                             {/* Rate */}
-                            <td data-label="Daily Rate" style={{ padding: '12px 16px', fontWeight: 900, fontSize: 13, color: G.forest, borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Daily Rate" style={{ padding: '12px 16px', fontWeight: 600, fontSize: 14, color: '#111827', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                               ETB {Number(tractor.dailyRate || tractor.daily_rate || 0).toLocaleString()}
                             </td>
                             {/* Asset Value */}
-                            <td data-label="Asset Value" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Asset Value" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 {parseFloat(tractor.asset_value || 0) > 0
-                                  ? <span style={{ fontWeight: 900, fontSize: 14, color: G.dark }}>ETB {parseFloat(tractor.asset_value).toLocaleString()}</span>
-                                  : <span style={{ fontSize: 11, color: '#BDBDBD', fontStyle: 'italic', fontWeight: 700 }}>Unset</span>}
+                                  ? <span style={{ fontWeight: 600, fontSize: 14, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>ETB {parseFloat(tractor.asset_value).toLocaleString()}</span>
+                                  : <span style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', fontWeight: 500 }}>Unset</span>}
                               </div>
                             </td>
                             {/* Publication Status */}
-                            <td data-label="Publication Status" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Publication Status" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                               {isPublic ? (
-                                <span style={{ background: '#E8F5E9', color: G.forest, padding: '4px 12px', fontSize: 11, fontWeight: 800, border: `1px solid ${G.forest}30`, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ background: '#DCFCE7', color: '#16A34A', padding: '2px 10px', fontSize: 12, fontWeight: 500, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                   <CheckCircle size={12} /> Published
                                 </span>
                               ) : (
-                                <span style={{ background: '#FFF8E1', color: '#E65100', padding: '4px 12px', fontSize: 11, fontWeight: 800, border: `1px solid #E6510030`, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ background: '#FEF3C7', color: '#B45309', padding: '2px 10px', fontSize: 12, fontWeight: 500, borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                   <EyeOff size={12} /> Internal Only
                                 </span>
                               )}
                             </td>
                             {/* Actions */}
                             <td data-label="Actions" style={{ padding: '12px 16px', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                 {!isPublic ? (
                                   <>
                                     <button className="fm-btn" title="Publish to AgriRent page" onClick={() => handlePublish(tractor.id, tractor.name)} style={{
-                                      display: 'flex', alignItems: 'center', gap: 5,
-                                      padding: '6px 12px', border: `2px solid ${G.dark}`,
-                                      background: G.forest, color: '#fff', fontSize: 11, fontWeight: 800,
-                                      cursor: 'pointer', boxShadow: `0 3px 0 ${G.dark}`, textTransform: 'uppercase'
+                                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                                      height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent',
+                                      background: '#2563EB', color: '#fff', fontSize: 13, fontWeight: 500,
+                                      cursor: 'pointer',
                                     }}>
-                                      <Send size={12} /> Publish
+                                      <Send size={13} /> Publish
                                     </button>
                                   </>
                                 ) : (
                                   <>
                                     <button className="fm-btn" title="Unpublish from AgriRent page" onClick={() => handleUnpublish(tractor.id, tractor.name)} style={{
-                                      display: 'flex', alignItems: 'center', gap: 5,
-                                      padding: '6px 12px', border: `2px solid ${G.warning}`,
-                                      background: '#FFF8E1', color: '#E65100', fontSize: 11, fontWeight: 800,
-                                      cursor: 'pointer', boxShadow: '0 3px 0 #bf360c', textTransform: 'uppercase'
+                                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                                      height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent',
+                                      background: '#FEF3C7', color: '#B45309', fontSize: 13, fontWeight: 500,
+                                      cursor: 'pointer',
                                     }}>
-                                      <EyeOff size={12} /> Unpublish
+                                      <EyeOff size={13} /> Unpublish
                                     </button>
                                   </>
                                 )}
                                 <button className="fm-btn" title="Edit" onClick={() => openEdit(tractor)} style={{
-                                  padding: '7px 10px', border: `2px solid ${G.sky}`,
-                                  background: '#E3F2FD', color: '#1565C0', cursor: 'pointer',
-                                  boxShadow: '0 3px 0 #0d47a1', display: 'flex', alignItems: 'center',
+                                  width: 32, height: 32, borderRadius: 8, border: '1px solid transparent',
+                                  background: '#E0F2FE', color: '#0284C7', cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button className="fm-btn" title="Delete permanently" onClick={() => handleHardDelete(tractor.id, tractor.name)} style={{
-                                  padding: '7px 10px', border: `2px solid ${G.error}`,
-                                  background: '#FFEBEE', color: G.error, cursor: 'pointer',
-                                  boxShadow: `0 3px 0 #b71c1c`, display: 'flex', alignItems: 'center',
+                                  width: 32, height: 32, borderRadius: 8, border: '1px solid transparent',
+                                  background: '#FEE2E2', color: '#B91C1C', cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
                                   <Trash2 size={14} />
                                 </button>
@@ -661,7 +667,7 @@ const TractorRegister = () => {
               )}
             </div>
             
-            <div style={{ marginTop: 16, fontSize: 12, color: G.emerald, fontWeight: 600 }}>
+            <div style={{ marginTop: 12, fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
               💡 Finance can also view and edit the Asset Value via the Finance Dashboard.
             </div>
           </div>
@@ -672,13 +678,13 @@ const TractorRegister = () => {
 };
 
 const lbl = {
-  display: 'block', fontSize: 12, fontWeight: 800, color: G.dark,
-  marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
+  display: 'block', fontSize: 12, fontWeight: 500, color: '#6B7280',
+  marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.03em',
 };
 const inp = {
-  width: '100%', padding: '10px 12px', border: `2px solid ${G.sage}`,
-  fontSize: 13, boxSizing: 'border-box', background: '#F9FBE7',
-  fontFamily: 'inherit', color: G.text, outline: 'none',
+  width: '100%', height: 36, padding: '0 12px', border: '1px solid #E5E7EB',
+  borderRadius: 8, fontSize: 14, boxSizing: 'border-box', background: '#FFFFFF',
+  fontFamily: 'inherit', color: '#111827', outline: 'none',
 };
 
 export default TractorRegister;
