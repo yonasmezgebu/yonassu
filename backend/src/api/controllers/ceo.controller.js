@@ -1727,11 +1727,13 @@ module.exports.approveStoreUpdate = catchAsync(async (req, res) => {
   if (typeof beforeState === 'string') beforeState = JSON.parse(beforeState);
 
   // Apply to general_store_materials
+  // NOTE: updateReq.material_id stores the integer PK (id) of the row in general_store_materials
   if (updateReq.update_type === 'STORE_QUANTITY_UPDATE' || updateReq.update_type === 'STORE_VALUE_UPDATE' || updateReq.update_type === 'STORE_MATERIAL_UPDATE') {
     const { material_name, category, department, unit, quantity_in_store, unit_value, total_value, reorder_level } = afterState;
-    await db('general_store_materials').where({ material_id: updateReq.material_id }).update({
+    const updated = await db('general_store_materials').where('id', updateReq.material_id).update({
       material_name, category, department, unit, quantity_in_store, unit_value, total_value, reorder_level, updated_at: db.fn.now()
     });
+    if (!updated) throw new AppError('Material not found in database — update aborted', 404);
   }
 
   await db('store_update_approvals').where({ id }).update({
@@ -1741,13 +1743,28 @@ module.exports.approveStoreUpdate = catchAsync(async (req, res) => {
   });
 
   const materialName = afterState.material_name || updateReq.material_id;
+
+  // Build clean, human-readable before/after states (no internal DB fields)
+  const cleanFields = (state) => state ? {
+    'Material Name': state.material_name || '—',
+    'Category':      state.category      || '—',
+    'Department':    state.department     || '—',
+    'Unit':          state.unit           || '—',
+    'Quantity':      state.quantity_in_store != null ? state.quantity_in_store : '—',
+    'Unit Value (ETB)': state.unit_value  != null ? state.unit_value : '—',
+    'Total Value (ETB)': state.total_value!= null ? state.total_value : '—',
+    'Reorder Level': state.reorder_level != null ? state.reorder_level : '—',
+  } : null;
+
   await audit(updateReq.update_type, req.user.id, {
     ip: req.ip,
     resource: 'STORE_MATERIAL',
     resourceId: updateReq.material_id,
-    details: { action: 'approved', material: materialName },
-    before_state: beforeState,
-    after_state: afterState
+    module: 'Store',
+    recordIdentifier: materialName,
+    details: { action: 'CEO Approved', material: materialName },
+    beforeState: cleanFields(beforeState),
+    afterState: cleanFields(afterState)
   });
 
   if (updateReq.update_type === 'STORE_VALUE_UPDATE' || updateReq.update_type === 'STORE_MATERIAL_UPDATE') {
