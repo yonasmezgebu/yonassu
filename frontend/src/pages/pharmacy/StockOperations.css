@@ -1,0 +1,975 @@
+/* =============================================================
+   StockOperations.css
+   Enterprise design pass — PharmacyStockOperations + sub-pages
+   Rules: 8px grid · flat · gold hover · no logic changes
+   ============================================================= */
+
+/* ── 0. CSS Variables ─────────────────────────────────────── */
+.pso-root {
+  --color-primary:       #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page:       #F5F6FA;
+  --color-bg-card:       #FFFFFF;
+  --color-border:        #E5E7EB;
+  --color-text-primary:  #111827;
+  --color-text-secondary:#6B7280;
+  --color-text-muted:    #9CA3AF;
+  --color-success:       #16A34A;
+  --color-success-bg:    #DCFCE7;
+  --color-danger:        #DC2626;
+  --color-danger-bg:     #FEE2E2;
+  --color-warning:       #D97706;
+  --color-warning-bg:    #FEF3C7;
+  --color-info:          #0284C7;
+  --color-info-bg:       #E0F2FE;
+  --color-gold:          #FBBF24;
+  --color-gold-border:   #F59E0B;
+  --color-gold-dark:     #92400E;
+
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --transition: 150ms ease-in-out;
+  --font: 'Inter', 'Segoe UI', 'Roboto', -apple-system, sans-serif;
+}
+
+/* ── 1. Root wrapper ──────────────────────────────────────── */
+.pso-root {
+  font-family: var(--font) !important;
+  background: var(--color-bg-page) !important;
+  min-height: 100vh;
+  width: 100%;
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Kill all inline animation noise from original component */
+.pso-root * {
+  font-family: var(--font) !important;
+  box-sizing: border-box;
+}
+
+/* ── 2. Page Header ───────────────────────────────────────── */
+.pso-header {
+  background: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+
+.pso-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pso-header-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--color-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.pso-title {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  color: var(--color-text-primary) !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.pso-subtitle {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: var(--color-text-secondary) !important;
+  margin: 2px 0 0 !important;
+  line-height: 1.5 !important;
+}
+
+.pso-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── 3. Status Pills ──────────────────────────────────────── */
+.pso-status-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pso-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.pso-pill-green  { background: var(--color-success-bg); color: var(--color-success);  border-color: #bbf7d0; }
+.pso-pill-blue   { background: var(--color-info-bg);    color: var(--color-info);     border-color: #bae6fd; }
+.pso-pill-amber  { background: var(--color-warning-bg); color: var(--color-warning);  border-color: #fde68a; }
+
+/* ── 4. Refresh Button ────────────────────────────────────── */
+.pso-btn-refresh {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  box-shadow: var(--shadow-sm) !important;
+  white-space: nowrap !important;
+}
+.pso-btn-refresh:hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.pso-btn-refresh:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+.pso-btn-refresh:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ── 5. Tab Bar ───────────────────────────────────────────── */
+.pso-tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+}
+.pso-tab-bar::-webkit-scrollbar { display: none; }
+
+.pso-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 20px !important;
+  height: 48px !important;
+  min-width: 140px !important;
+  border: none !important;
+  border-bottom: 3px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--color-text-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  white-space: nowrap !important;
+  scroll-snap-align: start !important;
+  flex-shrink: 0 !important;
+  box-shadow: none !important;
+  position: relative !important;
+}
+.pso-tab:hover:not(.pso-tab-active) {
+  background: var(--color-gold) !important;
+  color: #111827 !important;
+  border-bottom-color: var(--color-gold-border) !important;
+}
+.pso-tab-active {
+  background: transparent !important;
+  color: var(--color-primary) !important;
+  border-bottom-color: var(--color-primary) !important;
+  font-weight: 600 !important;
+}
+
+.pso-tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+/* ── 6. Content Area ──────────────────────────────────────── */
+.pso-content {
+  flex: 1;
+  padding: 24px;
+  overflow-x: hidden;
+}
+@media (max-width: 1024px) { .pso-content { padding: 16px; } }
+@media (max-width: 768px)  { .pso-content { padding: 12px; } }
+
+/* ── 7. Sub-page universal overrides (PharmacyInventoryView, LowStock, Expiring, Expired) ── */
+
+/* Card / Panel overrides */
+.pso-content > div,
+.pso-content .card {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── 7a. Sub-page inner headers & titles ──────────────────── */
+.pso-content h1,
+.pso-content h2 {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: var(--color-text-primary) !important;
+  line-height: 1.3 !important;
+  margin-bottom: 4px !important;
+}
+.pso-content h3 {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: var(--color-text-primary) !important;
+}
+.pso-content p {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--color-text-secondary) !important;
+  line-height: 1.5 !important;
+}
+
+/* ── 7b. ALL Buttons ────────────────────── */
+.pso-root button:not(.pso-tab) {
+  border-radius: var(--radius-md) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  white-space: nowrap !important;
+}
+.pso-root button:not(.pso-tab):hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.pso-root button:not(.pso-tab):active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+.pso-root button:not(.pso-tab):disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* Primary action buttons (Edit, Update, Save, Submit, Confirm) */
+.pso-root button[style*="background:#2563"],
+.pso-root button[style*="background: #2563"],
+.pso-root button[class*="primary"],
+.pso-root button[class*="btn-primary"],
+.pso-root button[class*="save"],
+.pso-root button[class*="submit"] {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+.pso-root button[class*="primary"]:hover:not(:disabled),
+.pso-root button[class*="btn-primary"]:hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+}
+
+/* Danger buttons (Delete, Cancel, Reject) */
+.pso-root button[class*="danger"],
+.pso-root button[class*="delete"],
+.pso-root button[class*="cancel"] {
+  background: var(--color-bg-card) !important;
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+}
+.pso-root button[class*="danger"]:hover:not(:disabled),
+.pso-root button[class*="delete"]:hover:not(:disabled),
+.pso-root button[class*="cancel"]:hover:not(:disabled) {
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+}
+
+/* ── 7c. Inputs, Selects, Textareas ──────────────────────── */
+.pso-root input,
+.pso-root select,
+.pso-root textarea {
+  height: 36px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  padding: 0 12px !important;
+  font-size: 14px !important;
+  font-family: var(--font) !important;
+  color: var(--color-text-primary) !important;
+  background: var(--color-bg-card) !important;
+  outline: none !important;
+  transition: border-color var(--transition), box-shadow var(--transition) !important;
+  width: 100%;
+}
+.pso-root textarea { height: auto !important; padding: 8px 12px !important; }
+.pso-root input:focus,
+.pso-root select:focus,
+.pso-root textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+.pso-root input::placeholder { color: var(--color-text-muted) !important; }
+
+/* ── 7d. Tables ───────────────────────────────────────────── */
+.pso-content table {
+  width: 100%;
+  border-collapse: collapse !important;
+  font-size: 14px !important;
+}
+.pso-content thead th {
+  background: #F9FAFB !important;
+  color: var(--color-text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  white-space: nowrap !important;
+}
+.pso-content tbody td {
+  padding: 14px 16px !important;
+  font-size: 14px !important;
+  color: var(--color-text-primary) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  vertical-align: middle !important;
+  line-height: 1.5 !important;
+  background: transparent !important;
+  font-weight: 400 !important;
+}
+.pso-content tbody tr {
+  transition: background var(--transition) !important;
+  background: var(--color-bg-card) !important;
+}
+.pso-content tbody tr:hover {
+  background: #F9FAFB !important;
+}
+.pso-content tbody tr:last-child td { border-bottom: none !important; }
+
+/* Table scroll wrapper */
+.pso-content .table-wrap,
+.pso-content [class*="table-wrap"],
+.pso-content [style*="overflow-x"] {
+  overflow-x: auto !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  background: var(--color-bg-card) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.pso-content table { min-width: 700px; }
+
+/* ── 7e. Badges ───────────────────────────────────────────── */
+.pso-content [class*="badge"],
+.pso-content span[style*="border-radius"],
+.pso-content span[style*="borderRadius"] {
+  border-radius: 9999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+/* ── 7f. Cards inside sub-pages ───────────────────────────── */
+.pso-content [class*="card"],
+.pso-content [style*="borderRadius: 10"],
+.pso-content [style*="border-radius: 10"] {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  background: var(--color-bg-card) !important;
+  transition: box-shadow var(--transition), transform var(--transition) !important;
+}
+.pso-content [class*="card"]:hover {
+  box-shadow: var(--shadow-md) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* KPI / stat cards grid */
+.pso-content .kpi-grid,
+.pso-content [class*="kpi"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ── 7g. Toolbar / action bar ────────────────────────────── */
+.pso-content .toolbar,
+.pso-content [class*="toolbar"],
+.pso-content [class*="actions"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ── 7h. Search inputs ────────────────────────────────────── */
+.pso-content [class*="search"] input,
+.pso-content input[type="search"],
+.pso-content input[placeholder*="search" i],
+.pso-content input[placeholder*="Search" i] {
+  padding-left: 36px !important;
+}
+
+/* ── 7i. Override any remaining brutalist inline box-shadows ── */
+.pso-content [style*="4px 4px 0"],
+.pso-content [style*="6px 6px 0"],
+.pso-content [style*="box-shadow: inset"] {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── 7j. Override any remaining brutalist borders ─────────── */
+.pso-content [style*="3px solid"],
+.pso-content [style*="4px solid"],
+.pso-content [style*="border: 3px"],
+.pso-content [style*="border: 4px"] {
+  border: 1px solid var(--color-border) !important;
+}
+
+/* ── 7k. Override brutalist dark headers ──────────────────── */
+.pso-content [style*="background: #064e3b"],
+.pso-content [style*="background: rgb(6, 78, 59)"],
+.pso-content [style*="background: #2A3F08"],
+.pso-content [style*="background:#064e3b"],
+.pso-content [style*="background:#2A3F08"],
+.pso-content [style*="background: #1a1a2e"],
+.pso-content [style*="background: #0f172a"],
+.pso-content [style*="background:#0f172a"] {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Override lime/peach/dark inline backgrounds */
+.pso-content [style*="background: #E5FBAD"],
+.pso-content [style*="background:#E5FBAD"],
+.pso-content [style*="background: #FEFACE"],
+.pso-content [style*="background:#FEFACE"] {
+  background: var(--color-bg-page) !important;
+}
+
+/* Fix any white text that was meant for dark backgrounds */
+.pso-content [style*="color: white"],
+.pso-content [style*="color:white"],
+.pso-content [style*="color: #fff"],
+.pso-content [style*="color:#fff"] {
+  /* keep white only inside colored badges/buttons — don't globally override */
+}
+
+/* ── 7l. Inline style typography overrides ────────────────── */
+.pso-content [style*="fontWeight: 900"],
+.pso-content [style*="font-weight: 900"] {
+  font-weight: 600 !important;
+}
+.pso-content [style*="fontSize: 28"],
+.pso-content [style*="font-size: 28px"] {
+  font-size: 24px !important;
+}
+.pso-content [style*="textTransform: uppercase"],
+.pso-content [style*="text-transform: uppercase"] {
+  letter-spacing: 0.05em !important;
+}
+
+/* ── 7m. Inline color text overrides ─────────────────────── */
+.pso-content [style*="color: #2A3F08"],
+.pso-content [style*="color:#2A3F08"] {
+  color: var(--color-text-primary) !important;
+}
+.pso-content [style*="color: #50760F"],
+.pso-content [style*="color:#50760F"] {
+  color: var(--color-text-secondary) !important;
+}
+.pso-content [style*="color: #E5FBAD"],
+.pso-content [style*="color:#E5FBAD"] {
+  color: var(--color-text-primary) !important;
+}
+
+/* ── 8. Modals & Overlays ─────────────────────────────────── */
+.pso-root [class*="modal"],
+.pso-root [class*="overlay"],
+.pso-root [style*="position: fixed"][style*="rgba(0,0,0"],
+.pso-root [style*="position:fixed"][style*="rgba(0,0,0"] {
+  backdrop-filter: blur(2px) !important;
+}
+.pso-root [class*="modal-content"],
+.pso-root [class*="modal"] > div:last-child {
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,.12) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+/* ── 9. Toasts & Notifications ────────────────────────────── */
+.pso-root [class*="toast"],
+.pso-root [class*="alert"],
+.pso-root [class*="notification"] {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+}
+
+/* ── 10. Spinner / Loading ────────────────────────────────── */
+.pso-root [class*="spinner"],
+.pso-root [class*="loading"],
+.pso-root [class*="loader"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 48px !important;
+}
+
+/* ── 11. Responsive ───────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .pso-header { padding: 16px; }
+  .pso-tab-bar { padding: 0 16px; }
+  .pso-content .kpi-grid,
+  .pso-content [class*="kpi"] {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .pso-header {
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pso-status-pills { display: none; } /* collapse pills on mobile */
+  .pso-tab-bar { padding: 0 12px; }
+  .pso-tab { min-width: 120px !important; padding: 0 14px !important; }
+  .pso-content {
+    padding: 12px;
+  }
+  .pso-content .kpi-grid,
+  .pso-content [class*="kpi"] {
+    grid-template-columns: 1fr;
+  }
+  .pso-content button {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .pso-title { font-size: 20px !important; }
+  .pso-tab { min-width: 100px !important; font-size: 12px !important; }
+}
+
+/* ── 12. Extra sub-page overrides ─────────────────────────── */
+
+/* Kill gradient table headers (LowStock uses linear-gradient on thead tr) */
+.pso-content thead tr {
+  background: #F9FAFB !important;
+}
+
+/* Remove zebra striping from inline JS — always white rows */
+.pso-content tbody tr[style*="fafbfc"],
+.pso-content tbody tr[style*="#fff1f2"],
+.pso-content tbody tr[style*="fafafa"] {
+  background: var(--color-bg-card) !important;
+}
+
+/* Kill gradient on any button (LowStock "Request M20" has gradient) */
+.pso-content button[style*="linear-gradient"] {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border: 1px solid var(--color-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.pso-content button[style*="linear-gradient"]:hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+}
+
+/* Warning summary banner normalise */
+.pso-content [style*="background: #fffbeb"],
+.pso-content [style*="background:#fffbeb"] {
+  background: var(--color-warning-bg) !important;
+  border-color: #fde68a !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Max width cap for ultra-wide screens */
+@media (min-width: 1536px) {
+  .pso-header,
+  .pso-tab-bar { padding-left: max(24px, calc((100% - 1536px) / 2 + 24px)); padding-right: max(24px, calc((100% - 1536px) / 2 + 24px)); }
+  .pso-content { padding-left: max(24px, calc((100% - 1536px) / 2 + 24px)); padding-right: max(24px, calc((100% - 1536px) / 2 + 24px)); }
+}
+
+/* ── 13. Safe edge on all sides ──────────────────────────── */
+.pso-root { padding: 10px; }
+.pso-header, .pso-tab-bar { margin: 0 -10px; width: calc(100% + 20px); }
+@media (max-width: 1024px) { .pso-root { padding: 6px; } .pso-header, .pso-tab-bar { margin: 0 -6px; width: calc(100% + 12px); } }
+@media (max-width: 768px)  { .pso-root { padding: 4px; } .pso-header, .pso-tab-bar { margin: 0 -4px; width: calc(100% + 8px); } }
+
+/* ── 14. Named Button Classes ────────────────────────────── */
+/* Primary: solid blue → gold on hover */
+.btn-action-primary {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 36px !important;
+  padding: 0 18px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-primary) !important;
+  background: var(--color-primary) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  box-shadow: var(--shadow-sm) !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+}
+.btn-action-primary:hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.btn-action-primary:active:not(:disabled) { transform: translateY(0) !important; }
+.btn-action-primary:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
+
+/* Secondary: white/border → gold on hover */
+.btn-action-secondary {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  box-shadow: var(--shadow-sm) !important;
+  white-space: nowrap !important;
+}
+.btn-action-secondary:hover:not(:disabled) {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.btn-action-secondary:active:not(:disabled) { transform: translateY(0) !important; }
+.btn-action-secondary:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
+
+/* Danger: red border + text → red bg on hover */
+.btn-action-danger {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-danger) !important;
+  background: transparent !important;
+  color: var(--color-danger) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all var(--transition) !important;
+  box-shadow: var(--shadow-sm) !important;
+  white-space: nowrap !important;
+}
+.btn-action-danger:hover:not(:disabled) {
+  background: var(--color-danger-bg) !important;
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.btn-action-danger:active:not(:disabled) { transform: translateY(0) !important; }
+.btn-action-danger:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
+
+/* ── 15. Named Input Class ───────────────────────────────── */
+.pso-input {
+  height: 36px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  display: block;
+}
+.pso-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+.pso-input::placeholder { color: var(--color-text-muted); }
+textarea.pso-input  { height: auto; padding: 8px 12px; resize: vertical; }
+
+/* ── 16. Named Card Class ────────────────────────────────── */
+.pso-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
+  margin-bottom: 24px;
+}
+.pso-card:last-child { margin-bottom: 0; }
+
+/* ── 17. Named Table Class ───────────────────────────────── */
+.pso-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 700px;
+}
+.pso-table thead th {
+  background: #F9FAFB;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.pso-table tbody td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  line-height: 1.5;
+  background: transparent;
+}
+.pso-table tbody tr {
+  background: var(--color-bg-card);
+  transition: background var(--transition);
+}
+.pso-table tbody tr:hover { background: #F9FAFB; }
+.pso-table tbody tr:last-child td { border-bottom: none; }
+
+/* Table scroll wrapper */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+/* ── 18. Named Badge Class ───────────────────────────────── */
+.pso-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ── 19. Named KPI Grid ──────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .kpi-grid { grid-template-columns: 1fr; } }
+
+/* ── 20. Popover Panel (Assign Worker dropdown near button) ─ */
+.pso-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  width: 450px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+  overflow: hidden;
+  animation: pso-popover-in 150ms ease-out;
+}
+@keyframes pso-popover-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pso-popover-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: #F9FAFB;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pso-popover-header h2 {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--color-text-primary) !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+}
+.pso-popover-body { padding: 20px; }
+.pso-popover-close {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  min-width: unset !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-text-muted) !important;
+  flex-shrink: 0 !important;
+}
+.pso-popover-close:hover { background: var(--color-border) !important; color: var(--color-text-primary) !important; transform: none !important; }
+
+/* Form group inside popover */
+.pso-form-group { margin-bottom: 16px; }
+.pso-form-group:last-of-type { margin-bottom: 0; }
+.pso-form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.pso-form-label .required { color: var(--color-danger); margin-left: 2px; }
+
+/* Sub-role toggle buttons */
+.pso-subrole-group { display: flex; gap: 8px; }
+.pso-subrole-btn {
+  flex: 1;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.pso-subrole-btn:hover { background: #F9FAFB; border-color: var(--color-primary); color: var(--color-primary); }
+.pso-subrole-btn.active {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+.pso-subrole-btn.active:hover {
+  background: var(--color-gold) !important;
+  border-color: var(--color-gold-border) !important;
+  color: #111827 !important;
+}
+
+/* Selected employee preview card */
+.pso-employee-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-bg-page);
+}
+.pso-employee-preview .name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.pso-employee-preview .email { font-size: 11px; color: var(--color-text-secondary); margin-top: 1px; }
+
+/* Popover action row */
+.pso-popover-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Error/success banners inside popover */
+.pso-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 400;
+  margin-bottom: 14px;
+}
+.pso-alert-danger  { background: var(--color-danger-bg);  color: var(--color-danger);  border: 1px solid #fca5a5; }
+.pso-alert-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid #86efac; }
+.pso-alert-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid #fde68a; }
+
+/* ── 21. Responsive mobile tap target boost ──────────────── */
+@media (max-width: 768px) {
+  .btn-action-primary,
+  .btn-action-secondary,
+  .btn-action-danger {
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 10px 16px !important;
+  }
+  .pso-popover { width: calc(100vw - 16px); right: -8px; }
+}
