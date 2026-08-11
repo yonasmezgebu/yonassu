@@ -352,7 +352,7 @@ const AgriRentOrders = () => {
   }
 
   return (
-    <div style={S.page}>
+    <div className="aro-page" style={S.page}>
       <Toast toasts={toasts} remove={removeToast} />
 
       {/* ── TOP BANNER ── */}
