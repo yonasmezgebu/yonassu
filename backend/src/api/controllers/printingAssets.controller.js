@@ -12,8 +12,8 @@ const storeLog = (req, action, recordIdentifier, previousValue, newValue) => {
     userId:           u.id || null,
     userName:         u.fullName || u.full_name || u.username || 'System',
     role:             Array.isArray(u.roles) ? u.roles.join(', ') : (u.role_names || u.role || 'Unknown'),
-    department:       u.departmentName || u.department_name || 'Store',
-    module:           'Store',
+    department:       u.departmentName || u.department_name || 'Printing',
+    module:           'Printing',
     action,
     recordIdentifier: String(recordIdentifier || ''),
     previousValue,
@@ -67,6 +67,9 @@ exports.registerMachine = async (req, res) => {
       moved_by: registered_by || (req.user && req.user.fullName) || 'Store Keeper',
       action_type: 'Register', notes: `Machine registered: ${machine_name}`,
     });
+    storeLog(req, 'PRINTING_MACHINE_REGISTERED', machine_id, null, {
+      machine_name, model_serial, department: department || 'Printing',
+    });
     ok(res, { machine_id }, 'Machine registered successfully');
   } catch (e) { err(res, e.message); }
 };
@@ -75,7 +78,12 @@ exports.updateMachineStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, condition_notes } = req.body;
+    const machine = await db('printing_assets_machines').where({ id }).first();
+    if (!machine) return err(res, 'Machine not found', 404);
     await db('printing_assets_machines').where({ id }).update({ status, condition_notes, updated_at: db.fn.now() });
+    storeLog(req, 'PRINTING_MACHINE_STATUS_UPDATED', machine.machine_id || String(id),
+      { status: machine.status, condition_notes: machine.condition_notes },
+      { status, condition_notes });
     ok(res, null, 'Machine status updated');
   } catch (e) { err(res, e.message); }
 };
@@ -94,6 +102,9 @@ exports.updateMachineValue = async (req, res) => {
       moved_by: (req.user && req.user.fullName) || 'Finance Officer',
       notes: `Internal value updated to ETB ${internal_value}`,
     });
+    storeLog(req, 'PRINTING_MACHINE_VALUE_UPDATED', machine ? machine.machine_id : String(id),
+      machine ? { internal_value: machine.internal_value } : null,
+      { internal_value });
     ok(res, null, 'Internal value updated');
   } catch (e) { err(res, e.message); }
 };
@@ -142,6 +153,10 @@ exports.registerMaterial = async (req, res) => {
       moved_by: registered_by || (req.user && req.user.fullName) || 'Store Keeper',
       action_type: 'Register', notes: `Material registered: ${material_name}, qty: ${qty}`,
     });
+    storeLog(req, 'PRINTING_MATERIAL_REGISTERED', material_id, null, {
+      material_name, category: category || 'Other', unit: unit || 'unit',
+      quantity_in_store: qty, department: department || 'Printing',
+    });
     ok(res, { material_id }, 'Material registered successfully');
   } catch (e) { err(res, e.message); }
 };
@@ -164,14 +179,29 @@ exports.updateMaterialQuantity = async (req, res) => {
     
     const afterValue = { ...mat, quantity_in_store: qty, total_value };
 
+    // Strip internal DB fields — only keep human-readable business fields
+    const cleanSnap = (s) => ({
+      material_name:    s.material_name,
+      category:         s.category,
+      department:       s.department,
+      unit:             s.unit,
+      quantity_in_store: s.quantity_in_store,
+      unit_value:       s.unit_value,
+      total_value:      s.total_value,
+      reorder_level:    s.reorder_level,
+    });
+
     await db('store_update_approvals').insert({
       material_id: id,
       requested_by: req.user ? req.user.id : null,
       update_type: 'STORE_QUANTITY_UPDATE',
-      before_state: JSON.stringify(previousValue),
-      after_state: JSON.stringify(afterValue)
+      before_state: JSON.stringify(cleanSnap(previousValue)),
+      after_state: JSON.stringify(cleanSnap(afterValue))
     });
 
+    storeLog(req, 'PRINTING_MATERIAL_QTY_UPDATE_REQUESTED', mat.material_id,
+      { quantity_in_store: previousValue.quantity_in_store },
+      { quantity_in_store: qty });
     ok(res, null, 'Quantity update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
@@ -192,14 +222,28 @@ exports.updateMaterialValue = async (req, res) => {
     
     const afterValue = { ...mat, unit_value: uv, total_value };
 
+    const cleanSnap = (s) => ({
+      material_name:    s.material_name,
+      category:         s.category,
+      department:       s.department,
+      unit:             s.unit,
+      quantity_in_store: s.quantity_in_store,
+      unit_value:       s.unit_value,
+      total_value:      s.total_value,
+      reorder_level:    s.reorder_level,
+    });
+
     await db('store_update_approvals').insert({
       material_id: id,
       requested_by: req.user ? req.user.id : null,
       update_type: 'STORE_VALUE_UPDATE',
-      before_state: JSON.stringify(previousValue),
-      after_state: JSON.stringify(afterValue)
+      before_state: JSON.stringify(cleanSnap(previousValue)),
+      after_state: JSON.stringify(cleanSnap(afterValue))
     });
 
+    storeLog(req, 'PRINTING_MATERIAL_VALUE_UPDATE_REQUESTED', mat.material_id,
+      { unit_value: previousValue.unit_value },
+      { unit_value: uv });
     ok(res, null, 'Unit value update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
@@ -225,14 +269,28 @@ exports.updateMaterialFull = async (req, res) => {
       quantity_in_store: qty, unit_value: uv, total_value, reorder_level: reorder
     };
 
+    const cleanSnap = (s) => ({
+      material_name:    s.material_name,
+      category:         s.category,
+      department:       s.department,
+      unit:             s.unit,
+      quantity_in_store: s.quantity_in_store,
+      unit_value:       s.unit_value,
+      total_value:      s.total_value,
+      reorder_level:    s.reorder_level,
+    });
+
     await db('store_update_approvals').insert({
       material_id: id,
       requested_by: req.user ? req.user.id : null,
       update_type: 'STORE_MATERIAL_UPDATE',
-      before_state: JSON.stringify(previousValue),
-      after_state: JSON.stringify(afterValue)
+      before_state: JSON.stringify(cleanSnap(previousValue)),
+      after_state: JSON.stringify(cleanSnap(afterValue))
     });
 
+    storeLog(req, 'PRINTING_MATERIAL_UPDATE_REQUESTED', mat.material_id,
+      { material_name: previousValue.material_name, quantity_in_store: previousValue.quantity_in_store },
+      { material_name, quantity_in_store: qty, unit_value: uv });
     ok(res, null, 'Update request sent to CEO for approval');
   } catch (e) { err(res, e.message); }
 };
@@ -253,6 +311,8 @@ exports.initiateMachineMoveRequest = async (req, res) => {
       action_type: 'Move to Production',
       notes: (notes || `Move request for job: ${job_reference || 'N/A'}`) + ' | PENDING_APPROVAL',
     });
+    storeLog(req, 'PRINTING_MACHINE_MOVE_REQUESTED', machine_id,
+      { status: machine.status }, { status: 'Pending Approval', job_reference: job_reference || null });
     ok(res, null, 'Movement request submitted. Awaiting supervisor approval.');
   } catch (e) { err(res, e.message); }
 };
@@ -274,6 +334,9 @@ exports.initiateMaterialMoveRequest = async (req, res) => {
       action_type: 'Move to Production',
       notes: (notes || `Move request for job: ${job_reference || 'N/A'}`) + ' | PENDING_APPROVAL',
     });
+    storeLog(req, 'PRINTING_MATERIAL_MOVE_REQUESTED', material_id,
+      { quantity_in_store: material.quantity_in_store },
+      { quantity_requested: qty, job_reference: job_reference || null });
     ok(res, null, 'Material movement request submitted. Awaiting supervisor approval.');
   } catch (e) { err(res, e.message); }
 };
@@ -315,7 +378,10 @@ exports.directIssueMaterial = async (req, res) => {
       action_type: 'Issue to Department',
       notes: `Requested by: ${requested_by} | Ref: ${job_reference || 'N/A'}`
     });
-    
+
+    storeLog(req, 'PRINTING_MATERIAL_ISSUED', material_id,
+      { quantity_in_store: mat.quantity_in_store },
+      { quantity_issued: qty, department, requested_by });
     ok(res, { remaining_balance: newQty }, 'Material successfully issued to department.');
   } catch (e) { err(res, e.message); }
 };
@@ -374,6 +440,9 @@ exports.approveMove = async (req, res) => {
         await db('printing_production_materials').insert({ material_id: logEntry.item_id, quantity_moved: qty, quantity_consumed: 0, quantity_remaining: qty, moved_date: db.fn.now(), approved_by: approver });
       }
     }
+    storeLog(req, logEntry.item_type === 'Machine' ? 'PRINTING_MACHINE_MOVE_APPROVED' : 'PRINTING_MATERIAL_MOVE_APPROVED',
+      logEntry.id, { action_type: logEntry.action_type, item_id: logEntry.item_id },
+      { approved_by: approver, notes: (logEntry.notes || '').replace(' | PENDING_APPROVAL', '') + ' | APPROVED' });
     ok(res, null, 'Move approved successfully');
   } catch (e) { err(res, e.message); }
 };
@@ -393,9 +462,10 @@ exports.updateProductionMachineStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const prod = await db('printing_production_machines').where({ id }).first();
+    if (!prod) return err(res, 'Production machine not found', 404);
     await db('printing_production_machines').where({ id }).update({ status, updated_at: db.fn.now() });
     if (status === 'Returned to Store') {
-      const prod = await db('printing_production_machines').where({ id }).first();
       if (prod) {
         const machine = await db('printing_assets_machines').where({ machine_id: prod.machine_id }).first();
         await db('printing_assets_machines').where({ machine_id: prod.machine_id }).update({ status: 'In Store', updated_at: db.fn.now() });
@@ -409,6 +479,8 @@ exports.updateProductionMachineStatus = async (req, res) => {
         });
       }
     }
+    storeLog(req, 'PRINTING_PROD_MACHINE_STATUS_UPDATED', prod.machine_id,
+      { status: prod.status }, { status });
     ok(res, null, 'Production machine status updated');
   } catch (e) { err(res, e.message); }
 };
@@ -495,6 +567,9 @@ exports.consumeMaterial = async (req, res) => {
       action_type: 'Consume',
       notes: `Consumed ${qty} ${mat ? mat.unit : 'units'} of ${mat ? mat.material_name : material_id}`,
     });
+    storeLog(req, 'PRINTING_MATERIAL_CONSUMED', material_id,
+      { quantity_remaining: totalRemaining },
+      { quantity_consumed: qty, quantity_remaining: totalRemaining - qty });
     ok(res, { quantity_remaining: totalRemaining - qty }, 'Material consumption logged');
   } catch (e) { err(res, e.message); }
 };
@@ -625,6 +700,9 @@ exports.createMaterialRequest = async (req, res) => {
 
     const newReq = await db('printing_material_requests').where('id', newId).first();
 
+    storeLog(req, 'PRINTING_MATERIAL_REQUEST_CREATED', newReq.request_code, null, {
+      material_name: mat.material_name, quantity_requested: qty, status,
+    });
     if (status === 'PENDING') {
       try {
         await notificationService.sendNotification('CEO', null, {
@@ -729,6 +807,8 @@ exports.decideMaterialRequest = async (req, res) => {
       } catch (e) { /* non-fatal */ }
     }
 
+    storeLog(req, 'PRINTING_MATERIAL_REQUEST_DECIDED', request.request_code,
+      { status: request.status }, { status: decision, reason: reason || null });
     ok(res, updated, `Request ${decision}`);
   } catch (e) { err(res, e.message); }
 };
@@ -797,6 +877,9 @@ exports.shipMaterialRequest = async (req, res) => {
       });
     } catch (e) { /* non-fatal */ }
 
+    storeLog(req, 'PRINTING_MATERIAL_REQUEST_SHIPPED', updated.request_code,
+      { quantity_requested: updated.quantity_requested },
+      { quantity_shipped: qty });
     ok(res, updated, 'Material shipped successfully');
   } catch (e) { err(res, e.message); }
 };
@@ -898,6 +981,9 @@ exports.receiveMaterialRequest = async (req, res) => {
       } catch (e) { /* non-fatal */ }
     }
 
+    storeLog(req, isMatch ? 'PRINTING_MATERIAL_REQUEST_RECEIVED' : 'PRINTING_MATERIAL_REQUEST_DISCREPANCY', updated.request_code,
+      { quantity_shipped: updated.quantity_shipped },
+      { quantity_received: qty, status: updated.status });
     ok(res, updated, isMatch
       ? '✅ Material received. Production stock updated live!'
       : '⚠️ Discrepancy recorded. CEO notified for manual review.');
@@ -912,6 +998,8 @@ exports.cancelMaterialRequest = async (req, res) => {
     if (!request) return err(res, 'Request not found', 404);
     if (!['PENDING', 'WAITING_PURCHASE'].includes(request.status)) return err(res, 'Only PENDING or WAITING requests can be cancelled', 400);
     await db('printing_material_requests').where({ id }).update({ status: 'CANCELLED', updated_at: new Date() });
+    storeLog(req, 'PRINTING_MATERIAL_REQUEST_CANCELLED', request.request_code,
+      { status: request.status }, { status: 'CANCELLED' });
     ok(res, null, 'Request cancelled');
   } catch (e) { err(res, e.message); }
 };
