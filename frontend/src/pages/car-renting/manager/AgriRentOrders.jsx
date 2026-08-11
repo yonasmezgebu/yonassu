@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AgriRentOrderDetail from './AgriRentOrderDetail';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './AgriRentOrders.css';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -630,15 +631,6 @@ const AgriRentOrders = () => {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
-          table { font-size: 12px !important; }
-          th, td { padding: 10px 8px !important; }
-        }
-        @media (max-width: 480px) {
-          h1 { font-size: 1.1rem !important; }
-        }
-        select:focus { outline: 2px solid ${C.forestGreen}; }
-        input:focus { outline: none; }
       `}</style>
     </div>
   );
