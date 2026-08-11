@@ -15,7 +15,7 @@ const createFund = async (data, userId) => {
     custodian_id: data.custodianId,
     status: 'active'
   });
-  await audit('PETTY_CASH_FUND_CREATED', id, { ip: null, details: data });
+  await audit('PETTY_CASH_FUND_CREATED', userId, { ip: null, details: data });
   return id;
 };
 
@@ -41,7 +41,7 @@ const disburse = async (fundId, data, userId) => {
     await trx('petty_cash_funds')
       .where('id', fundId)
       .update({ current_balance: newBalance, updated_at: db.fn.now() });
-    await audit('PETTY_CASH_DISBURSED', fundId, {
+    await audit('PETTY_CASH_DISBURSED', userId, {
       ip: null,
       details: { amount: data.amount, newBalance, transactionId: txId }
     });
