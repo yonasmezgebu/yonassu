@@ -2,14 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Search, RefreshCw, Plus, AlertTriangle, ChevronDown, ChevronUp, Edit2, X } from 'lucide-react';
 import { NotifStore } from './StoreHomeNew';
-import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
-
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', mint: '#98FF98',
-  brown: '#8D6E63', sky: '#87CEEB', white: '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray: '#424242', orange: '#FF9800', red: '#F44336',
-};
 
 const API = '/api/v1/store-inventory';
 function hdrs() {
@@ -28,7 +20,7 @@ function expiryStatus(dateStr, nearDays = 90) {
   const exp = new Date(dateStr); exp.setHours(0, 0, 0, 0);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diff = Math.floor((exp - today) / 86400000);
-  if (diff < 0)   return 'expired';
+  if (diff < 0)       return 'expired';
   if (diff <= nearDays) return 'near';
   return 'ok';
 }
@@ -39,16 +31,159 @@ function daysUntilExpiry(dateStr) {
   return Math.floor((exp - today) / 86400000);
 }
 
+/* ── Enterprise CSS ───────────────────────────────────────────────── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --cp: #2563EB;
+    --cp-h: #1D4ED8;
+    --cbg: #F5F6FA;
+    --ccard: #FFFFFF;
+    --cborder: #E5E7EB;
+    --ct1: #111827;
+    --ct2: #6B7280;
+    --ctm: #9CA3AF;
+    --cok: #16A34A;
+    --cok-bg: #DCFCE7;
+    --cdanger: #DC2626;
+    --cdanger-bg: #FEE2E2;
+    --cwarn: #D97706;
+    --cwarn-bg: #FEF3C7;
+    --cinfo: #0284C7;
+    --cinfo-bg: #E0F2FE;
+    --gold: #F59E0B;
+    --gold-text: #111827;
+  }
+
+  .ssl-page {
+    box-sizing: border-box;
+    margin: 10px auto;
+    width: calc(100% - 20px);
+    max-width: 1600px;
+    min-height: calc(100vh - 20px);
+    padding: 24px;
+    background: var(--cbg);
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    color: var(--ct1);
+    line-height: 1.5;
+    padding-bottom: 48px;
+  }
+  @media (max-width: 1024px) { .ssl-page { margin: 6px auto; width: calc(100% - 12px); padding: 16px; } }
+  @media (max-width: 480px)  { .ssl-page { margin: 4px auto; width: calc(100% - 8px); padding: 12px; } }
+
+  /* ── Header ── */
+  .ssl-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .ssl-title-block { display: flex; align-items: center; gap: 12px; }
+  .ssl-icon-wrap { background: #EFF6FF; color: var(--cp); padding: 10px; border-radius: 10px; display: flex; }
+  .ssl-page-title { font-size: clamp(22px,3vw,28px); font-weight: 600; line-height: 1.3; margin: 0; color: var(--ct1); }
+  .ssl-page-sub { font-size: 12px; font-weight: 500; color: var(--ctm); margin: 2px 0 0; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ssl-header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Buttons ── */
+  .ssl-btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--cborder); background: var(--ccard); color: var(--ct1); font-family: inherit; transition: all 150ms ease-in-out; white-space: nowrap; min-width: 44px; justify-content: center; }
+  .ssl-btn:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.10); transform: translateY(-1px); }
+  .ssl-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .ssl-btn-primary { background: var(--cp); color: #fff; border-color: var(--cp); }
+  .ssl-btn-primary:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  .ssl-btn-icon { width: 36px; height: 36px; padding: 0; }
+
+  /* ── Alert banners ── */
+  .ssl-alerts { display: grid; gap: 16px; margin-bottom: 24px; }
+  @media (min-width: 768px) { .ssl-alerts-2 { grid-template-columns: 1fr 1fr; } }
+  .ssl-alert { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 10px; border: 1px solid transparent; }
+  .ssl-alert-expired { background: var(--cdanger-bg); border-color: var(--cdanger); color: var(--cdanger); }
+  .ssl-alert-near    { background: var(--cwarn-bg); border-color: var(--cwarn); color: var(--cwarn); }
+  .ssl-alert-title { font-size: 14px; font-weight: 600; text-transform: uppercase; }
+  .ssl-alert-body  { font-size: 13px; margin-top: 2px; opacity: .85; }
+  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ── KPI cards ── */
+  .ssl-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 16px; margin-bottom: 24px; }
+  .ssl-kpi { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease-in-out; cursor: default; }
+  .ssl-kpi:hover { box-shadow: 0 4px 12px rgba(0,0,0,.09); transform: translateY(-1px); }
+  .ssl-kpi-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--ctm); margin-bottom: 8px; }
+  .ssl-kpi-val   { font-size: 26px; font-weight: 600; color: var(--ct1); line-height: 1; }
+
+  /* ── Filter bar ── */
+  .ssl-filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+  .ssl-search-wrap { position: relative; display: inline-flex; align-items: center; flex: 1 1 260px; max-width: 400px; }
+  .ssl-search-icon { position: absolute; left: 11px; color: var(--ctm); pointer-events: none; }
+  .ssl-search-input { height: 36px; padding: 0 12px 0 36px; border-radius: 8px; border: 1px solid var(--cborder); font-size: 14px; font-family: inherit; width: 100%; box-sizing: border-box; outline: none; transition: border-color 150ms, box-shadow 150ms; color: var(--ct1); background: var(--ccard); }
+  .ssl-search-input:focus { border-color: var(--cp); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  .ssl-ftabs { display: flex; background: var(--ccard); border: 1px solid var(--cborder); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+  .ssl-ftab { padding: 0 16px; height: 36px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; border: none; border-right: 1px solid var(--cborder); transition: all 150ms; color: var(--ct2); font-family: inherit; white-space: nowrap; }
+  .ssl-ftab:last-child { border-right: none; }
+  .ssl-ftab:hover     { background: var(--gold); color: var(--gold-text); }
+  .ssl-ftab.active    { background: var(--cp); color: #fff; }
+  .ssl-ftab.active:hover { background: var(--gold); color: var(--gold-text); }
+
+  /* ── Table ── */
+  .ssl-table-wrap { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); overflow-x: auto; }
+  .ssl-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  .ssl-table thead tr { background: #F9FAFB; }
+  .ssl-table th { padding: 12px 16px; font-size: 12px; font-weight: 500; text-transform: uppercase; color: var(--ctm); text-align: left; letter-spacing: .04em; border-bottom: 1px solid var(--cborder); user-select: none; white-space: nowrap; }
+  .ssl-table th.sortable { cursor: pointer; }
+  .ssl-table th.sortable:hover { color: var(--ct1); }
+  .ssl-table td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid var(--cborder); color: var(--ct1); transition: background-color 150ms; vertical-align: middle; }
+  .ssl-table tbody tr:last-child td { border-bottom: none; }
+  .ssl-table tbody tr:hover td { background: #F9FAFB; }
+  .ssl-table tfoot td { background: #F9FAFB; border-top: 1px solid var(--cborder); font-size: 13px; font-weight: 600; padding: 12px 16px; }
+  .ssl-table .right { text-align: right; }
+
+  /* ── Badges ── */
+  .ssl-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .ssl-badge-expired { background: var(--cdanger-bg); color: var(--cdanger); }
+  .ssl-badge-near    { background: var(--cwarn-bg);    color: var(--cwarn); }
+  .ssl-badge-out     { background: var(--cdanger-bg);  color: var(--cdanger); }
+  .ssl-badge-low     { background: var(--cwarn-bg);    color: var(--cwarn); }
+  .ssl-badge-in      { background: var(--cok-bg);      color: var(--cok); }
+
+  /* ── Spinner ── */
+  .ssl-spinner { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(37,99,235,.2); border-top-color: var(--cp); animation: ssl-spin 700ms linear infinite; }
+  .ssl-spinner.lg { width: 28px; height: 28px; border-width: 3px; }
+  @keyframes ssl-spin { to { transform: rotate(360deg); } }
+
+  /* ── Loading / Empty state ── */
+  .ssl-state { padding: 64px 24px; text-align: center; color: var(--ct2); }
+  .ssl-state-sub { font-size: 13px; margin-top: 12px; }
+
+  /* ── Modal ── */
+  .ssl-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+  .ssl-modal   { background: var(--ccard); border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,.18); width: 100%; max-width: 760px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: ssl-modalin 150ms ease-out; }
+  @keyframes ssl-modalin { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  .ssl-modal-hd { padding: 16px 24px; border-bottom: 1px solid var(--cborder); display: flex; justify-content: space-between; align-items: center; }
+  .ssl-modal-title { font-size: 18px; font-weight: 600; margin: 0; }
+  .ssl-modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .ssl-modal-ft { padding: 14px 24px; border-top: 1px solid var(--cborder); display: flex; justify-content: flex-end; gap: 10px; background: #F9FAFB; border-radius: 0 0 12px 12px; }
+
+  /* ── Form ── */
+  .ssl-sec-title { font-size: 13px; font-weight: 600; color: var(--ct1); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--cborder); padding-bottom: 8px; margin-bottom: 16px; }
+  .ssl-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 540px) { .ssl-form-grid { grid-template-columns: 1fr; } }
+  .ssl-fg { display: flex; flex-direction: column; gap: 5px; }
+  .ssl-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ct2); }
+  .ssl-input { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--cborder); font-size: 14px; font-family: inherit; outline: none; color: var(--ct1); background: var(--ccard); transition: border-color 150ms, box-shadow 150ms; width: 100%; box-sizing: border-box; }
+  .ssl-input:focus { border-color: var(--cp); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+  /* ── Pending badge animation ── */
+  @keyframes pendpulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .ssl-pending { animation: pendpulse 1.8s ease-in-out infinite; }
+
+  /* ── Batch monospace chip ── */
+  .ssl-batch { font-family: 'Courier New', monospace; font-size: 12px; background: var(--cbg); padding: 2px 6px; border-radius: 4px; color: var(--ct2); }
+`;
+
 const StoreStockList = () => {
   const navigate = useNavigate();
-  const [rows, setRows]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
-  const [filter, setFilter]   = useState('all'); // all | low | expired | near
-  const [sort, setSort]       = useState({ col: 'drug_name', dir: 'asc' });
-  const [stats, setStats]     = useState({ total_items: 0, total_quantity: 0, total_value: 0, low_stock_count: 0 });
+  const [rows, setRows]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [filter, setFilter]       = useState('all');
+  const [sort, setSort]           = useState({ col: 'drug_name', dir: 'asc' });
+  const [stats, setStats]         = useState({ total_items: 0, total_quantity: 0, total_value: 0, low_stock_count: 0 });
   const [editModal, setEditModal] = useState({ open: false, data: null, saving: false });
-  const [pendingItems, setPendingItems] = useState(new Set()); // ids awaiting CEO approval
+  const [pendingItems, setPendingItems] = useState(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,11 +210,9 @@ const StoreStockList = () => {
 
   useEffect(() => { const t = setTimeout(load, 400); return () => clearTimeout(t); }, [load]);
 
-  /* ── derived counts ── */
   const expiredCount = rows.filter(r => expiryStatus(r.expiry_date, r.near_expiry_days) === 'expired').length;
   const nearCount    = rows.filter(r => expiryStatus(r.expiry_date, r.near_expiry_days) === 'near').length;
 
-  /* ── filtering ── */
   const filtered = rows.filter(row => {
     if (filter === 'expired') return expiryStatus(row.expiry_date, row.near_expiry_days) === 'expired';
     if (filter === 'near')    return expiryStatus(row.expiry_date, row.near_expiry_days) === 'near';
@@ -87,69 +220,20 @@ const StoreStockList = () => {
     return true;
   });
 
-  /* ── sorting ── */
   const sorted = [...filtered].sort((a, b) => {
     const va = a[sort.col] ?? '', vb = b[sort.col] ?? '';
     if (typeof va === 'number') return sort.dir === 'asc' ? va - vb : vb - va;
-    return sort.dir === 'asc'
-      ? String(va).localeCompare(String(vb))
-      : String(vb).localeCompare(String(va));
+    return sort.dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
 
   const toggleSort = col => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
-  const SortIcon = ({ col }) => sort.col === col
-    ? (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
-    : null;
 
-  /* ── column definitions ── */
-  const cols = [
-    { key: 'drug_name',   label: 'Drug Name' },
-    { key: 'strength',    label: 'Strength' },
-    { key: 'category',    label: 'Category' },
-    { key: 'batch_no',    label: 'Batch No' },
-    { key: 'unit',        label: 'Unit' },
-    { key: 'unit_price',  label: 'Price (ETB)' },
-    { key: 'quantity',    label: 'Qty in Store' },
-    { key: 'min_level',   label: 'Min Level' },
-    { key: 'expiry_date', label: 'Expiry Date' },
-    { key: 'status',      label: 'Status' },
-    { key: 'action',      label: 'Action' },
-  ];
-
-  const totalValue = sorted.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price || 0), 0);
-
-  /* ── expiry badge renderer ── */
-  const ExpiryCell = ({ dateStr }) => {
-    if (!dateStr) return <span style={{ color: G.brown, fontStyle: 'italic' }}>—</span>;
-    const status = expiryStatus(dateStr);
-    const days   = daysUntilExpiry(dateStr);
-    const fmt    = new Date(dateStr).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-
-    if (status === 'expired') return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <span style={{ fontWeight: 900, color: G.red }}>{fmt}</span>
-        <span style={{ background: G.red, color: G.white, fontSize: 10, fontWeight: 900, padding: '2px 7px', display: 'inline-block', letterSpacing: 0.5 }}>
-          EXPIRED {Math.abs(days)}d AGO
-        </span>
-      </div>
-    );
-    if (status === 'near') return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <span style={{ fontWeight: 800, color: G.orange }}>{fmt}</span>
-        <span style={{ background: G.orange, color: G.white, fontSize: 10, fontWeight: 900, padding: '2px 7px', display: 'inline-block', letterSpacing: 0.5 }}>
-          EXPIRES IN {days}d
-        </span>
-      </div>
-    );
-    return <span style={{ fontWeight: 600, color: G.forest }}>{fmt}</span>;
+  const SortIcon = ({ col }) => {
+    if (sort.col !== col) return null;
+    return sort.dir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />;
   };
 
-  function rowBg(row, i) {
-    const status = expiryStatus(row.expiry_date, row.near_expiry_days);
-    if (status === 'expired') return '#FFEBEE';
-    if (status === 'near')    return '#FFF8E1';
-    return i % 2 === 0 ? G.white : '#F1F8F1';
-  }
+  const totalValue = sorted.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price || 0), 0);
 
   const handleUpdateStock = async (e) => {
     e.preventDefault();
@@ -176,7 +260,6 @@ const StoreStockList = () => {
       NotifStore.push(res.message || 'Update submitted for CEO approval', 'success');
       setPendingItems(prev => new Set([...prev, d.id]));
       setEditModal({ open: false, data: null, saving: false });
-      // Don't reload — the pending badge will show immediately
     } catch (err) {
       NotifStore.push(err.message || 'Failed to update item', 'error');
       setEditModal(p => ({ ...p, saving: false }));
@@ -187,35 +270,25 @@ const StoreStockList = () => {
     const pw = window.open('', '_blank');
     if (!pw) { NotifStore.push('Allow popups to print.', 'error'); return; }
     const dt = new Date().toLocaleString();
-    const TH = (t) => `<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;border:1px solid #aaa;background:#1B5E20;color:#fff;">${t}</th>`;
-    const TD = (t) => `<td style="padding:6px 10px;border:1px solid #ddd;font-size:11px;word-break:break-word;">${t ?? "---"}</td>`;
-    const fmt2 = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-    
+    const TH = t => `<th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #E5E7EB;background:#F9FAFB;color:#6B7280;letter-spacing:.04em">${t}</th>`;
+    const TD = t => `<td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#111827">${t ?? '---'}</td>`;
+    const fmt2 = n => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     const grand = sorted.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price || 0), 0);
-    
-    let body = `<p style="font-size:15px;font-weight:bold;color:#1B5E20;margin-bottom:10px">Total Value: ETB ${fmt2(grand)} | Total Items: ${sorted.length}</p>`;
-    
-    body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("#")}${TH("Drug Name")}${TH("Strength")}${TH("Category")}${TH("Batch No")}${TH("Unit")}${TH("Price (ETB)")}${TH("Qty")}${TH("Min Level")}${TH("Expiry Date")}${TH("Status")}</tr></thead><tbody>`;
-    
+    let body = `<p style="font-size:14px;font-weight:600;color:#111827;margin-bottom:12px">Total Value: ETB ${fmt2(grand)} &nbsp;|&nbsp; Total Items: ${sorted.length}</p>`;
+    body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH('#')}${TH('Drug Name')}${TH('Strength')}${TH('Category')}${TH('Batch No')}${TH('Unit')}${TH('Price (ETB)')}${TH('Qty')}${TH('Min Level')}${TH('Expiry Date')}${TH('Status')}</tr></thead><tbody>`;
     sorted.forEach((row, i) => {
       const expStat = expiryStatus(row.expiry_date, row.near_expiry_days);
-      const isExpired = expStat === 'expired';
-      const isNear = expStat === 'near';
-      const isOut = Number(row.quantity) === 0;
-      const isLow = Number(row.quantity) <= Number(row.min_level || 0);
-      
-      let statusHtml = '';
-      if (isExpired) statusHtml = `<span style="color:#d32f2f;font-weight:bold">EXPIRED</span>`;
-      else if (isNear) statusHtml = `<span style="color:#f57c00;font-weight:bold">NEAR EXPIRY</span>`;
-      else if (isOut) statusHtml = `<span style="color:#d32f2f;font-weight:bold">OUT OF STOCK</span>`;
-      else if (isLow) statusHtml = `<span style="color:#f57c00;font-weight:bold">LOW STOCK</span>`;
-      else statusHtml = `<span style="color:#388e3c;font-weight:bold">IN STOCK</span>`;
-
-      body += `<tr>${TD(i + 1)}${TD(row.drug_name || row.name)}${TD(row.strength)}${TD(row.category)}${TD(row.batch_no)}${TD(row.unit)}${TD(fmt2(row.unit_price))}${TD(Number(row.quantity).toLocaleString())}${TD(row.min_level)}${TD(row.expiry_date ? new Date(row.expiry_date).toLocaleDateString() : '---')}${TD(statusHtml)}</tr>`;
+      const isExpired = expStat === 'expired', isNear = expStat === 'near';
+      const isOut = Number(row.quantity) === 0, isLow = Number(row.quantity) <= Number(row.min_level || 0);
+      let st = isExpired ? `<span style="color:#DC2626;font-weight:600">EXPIRED</span>`
+        : isNear ? `<span style="color:#D97706;font-weight:600">NEAR EXPIRY</span>`
+        : isOut  ? `<span style="color:#DC2626;font-weight:600">OUT OF STOCK</span>`
+        : isLow  ? `<span style="color:#D97706;font-weight:600">LOW STOCK</span>`
+        : `<span style="color:#16A34A;font-weight:600">IN STOCK</span>`;
+      body += `<tr>${TD(i+1)}${TD(row.drug_name||row.name)}${TD(row.strength)}${TD(row.category)}${TD(row.batch_no)}${TD(row.unit)}${TD(fmt2(row.unit_price))}${TD(Number(row.quantity).toLocaleString())}${TD(row.min_level)}${TD(row.expiry_date ? new Date(row.expiry_date).toLocaleDateString() : '---')}${TD(st)}</tr>`;
     });
-    body += "</tbody></table>";
-
-    pw.document.write(`<html><head><title>Pharmacy Stock Catalog</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial;font-size:12px;padding:20px}h1{color:#1B5E20;border-bottom:3px solid #228B22;padding-bottom:6px;margin-bottom:4px;font-size:18px}h3{font-size:13px}.meta{font-size:11px;color:#555;margin-bottom:14px}tr:nth-child(even)td{background:#f0fdf4}tr{page-break-inside:avoid}@page{margin:10mm;size:A4 landscape}</style></head><body><h1>Pharmacy Stock Catalog</h1><div class="meta">Generated: ${dt} | Sutana University</div>${body}<script>window.onload=function(){window.print();}</script></body></html>`);
+    body += '</tbody></table>';
+    pw.document.write(`<html><head><title>Pharmacy Stock Catalog</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',Arial,sans-serif;font-size:12px;padding:20px;color:#111827}h1{font-size:18px;font-weight:600;border-bottom:2px solid #E5E7EB;padding-bottom:8px;margin-bottom:6px}.meta{font-size:11px;color:#6B7280;margin-bottom:16px}@page{margin:10mm;size:A4 landscape}</style></head><body><h1>Pharmacy Stock Catalog</h1><div class="meta">Generated: ${dt} | Sutana University</div>${body}<script>window.onload=function(){window.print();}<\/script></body></html>`);
     pw.document.close();
   };
 
@@ -226,348 +299,323 @@ const StoreStockList = () => {
     { key: 'expired', label: `🔴 Expired${expiredCount ? ` (${expiredCount})` : ''}` },
   ];
 
+  const setField = key => e => setEditModal(p => ({ ...p, data: { ...p.data, [key]: e.target.value } }));
+  const setCheck = key => e => setEditModal(p => ({ ...p, data: { ...p.data, [key]: e.target.checked } }));
+
   return (
-    <div style={{ background: G.lightGray, minHeight: '100vh', width: '100%', fontFamily: "'Inter', sans-serif", paddingBottom: 60 }}>
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-        @keyframes pendingPulse { 0%,100%{opacity:1;box-shadow:2px 2px 0 #D97706} 50%{opacity:.7;box-shadow:2px 2px 0 #F59E0B,0 0 8px rgba(245,158,11,.4)} }
-        .stock-row:hover td { background: #E8F5E9 !important; }
-        @media (max-width:768px) { .top-bar{flex-direction:column!important} .stat-grid{grid-template-columns:1fr 1fr!important} }
-      `}</style>
+    <div className="ssl-page">
+      <style>{CSS}</style>
 
       {/* ── HEADER ── */}
-      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`, padding: '24px 36px', color: G.white, borderBottom: `4px solid ${G.dark}`, boxShadow: `0 4px 0 ${G.dark}` }}>
-        <div className="top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ background: G.mint, padding: 8, border: `2px solid ${G.white}`, boxShadow: `3px 3px 0 ${G.dark}` }}>
-              <Package size={24} color={G.dark} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stock Catalog</h1>
-              <p style={{ margin: 0, fontSize: 12, opacity: 0.8 }}>Live inventory with expiry tracking</p>
-            </div>
+      <div className="ssl-header">
+        <div className="ssl-title-block">
+          <div className="ssl-icon-wrap">
+            <Package size={24} color="var(--cp)" />
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={handlePrint} style={{ background: '#fff', color: G.dark, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 900, fontSize: 13, textTransform: 'uppercase', border: 'none', boxShadow: `3px 3px 0 ${G.sage}` }}>
-              Print Catalog
-            </button>
-            <button onClick={() => navigate('/pharmacy-store/add-new-stock')} style={{ background: G.leaf, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, color: G.white, padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 13, fontFamily: "'Inter',sans-serif" }}>
-              <Plus size={16} /> Add New Stock
-            </button>
-            <button onClick={load} style={{ background: 'rgba(255,255,255,.15)', border: `2px solid rgba(255,255,255,.5)`, color: G.white, padding: '9px 14px', cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
-              <SegmentedSpinner size={14} />
-            </button>
+          <div>
+            <h1 className="ssl-page-title">Stock Catalog</h1>
+            <p className="ssl-page-sub">Live inventory with expiry tracking</p>
           </div>
+        </div>
+        <div className="ssl-header-btns">
+          <button onClick={handlePrint} className="ssl-btn">Print Catalog</button>
+          <button onClick={() => navigate('/pharmacy-store/add-new-stock')} className="ssl-btn ssl-btn-primary">
+            <Plus size={16} /> Add New Stock
+          </button>
+          <button onClick={load} className="ssl-btn ssl-btn-icon" disabled={loading} title="Refresh">
+            {loading
+              ? <span className="ssl-spinner" />
+              : <RefreshCw size={16} />}
+          </button>
         </div>
       </div>
 
-      <div style={{ padding: '24px 36px', boxSizing: 'border-box' }}>
-
-        {/* ── EXPIRY ALERT BANNER ── */}
-        {(expiredCount > 0 || nearCount > 0) && (
-          <div style={{ display: 'grid', gridTemplateColumns: expiredCount && nearCount ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 20 }}>
-            {expiredCount > 0 && (
-              <div style={{ background: '#FFEBEE', border: `3px solid ${G.red}`, boxShadow: `4px 4px 0 ${G.red}`, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <AlertTriangle size={24} color={G.red} style={{ animation: 'pulse 1.5s ease infinite', flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: G.red, textTransform: 'uppercase', letterSpacing: 0.5 }}>🔴 {expiredCount} Drug{expiredCount > 1 ? 's' : ''} EXPIRED</div>
-                  <div style={{ fontSize: 12, color: '#B71C1C', fontWeight: 600, marginTop: 2 }}>These items must be removed from stock immediately and reported.</div>
-                </div>
+      {/* ── ALERT BANNERS ── */}
+      {(expiredCount > 0 || nearCount > 0) && (
+        <div className={`ssl-alerts ${expiredCount && nearCount ? 'ssl-alerts-2' : ''}`}>
+          {expiredCount > 0 && (
+            <div className="ssl-alert ssl-alert-expired">
+              <AlertTriangle size={22} style={{ animation: 'pulse 1.5s ease infinite', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div className="ssl-alert-title">🔴 {expiredCount} Drug{expiredCount > 1 ? 's' : ''} EXPIRED</div>
+                <div className="ssl-alert-body">These items must be removed from stock immediately and reported.</div>
               </div>
-            )}
-            {nearCount > 0 && (
-              <div style={{ background: '#FFF8E1', border: `3px solid ${G.orange}`, boxShadow: `4px 4px 0 ${G.orange}`, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <AlertTriangle size={24} color={G.orange} style={{ flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: G.orange, textTransform: 'uppercase', letterSpacing: 0.5 }}>🟡 {nearCount} Drug{nearCount > 1 ? 's' : ''} Near Expiry</div>
-                  <div style={{ fontSize: 12, color: '#E65100', fontWeight: 600, marginTop: 2 }}>These items have hit their near-expiry threshold — prioritize dispensing or return.</div>
-                </div>
+            </div>
+          )}
+          {nearCount > 0 && (
+            <div className="ssl-alert ssl-alert-near">
+              <AlertTriangle size={22} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div className="ssl-alert-title">🟡 {nearCount} Drug{nearCount > 1 ? 's' : ''} Near Expiry</div>
+                <div className="ssl-alert-body">These items have hit their near-expiry threshold — prioritize dispensing or return.</div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ── STAT CARDS ── */}
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
-          {[
-            { label: 'Drug Types',   value: stats.total_items,  color: G.forest },
-            { label: 'Total Qty',    value: Number(stats.total_quantity).toLocaleString(), color: G.emerald },
-            { label: 'Total Value',  value: 'ETB ' + Number(stats.total_value).toLocaleString(undefined, { minimumFractionDigits: 2 }), color: G.dark },
-            { label: 'Low Stock',    value: stats.low_stock_count, color: G.orange },
-          ].map(s => (
-            <div key={s.label} style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${s.color}`, padding: '14px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, color: s.color }}>{s.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: G.dark, marginTop: 4 }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── FILTER BAR ── */}
-        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: 14, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200, background: G.lightGray, border: `2px solid ${G.dark}`, padding: '8px 12px' }}>
-            <Search size={16} color={G.olive} />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by drug name…"
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, fontFamily: "'Inter',sans-serif", color: G.darkGray, width: '100%' }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 0, border: `2px solid ${G.dark}` }}>
-            {FILTERS.map((f, idx) => (
-              <button key={f.key} onClick={() => setFilter(f.key)} style={{
-                padding: '8px 14px', background: filter === f.key ? G.dark : G.white,
-                color: filter === f.key ? G.white : G.darkGray,
-                border: 'none', borderLeft: idx > 0 ? `2px solid ${G.dark}` : 'none',
-                cursor: 'pointer', fontWeight: 800, fontSize: 12,
-                fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap',
-              }}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── TABLE ── */}
-        <div style={{ background: G.white, border: `3px solid ${G.dark}`, boxShadow: `6px 6px 0 ${G.dark}` }}>
-          {loading ? (
-            <div style={{ padding: 60, textAlign: 'center' }}>
-              <SegmentedSpinner size={24} />
-              <div style={{ color: G.forest, fontWeight: 800 }}>Loading inventory…</div>
-            </div>
-          ) : sorted.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: G.sage, fontWeight: 800 }}>
-              No items found{filter !== 'all' ? ` for filter: "${filter}"` : ' in store inventory'}.
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1100 }}>
-                <thead>
-                  <tr style={{ background: G.dark, color: G.white }}>
-                    <th style={{ padding: '13px 12px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', textAlign: 'left' }}>#</th>
-                    {cols.map(c => c.key !== 'action' ? (
-                      <th key={c.key} onClick={() => toggleSort(c.key)} style={{ padding: '13px 12px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left', userSelect: 'none' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{c.label} <SortIcon col={c.key} /></span>
-                      </th>
-                    ) : (
-                      <th key={c.key} style={{ padding: '13px 12px', fontWeight: 900, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>{c.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((row, i) => {
-                    const isLow     = Number(row.quantity) <= Number(row.min_level || 0);
-                    const isOut     = Number(row.quantity) === 0;
-                    const expStat   = expiryStatus(row.expiry_date, row.near_expiry_days);
-                    const isExpired = expStat === 'expired';
-                    const isNear    = expStat === 'near';
-                    const totalVal  = Number(row.quantity) * Number(row.unit_price || 0);
-
-                    /* row left border color shows most critical alert */
-                    const leftBorder = isExpired ? `5px solid ${G.red}`
-                      : isNear ? `5px solid ${G.orange}`
-                      : isLow  ? `5px solid ${G.orange}`
-                      : `5px solid transparent`;
-
-                    return (
-                      <tr key={row.id || i} className="stock-row" style={{ background: rowBg(row, i), borderBottom: `1px solid ${G.sage}`, borderLeft: leftBorder }}>
-                        <td style={{ padding: '11px 12px', fontWeight: 700, color: G.olive }}>{i + 1}</td>
-
-                        {/* Drug Name */}
-                        <td style={{ padding: '11px 12px', fontWeight: 900, color: G.dark }}>
-                          {row.drug_name || row.name}
-                          {isExpired && (
-                            <span style={{ marginLeft: 7, background: G.red, color: G.white, fontSize: 9, fontWeight: 900, padding: '1px 6px', verticalAlign: 'middle', letterSpacing: 0.5 }}>EXPIRED</span>
-                          )}
-                          {!isExpired && isNear && (
-                            <span style={{ marginLeft: 7, background: G.orange, color: G.white, fontSize: 9, fontWeight: 900, padding: '1px 6px', verticalAlign: 'middle', letterSpacing: 0.5 }}>NEAR EXPIRY</span>
-                          )}
-                        </td>
-
-                        <td style={{ padding: '11px 12px', color: G.darkGray }}>{row.strength || '—'}</td>
-                        <td style={{ padding: '11px 12px', color: G.darkGray }}>{row.category || 'Uncategorized'}</td>
-
-                        {/* Batch No */}
-                        <td style={{ padding: '11px 12px', fontWeight: 800, color: G.olive, fontFamily: 'monospace', fontSize: 12 }}>
-                          {row.batch_no || <span style={{ color: G.red, fontWeight: 700, fontFamily: "'Inter',sans-serif", fontSize: 11 }}>⚠ No Batch</span>}
-                        </td>
-
-                        <td style={{ padding: '11px 12px' }}>{row.unit || '—'}</td>
-
-                        {/* Price */}
-                        <td style={{ padding: '11px 12px', fontWeight: 700, color: G.forest }}>
-                          {Number(row.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-
-                        {/* Quantity */}
-                        <td style={{ padding: '11px 12px', fontWeight: 900, color: isOut ? G.red : isLow ? G.orange : G.forest }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            {(isOut || isLow) && <AlertTriangle size={13} />}
-                            {Number(row.quantity).toLocaleString()}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '11px 12px', color: G.brown }}>{row.min_level ?? 0}</td>
-
-                        {/* Expiry Date — color coded inline */}
-                        <td style={{ padding: '11px 12px' }}>
-                          <ExpiryCell dateStr={row.expiry_date} nearDays={row.near_expiry_days} />
-                        </td>
-
-                        {/* Status badge */}
-                        <td style={{ padding: '11px 12px' }}>
-                          {isExpired ? (
-                            <span style={{ display: 'inline-block', padding: '3px 10px', fontWeight: 900, fontSize: 11, border: `2px solid ${G.red}`, color: G.white, background: G.red, letterSpacing: 0.5 }}>EXPIRED</span>
-                          ) : isNear ? (
-                            <span style={{ display: 'inline-block', padding: '3px 10px', fontWeight: 900, fontSize: 11, border: `2px solid ${G.orange}`, color: G.white, background: G.orange, letterSpacing: 0.5 }}>NEAR EXPIRY</span>
-                          ) : isOut ? (
-                            <span style={{ display: 'inline-block', padding: '3px 10px', fontWeight: 900, fontSize: 11, border: `2px solid ${G.red}`, color: G.red, background: '#FFEBEE', letterSpacing: 0.5 }}>OUT OF STOCK</span>
-                          ) : isLow ? (
-                            <span style={{ display: 'inline-block', padding: '3px 10px', fontWeight: 900, fontSize: 11, border: `2px solid ${G.orange}`, color: G.orange, background: '#FFF3E0', letterSpacing: 0.5 }}>LOW STOCK</span>
-                          ) : (
-                            <span style={{ display: 'inline-block', padding: '3px 10px', fontWeight: 900, fontSize: 11, border: `2px solid ${G.forest}`, color: G.forest, background: '#E8F5E9', letterSpacing: 0.5 }}>IN STOCK</span>
-                          )}
-                        </td>
-                        
-                        {/* Action / Update */}
-                        <td style={{ padding: '11px 12px', textAlign: 'center' }}>
-                          {pendingItems.has(row.id) ? (
-                             <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                               <span style={{
-                                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                                 background: '#FFF8E1', border: '2px solid #F59E0B',
-                                 boxShadow: '2px 2px 0 #D97706',
-                                 color: '#92400E', padding: '5px 10px',
-                                 fontSize: 10, fontWeight: 900, letterSpacing: 0.4,
-                                 animation: 'pendingPulse 1.8s ease-in-out infinite'
-                               }}>
-                                 ⏳ AWAITING CEO APPROVAL
-                               </span>
-                             </div>
-                           ) : (
-                             <button onClick={() => setEditModal({ open: true, data: { ...row, expiry_date: row.expiry_date ? row.expiry_date.split('T')[0] : '' }, saving: false })} style={{ background: G.white, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, color: G.dark, padding: '6px 10px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 900, fontSize: 11, textTransform: 'uppercase' }}>
-                               <Edit2 size={13} /> Edit
-                             </button>
-                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr style={{ background: G.dark, color: G.white }}>
-                    <td colSpan={7} style={{ padding: '12px 14px', fontWeight: 900, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                      Total — {sorted.length} Item{sorted.length !== 1 ? 's' : ''}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontWeight: 900, fontSize: 14, color: G.mint }}>
-                      {sorted.reduce((s, r) => s + Number(r.quantity), 0).toLocaleString()}
-                    </td>
-                    <td colSpan={4} style={{ padding: '12px 14px', fontWeight: 900, fontSize: 13, color: G.sage, textAlign: 'right' }}>
-                      Value: ETB {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
             </div>
           )}
         </div>
+      )}
 
+      {/* ── KPI CARDS ── */}
+      <div className="ssl-kpi-grid">
+        {[
+          { label: 'Drug Types',  value: stats.total_items },
+          { label: 'Total Qty',   value: Number(stats.total_quantity).toLocaleString() },
+          { label: 'Total Value', value: 'ETB ' + Number(stats.total_value).toLocaleString(undefined, { minimumFractionDigits: 2 }) },
+          { label: 'Low Stock',   value: stats.low_stock_count },
+        ].map(s => (
+          <div key={s.label} className="ssl-kpi">
+            <div className="ssl-kpi-label">{s.label}</div>
+            <div className="ssl-kpi-val">{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── FILTER BAR ── */}
+      <div className="ssl-filter-bar">
+        <div className="ssl-search-wrap">
+          <Search size={15} className="ssl-search-icon" />
+          <input
+            className="ssl-search-input"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by drug name…"
+          />
+        </div>
+        <div className="ssl-ftabs">
+          {FILTERS.map(f => (
+            <button key={f.key} className={`ssl-ftab${filter === f.key ? ' active' : ''}`} onClick={() => setFilter(f.key)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── TABLE ── */}
+      <div className="ssl-table-wrap">
+        {loading ? (
+          <div className="ssl-state">
+            <span className="ssl-spinner lg" />
+            <div className="ssl-state-sub">Loading inventory…</div>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="ssl-state">
+            No items found{filter !== 'all' ? ` for filter: "${filter}"` : ' in store inventory'}.
+          </div>
+        ) : (
+          <table className="ssl-table">
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>#</th>
+                {[
+                  { key: 'drug_name',   label: 'Drug Name' },
+                  { key: 'strength',    label: 'Strength' },
+                  { key: 'category',    label: 'Category' },
+                  { key: 'batch_no',    label: 'Batch No' },
+                  { key: 'unit',        label: 'Unit' },
+                  { key: 'unit_price',  label: 'Price (ETB)', right: true },
+                  { key: 'quantity',    label: 'Qty in Store', right: true },
+                  { key: 'min_level',   label: 'Min Level', right: true },
+                  { key: 'expiry_date', label: 'Expiry Date' },
+                  { key: 'status',      label: 'Status' },
+                ].map(c => (
+                  <th key={c.key} className="sortable" onClick={() => toggleSort(c.key)}
+                      style={{ textAlign: c.right ? 'right' : 'left' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, justifyContent: c.right ? 'flex-end' : 'flex-start', width: '100%' }}>
+                      {c.label} <SortIcon col={c.key} />
+                    </span>
+                  </th>
+                ))}
+                <th style={{ textAlign: 'center' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((row, i) => {
+                const isLow     = Number(row.quantity) <= Number(row.min_level || 0);
+                const isOut     = Number(row.quantity) === 0;
+                const expStat   = expiryStatus(row.expiry_date, row.near_expiry_days);
+                const isExpired = expStat === 'expired';
+                const isNear    = expStat === 'near';
+                const leftStyle = isExpired ? { borderLeft: '3px solid var(--cdanger)' }
+                  : isNear ? { borderLeft: '3px solid var(--cwarn)' }
+                  : isLow  ? { borderLeft: '3px solid var(--cwarn)' }
+                  : { borderLeft: '3px solid transparent' };
+
+                return (
+                  <tr key={row.id || i} style={leftStyle}>
+                    <td style={{ color: 'var(--ctm)', fontSize: 12 }}>{i + 1}</td>
+
+                    {/* Drug Name */}
+                    <td>
+                      <div style={{ fontWeight: 500 }}>
+                        {row.drug_name || row.name}
+                        {isExpired && <span className="ssl-badge ssl-badge-expired" style={{ marginLeft: 8, fontSize: 10, padding: '1px 7px' }}>EXPIRED</span>}
+                        {!isExpired && isNear && <span className="ssl-badge ssl-badge-near" style={{ marginLeft: 8, fontSize: 10, padding: '1px 7px' }}>NEAR EXP.</span>}
+                      </div>
+                    </td>
+
+                    <td style={{ color: 'var(--ct2)' }}>{row.strength || '—'}</td>
+                    <td style={{ color: 'var(--ct2)' }}>{row.category || 'Uncategorized'}</td>
+
+                    {/* Batch */}
+                    <td>
+                      {row.batch_no
+                        ? <span className="ssl-batch">{row.batch_no}</span>
+                        : <span style={{ color: 'var(--cdanger)', fontSize: 12 }}>⚠ No Batch</span>
+                      }
+                    </td>
+
+                    <td style={{ color: 'var(--ct2)' }}>{row.unit || '—'}</td>
+
+                    {/* Price */}
+                    <td style={{ textAlign: 'right', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                      {Number(row.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+
+                    {/* Quantity */}
+                    <td style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: isOut ? 'var(--cdanger)' : isLow ? 'var(--cwarn)' : 'inherit' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                        {(isOut || isLow) && <AlertTriangle size={13} />}
+                        {Number(row.quantity).toLocaleString()}
+                      </span>
+                    </td>
+
+                    <td style={{ textAlign: 'right', color: 'var(--ct2)', fontVariantNumeric: 'tabular-nums' }}>{row.min_level ?? 0}</td>
+
+                    {/* Expiry */}
+                    <td><ExpiryCell dateStr={row.expiry_date} nearDays={row.near_expiry_days} /></td>
+
+                    {/* Status badge */}
+                    <td>
+                      {isExpired ? <span className="ssl-badge ssl-badge-expired">EXPIRED</span>
+                      : isNear   ? <span className="ssl-badge ssl-badge-near">NEAR EXPIRY</span>
+                      : isOut    ? <span className="ssl-badge ssl-badge-out">OUT OF STOCK</span>
+                      : isLow    ? <span className="ssl-badge ssl-badge-low">LOW STOCK</span>
+                      :            <span className="ssl-badge ssl-badge-in">IN STOCK</span>}
+                    </td>
+
+                    {/* Action */}
+                    <td style={{ textAlign: 'center' }}>
+                      {pendingItems.has(row.id) ? (
+                        <span className="ssl-badge ssl-badge-near ssl-pending">⏳ AWAITING</span>
+                      ) : (
+                        <button
+                          className="ssl-btn"
+                          style={{ height: 30, padding: '0 10px', fontSize: 12 }}
+                          onClick={() => setEditModal({ open: true, data: { ...row, expiry_date: row.expiry_date ? row.expiry_date.split('T')[0] : '' }, saving: false })}
+                        >
+                          <Edit2 size={13} /> Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={6}>Total — {sorted.length} Item{sorted.length !== 1 ? 's' : ''}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {sorted.reduce((s, r) => s + Number(r.quantity), 0).toLocaleString()}
+                </td>
+                <td colSpan={4} style={{ textAlign: 'right' }}>
+                  Value: ETB {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        )}
       </div>
 
       {/* ── EDIT MODAL ── */}
       {editModal.open && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
-          <div style={{ background: G.white, border: `4px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}`, width: '100%', maxWidth: 750, animation: 'slideDown 0.3s ease', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ background: G.dark, color: G.white, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
-              <span style={{ fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>Update Complete Record</span>
-              <X size={20} style={{ cursor: 'pointer' }} onClick={() => setEditModal({ open: false, data: null })} />
+        <div className="ssl-overlay" onClick={() => setEditModal({ open: false, data: null })}>
+          <div className="ssl-modal" onClick={e => e.stopPropagation()}>
+            <div className="ssl-modal-hd">
+              <h2 className="ssl-modal-title">Update Complete Record</h2>
+              <button className="ssl-btn ssl-btn-icon" style={{ border: 'none', background: 'transparent', boxShadow: 'none' }} onClick={() => setEditModal({ open: false, data: null })}>
+                <X size={20} />
+              </button>
             </div>
-            <form onSubmit={handleUpdateStock} style={{ padding: 24 }}>
-              
-              <div style={{ background: '#F1F8F1', borderLeft: `4px solid ${G.forest}`, padding: '10px 14px', marginBottom: 20, fontSize: 13, fontWeight: 700, color: G.dark }}>
-                Drug & Catalog Details
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Drug Name</label>
-                  <input value={editModal.data.drug_name || editModal.data.name || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, drug_name: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Category</label>
-                  <select value={editModal.data.category || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, category: e.target.value}}))} style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}>
-                    <option value="">Select Category</option>
-                    <option value="Tablet">Tablet</option>
-                    <option value="Capsule">Capsule</option>
-                    <option value="Syrup">Syrup</option>
-                    <option value="Injection">Injection</option>
-                    <option value="Ointment">Ointment</option>
-                    <option value="Drops">Drops</option>
-                    <option value="Inhaler">Inhaler</option>
-                    <option value="Suppository">Suppository</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Strength</label>
-                  <input value={editModal.data.strength || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, strength: e.target.value}}))} placeholder="e.g. 500mg" style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Unit</label>
-                  <input value={editModal.data.unit || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, unit: e.target.value}}))} placeholder="e.g. Box, Strip" style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Unit Price (ETB)</label>
-                  <input type="number" step="0.01" min="0" value={editModal.data.unit_price || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, unit_price: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '8px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: G.dark }}>
-                    <input type="checkbox" checked={editModal.data.requires_prescription || false} onChange={e => setEditModal(p => ({...p, data: {...p.data, requires_prescription: e.target.checked}}))} style={{ width: 16, height: 16, accentColor: G.forest }} />
-                    Requires Prescription
-                  </label>
-                </div>
-              </div>
 
-              <div style={{ background: '#FFF8E1', borderLeft: `4px solid ${G.orange}`, padding: '10px 14px', marginBottom: 20, fontSize: 13, fontWeight: 700, color: G.dark }}>
-                Inventory & Batch Details
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Batch No</label>
-                  <input value={editModal.data.batch_no || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, batch_no: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Quantity in Stock</label>
-                  <input type="number" min="0" value={editModal.data.quantity || 0} onChange={e => setEditModal(p => ({...p, data: {...p.data, quantity: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Expiry Date</label>
-                  <input type="date" value={editModal.data.expiry_date || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, expiry_date: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Alert Days Before Expiry</label>
-                  <input type="number" min="1" value={editModal.data.near_expiry_days || 90} onChange={e => setEditModal(p => ({...p, data: {...p.data, near_expiry_days: e.target.value}}))} required style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Storage Location</label>
-                  <input value={editModal.data.storage_location || ''} onChange={e => setEditModal(p => ({...p, data: {...p.data, storage_location: e.target.value}}))} style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Min Level</label>
-                  <input type="number" min="0" value={editModal.data.min_level || 0} onChange={e => setEditModal(p => ({...p, data: {...p.data, min_level: e.target.value}}))} style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 4 }}>Max Level</label>
-                  <input type="number" min="0" value={editModal.data.max_level || 0} onChange={e => setEditModal(p => ({...p, data: {...p.data, max_level: e.target.value}}))} style={{ width: '100%', padding: '8px', border: `2px solid ${G.dark}`, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              </div>
+            <div className="ssl-modal-body">
+              <form id="ssl-update-form" onSubmit={handleUpdateStock}>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 30 }}>
-                <button type="button" onClick={() => setEditModal({ open: false, data: null })} style={{ background: G.white, color: G.darkGray, border: `2px solid ${G.dark}`, padding: '10px 16px', fontWeight: 900, cursor: 'pointer', fontSize: 12, textTransform: 'uppercase' }}>Cancel</button>
-                <button type="submit" disabled={editModal.saving} style={{ background: editModal.saving ? G.olive : G.forest, color: G.white, border: `2px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '10px 20px', fontWeight: 900, cursor: editModal.saving ? 'not-allowed' : 'pointer', fontSize: 12, textTransform: 'uppercase' }}>
-                  {editModal.saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+                <div className="ssl-sec-title">Drug &amp; Catalog Details</div>
+                <div className="ssl-form-grid">
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Drug Name</label>
+                    <input className="ssl-input" value={editModal.data.drug_name || editModal.data.name || ''} onChange={setField('drug_name')} required />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Category</label>
+                    <select className="ssl-input" value={editModal.data.category || ''} onChange={setField('category')}>
+                      <option value="">Select Category</option>
+                      {['Tablet','Capsule','Syrup','Injection','Ointment','Drops','Inhaler','Suppository','Other'].map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Strength</label>
+                    <input className="ssl-input" value={editModal.data.strength || ''} onChange={setField('strength')} placeholder="e.g. 500mg" />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Unit</label>
+                    <input className="ssl-input" value={editModal.data.unit || ''} onChange={setField('unit')} placeholder="e.g. Box, Strip" />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Unit Price (ETB)</label>
+                    <input className="ssl-input" type="number" step="0.01" min="0" value={editModal.data.unit_price || ''} onChange={setField('unit_price')} required />
+                  </div>
+                  <div className="ssl-fg" style={{ justifyContent: 'flex-end', paddingBottom: 4 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
+                      <input type="checkbox" checked={editModal.data.requires_prescription || false} onChange={setCheck('requires_prescription')} style={{ width: 16, height: 16, accentColor: 'var(--cp)' }} />
+                      Requires Prescription
+                    </label>
+                  </div>
+                </div>
+
+                <div className="ssl-sec-title">Inventory &amp; Batch Details</div>
+                <div className="ssl-form-grid">
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Batch No</label>
+                    <input className="ssl-input" value={editModal.data.batch_no || ''} onChange={setField('batch_no')} required />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Quantity in Stock</label>
+                    <input className="ssl-input" type="number" min="0" value={editModal.data.quantity || 0} onChange={setField('quantity')} required />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Expiry Date</label>
+                    <input className="ssl-input" type="date" value={editModal.data.expiry_date || ''} onChange={setField('expiry_date')} required />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Alert Days Before Expiry</label>
+                    <input className="ssl-input" type="number" min="1" value={editModal.data.near_expiry_days || 90} onChange={setField('near_expiry_days')} required />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Storage Location</label>
+                    <input className="ssl-input" value={editModal.data.storage_location || ''} onChange={setField('storage_location')} />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Min Level</label>
+                    <input className="ssl-input" type="number" min="0" value={editModal.data.min_level || 0} onChange={setField('min_level')} />
+                  </div>
+                  <div className="ssl-fg">
+                    <label className="ssl-label">Max Level</label>
+                    <input className="ssl-input" type="number" min="0" value={editModal.data.max_level || 0} onChange={setField('max_level')} />
+                  </div>
+                </div>
+
+              </form>
+            </div>
+
+            <div className="ssl-modal-ft">
+              <button type="button" className="ssl-btn" onClick={() => setEditModal({ open: false, data: null })}>Cancel</button>
+              <button type="submit" form="ssl-update-form" className="ssl-btn ssl-btn-primary" disabled={editModal.saving}>
+                {editModal.saving ? <><span className="ssl-spinner" style={{ borderTopColor: '#fff' }} /> Saving…</> : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -575,30 +623,26 @@ const StoreStockList = () => {
   );
 };
 
-/* ── Expiry Cell Component ───────────────────────────────────────── */
+/* ── Expiry Cell ────────────────────────────────────────────────── */
 function ExpiryCell({ dateStr, nearDays }) {
-  if (!dateStr) return <span style={{ color: '#8D6E63', fontStyle: 'italic' }}>—</span>;
+  if (!dateStr) return <span style={{ color: 'var(--ctm)', fontStyle: 'italic' }}>—</span>;
   const status = expiryStatus(dateStr, nearDays);
   const days   = daysUntilExpiry(dateStr);
   const fmt    = new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   if (status === 'expired') return (
-    <div>
-      <div style={{ fontWeight: 900, color: '#F44336' }}>{fmt}</div>
-      <div style={{ background: '#F44336', color: '#fff', fontSize: 10, fontWeight: 900, padding: '1px 6px', marginTop: 3, display: 'inline-block', letterSpacing: 0.5 }}>
-        EXPIRED {Math.abs(days)}d AGO
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ fontWeight: 500, color: 'var(--cdanger)' }}>{fmt}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--cdanger)' }}>EXPIRED {Math.abs(days)}d AGO</span>
     </div>
   );
   if (status === 'near') return (
-    <div>
-      <div style={{ fontWeight: 800, color: '#FF9800' }}>{fmt}</div>
-      <div style={{ background: '#FF9800', color: '#fff', fontSize: 10, fontWeight: 900, padding: '1px 6px', marginTop: 3, display: 'inline-block', letterSpacing: 0.5 }}>
-        EXPIRES IN {days}d
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ fontWeight: 500, color: 'var(--cwarn)' }}>{fmt}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--cwarn)' }}>EXPIRES IN {days}d</span>
     </div>
   );
-  return <span style={{ fontWeight: 600, color: '#228B22' }}>{fmt}</span>;
+  return <span style={{ fontWeight: 500, color: 'var(--ct1)' }}>{fmt}</span>;
 }
 
 export default StoreStockList;
