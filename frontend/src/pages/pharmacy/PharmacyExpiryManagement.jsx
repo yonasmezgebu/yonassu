@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, RefreshCw, Loader2, Search, CheckCircle,
+  AlertTriangle, Search, CheckCircle,
   XCircle, Clock, Package, Printer, FileText
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
-
-/* ── Palette ─────────────────────────────────────────── */
-const MINT   = '#E0FDF0';   // light mint green
-const CREAM  = '#FDF9CC';   // pale yellow-cream
-const DARK   = '#1A3025';   // deep forest green (text / borders)
-const MID    = '#2D5440';   // medium green (header bg)
-const ACCENT = '#5BAD7F';   // vibrant green (highlights)
-const GOLD   = '#D4A843';
-const GOLD2  = '#9A701E';
+import './StockOperations.css';
 
 const LOOK_AHEAD_DAYS = 90;
 
@@ -27,11 +19,11 @@ const daysUntil = (dateStr) => {
 };
 
 const statusBadge = (days) => {
-  if (days === null)   return { bg: '#f1f5f9',  color: '#64748b',  label: 'Unknown'       };
-  if (days < 0)        return { bg: '#fee2e2',  color: '#991b1b',  label: 'Expired'       };
-  if (days <= 7)       return { bg: '#fef2f2',  color: '#dc2626',  label: 'Critical'      };
-  if (days <= 30)      return { bg: '#fffbeb',  color: '#92400e',  label: 'Warning'       };
-  return               { bg: MINT,             color: DARK,       label: 'Expiring Soon' };
+  if (days === null) return { bg: '#F1F5F9', color: '#64748B', label: 'Unknown' };
+  if (days < 0)      return { bg: 'var(--color-danger-bg)',  color: 'var(--color-danger)',  label: 'Expired'       };
+  if (days <= 7)     return { bg: '#FFF1F2',                 color: '#BE123C',              label: 'Critical'      };
+  if (days <= 30)    return { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)', label: 'Warning'       };
+  return               { bg: 'var(--color-success-bg)', color: 'var(--color-success)', label: 'Expiring Soon' };
 };
 
 /* ── Component ───────────────────────────────────────── */
@@ -126,346 +118,292 @@ const PharmacyExpiryManagement = () => {
     const w = window.open('', '_blank');
     const expiry = product.expiry_date || product.expiry || 'N/A';
     w.document.write(`<!DOCTYPE html><html><head><title>Expiry Report</title>
-    <style>body{font-family:Arial,sans-serif;padding:30px;}.stamp{margin-top:60px;border-top:2px solid #000;padding-top:10px;width:200px;text-align:center;}</style>
+    <style>body{font-family:Inter,Arial,sans-serif;padding:40px;color:#111827;}.stamp{margin-top:60px;border-top:2px solid #000;padding-top:10px;width:200px;text-align:center;} h1{font-size:22px;margin-bottom:20px;} table{width:100%;border-collapse:collapse;margin-bottom:24px;} td,th{padding:10px 14px;border:1px solid #E5E7EB;font-size:13px;} th{background:#F9FAFB;font-weight:600;text-transform:uppercase;font-size:11px;}</style>
     </head><body>
     <h1>EXPIRY REPORT</h1>
-    <p><strong>Drug:</strong> ${product.name} &nbsp;&nbsp; <strong>Batch:</strong> ${product.batch_number || product.batch || 'N/A'}</p>
-    <p><strong>Expiry Date:</strong> ${expiry} &nbsp;&nbsp; <strong>Quantity:</strong> ${product.stock_quantity || 0}</p>
-    <p><strong>Branch:</strong> ${product.branch_name || product.branch || 'N/A'} &nbsp;&nbsp; <strong>Days Remaining:</strong> ${daysUntil(expiry)}</p>
-    <p><strong>Reported By:</strong> Pharmacy Manager &nbsp;&nbsp; <strong>Date:</strong> ${new Date().toISOString().split('T')[0]}</p>
-    <div class="stamp"><p>Manager Stamp Area</p><p style="margin-top:40px;">______________________</p><p>CEO Approval: ______________________</p></div>
+    <table><tbody>
+      <tr><th>Drug</th><td>${product.name}</td><th>Batch</th><td>${product.batch_number || product.batch || 'N/A'}</td></tr>
+      <tr><th>Expiry Date</th><td>${expiry}</td><th>Quantity</th><td>${product.stock_quantity || 0}</td></tr>
+      <tr><th>Branch</th><td>${product.branch_name || product.branch || 'N/A'}</td><th>Days Remaining</th><td>${daysUntil(expiry)}</td></tr>
+      <tr><th>Reported By</th><td>Pharmacy Manager</td><th>Report Date</th><td>${new Date().toISOString().split('T')[0]}</td></tr>
+    </tbody></table>
+    <div class="stamp"><p>Manager Stamp</p><p style="margin-top:40px;">______________________</p><p>CEO Approval: ______________________</p></div>
     </body></html>`);
     w.document.close();
     w.print();
   };
 
-  /* ── helpers ── */
-  const thStyle = {
-    padding: '14px 18px', textAlign: 'left', fontWeight: 900,
-    fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.07em',
-    color: MINT, background: DARK, borderBottom: `3px solid ${ACCENT}`,
-    whiteSpace: 'nowrap',
-  };
-  const labelStyle = {
-    display: 'block', fontSize: 12, fontWeight: 900,
-    color: DARK, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em',
-  };
-  const inputStyle = {
-    width: '100%', padding: '11px 16px', border: `3px solid ${DARK}`,
-    borderRadius: 0, fontSize: 13, fontWeight: 700, color: DARK,
-    background: 'white', outline: 'none', boxSizing: 'border-box',
-    boxShadow: `3px 3px 0 ${DARK}`,
-  };
-
   /* ══════════════════════════════════════════════════════ */
   return (
-    <div style={{ padding: 0, margin: 0, minHeight: '100vh', width: '100%', background: MINT, fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
-
-      {/* ── Global keyframes ── */}
+    <div className="pso-root">
       <style>{`
-        @keyframes spin    { 100%{transform:rotate(360deg)} }
-        @keyframes fadeUp  { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeSlide{from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .exp-toast {
+          position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+          background: var(--color-bg-card);
+          border-left: 4px solid var(--color-success);
+          border-radius: var(--radius-md);
+          box-shadow: 0 8px 24px rgba(0,0,0,.12);
+          padding: 14px 20px; min-width: 280px;
+          animation: slideIn .2s ease;
+          display: flex; gap: 12px; align-items: center;
+          font-size: 14px; font-weight: 500;
+          color: var(--color-text-primary);
+        }
+        .exp-toast.error { border-left-color: var(--color-danger); }
 
-        @keyframes blink3D {
-          0%,100%{ opacity:1;  transform:perspective(400px) rotateY(0deg) scale(1); }
-          50%    { opacity:0.5; transform:perspective(400px) rotateY(180deg) scale(1.15); }
+        /* Report modal action radio cards */
+        .action-radio {
+          flex: 1; display: flex; align-items: center; gap: 8px;
+          padding: 10px 14px; cursor: pointer;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          background: var(--color-bg-page);
+          font-size: 13px; font-weight: 500;
+          color: var(--color-text-secondary);
+          transition: all var(--transition);
         }
-        @keyframes rowIn3D {
-          from{ opacity:0; transform:perspective(900px) rotateX(-55deg) translateY(-18px); }
-          to  { opacity:1; transform:perspective(900px) rotateX(0deg)   translateY(0);     }
+        .action-radio:hover { border-color: var(--color-primary); }
+        .action-radio.active {
+          background: var(--color-info-bg);
+          border-color: var(--color-info);
+          color: var(--color-info);
+          font-weight: 600;
         }
-        @keyframes iconPop {
-          0%,100%{ transform:scale(1) rotateZ(0deg); }
-          50%    { transform:scale(1.25) rotateZ(12deg); }
-        }
+        .action-radio input { accent-color: var(--color-primary); }
 
-        /* Button 3-D lift */
-        .btn3d {
-          transition: transform .15s cubic-bezier(.4,0,.2,1), box-shadow .15s cubic-bezier(.4,0,.2,1);
-          transform-style: preserve-3d;
-        }
-        .btn3d:hover {
-          transform: perspective(500px) translateZ(10px) translateY(-3px) rotateX(6deg) !important;
-          box-shadow: 0 9px 0 ${GOLD2}, 0 12px 18px rgba(0,0,0,.22) !important;
-        }
-        .btn3d:active {
-          transform: perspective(500px) translateZ(0) translateY(5px) rotateX(0deg) !important;
-          box-shadow: 0 0 0 ${GOLD2} !important;
-        }
-
-        /* Row 3-D hover */
-        .row3d {
-          transition: transform .22s ease, box-shadow .22s ease;
-          transform-style: preserve-3d;
-        }
-        .row3d:hover {
-          transform: perspective(900px) scale(1.005) translateZ(6px);
-          box-shadow: 0 8px 18px rgba(0,0,0,.12);
-          z-index: 5;
-          position: relative;
-        }
-
-        .icon3d { animation: blink3D 3.2s ease-in-out infinite; display:inline-block; }
-        .iconPop { animation: iconPop 2.5s ease-in-out infinite; display:inline-block; }
+        /* Expiry table row */
+        .exp-row { transition: background var(--transition); }
+        .exp-row:hover { background: var(--color-bg-page) !important; }
       `}</style>
 
-      {/* ── Toast ── */}
+      {/* Toast notification */}
       {msg.text && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 9999,
-          padding: '12px 24px', borderRadius: 0,
-          background: msg.type === 'success' ? MINT : '#fef2f2',
-          border: `3px solid ${msg.type === 'success' ? DARK : '#991b1b'}`,
-          color: msg.type === 'success' ? DARK : '#991b1b',
-          fontWeight: 800, fontSize: 13,
-          display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: `4px 4px 0 ${msg.type === 'success' ? DARK : '#991b1b'}`,
-          animation: 'fadeSlide .3s ease-out'
-        }}>
-          <span className="icon3d">
-            {msg.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
-          </span>
-          {msg.text}
+        <div className={`exp-toast ${msg.type === 'error' ? 'error' : ''}`}>
+          {msg.type === 'success'
+            ? <CheckCircle size={18} color="var(--color-success)" />
+            : <XCircle size={18} color="var(--color-danger)" />}
+          <span style={{ flex: 1 }}>{msg.text}</span>
+          <button onClick={() => setMsg({ type: '', text: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
         </div>
       )}
 
-      {/* ══ HEADER BAR ══════════════════════════════════════════ */}
-      <div style={{ background: DARK, borderBottom: `4px solid ${ACCENT}`, padding: '0 24px', animation: 'fadeUp .3s ease' }}>
-        {/* shimmer strip */}
-        <div style={{ height: 3, background: `linear-gradient(90deg,${ACCENT},${CREAM},${MINT},${ACCENT})`, backgroundSize: '400% 100%', animation: 'shimmer 2.5s linear infinite' }} />
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0' }}>
-
-          {/* Left – icon + title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div className="icon3d" style={{
-              width: 48, height: 48, background: ACCENT,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `3px solid ${MINT}`, boxShadow: `4px 4px 0 ${MINT}`
-            }}>
-              <Clock size={24} color={DARK} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: CREAM, margin: 0, lineHeight: 1.1 }}>
-                Expiry Management
-              </h1>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: ACCENT }}>
-                Monitor • Report • Dispose
-              </p>
-            </div>
+      {/* ── PAGE HEADER ── */}
+      <div className="pso-header">
+        <div className="pso-header-left">
+          <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: 'var(--shadow-sm)' }}>
+            <Clock size={20} />
           </div>
-
-          {/* Centre – blinking stat pills */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {[
-              { icon: <AlertTriangle size={13}/>, label: 'EXPIRY WATCH', color: '#f59e0b' },
-              { icon: <Package size={13}/>,       label: `${searched.length} ITEMS`, color: MINT  },
-            ].map((p, i) => (
-              <div key={i} className="icon3d" style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '5px 12px', background: 'rgba(255,255,255,.06)',
-                border: '1px solid rgba(255,255,255,.12)', color: p.color,
-                fontSize: 10, fontWeight: 800, letterSpacing: '1.5px',
-              }}>
-                {p.icon} {p.label}
-              </div>
-            ))}
+          <div>
+            <h1 className="pso-title">Expiry Management</h1>
+            <p className="pso-subtitle">Monitor · Report · Dispose</p>
           </div>
-
-          {/* Right – single Refresh */}
-          <button
-            onClick={handleRefresh}
-            className="btn3d"
-            style={{
-              background: CREAM, color: DARK, border: `3px solid ${DARK}`,
-              padding: '10px 22px', fontWeight: 900, fontSize: 13, cursor: 'pointer',
-              boxShadow: `4px 4px 0 ${DARK}`, display: 'inline-flex',
-              alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '1.5px',
-            }}
-          >
-            <SegmentedSpinner size={17} />
+        </div>
+        <div className="pso-header-right">
+          {/* Live counts */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span className="pso-badge" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+              <AlertTriangle size={12} /> Expiry Watch
+            </span>
+            <span className="pso-badge">
+              <Package size={12} /> {loading ? '…' : searched.length} Items
+            </span>
+          </div>
+          <button onClick={handleRefresh} className="pso-btn-refresh" disabled={spinning || loading}>
+            <SegmentedSpinner size={15} spinning={spinning || loading} />
             Refresh
           </button>
         </div>
       </div>
 
-      {/* ══ CONTENT ══════════════════════════════════════════ */}
-      <div style={{ padding: '24px', animation: 'fadeUp .4s ease' }}>
+      {/* ── CONTENT ── */}
+      <div className="pso-content">
+        <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
 
-        {/* Error banner */}
-        {error && (
-          <div style={{ background: '#fef2f2', border: `3px solid #dc2626`, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, boxShadow: `4px 4px 0 #dc2626` }}>
-            <span className="icon3d"><XCircle size={20} color="#dc2626" /></span>
-            <span style={{ color: '#991b1b', fontWeight: 700, flex: 1 }}>{error}</span>
-            <button onClick={loadData} className="btn3d" style={{ padding: '8px 16px', background: '#dc2626', color: 'white', border: `3px solid #991b1b`, fontWeight: 900, fontSize: 12, cursor: 'pointer', boxShadow: `3px 3px 0 #991b1b` }}>Retry</button>
-          </div>
-        )}
+          {/* Error banner */}
+          {error && (
+            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', color: 'var(--color-danger)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <XCircle size={16} /> {error}
+              <button onClick={loadData} className="btn-secondary" style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12 }}>Retry</button>
+            </div>
+          )}
 
-        {/* Filter pill */}
-        {filterMode === 'expiring' && (
-          <div style={{ background: CREAM, border: `3px solid ${DARK}`, padding: '12px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 800, color: DARK, boxShadow: `4px 4px 0 ${DARK}` }}>
-            <span className="iconPop"><Clock size={16} /></span>
-            Showing items expiring within 30 days only
-            <span style={{ marginLeft: 'auto', cursor: 'pointer', color: ACCENT, fontWeight: 900, textDecoration: 'underline' }}
-              onClick={() => { setFilterMode(''); window.history.replaceState({}, '', '/pharmacy/expiry-management'); }}>
-              Clear filter
-            </span>
-          </div>
-        )}
+          {/* Active filter pill */}
+          {filterMode === 'expiring' && (
+            <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 'var(--radius-md)', padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--color-warning)', fontWeight: 500 }}>
+              <Clock size={16} />
+              Showing items expiring within 30 days only
+              <button
+                onClick={() => { setFilterMode(''); window.history.replaceState({}, '', '/pharmacy/expiry-management'); }}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-warning)', fontWeight: 600, fontSize: 13, textDecoration: 'underline' }}
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
 
-        {/* Search bar */}
-        <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={17} color={DARK} style={{ position: 'absolute', left: 14, top: 13, pointerEvents: 'none' }} />
-            <input
-              type="text"
-              placeholder="Search by drug, batch, branch..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ ...inputStyle, paddingLeft: 44 }}
-            />
-          </div>
-        </div>
-
-        {/* Main table card */}
-        <div style={{ background: CREAM, border: `3px solid ${DARK}`, overflow: 'hidden', boxShadow: `6px 6px 0 ${DARK}`, animation: 'fadeSlide .5s ease-out' }}>
-
-          {/* Table header bar */}
-          <div style={{ padding: '18px 24px', borderBottom: `3px solid ${DARK}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: DARK }}>
-            <span style={{ fontWeight: 900, color: CREAM, fontSize: 15, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <span className="icon3d"><AlertTriangle size={18} color="#f59e0b" /></span>
-              Expiring &amp; Expired Products
-            </span>
-            <span style={{ fontSize: 12, color: DARK, background: MINT, padding: '4px 12px', fontWeight: 900 }}>
-              {loading
-                ? <><SegmentedSpinner size={13} />LOADING...</>
-                : `${searched.length} ITEMS`}
-            </span>
+          {/* Search bar */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ position: 'relative', maxWidth: 480 }}>
+              <Search size={15} color="var(--color-text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <input
+                className="pso-input"
+                type="text"
+                placeholder="Search by drug, batch, branch..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ paddingLeft: 36 }}
+              />
+            </div>
           </div>
 
-          {/* Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Drug Name</th>
-                  <th style={thStyle}>Batch</th>
-                  <th style={thStyle}>Expiry Date</th>
-                  <th style={thStyle}>Days Left</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Qty</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7} style={{ padding: '70px 24px', textAlign: 'center' }}>
-                    <SegmentedSpinner size={36} />
-                    <p style={{ color: DARK, margin: '14px 0 0', fontWeight: 800, textTransform: 'uppercase' }}>Loading products…</p>
-                  </td></tr>
-                ) : searched.length === 0 ? (
-                  <tr><td colSpan={7} style={{ padding: '70px 24px', textAlign: 'center', color: DARK }}>
-                    <span className="iconPop" style={{ fontSize: 40, display: 'block', marginBottom: 14 }}>📦</span>
-                    <p style={{ fontSize: 16, fontWeight: 900, margin: '0 0 6px', textTransform: 'uppercase' }}>No expiring products found</p>
-                    <p style={{ fontSize: 13, margin: 0, fontWeight: 700 }}>All products are within safe expiry windows.</p>
-                  </td></tr>
-                ) : searched.map((p, idx) => {
-                  const expiry = p.expiry_date || p.expiry;
-                  const days   = daysUntil(expiry);
-                  const badge  = statusBadge(days);
-                  const rowBg  = idx % 2 === 0 ? CREAM : MINT;
-                  return (
-                    <tr
-                      key={p.id || idx}
-                      className="row3d"
-                      style={{ borderBottom: `2px solid ${DARK}`, background: rowBg, animation: `rowIn3D .35s ease-out ${idx * 0.03}s both` }}
-                    >
-                      <td style={{ padding: '14px 18px', fontWeight: 900, color: DARK, fontSize: 14 }}>{p.name}</td>
-                      <td style={{ padding: '14px 18px', fontFamily: 'monospace', color: MID, fontSize: 13, fontWeight: 700 }}>{p.batch_number || p.batch || '-'}</td>
-                      <td style={{ padding: '14px 18px', color: days < 0 ? '#dc2626' : DARK, fontWeight: days < 0 ? 900 : 700 }}>
-                        {expiry ? new Date(expiry).toLocaleDateString() : '-'}
-                      </td>
-                      <td style={{ padding: '14px 18px', fontWeight: 900, color: days < 0 ? '#dc2626' : days <= 7 ? '#f59e0b' : DARK }}>
-                        {days !== null ? (days < 0 ? `${Math.abs(days)}d OVERDUE` : `${days}d`) : '-'}
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 900, color: DARK, fontSize: 15 }}>{p.stock_quantity || 0}</td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', fontSize: 11, fontWeight: 900, border: `2px solid ${badge.color}`, background: badge.bg, color: badge.color, textTransform: 'uppercase' }}>
-                          <span className="icon3d">{days < 0 ? <XCircle size={12} /> : <Clock size={12} />}</span>
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => openReportForm(p)}
-                            className="btn3d"
-                            style={{ padding: '7px 13px', background: GOLD, color: DARK, border: `3px solid ${GOLD2}`, fontSize: 11, cursor: 'pointer', fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: `3px 3px 0 ${GOLD2}`, textTransform: 'uppercase' }}
-                          >
-                            <span className="icon3d"><FileText size={12} /></span> Report
-                          </button>
-                          <button
-                            onClick={() => handlePrint(p)}
-                            className="btn3d"
-                            style={{ padding: '7px 13px', background: DARK, color: MINT, border: `3px solid ${MID}`, fontSize: 11, cursor: 'pointer', fontWeight: 900, display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: `3px 3px 0 ${MID}`, textTransform: 'uppercase' }}
-                          >
-                            <span className="icon3d"><Printer size={12} /></span> Print
-                          </button>
-                        </div>
+          {/* Main table card */}
+          <div className="card-container" style={{ overflow: 'hidden', padding: 0 }}>
+
+            {/* Table header bar */}
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-card)', flexWrap: 'wrap', gap: 12 }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={18} color="var(--color-warning)" /> Expiring &amp; Expired Products
+              </span>
+              <span className="pso-badge">
+                {loading
+                  ? <><SegmentedSpinner size={12} spinning={true} /> Loading…</>
+                  : `${searched.length} Items`}
+              </span>
+            </div>
+
+            {/* Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="pso-table" style={{ minWidth: 700 }}>
+                <thead>
+                  <tr>
+                    <th>Drug Name</th>
+                    <th>Batch</th>
+                    <th>Expiry Date</th>
+                    <th>Days Left</th>
+                    <th style={{ textAlign: 'right' }}>Qty</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '70px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <SegmentedSpinner size={28} spinning={true} />
+                        <p style={{ margin: '14px 0 0', fontWeight: 500 }}>Loading products…</p>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : searched.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '70px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <Package size={40} style={{ opacity: 0.4, margin: '0 auto 12px' }} />
+                        <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>No expiring products found</p>
+                        <p style={{ fontSize: 13, margin: 0 }}>All products are within safe expiry windows.</p>
+                      </td>
+                    </tr>
+                  ) : searched.map((p, idx) => {
+                    const expiry = p.expiry_date || p.expiry;
+                    const days   = daysUntil(expiry);
+                    const badge  = statusBadge(days);
+                    return (
+                      <tr key={p.id || idx} className="exp-row">
+                        <td style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 14 }}>{p.name}</td>
+                        <td style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)', fontSize: 13 }}>{p.batch_number || p.batch || '—'}</td>
+                        <td style={{ color: days !== null && days < 0 ? 'var(--color-danger)' : 'var(--color-text-primary)', fontWeight: days !== null && days < 0 ? 600 : 400 }}>
+                          {expiry ? new Date(expiry).toLocaleDateString() : '—'}
+                        </td>
+                        <td style={{ fontWeight: 600, color: days === null ? 'var(--color-text-muted)' : days < 0 ? 'var(--color-danger)' : days <= 7 ? '#BE123C' : days <= 30 ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                          {days !== null ? (days < 0 ? `${Math.abs(days)}d OVERDUE` : `${days}d`) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                          {p.stock_quantity || 0}
+                        </td>
+                        <td>
+                          <span className="pso-badge" style={{ background: badge.bg, color: badge.color }}>
+                            {days !== null && days < 0 ? <XCircle size={11} /> : <Clock size={11} />} {badge.label}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <button
+                              onClick={() => openReportForm(p)}
+                              className="btn-secondary"
+                              style={{ padding: '5px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                            >
+                              <FileText size={13} /> Report
+                            </button>
+                            <button
+                              onClick={() => handlePrint(p)}
+                              className="btn-secondary"
+                              style={{ padding: '5px 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                            >
+                              <Printer size={13} /> Print
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
+
         </div>
       </div>
 
       {/* ══ REPORT MODAL ════════════════════════════════════ */}
       {reportForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeSlide .2s ease-out' }}>
-          <div style={{ background: CREAM, border: `4px solid ${DARK}`, padding: 36, width: 500, boxShadow: `10px 10px 0 ${DARK}`, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--color-bg-card)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 48px rgba(0,0,0,.18)', padding: 32, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
             {reportSuccess ? (
-              <div style={{ textAlign: 'center', padding: 24 }}>
-                <span className="iconPop" style={{ display: 'inline-block', fontSize: 56, marginBottom: 12 }}>✅</span>
-                <h3 style={{ color: DARK, margin: '0 0 8px', fontSize: 18, fontWeight: 900, textTransform: 'uppercase' }}>Report Sent to CEO</h3>
-                <p style={{ color: MID, margin: 0, fontSize: 14, fontWeight: 700 }}>CEO, Store Manager and Finance Manager have been notified simultaneously.</p>
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <CheckCircle size={48} color="var(--color-success)" style={{ margin: '0 auto 16px' }} />
+                <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Report Sent to CEO</h3>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary)' }}>CEO, Store Manager and Finance Manager have been notified simultaneously.</p>
               </div>
             ) : (
               <>
-                <h3 style={{ margin: '0 0 6px', color: DARK, fontSize: 18, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 10, textTransform: 'uppercase' }}>
-                  <span className="icon3d"><FileText size={20} color="#dc2626" /></span> Report Expired Drug
-                </h3>
-                <p style={{ color: MID, margin: '0 0 20px', fontSize: 13, fontWeight: 700 }}>
-                  Drug: <strong>{reportForm.name}</strong> — Expiry: {reportForm.expiry_date || reportForm.expiry} — Qty: {reportForm.stock_quantity || 0}
-                </p>
+                {/* Modal header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <FileText size={20} color="var(--color-danger)" /> Report Expired Drug
+                    </h3>
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                      <strong>{reportForm.name}</strong> — Expires: {reportForm.expiry_date || reportForm.expiry} — Qty: {reportForm.stock_quantity || 0}
+                    </p>
+                  </div>
+                  <button onClick={() => setReportForm(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, lineHeight: 1 }}>✕</button>
+                </div>
 
                 {/* Warning notice */}
-                <div style={{ background: MINT, border: `3px solid ${DARK}`, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: DARK, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10, boxShadow: `3px 3px 0 ${DARK}` }}>
-                  <span className="iconPop"><AlertTriangle size={16} color="#f59e0b" /></span>
+                <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 10, fontWeight: 500 }}>
+                  <AlertTriangle size={16} />
                   This will notify CEO, Store Manager, and Finance Manager simultaneously.
                 </div>
 
                 {/* Quantity */}
                 <div style={{ marginBottom: 18 }}>
-                  <label style={labelStyle}>Quantity to Report *</label>
+                  <label className="pso-label">Quantity to Report <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <input
+                    className="pso-input"
                     type="number" min={1} max={reportForm.stock_quantity || 999}
                     value={reportQty} onChange={e => setReportQty(e.target.value)}
-                    style={inputStyle}
                   />
                 </div>
 
                 {/* Action */}
                 <div style={{ marginBottom: 18 }}>
-                  <label style={labelStyle}>Action Required</label>
+                  <label className="pso-label">Action Required</label>
                   <div style={{ display: 'flex', gap: 10 }}>
                     {['Dispose', 'Return', 'Write-off'].map(a => (
-                      <label key={a} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', cursor: 'pointer', background: reportAction === a ? DARK : 'white', border: `3px solid ${DARK}`, transition: 'all .2s', fontSize: 12, fontWeight: 900, color: reportAction === a ? CREAM : DARK, textTransform: 'uppercase' }}>
-                        <input type="radio" value={a} checked={reportAction === a} onChange={() => setReportAction(a)} style={{ accentColor: ACCENT }} />
+                      <label key={a} className={`action-radio ${reportAction === a ? 'active' : ''}`}>
+                        <input type="radio" value={a} checked={reportAction === a} onChange={() => setReportAction(a)} />
                         {a}
                       </label>
                     ))}
@@ -474,29 +412,32 @@ const PharmacyExpiryManagement = () => {
 
                 {/* Notes */}
                 <div style={{ marginBottom: 24 }}>
-                  <label style={labelStyle}>Notes</label>
+                  <label className="pso-label">Notes</label>
                   <textarea
+                    className="pso-input"
                     value={reportNotes} onChange={e => setReportNotes(e.target.value)}
                     rows={3} placeholder="Describe action requested..."
-                    style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+                    style={{ resize: 'vertical' }}
                   />
                 </div>
 
                 {/* Buttons */}
-                <div style={{ display: 'flex', gap: 14 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
                   <button
                     onClick={submitReport}
                     disabled={!reportQty || reportSaving}
-                    className={!reportQty || reportSaving ? '' : 'btn3d'}
-                    style={{ flex: 1, padding: '14px', background: !reportQty || reportSaving ? '#e2e8f0' : GOLD, color: !reportQty || reportSaving ? '#94a3b8' : DARK, border: `3px solid ${!reportQty || reportSaving ? 'transparent' : GOLD2}`, fontWeight: 900, fontSize: 13, cursor: !reportQty || reportSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: !reportQty || reportSaving ? 'none' : `4px 4px 0 ${GOLD2}`, textTransform: 'uppercase' }}
+                    className="btn-primary"
+                    style={{ flex: 1, justifyContent: 'center', opacity: (!reportQty || reportSaving) ? 0.5 : 1, cursor: (!reportQty || reportSaving) ? 'not-allowed' : 'pointer' }}
                   >
-                    {reportSaving && <SegmentedSpinner size={16} />}
-                    {reportSaving ? 'Submitting…' : <><span className="icon3d"><FileText size={16} /></span> Submit to CEO</>}
+                    {reportSaving
+                      ? <><SegmentedSpinner size={16} spinning={true} /> Submitting…</>
+                      : <><FileText size={15} /> Submit to CEO</>
+                    }
                   </button>
                   <button
                     onClick={() => setReportForm(null)}
-                    className="btn3d"
-                    style={{ flex: 1, padding: '14px', background: MINT, color: DARK, border: `3px solid ${DARK}`, fontWeight: 900, fontSize: 13, cursor: 'pointer', boxShadow: `4px 4px 0 ${DARK}`, textTransform: 'uppercase' }}
+                    className="btn-secondary"
+                    style={{ flex: 1, justifyContent: 'center' }}
                   >
                     Cancel
                   </button>
