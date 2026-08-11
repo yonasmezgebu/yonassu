@@ -4,7 +4,7 @@ import pharmacyService from '../../services/pharmacyService';
 import { useAuth } from '../../hooks/useAuth';
 import successSound from '../../assets/notification/info.mp3';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
-import './StockOperations.css';
+import styles from './PharmacyHealthPublisher.module.css';
 
 const PharmacyHealthPublisher = () => {
   const { user } = useAuth();
@@ -175,7 +175,6 @@ const PharmacyHealthPublisher = () => {
       meta_description: post.meta_description || ''
     });
     setShowForm(true);
-    // Auto-scroll to the card if needed, but since it renders in-place, it's fine.
   };
 
   const playSuccessSound = () => {
@@ -230,33 +229,31 @@ const PharmacyHealthPublisher = () => {
     }
   };
 
-  // Reusable Form component for both New and Edit
+  // ── Reusable Form ──────────────────────────────────────────
   const renderForm = (isEditMode) => (
-    <div className="card-container" style={{ padding: 24, borderTop: `4px solid ${isEditMode ? 'var(--color-warning)' : 'var(--color-primary)'}`, animation: 'slideIn 0.2s ease', background: 'var(--color-bg-card)' }}>
-      <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <ImageIcon size={18} color={isEditMode ? 'var(--color-warning)' : 'var(--color-primary)'} /> 
+    <div className={isEditMode ? styles.formCardEdit : styles.formCard}>
+      <h3 className={styles.formTitle}>
+        <ImageIcon size={18} color={isEditMode ? '#D97706' : '#2563EB'} />
         {isEditMode ? 'Edit Health Post' : 'Create New Health Post'}
       </h3>
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      <form onSubmit={handleSubmit} className={styles.formInner}>
 
         {/* Scraped Data Selectors */}
         {!isEditMode && scrapedCategories.length > 0 && (
-          <div style={{ padding: 16, background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ fontWeight: 600, marginBottom: 12, color: 'var(--color-text-primary)', fontSize: 13 }}>Scraped Categories (Click to autofill)</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div className={styles.scrapedPanel}>
+            <p className={styles.scrapedPanelTitle}>Scraped Categories — click to autofill</p>
+            <div className={styles.chipGroup} style={{ marginBottom: 12 }}>
               {scrapedCategories.map(cat => (
-                <button key={cat.id} type="button" onClick={() => fillFromCategory(cat)}
-                  className="btn-action-secondary btn-gold-hover" style={{ padding: '6px 12px', fontSize: 12 }}>
+                <button key={cat.id} type="button" onClick={() => fillFromCategory(cat)} className={styles.chip}>
                   {cat.name}
                 </button>
               ))}
             </div>
-            <div style={{ fontWeight: 600, marginBottom: 12, color: 'var(--color-text-primary)', fontSize: 13 }}>Scraped Products (Click to autofill)</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 120, overflowY: 'auto' }}>
+            <p className={styles.scrapedPanelTitle}>Scraped Products — click to autofill</p>
+            <div className={styles.chipGroup}>
               {scrapedProducts.map(prod => (
-                <button key={prod.id} type="button" onClick={() => fillFromProduct(prod)}
-                  className="btn-action-secondary btn-gold-hover" style={{ padding: '6px 12px', fontSize: 12 }}>
+                <button key={prod.id} type="button" onClick={() => fillFromProduct(prod)} className={styles.chip}>
                   {prod.name}
                 </button>
               ))}
@@ -264,73 +261,120 @@ const PharmacyHealthPublisher = () => {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 250 }}>
-            <div>
-              <label className="pso-label">Title <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-              <input className="pso-input" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+        {/* Main row: text fields + image uploads */}
+        <div className={styles.formRow}>
+          <div className={styles.formColMain}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Title <span style={{ color: '#DC2626' }}>*</span></label>
+              <input className={styles.formInput} required value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
-            <div>
-              <label className="pso-label">Subtitle</label>
-              <input className="pso-input" value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} />
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Subtitle</label>
+              <input className={styles.formInput} value={form.subtitle}
+                onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} />
             </div>
-            <div>
-              <label className="pso-label">Content / Description</label>
-              <textarea className="pso-input" rows={4} value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} style={{ resize: 'vertical' }} />
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Content / Description</label>
+              <textarea className={styles.formInput} rows={4} value={form.content}
+                onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
             </div>
           </div>
-          
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, minWidth: 200 }}>
-            <div>
-              <label className="pso-label">Drug Image</label>
-              <input type="file" accept="image/*" ref={drugFileRef} className="pso-input" style={{ padding: '6px 12px' }}
+
+          <div className={styles.formColSide}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Drug Image</label>
+              <input type="file" accept="image/*" ref={drugFileRef} className={styles.fileInput}
                 onChange={e => { const f = e.target.files[0]; if (f) { setDrugImage(f); setDrugPreview(URL.createObjectURL(f)); } }} />
-              {drugPreview && <img src={drugPreview} alt="" style={{ marginTop: 8, maxHeight: 80, borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />}
+              {drugPreview && <img src={drugPreview} alt="" className={styles.imagePreview} />}
             </div>
-            <div>
-              <label className="pso-label">Cover Image</label>
-              <input type="file" accept="image/*" ref={coverFileRef} className="pso-input" style={{ padding: '6px 12px' }}
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Cover Image</label>
+              <input type="file" accept="image/*" ref={coverFileRef} className={styles.fileInput}
                 onChange={e => { const f = e.target.files[0]; if (f) { setCoverImage(f); setCoverPreview(URL.createObjectURL(f)); } }} />
-              {coverPreview && <img src={coverPreview} alt="" style={{ marginTop: 8, maxHeight: 80, borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />}
+              {coverPreview && <img src={coverPreview} alt="" className={styles.imagePreview} />}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
-          <div><label className="pso-label">Price</label><input className="pso-input" placeholder="0.00" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} /></div>
-          <div><label className="pso-label">Price Unit</label><input className="pso-input" placeholder="ETB" value={form.price_unit} onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))} /></div>
-          <div><label className="pso-label">Manufacturer</label><input className="pso-input" value={form.manufacturer} onChange={e => setForm(f => ({ ...f, manufacturer: e.target.value }))} /></div>
-          <div><label className="pso-label">Stock Qty</label><input className="pso-input" type="number" placeholder="0" value={form.stock_quantity} onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value }))} /></div>
+        {/* Numeric fields */}
+        <div className={styles.formGrid}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Price</label>
+            <input className={styles.formInput} placeholder="0.00" value={form.price}
+              onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Price Unit</label>
+            <input className={styles.formInput} placeholder="ETB" value={form.price_unit}
+              onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Manufacturer</label>
+            <input className={styles.formInput} value={form.manufacturer}
+              onChange={e => setForm(f => ({ ...f, manufacturer: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Stock Qty</label>
+            <input className={styles.formInput} type="number" placeholder="0" value={form.stock_quantity}
+              onChange={e => setForm(f => ({ ...f, stock_quantity: e.target.value }))} />
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-          <div><label className="pso-label">Source URL</label><input className="pso-input" placeholder="https://..." value={form.source_url} onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))} /></div>
-          <div><label className="pso-label">Category</label><input className="pso-input" placeholder="Category name" value={form.category_name} onChange={e => setForm(f => ({ ...f, category_name: e.target.value }))} /></div>
-          <div><label className="pso-label">Status</label>
-            <select className="pso-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+        {/* URL / Category / Status */}
+        <div className={styles.formGrid}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Source URL</label>
+            <input className={styles.formInput} placeholder="https://…" value={form.source_url}
+              onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Category</label>
+            <input className={styles.formInput} placeholder="Category name" value={form.category_name}
+              onChange={e => setForm(f => ({ ...f, category_name: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Status</label>
+            <select className={styles.formSelect} value={form.status}
+              onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          <input type="checkbox" id={`prescription-${isEditMode ? editingId : 'new'}`} checked={form.is_prescription_required}
-            onChange={e => setForm(f => ({ ...f, is_prescription_required: e.target.checked }))} style={{ width: 16, height: 16, accentColor: 'var(--color-primary)' }} />
-          <label htmlFor={`prescription-${isEditMode ? editingId : 'new'}`} style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>Prescription Required</label>
+        {/* Prescription checkbox */}
+        <div className={styles.checkRow}>
+          <input type="checkbox" id={`prescription-${isEditMode ? editingId : 'new'}`}
+            checked={form.is_prescription_required}
+            onChange={e => setForm(f => ({ ...f, is_prescription_required: e.target.checked }))} />
+          <label htmlFor={`prescription-${isEditMode ? editingId : 'new'}`} className={styles.checkLabel}>
+            Prescription Required
+          </label>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
-          <div><label className="pso-label">Meta Title</label><input className="pso-input" value={form.meta_title} onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))} /></div>
-          <div><label className="pso-label">Meta Description</label><input className="pso-input" value={form.meta_description} onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))} /></div>
+        {/* Meta fields */}
+        <div className={styles.formGrid2}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Meta Title</label>
+            <input className={styles.formInput} value={form.meta_title}
+              onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Meta Description</label>
+            <input className={styles.formInput} value={form.meta_description}
+              onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))} />
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-          <button type="submit" disabled={submitting} className="btn-action-primary" style={{ padding: '10px 20px' }}>
+        {/* Form actions */}
+        <div className={styles.formActions}>
+          <button type="submit" disabled={submitting} className={styles.btnPrimary} style={{ height: 44, paddingLeft: 24, paddingRight: 24 }}>
             {submitting ? <SegmentedSpinner size={16} spinning={true} /> : <Save size={16} />}
-            {submitting ? 'Saving...' : (isEditMode ? 'Update Post' : 'Publish Post')}
+            {submitting ? 'Saving…' : (isEditMode ? 'Update Post' : 'Publish Post')}
           </button>
-          <button type="button" onClick={() => { setShowForm(false); resetForm(); setEditingId(null); }} className="btn-action-secondary" style={{ padding: '10px 20px' }}>
+          <button type="button" onClick={() => { setShowForm(false); resetForm(); setEditingId(null); }}
+            className={styles.btnSecondary} style={{ height: 44 }}>
             Cancel
           </button>
         </div>
@@ -338,277 +382,199 @@ const PharmacyHealthPublisher = () => {
     </div>
   );
 
+  // ── Main render ────────────────────────────────────────────
   return (
-    <div className="pso-root">
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .pub-toast {
-          position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-          background: var(--color-bg-card);
-          border-left: 4px solid var(--color-success);
-          border-radius: var(--radius-md);
-          box-shadow: 0 8px 24px rgba(0,0,0,.12);
-          padding: 14px 20px; min-width: 280px;
-          animation: slideIn .2s ease;
-          display: flex; gap: 12px; align-items: center;
-          font-size: 14px; font-weight: 500;
-          color: var(--color-text-primary);
-        }
-        .pub-toast.error { border-left-color: var(--color-danger); }
+    <div className={styles.pubRoot}>
 
-        .pub-card {
-          transition: transform var(--transition), box-shadow var(--transition);
-        }
-        .pub-card:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-md);
-        }
-
-        /* Fully styled enterprise buttons for header and specific actions */
-        .btn-action-primary {
-          background: var(--color-primary);
-          color: white;
-          border: 1px solid var(--color-primary);
-          border-radius: var(--radius-md);
-          padding: 0 16px;
-          height: 36px;
-          font-size: 14px;
-          font-weight: 500;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all var(--transition);
-          box-shadow: var(--shadow-sm);
-          white-space: nowrap;
-        }
-        .btn-action-primary:hover:not(:disabled) {
-          background: var(--color-gold, #FBBF24);
-          color: #111827;
-          border-color: var(--color-gold-border, #F59E0B);
-          transform: translateY(-1px);
-          box-shadow: var(--shadow-md);
-        }
-        .btn-action-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-action-secondary {
-          background: var(--color-bg-card);
-          color: var(--color-text-primary);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-md);
-          padding: 0 16px;
-          height: 36px;
-          font-size: 14px;
-          font-weight: 500;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all var(--transition);
-          box-shadow: var(--shadow-sm);
-          white-space: nowrap;
-        }
-        .btn-action-secondary:hover:not(:disabled) {
-          background: var(--color-gold, #FBBF24);
-          color: #111827;
-          border-color: var(--color-gold-border, #F59E0B);
-          transform: translateY(-1px);
-          box-shadow: var(--shadow-md);
-        }
-        .btn-action-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .btn-action-secondary.active {
-          background: var(--color-bg-page);
-          border-color: var(--color-border);
-        }
-
-        .toggle-switch {
-          width: 40px; height: 22px; border-radius: 11px;
-          position: relative; cursor: pointer;
-          background: var(--color-border);
-          transition: background 0.3s;
-          border: none; outline: none; padding: 0;
-        }
-        .toggle-switch.active { background: var(--color-success); }
-        .toggle-knob {
-          width: 18px; height: 18px; border-radius: 50%;
-          background: white; position: absolute; top: 2px; left: 2px;
-          transition: left 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
-        }
-        .toggle-switch.active .toggle-knob { left: 20px; }
-        .toggle-switch:disabled { opacity: 0.5; cursor: not-allowed; }
-      `}</style>
-
+      {/* ── Toast Notification ── */}
       {settingMsg.text && (
-        <div className={`pub-toast ${settingMsg.type === 'error' ? 'error' : ''}`}>
-          {settingMsg.type === 'success' ? <CheckCircle size={18} color="var(--color-success)" /> : <XCircle size={18} color="var(--color-danger)" />}
-          <span style={{ flex: 1 }}>{settingMsg.text}</span>
-          <button onClick={() => setSettingMsg({ type: '', text: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
+        <div className={settingMsg.type === 'error' ? styles.toastError : styles.toast}>
+          {settingMsg.type === 'success'
+            ? <CheckCircle size={18} color="#16A34A" />
+            : <XCircle size={18} color="#DC2626" />}
+          <span className={styles.toastMessage}>{settingMsg.text}</span>
+          <button onClick={() => setSettingMsg({ type: '', text: '' })} className={styles.toastClose}>✕</button>
         </div>
       )}
 
       {/* ── PAGE HEADER ── */}
-      <div className="pso-header">
-        <div className="pso-header-left">
-          <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: 'var(--shadow-sm)' }}>
+      <div className={styles.pubHeader}>
+        <div className={styles.pubHeaderLeft}>
+          <div className={styles.pubHeaderIcon}>
             <Globe size={20} />
           </div>
           <div>
-            <h1 className="pso-title">Health Publisher</h1>
-            <p className="pso-subtitle">Import · Educate · Publish</p>
+            <h1 className={styles.pubTitle}>Health Publisher</h1>
+            <p className={styles.pubSubtitle}>Import · Educate · Publish</p>
           </div>
         </div>
-        <div className="pso-header-right">
-          
-          <button onClick={handleRefresh} className="btn-action-secondary" disabled={spinning || loading}>
+
+        <div className={styles.pubHeaderRight}>
+
+          {/* Refresh */}
+          <button onClick={handleRefresh} disabled={spinning || loading} className={styles.btnSecondary}>
             <SegmentedSpinner size={15} spinning={spinning || loading} />
             Refresh
           </button>
 
+          {/* Worker access toggle */}
           {isManager && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', height: 36 }}>
-              {workerCanPost ? <ShieldCheck size={16} color="var(--color-success)" /> : <Shield size={16} color="var(--color-text-muted)" />}
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>Worker Access</span>
-              <button className={`toggle-switch ${workerCanPost ? 'active' : ''}`} onClick={handleToggleWorkerPost} disabled={togglingPost}>
-                <div className="toggle-knob"></div>
+            <div className={styles.workerAccessWidget}>
+              {workerCanPost
+                ? <ShieldCheck size={16} color="#16A34A" />
+                : <Shield size={16} color="#9CA3AF" />}
+              <span className={styles.workerAccessLabel}>Worker Access</span>
+              <button
+                className={`${styles.toggleSwitch} ${workerCanPost ? styles.on : ''}`}
+                onClick={handleToggleWorkerPost}
+                disabled={togglingPost}
+              >
+                <div className={styles.toggleKnob} />
               </button>
             </div>
           )}
 
+          {/* Manager tools */}
           {isManager && (
             <>
-              <button onClick={() => { setShowCatManager(s => !s); setShowBranchManager(false); }} className={`btn-action-secondary ${showCatManager ? 'active' : ''}`}>
+              <button
+                onClick={() => { setShowCatManager(s => !s); setShowBranchManager(false); }}
+                className={showCatManager ? styles.btnSecondaryActive : styles.btnSecondary}
+              >
                 <Layers size={15} /> {showCatManager ? 'Close Cats' : 'Manage Cats'}
               </button>
-              <button onClick={() => { setShowBranchManager(s => !s); setShowCatManager(false); }} className={`btn-action-secondary ${showBranchManager ? 'active' : ''}`}>
+              <button
+                onClick={() => { setShowBranchManager(s => !s); setShowCatManager(false); }}
+                className={showBranchManager ? styles.btnSecondaryActive : styles.btnSecondary}
+              >
                 <Building2 size={15} /> {showBranchManager ? 'Close Branches' : 'Manage Branches'}
               </button>
-              <button onClick={handleScrape} disabled={scraping} className="btn-action-secondary">
+              <button onClick={handleScrape} disabled={scraping} className={styles.btnSecondary}>
                 {scraping ? <SegmentedSpinner size={15} spinning={true} /> : <Search size={15} />}
-                {scraping ? 'Scraping...' : 'Scrape & Import'}
+                {scraping ? 'Scraping…' : 'Scrape & Import'}
               </button>
             </>
           )}
 
+          {/* New Post */}
           {canAct && (
-            <button onClick={() => { setShowForm(!showForm); setEditingId(null); resetForm(); }} className="btn-action-primary">
+            <button
+              onClick={() => { setShowForm(!showForm); setEditingId(null); resetForm(); }}
+              className={styles.btnPrimary}
+            >
               {showForm && !editingId ? <><X size={15} /> Cancel</> : <><Plus size={15} /> New Post</>}
             </button>
           )}
 
+          {/* View-only notice */}
           {!canAct && !isManager && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--color-info-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-info)' }}>
-              <Shield size={14} color="var(--color-info)" />
-              <span style={{ fontSize: 12, color: 'var(--color-info)', fontWeight: 600 }}>View Only</span>
+            <div className={styles.viewOnlyBadge}>
+              <Shield size={14} /> View Only
             </div>
           )}
         </div>
       </div>
 
-      <div className="pso-content">
-        <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
-          
-          {/* New Post Form (At top) */}
-          {showForm && !editingId && (
-            <div style={{ marginBottom: 24 }}>
-              {renderForm(false)}
-            </div>
-          )}
+      {/* ── CONTENT ── */}
+      <div className={styles.pubContent}>
 
-          {/* ── Category Manager ── */}
-          {showCatManager && <CategoryManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
+        {/* New Post Form */}
+        {showForm && !editingId && (
+          <div style={{ marginBottom: 24 }}>{renderForm(false)}</div>
+        )}
 
-          {/* ── Branch Manager ── */}
-          {showBranchManager && <BranchManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
+        {/* Category Manager */}
+        {showCatManager && <CategoryManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--color-text-muted)' }}>
-              <SegmentedSpinner size={32} spinning={true} />
-              <p style={{ marginTop: 16, fontWeight: 500 }}>Loading posts...</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-              {posts.map((post) => (
-                <React.Fragment key={post.id}>
-                  {/* Inline Edit Form - Replaces the card if editing this specific post */}
-                  {showForm && editingId === post.id ? (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      {renderForm(true)}
-                    </div>
-                  ) : (
-                    <div className="card-container pub-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                      {(post.drug_image || post.cover_image) && (
-                        <div style={{ width: '100%', height: 180, overflow: 'hidden', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-page)' }}>
-                          <img src={`http://localhost:5000${post.drug_image || post.cover_image}`} alt={post.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={e => { e.target.style.display = 'none'; }} />
+        {/* Branch Manager */}
+        {showBranchManager && <BranchManager pharmacyService={pharmacyService} refreshTrigger={refreshTrigger} />}
+
+        {/* Posts Grid */}
+        {loading ? (
+          <div className={styles.loadingState}>
+            <SegmentedSpinner size={32} spinning={true} />
+            <p className={styles.loadingText}>Loading posts…</p>
+          </div>
+        ) : (
+          <div className={styles.postsGrid}>
+            {posts.map((post) => (
+              <React.Fragment key={post.id}>
+                {/* Inline Edit */}
+                {showForm && editingId === post.id ? (
+                  <div className={styles.inlineEditSlot}>{renderForm(true)}</div>
+                ) : (
+                  <div className={styles.postCard}>
+                    {(post.drug_image || post.cover_image) && (
+                      <div className={styles.postCardImgWrap}>
+                        <img
+                          src={`http://localhost:5000${post.drug_image || post.cover_image}`}
+                          alt={post.title}
+                          className={styles.postCardImg}
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+
+                    <div className={styles.postCardBody}>
+                      <div className={styles.postCardTop}>
+                        <h3 className={styles.postCardTitle}>{post.title}</h3>
+                        <span className={post.status === 'published' ? styles.badgePublished : styles.badgeDraft}>
+                          {post.status}
+                        </span>
+                      </div>
+
+                      {post.subtitle && <p className={styles.postCardSubtitle}>{post.subtitle}</p>}
+
+                      {post.price && (
+                        <p className={styles.postCardPrice}>
+                          <DollarSign size={15} /> {post.price} {post.price_unit}
+                        </p>
+                      )}
+
+                      <div className={styles.postCardMeta}>
+                        {post.category_name && <span className={styles.badgeMuted}>{post.category_name}</span>}
+                        {post.branch_name && <span className={styles.badgeMuted}>{post.branch_name}</span>}
+                        {post.manufacturer && <span className={styles.badgeMuted}>{post.manufacturer}</span>}
+                      </div>
+
+                      {canAct && (
+                        <div className={styles.postCardActions}>
+                          <button onClick={() => startEdit(post)} className={styles.btnSecondary} style={{ flex: 1 }}>
+                            <Edit3 size={14} /> Edit
+                          </button>
+                          {post.status !== 'published' && (
+                            <button onClick={() => handlePublish(post.id)} className={styles.btnPrimary} style={{ flex: 1 }}>
+                              Publish
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(post.id)} className={styles.btnDanger}>
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       )}
-                      <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 12 }}>
-                          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.3 }}>{post.title}</h3>
-                          <span className="pso-badge" style={{
-                            background: post.status === 'published' ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
-                            color: post.status === 'published' ? 'var(--color-success)' : 'var(--color-warning)',
-                          }}>{post.status}</span>
-                        </div>
-                        {post.subtitle && <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{post.subtitle}</p>}
-                        
-                        {post.price && (
-                          <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <DollarSign size={16} /> {post.price} {post.price_unit}
-                          </p>
-                        )}
-                        
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-                          {post.category_name && <span className="pso-badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{post.category_name}</span>}
-                          {post.branch_name && <span className="pso-badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{post.branch_name}</span>}
-                          {post.manufacturer && <span className="pso-badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{post.manufacturer}</span>}
-                        </div>
-                        
-                        <div style={{ marginTop: 'auto', display: 'flex', gap: 8, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
-                          {canAct && (
-                            <>
-                              <button onClick={() => startEdit(post)} className="btn-action-secondary" style={{ flex: 1, justifyContent: 'center' }}>
-                                Edit
-                              </button>
-                              {post.status !== 'published' && (
-                                <button onClick={() => handlePublish(post.id)} className="btn-action-primary" style={{ flex: 1, justifyContent: 'center' }}>
-                                  Publish
-                                </button>
-                              )}
-                              <button onClick={() => handleDelete(post.id)} className="btn-action-secondary" style={{ padding: '8px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-bg)', background: 'var(--color-danger-bg)' }}>
-                                <Trash2 size={16} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
                     </div>
-                  )}
-                </React.Fragment>
-              ))}
-              {posts.length === 0 && !showForm && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 24px', background: 'var(--color-bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  <Globe size={48} color="var(--color-text-muted)" style={{ margin: '0 auto 16px', opacity: 0.5 }} />
-                  <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>No health posts yet</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', margin: 0 }}>Click "Scrape & Import" to pull data, or create a new post manually.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+
+            {posts.length === 0 && !showForm && (
+              <div className={styles.emptyState}>
+                <Globe size={48} className={styles.emptyIcon} color="#9CA3AF" />
+                <p className={styles.emptyTitle}>No health posts yet</p>
+                <p className={styles.emptyText}>Click "Scrape & Import" to pull data, or create a new post manually.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-/* ── Inline Category Manager ── */
+/* ═══════════════════════════════════════════════════════════
+   Inline Category Manager
+═══════════════════════════════════════════════════════════ */
 const CategoryManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -616,10 +582,10 @@ const CategoryManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const [desc, setDesc] = useState('');
   const [editId, setEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  
+
   const load = async () => { setLoading(true); try { const r = await svc.getCategories(); if (r?.status === 'success') setItems(r.data); } catch {} finally { setLoading(false); } };
   useEffect(() => { load(); }, [refreshTrigger]);
-  
+
   const handleSave = async () => {
     if (!name.trim()) return alert('Name required');
     setSubmitting(true);
@@ -631,58 +597,80 @@ const CategoryManager = ({ pharmacyService: svc, refreshTrigger }) => {
   };
   const handleEdit = (item) => { setName(item.name); setDesc(item.description || ''); setEditId(item.id); };
   const handleDelete = async (id) => { if (!window.confirm('Delete category?')) return; try { await svc.deleteCategory(id); await load(); } catch (e) { alert('Failed'); } };
-  
+
   return (
-    <div className="card-container" style={{ padding: 24, marginBottom: 24, borderTop: '4px solid var(--color-info)' }}>
-      <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Layers size={18} color="var(--color-info)" /> Category Management
-      </h3>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <input className="pso-input" placeholder="Category name" value={name} onChange={e => setName(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
-        <input className="pso-input" placeholder="Description" value={desc} onChange={e => setDesc(e.target.value)} style={{ flex: 2, minWidth: 300 }} />
-        <button onClick={handleSave} disabled={submitting} className="btn-action-primary" style={{ padding: '0 24px' }}>
-          {submitting ? 'Saving...' : editId ? 'Update' : 'Add'}
-        </button>
-        {editId && <button onClick={() => { setName(''); setDesc(''); setEditId(null); }} className="btn-action-secondary" style={{ padding: '0 24px' }}>Cancel</button>}
+    <div className={styles.managerCard}>
+      <div className={styles.managerCardHeader}>
+        <h3 className={styles.managerCardTitle}>
+          <Layers size={18} color="#0284C7" /> Category Management
+        </h3>
       </div>
-      {loading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading categories...</p> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="pso-table" style={{ width: '100%', minWidth: 500 }}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Active</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="pub-card">
-                  <td style={{ color: 'var(--color-text-secondary)' }}>{item.id}</td>
-                  <td style={{ fontWeight: 500 }}>{item.name}</td>
-                  <td>
-                    <span className="pso-badge" style={{ background: item.is_active ? 'var(--color-success-bg)' : 'var(--color-danger-bg)', color: item.is_active ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                      {item.is_active ? 'Yes' : 'No'}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button onClick={() => handleEdit(item)} className="btn-action-secondary" style={{ padding: '4px 10px', fontSize: 12 }}>Edit</button>
-                      <button onClick={() => handleDelete(item.id)} className="btn-action-secondary" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--color-danger)', borderColor: 'var(--color-danger-bg)', background: 'var(--color-danger-bg)' }}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className={styles.managerCardBody}>
+        <div className={styles.managerInputRow}>
+          <input className={styles.formInput} placeholder="Category name" value={name}
+            onChange={e => setName(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+          <input className={styles.formInput} placeholder="Description" value={desc}
+            onChange={e => setDesc(e.target.value)} style={{ flex: 2, minWidth: 240 }} />
+          <button onClick={handleSave} disabled={submitting} className={styles.btnPrimary} style={{ height: 36, padding: '0 24px' }}>
+            {submitting ? 'Saving…' : editId ? 'Update' : 'Add'}
+          </button>
+          {editId && (
+            <button onClick={() => { setName(''); setDesc(''); setEditId(null); }} className={styles.btnSecondary} style={{ height: 36 }}>
+              Cancel
+            </button>
+          )}
         </div>
-      )}
+
+        {loading ? (
+          <div className={styles.loadingState} style={{ padding: '24px 0' }}>
+            <SegmentedSpinner size={24} spinning={true} />
+            <p className={styles.loadingText}>Loading categories…</p>
+          </div>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>ID</th>
+                  <th className={styles.th}>Name</th>
+                  <th className={styles.th}>Active</th>
+                  <th className={styles.thRight}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(item => (
+                  <tr key={item.id} className={styles.tr}>
+                    <td className={styles.tdMono}>{item.id}</td>
+                    <td className={styles.td} style={{ fontWeight: 500 }}>{item.name}</td>
+                    <td className={styles.td}>
+                      <span className={item.is_active ? styles.badgeActive : styles.badgeInactive}>
+                        {item.is_active ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className={styles.tdRight}>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button onClick={() => handleEdit(item)} className={styles.btnSecondary} style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} className={styles.btnDanger} style={{ height: 32, padding: '0 12px', fontSize: 12 }}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-/* ── Inline Branch Manager ── */
+/* ═══════════════════════════════════════════════════════════
+   Inline Branch Manager
+═══════════════════════════════════════════════════════════ */
 const BranchManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -722,114 +710,120 @@ const BranchManager = ({ pharmacyService: svc, refreshTrigger }) => {
   const handleDelete = async (id) => { if (!window.confirm('Delete branch?')) return; try { await svc.deleteBranch(id); showMsg('success', 'Branch deleted'); await load(); } catch { showMsg('error', 'Failed to delete'); } };
 
   const fldIcon = (icon, label, key, ph) => (
-    <div>
-      <label className="pso-label">{label}</label>
+    <div className={styles.formGroup}>
+      <label className={styles.formLabel}>{label}</label>
       <div style={{ position: 'relative' }}>
-        {React.cloneElement(icon, { size: 16, style: { position: 'absolute', left: 12, top: 10, color: 'var(--color-text-muted)' } })}
-        <input className="pso-input" placeholder={ph} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={{ paddingLeft: 36 }} />
+        {React.cloneElement(icon, { size: 16, style: { position: 'absolute', left: 12, top: 10, color: '#9CA3AF' } })}
+        <input className={styles.formInput} placeholder={ph} value={form[key]}
+          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+          style={{ paddingLeft: 36 }} />
       </div>
     </div>
   );
 
   return (
-    <div className="card-container" style={{ marginBottom: 24, padding: 0, overflow: 'hidden', borderTop: '4px solid var(--color-info)' }}>
+    <div className={styles.managerCard} style={{ position: 'relative' }}>
+
       {msg.text && (
-        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 9999, padding: '12px 24px', background: 'var(--color-bg-card)', borderLeft: `4px solid ${msg.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)'}`, color: 'var(--color-text-primary)', fontWeight: 500, fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'var(--shadow-md)', borderRadius: 'var(--radius-md)' }}>
-          {msg.type === 'success' ? <CheckCircle size={18} color="var(--color-success)" /> : <XCircle size={18} color="var(--color-danger)" />}
+        <div className={msg.type === 'success' ? styles.branchMsgSuccess : styles.branchMsgError}>
+          {msg.type === 'success' ? <CheckCircle size={18} color="#16A34A" /> : <XCircle size={18} color="#DC2626" />}
           {msg.text}
         </div>
       )}
-      
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-page)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-          <Building2 size={18} color="var(--color-info)" /> Branch Management
-        </div>
-        <button onClick={() => { if (showForm) resetForm(); else openForm(); }} className="btn-action-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+
+      <div className={styles.managerCardHeader}>
+        <h3 className={styles.managerCardTitle}>
+          <Building2 size={18} color="#0284C7" /> Branch Management
+        </h3>
+        <button onClick={() => { if (showForm) resetForm(); else openForm(); }} className={styles.btnPrimary} style={{ height: 36 }}>
           {showForm ? <><X size={14} /> Cancel</> : <><Plus size={14} /> Add Branch</>}
         </button>
       </div>
 
-      <div style={{ padding: 24 }}>
+      <div className={styles.managerCardBody}>
         {showForm && (
-          <div style={{ background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 24, marginBottom: 24 }}>
-            <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className={styles.branchFormPanel}>
+            <h4 className={styles.branchFormTitle}>
               {editId ? <Edit3 size={16} /> : <Plus size={16} />}
               {editId ? 'Edit Branch' : 'New Branch'}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+            <div className={styles.branchFormGrid}>
               {fldIcon(<Building2 />, 'Branch Name *', 'name', 'e.g. Downtown Pharmacy')}
               {fldIcon(<Hash />, 'Code', 'code', 'e.g. DTP')}
               {fldIcon(<Phone />, 'Phone', 'phone', '+251-XXX-XXXX')}
               {fldIcon(<User />, 'Manager Name', 'manager_name', 'Manager name')}
               {fldIcon(<Clock />, 'Working Hours', 'working_hours', 'Mon-Sat 8AM-6PM')}
-              <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 4, height: '100%', paddingTop: 20 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 18, height: 18, accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>Active Branch</span>
+              <div className={styles.formGroup} style={{ justifyContent: 'flex-end' }}>
+                <label className={styles.checkRow} style={{ paddingTop: 24 }}>
+                  <input type="checkbox" checked={form.is_active}
+                    onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                    style={{ width: 18, height: 18, accentColor: '#2563EB', cursor: 'pointer' }} />
+                  <span className={styles.checkLabel}>Active Branch</span>
                 </label>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label className="pso-label">Address</label>
-                <div style={{ position: 'relative' }}>
-                  <MapPin size={16} style={{ position: 'absolute', left: 12, top: 10, color: 'var(--color-text-muted)' }} />
-                  <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} rows={2}
-                    className="pso-input" style={{ paddingLeft: 36, minHeight: 60, resize: 'vertical' }}
-                    placeholder="Full address" />
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <MapPin size={16} style={{ position: 'absolute', left: 12, top: 10, color: '#9CA3AF' }} />
+                    <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                      rows={2} className={styles.formInput}
+                      style={{ paddingLeft: 36, minHeight: 60 }}
+                      placeholder="Full address" />
+                  </div>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={handleSave} disabled={submitting} className="btn-action-primary" style={{ padding: '10px 24px' }}>
+            <div className={styles.branchFormActions}>
+              <button onClick={handleSave} disabled={submitting} className={styles.btnPrimary} style={{ height: 44, padding: '0 24px' }}>
                 {submitting ? <SegmentedSpinner size={16} spinning={true} /> : <Save size={16} />}
-                {submitting ? 'Saving...' : editId ? 'Update' : 'Create'}
+                {submitting ? 'Saving…' : editId ? 'Update' : 'Create'}
               </button>
-              <button onClick={resetForm} className="btn-action-secondary" style={{ padding: '10px 24px' }}>Cancel</button>
+              <button onClick={resetForm} className={styles.btnSecondary} style={{ height: 44 }}>Cancel</button>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>
+          <div className={styles.loadingState} style={{ padding: '32px 0' }}>
             <SegmentedSpinner size={32} spinning={true} />
-            <div style={{ marginTop: 12 }}>Loading branches...</div>
+            <p className={styles.loadingText}>Loading branches…</p>
           </div>
         ) : items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 24px', color: 'var(--color-text-muted)' }}>
-            <Building2 size={40} style={{ opacity: 0.4, margin: '0 auto 12px' }} />
-            <p style={{ fontWeight: 600, margin: '0 0 6px', fontSize: 16, color: 'var(--color-text-primary)' }}>No branches yet</p>
-            <p style={{ margin: 0, fontSize: 14 }}>Click "Add Branch" to create one</p>
+          <div className={styles.emptyState} style={{ gridColumn: 'unset' }}>
+            <Building2 size={40} className={styles.emptyIcon} color="#9CA3AF" />
+            <p className={styles.emptyTitle}>No branches yet</p>
+            <p className={styles.emptyText}>Click "Add Branch" to create one</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-            {items.map((item) => (
-              <div key={item.id} className="card-container pub-card" style={{ padding: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div className={styles.branchGrid}>
+            {items.map(item => (
+              <div key={item.id} className={styles.branchCard}>
+                <div className={styles.branchCardTop}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 40, height: 40, background: 'var(--color-info-bg)', color: 'var(--color-info)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={20} />
-                    </div>
+                    <div className={styles.branchIconWrap}><Building2 size={20} /></div>
                     <div>
-                      <h4 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>{item.name}</h4>
-                      {item.code && <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>#{item.code}</span>}
+                      <h4 className={styles.branchName}>{item.name}</h4>
+                      {item.code && <span className={styles.branchCode}>#{item.code}</span>}
                     </div>
                   </div>
-                  <span className="pso-badge" style={{ background: item.is_active ? 'var(--color-success-bg)' : 'var(--color-danger-bg)', color: item.is_active ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  <span className={item.is_active ? styles.badgeActive : styles.badgeInactive}>
                     {item.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                  {item.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={14} /> {item.phone}</div>}
-                  {item.manager_name && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><User size={14} /> {item.manager_name}</div>}
-                  {item.working_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Clock size={14} /> {item.working_hours}</div>}
-                  {item.address && <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}><MapPin size={14} style={{ flexShrink: 0, marginTop: 2 }} /> <span>{item.address}</span></div>}
+
+                <div className={styles.branchMeta}>
+                  {item.phone && <div className={styles.branchMetaRow}><Phone size={14} /> {item.phone}</div>}
+                  {item.manager_name && <div className={styles.branchMetaRow}><User size={14} /> {item.manager_name}</div>}
+                  {item.working_hours && <div className={styles.branchMetaRow}><Clock size={14} /> {item.working_hours}</div>}
+                  {item.address && <div className={styles.branchMetaRow}><MapPin size={14} style={{ flexShrink: 0 }} /> <span>{item.address}</span></div>}
                 </div>
-                
-                <div style={{ display: 'flex', gap: 10, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
-                  <button onClick={() => openForm(item)} className="btn-action-secondary" style={{ flex: 1, justifyContent: 'center', padding: '8px' }}>
+
+                <div className={styles.branchActions}>
+                  <button onClick={() => openForm(item)} className={styles.btnSecondary} style={{ flex: 1 }}>
                     <Edit3 size={14} /> Edit
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="btn-action-secondary" style={{ flex: 1, justifyContent: 'center', padding: '8px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-bg)', background: 'var(--color-danger-bg)' }}>
+                  <button onClick={() => handleDelete(item.id)} className={styles.btnDanger} style={{ flex: 1 }}>
                     <Trash2 size={14} /> Delete
                   </button>
                 </div>
