@@ -245,8 +245,11 @@
   transition: all 150ms ease;
 }
 .saveBtn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  background: #FBBF24;
+  border-color: #F59E0B;
+  color: #111827;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 }
 .saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -453,9 +456,20 @@
   cursor: pointer;
   transition: all 150ms ease;
 }
-.actionBtn:hover { background: var(--color-bg-page); color: var(--color-text-primary); }
+.actionBtn:hover { 
+  background: #FBBF24; 
+  color: #111827; 
+  border-color: #F59E0B;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(251,191,36,.25);
+}
 .actionBtn.active { background: var(--color-success); color: #fff; border-color: var(--color-success); }
-.actionBtnDel:hover { background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger); }
+.actionBtn.active:hover { background: #FBBF24; color: #111827; border-color: #F59E0B; }
+.actionBtnDel:hover { 
+  background: #FBBF24; 
+  color: #111827; 
+  border-color: #F59E0B;
+}
 
 /* Loading / Empty */
 .loading, .empty {
