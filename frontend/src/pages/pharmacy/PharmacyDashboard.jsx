@@ -73,8 +73,8 @@ const PharmacyDashboard = () => {
     { type: 'divider' },
     { label: 'Pharmacy', icon: 'pill',
       children: [
-        { label: 'Store Inventory',  path: '/pharmacy/store-inventory',  icon: 'database',  color: '#0891b2', altActiveOn: ['/pharmacy/medicines', '/pharmacy/pharmacy-stock', '/pharmacy/products', '/pharmacy/categories'] },
-        { label: 'Stock Operations', path: '/pharmacy/stock-operations', icon: 'package',   color: '#3b82f6', altActiveOn: ['/pharmacy/stock-transfer', '/pharmacy/receiving', '/pharmacy/goods-receiving', '/pharmacy/pending-shipments', '/pharmacy/branch-drugs', '/pharmacy/warehouses'] },
+        { label: 'Store Inventory',  path: '/pharmacy/store-inventory',  icon: 'database',  color: '#0891b2', altActiveOn: ['/pharmacy/pharmacy-stock', '/pharmacy/products', '/pharmacy/categories'] },
+        { label: 'Stock Operations', path: '/pharmacy/stock-operations', icon: 'package',   color: '#3b82f6', altActiveOn: ['/pharmacy/medicines', '/pharmacy/stock-transfer', '/pharmacy/receiving', '/pharmacy/goods-receiving', '/pharmacy/pending-shipments', '/pharmacy/branch-drugs', '/pharmacy/warehouses'] },
         { label: 'Drug Procurement', path: '/pharmacy/procurement-requests',  icon: 'shopping-cart', color: '#059669', altActiveOn: ['/pharmacy/store-requisition', '/pharmacy/requisitions', '/pharmacy/grn', '/pharmacy/receive-shipment'] },
         { label: 'Direct Delivery',  path: '/pharmacy/direct-delivery',       icon: 'truck',         color: '#8b5cf6' },
         { label: 'Stock Adjustment', path: '/pharmacy/stock-adjustment',      icon: 'sliders',       color: '#f97316' },
