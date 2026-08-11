@@ -153,7 +153,7 @@ exports.createOrder = catchAsync(async (req, res) => {
     binding_type: bindingType || 'None',
     quantity: parseInt(quantity) || 1,
     special_instructions: specialInstructions || null,
-    due_date: dueDate || null,
+    due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
     price_per_unit: pricing.pricePerUnit,
     binding_cost: pricing.bindingCost,
     total_price: pricing.totalPrice,
@@ -185,7 +185,19 @@ exports.createOrder = catchAsync(async (req, res) => {
     }).catch(err => console.error('Failed to submit to finance:', err.message));
   }
 
-  await audit('PRINTING_ORDER_CREATED', userId, { ip: req.ip, resourceId: orderId });
+  await audit('PRINTING_ORDER_CREATED', userId, {
+    ip: req.ip,
+    resourceId: orderId,
+    afterState: {
+      order_number: orderNumber,
+      customer_id: resolvedCustomerId,
+      product_type: productType || 'Book',
+      quantity: parseInt(quantity) || 1,
+      total_price: pricing.totalPrice,
+      status: initialStatus?.status_code || 'in_queue'
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
 
   // NOTIFY PRINTING DEPARTMENT
   try {
@@ -345,10 +357,17 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
     }
   }
 
+  let oldStatusCode = null;
+  if (order.status_id) {
+    const oldStatusRow = await db('order_statuses').where('id', order.status_id).first();
+    oldStatusCode = oldStatusRow?.status_code || null;
+  }
   await audit('PRINTING_ORDER_STATUS_UPDATED', userId, {
     ip: req.ip, resourceId: id,
+    beforeState: { status_code: oldStatusCode },
     afterState: { status_code: statusRow.status_code, completed_at: newStatusId === deliveredId ? new Date().toISOString() : null }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({ status: 'success', message: 'Order status updated successfully', data: { statusCode: statusRow.status_code, statusName: statusRow.status_name } });
 });
 exports.uploadAttachments = catchAsync(async (req, res) => {
@@ -386,13 +405,15 @@ exports.uploadAttachments = catchAsync(async (req, res) => {
       attachments: JSON.stringify(attachments),
       updated_at: db.fn.now()
     });
-  await audit('PRINTING_ORDER_ATTACHMENTS_UPLOADED', id, {
+  await audit('PRINTING_ORDER_ATTACHMENTS_UPLOADED', userId, {
     ip,
+    resourceId: id,
     details: {
       fileCount: newAttachments.length,
       filenames: newAttachments.map(f => f.originalName)
     }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({
     status: 'success',
     message: `${newAttachments.length} file(s) uploaded successfully`,
@@ -434,13 +455,15 @@ exports.deleteAttachment = catchAsync(async (req, res) => {
       attachments: updatedAttachments.length > 0 ? JSON.stringify(updatedAttachments) : null,
       updated_at: db.fn.now()
     });
-  await audit('PRINTING_ORDER_ATTACHMENT_DELETED', id, {
+  await audit('PRINTING_ORDER_ATTACHMENT_DELETED', userId, {
     ip,
+    resourceId: id,
     details: {
       attachmentId,
       filename: attachmentToDelete.originalName
     }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({
     status: 'success',
     message: 'Attachment deleted successfully'
@@ -561,8 +584,10 @@ exports.printTaxReceipt = catchAsync(async (req, res) => {
   }
   await audit('TAX_RECEIPT_PRINTED', userId, {
     ip,
+    resourceId: orderId,
     details: { serialNumber, customerName: order.customer_name, usedCount: newUsedCount, remaining: newRemaining }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({
     status: 'success',
     message: 'Tax receipt printed successfully',
@@ -778,7 +803,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     binding_type: bindingType || 'None',
     quantity: parseInt(quantity) || 1,
     special_instructions: specialInstructions || null,
-    due_date: dueDate || null,
+    due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
     price_per_unit: pricing.pricePerUnit,
     binding_cost: pricing.bindingCost,
     total_price: pricing.totalPrice,
@@ -810,6 +835,18 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
       updated_at: db.fn.now()
     }).catch(err => console.error('Failed to submit to finance:', err.message));
   }
+
+  await audit('PRINTING_ORDER_CREATED', userId, {
+    ip: req.ip,
+    resourceId: orderId,
+    details: {
+      source: 'customer_portal',
+      order_number: orderNumber,
+      total_price: pricing.totalPrice,
+      status: initialStatus?.status_code || 'in_queue'
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
 
   res.status(201).json({ status: 'success', message: 'Order placed successfully', data: { orderId, orderNumber, totalPrice: pricing.totalPrice } });
 });
@@ -902,10 +939,13 @@ exports.getProductTypes = catchAsync(async (req, res) => {
 exports.closeShift = catchAsync(async (req, res) => {
   const worker_id = req.user.id;
   const today = new Date().toISOString().split('T')[0];
-  const sales = await db('printing_orders').where('status', 'Delivered').whereRaw('DATE(created_at) = ?', [today]);
+  const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
+  const sales = await db('printing_orders')
+    .where('status_id', deliveredStatus?.id || 8)
+    .whereRaw('DATE(created_at) = ?', [today]);
   const totalSales = sales.reduce((sum, o) => sum + parseFloat(o.total_price), 0);
   const financeUser = await db('users').join('user_roles', 'users.id', 'user_roles.user_id').join('roles', 'user_roles.role_id', 'roles.id').where('roles.name', 'Finance').first() || { user_id: 3 };
-  await db('cash_handovers').insert({
+  const [handoverId] = await db('cash_handovers').insert({
     from_user_id: worker_id,
     to_user_id: financeUser.user_id,
     handover_type: 'PRINTING_TO_FINANCE',
@@ -916,6 +956,16 @@ exports.closeShift = catchAsync(async (req, res) => {
     created_at: db.fn.now(),
     updated_at: db.fn.now()
   });
+  await audit('PRINTING_SHIFT_CLOSED', worker_id, {
+    ip: req.ip,
+    resourceId: handoverId,
+    details: {
+      handoverType: 'PRINTING_TO_FINANCE',
+      totalSales,
+      handoverTo: financeUser.user_id
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({ status: 'success', message: 'Printing daily sales handed over to finance.' });
 });
 
