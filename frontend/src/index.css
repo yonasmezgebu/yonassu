@@ -260,3 +260,28 @@ tbody tr:hover td {
   align-items: center;
   gap: 8px;
 }
+
+/* ── Print (page-specific print styles live in each page module) ── */
+@media print {
+  @page { margin: 12mm; }
+  html, body {
+    background: #FFFFFF !important;
+  }
+  .dashboard-wrapper,
+  .dash-main,
+  .dash-content {
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .dash-sidebar,
+  .dash-topbar,
+  .dash-mobile-overlay,
+  .dash-notif-btn,
+  .dash-sidebar-toggle,
+  .dash-user-chip,
+  .dash-dropdown-menu {
+    display: none !important;
+  }
+}
