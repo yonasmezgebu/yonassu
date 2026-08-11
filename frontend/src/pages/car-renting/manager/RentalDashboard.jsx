@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { rentalState } from '../../../utils/rentalManagerState';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './RentalDashboard.css';
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
@@ -21,71 +22,76 @@ const CategoryBar = ({ value, max, color }) => (
   </div>
 );
 
-/* ─── Global Animations ─────────────────────────────────────────────────── */
+/* ─── Enterprise Design System ──────────────────────────────────────────── */
 const GlobalStyles = () => (
   <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
+    .artistic-3d-title {
+      font-size: 26px; font-weight: 600; color: #111827; letter-spacing: -0.02em;
+      margin: 0; display: flex; align-items: center; gap: 10px; line-height: 1.3;
+    }
+    .artistic-3d-subtitle {
+      font-size: 13px; color: #6B7280; font-weight: 500; text-align: center;
+      text-transform: uppercase; letter-spacing: 0.05em; margin: 0; line-height: 1.5;
+    }
+    .blink-star { display: inline-block; animation: none; }
+
+    .btn-sync {
+      position: relative; background: #2563EB; color: #FFFFFF; border: none;
+      height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 500; font-size: 14px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      margin: 0; box-shadow: none; text-transform: none; letter-spacing: normal;
+      transition: background 150ms ease-in-out, transform 150ms ease-in-out;
+    }
+    .btn-sync:hover { background: #FFC107; color: #111827; }
+    .btn-sync:active { transform: scale(0.98); }
+    .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+      position: relative; overflow: hidden; background: #FFFFFF; border: 1px solid #E5E7EB;
+      border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      cursor: pointer; animation: fadeUp 150ms ease both;
+      transition: box-shadow 150ms ease, transform 150ms ease;
     }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
+    .d-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
     .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB;
+      border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      animation: fadeUp 150ms ease both;
+      transition: box-shadow 150ms ease, transform 150ms ease;
     }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
+    .d-card-no-hover:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    .alert-row {
+      position: relative; display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+      background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; cursor: pointer;
+      margin-bottom: 10px; transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+    .alert-row:hover { background: #EFF6FF; border-color: #BFDBFE; transform: translateX(2px); }
 
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    .cat-row {
+      position: relative; display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px;
+      align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      transition: background 150ms ease;
+    }
+    .cat-row:hover { background: #F9FAFB; }
 
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
+    .top-row {
+      position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      border-radius: 8px; background: #F9FAFB; margin-bottom: 8px; cursor: pointer;
+      transition: background 150ms ease;
+    }
+    .top-row:hover { background: #EFF6FF; }
 
     .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px;
+      padding: 18px 14px; text-align: center; cursor: pointer;
+      transition: box-shadow 150ms ease, transform 150ms ease;
     }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+    .qa-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
   `}</style>
 );
 
