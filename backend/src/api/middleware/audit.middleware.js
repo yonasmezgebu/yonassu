@@ -27,7 +27,12 @@ const AUDIT_RESOURCES = [
   'transfers',
   'adjustments',
   'counts',
-  'requisitions'
+  'requisitions',
+  'branches',
+  'tenders',
+  'bids',
+  'price-lists',
+  'shifts'
 ];
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const MODULE_MAP = [
@@ -38,7 +43,7 @@ const MODULE_MAP = [
   ['/store', 'Store'],
   ['/finance', 'Finance'],
   ['/pharmacy', 'Pharmacy'],
-  ['/printing', 'Store'],
+  ['/printing', 'Printing'],
   ['/procurement', 'Procurement'],
   ['/purchase', 'Procurement'],
   ['/suppliers', 'Procurement'],
@@ -156,6 +161,22 @@ const captureBeforeState = async (req, resource, resourceId) => {
       case 'requisitions':
         tableName = 'stock_requisitions';
         break;
+      case 'branches':
+        tableName = 'branches';
+        break;
+      case 'tenders':
+        tableName = 'tenders';
+        break;
+      case 'bids':
+        tableName = 'bids';
+        break;
+      case 'price-lists':
+      case 'price_lists':
+        tableName = 'price_lists';
+        break;
+      case 'shifts':
+        tableName = 'pos_shifts';
+        break;
       default:
         return null;
     }
@@ -176,32 +197,34 @@ const auditLog = async (req, res, next) => {
     responseBody = body;
     return originalSend.call(this, body);
   };
+
+  const method = req.method;
+  const url = req.originalUrl;
+  const action = getActionType.call({ url }, method);
+  const resource = extractResource(url);
+  const resourceId = extractResourceId(url);
+
+  // Capture the TRUE before-state at request start — the controller mutates
+  // the row before res 'finish' fires, so finish-time reads would only ever
+  // return the post-update row (identical before/after, or null for deletes).
+  let beforeState = null;
+  if (MUTATING_METHODS.includes(method) && (action === 'UPDATE' || action === 'DELETE') && resourceId) {
+    beforeState = await captureBeforeState(req, resource, resourceId);
+    if (beforeState && beforeState.password) delete beforeState.password;
+    if (beforeState && beforeState.two_factor_secret) delete beforeState.two_factor_secret;
+  }
+
   res.on('finish', async () => {
     if (!shouldAudit(req)) return;
     const userId = req.user?.id || null;
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('user-agent') || '';
-    const method = req.method;
-    const url = req.originalUrl;
     const statusCode = res.statusCode;
-    const action = getActionType.call({ url }, method);
-    const resource = extractResource(url);
-    const resourceId = extractResourceId(url);
     const responseTime = Date.now() - startTime;
     // Determine if action was successful
     const isSuccess = statusCode >= 200 && statusCode < 300;
     const errorMessage = !isSuccess ? responseBody?.message || `HTTP ${statusCode}` : null;
-    // Capture before state for updates and deletes
-    let beforeState = null;
-    if ((action === 'UPDATE' || action === 'DELETE') && resourceId) {
-      beforeState = await captureBeforeState(req, resource, resourceId);
-      if (beforeState && beforeState.password) {
-        delete beforeState.password;
-      }
-      if (beforeState && beforeState.two_factor_secret) {
-        delete beforeState.two_factor_secret;
-      }
-    }
+    // After-state is read at finish time (post-mutation) — the true "after".
     let afterState = null;
     let targetId = responseBody?.data?.id;
     if (action === 'UPDATE' && !targetId && resourceId) {
@@ -231,7 +254,7 @@ const auditLog = async (req, res, next) => {
       created_at: new Date()
     };
     if (MUTATING_METHODS.includes(method)) {
-      if (!req.res?.locals?.__centralAudited) {
+      if (!req.res?.locals?.__centralAudited && !/\/auth\//.test(url)) {
         audit(action, userId, {
           ip,
           userAgent,
