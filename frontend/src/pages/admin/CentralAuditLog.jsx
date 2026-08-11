@@ -4,7 +4,7 @@ import auditService from '../../services/auditService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CentralAuditLog.module.css';
 
-const CentralAuditLog = () => {
+const CentralAuditLog = ({ fixedModule }) => {
   const { user } = useAuth();
 
   /* ── role helpers ── */
@@ -17,20 +17,23 @@ const CentralAuditLog = () => {
   const isHR         = !isSuperAdmin && !isCEO && (
     roleStr.includes('hr') || deptStr.includes('human resource') || deptStr.includes('hr')
   );
-  const isStore      = !isSuperAdmin && !isCEO && roleStr.includes('store');
+  
+  const isPharmacy   = !isSuperAdmin && !isCEO && (
+    roleStr.includes('pharmacy') || deptStr.includes('pharmacy')
+  );
+  // Ensure "pharmacy store" doesn't trigger isStore by checking !isPharmacy
+  const isStore      = !isSuperAdmin && !isCEO && !isPharmacy && roleStr.includes('store');
+  
   const isSales      = !isSuperAdmin && !isCEO && (
     roleStr.includes('sales') || deptStr.includes('sales') || deptStr.includes('retail')
   );
   const isPrinting   = !isSuperAdmin && !isCEO && (
     roleStr.includes('printing') || deptStr.includes('printing')
   );
-  const isPharmacy   = !isSuperAdmin && !isCEO && (
-    roleStr.includes('pharmacy') || deptStr.includes('pharmacy')
-  );
 
   // Lock modules based on role — HR and Store are locked to their module.
   // Printing follows the Sales pattern: module records plus own activity.
-  const lockedModule = isHR ? 'HR' : (isStore ? 'Store' : (isPharmacy ? 'Pharmacy' : ''));
+  const lockedModule = fixedModule || (isHR ? 'HR' : (isPharmacy ? 'Pharmacy' : (isStore ? 'Store' : '')));
   const isLocked     = !!lockedModule;
 
   const [logs, setLogs]               = useState([]);
@@ -154,8 +157,8 @@ const CentralAuditLog = () => {
           />
         </div>
 
-        {/* Module dropdown is only shown to Admin and CEO */}
-        {(isSuperAdmin || isCEO) ? (
+        {/* Module dropdown is only shown to Admin and CEO, unless hard-locked via props */}
+        {(isSuperAdmin || isCEO) && !fixedModule ? (
           <select
             className={styles.filterSelect}
             value={moduleFilter}
@@ -165,7 +168,9 @@ const CentralAuditLog = () => {
             <option value="HR">HR</option>
             <option value="Printing">Printing</option>
             <option value="Finance">Finance</option>
-            <option value="Pharmacy">Pharmacy</option>
+            <option value="Pharmacy Store">Pharmacy Store</option>
+            <option value="Pharmacy Sales">Pharmacy Sales</option>
+            <option value="Pharmacy">Pharmacy (Legacy)</option>
             <option value="Store">Store</option>
             <option value="Procurement">Procurement</option>
             <option value="Sales">Sales</option>
