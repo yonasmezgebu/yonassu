@@ -7,7 +7,8 @@ const ALLOWED_ROLES = [
   'CEO', 'Admin', 'HR Manager', 'Car Rental Manager', 'Car Renting Manager',
   'Printing Supervisor', 'Printing Manager',
   'Pharmacy Manager', 'Sales Manager', 'Purchase Manager', 'Purchase',
-  'Board Member', 'Board', 'General Store Manager', 'General Store Keeper', 'Pharmacy Store Manager'
+  'Board Member', 'Board', 'General Store Manager', 'General Store Keeper', 'Pharmacy Store Manager',
+  'Pharmacy Worker', 'Sales/Cashier', 'Employee'
 ];
 
 // GET /manager-chat/users — list all manager users (for contact list)
@@ -230,10 +231,7 @@ exports.sendFile = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 exports.getMyGroups = catchAsync(async (req, res) => {
-  const me = req.user.id;
-  const rows = await db('manager_chat_group_members as gm')
-    .join('manager_chat_groups as g', 'g.id', 'gm.group_id')
-    .where('gm.user_id', me).where('gm.is_banned', false)
+  const rows = await db('manager_chat_groups as g')
     .select('g.id', 'g.name', 'g.description', 'g.profile_photo', 'g.created_by', 'g.created_at');
     
   for (const row of rows) {
@@ -298,8 +296,7 @@ exports.getGroupMessages = catchAsync(async (req, res) => {
   const me = req.user.id;
   const groupId = parseInt(req.params.groupId, 10);
   const membership = await db('manager_chat_group_members').where({ group_id: groupId, user_id: me }).first();
-  if (!membership) throw AppError.forbidden('Not a member');
-  if (membership.is_banned) throw AppError.forbidden('Banned from this group');
+  if (membership && membership.is_banned) throw AppError.forbidden('Banned from this group');
   const msgs = await db('manager_chat_group_messages as m')
     .join('users as u', 'u.id', 'm.sender_user_id')
     .where('m.group_id', groupId).where('m.deleted', false)
@@ -312,7 +309,7 @@ exports.sendGroupMessage = catchAsync(async (req, res) => {
   const me = req.user.id;
   const groupId = parseInt(req.params.groupId, 10);
   const membership = await db('manager_chat_group_members').where({ group_id: groupId, user_id: me }).first();
-  if (!membership || membership.is_banned) throw AppError.forbidden('Not allowed');
+  if (membership && membership.is_banned) throw AppError.forbidden('Not allowed');
   const { message, replyToId } = req.body;
   const fileUrl  = req.file ? `/uploads/chat/${req.file.filename}` : null;
   const fileName = req.file ? req.file.originalname : null;
