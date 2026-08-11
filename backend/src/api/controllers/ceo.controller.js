@@ -37,6 +37,7 @@ exports.approvePO = catchAsync(async (req, res) => {
     ip, resource: 'PURCHASE_ORDER', resourceId: id,
     details: { action: 'approved' }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({ status: 'success', message: 'Purchase order approved' });
 });
 exports.rejectPO = catchAsync(async (req, res) => {
@@ -65,6 +66,7 @@ exports.rejectPO = catchAsync(async (req, res) => {
     ip, resource: 'PURCHASE_ORDER', resourceId: id,
     details: { action: 'rejected', reason: rejectionReason }
   });
+  if (req.res) req.res.locals.__centralAudited = true;
   res.json({ status: 'success', message: 'Purchase order rejected' });
 });
 exports.getPendingApprovalsCount = catchAsync(async (req, res) => {
@@ -1766,6 +1768,7 @@ module.exports.approveStoreUpdate = catchAsync(async (req, res) => {
     beforeState: cleanFields(beforeState),
     afterState: cleanFields(afterState)
   });
+  if (req.res) req.res.locals.__centralAudited = true;
 
   if (updateReq.update_type === 'STORE_VALUE_UPDATE' || updateReq.update_type === 'STORE_MATERIAL_UPDATE') {
     await db('general_movement_log').insert({
