@@ -34,10 +34,11 @@ const MODULE_PREFIX_MAP = [
   { re: /^(EXPENSE|FINANCE|BUDGET|COA_|PO_|INVOICE|PAYMENT|BANK_|PETTY_CASH|APPROVER_|ACCOUNT_|MONTH_END)/, module: 'Finance' },
   { re: /^(PHARMACY|MEDICINE|DRUG|PHARM_)/, module: 'Pharmacy' },
   { re: /^(INVENTORY|PRODUCT|STOCK|CATEGORY|DAMAGED_ITEMS|LOST_ITEMS|WAREHOUSE)/, module: 'Inventory' },
-  { re: /^(STORE|REQUISITION|ITEMS_ISSUED|GRN_|GOODS_|ISSUE_|RECEIV)/, module: 'Store' },
+  { re: /^(STORE|STORE_QUANTITY_UPDATE|STORE_VALUE_UPDATE|STORE_MATERIAL_UPDATE|REQUISITION|ITEMS_ISSUED|GRN_|GOODS_|ISSUE_|RECEIV)/, module: 'Store' },
   { re: /^(PURCHASE|TENDER|BID_|SUPPLIER|VENDOR_|PROCUREMENT)/, module: 'Procurement' },
   { re: /^(SALE|ORDER|QUOTE|CUSTOMER|CART_|POS_|SUPPORT_)/, module: 'Sales' },
-  { re: /^(PRINTING|MACHINE|TRACTOR|VEHICLE|RENTAL|CAR_)/, module: 'Store' },
+  { re: /^(PRINTING|TAX_RECEIPT)/, module: 'Printing' },
+  { re: /^(MACHINE|TRACTOR|VEHICLE|RENTAL|CAR_)/, module: 'Store' },
   { re: /^(USER|ROLE|LOGIN|LOGOUT|PASSWORD|2FA|TOKEN|SESSION|SETTING|BACKUP|CACHE|AUDIT|DATABASE|ADMIN|BREAK_GLASS|ELEVATION|SOD_|CERTIFICATION|DORMANT|SINGLE_ROLE|COMPOSITE_ROLE|SERVICE_ACCOUNT|FIELD_SENSITIVITY|DELEGATED_ADMIN|TENANT_|EVIDENCE_|DR_TEST|UNAUTHORIZED|INVALID_API_KEY|CEO_)/, module: 'Admin' },
 ];
 
@@ -87,6 +88,8 @@ const dedupKey = (userId, action, details) =>
 const captureLegacy = async (action, userId, details = {}) => {
   try {
     if (details.centralAudit === false) return;
+    // Auth events (login/logout/password) are not dashboard activity — skip them.
+    if (/^(LOGIN|LOGOUT)/.test(String(action || '').toUpperCase())) return;
     if (!(await ensureCentralTable())) return;
     const fprint = dedupKey(userId, action, details);
     const now = Date.now();
@@ -134,7 +137,9 @@ const captureLegacy = async (action, userId, details = {}) => {
         : (details.previousValue != null ? JSON.stringify(details.previousValue) : null),
       new_value: details.afterState != null
         ? JSON.stringify(details.afterState)
-        : (details.newValue != null ? JSON.stringify(details.newValue) : null),
+        : (details.newValue != null 
+             ? JSON.stringify(details.newValue) 
+             : (details.details != null ? JSON.stringify(details.details) : null)),
       ip_address: details.ip || details.ipAddress || null,
     });
   } catch (error) {
@@ -150,11 +155,14 @@ const captureLegacy = async (action, userId, details = {}) => {
  *   CEO / Owner        → all logs (read-only enforced at route level)
  *   Dept Manager/Head  → only their department's logs
  *   HR role            → only HR-module logs (their own department)
+ *   Printing role      → only Printing-module logs (their own department)
  *   Any other employee → only their own activity
  *
  * @param {Object} user    - The authenticated user object from req.user
  * @param {Object} filters - Search/filter options
  */
+const AUTO_USERS = ['System', 'System Backfill'];
+
 const getLogs = async (user, filters = {}) => {
   let q = db('central_audit_logs').select('*').orderBy('created_at', 'desc');
 
@@ -170,24 +178,43 @@ const getLogs = async (user, filters = {}) => {
   const isHR         = roleStr.includes('hr') || deptName.includes('human resource') || deptName.includes('hr');
   const isStore      = roleStr.includes('store');
   const isSales      = roleStr.includes('sales') || deptName.includes('sales') || deptName.includes('retail');
+  const isPrinting   = roleStr.includes('printing') || deptName.includes('printing');
+  const isPharmacy   = roleStr.includes('pharmacy') || deptName.includes('pharmacy');
 
   if (isSuperAdmin || isCEO) {
     // Full visibility — no WHERE clause
   } else if (isHR) {
     // HR staff see all HR module logs, excluding automated system actions
-    q = q.where('module', 'HR').andWhere('user_name', '!=', 'System');
+    q = q.where('module', 'HR').whereNotIn('user_name', AUTO_USERS);
+  } else if (isPrinting) {
+    // Printing staff (supervisor / manager) see all Printing module logs
+    // plus their own actions anywhere — mirrors the Sales pattern.
+    q = q.where((builder) => {
+      builder
+        .where('module', 'Printing')
+        .whereNotIn('user_name', AUTO_USERS)
+        .orWhere('user_id', user.id);
+    });
   } else if (isStore) {
     // Store Keepers see all Store module logs, excluding automated system actions
     q = q.where('module', 'Store')
-          .andWhere('user_name', '!=', 'System')
-          .andWhere('user_name', '!=', 'System Backfill');
+          .whereNotIn('user_name', AUTO_USERS);
   } else if (isSales) {
     // Sales Manager/Head sees every Sales module activity plus their own
     // actions anywhere (covers bids/chat/etc. triggered from the sales dashboard)
     q = q.where((builder) => {
       builder
         .where('module', 'Sales')
-        .andWhere('user_name', '!=', 'System')
+        .whereNotIn('user_name', AUTO_USERS)
+        .orWhere('user_id', user.id);
+    });
+  } else if (isPharmacy) {
+    // Pharmacy Manager sees every Pharmacy module activity plus their own
+    // actions anywhere
+    q = q.where((builder) => {
+      builder
+        .where('module', 'Pharmacy')
+        .whereNotIn('user_name', AUTO_USERS)
         .orWhere('user_id', user.id);
     });
   } else if (isManager && deptFullName) {
@@ -197,6 +224,12 @@ const getLogs = async (user, filters = {}) => {
     // Regular employee — own activity only
     q = q.where('user_id', user.id);
   }
+
+  // Auth events (login/logout) are not dashboard activity — never show them.
+  q = q.where('action', 'not like', 'LOGIN%')
+      .where('action', 'not like', 'LOGOUT%')
+      .where('action', 'not like', 'Register%')
+      .where('action', 'not like', 'REGISTER%');
 
   // Optional filters
   if (filters.module)  q = q.where('module', filters.module);
