@@ -32,7 +32,8 @@ const createLog = async (data) => {
 const MODULE_PREFIX_MAP = [
   { re: /^HR_/, module: 'HR' },
   { re: /^(EXPENSE|FINANCE|BUDGET|COA_|PO_|INVOICE|PAYMENT|BANK_|PETTY_CASH|APPROVER_|ACCOUNT_|MONTH_END)/, module: 'Finance' },
-  { re: /^(PHARMACY|MEDICINE|DRUG|PHARM_)/, module: 'Pharmacy' },
+  { re: /PHARMACY|MEDICINE|DRUG|PHARM_/, module: 'Pharmacy' },
+  { re: /^(STORE_)/, module: 'Pharmacy Store' },
   { re: /^(INVENTORY|PRODUCT|STOCK|CATEGORY|DAMAGED_ITEMS|LOST_ITEMS|WAREHOUSE)/, module: 'Inventory' },
   { re: /^(STORE|STORE_QUANTITY_UPDATE|STORE_VALUE_UPDATE|STORE_MATERIAL_UPDATE|REQUISITION|ITEMS_ISSUED|GRN_|GOODS_|ISSUE_|RECEIV)/, module: 'Store' },
   { re: /^(PURCHASE|TENDER|BID_|SUPPLIER|VENDOR_|PROCUREMENT)/, module: 'Procurement' },
@@ -178,10 +179,10 @@ const getLogs = async (user, filters = {}) => {
   const isCEO        = roleStr.includes('ceo') || roleStr.includes('owner');
   const isManager    = roleStr.includes('manager') || roleStr.includes('head');
   const isHR         = roleStr.includes('hr') || deptName.includes('human resource') || deptName.includes('hr');
-  const isStore      = roleStr.includes('store');
+  const isPharmacy   = roleStr.includes('pharmacy') || deptName.includes('pharmacy');
+  const isStore      = !isPharmacy && roleStr.includes('store');
   const isSales      = roleStr.includes('sales') || deptName.includes('sales') || deptName.includes('retail');
   const isPrinting   = roleStr.includes('printing') || deptName.includes('printing');
-  const isPharmacy   = roleStr.includes('pharmacy') || deptName.includes('pharmacy');
 
   if (isSuperAdmin || isCEO) {
     // Full visibility — no WHERE clause
@@ -211,13 +212,11 @@ const getLogs = async (user, filters = {}) => {
         .orWhere('user_id', user.id);
     });
   } else if (isPharmacy) {
-    // Pharmacy Manager sees every Pharmacy module activity plus their own
-    // actions anywhere
+    // Pharmacy Manager/Worker sees Pharmacy + Pharmacy Store activity
     q = q.where((builder) => {
       builder
-        .where('module', 'Pharmacy')
-        .whereNotIn('user_name', AUTO_USERS)
-        .orWhere('user_id', user.id);
+        .whereIn('module', ['Pharmacy', 'Pharmacy Store', 'Pharmacy Sales'])
+        .whereNotIn('user_name', AUTO_USERS);
     });
   } else if (isManager && deptFullName) {
     // Dept manager sees only their department's logs
@@ -244,11 +243,21 @@ const getLogs = async (user, filters = {}) => {
         .orWhere('action', 'like', `%${filters.search}%`);
     });
   }
+  // Date-range filters (ISO strings e.g. "2026-08-01" or full ISO timestamps)
+  if (filters.dateFrom) q = q.where('created_at', '>=', new Date(filters.dateFrom));
+  if (filters.dateTo) {
+    // Include the full end-day by bumping to start of next day
+    const to = new Date(filters.dateTo);
+    to.setDate(to.getDate() + 1);
+    q = q.where('created_at', '<', to);
+  }
 
-  // Pagination
-  const page  = parseInt(filters.page  || 1, 10);
-  const limit = parseInt(filters.limit || 50, 10);
-  q = q.offset((page - 1) * limit).limit(limit);
+  // Pagination — skip when fetching all rows for print
+  if (!filters.noPagination) {
+    const page  = parseInt(filters.page  || 1, 10);
+    const limit = parseInt(filters.limit || 50, 10);
+    q = q.offset((page - 1) * limit).limit(limit);
+  }
 
   return await q;
 };
