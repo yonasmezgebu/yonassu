@@ -1,0 +1,181 @@
+/* ─────────────────────────────────────────────────────
+   PharmacyTransferRequests — Enterprise Fiori Design
+───────────────────────────────────────────────────── */
+.ptr-root {
+  --ptr-accent:   #2563EB;
+  --ptr-accent-dk:#1D4ED8;
+  --ptr-text:     #111827;
+  --ptr-text-2:   #6B7280;
+  --ptr-border:   #E5E7EB;
+  --ptr-surface:  #F9FAFB;
+  --ptr-font:     'Inter', 'Segoe UI', -apple-system, sans-serif;
+
+  padding: 24px !important;
+  font-family: var(--ptr-font) !important;
+  background: #F3F4F6 !important;
+  min-height: 100% !important;
+  color: var(--ptr-text) !important;
+  box-sizing: border-box;
+}
+
+/* ── Tab Buttons ────────────────────────────────── */
+.ptr-root button[style*="borderRadius: 8"] {
+  font-family: var(--ptr-font) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: background 150ms, color 150ms !important;
+  border-radius: 6px !important;
+}
+
+/* Active Tab Override */
+.ptr-root button[style*="border: 2px solid"] {
+  background: #FBBF24 !important;
+  color: #111827 !important;
+  font-weight: 700 !important;
+  border: 1px solid #F59E0B !important;
+  box-shadow: 0 2px 8px rgba(251,191,36,0.4) !important;
+}
+
+/* Yellow scatter on inline-styled tab buttons */
+.ptr-root button[style*="borderRadius: 8"]::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important; left: 50% !important;
+  width: 0 !important; height: 0 !important;
+  background: #FBBF24 !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out !important;
+  opacity: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+.ptr-root button[style*="borderRadius: 8"]:hover:not([style*="border: 2px solid"]) {
+  background: #FDE68A !important;
+  color: #111827 !important;
+  border: 1px solid #F59E0B !important;
+}
+.ptr-root button[style*="borderRadius: 8"] * { position: relative !important; z-index: 1 !important; }
+
+/* ── Form Card ──────────────────────────────────── */
+.ptr-root > div[style*="borderRadius: 12"] {
+  background: white !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--ptr-border) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+/* ── Form Inputs / Selects ─────────────────────── */
+.ptr-root select[style], .ptr-root input[type="number"][style], .ptr-root textarea[style] {
+  height: 36px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ptr-border) !important;
+  border-radius: 6px !important;
+  font-size: 13.5px !important;
+  font-family: var(--ptr-font) !important;
+  color: var(--ptr-text) !important;
+  background: white !important;
+  outline: none !important;
+  transition: border-color 150ms, box-shadow 150ms !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+.ptr-root textarea[style] { height: auto !important; padding: 8px 12px !important; resize: vertical !important; }
+.ptr-root select[style]:focus,
+.ptr-root input[type="number"][style]:focus,
+.ptr-root textarea[style]:focus {
+  border-color: var(--ptr-accent) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
+}
+
+/* ── Submit button ──────────────────────────────── */
+.ptr-root button[type="submit"] {
+  height: 36px !important;
+  padding: 0 20px !important;
+  background: #10B981 !important;
+  border-radius: 6px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  font-family: var(--ptr-font) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: background 150ms !important;
+}
+.ptr-root button[type="submit"]:hover:not(:disabled) { background: #059669 !important; }
+.ptr-root button[type="submit"]::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important; left: 50% !important;
+  width: 0 !important; height: 0 !important;
+  background: #FBBF24 !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out !important;
+  opacity: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+.ptr-root button[type="submit"]:hover:not(:disabled)::after { width: 260% !important; height: 260% !important; opacity: 0.15 !important; }
+
+/* ── Table ──────────────────────────────────────── */
+.ptr-root table { font-family: var(--ptr-font) !important; }
+
+.ptr-root thead tr {
+  background: var(--ptr-surface) !important;
+  border-bottom: 1px solid var(--ptr-border) !important;
+}
+
+.ptr-root thead th {
+  padding: 10px 14px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  color: var(--ptr-text-2) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.ptr-root tbody tr {
+  border-bottom: 1px solid var(--ptr-border) !important;
+  transition: background 120ms !important;
+}
+.ptr-root tbody tr:hover { background: var(--ptr-surface) !important; }
+.ptr-root tbody tr:last-child { border-bottom: none !important; }
+
+.ptr-root tbody td {
+  padding: 12px 14px !important;
+  font-size: 13.5px !important;
+  color: var(--ptr-text) !important;
+}
+
+/* ── Action button inside table ─────────────────── */
+.ptr-root tbody td button {
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 4px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  font-family: var(--ptr-font) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: background 150ms !important;
+  border: none !important;
+}
+.ptr-root tbody td button::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important; left: 50% !important;
+  width: 0 !important; height: 0 !important;
+  background: #FBBF24 !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  transition: width 0.35s ease-out, height 0.35s ease-out, opacity 0.35s ease-out !important;
+  opacity: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+.ptr-root tbody td button:hover::after { width: 260% !important; height: 260% !important; opacity: 0.18 !important; }
+.ptr-root tbody td button * { position: relative !important; z-index: 1 !important; }
