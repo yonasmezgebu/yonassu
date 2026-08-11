@@ -1,0 +1,458 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ════════════════════════════════════════════════════════════════
+   AgriRent Create Order — Complete CSS replacement
+   Scope: .arco-page only (root of AgriRentCreateOrder). Sidebar /
+   navbar / PublicNav / DashboardLayout are NOT touched. CSS-only,
+   no JSX logic changes.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens (exact palette) ─────────────────────────────── */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page: #F5F6FA;
+  --color-bg-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-success: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-warning: #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-info: #0284C7;
+  --color-info-bg: #E0F2FE;
+  --gold: #FFC107;
+  --gold-text: #111827;
+}
+
+/* ── Page Wrapper ────────────────────────────────────────────────
+   dash-content has 24px padding (16/12 on smaller). Negative margins
+   counteract that padding so content runs edge-to-edge end-to-end. */
+.arco-page {
+  box-sizing: border-box !important;
+  margin: -24px !important;
+  padding: 24px !important;
+  min-height: 100vh !important;
+  background: var(--color-bg-page) !important;
+  font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif !important;
+  color: var(--color-text-primary) !important;
+}
+@media (max-width: 1024px) {
+  .arco-page { margin: -16px !important; padding: 16px !important; }
+}
+@media (max-width: 768px) {
+  .arco-page { margin: -12px !important; padding: 12px !important; }
+}
+/* Public variant (rendered bare, not inside .dash-content) —
+   no negative margin, top padding clears the PublicNav. */
+.arco-page:not(.dash-content *) {
+  margin: 0 !important;
+  padding: 90px 24px 48px !important;
+  min-height: 100vh !important;
+}
+@media (max-width: 768px) {
+  .arco-page:not(.dash-content *) { padding: 84px 12px 40px !important; }
+}
+
+/* ── Form Column ───────────────────────────────────────────────── */
+.arco-page > div:nth-of-type(1) {
+  max-width: 960px !important;
+  margin: 0 auto !important;
+  padding: 0 0 64px !important;
+}
+
+/* ── Page Header (blue banner) ─────────────────────────────────── */
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) {
+  background: var(--color-primary) !important;
+  border-radius: 10px !important;
+  padding: 16px 20px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+}
+/* Back button */
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) > button {
+  background: rgba(255,255,255,.16) !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) > button:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+/* Tractor icon box */
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) {
+  background: #FFFFFF !important;
+  border: 2px solid rgba(255,255,255,.4) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) svg {
+  color: var(--color-primary) !important;
+  stroke: var(--color-primary) !important;
+}
+/* Titles */
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) h1 {
+  color: #FFFFFF !important;
+  font-size: clamp(24px, 3vw, 30px) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.3 !important;
+  margin: 0 !important;
+}
+.arco-page > div:nth-of-type(1) > div:nth-of-type(1) p {
+  color: #DBEAFE !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  margin: 2px 0 0 !important;
+}
+
+/* ── Form Sections ─────────────────────────────────────────────── */
+.arco-page form > div[style*="border-top: 4px solid"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-top: 4px solid var(--color-primary) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  padding: 24px !important;
+  margin-bottom: 16px !important;
+}
+.arco-page form h3 {
+  color: var(--color-text-primary) !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  padding-bottom: 12px !important;
+  margin: 0 0 20px !important;
+  gap: 8px !important;
+}
+.arco-page form h3 svg { color: var(--color-primary) !important; stroke: var(--color-primary) !important; }
+/* "Optional" chip in Field Details */
+.arco-page form h3 span {
+  color: var(--color-text-muted) !important;
+  background: #F9FAFB !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+}
+
+/* ── Labels ────────────────────────────────────────────────────── */
+.arco-page form label {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 6px !important;
+  gap: 6px !important;
+}
+.arco-page form label svg { color: var(--color-primary) !important; stroke: var(--color-primary) !important; }
+.arco-page form label span {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-weight: 500 !important;
+  color: var(--color-text-muted) !important;
+}
+
+/* ── Inputs / Selects / Textarea ───────────────────────────────── */
+.arco-page form input:not([type="file"]),
+.arco-page form select,
+.arco-page form textarea {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  font-weight: 400 !important;
+  outline: none !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.arco-page form textarea {
+  height: auto !important;
+  min-height: 84px !important;
+  padding: 10px 12px !important;
+  resize: vertical !important;
+}
+.arco-page form input:not([type="file"]):hover,
+.arco-page form select:hover,
+.arco-page form textarea:hover { border-color: #BFDBFE !important; }
+.arco-page form input:not([type="file"]):focus,
+.arco-page form select:focus,
+.arco-page form textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+.arco-page form select { cursor: pointer !important; padding-right: 36px !important; }
+.arco-page form select + svg { color: var(--color-text-muted) !important; }
+.arco-page form option {
+  color: var(--color-text-primary) !important;
+  background: var(--color-bg-card) !important;
+}
+.arco-page form option:hover { background: #F9FAFB !important; }
+
+/* ── Selected tractor preview ──────────────────────────────────── */
+.arco-page [style*="border-left: 4px solid rgb(46, 139, 87)"] {
+  background: #F9FAFB !important;
+  border: 1px solid var(--color-border) !important;
+  border-left: 4px solid var(--color-primary) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+  gap: 12px !important;
+}
+.arco-page [style*="border-left: 4px solid rgb(46, 139, 87)"] > div:nth-of-type(1) > div:nth-of-type(1) {
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+.arco-page [style*="border-left: 4px solid rgb(46, 139, 87)"] > div:nth-of-type(1) > div:nth-of-type(2) {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+.arco-page [style*="border-left: 4px solid rgb(46, 139, 87)"] strong {
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+}
+/* AVAILABLE badge */
+.arco-page [style*="margin-left: auto"][style*="border: 1px solid rgb(34, 139, 34)"] {
+  background: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .02em !important;
+}
+
+/* ── Price estimate ────────────────────────────────────────────── */
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-bottom: 4px solid var(--color-primary) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  padding: 20px !important;
+  margin-bottom: 16px !important;
+}
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] > div:nth-of-type(1) {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 12px !important;
+}
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] > div:nth-of-type(2) { gap: 32px !important; }
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] > div:nth-of-type(2) > div > div:nth-of-type(1) {
+  color: var(--color-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 4px !important;
+}
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] > div:nth-of-type(2) > div > div:nth-of-type(2) {
+  color: var(--color-text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  line-height: 1.3 !important;
+}
+.arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] > div:nth-of-type(2) > div:nth-of-type(3) > div:nth-of-type(2) {
+  font-size: 24px !important;
+}
+
+/* ── Payment info banner ───────────────────────────────────────── */
+.arco-page [style*="padding: 14px 16px"] {
+  background: #F9FAFB !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  margin-bottom: 16px !important;
+  font-size: 13px !important;
+  color: #374151 !important;
+}
+.arco-page [style*="padding: 14px 16px"] > div:nth-of-type(1) {
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+  gap: 6px !important;
+}
+.arco-page [style*="padding: 14px 16px"] > div:nth-of-type(1) svg {
+  color: var(--color-primary) !important;
+  stroke: var(--color-primary) !important;
+}
+.arco-page [style*="padding: 14px 16px"] strong {
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* ── OR divider ────────────────────────────────────────────────── */
+.arco-page [style*="flex: 1"][style*="height: 1px"] { background: var(--color-border) !important; }
+.arco-page [style*="padding: 4px 10px"] {
+  background: #F9FAFB !important;
+  color: var(--color-text-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em !important;
+}
+
+/* ── Screenshot upload dropzone ────────────────────────────────── */
+.arco-page [style*="border: 2px dashed rgb(141, 110, 99)"] {
+  background: #F9FAFB !important;
+  border: 2px dashed #CBD5E1 !important;
+  border-radius: 10px !important;
+  padding: 24px !important;
+  max-width: 360px !important;
+  transition: border-color 150ms ease, background 150ms ease !important;
+}
+.arco-page [style*="border: 2px dashed rgb(141, 110, 99)"]:hover {
+  border-color: var(--color-primary) !important;
+  background: #EFF6FF !important;
+}
+.arco-page [style*="border: 2px dashed rgb(141, 110, 99)"] svg {
+  color: var(--color-text-secondary) !important;
+  stroke: var(--color-text-secondary) !important;
+}
+.arco-page [style*="border: 2px dashed rgb(141, 110, 99)"] > div:nth-of-type(1) {
+  color: var(--color-text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.arco-page [style*="border: 2px dashed rgb(141, 110, 99)"] > div:nth-of-type(2) {
+  color: var(--color-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  margin-top: 4px !important;
+}
+/* Preview + remove button + uploaded strip */
+.arco-page [style*="border: 2px solid rgb(34, 139, 34)"] {
+  border-radius: 10px !important;
+  border: 2px solid var(--color-primary) !important;
+  max-width: 280px !important;
+}
+.arco-page [style*="border: 2px solid rgb(34, 139, 34)"] button {
+  background: rgba(17,24,39,.75) !important;
+  border-radius: 50% !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  width: 26px !important;
+  height: 26px !important;
+  cursor: pointer !important;
+  transition: background 150ms ease !important;
+}
+.arco-page [style*="border: 2px solid rgb(34, 139, 34)"] button:hover { background: rgba(17,24,39,.9) !important; }
+.arco-page [style*="border: 2px solid rgb(34, 139, 34)"] > div {
+  background: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+  border-top: 1px solid var(--color-success) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .02em !important;
+  padding: 8px 12px !important;
+}
+
+/* ── Action buttons ────────────────────────────────────────────── */
+.arco-page form > div:last-child {
+  gap: 12px !important;
+  padding-top: 8px !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+.arco-page form > div:last-child button {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.arco-page form > div:last-child button:nth-of-type(1) {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  padding: 0 20px !important;
+  min-height: 40px !important;
+}
+.arco-page form > div:last-child button:nth-of-type(1):hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+.arco-page form > div:last-child button:nth-of-type(2) {
+  background: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--color-primary-hover) !important;
+  padding: 0 24px !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.arco-page form > div:last-child button:nth-of-type(2):hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+.arco-page form > div:last-child button[disabled] { opacity: .5 !important; cursor: not-allowed !important; }
+.arco-page form > div:last-child button:nth-of-type(2)[disabled]:hover {
+  background: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--color-primary-hover) !important;
+}
+/* SegmentedSpinner stays visible on the blue submit button */
+.arco-page form > div:last-child button[type="submit"] svg path,
+.arco-page form > div:last-child button[type="submit"] svg circle { stroke: #FFFFFF !important; }
+
+/* ── Focus Rings ─────────────────────────────────────────────────── */
+.arco-page :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .arco-page > div:nth-of-type(1) > div:nth-of-type(1) { padding: 14px !important; }
+  .arco-page > div:nth-of-type(1) > div:nth-of-type(1) > button { width: 44px !important; height: 44px !important; }
+  .arco-page > div:nth-of-type(1) > div:nth-of-type(1) h1 { font-size: 22px !important; }
+  .arco-page > div:nth-of-type(1) > div:nth-of-type(1) p { font-size: 12px !important; }
+  .arco-page [style*="grid-template-columns: 1fr 1fr"],
+  .arco-page [style*="grid-template-columns: 1fr 1fr 1fr"],
+  .arco-page [style*="grid-template-columns: 1fr 2fr"] { grid-template-columns: 1fr !important; }
+  .arco-page form input:not([type="file"]),
+  .arco-page form select,
+  .arco-page form textarea { min-height: 44px !important; }
+  .arco-page form > div:last-child { justify-content: stretch !important; }
+  .arco-page form > div:last-child button { flex: 1 !important; }
+  .arco-page form > div:last-child button:nth-of-type(1) { min-height: 44px !important; }
+}
+@media (max-width: 480px) {
+  .arco-page > div:nth-of-type(1) > div:nth-of-type(1) h1 { font-size: 20px !important; }
+  .arco-page form > div[style*="border-top: 4px solid"],
+  .arco-page form > div[style*="border-bottom: 4px solid rgb(27, 94, 32)"] { padding: 16px !important; }
+  .arco-page > div:nth-of-type(1) { padding: 0 0 40px !important; }
+}
