@@ -21,7 +21,6 @@ import PrintingFileReview from './PrintingFileReview';
 import PrintingProdMachines from './PrintingProdMachines';
 import PrintingProdMaterials from './PrintingProdMaterials';
 import PrintingStoreMaterials from './PrintingStoreMaterials';
-import PrintingProdLogs from './PrintingProdLogs';
 import PrintingReprintRequests from './PrintingReprintRequests';
 
 // Reports (31-35)
@@ -42,7 +41,7 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Jobs', icon: 'printer',
       children: [
-        { label: 'Job Process',            path: '/printing-manager/jobs/new',        icon: 'plus-circle',  color: '#228B22' },
+        { label: 'Job Process',            path: '/printing-manager/jobs/queue',     icon: 'list',         color: '#228B22' },
         { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
         { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
       ]
@@ -61,7 +60,6 @@ const PrintingDashboard = () => {
         { label: 'Production Machines',   path: '/printing-manager/prod/machines',  icon: 'cpu',       color: '#228B22' },
         { label: 'Production Materials',  path: '/printing-manager/prod/materials', icon: 'package',   color: '#2E8B57' },
         { label: 'Store Material',        path: '/printing-manager/prod/store-materials', icon: 'box', color: '#1B5E20' },
-        { label: 'Production Logs',       path: '/printing-manager/prod/logs',      icon: 'file-text', color: '#6B8E23' },
       ]
     },
 
@@ -108,7 +106,6 @@ const PrintingDashboard = () => {
             <Route path="prod/machines" element={<PrintingProdMachines />} />
             <Route path="prod/materials" element={<PrintingProdMaterials />} />
             <Route path="prod/store-materials" element={<PrintingStoreMaterials />} />
-            <Route path="prod/logs" element={<PrintingProdLogs />} />
             <Route path="prod/reprints" element={<PrintingReprintRequests />} />
 
             {/* Reports */}
