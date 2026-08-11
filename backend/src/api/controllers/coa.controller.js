@@ -27,7 +27,7 @@ exports.createAccount = catchAsync(async (req, res) => {
     account_type: accountType, account_class: accountClass || null,
     parent_id: parentId || null, description: description || ''
   });
-  await audit('COA_CREATED', id, { ip: req.ip, details: { accountCode, accountName, accountType } });
+  await audit('COA_CREATED', req.user.id, { ip: req.ip, details: { accountCode, accountName, accountType } });
   res.status(201).json({ status: 'success', data: { accountId: id } });
 });
 
