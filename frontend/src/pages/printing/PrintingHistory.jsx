@@ -2,14 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Archive, Search, RefreshCw, CheckCircle2, Printer } from 'lucide-react';
 import axios from 'axios';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
-
-const G = {
-  forest:   '#228B22', dark: '#1B5E20', emerald: '#2E8B57',
-  leaf:     '#4CAF50', sage: '#A5D6A7', olive: '#6B8E23',
-  mint:     '#98FF98', lime: '#8BC34A', brown: '#8D6E63',
-  sky:      '#87CEEB', white: '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray: '#424242', orange: '#FF9800', red: '#F44336',
-};
+import { StageStyles } from './printingStageStyles';
 
 const API = '/api/v1/printing';
 const api = axios.create({ baseURL: '' });
@@ -173,133 +166,85 @@ const PrintingHistory = () => {
   };
 
   return (
-    <div style={{ padding: 24, minHeight: '100vh', background: `linear-gradient(135deg, ${G.lightGray}, #E8F5E9)`, fontFamily: "'Inter', sans-serif" }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes slideIn { from { opacity:0;transform:translateY(6px); } to { opacity:1;transform:translateY(0); } }
-        .btn-3d {
-          background: linear-gradient(135deg, #2E8B57, #228B22);
-          border: none; border-radius: 12px; padding: 10px 24px;
-          color: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px;
-          font-weight: 800; font-size: 14px;
-          box-shadow: 0 6px 0 #1B5E20, 0 10px 20px rgba(34,139,34,0.4);
-          transition: all 0.1s; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .btn-3d.secondary {
-          background: linear-gradient(135deg, #424242, #1B5E20);
-          box-shadow: 0 6px 0 #000, 0 10px 20px rgba(0,0,0,0.3);
-        }
-        .btn-3d:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
-        .btn-3d:hover  { filter: brightness(1.1); }
-      `}</style>
-
-      <div style={{ width: '100%' }}>
+    <div className="stg-root" style={{ margin: '-24px', minHeight: 'calc(100vh + 48px)' }}>
+      <StageStyles />
+      <div style={{ width: '100%', margin: '0 auto', maxWidth: 1400 }}>
 
         {/* ── Header ── */}
-        <div style={{
-          background: `linear-gradient(135deg, ${G.dark}, ${G.forest})`,
-          borderRadius: 16, padding: '24px 30px', marginBottom: 20,
-          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          boxShadow: `0 8px 24px ${G.dark}55`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={26} color="#fff" />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>Delivered Jobs History</h1>
-              <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.8, fontWeight: 500 }}>{total} records found</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.9, textTransform: 'uppercase' }}>Time:</span>
-              <select
-                value={activeFilter}
-                onChange={e => { setActiveFilter(e.target.value); setPage(1); }}
-                style={{
-                  padding: '8px 16px', borderRadius: 10, border: 'none', outline: 'none',
-                  background: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 700, fontSize: 15,
-                  cursor: 'pointer', appearance: 'none',
-                }}
-              >
-                {TIME_FILTERS.map(f => (
-                  <option key={f.id} value={f.id} style={{ color: G.dark, fontWeight: 700 }}>{f.label}</option>
-                ))}
-              </select>
-            </div>
-            <button onClick={handlePrint} className="btn-3d secondary">
-              <Printer size={16} /> Print
-            </button>
-            <button onClick={fetchOrders} className="btn-3d">
-              <SegmentedSpinner size={16} />
-              Refresh
-            </button>
-          </div>
+        <div className="stg-head">
+          <h1 className="stg-title">
+            <CheckCircle2 style={{ color: 'var(--success)' }} />
+            Delivered Jobs History
+          </h1>
+          <p className="stg-sub">{total} records found</p>
         </div>
 
-        {/* ── Search ── */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: '16px 20px', marginBottom: 20, display: 'flex', gap: 12, border: `2px solid ${G.sage}44`, boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: G.olive }} />
+        {/* ── Toolbar: filter / search / actions ── */}
+        <div className="stg-toolbar">
+          <div className="stg-field" style={{ minWidth: 170 }}>
+            <span className="stg-label">Time Range</span>
+            <select
+              value={activeFilter}
+              onChange={e => { setActiveFilter(e.target.value); setPage(1); }}
+              className="stg-select"
+            >
+              {TIME_FILTERS.map(f => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="stg-search">
+            <Search />
+            <label className="stg-label" htmlFor="stg-history-search" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Search history</label>
             <input
+              id="stg-history-search"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search history by order number or customer name..."
-              style={{
-                width: '100%', padding: '12px 16px 12px 46px',
-                border: `2px solid ${G.sage}`, borderRadius: 12, fontSize: 15, fontWeight: 500,
-                outline: 'none', boxSizing: 'border-box', background: G.lightGray, color: G.dark,
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={e => (e.target.style.borderColor = G.emerald)}
-              onBlur={e  => (e.target.style.borderColor = G.sage)}
+              placeholder="Search by order number or customer name..."
+              className="stg-input"
             />
           </div>
+
+          <button onClick={handlePrint} className="stg-btn stg-btn--ghost">
+            <Printer /> Print
+          </button>
+          <button onClick={fetchOrders} className="stg-btn stg-btn--primary">
+            <RefreshCw /> Refresh
+          </button>
         </div>
 
         {/* ── Records ── */}
         <div>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 16 }}>
+            <div className="stg-card" style={{ textAlign: 'center', padding: '80px 20px' }}>
               <SegmentedSpinner size={40} />
-              <p style={{ fontWeight: 700, color: G.olive, fontSize: 16 }}>Loading history...</p>
+              <p style={{ fontWeight: 600, color: 'var(--text-2)', fontSize: 15, marginTop: 4 }}>Loading history...</p>
             </div>
           ) : orders.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 16, color: G.olive }}>
-              <Archive size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
-              <p style={{ fontWeight: 700, fontSize: 18 }}>No history records found.</p>
+            <div className="stg-card" style={{ textAlign: 'center', padding: '80px 20px' }}>
+              <Archive size={48} style={{ opacity: 0.3, marginBottom: 16, color: 'var(--text-3)' }} />
+              <p style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-1)', margin: 0 }}>No history records found.</p>
             </div>
           ) : (
             orders.map((order, idx) => (
-              <div key={order.id} style={{
-                background: '#fff',
-                borderBottom: `6px solid ${G.forest}`,
-                padding: '24px 30px',
-                marginBottom: 20,
-                borderRadius: '16px 16px 0 0',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-                animation: 'slideIn 0.3s ease',
-                animationDelay: `${idx * 0.05}s`,
-                animationFillMode: 'both',
-              }}>
+              <div key={order.id} className="stg-card" style={{ marginBottom: 16, animationDelay: `${idx * 0.05}s` }}>
                 {/* Order # + Status */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div className="stg-record-head">
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: G.olive, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Order Number</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: G.dark }}>{order.order_number}</div>
+                    <div className="stg-detail-label">Order Number</div>
+                    <div className="stg-record-id">{order.order_number}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: G.olive, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Status</div>
-                    <div style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 20, fontSize: 14, fontWeight: 800, background: `${G.dark}15`, color: G.dark, border: `2px solid ${G.dark}` }}>
+                    <div className="stg-detail-label">Status</div>
+                    <span className="stg-pill stg-pill--success" style={{ marginTop: 6 }}>
                       {order.status_name || order.status_code || 'DELIVERED'}
-                    </div>
+                    </span>
                   </div>
                 </div>
 
                 {/* Detail Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px 24px', background: G.lightGray, padding: 20, borderRadius: 12, border: `1px solid ${G.sage}66`, marginBottom: 0 }}>
+                <div className="stg-detail-grid">
                   {[
                     ['Customer Name',  order.customer_name  || '—'],
                     ['Customer Phone', order.customer_phone || '—'],
@@ -311,30 +256,25 @@ const PrintingHistory = () => {
                     ['Completed Date', order.completed_at ? new Date(order.completed_at).toLocaleString() : order.due_date ? new Date(order.due_date).toLocaleDateString() : '—'],
                   ].map(([label, val]) => (
                     <div key={label}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: G.olive, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
-                      <div style={{ fontWeight: 700, color: G.darkGray, fontSize: 15 }}>{val}</div>
+                      <div className="stg-detail-label">{label}</div>
+                      <p className="stg-detail-value">{val}</p>
                     </div>
                   ))}
                 </div>
 
                 {order.special_instructions && (
-                  <div style={{ marginTop: 16, background: `${G.sage}15`, padding: 16, borderRadius: 12, border: `1px dashed ${G.sage}` }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: G.forest, textTransform: 'uppercase', marginBottom: 6 }}>Special Instructions</div>
-                    <div style={{ color: G.dark, fontWeight: 600, fontSize: 14 }}>{order.special_instructions}</div>
+                  <div className="stg-note-box">
+                    <div className="stg-note-label">Special Instructions</div>
+                    <p className="stg-note-text">{order.special_instructions}</p>
                   </div>
                 )}
 
                 {order.attachments && Array.isArray(order.attachments) && order.attachments.length > 0 && (
-                  <div style={{ marginTop: 16, padding: 16, background: `${G.sky}15`, borderRadius: 12, border: `1px solid ${G.sky}44` }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', marginBottom: 12 }}>Ready Files / Attachments</div>
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div className="stg-note-box stg-note-box--info">
+                    <div className="stg-note-label">Ready Files / Attachments</div>
+                    <div className="stg-file-chips">
                       {order.attachments.map((file, i) => (
-                        <a key={i} href={file.url} target="_blank" rel="noopener noreferrer" style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-                          background: '#fff', borderRadius: 8, border: `1px solid ${G.sky}66`,
-                          color: G.dark, textDecoration: 'none', fontSize: 13, fontWeight: 600,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                        }}>
+                        <a key={i} href={file.url} target="_blank" rel="noopener noreferrer" className="stg-file-chip">
                           📎 {file.filename || `File ${i + 1}`}
                         </a>
                       ))}
@@ -348,16 +288,14 @@ const PrintingHistory = () => {
 
         {/* ── Pagination ── */}
         {total > 100 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 24, paddingBottom: 40 }}>
-            <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              style={{ padding: '10px 20px', border: `2px solid ${G.sage}`, borderRadius: 10, cursor: page === 1 ? 'not-allowed' : 'pointer', background: '#fff', fontWeight: 800, color: G.dark }}>
+          <div className="stg-pager">
+            <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="stg-btn stg-btn--ghost">
               ← Previous
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', fontWeight: 800, color: G.forest, background: '#fff', borderRadius: 10, border: `2px solid ${G.sage}44` }}>
+            <div className="stg-pager-page">
               Page {page} of {Math.ceil(total / 100)}
             </div>
-            <button disabled={page >= Math.ceil(total / 100)} onClick={() => setPage(p => p + 1)}
-              style={{ padding: '10px 20px', border: `2px solid ${G.sage}`, borderRadius: 10, cursor: page >= Math.ceil(total / 100) ? 'not-allowed' : 'pointer', background: '#fff', fontWeight: 800, color: G.dark }}>
+            <button disabled={page >= Math.ceil(total / 100)} onClick={() => setPage(p => p + 1)} className="stg-btn stg-btn--ghost">
               Next →
             </button>
           </div>
