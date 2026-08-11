@@ -1,11 +1,5 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
-
-const G = {
-  forest: "#228B22", dark: "#1B5E20", emerald: "#2E8B57", leaf: "#4CAF50",
-  sage: "#A5D6A7", olive: "#6B8E23", mint: "#98FF98", brown: "#8D6E63",
-  sky: "#87CEEB", white: "#FFFFFF", light: "#F5F5F5", darkGray: "#424242",
-  orange: "#FF9800", red: "#F44336", purple: "#7C3AED",
-};
+import React, { useState, useEffect, useCallback } from "react";
+import { RefreshCw, Printer, AlertTriangle, FileText, Package, CheckCircle, TrendingUp, Activity, X } from 'lucide-react';
 
 const TABS = ["Current Stock", "Issued Items", "Low Stock", "Movements", "Audit Log"];
 
@@ -30,13 +24,18 @@ export function NotifToastContainer() {
   const [notes, setNotes] = useState(NotifStore.get());
   useEffect(() => NotifStore.subscribe(setNotes), []);
   return (
-    <div style={{ position: "fixed", top: 16, right: 16, zIndex: 9999, display: "flex", flexDirection: "column", gap: 10, maxWidth: 360, width: "90%" }}>
+    <div className="rep-toast-wrap">
       {notes.map(n => {
-        const c = { success: { bg: G.leaf, border: G.dark }, warning: { bg: G.orange, border: "#E65100" }, error: { bg: G.red, border: "#B71C1C" }, info: { bg: G.emerald, border: G.dark } }[n.type] || { bg: G.emerald, border: G.dark };
+        const c = { 
+          success: { bg: 'var(--cok-bg)', border: 'var(--cok)', text: 'var(--cok)' }, 
+          warning: { bg: 'var(--cwarn-bg)', border: 'var(--cwarn)', text: 'var(--cwarn)' }, 
+          error: { bg: 'var(--cdanger-bg)', border: 'var(--cdanger)', text: 'var(--cdanger)' }, 
+          info: { bg: 'var(--cinfo-bg)', border: 'var(--cinfo)', text: 'var(--cinfo)' } 
+        }[n.type] || { bg: 'var(--cinfo-bg)', border: 'var(--cinfo)', text: 'var(--cinfo)' };
         return (
-          <div key={n.id} style={{ background: c.bg, border: `2px solid ${c.border}`, color: "#fff", padding: "12px 16px", boxShadow: `4px 4px 0 ${c.border}`, fontFamily: "Inter,sans-serif", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ flex: 1 }}>{n.msg}</span>
-            <button onClick={() => NotifStore.dismiss(n.id)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, fontWeight: 900, padding: 0 }}>X</button>
+          <div key={n.id} className="rep-toast" style={{ background: c.bg, borderLeftColor: c.border, color: c.text }}>
+            <span style={{ flex: 1, fontWeight: 600 }}>{n.msg}</span>
+            <button onClick={() => NotifStore.dismiss(n.id)} className="rep-toast-close"><X size={16} /></button>
           </div>
         );
       })}
@@ -55,11 +54,92 @@ async function apiFetch(url, opts = {}) {
 
 const fmtDate = (v) => v ? new Date(v).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "---";
 
-const ROW_HDR = (cols, tpl, bg) => (
-  <div style={{ display: "grid", gridTemplateColumns: tpl, background: bg || G.forest, color: "#fff", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 1 }}>
-    {cols.map(h => <div key={h} style={{ padding: "12px 12px" }}>{h}</div>)}
-  </div>
-);
+/* ── Enterprise CSS ─────────────────────────────────────────────── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --cp: #2563EB; --cp-h: #1D4ED8;
+    --cbg: #F5F6FA; --ccard: #FFFFFF; --cborder: #E5E7EB;
+    --ct1: #111827; --ct2: #6B7280; --ctm: #9CA3AF;
+    --cok: #16A34A; --cok-bg: #DCFCE7;
+    --cdanger: #DC2626; --cdanger-bg: #FEE2E2;
+    --cwarn: #D97706; --cwarn-bg: #FEF3C7;
+    --cinfo: #0284C7; --cinfo-bg: #E0F2FE;
+    --gold: #F59E0B; --gold-text: #111827;
+  }
+  
+  .rep-page {
+    box-sizing: border-box;
+    margin: 10px auto; width: calc(100% - 20px); max-width: 1536px;
+    min-height: calc(100vh - 20px); padding: 24px 24px 48px;
+    background: var(--cbg);
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    color: var(--ct1); line-height: 1.5;
+  }
+  @media (max-width: 1024px) { .rep-page { margin: 6px auto; width: calc(100% - 12px); padding: 16px 16px 40px; } }
+  @media (max-width: 480px)  { .rep-page { margin: 4px auto; width: calc(100% - 8px);  padding: 12px 12px 32px; } }
+
+  /* ── Toasts ── */
+  .rep-toast-wrap { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px; width: 90%; }
+  .rep-toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--ccard); border-radius: 8px; border-left: 4px solid var(--cp); box-shadow: 0 4px 12px rgba(0,0,0,.15); font-size: 13px; animation: rep-slidein 200ms ease; }
+  @keyframes rep-slidein { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .rep-toast-close { background: none; border: none; padding: 4px; cursor: pointer; color: inherit; opacity: .7; display: flex; align-items: center; }
+  .rep-toast-close:hover { opacity: 1; }
+
+  /* ── Header ── */
+  .rep-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--cborder); }
+  .rep-header-left { display: flex; align-items: center; gap: 12px; }
+  .rep-header-icon { background: var(--cp); color: #fff; padding: 10px; border-radius: 10px; display: flex; flex-shrink: 0; }
+  .rep-page-title { font-size: clamp(22px,3vw,28px); font-weight: 600; line-height: 1.3; margin: 0 0 2px; color: var(--ct1); }
+  .rep-page-sub { font-size: 13px; color: var(--ct2); margin: 0; }
+  .rep-header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Buttons ── */
+  .rep-btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--cborder); background: var(--ccard); color: var(--ct1); font-family: inherit; transition: all 150ms ease-in-out; white-space: nowrap; min-width: 44px; justify-content: center; }
+  .rep-btn:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.10); transform: translateY(-1px); }
+  .rep-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .rep-btn-primary { background: var(--cp); color: #fff; border-color: var(--cp); }
+  .rep-btn-primary:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  
+  /* ── Tabs ── */
+  .rep-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 24px; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+  .rep-tab { flex-shrink: 0; height: 36px; padding: 0 16px; font-size: 13px; font-weight: 500; color: var(--ct2); background: transparent; border: none; border-radius: 8px; cursor: pointer; transition: all 150ms; scroll-snap-align: start; }
+  .rep-tab:hover { background: #F9FAFB; color: var(--ct1); }
+  .rep-tab.active { background: var(--ccard); color: var(--cp); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+
+  /* ── Data Panels ── */
+  .rep-panel { animation: rep-fadein 200ms ease; }
+  @keyframes rep-fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .rep-table-wrap { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 24px; overflow: hidden; }
+  .rep-table-hd { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--cborder); flex-wrap: wrap; gap: 12px; }
+  .rep-table-title { font-size: 16px; font-weight: 600; color: var(--ct1); display: flex; align-items: center; gap: 8px; }
+  .rep-table-meta { font-size: 13px; color: var(--ct2); font-weight: 500; }
+  
+  .rep-table-scroll { overflow-x: auto; }
+  .rep-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+  .rep-table thead tr { background: #F9FAFB; }
+  .rep-table th { padding: 12px 16px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ctm); border-bottom: 1px solid var(--cborder); text-align: left; }
+  .rep-table td { padding: 12px 16px; border-bottom: 1px solid var(--cborder); color: var(--ct1); vertical-align: middle; transition: background 150ms; }
+  .rep-table tbody tr:hover td { background: #F9FAFB; }
+  .rep-table tbody tr:last-child td { border-bottom: none; }
+
+  /* ── Grand Total ── */
+  .rep-gt-card { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; transition: all 150ms; }
+  .rep-gt-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .rep-gt-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--ctm); }
+  .rep-gt-val { font-size: 32px; font-weight: 700; color: var(--cp); line-height: 1; }
+
+  /* ── Badges ── */
+  .rep-badge { display: inline-flex; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; }
+  
+  /* ── Spinner ── */
+  .rep-spinner { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(37,99,235,.2); border-top-color: var(--cp); animation: rep-spin 700ms linear infinite; }
+  .rep-spinner.lg { width: 32px; height: 32px; border-width: 3px; }
+  @keyframes rep-spin { to { transform: rotate(360deg); } }
+  
+  .rep-empty { padding: 64px 24px; text-align: center; color: var(--ctm); font-size: 14px; }
+`;
 
 const StoreReports = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
@@ -77,48 +157,14 @@ const StoreReports = () => {
       setInventory(invData.data || invData || []);
       setMovements(movData.data || movData || []);
     } catch (e) {
-      NotifStore.push("Failed to load: " + e.message, "error");
+      NotifStore.push("Failed to load data: " + e.message, "error");
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // The /movements API returns { movement_type, drug_name, strength, reference_no,
-  // batch_no, quantity_in, quantity_out, performed_by, remarks, created_at, unit }
   const issuedItems = movements.filter(m => (m.movement_type || "").toUpperCase() === "ISSUE");
-
-  // ---------- ISSUED ITEMS ----------
-  const renderIssuedItems = () => (
-    <div style={{ border: `3px solid ${G.sage}`, background: "#fff", overflow: "hidden" }}>
-      <div style={{ background: G.sage, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontWeight: 900, fontSize: 14, color: G.dark, textTransform: "uppercase" }}>Issued Items</div>
-        <div style={{ fontWeight: 800, fontSize: 13, color: G.dark }}>{issuedItems.length} record(s)</div>
-      </div>
-      <div style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 980 }}>
-          {ROW_HDR(["Date & Time", "Issue No", "Drug Name", "Strength", "Batch No", "Qty Out", "Dept / Remarks", "Processed By"], "1.6fr 1fr 1.6fr 0.8fr 1fr 0.8fr 1.5fr 1.4fr")}
-          {issuedItems.length === 0
-            ? <div style={{ padding: 40, textAlign: "center", color: G.olive, fontWeight: 700 }}>No items issued yet.</div>
-            : issuedItems.map((m, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1.6fr 0.8fr 1fr 0.8fr 1.5fr 1.4fr", borderBottom: `1px solid ${G.light}`, fontSize: 13, color: G.darkGray, background: i % 2 === 0 ? "#fff" : "#f9fff9" }}>
-                <div style={{ padding: "11px 12px", fontWeight: 700 }}>{fmtDate(m.created_at)}</div>
-                <div style={{ padding: "11px 12px", color: G.olive, fontFamily: "monospace", fontWeight: 700 }}>{m.reference_no || "---"}</div>
-                <div style={{ padding: "11px 12px", fontWeight: 800, color: G.dark }}>{m.drug_name || "---"}</div>
-                <div style={{ padding: "11px 12px", color: G.olive, fontSize: 12 }}>{m.strength || "---"}</div>
-                <div style={{ padding: "11px 12px" }}>{m.batch_no || "---"}</div>
-                <div style={{ padding: "11px 12px", fontWeight: 900, color: G.red }}>
-                  {m.quantity_out ? "-" + Number(m.quantity_out).toLocaleString() : "---"}
-                </div>
-                <div style={{ padding: "11px 12px", fontSize: 12 }}>{m.remarks || "---"}</div>
-                <div style={{ padding: "11px 12px" }}>{m.performed_by || "---"}</div>
-              </div>
-            ))
-          }
-        </div>
-      </div>
-    </div>
-  );
 
   // ---------- CURRENT STOCK ----------
   const renderCurrentStock = () => {
@@ -131,34 +177,49 @@ const StoreReports = () => {
       return acc;
     }, {});
     const grand = inventory.reduce((s, m) => s + parseFloat(m.quantity || 0) * parseFloat(m.unit_price || 0), 0);
+    
     return (
-      <div>
-        <div style={{ background: G.dark, color: "#fff", padding: "20px", marginBottom: 24, border: `3px solid ${G.sage}`, display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, color: G.sage }}>Grand Total Value</div>
-          <div style={{ fontSize: "1.8rem", fontWeight: 900 }}>ETB {grand.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+      <div className="rep-panel">
+        <div className="rep-gt-card">
+          <div className="rep-gt-label">Grand Total Value (Current Stock)</div>
+          <div className="rep-gt-val">ETB {grand.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
         </div>
-        {Object.keys(grouped).length === 0 && <div style={{ padding: 40, textAlign: "center", color: G.olive }}>Inventory is empty.</div>}
+        
+        {Object.keys(grouped).length === 0 && <div className="rep-empty">Inventory is empty.</div>}
+        
         {Object.entries(grouped).map(([cat, g]) => (
-          <div key={cat} style={{ marginBottom: 32, border: `3px solid ${G.sage}`, background: "#fff", overflow: "hidden" }}>
-            <div style={{ background: G.sage, padding: "12px 20px", display: "flex", justifyContent: "space-between" }}>
-              <div style={{ fontWeight: 900, color: G.dark, textTransform: "uppercase" }}>{cat}</div>
-              <div style={{ fontWeight: 800, color: G.dark }}>Units: {g.count.toLocaleString()} | ETB {g.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div key={cat} className="rep-table-wrap">
+            <div className="rep-table-hd">
+              <div className="rep-table-title"><Package size={18} color="var(--ct2)" /> {cat}</div>
+              <div className="rep-table-meta">Units: <strong>{g.count.toLocaleString()}</strong> &nbsp;·&nbsp; Value: <strong>ETB {g.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></div>
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <div style={{ minWidth: 800 }}>
-                {ROW_HDR(["Drug Name", "Batch No", "Quantity", "Expiry", "Unit", "Unit Price", "Total Value"], "2fr 1fr 1fr 1.3fr 0.7fr 1fr 1fr")}
-                {g.items.map((m, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1.3fr 0.7fr 1fr 1fr", borderBottom: `1px solid ${G.light}`, fontSize: 13, color: G.darkGray, background: i % 2 === 0 ? "#fff" : "#f9fff9" }}>
-                    <div style={{ padding: "11px 12px", fontWeight: 800 }}>{m.drug_name || m.name || "---"}</div>
-                    <div style={{ padding: "11px 12px" }}>{m.batch_no || m.batch_number || "---"}</div>
-                    <div style={{ padding: "11px 12px", fontWeight: 800, color: G.forest }}>{parseFloat(m.quantity || 0).toLocaleString()}</div>
-                    <div style={{ padding: "11px 12px", color: m.expiry_date && new Date(m.expiry_date) < new Date() ? G.red : "inherit" }}>{m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : "---"}</div>
-                    <div style={{ padding: "11px 12px" }}>{m.unit || "---"}</div>
-                    <div style={{ padding: "11px 12px" }}>ETB {parseFloat(m.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                    <div style={{ padding: "11px 12px", fontWeight: 800 }}>ETB {(parseFloat(m.quantity || 0) * parseFloat(m.unit_price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="rep-table-scroll">
+              <table className="rep-table">
+                <thead>
+                  <tr>
+                    <th>Drug Name</th>
+                    <th>Batch No</th>
+                    <th style={{ textAlign: 'right' }}>Quantity</th>
+                    <th>Expiry</th>
+                    <th>Unit</th>
+                    <th style={{ textAlign: 'right' }}>Unit Price</th>
+                    <th style={{ textAlign: 'right' }}>Total Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.items.map((m, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 500 }}>{m.drug_name || m.name || "---"}</td>
+                      <td style={{ color: 'var(--ct2)' }}>{m.batch_no || m.batch_number || "---"}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--cok)' }}>{parseFloat(m.quantity || 0).toLocaleString()}</td>
+                      <td style={{ color: m.expiry_date && new Date(m.expiry_date) < new Date() ? 'var(--cdanger)' : 'var(--ct2)' }}>{m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : "---"}</td>
+                      <td style={{ color: 'var(--ct2)' }}>{m.unit || "---"}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--ct2)' }}>ETB {parseFloat(m.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600 }}>ETB {(parseFloat(m.quantity || 0) * parseFloat(m.unit_price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         ))}
@@ -166,29 +227,88 @@ const StoreReports = () => {
     );
   };
 
+  // ---------- ISSUED ITEMS ----------
+  const renderIssuedItems = () => (
+    <div className="rep-panel rep-table-wrap">
+      <div className="rep-table-hd">
+        <div className="rep-table-title"><TrendingUp size={18} color="var(--cwarn)" /> Issued Items</div>
+        <div className="rep-table-meta">{issuedItems.length} record(s)</div>
+      </div>
+      <div className="rep-table-scroll">
+        <table className="rep-table" style={{ minWidth: 1000 }}>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Issue No</th>
+              <th>Drug Name</th>
+              <th>Strength</th>
+              <th>Batch No</th>
+              <th style={{ textAlign: 'right' }}>Qty Out</th>
+              <th>Dept / Remarks</th>
+              <th>Processed By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issuedItems.length === 0 ? (
+              <tr><td colSpan={8} className="rep-empty">No items issued yet.</td></tr>
+            ) : issuedItems.map((m, i) => (
+              <tr key={i}>
+                <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{fmtDate(m.created_at)}</td>
+                <td style={{ fontFamily: 'monospace', color: 'var(--ctm)' }}>{m.reference_no || "---"}</td>
+                <td style={{ fontWeight: 500 }}>{m.drug_name || "---"}</td>
+                <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{m.strength || "---"}</td>
+                <td style={{ color: 'var(--ct2)' }}>{m.batch_no || "---"}</td>
+                <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--cdanger)' }}>
+                  {m.quantity_out ? "-" + Number(m.quantity_out).toLocaleString() : "---"}
+                </td>
+                <td style={{ color: 'var(--ct2)' }}>{m.remarks || "---"}</td>
+                <td style={{ color: 'var(--ct2)' }}>{m.performed_by || "---"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   // ---------- LOW STOCK ----------
   const renderLowStock = () => {
     const low = inventory.filter(m => parseFloat(m.quantity || 0) <= parseFloat(m.min_level || m.reorder_level || 10));
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: "#fff", overflow: "hidden" }}>
-        {low.length > 0 && <div style={{ background: "#FFEBEE", padding: "12px 20px", borderBottom: `2px solid ${G.red}`, fontWeight: 800, color: G.red }}>Warning: {low.length} item(s) need restocking</div>}
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 800 }}>
-            {ROW_HDR(["Drug Name", "Category", "Current Qty", "Min Level", "Unit", "Status"], "2fr 1fr 1fr 1fr 0.8fr 1.5fr", G.red)}
-            {low.length === 0
-              ? <div style={{ padding: 40, textAlign: "center", color: G.olive, fontWeight: 700 }}>All items have adequate stock.</div>
-              : low.map((m, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 0.8fr 1.5fr", borderBottom: `1px solid ${G.light}`, fontSize: 13, color: G.darkGray, background: i % 2 === 0 ? "#fff" : "#fff5f5" }}>
-                  <div style={{ padding: "11px 12px", fontWeight: 800 }}>{m.drug_name || m.name || "---"}</div>
-                  <div style={{ padding: "11px 12px" }}>{m.category || "---"}</div>
-                  <div style={{ padding: "11px 12px", fontWeight: 900, color: G.red }}>{parseFloat(m.quantity || 0).toLocaleString()}</div>
-                  <div style={{ padding: "11px 12px", fontWeight: 800 }}>{m.min_level || m.reorder_level || 10}</div>
-                  <div style={{ padding: "11px 12px" }}>{m.unit || "---"}</div>
-                  <div style={{ padding: "11px 12px", color: G.red, fontWeight: 800 }}>Reorder Now!</div>
-                </div>
-              ))
-            }
+      <div className="rep-panel rep-table-wrap">
+        <div className="rep-table-hd" style={{ background: low.length > 0 ? 'var(--cdanger-bg)' : '#F9FAFB', borderBottom: `1px solid ${low.length > 0 ? 'var(--cdanger)' : 'var(--cborder)'}` }}>
+          <div className="rep-table-title" style={{ color: low.length > 0 ? 'var(--cdanger)' : 'var(--ct1)' }}>
+            <AlertTriangle size={18} /> Low Stock Alert
           </div>
+          {low.length > 0 && <div className="rep-badge" style={{ background: 'var(--cdanger)', color: '#fff' }}>Warning: {low.length} item(s) need restocking</div>}
+        </div>
+        <div className="rep-table-scroll">
+          <table className="rep-table">
+            <thead>
+              <tr>
+                <th>Drug Name</th>
+                <th>Category</th>
+                <th style={{ textAlign: 'right' }}>Current Qty</th>
+                <th style={{ textAlign: 'right' }}>Min Level</th>
+                <th>Unit</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {low.length === 0 ? (
+                <tr><td colSpan={6} className="rep-empty">All items have adequate stock.</td></tr>
+              ) : low.map((m, i) => (
+                <tr key={i}>
+                  <td style={{ fontWeight: 500 }}>{m.drug_name || m.name || "---"}</td>
+                  <td style={{ color: 'var(--ct2)' }}>{m.category || "---"}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--cdanger)' }}>{parseFloat(m.quantity || 0).toLocaleString()}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 500 }}>{m.min_level || m.reorder_level || 10}</td>
+                  <td style={{ color: 'var(--ct2)' }}>{m.unit || "---"}</td>
+                  <td><span className="rep-badge" style={{ background: 'var(--cdanger-bg)', color: 'var(--cdanger)', border: '1px solid var(--cdanger)' }}>Reorder Now!</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -196,44 +316,60 @@ const StoreReports = () => {
 
   // ---------- MOVEMENTS ----------
   const renderMovements = () => {
-    const typeColor = { RECEIPT: G.forest, ISSUE: G.orange, ADJUSTMENT: "#00838F", COUNT: "#0288D1" };
-    const typeBg    = { RECEIPT: "#E8F5E9", ISSUE: "#FFF3E0", ADJUSTMENT: "#E0F7FA", COUNT: "#E3F2FD" };
+    const typeColor = { RECEIPT: 'var(--cok)', ISSUE: 'var(--cwarn)', ADJUSTMENT: 'var(--cinfo)', COUNT: '#8B5CF6' };
+    const typeBg    = { RECEIPT: 'var(--cok-bg)', ISSUE: 'var(--cwarn-bg)', ADJUSTMENT: 'var(--cinfo-bg)', COUNT: '#EDE9FE' };
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: "#fff", overflow: "hidden" }}>
-        <div style={{ background: G.sage, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: G.dark, textTransform: "uppercase" }}>All Stock Movements</div>
-          <div style={{ fontWeight: 800, fontSize: 13, color: G.dark }}>{movements.length} record(s)</div>
+      <div className="rep-panel rep-table-wrap">
+        <div className="rep-table-hd">
+          <div className="rep-table-title"><Activity size={18} color="var(--cp)" /> All Stock Movements</div>
+          <div className="rep-table-meta">{movements.length} record(s)</div>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1100 }}>
-            {ROW_HDR(["Date & Time", "Type", "Reference", "Drug Name", "Strength", "Batch No", "Qty In", "Qty Out", "Details", "Performed By"], "1.5fr 0.9fr 1fr 1.6fr 0.8fr 1fr 0.8fr 0.8fr 1.6fr 1.4fr", G.dark)}
-            {movements.length === 0
-              ? <div style={{ padding: 40, textAlign: "center", color: G.olive, fontWeight: 700 }}>No movement records found.</div>
-              : movements.map((m, i) => {
+        <div className="rep-table-scroll">
+          <table className="rep-table" style={{ minWidth: 1200 }}>
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Type</th>
+                <th>Reference</th>
+                <th>Drug Name</th>
+                <th>Strength</th>
+                <th>Batch No</th>
+                <th style={{ textAlign: 'right' }}>Qty In</th>
+                <th style={{ textAlign: 'right' }}>Qty Out</th>
+                <th>Details</th>
+                <th>Performed By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.length === 0 ? (
+                <tr><td colSpan={10} className="rep-empty">No movement records found.</td></tr>
+              ) : movements.map((m, i) => {
                 const type = (m.movement_type || "").toUpperCase();
                 return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1.5fr 0.9fr 1fr 1.6fr 0.8fr 1fr 0.8fr 0.8fr 1.6fr 1.4fr", borderBottom: `1px solid ${G.light}`, fontSize: 12, color: G.darkGray, background: i % 2 === 0 ? "#fff" : "#f9fff9" }}>
-                    <div style={{ padding: "11px 10px", whiteSpace: "nowrap", fontWeight: 700 }}>{fmtDate(m.created_at)}</div>
-                    <div style={{ padding: "11px 10px" }}>
-                      <span style={{ display: "inline-block", padding: "3px 8px", background: typeBg[type] || "#eee", color: typeColor[type] || G.darkGray, fontWeight: 900, fontSize: 10, border: `1.5px solid ${typeColor[type] || G.darkGray}` }}>{type || "---"}</span>
-                    </div>
-                    <div style={{ padding: "11px 10px", fontFamily: "monospace", color: G.olive, fontWeight: 700 }}>{m.reference_no || "---"}</div>
-                    <div style={{ padding: "11px 10px", fontWeight: 800, color: G.dark }}>{m.drug_name || "---"}</div>
-                    <div style={{ padding: "11px 10px", color: G.olive, fontSize: 11 }}>{m.strength || "---"}</div>
-                    <div style={{ padding: "11px 10px" }}>{m.batch_no || "---"}</div>
-                    <div style={{ padding: "11px 10px", fontWeight: 900, color: G.forest }}>
-                      {m.quantity_in ? <span style={{ background: "#E8F5E9", padding: "2px 6px" }}>+{Number(m.quantity_in).toLocaleString()}</span> : <span style={{ color: "#bbb" }}>---</span>}
-                    </div>
-                    <div style={{ padding: "11px 10px", fontWeight: 900, color: G.red }}>
-                      {m.quantity_out ? <span style={{ background: "#FFEBEE", padding: "2px 6px" }}>-{Number(m.quantity_out).toLocaleString()}</span> : <span style={{ color: "#bbb" }}>---</span>}
-                    </div>
-                    <div style={{ padding: "11px 10px", fontSize: 11, color: G.olive, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.remarks || ""}>{m.remarks || "---"}</div>
-                    <div style={{ padding: "11px 10px" }}>{m.performed_by || "---"}</div>
-                  </div>
+                  <tr key={i}>
+                    <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{fmtDate(m.created_at)}</td>
+                    <td>
+                      <span className="rep-badge" style={{ background: typeBg[type] || 'var(--cbg)', color: typeColor[type] || 'var(--ctm)', border: `1px solid ${typeColor[type] || 'var(--ctm)'}` }}>
+                        {type || "---"}
+                      </span>
+                    </td>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--ctm)' }}>{m.reference_no || "---"}</td>
+                    <td style={{ fontWeight: 500 }}>{m.drug_name || "---"}</td>
+                    <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{m.strength || "---"}</td>
+                    <td style={{ color: 'var(--ct2)' }}>{m.batch_no || "---"}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {m.quantity_in ? <span style={{ color: 'var(--cok)', fontWeight: 600 }}>+{Number(m.quantity_in).toLocaleString()}</span> : <span style={{ color: 'var(--cborder)' }}>—</span>}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {m.quantity_out ? <span style={{ color: 'var(--cdanger)', fontWeight: 600 }}>-{Number(m.quantity_out).toLocaleString()}</span> : <span style={{ color: 'var(--cborder)' }}>—</span>}
+                    </td>
+                    <td style={{ color: 'var(--ct2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.remarks || ""}>{m.remarks || "---"}</td>
+                    <td style={{ color: 'var(--ct2)' }}>{m.performed_by || "---"}</td>
+                  </tr>
                 );
-              })
-            }
-          </div>
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -241,41 +377,54 @@ const StoreReports = () => {
 
   // ---------- AUDIT LOG ----------
   const renderAuditLog = () => {
-    const typeColor = { RECEIPT: G.forest, ISSUE: G.orange, ADJUSTMENT: "#00838F", COUNT: "#0288D1" };
+    const typeColor = { RECEIPT: 'var(--cok)', ISSUE: 'var(--cwarn)', ADJUSTMENT: 'var(--cinfo)', COUNT: '#8B5CF6' };
     return (
-      <div style={{ border: `3px solid ${G.sage}`, background: "#fff", overflow: "hidden" }}>
-        <div style={{ background: G.dark, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontWeight: 900, fontSize: 14, color: G.sage, textTransform: "uppercase" }}>Complete Audit Trail</div>
-          <div style={{ fontWeight: 800, fontSize: 13, color: "#fff" }}>{movements.length} entries</div>
+      <div className="rep-panel rep-table-wrap">
+        <div className="rep-table-hd" style={{ background: '#F3F4F6' }}>
+          <div className="rep-table-title"><CheckCircle size={18} color="var(--ct2)" /> Complete Audit Trail</div>
+          <div className="rep-table-meta">{movements.length} entries</div>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1000 }}>
-            {ROW_HDR(["Timestamp", "Action", "Reference", "Drug Name", "Strength", "Batch No", "Qty Change", "Details", "User"], "1.5fr 0.8fr 1fr 1.6fr 0.8fr 1fr 1fr 1.6fr 1.3fr", "#263238")}
-            {movements.length === 0
-              ? <div style={{ padding: 40, textAlign: "center", color: G.olive, fontWeight: 700 }}>Audit log is empty.</div>
-              : movements.map((m, i) => {
+        <div className="rep-table-scroll">
+          <table className="rep-table" style={{ minWidth: 1100 }}>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Reference</th>
+                <th>Drug Name</th>
+                <th>Strength</th>
+                <th>Batch No</th>
+                <th style={{ textAlign: 'right' }}>Qty Change</th>
+                <th>Details</th>
+                <th>User</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.length === 0 ? (
+                <tr><td colSpan={9} className="rep-empty">Audit log is empty.</td></tr>
+              ) : movements.map((m, i) => {
                 const type = (m.movement_type || "").toUpperCase();
                 const change = m.quantity_out ? -Number(m.quantity_out) : Number(m.quantity_in || 0);
                 return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1.5fr 0.8fr 1fr 1.6fr 0.8fr 1fr 1fr 1.6fr 1.3fr", borderBottom: `1px solid ${G.light}`, fontSize: 12, color: G.darkGray, background: i % 2 === 0 ? "#fff" : "#f9fff9" }}>
-                    <div style={{ padding: "11px 10px", whiteSpace: "nowrap", fontWeight: 700 }}>{fmtDate(m.created_at)}</div>
-                    <div style={{ padding: "11px 10px" }}>
-                      <span style={{ display: "inline-block", padding: "3px 7px", background: typeColor[type] || G.darkGray, color: "#fff", fontWeight: 900, fontSize: 10 }}>{type || "---"}</span>
-                    </div>
-                    <div style={{ padding: "11px 10px", fontFamily: "monospace", color: G.olive, fontWeight: 700 }}>{m.reference_no || "---"}</div>
-                    <div style={{ padding: "11px 10px", fontWeight: 800 }}>{m.drug_name || "---"}</div>
-                    <div style={{ padding: "11px 10px", color: G.olive, fontSize: 11 }}>{m.strength || "---"}</div>
-                    <div style={{ padding: "11px 10px" }}>{m.batch_no || "---"}</div>
-                    <div style={{ padding: "11px 10px", fontWeight: 900, color: change < 0 ? G.red : G.forest }}>
-                      {change > 0 ? "+" + change.toLocaleString() : change < 0 ? change.toLocaleString() : "---"}
-                    </div>
-                    <div style={{ padding: "11px 10px", fontSize: 11, color: G.olive, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.remarks || ""}>{m.remarks || "---"}</div>
-                    <div style={{ padding: "11px 10px" }}>{m.performed_by || "---"}</div>
-                  </div>
+                  <tr key={i}>
+                    <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{fmtDate(m.created_at)}</td>
+                    <td>
+                      <span className="rep-badge" style={{ background: typeColor[type] || 'var(--ctm)', color: '#fff' }}>{type || "---"}</span>
+                    </td>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--ctm)' }}>{m.reference_no || "---"}</td>
+                    <td style={{ fontWeight: 500 }}>{m.drug_name || "---"}</td>
+                    <td style={{ color: 'var(--ct2)', fontSize: 12 }}>{m.strength || "---"}</td>
+                    <td style={{ color: 'var(--ct2)' }}>{m.batch_no || "---"}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: change < 0 ? 'var(--cdanger)' : 'var(--cok)' }}>
+                      {change > 0 ? "+" + change.toLocaleString() : change < 0 ? change.toLocaleString() : "—"}
+                    </td>
+                    <td style={{ color: 'var(--ct2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.remarks || ""}>{m.remarks || "---"}</td>
+                    <td style={{ color: 'var(--ct2)' }}>{m.performed_by || "---"}</td>
+                  </tr>
                 );
-              })
-            }
-          </div>
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -286,167 +435,100 @@ const StoreReports = () => {
     const pw = window.open("", "_blank");
     if (!pw) { NotifStore.push("Allow popups to print.", "error"); return; }
     const dt = new Date().toLocaleString();
-    const TH = (t) => `<th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;border:1px solid #aaa;background:#1B5E20;color:#fff;">${t}</th>`;
-    const TD = (t) => `<td style="padding:6px 10px;border:1px solid #ddd;font-size:11px;word-break:break-word;">${t ?? "---"}</td>`;
+    const TH = (t) => `<th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #E5E7EB;color:#6B7280;">${t}</th>`;
+    const TD = (t) => `<td style="padding:10px 12px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#111827;">${t ?? "---"}</td>`;
     const fmt2 = (n) => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     let body = "";
 
     if (activeTab === "Current Stock") {
       const grouped = inventory.reduce((acc, m) => { const c = m.category || "Uncategorized"; if (!acc[c]) acc[c] = []; acc[c].push(m); return acc; }, {});
       const grand = inventory.reduce((s, m) => s + parseFloat(m.quantity || 0) * parseFloat(m.unit_price || 0), 0);
-      body += `<p style="font-size:15px;font-weight:bold;color:#1B5E20;margin-bottom:10px">Grand Total: ETB ${fmt2(grand)}</p>`;
+      body += `<p style="font-size:16px;font-weight:700;color:#2563EB;margin-bottom:16px">Grand Total: ETB ${fmt2(grand)}</p>`;
       Object.entries(grouped).forEach(([cat, items]) => {
-        body += `<h3 style="background:#c8e6c9;padding:7px 12px;margin:18px 0 0">${cat}</h3>`;
-        body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("Drug")}${TH("Batch")}${TH("Qty")}${TH("Expiry")}${TH("Unit")}${TH("Unit Price")}${TH("Total")}</tr></thead><tbody>`;
+        body += `<h3 style="background:#F9FAFB;border:1px solid #E5E7EB;border-bottom:none;padding:10px 12px;margin:24px 0 0;font-size:14px;color:#111827;">${cat}</h3>`;
+        body += `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;margin-bottom:16px;"><thead><tr>${TH("Drug")}${TH("Batch")}${TH("Qty")}${TH("Expiry")}${TH("Unit")}${TH("Unit Price")}${TH("Total")}</tr></thead><tbody>`;
         items.forEach(m => {
           body += `<tr>${TD(m.drug_name || m.name)}${TD(m.batch_no || m.batch_number)}${TD(parseFloat(m.quantity || 0).toLocaleString())}${TD(m.expiry_date ? new Date(m.expiry_date).toLocaleDateString() : "---")}${TD(m.unit)}${TD("ETB " + fmt2(m.unit_price))}${TD("ETB " + fmt2(parseFloat(m.quantity || 0) * parseFloat(m.unit_price || 0)))}</tr>`;
         });
         body += "</tbody></table>";
       });
     } else if (activeTab === "Issued Items") {
-      body += `<p style="font-weight:bold;margin-bottom:8px">Total: ${issuedItems.length} records</p>`;
-      body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("Date")}${TH("Issue No")}${TH("Drug")}${TH("Strength")}${TH("Batch")}${TH("Qty Out")}${TH("Dept/Remarks")}${TH("By")}</tr></thead><tbody>`;
+      body += `<p style="font-weight:600;margin-bottom:12px;color:#6B7280;">Total: ${issuedItems.length} records</p>`;
+      body += `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;"><thead><tr style="background:#F9FAFB">${TH("Date")}${TH("Issue No")}${TH("Drug")}${TH("Strength")}${TH("Batch")}${TH("Qty Out")}${TH("Dept/Remarks")}${TH("By")}</tr></thead><tbody>`;
       issuedItems.forEach(m => {
         body += `<tr>${TD(fmtDate(m.created_at))}${TD(m.reference_no)}${TD(m.drug_name)}${TD(m.strength)}${TD(m.batch_no)}${TD(m.quantity_out ? "-" + Number(m.quantity_out).toLocaleString() : "---")}${TD(m.remarks)}${TD(m.performed_by)}</tr>`;
       });
       body += "</tbody></table>";
     } else if (activeTab === "Low Stock") {
       const low = inventory.filter(m => parseFloat(m.quantity || 0) <= parseFloat(m.min_level || m.reorder_level || 10));
-      body += `<p style="font-weight:bold;color:#c62828;margin-bottom:8px">Warning: ${low.length} item(s)</p>`;
-      body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("Drug")}${TH("Category")}${TH("Qty")}${TH("Min Level")}${TH("Unit")}${TH("Status")}</tr></thead><tbody>`;
+      body += `<p style="font-weight:700;color:#DC2626;margin-bottom:12px">Warning: ${low.length} item(s) need restocking</p>`;
+      body += `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;"><thead><tr style="background:#F9FAFB">${TH("Drug")}${TH("Category")}${TH("Qty")}${TH("Min Level")}${TH("Unit")}${TH("Status")}</tr></thead><tbody>`;
       low.forEach(m => {
-        body += `<tr>${TD(m.drug_name || m.name)}${TD(m.category)}${TD(parseFloat(m.quantity || 0).toLocaleString())}${TD(m.min_level || m.reorder_level || 10)}${TD(m.unit)}<td style="color:#c62828;font-weight:bold;border:1px solid #ddd;padding:6px 10px">Reorder Now!</td></tr>`;
+        body += `<tr>${TD(m.drug_name || m.name)}${TD(m.category)}${TD(parseFloat(m.quantity || 0).toLocaleString())}${TD(m.min_level || m.reorder_level || 10)}${TD(m.unit)}<td style="color:#DC2626;font-weight:600;border-bottom:1px solid #E5E7EB;padding:10px 12px">Reorder Now!</td></tr>`;
       });
       body += "</tbody></table>";
     } else {
-      body += `<p style="font-weight:bold;margin-bottom:8px">Total: ${movements.length} records</p>`;
-      body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH("Date")}${TH("Type")}${TH("Reference")}${TH("Drug")}${TH("Strength")}${TH("Batch")}${TH("Qty In")}${TH("Qty Out")}${TH("Details")}${TH("By")}</tr></thead><tbody>`;
+      body += `<p style="font-weight:600;margin-bottom:12px;color:#6B7280;">Total: ${movements.length} records</p>`;
+      body += `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;"><thead><tr style="background:#F9FAFB">${TH("Date")}${TH("Type")}${TH("Reference")}${TH("Drug")}${TH("Strength")}${TH("Batch")}${TH("Qty In")}${TH("Qty Out")}${TH("Details")}${TH("By")}</tr></thead><tbody>`;
       movements.forEach(m => {
         body += `<tr>${TD(fmtDate(m.created_at))}${TD(m.movement_type)}${TD(m.reference_no)}${TD(m.drug_name)}${TD(m.strength)}${TD(m.batch_no)}${TD(m.quantity_in ? "+" + Number(m.quantity_in).toLocaleString() : "---")}${TD(m.quantity_out ? "-" + Number(m.quantity_out).toLocaleString() : "---")}${TD(m.remarks)}${TD(m.performed_by)}</tr>`;
       });
       body += "</tbody></table>";
     }
 
-    pw.document.write(`<html><head><title>Pharmacy ${activeTab}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial;font-size:12px;padding:20px}h1{color:#1B5E20;border-bottom:3px solid #228B22;padding-bottom:6px;margin-bottom:4px;font-size:18px}h3{font-size:13px}.meta{font-size:11px;color:#555;margin-bottom:14px}tr:nth-child(even)td{background:#f0fdf4}tr{page-break-inside:avoid}@page{margin:10mm;size:A4 landscape}</style></head><body><h1>Pharmacy Store — ${activeTab}</h1><div class="meta">Generated: ${dt} | Sutana University</div>${body}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+    pw.document.write(`<html><head><title>Pharmacy ${activeTab}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;font-size:12px;padding:32px;color:#111827;}h1{color:#2563EB;margin-bottom:4px;font-size:24px}h3{font-size:14px}.meta{font-size:12px;color:#6B7280;margin-bottom:24px;border-bottom:2px solid #E5E7EB;padding-bottom:16px;}tr:nth-child(even)td{background:#F9FAFB}tr{page-break-inside:avoid}@page{margin:15mm;size:A4 landscape}</style></head><body><h1>Pharmacy Store — ${activeTab}</h1><div class="meta">Generated: ${dt} | Sutana University</div>${body}<script>window.onload=function(){window.print();}</script></body></html>`);
     pw.document.close();
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: G.forest, fontFamily: "Inter,sans-serif" }}>
+    <div className="rep-page">
       <NotifToastContainer />
-      <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+      <style>{CSS}</style>
 
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
-
-    .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
-
-    .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
-    }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
-  `}</style>
-
-      {/* HEADER */}
-      <div style={{ background: `linear-gradient(90deg, ${G.dark} 0%, ${G.forest} 100%)`, padding: "24px", borderBottom: `6px solid ${G.emerald}`, display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 40 }}>📊</span>
+      {/* ── HEADER ── */}
+      <div className="rep-header">
+        <div className="rep-header-left">
+          <div className="rep-header-icon"><FileText size={24} /></div>
           <div>
-            <h1 className="artistic-3d-title">Pharmacy Reports</h1>
-            <p style={{ margin: "6px 0 0", color: G.mint, fontSize: 14, fontWeight: 600 }}>Comprehensive stock, value and audit tracking</p>
+            <h1 className="rep-page-title">Pharmacy Reports</h1>
+            <p className="rep-page-sub">Comprehensive stock, value and audit tracking</p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={loadData} style={{ background: "rgba(255,255,255,.15)", color: "#fff", padding: "10px 18px", fontSize: 13, fontWeight: 800, border: "2px solid rgba(255,255,255,.4)", cursor: "pointer", boxShadow: "3px 3px 0 rgba(0,0,0,.3)" }}>
-            Refresh
+        <div className="rep-header-btns">
+          <button onClick={handlePrint} className="rep-btn">
+            <Printer size={16} /> Print Report
           </button>
-          <button onClick={handlePrint} style={{ background: "#fff", color: G.dark, padding: "12px 24px", fontSize: 14, fontWeight: 900, textTransform: "uppercase", border: "none", cursor: "pointer", boxShadow: `4px 4px 0 ${G.sage}` }}>
-            Print Report
+          <button onClick={loadData} className="rep-btn rep-btn-primary" disabled={loading}>
+            {loading ? <span className="rep-spinner" style={{ borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} /> : <RefreshCw size={16} />} 
+            Refresh Data
           </button>
         </div>
       </div>
 
-      {/* BODY */}
-      <div style={{ padding: 24, background: G.light, minHeight: "calc(100vh - 90px)" }}>
-        {/* TABS */}
-        <div style={{ display: "flex", marginBottom: 24, overflowX: "auto", background: "#fff", border: `3px solid ${G.sage}` }}>
-          {TABS.map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} style={{
-              flex: 1, minWidth: 140, padding: "14px 10px", fontSize: 13, fontWeight: 900,
-              textTransform: "uppercase", letterSpacing: 1, cursor: "pointer", border: "none",
-              background: activeTab === t ? G.forest : "#fff",
-              color: activeTab === t ? "#fff" : G.darkGray,
-              borderRight: `1px solid ${G.light}`, whiteSpace: "nowrap"
-            }}>
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 100, fontSize: 20, fontWeight: 900, color: G.forest }}>Loading {activeTab}...</div>
-        ) : (
-          <div style={{ animation: "fadeUp 0.4s ease" }}>
-            {activeTab === "Current Stock" && renderCurrentStock()}
-            {activeTab === "Issued Items"  && renderIssuedItems()}
-            {activeTab === "Low Stock"     && renderLowStock()}
-            {activeTab === "Movements"     && renderMovements()}
-            {activeTab === "Audit Log"     && renderAuditLog()}
-          </div>
-        )}
+      {/* ── TABS ── */}
+      <div className="rep-tabs">
+        {TABS.map(t => (
+          <button key={t} onClick={() => setActiveTab(t)} className={`rep-tab ${activeTab === t ? 'active' : ''}`}>
+            {t}
+          </button>
+        ))}
       </div>
+
+      {/* ── BODY ── */}
+      {loading ? (
+        <div className="rep-empty">
+          <span className="rep-spinner lg" style={{ marginBottom: 16 }} />
+          <div>Loading {activeTab}...</div>
+        </div>
+      ) : (
+        <>
+          {activeTab === "Current Stock" && renderCurrentStock()}
+          {activeTab === "Issued Items"  && renderIssuedItems()}
+          {activeTab === "Low Stock"     && renderLowStock()}
+          {activeTab === "Movements"     && renderMovements()}
+          {activeTab === "Audit Log"     && renderAuditLog()}
+        </>
+      )}
     </div>
   );
 };
