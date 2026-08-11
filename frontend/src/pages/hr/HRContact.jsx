@@ -263,14 +263,12 @@ const HRContact = () => {
                     return (
                       <tr key={msg.id} className={isReplied ? styles.rowReplied : (!msg.is_read ? styles.rowUnread : '')}>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
                             {!msg.is_read && <span className={styles.dot} title="Unread" />}
                             <div>
                               <div className={styles.senderName}>{msg.sender_name}</div>
                               <a 
-                                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${msg.sender_email}&su=${encodeURIComponent('Reply to your inquiry')}&body=${encodeURIComponent(`Dear ${msg.sender_name},\n\n\n\nBest regards,\nHR Team\n${settings.email}\n${settings.phone1}`)}`}
-                                target="_blank"
-                                rel="noreferrer"
+                                href={`mailto:${msg.sender_email}`}
                                 className={styles.senderEmail}
                                 onClick={() => markReplied(msg.id)}
                               >
@@ -327,10 +325,10 @@ const HRContact = () => {
                             <button
                               onClick={() => toggleMessageStatus(msg)}
                               className={styles.actionBtn}
-                              style={{ color: msg.is_read ? 'var(--color-success)' : 'var(--color-primary)' }}
+                              style={{ color: msg.is_read ? 'var(--color-text-secondary)' : 'var(--color-primary)' }}
                               title={msg.is_read ? 'Mark as unread' : 'Mark as read'}
                             >
-                              {msg.is_read ? <Eye size={14} /> : <EyeOff size={14} />}
+                              {msg.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
                             <button
                               onClick={() => deleteMessage(msg.id)}
