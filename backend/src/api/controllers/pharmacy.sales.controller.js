@@ -518,10 +518,163 @@ const salesController = {
     });
   },
 
-  // ── Audit Trail (A14) ──
+  // ── Audit Trail (A14) — enriched with full sale/prescription/stock snapshots ──
   listAuditTrail: async (req, res) => {
-    const rows = await db('pharmacy_audit_trail').orderBy('created_at', 'desc');
-    res.json({ status: 'success', data: rows });
+    const { worker_id, search, limit = 100 } = req.query;
+
+    // 1. Load raw audit trail entries
+    let q = db('pharmacy_audit_trail as at')
+      .leftJoin('pharmacy_workers as w', 'at.worker_id', 'w.id')
+      .leftJoin('pharmacy_branches as b', 'at.branch_id', 'b.id')
+      .select(
+        'at.*',
+        'w.name as worker_name',
+        'b.name as branch_name'
+      )
+      .orderBy('at.created_at', 'desc')
+      .limit(parseInt(limit));
+
+    if (worker_id) q = q.where('at.worker_id', worker_id);
+    if (search) {
+      q = q.where(function () {
+        this.where('at.action', 'like', `%${search}%`)
+            .orWhere('at.recipient', 'like', `%${search}%`)
+            .orWhere('w.name', 'like', `%${search}%`);
+      });
+    }
+
+    const rows = await q;
+
+    // 2. For each PAID / CASHOUT entry, find the matching sale and enrich
+    const enriched = await Promise.all(rows.map(async (row) => {
+      const entry = { ...row };
+
+      if (['PAID', 'CASHOUT', 'RETURN'].includes(row.action)) {
+        // Find the sale closest in time to this audit entry for this worker/branch
+        const sale = await db('pharmacy_sales as s')
+          .leftJoin('pharmacy_payments as p', 's.id', 'p.sale_id')
+          .where('s.branch_id', row.branch_id)
+          .where(function () {
+            if (row.worker_id) this.where('s.worker_id', row.worker_id);
+          })
+          .where('s.created_at', '<=', row.created_at)
+          .orderBy('s.created_at', 'desc')
+          .select(
+            's.id as sale_id', 's.receipt_no', 's.sale_type', 's.total_products',
+            's.total_amount', 's.created_at as sale_date',
+            's.recipient_name', 's.recipient_phone',
+            'p.payment_method', 'p.bank_name', 'p.telbir_number',
+            'p.status as payment_status'
+          )
+          .first();
+
+        if (sale) {
+          const items = await db('pharmacy_sale_items')
+            .where({ sale_id: sale.sale_id })
+            .select('drug_name', 'quantity', 'unit_price', 'total_price');
+
+          entry.snapshot = {
+            receipt_no: sale.receipt_no,
+            sale_type: sale.sale_type,
+            total_products: sale.total_products,
+            total_amount: sale.total_amount,
+            sale_date: sale.sale_date,
+            customer: sale.recipient_name || 'Walk-in',
+            customer_phone: sale.recipient_phone || null,
+            payment_method: sale.payment_method || 'CASH',
+            bank_name: sale.bank_name || null,
+            telbir_number: sale.telbir_number || null,
+            payment_status: sale.payment_status || 'PAID',
+            items: items || [],
+          };
+        }
+      }
+
+      if (row.action === 'DAILY_SUBMIT') {
+        // Attach the most recent submitted batch summary
+        const submittedSales = await db('pharmacy_sales')
+          .where('is_submitted', true)
+          .where('branch_id', row.branch_id)
+          .where('created_at', '<=', row.created_at)
+          .select('id', 'receipt_no', 'total_amount', 'sale_type', 'created_at')
+          .orderBy('created_at', 'desc')
+          .limit(50);
+
+        entry.snapshot = {
+          submitted_count: submittedSales.length,
+          total_amount: row.amount,
+          sales: submittedSales,
+          note: row.recipient,
+        };
+      }
+
+      return entry;
+    }));
+
+    // 3. Also pull pharmacy prescriptions and stock movements as extra audit events
+    let prescriptions = [];
+    try {
+      let pq = db('pharmacy_prescriptions')
+        .select(
+          'id', 'reference_no', 'customer_name', 'customer_phone',
+          'drug_name', 'quantity', 'status', 'source', 'created_at'
+        )
+        .orderBy('created_at', 'desc')
+        .limit(50);
+      prescriptions = (await pq).map(p => ({
+        id: `rx-${p.id}`,
+        action: `PRESCRIPTION_${p.status}`,
+        recipient: `${p.customer_name}${p.customer_phone ? ' · ' + p.customer_phone : ''}`,
+        amount: null,
+        created_at: p.created_at,
+        worker_name: null,
+        branch_name: null,
+        snapshot: {
+          reference_no: p.reference_no,
+          drug_name: p.drug_name,
+          quantity: p.quantity,
+          status: p.status,
+          source: p.source,
+          customer: p.customer_name,
+          customer_phone: p.customer_phone,
+        },
+      }));
+    } catch (e) {}
+
+    let stockMovements = [];
+    try {
+      stockMovements = (await db('pharmacy_stock_movements as sm')
+        .leftJoin('pharmacy_medications as m', 'sm.medication_id', 'm.id')
+        .select(
+          'sm.id', 'sm.quantity_change', 'sm.reason', 'sm.reference_no',
+          'sm.created_at', 'm.name as drug_name', 'm.unit', 'm.stock_quantity'
+        )
+        .orderBy('sm.created_at', 'desc')
+        .limit(30)
+      ).map(sm => ({
+        id: `stock-${sm.id}`,
+        action: sm.quantity_change > 0 ? 'STOCK_IN' : 'STOCK_OUT',
+        recipient: sm.reason || 'Stock adjustment',
+        amount: null,
+        created_at: sm.created_at,
+        worker_name: null,
+        branch_name: null,
+        snapshot: {
+          drug_name: sm.drug_name,
+          quantity_change: sm.quantity_change,
+          reason: sm.reason,
+          reference_no: sm.reference_no,
+          current_stock: sm.stock_quantity,
+          unit: sm.unit,
+        },
+      }));
+    } catch (e) {}
+
+    // 4. Merge + sort by date descending
+    const combined = [...enriched, ...prescriptions, ...stockMovements]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json({ status: 'success', data: combined });
   },
 
   // ── Expired Drugs (B4) ──
