@@ -34,7 +34,7 @@ exports.updateSettings = catchAsync(async (req, res) => {
   }
 
   const updated = await db('sales_settings').first();
-  log(req, 'Contact Settings Updated', updated?.id || 'sales', null, { contact_phone1: updated?.contact_phone1, contact_phone2: updated?.contact_phone2, contact_email: updated?.contact_email });
+  log(req, 'Contact Settings Updated', 'Sales Contact Settings', existing, updated);
   res.json({ status: 'success', data: updated });
 });
 
@@ -85,14 +85,16 @@ exports.toggleReadStatus = catchAsync(async (req, res) => {
   const { is_read } = req.body;
   const before = await db('sales_messages').where('id', id).first();
   await db('sales_messages').where({ id }).update({ is_read: is_read ? 1 : 0, updated_at: db.fn.now() });
-  log(req, 'Message Read Status Toggled', id, before ? { is_read: !!before.is_read } : null, { is_read: !!is_read });
+  const after = await db('sales_messages').where('id', id).first();
+  log(req, 'Message Read Status Toggled', `Message #${id}`, before, after);
   res.json({ status: 'success' });
 });
 
 // ─── DELETE MESSAGE ─────────────────────────────────────────────────────────
 exports.deleteMessage = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const before = await db('sales_messages').where({ id }).first();
   await db('sales_messages').where({ id }).delete();
-  log(req, 'Message Deleted', id, null, { messageId: id });
+  log(req, 'Message Deleted', `Message #${id}`, before, null);
   res.json({ status: 'success' });
 });
