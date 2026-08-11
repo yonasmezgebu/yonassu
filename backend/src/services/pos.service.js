@@ -370,7 +370,7 @@ const checkout = async (userId, checkoutData, ip) => {
   });
 
   carts.delete(userId);
-  await audit('SALE_COMPLETED', result, {
+  await audit('SALE_COMPLETED', userId, {
     ip, details: { invoiceNumber, totalAmount, paymentMethod, itemCount: cart.items.length }
   });
 
