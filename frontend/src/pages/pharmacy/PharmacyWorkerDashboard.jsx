@@ -1,5 +1,5 @@
 import React, { createContext, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 import PharmacyWorkerHome from './PharmacyWorkerHome';
@@ -15,11 +15,17 @@ import PharmacyWorkerPrescriptionHistory from './PharmacyWorkerPrescriptionHisto
 
 import PharmacyStockOperations from './PharmacyStockOperations';
 import PharmacyMedicines from './PharmacyMedicines';
+import ManagerChat from '../../components/ManagerChat';
+import PharmacyWorkerAuditLog from './PharmacyWorkerAuditLog';
 
 export const WorkerAuthContext = createContext();
 
 const PharmacyWorkerDashboard = () => {
   const [hasManagerPermission, setHasManagerPermission] = useState(true);
+  const location = useLocation();
+
+  const FULL_BLEED = ['/pharmacy-worker/chat'];
+  const isFullBleed = FULL_BLEED.some(path => location.pathname.includes(path));
 
   const menuItems = [
     { label: 'Dashboard', path: '/pharmacy-worker/overview', icon: 'home' },
@@ -40,7 +46,7 @@ const PharmacyWorkerDashboard = () => {
     {
       label: 'Prescriptions', icon: 'file-text',
       children: [
-        { label: 'Prescription', path: '/pharmacy-worker/rx',         icon: 'clipboard-list', color: '#059669' },
+        { label: 'Prescription',         path: '/pharmacy-worker/rx',         icon: 'clipboard-list', color: '#059669' },
         { label: 'Prescription History', path: '/pharmacy-worker/rx/history', icon: 'list',           color: '#64748b' },
       ]
     },
@@ -52,35 +58,60 @@ const PharmacyWorkerDashboard = () => {
     },
     { type: 'divider' },
 
-    // ── Health Publisher (now in Sales Section) ──
+    // ── Staff & Contact ──
+    {
+      label: 'Staff & Contact', icon: 'users',
+      children: [
+        { label: 'Chat', path: '/pharmacy-worker/chat', icon: 'message-circle', color: '#6B8E23' },
+      ]
+    },
+    { type: 'divider' },
+
+    // ── Audit Log ──
+    { label: 'Audit Log', path: '/pharmacy-worker/audit-log', icon: 'clipboard', color: '#6366f1' },
+    { type: 'divider' },
   ];
 
   return (
     <WorkerAuthContext.Provider value={{ hasManagerPermission, setHasManagerPermission }}>
       <DashboardLayout menuItems={menuItems} title="Pharmacy Worker Dashboard">
-        <Routes>
-          <Route path="overview"        element={<PharmacyWorkerHome />} />
+        <div style={isFullBleed ? {
+          margin: '-32px -32px -32px -32px',
+          padding: 0,
+          background: '#D5DCF0',
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+        } : {}}>
+          <Routes>
+            <Route path="overview"        element={<PharmacyWorkerHome />} />
 
-          {/* ── Sales ── */}
-          <Route path="sales"           element={<PharmacySalesForm />} />
-          <Route path="sales/:id"       element={<PharmacySalesForm />} />
-          <Route path="sales-return"    element={<PharmacySalesReturn />} />
+            {/* ── Sales ── */}
+            <Route path="sales"           element={<PharmacySalesForm />} />
+            <Route path="sales/:id"       element={<PharmacySalesForm />} />
+            <Route path="sales-return"    element={<PharmacySalesReturn />} />
 
-          {/* ── Prescriptions ── */}
-          <Route path="rx"              element={<PharmacyWorkerPrescriptions />} />
-          <Route path="rx/new"          element={<PharmacyWorkerNewPrescription />} />
-          <Route path="rx/pending"      element={<PharmacyWorkerPendingPrescriptions />} />
-          <Route path="rx/history"      element={<PharmacyWorkerPrescriptionHistory />} />
+            {/* ── Prescriptions ── */}
+            <Route path="rx"              element={<PharmacyWorkerPrescriptions />} />
+            <Route path="rx/new"          element={<PharmacyWorkerNewPrescription />} />
+            <Route path="rx/pending"      element={<PharmacyWorkerPendingPrescriptions />} />
+            <Route path="rx/history"      element={<PharmacyWorkerPrescriptionHistory />} />
 
-          {/* ── Stock Operations ── */}
-          <Route path="stock-operations" element={<PharmacyStockOperations />} />
-          <Route path="medicines" element={<PharmacyMedicines />} />
+            {/* ── Stock Operations ── */}
+            <Route path="stock-operations" element={<PharmacyStockOperations />} />
+            <Route path="medicines"        element={<PharmacyMedicines />} />
 
-          {/* ── Health Publisher ── */}
-          <Route path="health-publisher" element={<PharmacyWorkerHealthPublisher />} />
+            {/* ── Health Publisher ── */}
+            <Route path="health-publisher" element={<PharmacyWorkerHealthPublisher />} />
 
-          <Route path="/" element={<Navigate to="overview" replace />} />
-        </Routes>
+            {/* ── Chat ── */}
+            <Route path="chat"            element={<ManagerChat />} />
+
+            {/* ── Audit Log (worker's own activity only) ── */}
+            <Route path="audit-log"       element={<PharmacyWorkerAuditLog />} />
+
+            <Route path="/" element={<Navigate to="overview" replace />} />
+          </Routes>
+        </div>
       </DashboardLayout>
     </WorkerAuthContext.Provider>
   );
