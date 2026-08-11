@@ -26,7 +26,7 @@ import StoreGoodsIssuedToday from './StoreGoodsIssuedToday';
 // Monitoring & Reports
 import StoreReports from './StoreReports';
 import ManagerChat from '../../components/ManagerChat';
-import CentralAuditLog from '../admin/CentralAuditLog';
+import PharmacyStoreAuditLog from './PharmacyStoreAuditLog';
 import styles from './StoreDashboard.module.css';
 
 const PharmacyStoreDashboard = () => {
@@ -53,6 +53,7 @@ const PharmacyStoreDashboard = () => {
       ]
     },
     { type: 'divider' },
+    { label: 'Chat', path: '/pharmacy-store/chat', icon: 'message-circle', color: '#3b82f6' },
     { label: 'Audit Log', path: '/pharmacy-store/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
@@ -82,7 +83,7 @@ const PharmacyStoreDashboard = () => {
           <Route path="reports"     element={<StoreReports />} />
 
           <Route path="chat" element={<ManagerChat />} />
-          <Route path="audit-log" element={<CentralAuditLog />} />
+          <Route path="audit-log" element={<PharmacyStoreAuditLog />} />
             <Route path="/" element={<Navigate to="/pharmacy-store/overview" replace />} />
         </Routes>
       </DashboardLayout>
