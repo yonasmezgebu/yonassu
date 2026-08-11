@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { audit } = require('../../config/logger');
 const notificationRepository = require('../../repositories/notification.repository');
+const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 
 const generateRequestNumber = async () => {
   const last = await db('pharmacy_transfer_requests').orderBy('id', 'desc').first();
@@ -61,6 +62,7 @@ const pharmacyTransferController = {
       link: `/ceo/pharmacy-transfers/${id}`
     });
     const transfer = await db('pharmacy_transfer_requests').where('id', id).first();
+    logPharmacyAction(req, 'Transfer Created', requestNumber, null, transfer, 'Pharmacy Store');
     res.status(201).json({ status: 'success', data: transfer });
   },
 
@@ -127,6 +129,7 @@ const pharmacyTransferController = {
       type: 'pharmacy_transfer',
       link: `/store/pharmacy-shipments/${id}`
     });
+    logPharmacyAction(req, 'Transfer Approved', transfer.request_number, { status: 'PENDING' }, { status: 'APPROVED' }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Request approved' });
   },
 
@@ -152,6 +155,7 @@ const pharmacyTransferController = {
       type: 'pharmacy_transfer',
       link: `/pharmacy/transfers/${id}`
     });
+    logPharmacyAction(req, 'Transfer Rejected', transfer.request_number, { status: 'PENDING' }, { status: 'REJECTED', reason }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Request rejected' });
   },
 
@@ -187,6 +191,7 @@ const pharmacyTransferController = {
       type: 'pharmacy_transfer',
       link: `/pharmacy/receive-shipments/${id}`
     });
+    logPharmacyAction(req, 'Transfer Shipped', transfer.request_number, { status: 'APPROVED' }, { status: 'SHIPPED', quantity_shipped: qty, shipment_number: shipNum }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Shipment dispatched' });
   },
 
@@ -229,6 +234,7 @@ const pharmacyTransferController = {
       type: 'pharmacy_transfer',
       link: `/store/pharmacy-shipments/${id}`
     });
+    logPharmacyAction(req, 'Transfer Received', transfer.request_number, { status: 'SHIPPED' }, { status: 'COMPLETED', quantity_received: qty }, 'Pharmacy Store');
     res.json({ status: 'success', message: 'Shipment received and stock updated' });
   }
 };
