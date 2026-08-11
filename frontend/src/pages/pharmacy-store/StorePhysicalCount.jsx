@@ -3,14 +3,145 @@ import { ClipboardCheck, Plus, Trash2, Search, Eye, EyeOff, RefreshCw, CheckCirc
 import { NotifStore } from './StoreHomeNew';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-/* ─── Color Palette ─────────────────────────────────────────── */
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', mint: '#98FF98', lime: '#8BC34A',
-  brown: '#8D6E63', sky: '#87CEEB', white: '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray: '#424242', orange: '#FF9800', red: '#F44336', blue: '#0288D1',
-};
+/* ── Enterprise CSS ─────────────────────────────────────────────── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --cp: #2563EB; --cp-h: #1D4ED8;
+    --cbg: #F5F6FA; --ccard: #FFFFFF; --cborder: #E5E7EB;
+    --ct1: #111827; --ct2: #6B7280; --ctm: #9CA3AF;
+    --cok: #16A34A; --cok-bg: #DCFCE7;
+    --cdanger: #DC2626; --cdanger-bg: #FEE2E2;
+    --cwarn: #D97706; --cwarn-bg: #FEF3C7;
+    --cinfo: #0284C7; --cinfo-bg: #E0F2FE;
+    --gold: #F59E0B; --gold-text: #111827;
+  }
 
+  /* ── Page ── */
+  .pc-page {
+    box-sizing: border-box;
+    margin: 10px auto; width: calc(100% - 20px); max-width: 1536px;
+    min-height: calc(100vh - 20px); padding: 24px 24px 48px;
+    background: var(--cbg);
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    color: var(--ct1); line-height: 1.5;
+  }
+  @media (max-width: 1024px) { .pc-page { margin: 6px auto; width: calc(100% - 12px); padding: 16px 16px 40px; } }
+  @media (max-width: 480px)  { .pc-page { margin: 4px auto; width: calc(100% - 8px);  padding: 12px 12px 32px; } }
+
+  /* ── Header ── */
+  .pc-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--cborder); }
+  .pc-header-left { display: flex; align-items: center; gap: 12px; }
+  .pc-header-icon { background: var(--cinfo-bg); color: var(--cinfo); padding: 10px; border-radius: 10px; display: flex; flex-shrink: 0; }
+  .pc-page-title { font-size: clamp(22px,3vw,28px); font-weight: 600; line-height: 1.3; margin: 0 0 2px; color: var(--ct1); }
+  .pc-page-sub { font-size: 13px; color: var(--ct2); margin: 0; }
+  .pc-header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Buttons ── */
+  .pc-btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--cborder); background: var(--ccard); color: var(--ct1); font-family: inherit; transition: all 150ms ease-in-out; white-space: nowrap; min-width: 44px; justify-content: center; }
+  .pc-btn:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.10); transform: translateY(-1px); }
+  .pc-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .pc-btn-primary { background: var(--cp); color: #fff; border-color: var(--cp); }
+  .pc-btn-primary:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  .pc-btn-danger  { background: var(--ccard); color: var(--cdanger); border-color: var(--cdanger); }
+  .pc-btn-danger:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  .pc-btn-icon { width: 36px; height: 36px; padding: 0; }
+  .pc-btn-sm   { height: 30px; padding: 0 12px; font-size: 12px; }
+
+  /* ── Spinner ── */
+  .pc-spinner { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(37,99,235,.2); border-top-color: var(--cp); animation: pc-spin 700ms linear infinite; flex-shrink: 0; }
+  .pc-spinner.lg { width: 28px; height: 28px; border-width: 3px; }
+  .pc-spinner.white { border-color: rgba(255,255,255,.3); border-top-color: #fff; }
+  @keyframes pc-spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats Strip ── */
+  .pc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease; }
+  .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .stat-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ctm); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .stat-val { font-size: 24px; font-weight: 700; color: var(--ct1); font-variant-numeric: tabular-nums; line-height: 1; }
+
+  /* ── Search bar ── */
+  .pc-search-bar { display: flex; align-items: center; gap: 12px; background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 0 16px; height: 44px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .pc-search-input { border: none; outline: none; font-size: 14px; font-family: inherit; flex: 1; background: transparent; color: var(--ct1); }
+  .pc-search-count { font-size: 13px; font-weight: 500; color: var(--ctm); white-space: nowrap; }
+
+  /* ── Badges ── */
+  .pc-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; white-space: nowrap; letter-spacing: 0.02em; }
+  .pc-badge-approved { background: var(--cok-bg); color: var(--cok); }
+  .pc-badge-rejected { background: var(--cdanger-bg); color: var(--cdanger); }
+  .pc-badge-awaiting { background: var(--cinfo-bg); color: var(--cinfo); }
+  
+  .pc-badge-variance { background: var(--cdanger-bg); color: var(--cdanger); }
+  .pc-badge-balanced { background: var(--cok-bg); color: var(--cok); }
+
+  /* ── List / Cards ── */
+  .pc-list { display: flex; flex-direction: column; gap: 12px; }
+  .pc-card-row { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); overflow: hidden; transition: box-shadow 150ms ease, transform 150ms ease; }
+  .pc-card-row:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .pc-row-inner { padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-left: 4px solid transparent; }
+  .pc-row-inner.st-APPROVED { border-left-color: var(--cok); }
+  .pc-row-inner.st-REJECTED { border-left-color: var(--cdanger); }
+  .pc-row-inner.st-PENDING  { border-left-color: var(--cinfo); }
+
+  .pc-left { display: flex; align-items: center; gap: 14px; }
+  .pc-icon-box { background: var(--cbg); color: var(--ct2); padding: 9px; border-radius: 8px; display: flex; flex-shrink: 0; }
+  .pc-no { font-size: 15px; font-weight: 600; color: var(--ct1); margin-bottom: 2px; }
+  .pc-meta { font-size: 12px; color: var(--ct2); display: flex; gap: 12px; flex-wrap: wrap; }
+  .pc-meta span { display: flex; align-items: center; gap: 4px; }
+  .pc-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* ── Expand panel ── */
+  .pc-expand { border-top: 1px solid var(--cborder); animation: pc-slidedown 200ms ease; }
+  @keyframes pc-slidedown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .pc-expand-meta { padding: 12px 20px; background: #F9FAFB; display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--ct2); border-bottom: 1px solid var(--cborder); }
+  .pc-expand-meta strong { color: var(--ct1); font-weight: 600; }
+  .pc-expand-table-wrap { overflow-x: auto; }
+  .pc-table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; }
+  .pc-table thead tr { background: #F9FAFB; }
+  .pc-table th { padding: 10px 14px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ctm); border-bottom: 1px solid var(--cborder); text-align: left; }
+  .pc-table td { padding: 10px 14px; border-bottom: 1px solid var(--cborder); color: var(--ct1); transition: background 150ms; vertical-align: middle; }
+  .pc-table tbody tr:last-child td { border-bottom: none; }
+  .pc-table tbody tr:hover td { background: #F9FAFB; }
+  .pc-reject-reason { padding: 10px 20px; background: var(--cdanger-bg); border-top: 1px solid var(--cdanger); color: var(--cdanger); font-size: 13px; font-weight: 500; }
+  .pc-remarks { padding: 10px 20px; background: #F9FAFB; border-top: 1px solid var(--cborder); font-size: 13px; color: var(--ct1); }
+
+  /* ── State boxes ── */
+  .pc-state { padding: 64px 24px; text-align: center; color: var(--ct2); font-size: 14px; }
+  .pc-empty { background: var(--ccard); border: 1px dashed var(--cborder); border-radius: 10px; padding: 64px 24px; text-align: center; color: var(--ctm); font-size: 14px; }
+
+  /* ── MODAL ── */
+  .pc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .pc-modal { background: var(--ccard); border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,.15); width: 100%; max-width: 860px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: pc-modalin 150ms ease-out; }
+  @keyframes pc-modalin { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+  .pc-modal-hd { padding: 16px 24px; border-bottom: 1px solid var(--cborder); display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; flex-shrink: 0; }
+  .pc-modal-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--ct1); display: flex; align-items: center; gap: 10px; }
+  .pc-modal-sub { font-size: 13px; color: var(--ct2); margin-top: 2px; font-weight: 400; }
+  .pc-modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+  @media (max-width: 480px) { .pc-modal-body { padding: 16px; } }
+  .pc-modal-ft { padding: 14px 24px; border-top: 1px solid var(--cborder); display: flex; justify-content: flex-end; gap: 10px; background: #F9FAFB; flex-shrink: 0; }
+
+  /* ── Form grid ── */
+  .pc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .pc-form-grid { grid-template-columns: 1fr; } }
+  .pc-fg { display: flex; flex-direction: column; gap: 6px; }
+  .pc-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ct2); display: flex; align-items: center; gap: 4px; }
+  .pc-input { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--cborder); font-size: 14px; font-family: inherit; color: var(--ct1); background: var(--ccard); width: 100%; box-sizing: border-box; outline: none; transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .pc-input:focus { border-color: var(--cp); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  .pc-input:read-only { background: #F9FAFB; color: var(--ctm); cursor: not-allowed; }
+  select.pc-input { appearance: auto; cursor: pointer; }
+
+  /* ── Line Items ── */
+  .pc-line-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--cborder); padding-bottom: 8px; }
+  .pc-line-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--ct1); }
+  .pc-line-table-wrap { border: 1px solid var(--cborder); border-radius: 8px; overflow-x: auto; margin-bottom: 16px; }
+  .pc-line-input { height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--cborder); font-size: 13px; font-family: inherit; color: var(--ct1); background: var(--ccard); width: 100%; min-width: 80px; box-sizing: border-box; outline: none; transition: border-color 150ms, box-shadow 150ms; }
+  .pc-line-input:focus { border-color: var(--cp); box-shadow: 0 0 0 2px rgba(37,99,235,.1); }
+  .pc-line-input:read-only { background: #F9FAFB; color: var(--ctm); cursor: not-allowed; }
+  select.pc-line-input { appearance: auto; }
+`;
+
+/* ─── API ──────────────────────────────────────────────────────── */
 const API = '/api/v1/store-inventory';
 function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
 async function apiFetch(url, opts = {}) {
@@ -20,139 +151,12 @@ async function apiFetch(url, opts = {}) {
   return d;
 }
 
-/* ─── CSS Styles ────────────────────────────────────────────── */
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  * { box-sizing: border-box; }
-  .pc-page { font-family: 'Inter', sans-serif; background: ${G.lightGray}; min-height: 100vh; width: 100%; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 1000px; } }
-
-  /* 3D Buttons */
-  .btn-primary {
-    background: linear-gradient(145deg, ${G.emerald}, ${G.forest});
-    color: #fff; border: none; border-bottom: 4px solid ${G.dark};
-    border-right: 3px solid ${G.dark}; padding: 11px 22px;
-    font-weight: 800; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 6px 16px rgba(27,94,32,0.3);
-  }
-  .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(27,94,32,0.4); }
-  .btn-primary:active:not(:disabled) { transform: translateY(2px); border-bottom: 1px solid ${G.dark}; box-shadow: none; }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-  .btn-blue {
-    background: linear-gradient(145deg, #03A9F4, ${G.blue});
-    color: #fff; border: none; border-bottom: 4px solid #01579B;
-    border-right: 3px solid #01579B; padding: 11px 22px;
-    font-weight: 800; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 6px 16px rgba(2,136,209,0.25);
-  }
-  .btn-blue:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(2,136,209,0.35); }
-  .btn-blue:active:not(:disabled) { transform: translateY(2px); border-bottom: 1px solid #01579B; box-shadow: none; }
-
-  .btn-ghost {
-    background: rgba(255,255,255,0.15); backdrop-filter: blur(8px);
-    color: #fff; border: 2px solid rgba(255,255,255,0.4); padding: 10px 14px;
-    font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-  }
-  .btn-ghost:hover { background: rgba(255,255,255,0.25); }
-
-  .btn-danger {
-    background: linear-gradient(145deg, #EF5350, ${G.red});
-    color: #fff; border: none; border-bottom: 3px solid #B71C1C;
-    padding: 7px 10px; cursor: pointer; display: inline-flex;
-    align-items: center; transition: all 0.15s;
-    box-shadow: 0 4px 10px rgba(211,47,47,0.3);
-  }
-  .btn-danger:hover:not(:disabled) { transform: translateY(-1px); }
-  .btn-danger:active:not(:disabled) { transform: translateY(1px); border-bottom: 1px solid #B71C1C; }
-  .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-view {
-    background: linear-gradient(145deg, #fff, #f0f9f0);
-    color: ${G.forest}; border: 2px solid ${G.forest};
-    border-bottom: 3px solid ${G.dark}; padding: 7px 14px;
-    font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 3px 8px rgba(34,139,34,0.2);
-  }
-  .btn-view:hover { background: linear-gradient(145deg, #E8F5E9, #C8E6C9); transform: translateY(-1px); }
-  .btn-view:active { transform: translateY(1px); border-bottom: 1px solid ${G.dark}; }
-
-  .btn-cancel {
-    background: linear-gradient(145deg, #fff, #f5f5f5);
-    color: ${G.darkGray}; border: 2px solid #9E9E9E; border-bottom: 3px solid #616161;
-    padding: 11px 22px; font-weight: 700; font-size: 13px; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 7px; transition: all 0.15s;
-    font-family: 'Inter', sans-serif; box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-  }
-  .btn-cancel:hover { background: #f0f0f0; transform: translateY(-1px); }
-
-  /* Cards */
-  .pc-card {
-    background: ${G.white}; border: 2px solid ${G.dark};
-    box-shadow: 5px 5px 0 ${G.sage}; transition: all 0.2s;
-    animation: fadeIn 0.3s ease;
-  }
-  .pc-card:hover { box-shadow: 7px 7px 0 ${G.olive}; transform: translateY(-1px); }
-
-  /* Input */
-  .pc-input {
-    width: 100%; padding: 10px 13px;
-    border: 2px solid ${G.sage}; background: #fff;
-    font-family: 'Inter', sans-serif; font-size: 13px;
-    outline: none; color: ${G.darkGray}; transition: border 0.2s;
-  }
-  .pc-input:focus { border-color: ${G.forest}; box-shadow: 0 0 0 3px rgba(34,139,34,0.12); }
-  .pc-input-readonly { background: #F0F9F0; color: ${G.forest}; font-weight: 800; cursor: default; }
-
-  /* Badge */
-  .badge-await { background: #EFF6FF; color: #1D4ED8; border: 2px solid #3B82F6; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-approved { background: #D1FAE5; color: ${G.dark}; border: 2px solid ${G.leaf}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-rejected { background: #FEE2E2; color: #991B1B; border: 2px solid ${G.red}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-variance { background: #FFEBEE; color: ${G.red}; border: 2px solid ${G.red}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-balanced { background: #E8F5E9; color: ${G.forest}; border: 2px solid ${G.forest}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-
-  /* Table */
-  .pc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .pc-table th { background: ${G.dark}; color: #fff; padding: 10px 14px; text-align: left; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-  .pc-table td { padding: 10px 14px; border-bottom: 1px solid ${G.sage}; color: ${G.darkGray}; vertical-align: middle; }
-  .pc-table tr:nth-child(even) td { background: #F1F8E9; }
-  .pc-table tr:last-child td { border-bottom: none; }
-  .pc-table tr:hover td { background: #E8F5E9; }
-
-  /* Detail expand */
-  .pc-detail { animation: slideDown 0.3s ease; overflow: hidden; }
-
-  /* Search bar */
-  .pc-search { background: #fff; border: 2px solid ${G.dark}; box-shadow: 3px 3px 0 ${G.sage}; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-  .pc-search input { border: none; outline: none; flex: 1; font-family: 'Inter', sans-serif; font-size: 13px; background: transparent; color: ${G.darkGray}; }
-
-  /* Modal */
-  .pc-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
-  .pc-modal { background: #fff; border: 3px solid ${G.dark}; box-shadow: 10px 10px 0 ${G.dark}; width: 100%; max-width: 860px; max-height: 92vh; display: flex; flex-direction: column; }
-
-  /* Stat chips */
-  .stat-chip { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 10px 18px; text-align: center; }
-
-  /* Responsive */
-  @media (max-width: 640px) {
-    .pc-grid-2 { grid-template-columns: 1fr !important; }
-    .pc-header-row { flex-direction: column; align-items: flex-start !important; }
-    .pc-header-actions { width: 100%; justify-content: flex-end; }
-    .pc-card-row { flex-direction: column; align-items: flex-start !important; }
-    .pc-table { font-size: 11px; }
-    .pc-table th, .pc-table td { padding: 7px 8px; }
-    .btn-primary, .btn-blue { padding: 9px 14px; font-size: 12px; }
-    .pc-modal { margin: 8px; max-height: 95vh; }
-    .pc-stats { flex-wrap: wrap; }
-    .pc-lines-table { overflow-x: auto; display: block; }
-  }
-`;
+/* ─── Status Badge ───────────────────────────────────────────── */
+const StatusBadge = ({ status }) => {
+  if (status === 'APPROVED') return <span className="pc-badge pc-badge-approved">Approved</span>;
+  if (status === 'REJECTED') return <span className="pc-badge pc-badge-rejected">Rejected</span>;
+  return <span className="pc-badge pc-badge-awaiting">Awaiting Approval</span>;
+};
 
 /* ─── Physical Count Form Modal ─────────────────────────────── */
 const CountForm = ({ onSuccess, onClose }) => {
@@ -204,134 +208,116 @@ const CountForm = ({ onSuccess, onClose }) => {
           })) 
         })
       });
-      NotifStore.push(`✅ ${form.count_no} submitted for CEO approval!`, 'success');
+      NotifStore.push(`${form.count_no} submitted for CEO approval!`, 'success');
       onSuccess();
-    } catch (e) { NotifStore.push('❌ Failed: ' + e.message, 'error'); }
+    } catch (e) { NotifStore.push('Failed: ' + e.message, 'error'); }
     finally { setSaving(false); }
   };
 
   return (
-    <div className="pc-modal-bg">
-      <div className="pc-modal">
-        {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, ${G.dark}, ${G.forest})`, color: '#fff', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ background: G.blue, padding: 8, boxShadow: '3px 3px 0 rgba(0,0,0,0.3)' }}>
-              <ClipboardCheck size={20} color="#fff" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 16 }}>New Physical Count</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Submit count for CEO approval</div>
-            </div>
+    <div className="pc-overlay" onClick={onClose}>
+      <div className="pc-modal" onClick={e => e.stopPropagation()}>
+        <div className="pc-modal-hd">
+          <div>
+            <h2 className="pc-modal-title"><ClipboardCheck size={20} color="var(--cinfo)" /> New Physical Count</h2>
+            <div className="pc-modal-sub">Submit inventory count for CEO approval</div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900 }}>×</button>
+          <button className="pc-btn pc-btn-icon" style={{ border: 'none', background: 'transparent', boxShadow: 'none' }} onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14, marginBottom: 22 }} className="pc-grid-2">
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-                <Hash size={11} style={{ display: 'inline', marginRight: 4 }} />Count No
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input value={loadingNo ? 'Generating…' : form.count_no} readOnly className="pc-input pc-input-readonly" />
-                {loadingNo && <SegmentedSpinner size={24} />}
+        <form id="pc-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <div className="pc-modal-body">
+            <div className="pc-form-grid">
+              <div className="pc-fg">
+                <label className="pc-label"><Hash size={14} /> Count No</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input value={loadingNo ? 'Generating…' : form.count_no} readOnly className="pc-input" />
+                  {loadingNo && <span className="pc-spinner" style={{ position: 'absolute', right: 10 }} />}
+                </div>
+              </div>
+              <div className="pc-fg">
+                <label className="pc-label"><Calendar size={14} /> Date</label>
+                <input type="date" value={form.count_date} onChange={e => setForm(p => ({ ...p, count_date: e.target.value }))} className="pc-input" required />
+              </div>
+              <div className="pc-fg">
+                <label className="pc-label">Counted By *</label>
+                <input value={form.counted_by} onChange={e => setForm(p => ({ ...p, counted_by: e.target.value }))} className="pc-input" required placeholder="Staff name" />
+              </div>
+              <div className="pc-fg">
+                <label className="pc-label">Remarks</label>
+                <input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional notes…" className="pc-input" />
               </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-                <Calendar size={11} style={{ display: 'inline', marginRight: 4 }} />Date
-              </label>
-              <input type="date" value={form.count_date} onChange={e => setForm(p => ({ ...p, count_date: e.target.value }))} className="pc-input" />
+
+            <div className="pc-line-hd">
+              <span className="pc-line-title">Count Lines ({items.length})</span>
+              <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', system_quantity: 0, physical_quantity: '', batch_no: '' }])} className="pc-btn pc-btn-sm">
+                <Plus size={14} /> Add Line
+              </button>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>Counted By *</label>
-              <input value={form.counted_by} onChange={e => setForm(p => ({ ...p, counted_by: e.target.value }))} className="pc-input" required placeholder="Staff name" />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>Remarks</label>
-              <input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional notes…" className="pc-input" />
+
+            <div className="pc-line-table-wrap">
+              <table className="pc-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '30%' }}>Drug *</th>
+                    <th>Batch (Auto)</th>
+                    <th>System Qty</th>
+                    <th>Physical Qty *</th>
+                    <th>Variance</th>
+                    <th style={{ width: 40, textAlign: 'center' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, i) => {
+                    const variance = item.physical_quantity !== '' ? Number(item.physical_quantity) - Number(item.system_quantity) : null;
+                    return (
+                      <tr key={i}>
+                        <td>
+                          <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} className="pc-line-input" style={{ minWidth: 140 }} required>
+                            <option value="">Select drug…</option>
+                            {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name}{d.strength ? ' ' + d.strength : ''}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} placeholder="Auto" className="pc-line-input" readOnly={!!item.batch_no} />
+                        </td>
+                        <td>
+                          <div style={{ padding: '4px 8px', background: 'var(--cbg)', border: '1px solid var(--cborder)', borderRadius: 4, fontWeight: 600, color: 'var(--ct2)', display: 'inline-block' }}>{item.system_quantity}</div>
+                        </td>
+                        <td>
+                          <input type="number" min={0} value={item.physical_quantity} onChange={e => setItem(i, 'physical_quantity', e.target.value)} className="pc-line-input" required />
+                        </td>
+                        <td>
+                          {variance !== null && (
+                            <div style={{ padding: '4px 8px', borderRadius: 4, fontWeight: 700, color: variance === 0 ? 'var(--cok)' : variance > 0 ? 'var(--cinfo)' : 'var(--cdanger)', background: variance === 0 ? 'var(--cok-bg)' : variance > 0 ? 'var(--cinfo-bg)' : 'var(--cdanger-bg)', border: `1px solid ${variance === 0 ? 'var(--cok)' : variance > 0 ? 'var(--cinfo)' : 'var(--cdanger)'}`, display: 'inline-block' }}>
+                              {variance > 0 ? '+' : ''}{variance}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} className="pc-btn pc-btn-danger pc-btn-icon" style={{ height: 30, width: 30 }}>
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: `2px solid ${G.sage}`, paddingBottom: 10 }}>
-            <span style={{ fontWeight: 900, fontSize: 13, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Count Lines ({items.length})
-            </span>
-            <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', system_quantity: 0, physical_quantity: '', batch_no: '' }])} className="btn-blue" style={{ padding: '7px 14px', fontSize: 12 }}>
-              <Plus size={13} /> Add Line
-            </button>
-          </div>
-
-          <div style={{ border: `2px solid ${G.dark}`, marginBottom: 22, overflow: 'hidden' }} className="pc-lines-table">
-            <table className="pc-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '30%' }}>Drug *</th>
-                  <th>Batch (Auto)</th>
-                  <th>System Qty</th>
-                  <th>Physical Qty *</th>
-                  <th>Variance</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, i) => {
-                  const variance = item.physical_quantity !== '' ? Number(item.physical_quantity) - Number(item.system_quantity) : null;
-                  return (
-                    <tr key={i}>
-                      <td style={{ padding: 6 }}>
-                        <select value={item.drug_id} onChange={e => setItem(i, 'drug_id', e.target.value)} className="pc-input" style={{ padding: '7px 8px' }} required>
-                          <option value="">Select drug…</option>
-                          {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name}{d.strength ? ' ' + d.strength : ''}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: 6 }}>
-                        <input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} placeholder="Auto" className="pc-input" style={{ padding: '7px 8px', background: item.batch_no ? '#F0F9F0' : '#fff', fontWeight: item.batch_no ? 700 : 400, color: item.batch_no ? G.forest : G.darkGray }} />
-                      </td>
-                      <td style={{ padding: 6 }}>
-                        <div style={{ padding: '8px 10px', background: G.lightGray, border: `1px solid ${G.sage}`, fontWeight: 800, color: G.dark }}>{item.system_quantity}</div>
-                      </td>
-                      <td style={{ padding: 6 }}>
-                        <input type="number" min={0} value={item.physical_quantity} onChange={e => setItem(i, 'physical_quantity', e.target.value)} className="pc-input" style={{ padding: '7px 8px' }} required />
-                      </td>
-                      <td style={{ padding: 6 }}>
-                        {variance !== null && (
-                          <div style={{ padding: '8px 10px', fontWeight: 900, color: variance === 0 ? G.forest : variance > 0 ? G.blue : G.red, background: variance === 0 ? '#E8F5E9' : variance > 0 ? '#E1F5FE' : '#FFEBEE', border: `1px solid ${variance === 0 ? G.forest : variance > 0 ? G.blue : G.red}` }}>
-                            {variance > 0 ? '+' : ''}{variance}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: 6, textAlign: 'center' }}>
-                        <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} className="btn-danger">
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button type="button" onClick={onClose} className="btn-cancel">Cancel</button>
-            <button type="submit" disabled={saving || loadingNo} className="btn-primary" style={{ opacity: saving || loadingNo ? 0.7 : 1 }}>
-              <CheckCircle size={16} />
-              {saving ? 'Submitting…' : 'Submit Physical Count'}
+          <div className="pc-modal-ft">
+            <button type="button" onClick={onClose} className="pc-btn">Cancel</button>
+            <button type="submit" disabled={saving || loadingNo} className="pc-btn pc-btn-primary">
+              {saving ? <><span className="pc-spinner white" /> Submitting…</> : <><CheckCircle size={16} /> Submit Count</>}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-/* ─── Status Badge ───────────────────────────────────────────── */
-const StatusBadge = ({ status }) => {
-  if (status === 'APPROVED') return <span className="badge-approved">✅ APPROVED</span>;
-  if (status === 'REJECTED') return <span className="badge-rejected">❌ REJECTED</span>;
-  return <span className="badge-await">⏳ AWAITING APPROVAL</span>;
 };
 
 /* ─── Main Page ─────────────────────────────────────────────── */
@@ -372,179 +358,152 @@ const StorePhysicalCount = () => {
       {showForm && <CountForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
 
       {/* ── Header ── */}
-      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 55%, ${G.emerald} 100%)`, padding: '24px 32px 0', color: '#fff', borderBottom: `4px solid ${G.dark}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 20 }} className="pc-header-row">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ background: G.blue, padding: 12, boxShadow: '4px 4px 0 rgba(0,0,0,0.3)', border: `2px solid ${G.white}` }}>
-              <ClipboardCheck size={28} color="#fff" />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: -0.5 }}>Physical Counts</h1>
-              <p style={{ margin: 0, fontSize: 13, opacity: 0.8 }}>Audit physical inventory vs system quantities · CEO approval required</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }} className="pc-header-actions">
-            <button onClick={() => setShowForm(true)} className="btn-blue">
-              <Plus size={17} /> New Physical Count
-            </button>
-            <button onClick={load} className="btn-ghost">
-              <SegmentedSpinner size={15} />
-            </button>
+      <div className="pc-header">
+        <div className="pc-header-left">
+          <div className="pc-header-icon"><ClipboardCheck size={24} /></div>
+          <div>
+            <h1 className="pc-page-title">Physical Counts</h1>
+            <p className="pc-page-sub">Audit physical inventory vs system quantities (Requires CEO approval)</p>
           </div>
         </div>
-
-        {/* Stats Strip */}
-        <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,255,255,0.15)' }} className="pc-stats">
-          {[
-            { label: 'Total', value: stats.total, icon: <Package size={14} /> },
-            { label: 'Awaiting', value: stats.awaiting, icon: '⏳' },
-            { label: 'Approved', value: stats.approved, icon: '✅' },
-            { label: 'Rejected', value: stats.rejected, icon: '❌' },
-          ].map((s, i) => (
-            <div key={i} className="stat-chip" style={{ flex: 1, borderRight: i < 3 ? '1px solid rgba(255,255,255,0.15)' : 'none', padding: '12px 16px' }}>
-              <div style={{ fontSize: 10, opacity: 0.75, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{s.icon} {s.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 900 }}>{s.value}</div>
-            </div>
-          ))}
+        <div className="pc-header-btns">
+          <button onClick={() => setShowForm(true)} className="pc-btn pc-btn-primary">
+            <Plus size={16} /> New Physical Count
+          </button>
+          <button onClick={load} className="pc-btn pc-btn-icon" disabled={loading} title="Refresh">
+            {loading ? <span className="pc-spinner" /> : <RefreshCw size={16} />}
+          </button>
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div style={{ padding: '24px 32px' }}>
-        <div className="pc-search" style={{ marginBottom: 20 }}>
-          <Search size={17} color={G.olive} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by count no or counted by…" />
-          <span style={{ fontWeight: 800, color: G.forest, fontSize: 12, background: G.sage, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-            {filtered.length} records
-          </span>
+      {/* ── Stats Strip ── */}
+      <div className="pc-stats">
+        {[
+          { label: 'Total Counts', value: stats.total, icon: <Package size={14} /> },
+          { label: 'Awaiting Approval', value: stats.awaiting, icon: <AlertCircle size={14} /> },
+          { label: 'Approved', value: stats.approved, icon: <CheckCircle size={14} /> },
+          { label: 'Rejected', value: stats.rejected, icon: <Trash2 size={14} /> },
+        ].map((s, i) => (
+          <div key={i} className="stat-card">
+            <div className="stat-label">{s.icon} {s.label}</div>
+            <div className="stat-val">{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Search Bar ── */}
+      <div className="pc-search-bar">
+        <Search size={16} color="var(--ctm)" />
+        <input className="pc-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by count no or counted by…" />
+        <span className="pc-search-count">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* ── List ── */}
+      {loading ? (
+        <div className="pc-state">
+          <span className="pc-spinner lg" style={{ display: 'inline-block', marginBottom: 12 }} />
+          <div>Loading physical counts…</div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="pc-empty">No physical counts found. Click <strong>New Physical Count</strong> to create one.</div>
+      ) : (
+        <div className="pc-list">
+          {filtered.map(r => {
+            const isOpen = expanded === r.id;
+            const date = r.count_date ? new Date(r.count_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString();
+            
+            const items = r.items || [];
+            const hasVariance = items.some(it => Number(it.variance) !== 0);
 
-        {loading ? (
-          <div style={{ padding: 80, textAlign: 'center' }}>
-            <SegmentedSpinner size={24} />
-            <div style={{ color: G.forest, fontWeight: 700, fontSize: 14 }}>Loading physical counts…</div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: 80, textAlign: 'center', border: `3px dashed ${G.sage}`, background: '#FAFFF5' }}>
-            <ClipboardCheck size={40} color={G.sage} style={{ marginBottom: 12 }} />
-            <div style={{ color: G.olive, fontWeight: 700, fontSize: 15 }}>No physical counts found</div>
-            <div style={{ color: G.sage, fontSize: 13, marginTop: 4 }}>Start an audit using the button above</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filtered.map(r => {
-              const isOpen = expanded === r.id;
-              const date = r.count_date ? new Date(r.count_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-              
-              const items = r.items || [];
-              const hasVariance = items.some(it => Number(it.variance) !== 0);
-
-              return (
-                <div key={r.id} className="pc-card" style={{ overflow: 'hidden' }}>
-                  {/* Card Row */}
-                  <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderLeft: `5px solid ${r.status === 'APPROVED' ? G.leaf : r.status === 'REJECTED' ? G.red : G.blue}` }} className="pc-card-row">
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ background: r.status === 'APPROVED' ? G.leaf : r.status === 'REJECTED' ? G.red : G.blue, padding: 10, boxShadow: '3px 3px 0 rgba(0,0,0,0.2)', flexShrink: 0 }}>
-                        <ClipboardCheck size={20} color="#fff" />
+            return (
+              <div key={r.id} className="pc-card-row">
+                <div className={`pc-row-inner st-${r.status || 'PENDING'}`}>
+                  <div className="pc-left">
+                    <div className="pc-icon-box"><ClipboardCheck size={20} /></div>
+                    <div>
+                      <div className="pc-no">{r.count_no || `PC-${r.id}`}</div>
+                      <div className="pc-meta">
+                        <span><Calendar size={12} /> {date}</span>
+                        <span><Package size={12} /> {items.length} line{items.length > 1 ? 's' : ''}</span>
+                        <span>· By: {r.counted_by || 'N/A'}</span>
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 900, fontSize: 15, color: G.dark, marginBottom: 2 }}>
-                          {r.count_no || `PC-${r.id}`}
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 12, color: G.olive }}>
-                          <span><Calendar size={11} style={{ display: 'inline', marginRight: 3 }} />{date}</span>
-                          <span><Package size={11} style={{ display: 'inline', marginRight: 3 }} />{(r.items || []).length} line{(r.items || []).length > 1 ? 's' : ''}</span>
-                          <span>👤 By: {r.counted_by || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-                      <span className={hasVariance ? "badge-variance" : "badge-balanced"}>
-                        {hasVariance ? '⚠ VARIANCE' : '✓ BALANCED'}
-                      </span>
-                      <StatusBadge status={r.status || 'PENDING'} />
-                      <button
-                        onClick={() => setExpanded(isOpen ? null : r.id)}
-                        className="btn-view"
-                      >
-                        {isOpen ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Details</>}
-                        {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      </button>
                     </div>
                   </div>
-
-                  {/* Expandable Detail */}
-                  {isOpen && (r.items || []).length > 0 && (
-                    <div className="pc-detail" style={{ borderTop: `2px solid ${G.sage}` }}>
-                      {/* Lines Table */}
-                      <div style={{ overflowX: 'auto' }}>
-                        <table className="pc-table">
-                          <thead>
-                            <tr>
-                              <th>#</th>
-                              <th>Drug</th>
-                              <th>Batch No</th>
-                              <th>System Qty</th>
-                              <th>Physical Qty</th>
-                              <th>Variance</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {r.items.map((line, li) => {
-                              const v = Number(line.variance ?? (line.physical_quantity - line.system_quantity));
-                              return (
-                                <tr key={li}>
-                                  <td style={{ fontWeight: 800, color: G.olive, width: 36 }}>{li + 1}</td>
-                                  <td>
-                                    <div style={{ fontWeight: 700, color: G.dark }}>{line.drug_name || `Drug #${line.drug_id}`}</div>
-                                    {line.strength && <div style={{ fontSize: 11, color: G.olive }}>{line.strength}</div>}
-                                  </td>
-                                  <td>
-                                    <span style={{ background: '#F0F9F0', color: G.forest, fontWeight: 700, padding: '2px 8px', fontSize: 11 }}>
-                                      {line.batch_no || '—'}
-                                    </span>
-                                  </td>
-                                  <td style={{ fontWeight: 600 }}>{line.system_quantity}</td>
-                                  <td style={{ fontWeight: 800, color: G.dark }}>{line.physical_quantity}</td>
-                                  <td>
-                                    <strong style={{ color: v === 0 ? G.forest : v > 0 ? G.blue : G.red, fontSize: 14 }}>
-                                      {v > 0 ? '+' : ''}{v}
-                                    </strong>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Remarks / Rejection */}
-                      {(r.remarks || r.rejection_reason) && (
-                        <div style={{ padding: '16px 20px', background: '#FAFFF5', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {r.remarks && (
-                            <div>
-                              <strong style={{ fontSize: 12, color: G.olive, textTransform: 'uppercase', letterSpacing: 1 }}>Remarks</strong>
-                              <div style={{ fontSize: 13, color: G.darkGray }}>{r.remarks}</div>
-                            </div>
-                          )}
-                          {r.status === 'REJECTED' && r.rejection_reason && (
-                            <div style={{ background: '#FFF5F5', borderLeft: `4px solid ${G.red}`, padding: '10px 14px' }}>
-                              <strong style={{ fontSize: 12, color: G.red, textTransform: 'uppercase', letterSpacing: 1 }}>Rejection Reason</strong>
-                              <div style={{ fontSize: 13, color: '#7F1D1D', fontWeight: 600 }}>{r.rejection_reason}</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="pc-actions">
+                    <span className={`pc-badge ${hasVariance ? "pc-badge-variance" : "pc-badge-balanced"}`}>
+                      {hasVariance ? '⚠ VARIANCE' : '✓ BALANCED'}
+                    </span>
+                    <StatusBadge status={r.status || 'PENDING'} />
+                    <button onClick={() => setExpanded(isOpen ? null : r.id)} className="pc-btn pc-btn-sm">
+                      {isOpen ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Details</>}
+                      {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                {isOpen && items.length > 0 && (
+                  <div className="pc-expand">
+                    <div className="pc-expand-meta">
+                      <div><strong>Count No:</strong> {r.count_no}</div>
+                      <div><strong>Date:</strong> {date}</div>
+                      <div><strong>Counted By:</strong> {r.counted_by}</div>
+                      <div><strong>Lines:</strong> {items.length}</div>
+                    </div>
+
+                    <div className="pc-expand-table-wrap">
+                      <table className="pc-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Drug</th>
+                            <th>Batch No</th>
+                            <th>System Qty</th>
+                            <th>Physical Qty</th>
+                            <th>Variance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((line, li) => {
+                            const v = Number(line.variance ?? (line.physical_quantity - line.system_quantity));
+                            return (
+                              <tr key={li}>
+                                <td style={{ color: 'var(--ctm)', fontWeight: 500 }}>{li + 1}</td>
+                                <td>
+                                  <div style={{ fontWeight: 600, color: 'var(--ct1)' }}>{line.drug_name || `Drug #${line.drug_id}`}</div>
+                                  {line.strength && <div style={{ fontSize: 11, color: 'var(--ct2)' }}>{line.strength}</div>}
+                                </td>
+                                <td style={{ color: 'var(--ct2)' }}>{line.batch_no || '—'}</td>
+                                <td style={{ fontWeight: 500 }}>{line.system_quantity}</td>
+                                <td style={{ fontWeight: 600, color: 'var(--ct1)' }}>{line.physical_quantity}</td>
+                                <td>
+                                  <strong style={{ color: v === 0 ? 'var(--cok)' : v > 0 ? 'var(--cinfo)' : 'var(--cdanger)', fontSize: 14 }}>
+                                    {v > 0 ? '+' : ''}{v}
+                                  </strong>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {(r.remarks || (r.status === 'REJECTED' && r.rejection_reason)) && (
+                      <div className="pc-remarks" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {r.remarks && <div><strong style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--ctm)' }}>Remarks:</strong> <br/> {r.remarks}</div>}
+                        {r.status === 'REJECTED' && r.rejection_reason && (
+                          <div className="pc-reject-reason" style={{ borderRadius: 6 }}>
+                            <strong>Rejection Reason:</strong> {r.rejection_reason}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
