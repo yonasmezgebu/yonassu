@@ -1,5 +1,6 @@
 const { db } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
+const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -249,9 +250,11 @@ exports.assignWorker = async (req, res) => {
     const existing = await db('workers').where('user_id', user_id).first();
     if (existing) {
       await db('workers').where('user_id', user_id).update({ branch_id, can_post: can_post ?? existing.can_post });
+      logPharmacyAction(req, 'Worker Updated', `Worker User#${user_id}`, { branch_id: existing.branch_id, can_post: existing.can_post }, { branch_id, can_post: can_post ?? existing.can_post }, 'Pharmacy Sales');
       return res.json({ success: true, message: 'Worker updated' });
     }
     const [id] = await db('workers').insert({ user_id, branch_id, can_post: can_post ?? false });
+    logPharmacyAction(req, 'Worker Assigned', `Worker User#${user_id}`, null, { branch_id, can_post: can_post ?? false }, 'Pharmacy Sales');
     return res.status(201).json({ success: true, data: { id } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -390,6 +393,7 @@ exports.processPendingOrder = async (req, res) => {
     });
 
     await trx.commit();
+    logPharmacyAction(req, 'Online Order Processed', receipt_code, { status: 'PENDING_VERIFICATION' }, { status: 'COMPLETED', sale_id: saleId, worker_id, payment_id: paymentId }, 'Pharmacy Sales');
     return res.json({ success: true, data: { sale_id: saleId, receipt_code, payment_id: paymentId } });
   } catch (err) {
     await trx.rollback();
@@ -468,6 +472,8 @@ exports.createSale = async (req, res) => {
 
     await trx.commit();
 
+    logPharmacyAction(req, 'Sale Created', sale_code, null, { sale_id: saleId, subtotal, vat_amount: totalVat, total_amount: totalAmount, items: enrichedItems }, 'Pharmacy Sales');
+
     return res.status(201).json({
       success: true,
       data: {
@@ -533,6 +539,7 @@ exports.voidSale = async (req, res) => {
       await db('pharmacy_inventory').where('drug_id', item.drug_id).increment('quantity', item.quantity);
     }
     await db('sales').where('id', req.params.id).update({ status: 'VOIDED' });
+    logPharmacyAction(req, 'Sale Voided', sale.sale_code, { status: sale.status }, { status: 'VOIDED', reason }, 'Pharmacy Sales');
     return res.json({ success: true, message: 'Sale voided and inventory restored' });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -610,6 +617,7 @@ exports.submitDailyReport = async (req, res) => {
       submitted_by: submittedBy,
       status: 'PENDING_FINANCE',
     });
+    logPharmacyAction(req, 'Daily Report Submitted', `Branch #${branch_id} - ${dateStr}`, null, { total_sales_count: agg.cnt, total_amount: agg.total }, 'Pharmacy Sales');
     return res.status(201).json({ success: true, data: { id, total_sales_count: agg.cnt, total_amount: agg.total } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -642,6 +650,7 @@ exports.decideReport = async (req, res) => {
       status, finance_decision_reason: finance_decision_reason || null,
       decided_by: req.user?.id, decided_at: new Date()
     });
+    logPharmacyAction(req, 'Daily Report ' + status, `Report #${req.params.id}`, { status: 'PENDING_FINANCE' }, { status, reason: finance_decision_reason }, 'Pharmacy Sales');
     return res.json({ success: true, message: `Report ${status.toLowerCase()}` });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -709,6 +718,7 @@ exports.decideChangeRequest = async (req, res) => {
     });
 
     await trx.commit();
+    logPharmacyAction(req, 'Change Request ' + status, `Request #${req.params.id}`, { status: 'PENDING' }, { status, reason: decision_reason }, 'Pharmacy Sales');
     return res.json({ success: true, message: `Change request ${status.toLowerCase()}` });
   } catch (err) {
     await trx.rollback();
@@ -774,6 +784,7 @@ exports.decideExpiredReport = async (req, res) => {
     });
 
     await trx.commit();
+    logPharmacyAction(req, 'Expired Drug Report ' + status, `Report #${req.params.id}`, { status: 'PENDING' }, { status, reason: decision_reason }, 'Pharmacy Sales');
     return res.json({ success: true, message: `Report ${status.toLowerCase()}` });
   } catch (err) {
     await trx.rollback();
@@ -800,6 +811,7 @@ exports.hideDrug = async (req, res) => {
       auto_restore_at: (mode === 'TEMPORARY' && auto_restore_at) ? auto_restore_at : null,
       is_hidden: true
     });
+    logPharmacyAction(req, 'Drug Hidden', `Drug #${req.params.drug_id}`, { visibility: 'VISIBLE' }, { visibility: 'HIDDEN', reason, mode });
     return res.status(201).json({ success: true, data: { id } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -812,6 +824,7 @@ exports.restoreDrug = async (req, res) => {
       .where('drug_id', req.params.drug_id).where('is_hidden', true)
       .update({ is_hidden: false });
     if (!updated) return res.status(404).json({ success: false, message: 'No active hide record found' });
+    logPharmacyAction(req, 'Drug Restored', `Drug #${req.params.drug_id}`, { visibility: 'HIDDEN' }, { visibility: 'VISIBLE' });
     return res.json({ success: true, message: 'Drug visibility restored' });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
