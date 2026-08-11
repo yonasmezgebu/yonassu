@@ -76,3 +76,19 @@ exports.markAllRead = catchAsync(async (req, res) => {
   await db('pharmacy_messages').where({ is_read: false }).update({ is_read: true, updated_at: db.fn.now() });
   res.json({ status: 'success' });
 });
+
+// ─── TOGGLE MESSAGE READ STATUS ───────────────────────────────────────────
+exports.toggleReadStatus = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const is_read = status !== 'unread';
+  await db('pharmacy_messages').where({ id }).update({ is_read, updated_at: db.fn.now() });
+  res.json({ status: 'success' });
+});
+
+// ─── DELETE MESSAGE ────────────────────────────────────────────────────────
+exports.deleteMessage = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  await db('pharmacy_messages').where({ id }).delete();
+  res.json({ status: 'success' });
+});
