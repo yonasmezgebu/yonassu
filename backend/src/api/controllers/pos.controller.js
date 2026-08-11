@@ -431,7 +431,7 @@ exports.checkout = catchAsync(async (req, res) => {
     check_collected: paymentMethod === 'Check' ? db.raw('COALESCE(check_collected,0) + ?', [totalAmount]) : db.raw('check_collected'),
   });
 
-  await audit('SALE_COMPLETED', result, {
+  await audit('SALE_COMPLETED', userId, {
     ip,
     details: {
       invoiceNumber,
@@ -689,7 +689,7 @@ exports.createCustomer = catchAsync(async (req, res) => {
     created_at: db.fn.now()
   });
   const newCustomer = await db('customers').where('id', newCustomerId).first();
-  await audit('CUSTOMER_CREATED_POS', newCustomerId, {
+  await audit('CUSTOMER_CREATED_POS', userId, {
     ip: req.ip,
     details: { name, phone }
   });
@@ -901,7 +901,7 @@ exports.voidSale = catchAsync(async (req, res) => {
       }
     }
   });
-  await audit('SALE_VOIDED', saleId, {
+  await audit('SALE_VOIDED', userId, {
     ip,
     details: { reason, invoiceNumber: sale.invoice_number }
   });
@@ -1151,6 +1151,7 @@ exports.processReturn = catchAsync(async (req, res) => {
     },
     status: 'cancelled'
   });
+  if (req.res) req.res.locals.__centralAudited = true;
 
   res.status(200).json({
     status: 'success',
@@ -1638,7 +1639,7 @@ exports.collectOnlineOrder = catchAsync(async (req, res) => {
     }).catch(() => {});
   }
 
-  await audit('ONLINE_ORDER_COLLECTED', result, {
+  await audit('ONLINE_ORDER_COLLECTED', userId, {
     ip, details: { invoiceNumber, totalAmount, orderSource, orderId }
   });
 
