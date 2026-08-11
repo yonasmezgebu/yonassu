@@ -15,7 +15,8 @@ const ROLES = [
   'Board Member', 'Board',
   'General Store Manager', 'General Store Keeper',
   'Pharmacy Store Manager',
-  'Finance', 'Finance Manager', 'Accountant'
+  'Finance', 'Finance Manager', 'Accountant',
+  'Pharmacy Worker', 'Sales/Cashier', 'Employee'
 ];
 
 // ── Multer for file uploads ──────────────────────────────────────────────────
