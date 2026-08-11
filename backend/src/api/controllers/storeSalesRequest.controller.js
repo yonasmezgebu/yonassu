@@ -60,7 +60,7 @@ exports.createRequest = async (req, res) => {
     });
 
     const created = await db('store_sales_requests').where('id', id).first();
-    log(req, 'Store Sale Request Created', id, null, { request_code, product_name, quantity_requested, customer_name });
+    log(req, 'Store Sale Request Created', `Store Sale Request ${request_code}`, null, created);
     res.status(201).json({ status: 'success', data: created });
   } catch (e) {
     res.status(500).json({ status: 'error', message: e.message });
@@ -94,7 +94,7 @@ exports.rejectRequest = async (req, res) => {
       updated_at: new Date(),
     });
 
-    log(req, 'Store Sale Request Rejected', req.params.id, { status: existing.status }, { status: 'Rejected', rejection_reason });
+    log(req, 'Store Sale Request Rejected', `Store Sale Request ${existing.request_code}`, existing, { ...existing, status: 'Rejected', rejection_reason: rejection_reason || 'Rejected by Store Keeper' });
     res.json({ status: 'success', message: 'Request rejected' });
   } catch (e) {
     res.status(500).json({ status: 'error', message: e.message });
@@ -195,7 +195,8 @@ exports.releaseRequest = async (req, res) => {
 
     await trx.commit();
 
-    log(req, 'Store Sale Released', reqId, { status: storeReq.status }, { status: 'Sold', quantity_released: storeReq.quantity_requested, request_code: storeReq.request_code });
+    const released = await db('store_sales_requests').where('id', reqId).first();
+    log(req, 'Store Sale Released', `Store Sale Request ${storeReq.request_code}`, storeReq, released);
 
     // Fetch full result
     const updatedReq = await db('store_sales_requests').where('id', reqId).first();
