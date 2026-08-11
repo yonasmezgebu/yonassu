@@ -1,0 +1,236 @@
+/* ══════════════════════════════════════════════════════════════════
+   PharmacyPendingShipments — Enterprise Design System
+   SAP Fiori / Dynamics 365 Quality  ·  8px grid  ·  Inter font
+   ══════════════════════════════════════════════════════════════════ */
+
+.pps-root {
+  --c-accent:       #2563EB;
+  --c-accent-dk:    #1D4ED8;
+  --c-accent-lt:    #EFF6FF;
+  --c-success:      #16A34A;
+  --c-success-bg:   #DCFCE7;
+  --c-danger:       #DC2626;
+  --c-danger-bg:    #FEE2E2;
+  --c-warning:      #D97706;
+  --c-warning-bg:   #FEF3C7;
+  --c-info:         #0284C7;
+  --c-info-bg:      #E0F2FE;
+  --c-bg:           #F3F4F6;
+  --c-surface:      #FFFFFF;
+  --c-border:       #E5E7EB;
+  --c-border-dk:    #D1D5DB;
+  --c-text:         #111827;
+  --c-text-2:       #4B5563;
+  --c-text-3:       #9CA3AF;
+  --shadow-sm:      0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:      0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --radius-sm:      6px;
+  --radius-md:      10px;
+  --font:           'Inter','Segoe UI',Roboto,-apple-system,sans-serif;
+
+  font-family: var(--font);
+  background: var(--c-bg);
+  color: var(--c-text);
+  min-height: 100vh;
+  padding: 32px;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 768px) { .pps-root { padding: 16px; } }
+@media (max-width: 480px) { .pps-root { padding: 12px; } }
+
+/* ── Container ─────────────────────────────────────────────────── */
+.pps-root .pps-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.pps-root .pps-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.pps-root .pps-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 24px 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* ── Tab Bar (Pill style identical to StoreInventoryView) ─────── */
+.pps-root .pps-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: var(--c-surface);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pps-root .pps-tab {
+  background: transparent;
+  color: var(--c-text-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 20px;
+  height: 40px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font);
+  transition: background 150ms, color 150ms, box-shadow 150ms;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Yellow scatter hover on tabs */
+.pps-root .pps-tab::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: #FBBF24;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width .35s ease-out, height .35s ease-out, opacity .35s ease-out;
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.pps-root .pps-tab:hover::after {
+  width: 280%; height: 280%; opacity: 0.18;
+}
+.pps-root .pps-tab span { position: relative; z-index: 1; }
+
+.pps-root .pps-tab:hover:not(.active) { color: #111827 !important; background: #FDE68A !important; border: 1px solid #F59E0B !important; }
+.pps-root .pps-tab.active {
+  background: #FBBF24;
+  color: #111827;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(251,191,36,0.4);
+  border: 1px solid #F59E0B;
+}
+
+/* ── Table ─────────────────────────────────────────────────────── */
+.pps-root .pps-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+}
+
+.pps-root .pps-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pps-root .pps-table th {
+  background: #F9FAFB;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-3);
+  padding: 12px 18px;
+  text-align: left;
+  border-bottom: 2px solid var(--c-border);
+  white-space: nowrap;
+}
+
+.pps-root .pps-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+  vertical-align: middle;
+}
+
+.pps-root .pps-table tbody tr { transition: background 120ms ease; }
+.pps-root .pps-table tbody tr:hover { background: #F3F4F6; }
+.pps-root .pps-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Badges ────────────────────────────────────────────────────── */
+.pps-root .pps-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: none;
+}
+
+/* ── Buttons (with yellow scatter hover) ───────────────────────── */
+.pps-root .pps-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font);
+  transition: transform 120ms ease, box-shadow 150ms ease;
+  background: var(--c-accent);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pps-root .pps-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: #FBBF24;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width .35s ease-out, height .35s ease-out, opacity .35s ease-out;
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.pps-root .pps-btn:hover::after {
+  width: 250%; height: 250%; opacity: 0.22;
+}
+.pps-root .pps-btn span { position: relative; z-index: 2; }
+
+.pps-root .pps-btn:hover {
+  box-shadow: 0 4px 10px rgba(37,99,235,.25);
+  transform: translateY(-1px);
+}
+.pps-root .pps-btn:active { transform: translateY(0) scale(0.97); }
+
+/* ── Text Utilities ────────────────────────────────────────────── */
+.pps-root .pps-muted {
+  color: var(--c-text-2);
+  font-size: 12px;
+}
+.pps-root .pps-loading {
+  color: var(--c-text-3);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px;
+}
