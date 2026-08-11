@@ -20,7 +20,7 @@ exports.processApproval = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { approved, comments } = req.body;
   const result = await approvalWorkflow.processApprovalDecision(id, req.user.id, approved, comments);
-  await audit(approved ? 'EXPENSE_APPROVED' : 'EXPENSE_REJECTED', id, {
+  await audit(approved ? 'EXPENSE_APPROVED' : 'EXPENSE_REJECTED', req.user.id, {
     ip: req.ip,
     details: { approved, comments, userId: req.user.id }
   });
@@ -44,7 +44,7 @@ exports.setApprover = catchAsync(async (req, res) => {
     min_amount: minAmount ?? 0, max_amount: maxAmount ?? 999999999.99,
     priority: priority ?? 0, is_active: true
   });
-  await audit('APPROVER_CONFIGURED', id, { ip: req.ip, details: { userId, approvalTier } });
+  await audit('APPROVER_CONFIGURED', req.user.id, { ip: req.ip, details: { userId, approvalTier } });
   res.status(201).json({ status: 'success', data: { approverId: id } });
 });
 
