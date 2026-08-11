@@ -17,5 +17,7 @@ router.get('/messages', authenticate, authorizeRoles(['Car Renting Manager', 'Ad
 router.get('/messages/unread-count', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), ctrl.getUnreadCount);
 router.patch('/messages/:id/read', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), ctrl.markRead);
 router.patch('/messages/mark-all-read', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), ctrl.markAllRead);
+router.put('/messages/:id/status', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), ctrl.toggleReadStatus);
+router.delete('/messages/:id', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), ctrl.deleteMessage);
 
 module.exports = router;
