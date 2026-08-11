@@ -21,9 +21,17 @@ const CentralAuditLog = () => {
   const isSales      = !isSuperAdmin && !isCEO && (
     roleStr.includes('sales') || deptStr.includes('sales') || deptStr.includes('retail')
   );
+  const isPrinting   = !isSuperAdmin && !isCEO && (
+    roleStr.includes('printing') || deptStr.includes('printing')
+  );
+  const isPharmacy   = !isSuperAdmin && !isCEO && (
+    roleStr.includes('pharmacy') || deptStr.includes('pharmacy')
+  );
 
-  // Lock modules based on role
-  const lockedModule = isHR ? 'HR' : (isStore ? 'Store' : '');
+  // Lock modules based on role — HR and Store are locked to their module.
+  // Printing follows the Sales pattern: module records plus own activity.
+  const lockedModule = isHR ? 'HR' : (isStore ? 'Store' : (isPharmacy ? 'Pharmacy' : ''));
+  const isLocked     = !!lockedModule;
 
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -69,13 +77,29 @@ const CentralAuditLog = () => {
   };
 
   const safeParse = (val) => {
-    if (!val) return 'None';
+    if (val === null || val === undefined || val === '') return '—';
     try {
       const parsed = typeof val === 'string' ? JSON.parse(val) : val;
       return JSON.stringify(parsed, null, 2);
     } catch {
       return String(val);
     }
+  };
+
+  // Fields that add no audit value — skip them in the change diff
+  const IGNORE_KEYS = new Set([
+    'id', 'created_at', 'updated_at', 'timestamp', 'createdAt', 'updatedAt',
+    'password', 'currentPassword', 'newPassword', 'two_factor_secret', 'token',
+  ]);
+
+  // Tone per action — drives the row + action label colors
+  const actionTone = (action = '') => {
+    const a = action.toLowerCase();
+    if (/created|added|registered|recorded|set$|opened|posted/.test(a)) return 'create';
+    if (/updated|changed|toggled|adjusted|extended|modified|renewed|emailed/.test(a)) return 'update';
+    if (/deleted|cancelled|rejected|disqualified|voided|removed|retracted|archived|terminated/.test(a)) return 'delete';
+    if (/approved|published|submitted|released|sent|completed|converted|finalized|verified|closed|awarded|forwarded|paid|generated|accepted/.test(a)) return 'status';
+    return 'other';
   };
 
   return (
@@ -94,6 +118,10 @@ const CentralAuditLog = () => {
                 ? 'HR department activity log — your department records only.'
                 : isStore
                 ? 'General Store activity log — your module records only.'
+                : isPharmacy
+                ? 'Pharmacy activity log — your module records only.'
+                : isPrinting
+                ? 'Printing department activity log — all printing module records plus your own actions.'
                 : isSales
                 ? 'Sales activity log — all sales module records plus your own actions.'
                 : 'Append-only system record of all module activities.'}
@@ -135,6 +163,7 @@ const CentralAuditLog = () => {
           >
             <option value="">All Modules</option>
             <option value="HR">HR</option>
+            <option value="Printing">Printing</option>
             <option value="Finance">Finance</option>
             <option value="Pharmacy">Pharmacy</option>
             <option value="Store">Store</option>
@@ -149,7 +178,7 @@ const CentralAuditLog = () => {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : (isSales ? 'Sales Module + Your Activity' : 'Your Module Only'))}
+            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : (isPharmacy ? 'Pharmacy Module Only' : (isPrinting ? 'Printing Module + Your Activity' : (isSales ? 'Sales Module + Your Activity' : 'Your Module Only'))))}
           </div>
         )}
       </div>
@@ -166,7 +195,7 @@ const CentralAuditLog = () => {
                 <thead>
                   <tr>
                     <th>User &amp; Role</th>
-                    {!isHR && <th>Module</th>}
+                    {!isLocked && <th>Module</th>}
                     <th>Action &amp; Record</th>
                     <th>Date &amp; IP</th>
                     <th>Details</th>
@@ -175,23 +204,25 @@ const CentralAuditLog = () => {
                 <tbody>
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={isHR ? 4 : 5} className={styles.empty}>No audit logs found.</td>
+                      <td colSpan={isLocked ? 4 : 5} className={styles.empty}>No audit logs found.</td>
                     </tr>
                   ) : (
-                    logs.map((log) => (
+                    logs.map((log) => {
+                      const tone = actionTone(log.action);
+                      return (
                       <React.Fragment key={log.id}>
-                        <tr>
+                        <tr className={styles[`row--${tone}`]}>
                           <td>
                             <div className={styles.logUser}>{log.user_name}</div>
                             <div className={styles.logRole}>{log.role} — {log.department}</div>
                           </td>
-                          {!isHR && (
+                          {!isLocked && (
                             <td>
                               <span className={`${styles.moduleBadge} ${styles[`moduleBadge--${log.module}`] || ''}`}>{log.module}</span>
                             </td>
                           )}
                           <td>
-                            <div className={styles.actionText}>{log.action}</div>
+                            <div className={`${styles.actionText} ${styles[`actionText--${tone}`] || ''}`}>{log.action}</div>
                             {log.action !== 'UPDATE' && <div className={styles.recordId}>{log.record_identifier || '—'}</div>}
                           </td>
                           <td>
@@ -216,11 +247,21 @@ const CentralAuditLog = () => {
                           const nObj = getObj(log.new_value);
                           
                           if (pObj || nObj) {
-                            const keys = Array.from(new Set([...Object.keys(pObj || {}), ...Object.keys(nObj || {})]));
+                            const keys = Array.from(new Set([...Object.keys(pObj || {}), ...Object.keys(nObj || {})]))
+                              .filter(k => !IGNORE_KEYS.has(k));
+                            const changedKeys = pObj && nObj
+                              ? keys.filter(k => String(pObj[k] ?? '') !== String(nObj[k] ?? ''))
+                              : keys;
                             return (
                               <tr className={styles.detailsRow}>
-                                <td colSpan={isHR ? 4 : 5}>
-                                  <div className={styles.diffTableWrapper}>
+                                <td colSpan={isLocked ? 4 : 5}>
+                                  {changedKeys.length === 0 ? (
+                                    <div className={styles.diffBox} style={{ textAlign: 'center' }}>
+                                      <div className={styles.diffTitle}>Value Snapshot</div>
+                                      <pre className={styles.diffCode}>No field values changed in this update (recorded for reference only).</pre>
+                                    </div>
+                                  ) : (
+                                    <div className={styles.diffTableWrapper}>
                                     <table className={styles.diffTable}>
                                       <thead>
                                         <tr>
@@ -237,39 +278,53 @@ const CentralAuditLog = () => {
                                           return (
                                             <tr key={key} className={isChanged ? styles.diffChangedRow : ''}>
                                               <td className={styles.diffField}>{key}</td>
-                                              <td className={styles.diffValue}>{pv}</td>
-                                              <td className={styles.diffValue}>{nv}</td>
+                                              <td className={isChanged ? `${styles.diffValue} ${styles.diffPrev}` : styles.diffValue}>{pv}</td>
+                                              <td className={isChanged ? `${styles.diffValue} ${styles.diffNew}` : styles.diffValue}>{nv}</td>
                                             </tr>
                                           );
                                         })}
                                       </tbody>
                                     </table>
-                                  </div>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             );
                           }
 
                           // Fallback for arrays or raw strings
+                          const hasAnyValue = log.previous_value != null || log.new_value != null;
                           return (
                             <tr className={styles.detailsRow}>
-                              <td colSpan={isHR ? 4 : 5}>
-                                <div className={styles.diffContainer}>
-                                  <div className={styles.diffBox}>
-                                    <div className={styles.diffTitle}>Previous Value</div>
-                                    <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
+                              <td colSpan={isLocked ? 4 : 5}>
+                                {!hasAnyValue ? (
+                                  <div className={styles.diffBox} style={{ textAlign: 'center' }}>
+                                    <div className={styles.diffTitle}>Activity Detail</div>
+                                    <pre className={styles.diffCode}>This is a simple event log. No extended payload or before/after snapshot was recorded for this specific action.</pre>
                                   </div>
-                                  <div className={styles.diffBox}>
-                                    <div className={styles.diffTitle}>New Value</div>
-                                    <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
+                                ) : (
+                                  <div className={styles.diffContainer}>
+                                    {log.previous_value != null && (
+                                      <div className={styles.diffBox}>
+                                        <div className={styles.diffTitle}>Previous Value</div>
+                                        <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
+                                      </div>
+                                    )}
+                                    {log.new_value != null && (
+                                      <div className={styles.diffBox}>
+                                        <div className={styles.diffTitle}>{log.previous_value == null ? 'Action Payload (Snapshot)' : 'New Value'}</div>
+                                        <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
+                                      </div>
+                                    )}
                                   </div>
-                                </div>
+                                )}
                               </td>
                             </tr>
                           );
-                        })()}
+                         })()}
                       </React.Fragment>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
