@@ -154,7 +154,7 @@ const createUser = async (userData, createdBy, ip) => {
     to: phone,
     message: `Welcome ${fullName} to Sutana EMS! Use email ${email} and temporary password sent to your email to login. Please change your password after first login.`
   }).catch(() => {});
-  await audit('USER_CREATED', result, {
+  await audit('USER_CREATED', createdBy, {
     ip,
     details: { fullName, email, phone, departmentId, roleIds }
   });
@@ -207,7 +207,7 @@ const updateUser = async (userId, updateData, updatedBy, ip) => {
       }
     }
   });
-  await audit('USER_UPDATED', userId, {
+  await audit('USER_UPDATED', updatedBy, {
     ip,
     details: { updates: Object.keys(updateFields), roleChanged: !!roleIds }
   });
@@ -237,7 +237,7 @@ const deleteUser = async (userId, deletedBy, ip) => {
       deleted_at: db.fn.now(),
       updated_at: db.fn.now()
     });
-  await audit('USER_DELETED', userId, { ip, details: { deletedBy } });
+  await audit('USER_DELETED', deletedBy, { ip, details: { deletedBy } });
   return { deleted: true };
 };
 const restoreUser = async (userId, restoredBy, ip) => {
@@ -258,7 +258,7 @@ const restoreUser = async (userId, restoredBy, ip) => {
       deleted_at: null,
       updated_at: db.fn.now()
     });
-  await audit('USER_RESTORED', userId, { ip, details: { restoredBy } });
+  await audit('USER_RESTORED', restoredBy, { ip, details: { restoredBy } });
   return { restored: true };
 };
 const forcePasswordReset = async (userId, resetBy, ip) => {
@@ -291,7 +291,7 @@ const forcePasswordReset = async (userId, resetBy, ip) => {
       loginUrl: `${config.frontendUrl}/login`
     }
   });
-  await audit('FORCE_PASSWORD_RESET', userId, { ip, details: { resetBy } });
+  await audit('FORCE_PASSWORD_RESET', resetBy, { ip, details: { resetBy } });
   return { reset: true, temporaryPassword: tempPassword };
 };
 const getUserPermissions = async (userId) => {
@@ -327,7 +327,7 @@ const assignRoles = async (userId, roleIds, assignedBy, ip) => {
       });
     }
   });
-  await audit('ROLES_ASSIGNED', userId, { ip, details: { roleIds, assignedBy } });
+  await audit('ROLES_ASSIGNED', assignedBy, { ip, details: { roleIds, assignedBy } });
   return { assigned: true };
 };
 const removeRole = async (userId, roleId, removedBy, ip) => {
@@ -348,7 +348,7 @@ const removeRole = async (userId, roleId, removedBy, ip) => {
     .where('user_id', userId)
     .where('role_id', roleId)
     .delete();
-  await audit('ROLE_REMOVED', userId, { ip, details: { roleId, removedBy } });
+  await audit('ROLE_REMOVED', removedBy, { ip, details: { roleId, removedBy } });
   return { removed: true };
 };
 const getDepartments = async () => {
