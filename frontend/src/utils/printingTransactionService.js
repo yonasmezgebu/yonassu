@@ -77,7 +77,17 @@ export const generateId = (prefix) => {
 };
 
 export const createJob = (jobData) => {
-  const newJob = { ...jobData, id: generateId('JOB'), status: 'Pending', balanceDue: jobData.totalCost - jobData.depositPaid, auditTrail: [{ stage: 'Pending', timestamp: new Date().toISOString(), user: 'System' }] };
+  const newJob = {
+    ...jobData,
+    id: generateId('JOB'),
+    status: 'Pending',
+    priority: jobData.priority || 'Normal',
+    quantity: jobData.quantity || 1,
+    files: jobData.files || [],
+    finishingOptions: jobData.finishingOptions || [],
+    balanceDue: (jobData.totalCost || 0) - (jobData.depositPaid || 0),
+    auditTrail: [{ stage: 'Pending', timestamp: new Date().toISOString(), user: 'System' }]
+  };
   printingState.jobs.push(newJob);
   return newJob;
 };
@@ -170,13 +180,17 @@ export const approveReprint = (reqId) => {
 export const convertOrderToJob = (orderId) => {
   const order = printingState.orders.find(o => o.id === orderId);
   if (order) {
+    const match = String(order.items || '').match(/(\d[\d,]*)/);
     const jobData = {
       customerName: order.customerName,
       customerPhone: order.contact,
       jobType: order.items,
-      totalCost: order.totalAmount,
-      depositPaid: order.depositPaid,
+      quantity: match ? parseInt(match[1].replace(/,/g, ''), 10) : 1,
+      priority: 'Normal',
+      paperSize: order.paperType || 'A4',
       deadline: order.deliveryDate,
+      totalCost: order.totalAmount || 0,
+      depositPaid: order.depositPaid || 0,
       orderId: order.id
     };
     const job = createJob(jobData);
