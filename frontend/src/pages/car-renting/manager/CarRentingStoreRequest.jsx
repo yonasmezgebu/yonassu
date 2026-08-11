@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, Layers, X, Send, Edit2, Lock,
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './CarRentingStoreRequest.css';
 
 /* ─── Palette ─────────────────────────────────────────────────────────────── */
 const C = {
@@ -374,7 +375,7 @@ export default function CarRentingStoreRequest() {
 
   /* ─── Render ─── */
   return (
-    <div style={{ minHeight: '100vh', background: C.light, fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray }}>
+    <div className="crq-page" style={{ minHeight: '100vh', background: C.light, fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray }}>
       <ToastContainer toasts={toasts} remove={remove} />
 
       {/* ── Confirm Receipt Modal ── */}
