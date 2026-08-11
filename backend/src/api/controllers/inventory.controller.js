@@ -225,7 +225,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       unit_cost: 0,
       last_updated: db.fn.now()
     });
-    await audit('PRODUCT_CREATED', productId, {
+    await audit('PRODUCT_CREATED', userId, {
       ip,
       details: { name, sku, categoryId, sellingPrice, initialStock: qty }
     });
@@ -281,7 +281,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
     await db('products')
       .where('id', id)
       .update(updateData);
-    await audit('PRODUCT_UPDATED', id, {
+    await audit('PRODUCT_UPDATED', userId, {
       ip,
       details: { updates: Object.keys(updateData) }
     });
@@ -314,7 +314,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         deleted_at: db.fn.now(),
         updated_at: db.fn.now()
       });
-    await audit('PRODUCT_DELETED', id, {
+    await audit('PRODUCT_DELETED', userId, {
       ip,
       details: { name: product.name, sku: product.sku }
     });
@@ -341,7 +341,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         deleted_at: null,
         updated_at: db.fn.now()
       });
-    await audit('PRODUCT_RESTORED', id, { ip });
+    await audit('PRODUCT_RESTORED', userId, { ip });
     res.json({
       status: 'success',
       message: 'Product restored successfully'
@@ -410,7 +410,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         status: 'Pending',
         requested_by: userId
       });
-      await audit('STOCK_ADJUSTMENT_REQUESTED', productId, {
+      await audit('STOCK_ADJUSTMENT_REQUESTED', userId, {
         ip,
         details: { adjustmentId, quantityChange, reason }
       });
@@ -454,7 +454,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         approved_at: db.fn.now()
       });
     });
-    await audit('STOCK_ADJUSTED', productId, {
+    await audit('STOCK_ADJUSTED', userId, {
       ip,
       details: {
         quantityChange,
@@ -535,7 +535,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       });
     });
 
-    await audit('STOCK_ADJUSTMENT_APPROVED', adjustment.product_id, {
+    await audit('STOCK_ADJUSTMENT_APPROVED', userId, {
       ip, details: { adjustmentId: id, quantityChange: adjustment.quantity_change, newQuantity }
     });
 
@@ -561,7 +561,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       rejection_reason: reason
     });
 
-    await audit('STOCK_ADJUSTMENT_REJECTED', adjustment.product_id, {
+    await audit('STOCK_ADJUSTMENT_REJECTED', userId, {
       ip, details: { adjustmentId: id, rejection_reason: reason }
     });
 
@@ -605,7 +605,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         created_at: db.fn.now()
       });
     });
-    await audit('DAMAGED_ITEMS_RECORDED', productId, {
+    await audit('DAMAGED_ITEMS_RECORDED', userId, {
       ip,
       details: { quantity, reason }
     });
@@ -654,7 +654,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         created_at: db.fn.now()
       });
     });
-    await audit('LOST_ITEMS_RECORDED', productId, {
+    await audit('LOST_ITEMS_RECORDED', userId, {
       ip,
       details: { quantity, reason }
     });
@@ -767,7 +767,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
         created_at: db.fn.now()
       });
     });
-    await audit('INVENTORY_COUNT_RECORDED', productId, {
+    await audit('INVENTORY_COUNT_RECORDED', userId, {
       ip,
       details: {
         systemQuantity: currentStock.quantity,
@@ -867,7 +867,7 @@ exports.getExpiringProducts = catchAsync(async (req, res) => {
       name,
       is_active: true
     });
-    await audit('CATEGORY_CREATED', categoryId, { ip, details: { name } });
+    await audit('CATEGORY_CREATED', userId, { ip, details: { name } });
     res.status(201).json({
       status: 'success',
       message: 'Category created successfully',
