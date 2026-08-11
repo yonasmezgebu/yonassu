@@ -13,6 +13,7 @@ import {
 import { submitNotification } from '../../utils/pharmacyNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import styles from './PharmacySalesForm.module.css';
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash', icon: <DollarSign size={16} /> },
   { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: <CreditCard size={16} /> },
@@ -585,166 +586,50 @@ export default function PharmacySalesForm() {
 
   return (
     <>
-    <div style={{ margin: '-2rem', minHeight: 'calc(100vh - 72px)', background: '#ffffff', fontFamily: "'Inter', sans-serif" }}>
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmerAnim { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-        .rsp-card { background: white; border-radius: 14px; overflow: hidden; border: 1px solid #e4e6ea; box-shadow: 0 1px 4px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; animation: fadeUp 0.4s both; }
-        .rsp-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-3px); border-color: #c7e7dc; }
-        .rsp-card-img-wrap { position: relative; overflow: hidden; aspect-ratio: 4/3; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); display: flex; align-items: center; justify-content: center; }
-        .rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
-        .rsp-card:hover .rsp-card-img { transform: scale(1.06); }
-        .rsp-card-badge { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; color: #0f172a; letter-spacing: 0.3px; }
-        .rsp-card-oos { position: absolute; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; letter-spacing: 1px; }
-        .rsp-card-body { padding: 12px 14px 14px; flex: 1; display: flex; flex-direction: column; }
-        .rsp-card-name { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px; line-height: 1.3; }
-        .rsp-card-desc { font-size: 12px; font-weight: 600; color: #475569; margin: 0 0 8px; line-height: 1.5; letter-spacing: 0.2px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 1px rgba(255,255,255,0.8); border-left: 2px solid #cbd5e1; padding-left: 6px; }
-        .rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-        .rsp-price { font-size: 16px; font-weight: 800; color: #059669; }
-        .rsp-price-sub { font-size: 10px; color: #94a3b8; margin-top: 1px; }
-        .rsp-add-btn { background: linear-gradient(135deg,#0f172a,#1e293b); color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 11px; transition: all 0.2s; font-family: inherit; white-space: nowrap; }
-        .rsp-add-btn:hover:not(:disabled) { background: linear-gradient(135deg,#059669,#10b981); transform: scale(1.03); }
-        .rsp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .rsp-stock-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; margin-bottom: 6px; }
-        .rsp-stock-normal { background: #dcfce7; color: #166534; }
-        .rsp-stock-low { background: #fef3c7; color: #92400e; }
-        .rsp-stock-oos { background: #fee2e2; color: #991b1b; }
-        .pos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        @media (max-width: 1400px) { .pos-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 1000px) { .pos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
-        @media (max-width: 600px) { .pos-grid { grid-template-columns: 1fr; gap: 10px; } }
-      `}</style>
-      <ToastContainer />
+      <div className={styles.pageWrapper}>
+        <ToastContainer />
 
-      {/* ── PREMIUM HEADER ── */}
-      <div style={{
-        width: '100%',
-        background: 'linear-gradient(180deg, #f5f3ee 0%, #ece9e0 100%)',
-        borderBottom: '1px solid #d6d0c4',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
-      }}>
-        <div style={{ padding: '32px 48px 0' }}>
-
-          {/* ── Top Row: Title + Buttons ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+        {/* ── PREMIUM HEADER ── */}
+        <div className={styles.header}>
+          <div className={styles.headerTop}>
             {/* Left: Title + Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <h1 style={{
-                fontFamily: "'Playfair Display', 'Georgia', serif",
-                fontSize: '3rem',
-                fontWeight: 700,
-                color: '#1a1a2e',
-                margin: 0,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                lineHeight: 1
-              }}>
-                Pharmacy Sales
-              </h1>
-              {/* Teal Counter Bubble */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                width: 76, height: 76, borderRadius: '50%',
-                background: 'radial-gradient(circle at 35% 35%, #a7f3d0, #2dd4bf)',
-                boxShadow: 'inset 0 3px 6px rgba(255,255,255,0.7), inset 0 -3px 6px rgba(0,0,0,0.12), 0 8px 20px rgba(45,212,191,0.4)',
-                border: '2px solid rgba(255,255,255,0.6)',
-                color: '#065f46',
-                lineHeight: 1,
-                flexShrink: 0
-              }}>
-                <span style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>{sales.length}</span>
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>sales</span>
+            <div className={styles.headerLeft}>
+              <h1 className={styles.pageTitle}>Pharmacy Sales</h1>
+              <div className={styles.salesBubble}>
+                <span className={styles.salesBubbleCount}>{sales.length}</span>
+                <span className={styles.salesBubbleLabel}>sales</span>
               </div>
             </div>
 
             {/* Right: Refresh + New Sale */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {/* Metallic Refresh Button */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <button
-                  onClick={handleRefreshAll}
-                  disabled={refreshing}
-                  title="Refresh sales"
-                  style={{
-                    width: 64, height: 64, borderRadius: '50%', border: 'none',
-                    cursor: refreshing ? 'wait' : 'pointer', padding: 0,
-                    background: 'conic-gradient(from 45deg, #c8c8cc, #f0f0f2, #9a9a9e, #f0f0f2, #c8c8cc)',
-                    boxShadow: refreshing
-                      ? 'inset 0 3px 8px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.15)'
-                      : '0 6px 12px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -2px 4px rgba(0,0,0,0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transform: refreshing ? 'scale(0.95)' : 'scale(1)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{
-                    width: 50, height: 50, borderRadius: '50%',
-                    background: refreshing
-                      ? 'linear-gradient(145deg, #a0a0a4 0%, #c8c8cc 100%)'
-                      : 'linear-gradient(145deg, #e8e8ea 0%, #b0b0b4 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.35), 0 1px 2px rgba(255,255,255,0.6)'
-                  }}>
-                    <SegmentedSpinner size={22} />
-                  </div>
-                </button>
-                <span style={{
-                  fontSize: '0.72rem',
-                  color: refreshing ? '#059669' : '#71717a',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  transition: 'color 0.2s'
-                }}>
-                  {refreshing ? 'Loading...' : 'Refresh'}
-                </span>
-              </div>
+            <div className={styles.headerRight}>
+              <button
+                onClick={handleRefreshAll}
+                disabled={refreshing}
+                title="Refresh sales"
+                className={styles.refreshBtn}
+              >
+                {refreshing ? <SegmentedSpinner size={16} /> : <RefreshCw size={14} />}
+                {refreshing ? 'Loading...' : 'Refresh'}
+              </button>
 
-              {/* Glossy New Sale Button */}
-              <div style={{
-                padding: 5, borderRadius: 14,
-                background: 'rgba(255,255,255,0.35)',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04), 0 10px 24px rgba(5,150,105,0.25)'
-              }}>
-                <button
-                  onClick={() => { setShowAudit(false); setTab('walkin'); resetForm(); }}
-                  style={{
-                    background: 'linear-gradient(180deg, #34d399 0%, #059669 100%)',
-                    border: '1px solid #047857',
-                    borderRadius: 10,
-                    padding: '14px 36px',
-                    color: '#fff',
-                    fontSize: '1.15rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.45), 0 2px 4px rgba(0,0,0,0.12)',
-                    letterSpacing: '0.01em'
-                  }}
-                >
-                  <span style={{ fontSize: '1.5rem', fontWeight: 300, lineHeight: 1 }}>+</span> New Sale
-                </button>
-              </div>
+              <button
+                onClick={() => { setShowAudit(false); setTab('walkin'); resetForm(); }}
+                className={styles.newSaleBtn}
+              >
+                <Plus size={18} /> New Sale
+              </button>
             </div>
           </div>
 
           {/* ── Tabs Bar ── */}
-          <div style={{
-            display: 'flex',
-            background: 'linear-gradient(180deg, #e8e4da 0%, #f0ede4 100%)',
-            borderRadius: '10px 10px 0 0',
-            border: '1px solid #cbc6bb',
-            borderBottom: 'none',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 -2px 6px rgba(0,0,0,0.02)',
-            overflow: 'hidden'
-          }}>
+          <div className={styles.tabBar}>
             {[
               { key: 'walkin',  icon: ShoppingCart, label: 'WALK-IN' },
               { key: 'online',  icon: Smartphone,   label: 'ONLINE' },
               { key: 'list',    icon: List,         label: 'SALES' },
               { key: 'audit',   icon: History,      label: 'AUDIT TRAIL' },
-            ].map((t, idx, arr) => {
+            ].map((t) => {
               const active = t.key === 'audit' ? showAudit : (tab === t.key && !showAudit);
               const TabIcon = t.icon;
               return (
@@ -760,76 +645,20 @@ export default function PharmacySalesForm() {
                       if (t.key === 'online') loadPendingOrders();
                     }
                   }}
-                  style={{
-                    flex: 1,
-                    padding: '16px 20px',
-                    border: 'none',
-                    borderRight: idx < arr.length - 1 && !active ? '1px solid #cbc6bb' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    position: 'relative',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: active
-                      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05))'
-                      : 'transparent',
-                    color: active ? '#047857' : '#78716c',
-                    fontWeight: active ? 800 : 700,
-                    fontSize: '0.875rem',
-                    letterSpacing: '0.06em',
-                    boxShadow: active 
-                      ? 'inset 0 3px 0 #059669, 0 0 24px rgba(16,185,129,0.15)' 
-                      : 'none',
-                    transform: active ? 'scale(1.02)' : 'scale(1)',
-                    zIndex: active ? 10 : 1,
-                    borderRadius: active ? '10px 10px 0 0' : '0'
-                  }}
+                  className={active ? styles.tabActive : styles.tab}
                 >
-                  {/* Glowing Top Line */}
-                  {active && (
-                    <div style={{
-                      position: 'absolute', top: 0, left: '10%', right: '10%',
-                      height: 4,
-                      background: 'linear-gradient(90deg, transparent, #34d399, transparent)',
-                      boxShadow: '0 2px 14px rgba(52,211,153,0.9), 0 0 8px rgba(16,185,129,0.6)',
-                      borderRadius: '4px'
-                    }} />
-                  )}
-                  
-                  <TabIcon 
-                    size={18} 
-                    color={active ? '#059669' : '#a8a29e'} 
-                    strokeWidth={active ? 2.5 : 2} 
-                    style={{ 
-                      transition: 'all 0.3s', 
-                      transform: active ? 'scale(1.1)' : 'scale(1)',
-                      filter: active ? 'drop-shadow(0 2px 4px rgba(5,150,105,0.4))' : 'none'
-                    }} 
-                  />
-                  <span>{t.label}</span>
+                  <TabIcon size={16} />
+                  {t.label}
 
                   {/* Cart badge on Walk-In tab */}
                   {t.key === 'walkin' && (
                     <div
                       onClick={(e) => { e.stopPropagation(); setShowCart(c => !c); }}
                       title="Open Cart"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        marginLeft: 8,
-                        background: posCart.length > 0 ? 'linear-gradient(135deg, #10b981, #059669)' : '#e2e8f0',
-                        color: posCart.length > 0 ? '#fff' : '#78716c',
-                        borderRadius: 20,
-                        padding: '3px 10px 3px 7px',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        cursor: 'pointer',
-                        boxShadow: posCart.length > 0 ? '0 4px 12px rgba(5,150,105,0.4)' : 'none',
-                        border: posCart.length > 0 ? '1px solid #047857' : '1px solid #cbd5e1',
-                        transform: posCart.length > 0 && active ? 'scale(1.05)' : 'scale(1)'
-                      }}
+                      className={posCart.length > 0 ? styles.cartBadgeActive : styles.cartBadge}
                     >
-                      <ShoppingCart size={13} strokeWidth={2.5} />
-                      <span>{posCart.length}</span>
+                      <ShoppingCart size={12} />
+                      {posCart.length}
                     </div>
                   )}
 
@@ -837,19 +666,7 @@ export default function PharmacySalesForm() {
                   {t.key === 'online' && pendingOrders.length > 0 && (
                     <div
                       title={`${pendingOrders.length} Pending Orders`}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginLeft: 8,
-                        background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
-                        color: '#fff',
-                        borderRadius: 20,
-                        padding: '2px 8px',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-                        border: '1px solid #b91c1c',
-                        animation: 'pulse 2s infinite'
-                      }}
+                      className={styles.pendingBadge}
                     >
                       {pendingOrders.length}
                     </div>
@@ -859,806 +676,730 @@ export default function PharmacySalesForm() {
             })}
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div style={{ padding: '24px 48px', background: '#ffffff', minHeight: 'calc(100vh - 230px)' }}>
+        {/* Content */}
+        <div className={styles.contentArea}>
 
-
-      {/* WALK-IN TAB */}
-      {tab === 'walkin' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: 24, minHeight: '600px' }}>
-          {!showCart ? (
-              <div className="pos-grid">
-                {/* Product Grid */}
-                {products
-                  .filter(i => !navSearch || (i.name && i.name.toLowerCase().includes(navSearch.toLowerCase())))
-                  .map((item, idx) => {
-                    const inCart = posCart.find(c => c.id === item.id);
-                    const stockVal = item.stock !== undefined ? item.stock : (item.quantity || 0);
-                    const stockLabel = stockVal <= 0 ? 'oos' : stockVal <= (item.reorder_level || 10) ? 'low' : 'normal';
-                    const stockText = stockVal <= 0 ? '0 Out of Stock' : stockVal <= (item.reorder_level || 10) ? `${stockVal} Low Stock` : `${stockVal} In Stock`;
-                    const priceVal = item.price || item.selling_price || item.unit_price || 0;
-                    
-                    const imgSrc = (url) => {
-                      if (!url) return null;
-                      return url.startsWith('http') ? url : 'http://localhost:5000' + url;
-                    };
-                    
-                    return (
-                      <div key={item.id} className="rsp-card" style={{ animationDelay: idx * 0.04 + 's', borderColor: inCart ? '#059669' : '', boxShadow: inCart ? '0 8px 24px rgba(5,150,105,0.2)' : '' }}>
-                        <div className="rsp-card-img-wrap">
-                          {(() => {
-                            const imgs = [item.product_image, item.drug_image, item.cover_image].filter(Boolean);
-                            const uniqueImgs = [...new Set(imgs)];
-                            if (uniqueImgs.length === 0) return <Package size={36} color="#cbd5e1" />;
-                            if (uniqueImgs.length === 1) return <img src={imgSrc(uniqueImgs[0])} className="rsp-card-img" alt={item.name} />;
-                            return (
-                              <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-                                <img src={imgSrc(uniqueImgs[0])} className="rsp-card-img" alt={item.name} style={{ width: '50%', borderRight: '1px solid #e4e6ea' }} />
-                                <img src={imgSrc(uniqueImgs[1])} className="rsp-card-img" alt={item.name} style={{ width: '50%' }} />
-                              </div>
-                            );
-                          })()}
-                          {(item.category || item.category_name) && <div className="rsp-card-badge">{item.category || item.category_name}</div>}
-                          {stockVal <= 0 && (
-                            <div className="rsp-card-oos">OUT OF STOCK</div>
-                          )}
-                        </div>
-                        <div className="rsp-card-body">
-                          <h3 className="rsp-card-name">{item.name}</h3>
-                          <span className={`rsp-stock-badge rsp-stock-${stockLabel}`}>
-                            📦 {stockText}
-                          </span>
-                          
-                          {item.description && (
-                            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                              <p className="rsp-card-desc" style={expandedCards[item.id] ? { WebkitLineClamp: 'unset' } : {}}>
-                                {item.description}
-                              </p>
-                              {item.description.length > 80 && (
-                                <button 
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setExpandedCards(prev => ({...prev, [item.id]: !prev[item.id]})); }}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', justifyContent: 'center', color: '#94a3b8' }}
-                                >
-                                  <ChevronDown size={14} style={{ transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                                </button>
+          {/* WALK-IN TAB */}
+          {tab === 'walkin' && !showAudit && (
+            <div className={styles.card}>
+              {!showCart ? (
+                <div className={styles.cardBody}>
+                  <div className={styles.productGrid}>
+                    {/* Product Grid */}
+                    {products
+                      .filter(i => !navSearch || (i.name && i.name.toLowerCase().includes(navSearch.toLowerCase())))
+                      .map((item, idx) => {
+                        const inCart = posCart.find(c => c.id === item.id);
+                        const stockVal = item.stock !== undefined ? item.stock : (item.quantity || 0);
+                        const stockLabel = stockVal <= 0 ? 'Oos' : stockVal <= (item.reorder_level || 10) ? 'Low' : 'Normal';
+                        const stockText = stockVal <= 0 ? '0 Out of Stock' : stockVal <= (item.reorder_level || 10) ? `${stockVal} Low Stock` : `${stockVal} In Stock`;
+                        const priceVal = item.price || item.selling_price || item.unit_price || 0;
+                        
+                        const imgSrc = (url) => {
+                          if (!url) return null;
+                          return url.startsWith('http') ? url : 'http://localhost:5000' + url;
+                        };
+                        
+                        return (
+                          <div key={item.id} className={inCart ? styles.productCardInCart : styles.productCard}>
+                            <div className={styles.productImgWrap}>
+                              {(() => {
+                                const imgs = [item.product_image, item.drug_image, item.cover_image].filter(Boolean);
+                                const uniqueImgs = [...new Set(imgs)];
+                                if (uniqueImgs.length === 0) return <Package size={36} color="#cbd5e1" />;
+                                if (uniqueImgs.length === 1) return <img src={imgSrc(uniqueImgs[0])} className={styles.productImg} alt={item.name} />;
+                                return (
+                                  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+                                    <img src={imgSrc(uniqueImgs[0])} className={styles.productImg} alt={item.name} style={{ width: '50%', borderRight: '1px solid #E5E7EB' }} />
+                                    <img src={imgSrc(uniqueImgs[1])} className={styles.productImg} alt={item.name} style={{ width: '50%' }} />
+                                  </div>
+                                );
+                              })()}
+                              {(item.category || item.category_name) && <div className={styles.productCategoryBadge}>{item.category || item.category_name}</div>}
+                              {stockVal <= 0 && <div className={styles.oosOverlay}>OUT OF STOCK</div>}
+                            </div>
+                            <div className={styles.productBody}>
+                              <h3 className={styles.productName}>{item.name}</h3>
+                              <span className={styles['stock' + stockLabel]}>
+                                📦 {stockText}
+                              </span>
+                              
+                              {item.description && (
+                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                  <p className={expandedCards[item.id] ? styles.productDescExpanded : styles.productDesc}>
+                                    {item.description}
+                                  </p>
+                                  {item.description.length > 80 && (
+                                    <button 
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setExpandedCards(prev => ({...prev, [item.id]: !prev[item.id]})); }}
+                                      className={styles.expandBtn}
+                                    >
+                                      <ChevronDown size={14} style={{ transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                                    </button>
+                                  )}
+                                </div>
                               )}
+                              
+                              <div className={styles.productFooter}>
+                                <div className={styles.productPrice}>{parseFloat(priceVal).toLocaleString()} ETB</div>
+                                <button
+                                  type="button"
+                                  className={inCart ? styles.addBtnInCart : styles.addBtn}
+                                  disabled={stockVal <= 0}
+                                  onClick={(e) => { e.stopPropagation(); addToCart({...item, price: priceVal, stock: stockVal}); }}
+                                >
+                                  <ShoppingCart size={13} /> {inCart ? `${inCart.qty} added` : 'Add'}
+                                </button>
+                              </div>
                             </div>
-                          )}
-                          
-                          <div className="rsp-card-footer">
-                            <div>
-                              <div className="rsp-price">{parseFloat(priceVal).toLocaleString()} ETB</div>
-                            </div>
-                            <button
-                              type="button"
-                              className="rsp-add-btn"
-                              disabled={stockVal <= 0}
-                              style={inCart ? { background: 'linear-gradient(135deg,#059669,#10b981)' } : {}}
-                              onClick={(e) => { e.stopPropagation(); addToCart({...item, price: priceVal, stock: stockVal}); }}
-                            >
-                              <ShoppingCart size={13} /> {inCart ? `${inCart.qty} added` : 'Add'}
-                            </button>
                           </div>
+                        );
+                      })
+                    }
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.cardBody}>
+                   <div className={styles.cartHeader}>
+                     <h2 className={styles.cartTitle}>🛍️ Cart & Checkout</h2>
+                     <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} className={styles.btnSecondary}>
+                       ← Back to Products
+                     </button>
+                   </div>
+
+                   {/* ── Online Order Banner ── */}
+                   {activeOnlineOrder && (
+                     <div className={styles.onlineBanner}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                         <div className={styles.onlineBannerIcon}>📦</div>
+                         <div>
+                           <div className={styles.onlineBannerLabel}>🌐 Online Order — Auto-Filled</div>
+                           <div className={styles.onlineBannerCode}>{activeOnlineOrder.sale_code || `Order #${activeOnlineOrder.id}`}</div>
+                           <div className={styles.onlineBannerSub}>👤 {activeOnlineOrder.customer_name || 'Guest'} &nbsp;·&nbsp; 📱 {activeOnlineOrder.customer_phone || '—'}</div>
+                         </div>
+                       </div>
+                       <div className={styles.onlineBannerTotal}>
+                         <div className={styles.onlineBannerTotalLabel}>Total</div>
+                         <div className={styles.onlineBannerTotalValue}>{parseFloat(activeOnlineOrder.total_amount || 0).toFixed(2)} ETB</div>
+                       </div>
+                     </div>
+                   )}
+
+                   {posStep === 1 || posStep === 2 || posStep === 3 ? (
+                     <>
+                       {/* Items List */}
+                       <div className={styles.cartItemsCard}>
+                         <div className={styles.cartItemsHead}>Cart Items ({posCart.length})</div>
+                         <div className={styles.cartItemsBody}>
+                           {posCart.length === 0 ? (
+                             <div className={styles.cartEmpty}>Cart is empty</div>
+                           ) : (
+                             posCart.map(item => (
+                               <div key={item.id} className={styles.cartItem}>
+                                 <div>
+                                   <div className={styles.cartItemName}>{item.name}</div>
+                                   <div className={styles.cartItemSub}>{item.price} ETB each</div>
+                                 </div>
+                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                   <div className={styles.qtyControl}>
+                                     <button onClick={() => updateQty(item.id, item.qty - 1)} className={styles.qtyBtn}><Minus size={14}/></button>
+                                     <span className={styles.qtyNum}>{item.qty}</span>
+                                     <button onClick={() => updateQty(item.id, item.qty + 1)} className={styles.qtyBtn}><Plus size={14}/></button>
+                                   </div>
+                                   <div className={styles.cartItemTotal}>{(item.price * item.qty).toFixed(2)} ETB</div>
+                                   <button onClick={() => setPosCart(posCart.filter(c => c.id !== item.id))} className={styles.btnDanger} style={{ padding: '8px' }}><Trash2 size={16}/></button>
+                                 </div>
+                               </div>
+                             ))
+                           )}
+                         </div>
+                         {posCart.length > 0 && (
+                           <div className={styles.cartFooter}>
+                             <button onClick={() => setPosCart([])} className={styles.btnDanger}><X size={16}/> Clear Cart</button>
+                             <div className={styles.cartTotal}>Total: <span className={styles.cartTotalAmount}>{posCartTotal.toFixed(2)} ETB</span></div>
+                           </div>
+                         )}
+                       </div>
+
+                       {posCart.length > 0 && (
+                         <>
+                           {/* Payment Method */}
+                           <div className={styles.mb20}>
+                             <label className={styles.sectionLabel}>Payment Method *</label>
+                             <div className={styles.paymentMethods}>
+                               {PAYMENT_METHODS.map(pm => (
+                                 <label key={pm.value} className={posPaymentMethod === pm.value ? styles.paymentMethodOptActive : styles.paymentMethodOpt}>
+                                   <input type="radio" name="posPaymentMethod" value={pm.value} checked={posPaymentMethod === pm.value}
+                                     onChange={() => setPosPaymentMethod(pm.value)} style={{ display: 'none' }} />
+                                   {pm.icon} {pm.label}
+                                 </label>
+                               ))}
+                             </div>
+                           </div>
+
+                           {/* Payment Detail Fields — CASH */}
+                           {posPaymentMethod === 'CASH' && (
+                             <div className={styles.payPanelCash}>
+                               <h3 className={styles.payPanelTitle}>
+                                 <DollarSign size={16} color="#D97706" /> Cash Payment
+                               </h3>
+                               <div className={styles.formGrid3}>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Amount Received *</label>
+                                   <input type="number" step="0.01" min="0" value={paymentAmount}
+                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Recipient Full Name *</label>
+                                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
+                                     placeholder="Who received cash" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Recipient Phone</label>
+                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                     placeholder="Phone" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Branch *</label>
+                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                     <option value="">— Select branch —</option>
+                                     {branches.map(b => (
+                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Worker Name *</label>
+                                   {autoFilledWorker ? (
+                                     <div>
+                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                     </div>
+                                   ) : (
+                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+
+                           {/* Payment Detail Fields — BANK TRANSFER */}
+                           {posPaymentMethod === 'BANK_TRANSFER' && (
+                             <div className={styles.payPanelBank}>
+                               <h3 className={styles.payPanelTitle}>
+                                 <CreditCard size={16} color="#2563EB" /> Bank Transfer Payment
+                               </h3>
+                               <div className={styles.formGrid3}>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Amount Received *</label>
+                                   <input type="number" step="0.01" min="0" value={paymentAmount}
+                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Finance Account (Auto-fill)</label>
+                                   <select className={styles.formInput} onChange={(e) => {
+                                     const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                     if (acc) {
+                                       setBankName(acc.bank_provider || '');
+                                       setAccountHolder(acc.account_name || '');
+                                       setAccountNumber(acc.account_number || '');
+                                     }
+                                   }}>
+                                     <option value="">— Select Account —</option>
+                                     {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
+                                       <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider}) - {a.account_number}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Bank Name *</label>
+                                   <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
+                                     placeholder="e.g. CBE" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Account Holder *</label>
+                                   <input type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)}
+                                     placeholder="Full name on account" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Account Number *</label>
+                                   <input type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)}
+                                     placeholder="Account number" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Phone</label>
+                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                     placeholder="Phone" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Branch *</label>
+                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                     <option value="">— Select branch —</option>
+                                     {branches.map(b => (
+                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Worker Name *</label>
+                                   {autoFilledWorker ? (
+                                     <div>
+                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                     </div>
+                                   ) : (
+                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+
+                           {/* Payment Detail Fields — TELBIR */}
+                           {posPaymentMethod === 'TELBIR' && (
+                             <div className={styles.payPanelTelbir}>
+                               <h3 className={styles.payPanelTitle}>
+                                 <Smartphone size={16} color="#7C3AED" /> Telbir Payment
+                               </h3>
+                               <div className={styles.formGrid3}>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Amount Received *</label>
+                                   <input type="number" step="0.01" min="0" value={paymentAmount}
+                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Telebirr Account (Auto-fill)</label>
+                                   <select className={styles.formInput} onChange={(e) => {
+                                     const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                     if (acc) {
+                                       setTelbirNumber(acc.account_number || '');
+                                       setPayerName(acc.account_name || '');
+                                     }
+                                   }}>
+                                     <option value="">— Select Telebirr —</option>
+                                     {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
+                                       <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Telbir Number *</label>
+                                   <input type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)}
+                                     placeholder="Telbir number" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Full Name *</label>
+                                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
+                                     placeholder="Sender full name" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Phone</label>
+                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                     placeholder="Phone" className={styles.formInput} />
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Branch *</label>
+                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                     <option value="">— Select branch —</option>
+                                     {branches.map(b => (
+                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                     ))}
+                                   </select>
+                                 </div>
+                                 <div className={styles.formGroup}>
+                                   <label className={styles.formLabel}>Worker Name *</label>
+                                   {autoFilledWorker ? (
+                                     <div>
+                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                     </div>
+                                   ) : (
+                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+
+                           {/* Payment Status Checkbox */}
+                           <div className={styles.mb20}>
+                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold', color: '#16A34A', background: '#F0FDF4', padding: '12px 16px', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                               <input 
+                                 type="checkbox" 
+                                 checked={paymentStatus === 'PAID'} 
+                                 onChange={(e) => setPaymentStatus(e.target.checked ? 'PAID' : '')} 
+                                 style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#16A34A' }}
+                               />
+                               <CheckCircle size={20} /> Transaction is PAID
+                             </label>
+                           </div>
+
+                           {/* Submit */}
+                           <button type="button" disabled={loading || !posPaymentMethod || !paymentStatus}
+                             onClick={handleProcessPayment}
+                             className={styles.recordSaleBtn}>
+                             <ShoppingCart size={18} /> {loading ? 'Processing...' : `Record Sale — ${posCartTotal > 0 ? posCartTotal.toFixed(2) : '0.00'} ETB`}
+                           </button>
+                         </>
+                       )}
+                     </>
+                   ) : posStep === 4 ? (
+                      <div className={styles.successScreen}>
+                        <CheckCircle size={64} color='#16A34A' style={{ marginBottom: 16 }} />
+                        <h3 className={styles.successTitle}>Transaction Complete!</h3>
+                        {completedSale && (
+                          <div className={styles.successReceipt}>
+                            <div className={styles.receiptNo}>Receipt: {completedSale.receipt_no}</div>
+                            <div className={styles.receiptRow}>Branch: <strong>{completedSale.branch}</strong></div>
+                            <div className={styles.receiptRow}>Cashier: <strong>{completedSale.worker}</strong></div>
+                            <div className={styles.receiptRow}>Customer: <strong>{completedSale.recipient_name}</strong></div>
+                            <div className={styles.receiptTotal}>Total: {completedSale.total.toFixed(2)} ETB</div>
+                          </div>
+                        )}
+                        <p className={styles.successSub}>Inventory updated. CRV and Model 22 generated.</p>
+                        <div className={styles.successActions}>
+                          <button type='button' onClick={printReceipt} className={styles.btnSecondary} style={{ flex: 1, height: '44px' }}>
+                            <Printer size={18} /> Print Receipt
+                          </button>
+                          <button type='button' onClick={() => { setTab('list'); setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); }} className={styles.btnSecondary} style={{ flex: 1, height: '44px' }}>
+                            <List size={18} /> View Sales
+                          </button>
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); setCompletedSale(null); resetForm(); }}
+                          className={styles.btnPrimary} style={{ width: '100%', maxWidth: '400px', height: '44px', background: 'transparent', border: '2px solid #2563EB', color: '#2563EB' }}
+                        >Start New Transaction</button>
+                      </div>
+                   ) : null}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SALES LIST TAB */}
+          {tab === 'list' && !showAudit && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                 <h2 className={styles.cardHeaderTitle}><List size={18} color="#2563EB"/> All Sales</h2>
+              </div>
+              <div className={styles.cardBody}>
+                 {sales.length === 0 ? (
+                   <div className={styles.emptyState}>
+                      <span className={styles.emptyEmoji}>📭</span>
+                      <h3 className={styles.emptyTitle}>No sales recorded</h3>
+                      <p className={styles.emptyText}>Sales data will appear here.</p>
+                   </div>
+                 ) : (
+                   <div className={styles.tableWrap}>
+                     <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th className={styles.th}>Receipt No</th>
+                            <th className={styles.th}>Date</th>
+                            <th className={styles.th}>Type</th>
+                            <th className={styles.th}>Branch</th>
+                            <th className={styles.th}>Worker</th>
+                            <th className={styles.th}>Payment</th>
+                            <th className={styles.th} style={{ textAlign: 'right' }}>Total Amount</th>
+                            <th className={styles.th}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sales.map(sale => {
+                            const resolvedBranch = sale.branch_name ||
+                              branches.find(b => String(b.id) === String(sale.branch_id))?.name ||
+                              (sale.branch_id ? `Branch #${sale.branch_id}` : '—');
+                            const resolvedWorker = sale.worker_name ||
+                              workers.find(w => String(w.id) === String(sale.worker_id))?.name ||
+                              (sale.worker_id ? `Worker #${sale.worker_id}` : '—');
+                            return (
+                            <tr key={sale.id} className={styles.tr}>
+                               <td className={styles.tdMono}>{sale.receipt_no || sale.sale_no || `REC-${sale.id}`}</td>
+                               <td className={styles.td}>{new Date(sale.created_at).toLocaleString()}</td>
+                               <td className={styles.td}>
+                                 <span className={sale.sale_type === 'ONLINE' ? styles.badgeOnline : styles.badgeWalkin}>
+                                   {sale.sale_type === 'ONLINE' ? '🌐 ONLINE' : '🛒 WALK-IN'}
+                                 </span>
+                               </td>
+                               <td className={styles.td}>
+                                 <span className={styles.badgeBranch}>{resolvedBranch}</span>
+                               </td>
+                               <td className={styles.td}>
+                                 <span className={styles.badgeWorker}>{resolvedWorker}</span>
+                               </td>
+                               <td className={styles.td}>
+                                 <span className={styles.badgeMethod}>{sale.payment_method || 'CASH'}</span>
+                               </td>
+                               <td className={styles.tdAmount}>{parseFloat(sale.total_amount || 0).toFixed(2)} ETB</td>
+                               <td className={styles.td}>
+                                 <button onClick={() => viewSaleDetail(sale)} className={styles.viewBtn}>View</button>
+                               </td>
+                            </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot className={styles.tfoot}>
+                          <tr>
+                            <td colSpan="6" className={styles.tfootTd} style={{ textAlign: 'right' }}>TOTAL TRANSACTIONS: {sales.length}</td>
+                            <td colSpan="2" className={styles.tfootAmount}>
+                              {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
+                            </td>
+                          </tr>
+                        </tfoot>
+                     </table>
+                   </div>
+                 )}
+
+                 {sales.length > 0 && (
+                   <div className={styles.summaryRow}>
+                     <div className={styles.summaryText}>
+                        <strong className={styles.summaryStrong}>{sales.length}</strong> transactions · <strong className={styles.summaryGreen}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
+                     </div>
+                     <button 
+                       onClick={() => setShowSubmitConfirm(true)}
+                       disabled={loading}
+                       className={styles.btnSuccess}
+                     >
+                       <CheckCircle size={16} />
+                       {loading ? 'Submitting...' : 'Submit to Manager'}
+                     </button>
+                   </div>
+                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ONLINE TAB */}
+          {tab === 'online' && !showAudit && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardHeaderTitle}><Package size={18} color="#2563EB" /> Pending Online Orders</h2>
+                <button onClick={loadPendingOrders} disabled={loadingPendingOrders} className={styles.btnSecondary}>
+                  {loadingPendingOrders ? 'Refreshing...' : '🔄 Refresh'}
+                </button>
+              </div>
+              <div className={styles.cardBody}>
+                {loadingPendingOrders ? (
+                  <div className={styles.loadingCenter}><SegmentedSpinner size={24} /> Loading online orders...</div>
+                ) : pendingOrders.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <span className={styles.emptyEmoji}>📭</span>
+                    <h3 className={styles.emptyTitle}>No pending orders</h3>
+                    <p className={styles.emptyText}>All online customer orders have been processed.</p>
+                  </div>
+                ) : (
+                  <div className={styles.ordersGrid}>
+                    {pendingOrders.map(order => (
+                      <div key={order.id} className={styles.orderCard}>
+                        <div className={styles.orderCardTop}>
+                          <span className={styles.orderCode}>{order.sale_code || `ORD-${order.id}`}</span>
+                          <span className={styles.badgeOnline}>ONLINE</span>
+                        </div>
+                        <div className={styles.orderCustomer}>
+                          👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
+                          {order.customer_phone && <span className={styles.orderPhone}>· {order.customer_phone}</span>}
+                        </div>
+                        {order.prescription_ref && (
+                          <div className={styles.orderRx}>📋 Rx: {order.prescription_ref}</div>
+                        )}
+                        <div className={styles.orderItems}>
+                          {(order.items || []).map(item => (
+                            <div key={item.id || item.drug_id} className={styles.orderItemRow}>
+                              <span>💊 {item.drug_name} × {item.quantity}</span>
+                              <span className={styles.orderItemAmt}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className={styles.orderFooter}>
+                          <div>
+                            <div className={styles.orderDate}>{new Date(order.created_at).toLocaleString()}</div>
+                            <div className={styles.orderTotal}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                          </div>
+                          <button onClick={() => processOnlineOrder(order)} className={styles.processBtn}>
+                            Process Payment →
+                          </button>
                         </div>
                       </div>
-                    );
-                  })
-                }
-              </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>🛍️ Cart & Checkout</h2>
-                 <button onClick={() => { setShowCart(false); if (posStep === 4) { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); } }} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                   ← Back to Products
-                 </button>
-               </div>
-
-               {/* ── Online Order Banner ── */}
-               {activeOnlineOrder && (
-                 <div style={{
-                   background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                   borderRadius: 14,
-                   padding: '18px 24px',
-                   display: 'flex',
-                   alignItems: 'center',
-                   justifyContent: 'space-between',
-                   gap: 20,
-                   boxShadow: '0 8px 24px rgba(5,150,105,0.25)',
-                   border: '1px solid rgba(52,211,153,0.3)',
-                 }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                     <div style={{
-                       width: 48, height: 48, borderRadius: 12,
-                       background: 'linear-gradient(135deg, #059669, #10b981)',
-                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                       fontSize: 22, flexShrink: 0
-                     }}>📦</div>
-                     <div>
-                       <div style={{ fontSize: 11, color: '#6ee7b7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-                         🌐 Online Order — Auto-Filled
-                       </div>
-                       <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>
-                         {activeOnlineOrder.sale_code || `Order #${activeOnlineOrder.id}`}
-                       </div>
-                       <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
-                         👤 {activeOnlineOrder.customer_name || 'Guest'} &nbsp;·&nbsp; 📱 {activeOnlineOrder.customer_phone || '—'}
-                       </div>
-                     </div>
-                   </div>
-                   <div style={{ textAlign: 'right' }}>
-                     <div style={{ fontSize: 11, color: '#6ee7b7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Total</div>
-                     <div style={{ fontSize: 24, fontWeight: 900, color: '#34d399' }}>
-                       {parseFloat(activeOnlineOrder.total_amount || 0).toFixed(2)} ETB
-                     </div>
-                     <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>All fields pre-filled ✓</div>
-                   </div>
-                 </div>
-               )}
-
-               {posStep === 1 || posStep === 2 || posStep === 3 ? (
-                 <>
-                   {/* Items List */}
-                   <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-                     <div style={{ padding: '16px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#1e293b' }}>Cart Items ({posCart.length})</div>
-                     <div style={{ padding: '0 20px', maxHeight: '400px', overflowY: 'auto' }}>
-                       {posCart.length === 0 ? (
-                         <div style={{ padding: '40px 0', textAlign: 'center', color: '#94a3b8' }}>Cart is empty</div>
-                       ) : (
-                         posCart.map(item => (
-                           <div key={item.id} style={{ padding: '16px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                             <div>
-                               <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>{item.name}</div>
-                               <div style={{ fontSize: 12, color: '#64748b' }}>{item.price} ETB each</div>
-                             </div>
-                             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 4 }}>
-                                 <button onClick={() => updateQty(item.id, item.qty - 1)} style={{ border: 'none', background: 'white', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}><Minus size={14}/></button>
-                                 <span style={{ fontWeight: 700, width: 30, textAlign: 'center' }}>{item.qty}</span>
-                                 <button onClick={() => updateQty(item.id, item.qty + 1)} style={{ border: 'none', background: 'white', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}><Plus size={14}/></button>
-                               </div>
-                               <div style={{ fontWeight: 800, color: '#059669', width: 90, textAlign: 'right', fontSize: 15 }}>{(item.price * item.qty).toFixed(2)} ETB</div>
-                               <button onClick={() => setPosCart(posCart.filter(c => c.id !== item.id))} style={{ background: '#FEE2E2', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 8, borderRadius: 8 }}><Trash2 size={16}/></button>
-                             </div>
-                           </div>
-                         ))
-                       )}
-                     </div>
-                     {posCart.length > 0 && (
-                       <div style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                         <button onClick={() => setPosCart([])} style={{ background: 'none', border: '1px solid #fecaca', color: '#b91c1c', padding: '8px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><X size={16}/> Clear Cart</button>
-                         <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Total: <span style={{ color: '#059669' }}>{posCartTotal.toFixed(2)} ETB</span></div>
-                       </div>
-                     )}
-                   </div>
-
-                   {posCart.length > 0 && (
-                     <>
-
-
-                       {/* Payment Method */}
-                       <div style={{ marginBottom: 20 }}>
-                         <label style={labelStyle}>Payment Method *</label>
-                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                           {PAYMENT_METHODS.map(pm => (
-                             <label key={pm.value} style={{
-                               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px',
-                               border: `2px solid ${posPaymentMethod === pm.value ? '#059669' : '#E2E8F0'}`,
-                               borderRadius: 8, cursor: 'pointer', background: posPaymentMethod === pm.value ? '#ECFDF5' : 'white',
-                               fontWeight: 600, fontSize: 13, color: posPaymentMethod === pm.value ? '#065F46' : '#475569',
-                             }}>
-                               <input type="radio" name="posPaymentMethod" value={pm.value} checked={posPaymentMethod === pm.value}
-                                 onChange={() => setPosPaymentMethod(pm.value)} style={{ display: 'none' }} />
-                               {pm.icon} {pm.label}
-                             </label>
-                           ))}
-                         </div>
-                       </div>
-
-                       {/* Payment Detail Fields — CASH */}
-                       {posPaymentMethod === 'CASH' && (
-                         <div style={{ marginBottom: 20, background: '#FFFBEB', borderRadius: 8, padding: 16, border: '1px solid #FDE68A' }}>
-                           <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
-                             <DollarSign size={16} color="#D97706" /> Cash Payment
-                           </h3>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                             <div>
-                               <label style={labelStyle}>Amount Received *</label>
-                               <input type="number" step="0.01" min="0" value={paymentAmount}
-                                 onChange={e => setPaymentAmount(e.target.value)} style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Recipient Full Name *</label>
-                               <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
-                                 placeholder="Who received cash" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Recipient Phone</label>
-                               <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                 placeholder="Phone" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Branch *</label>
-                               <select value={branchId} onChange={e => setBranchId(e.target.value)} style={inputStyle()}>
-                                 <option value="">— Select branch —</option>
-                                 {branches.map(b => (
-                                   <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                 ))}
-                               </select>
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Worker Name *</label>
-                               {autoFilledWorker ? (
-                                 <div>
-                                   <input type="text" value={workerName} readOnly
-                                     style={{ ...inputStyle(), background: '#f0fdf4', border: '1.5px solid #4ade80', color: '#166534', fontWeight: 600 }} />
-                                   <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
-                                 </div>
-                               ) : (
-                                 <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                   placeholder="Select a branch to auto-fill" style={inputStyle()} />
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                       )}
-
-                       {/* Payment Detail Fields — BANK TRANSFER */}
-                       {posPaymentMethod === 'BANK_TRANSFER' && (
-                         <div style={{ marginBottom: 20, background: '#EFF6FF', borderRadius: 8, padding: 16, border: '1px solid #BFDBFE' }}>
-                           <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#1E40AF', display: 'flex', alignItems: 'center', gap: 6 }}>
-                             <CreditCard size={16} color="#2563EB" /> Bank Transfer Payment
-                           </h3>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                             <div>
-                               <label style={labelStyle}>Amount Received *</label>
-                               <input type="number" step="0.01" min="0" value={paymentAmount}
-                                 onChange={e => setPaymentAmount(e.target.value)} style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Finance Account (Auto-fill)</label>
-                               <select style={inputStyle()} onChange={(e) => {
-                                 const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                 if (acc) {
-                                   setBankName(acc.bank_provider || '');
-                                   setAccountHolder(acc.account_name || '');
-                                   setAccountNumber(acc.account_number || '');
-                                 }
-                               }}>
-                                 <option value="">— Select Account —</option>
-                                 {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
-                                   <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider}) - {a.account_number}</option>
-                                 ))}
-                               </select>
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Bank Name *</label>
-                               <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
-                                 placeholder="e.g. CBE" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Account Holder *</label>
-                               <input type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)}
-                                 placeholder="Full name on account" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Account Number *</label>
-                               <input type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)}
-                                 placeholder="Account number" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Phone</label>
-                               <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                 placeholder="Phone" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Branch *</label>
-                               <select value={branchId} onChange={e => setBranchId(e.target.value)} style={inputStyle()}>
-                                 <option value="">— Select branch —</option>
-                                 {branches.map(b => (
-                                   <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                 ))}
-                               </select>
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Worker Name *</label>
-                               {autoFilledWorker ? (
-                                 <div>
-                                   <input type="text" value={workerName} readOnly
-                                     style={{ ...inputStyle(), background: '#f0fdf4', border: '1.5px solid #4ade80', color: '#166534', fontWeight: 600 }} />
-                                   <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
-                                 </div>
-                               ) : (
-                                 <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                   placeholder="Select a branch to auto-fill" style={inputStyle()} />
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                       )}
-
-                       {/* Payment Detail Fields — TELBIR */}
-                       {posPaymentMethod === 'TELBIR' && (
-                         <div style={{ marginBottom: 20, background: '#F5F3FF', borderRadius: 8, padding: 16, border: '1px solid #DDD6FE' }}>
-                           <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#6D28D9', display: 'flex', alignItems: 'center', gap: 6 }}>
-                             <Smartphone size={16} color="#7C3AED" /> Telbir Payment
-                           </h3>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                             <div>
-                               <label style={labelStyle}>Amount Received *</label>
-                               <input type="number" step="0.01" min="0" value={paymentAmount}
-                                 onChange={e => setPaymentAmount(e.target.value)} style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Telebirr Account (Auto-fill)</label>
-                               <select style={inputStyle()} onChange={(e) => {
-                                 const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                 if (acc) {
-                                   setTelbirNumber(acc.account_number || '');
-                                   setPayerName(acc.account_name || '');
-                                 }
-                               }}>
-                                 <option value="">— Select Telebirr —</option>
-                                 {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
-                                   <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
-                                 ))}
-                               </select>
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Telbir Number *</label>
-                               <input type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)}
-                                 placeholder="Telbir number" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Full Name *</label>
-                               <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
-                                 placeholder="Sender full name" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Phone</label>
-                               <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                 placeholder="Phone" style={inputStyle()} />
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Branch *</label>
-                               <select value={branchId} onChange={e => setBranchId(e.target.value)} style={inputStyle()}>
-                                 <option value="">— Select branch —</option>
-                                 {branches.map(b => (
-                                   <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                 ))}
-                               </select>
-                             </div>
-                             <div>
-                               <label style={labelStyle}>Worker Name *</label>
-                               {autoFilledWorker ? (
-                                 <div>
-                                   <input type="text" value={workerName} readOnly
-                                     style={{ ...inputStyle(), background: '#f0fdf4', border: '1.5px solid #4ade80', color: '#166534', fontWeight: 600 }} />
-                                   <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
-                                 </div>
-                               ) : (
-                                 <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                   placeholder="Select a branch to auto-fill" style={inputStyle()} />
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                       )}
-
-                       {/* Payment Status Buttons A14 */}
-                       <div style={{ marginBottom: 20 }}>
-                         <label style={labelStyle}>Payment Status (A14) *</label>
-                         <div style={{ display: 'flex', gap: 12 }}>
-                           <button type="button" onClick={() => setPaymentStatus('PAID')}
-                             style={{
-                               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                               padding: '14px 24px', borderRadius: 8, border: `2px solid ${paymentStatus === 'PAID' ? '#059669' : '#E2E8F0'}`,
-                               background: paymentStatus === 'PAID' ? '#D1FAE5' : 'white',
-                               color: paymentStatus === 'PAID' ? '#065F46' : '#475569',
-                               fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                               boxShadow: paymentStatus === 'PAID' ? '0 2px 8px rgba(5,150,105,0.2)' : 'none',
-                             }}>
-                             <CheckCircle size={20} /> PAID
-                           </button>
-                           <button type="button" onClick={() => setPaymentStatus('CASHOUT')}
-                             style={{
-                               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                               padding: '14px 24px', borderRadius: 8, border: `2px solid ${paymentStatus === 'CASHOUT' ? '#D97706' : '#E2E8F0'}`,
-                               background: paymentStatus === 'CASHOUT' ? '#FEF3C7' : 'white',
-                               color: paymentStatus === 'CASHOUT' ? '#92400E' : '#475569',
-                               fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                               boxShadow: paymentStatus === 'CASHOUT' ? '0 2px 8px rgba(217,119,6,0.2)' : 'none',
-                             }}>
-                             <Banknote size={20} /> CASHOUT
-                           </button>
-                         </div>
-                       </div>
-
-                       {/* Submit */}
-                       <button type="button" disabled={loading || !posPaymentMethod || !paymentStatus}
-                         onClick={handleProcessPayment}
-                         style={{
-                           width: '100%', padding: '14px 24px', background: '#059669', color: 'white', border: 'none',
-                           borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
-                           opacity: loading || !posPaymentMethod || !paymentStatus ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                           boxShadow: '0 4px 12px rgba(5,150,105,0.3)',
-                         }}>
-                         <ShoppingCart size={18} /> {loading ? 'Processing...' : `Record Sale — ${posCartTotal > 0 ? posCartTotal.toFixed(2) : '0.00'} ETB`}
-                       </button>
-                     </>
-                   )}
-                 </>
-               ) : posStep === 4 ? (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
-                    <CheckCircle size={80} color='#10b981' style={{ marginBottom: 20 }} />
-                    <h3 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, color: '#0f172a' }}>Transaction Complete!</h3>
-                    {completedSale && (
-                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 24px', marginBottom: 20, width: '100%', maxWidth: 400 }}>
-                        <div style={{ fontWeight: 800, color: '#059669', fontSize: 16, marginBottom: 4 }}>Receipt: {completedSale.receipt_no}</div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Branch: <strong>{completedSale.branch}</strong></div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Cashier: <strong>{completedSale.worker}</strong></div>
-                        <div style={{ fontSize: 13, color: '#374151' }}>Customer: <strong>{completedSale.recipient_name}</strong></div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#059669', marginTop: 8 }}>Total: {completedSale.total.toFixed(2)} ETB</div>
-                      </div>
-                    )}
-                    <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>Inventory updated. CRV and Model 22 generated.</p>
-                    <div style={{ display: 'flex', gap: 16, marginBottom: 24, width: '100%', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
-                      <button type='button' onClick={printReceipt} style={{ flex: 1, padding: '14px 0', background: '#0284c7', color: 'white', border: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-                        <Printer size={18} /> Print Receipt
-                      </button>
-                      <button type='button' onClick={() => { setTab('list'); setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); }} style={{ flex: 1, padding: '14px 0', background: '#e2e8f0', color: '#1e293b', border: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-                        <List size={18} /> View Sales
-                      </button>
-                    </div>
-                    <button
-                      type='button'
-                      onClick={() => { setPosStep(1); setPosCart([]); setPosPaymentMethod(''); setShowCart(false); setCompletedSale(null); resetForm(); }}
-                      style={{ width: '100%', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto', padding: '14px 0', background: 'transparent', color: '#059669', border: '2px solid #059669', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontSize: 15 }}
-                    >Start New Transaction</button>
+                    ))}
                   </div>
-               ) : null}
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* AUDIT TRAIL TAB */}
+          {showAudit && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardHeaderTitle}><History size={18} color="#2563EB" /> Audit Trail</h2>
+                <button onClick={() => setShowAudit(false)} className={styles.btnSecondary}>
+                  Close Audit Trail
+                </button>
+              </div>
+              <div className={styles.cardBody}>
+                {auditTrail.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <span className={styles.emptyEmoji}>📭</span>
+                    <h3 className={styles.emptyTitle}>No pending audit logs</h3>
+                    <p className={styles.emptyText}>All audit logs have been submitted or none exist.</p>
+                  </div>
+                ) : (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.auditTable}>
+                      <thead>
+                        <tr>
+                          <th className={styles.th}>Date</th>
+                          <th className={styles.th}>Action</th>
+                          <th className={styles.th}>Details</th>
+                          <th className={styles.th} style={{ textAlign: 'right' }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditTrail.map((log) => (
+                          <tr key={log.id} className={styles.tr}>
+                            <td className={styles.td}>{new Date(log.created_at).toLocaleString()}</td>
+                            <td className={styles.td} style={{ fontWeight: 700, color: log.action === 'RETURN' ? '#DC2626' : '#16A34A' }}>
+                              {log.action}
+                            </td>
+                            <td className={styles.td}>{log.recipient}</td>
+                            <td className={styles.tdAmount} style={{ color: parseFloat(log.amount) < 0 ? '#DC2626' : '#16A34A' }}>
+                              {parseFloat(log.amount || 0).toFixed(2)} ETB
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* DETAIL TAB */}
+          {tab === 'detail' && detail && (
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardHeaderTitle}>
+                  <Eye size={18} color="#2563EB" /> Sale Detail
+                </h3>
+                <button onClick={() => setTab('list')} className={styles.btnSecondary}>
+                  Back to List
+                </button>
+              </div>
+              <div className={styles.cardBody}>
+                <div className={styles.detailGrid3}>
+                  <div className={styles.detailCell}>
+                    <div className={styles.detailCellLabel}>Sale #</div>
+                    <div className={styles.detailCellValue}>{detail.sale_no || detail.id}</div>
+                  </div>
+                  <div className={styles.detailCell}>
+                    <div className={styles.detailCellLabel}>Type</div>
+                    <div className={styles.detailCellValue}>{detail.sale_type || '—'}</div>
+                  </div>
+                  <div className={styles.detailCell}>
+                    <div className={styles.detailCellLabel}>Total Amount</div>
+                    <div className={styles.detailCellGreen}>
+                      {parseFloat(detail.payment?.amount || detail.total_amount || 0).toFixed(2)} ETB
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.detailGrid2}>
+                  <div className={styles.detailPanel}>
+                    <h4 className={styles.detailPanelTitle}>
+                      <User size={16} color="#2563EB" /> Recipient
+                    </h4>
+                    <div className={styles.detailRow}><strong>{detail.payment?.recipient_name || detail.recipient_name || '—'}</strong></div>
+                    <div className={styles.detailRowMuted}>{detail.payment?.recipient_phone || ''}</div>
+                  </div>
+                  <div className={styles.detailPanel}>
+                    <h4 className={styles.detailPanelTitle}>
+                      <DollarSign size={16} color="#2563EB" /> Payment
+                    </h4>
+                    <div className={styles.detailRow}>
+                      <strong>Method:</strong> {detail.payment?.method || '—'}
+                    </div>
+                    <div className={styles.detailRow}>
+                      <strong>Status:</strong>{' '}
+                      <span className={detail.payment?.status === 'PAID' ? styles.badgePaid : styles.badgeCashout}>
+                        {detail.payment?.status || '—'}
+                      </span>
+                    </div>
+                    <div className={styles.detailRowMuted}>
+                      {detail.payment?.bank_name && <div>Bank: {detail.payment.bank_name}</div>}
+                      {detail.payment?.account_holder && <div>Account: {detail.payment.account_holder}</div>}
+                      {detail.payment?.telbir_number && <div>Telbir: {detail.payment.telbir_number}</div>}
+                      {detail.payment?.branch_name && <div>Branch: {detail.payment.branch_name}</div>}
+                      {detail.payment?.worker_name && <div>Worker: {detail.payment.worker_name}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.mb20}>
+                  <h4 className={styles.detailPanelTitle}>Items</h4>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th className={styles.th} style={{ width: '50%' }}>Drug</th>
+                          <th className={styles.th} style={{ textAlign: 'center' }}>Qty</th>
+                          <th className={styles.th} style={{ textAlign: 'center' }}>Unit Price</th>
+                          <th className={styles.th} style={{ textAlign: 'right' }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(detail.items || [detail]).map((it, idx) => {
+                          const itemQty = parseFloat(it.quantity) || 0;
+                          const itemPrice = parseFloat(it.unit_price) || 0;
+                          const itemTotal = itemQty * itemPrice;
+                          return (
+                            <tr key={idx} className={styles.tr}>
+                              <td className={styles.td}>{it.drug_name}</td>
+                              <td className={styles.td} style={{ textAlign: 'center' }}>{itemQty}</td>
+                              <td className={styles.td} style={{ textAlign: 'center' }}>{itemPrice.toFixed(2)} ETB</td>
+                              <td className={styles.tdAmount}>{itemTotal.toFixed(2)} ETB</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* SALES LIST TAB */}
-      {tab === 'list' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-             <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: '0 0 24px' }}>📋 All Sales</h2>
-             {sales.length === 0 ? (
-               <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
-                  <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
-                  <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No sales recorded</h3>
-               </div>
-             ) : (
-               <div style={{ overflowX: 'auto' }}>
-                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden', minWidth: 600 }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                        <th style={thStyle}>Receipt No</th>
-                        <th style={thStyle}>Date</th>
-                        <th style={thStyle}>Type</th>
-                        <th style={thStyle}>Branch</th>
-                        <th style={thStyle}>Worker</th>
-                        <th style={thStyle}>Payment</th>
-                        <th style={thStyle}>Total Amount</th>
-                        <th style={thStyle}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sales.map(sale => {
-                        // Fallback: resolve branch and worker names from local state if join didn't return them
-                        const resolvedBranch = sale.branch_name ||
-                          branches.find(b => String(b.id) === String(sale.branch_id))?.name ||
-                          (sale.branch_id ? `Branch #${sale.branch_id}` : '—');
-                        const resolvedWorker = sale.worker_name ||
-                          workers.find(w => String(w.id) === String(sale.worker_id))?.name ||
-                          (sale.worker_id ? `Worker #${sale.worker_id}` : '—');
-                        return (
-                        <tr key={sale.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                           <td style={tdStyle}><strong style={{ color: '#2563eb', fontFamily: 'monospace' }}>{sale.receipt_no || sale.sale_no || `REC-${sale.id}`}</strong></td>
-                           <td style={tdStyle}>{new Date(sale.created_at).toLocaleString()}</td>
-                           <td style={tdStyle}>
-                             <span style={{
-                               background: sale.sale_type === 'ONLINE' ? 'rgba(124,58,237,0.1)' : 'rgba(5,150,105,0.1)',
-                               color: sale.sale_type === 'ONLINE' ? '#7c3aed' : '#065f46',
-                               padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 800
-                             }}>{sale.sale_type === 'ONLINE' ? '🌐 ONLINE' : '🛒 WALK-IN'}</span>
-                           </td>
-                           <td style={tdStyle}>
-                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                               <span style={{ background: '#dbeafe', color: '#1d4ed8', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{resolvedBranch}</span>
-                             </span>
-                           </td>
-                           <td style={tdStyle}>
-                             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                               <span style={{ background: '#fef9c3', color: '#854d0e', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>{resolvedWorker}</span>
-                             </span>
-                           </td>
-                           <td style={tdStyle}>
-                             <span style={{
-                               background: '#F1F5F9', color: '#475569', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600
-                             }}>{sale.payment_method || 'CASH'}</span>
-                           </td>
-                           <td style={{ ...tdStyle, fontWeight: 700, color: '#059669' }}>{parseFloat(sale.total_amount || 0).toFixed(2)} ETB</td>
-                           <td style={tdStyle}>
-                             <button onClick={() => viewSaleDetail(sale)} style={{ padding: '6px 14px', background: '#e0e7ff', color: '#4338ca', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>View</button>
-                           </td>
-                        </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: 800 }}>
-                      <tr>
-                        <td colSpan="6" style={{ ...tdStyle, textAlign: 'right', fontSize: 14 }}>TOTAL TRANSACTIONS: {sales.length}</td>
-                        <td colSpan="2" style={{ ...tdStyle, fontSize: 15, color: '#059669' }}>
-                          {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
-                        </td>
-                      </tr>
-                    </tfoot>
-                 </table>
-               </div>
-             )}
-
-             {sales.length > 0 && (
-               <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                 <div style={{ fontSize: 13, color: '#64748b' }}>
-                    <strong style={{ color: '#0f172a' }}>{sales.length}</strong> transactions · <strong style={{ color: '#059669' }}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
-                 </div>
-                 <button 
-                   onClick={() => setShowSubmitConfirm(true)}
-                   disabled={loading}
-                   style={{
-                     padding: '12px 24px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                     color: 'white', border: 'none', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer',
-                     fontWeight: 800, fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 8,
-                     boxShadow: '0 4px 12px rgba(5,150,105,0.3)', opacity: loading ? 0.7 : 1
-                   }}
-                 >
-                   <CheckCircle size={18} />
-                   {loading ? 'Submitting...' : 'Submit to Manager'}
-                 </button>
-               </div>
-             )}
-          </div>
-        </div>
-      )}
-
-      {/* ONLINE TAB */}
-      {tab === 'online' && !showAudit && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>📦 Pending Online Orders</h2>
-              <button onClick={loadPendingOrders} disabled={loadingPendingOrders} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
-                {loadingPendingOrders ? 'Refreshing...' : '🔄 Refresh'}
-              </button>
-            </div>
-            
-            {loadingPendingOrders ? (
-              <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px 0' }}>Loading online orders...</p>
-            ) : pendingOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
-                <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
-                <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No pending orders</h3>
-                <p style={{ fontSize: 13 }}>All online customer orders have been processed.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
-                {pendingOrders.map(order => (
-                  <div key={order.id} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontWeight: 800, color: '#2563eb', fontSize: 15, fontFamily: 'monospace' }}>{order.sale_code || `ORD-${order.id}`}</span>
-                      <span style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>ONLINE</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
-                      👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
-                      {order.customer_phone && <span style={{ color: '#6b7280', marginLeft: 6 }}>· {order.customer_phone}</span>}
-                    </div>
-                    {order.prescription_ref && (
-                      <div style={{ fontSize: 12, color: '#7c3aed', marginBottom: 8 }}>📋 Rx: {order.prescription_ref}</div>
-                    )}
-                    <div style={{ marginBottom: 12, background: 'white', padding: '8px 12px', borderRadius: 8, border: '1px solid #f1f5f9' }}>
-                      {(order.items || []).map(item => (
-                        <div key={item.id || item.drug_id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569', padding: '3px 0' }}>
-                          <span>💊 {item.drug_name} × {item.quantity}</span>
-                          <span style={{ fontWeight: 600 }}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
-                        <div style={{ fontWeight: 800, fontSize: 17, color: '#059669', marginTop: 2 }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
-                      </div>
-                      <button 
-                        onClick={() => processOnlineOrder(order)} 
-                        style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(5,150,105,0.2)' }}
-                      >
-                        Process Payment →
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* AUDIT TRAIL TAB */}
-      {showAudit && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '24px 28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>📜 Audit Trail</h2>
-              <button onClick={() => setShowAudit(false)} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                Close Audit Trail
-              </button>
-            </div>
-            
-            {auditTrail.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
-                <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
-                <h3 style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>No pending audit logs</h3>
-                <p style={{ fontSize: 13 }}>All audit logs have been submitted or none exist.</p>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden', minWidth: 600 }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Action</th>
-                      <th style={thStyle}>Details</th>
-                      <th style={thStyle}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditTrail.map((log) => (
-                      <tr key={log.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.2s' }}>
-                        <td style={tdStyle}>{new Date(log.created_at).toLocaleString()}</td>
-                        <td style={{ ...tdStyle, fontWeight: 700, color: log.action === 'RETURN' ? '#e11d48' : '#059669' }}>
-                          {log.action}
-                        </td>
-                        <td style={tdStyle}>{log.recipient}</td>
-                        <td style={{ ...tdStyle, fontWeight: 700, color: parseFloat(log.amount) < 0 ? '#e11d48' : '#1E293B' }}>
-                          {parseFloat(log.amount || 0).toFixed(2)} ETB
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* DETAIL TAB */}
-      {tab === 'detail' && detail && (
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Eye size={16} color="#059669" /> Sale Detail
-            </h3>
-            <button onClick={() => setTab('list')}
-              style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #E2E8F0', background: 'white', color: '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              Back to List
-            </button>
-          </div>
-          <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-              <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Sale #</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>{detail.sale_no || detail.id}</div>
-              </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Type</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>{detail.sale_type || '—'}</div>
-              </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>Total Amount</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#059669' }}>
-                  {parseFloat(detail.payment?.amount || detail.total_amount || 0).toFixed(2)} ETB
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, border: '1px solid #E2E8F0' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <User size={14} color="#059669" /> Recipient
-                </h4>
-                <div style={{ fontSize: 13, marginBottom: 4 }}><strong>{detail.payment?.recipient_name || detail.recipient_name || '—'}</strong></div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>{detail.payment?.recipient_phone || ''}</div>
-              </div>
-              <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, border: '1px solid #E2E8F0' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <DollarSign size={14} color="#059669" /> Payment
-                </h4>
-                <div style={{ fontSize: 13, marginBottom: 4 }}>
-                  <strong>Method:</strong> {detail.payment?.method || '—'}
-                </div>
-                <div style={{ fontSize: 13, marginBottom: 4 }}>
-                  <strong>Status:</strong>{' '}
-                  <span style={{
-                    background: detail.payment?.status === 'PAID' ? '#D1FAE5' : '#FEF3C7',
-                    color: detail.payment?.status === 'PAID' ? '#065F46' : '#92400E',
-                    padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                  }}>{detail.payment?.status || '—'}</span>
-                </div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>
-                  {detail.payment?.bank_name && <div>Bank: {detail.payment.bank_name}</div>}
-                  {detail.payment?.account_holder && <div>Account: {detail.payment.account_holder}</div>}
-                  {detail.payment?.telbir_number && <div>Telbir: {detail.payment.telbir_number}</div>}
-                  {detail.payment?.branch_name && <div>Branch: {detail.payment.branch_name}</div>}
-                  {detail.payment?.worker_name && <div>Worker: {detail.payment.worker_name}</div>}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 20 }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#1E293B' }}>Items</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th style={{ ...thStyle, width: '50%' }}>Drug</th>
-                    <th style={{ ...thStyle, textAlign: 'center' }}>Qty</th>
-                    <th style={{ ...thStyle, textAlign: 'center' }}>Unit Price</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(detail.items || [detail]).map((it, idx) => {
-                    const itemQty = parseFloat(it.quantity) || 0;
-                    const itemPrice = parseFloat(it.unit_price) || 0;
-                    const itemTotal = itemQty * itemPrice;
-                    return (
-                      <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={tdStyle}>{it.drug_name}</td>
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{itemQty}</td>
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>{itemPrice.toFixed(2)} ETB</td>
-                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>{itemTotal.toFixed(2)} ETB</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
-    </div>
 
       {/* Submit to Manager Confirmation Modal */}
       {showSubmitConfirm && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'white', padding: 36, borderRadius: 16, maxWidth: 460, width: '90%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.15)' }}>
-            <div style={{ width: 64, height: 64, background: 'rgba(16,185,129,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <CheckCircle size={32} color="#059669" />
+        <div className={styles.overlay}>
+          <div className={styles.modal}>
+            <div className={styles.modalIcon}>
+              <CheckCircle size={32} color="#16A34A" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Submit Daily Sales?</h3>
-            <p style={{ color: '#475569', marginBottom: 8, fontSize: 15 }}>
-              You are about to submit <strong style={{ color: '#0f172a' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
+            <h3 className={styles.modalTitle}>Submit Daily Sales?</h3>
+            <p className={styles.modalBody}>
+              You are about to submit <strong style={{ color: '#111827' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
             </p>
-            <p style={{ fontSize: 24, fontWeight: 800, color: '#059669', marginBottom: 8 }}>
+            <p className={styles.modalAmount}>
               {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
             </p>
-            <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 28 }}>
+            <p className={styles.modalNote}>
               This will be recorded in the audit log and sent to the Pharmacy Manager. The sales list will be cleared after submission.
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className={styles.modalBtns}>
               <button
                 onClick={() => setShowSubmitConfirm(false)}
                 disabled={loading}
-                style={{ flex: 1, padding: '12px 0', background: 'white', color: '#475569', border: '1.5px solid #e2e8f0', borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                className={styles.btnSecondary}
+                style={{ flex: 1, height: '44px' }}
               >
                 Cancel
               </button>
@@ -1679,7 +1420,8 @@ export default function PharmacySalesForm() {
                   }
                 }}
                 disabled={loading}
-                style={{ flex: 1, padding: '12px 0', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                className={styles.btnSuccess}
+                style={{ flex: 1, height: '44px' }}
               >
                 <CheckCircle size={18} />
                 {loading ? 'Submitting...' : 'Yes, Submit'}
@@ -1691,15 +1433,3 @@ export default function PharmacySalesForm() {
     </>
   );
 }
-
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-const inputStyle = () => ({ width: '100%', padding: '9px 12px', border: '1.5px solid #E2E8F0', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' });
-const thStyle = { padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#475569', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const tdStyle = { padding: '12px 14px', color: '#1E293B' };
-const tabBtn = (active) => ({
-  background: active ? '#059669' : 'white',
-  color: active ? 'white' : '#475569',
-  border: active ? 'none' : '1px solid #E2E8F0',
-  borderRadius: 8, padding: '8px 14px', cursor: 'pointer',
-  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 600 : 400,
-});
