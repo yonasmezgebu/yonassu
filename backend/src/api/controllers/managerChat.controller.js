@@ -27,7 +27,8 @@ exports.getManagerUsers = catchAsync(async (req, res) => {
       'users.full_name as name', 
       'roles.name as role', 
       'users.profile_photo as avatar',
-      'users.phone'
+      'users.phone',
+      'users.last_seen_at'
     );
 
   // Group by unique user id, pick the manager role (the one in ALLOWED_ROLES)
@@ -40,12 +41,12 @@ exports.getManagerUsers = catchAsync(async (req, res) => {
       uniqueUsers.push({
         id: u.id,
         name: u.name,
-        role: ALLOWED_SET.has(u.role) ? u.role : u.role, // already filtered by whereIn
+        role: ALLOWED_SET.has(u.role) ? u.role : u.role,
         avatar: u.avatar ? (u.avatar.startsWith('http') ? u.avatar : `http://localhost:5000/${u.avatar}`) : null,
-        phone: u.phone
+        phone: u.phone,
+        last_seen_at: u.last_seen_at || null
       });
     } else {
-      // If we already have this user but a better (manager) role comes, update it
       const existing = uniqueUsers.find(x => x.id === u.id);
       if (existing && ALLOWED_SET.has(u.role)) {
         existing.role = u.role;
@@ -54,6 +55,35 @@ exports.getManagerUsers = catchAsync(async (req, res) => {
   }
 
   res.json({ status: 'success', data: uniqueUsers });
+});
+
+// PATCH /manager-chat/heartbeat — update current user's last_seen_at
+exports.heartbeat = catchAsync(async (req, res) => {
+  const me = req.user.id;
+  await db('users').where({ id: me }).update({ last_seen_at: db.fn.now() });
+  res.json({ status: 'success' });
+});
+
+// GET /manager-chat/online-status — get last_seen_at for all relevant users
+exports.getOnlineStatus = catchAsync(async (req, res) => {
+  const me = req.user.id;
+  const rows = await db('users')
+    .join('user_roles', 'users.id', 'user_roles.user_id')
+    .join('roles', 'user_roles.role_id', 'roles.id')
+    .whereIn('roles.name', ALLOWED_ROLES)
+    .whereNull('users.deleted_at')
+    .where('users.chat_enabled', true)
+    .select('users.id', 'users.last_seen_at');
+  
+  const result = {};
+  const seen = new Set();
+  for (const r of rows) {
+    if (!seen.has(r.id)) {
+      seen.add(r.id);
+      result[r.id] = r.last_seen_at || null;
+    }
+  }
+  res.json({ status: 'success', data: result });
 });
 
 // GET /manager-chat/conversation/:partnerId — get all messages with partner
