@@ -19,9 +19,9 @@ exports.createLog = catchAsync(async (req, res) => {
   // but we expose an endpoint for the frontend to log specific UI actions if needed.
   const auditData = {
     userId: req.user.id,
-    userName: req.user.full_name,
-    role: req.user.role_names || 'Employee',
-    department: req.user.department_name || 'General',
+    userName: req.user.fullName,
+    role: Array.isArray(req.user.roles) ? req.user.roles.join(', ') : 'Employee',
+    department: req.user.departmentName || 'General',
     module: req.body.module,
     action: req.body.action,
     recordIdentifier: req.body.recordIdentifier,
