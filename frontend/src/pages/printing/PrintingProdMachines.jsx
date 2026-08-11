@@ -8,31 +8,11 @@ import {
   Plus,
   Monitor,
   Hash,
-  FileText,
-  Settings,
-  Archive,
-  RefreshCw
+  RefreshCw,
+  Printer
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
-
-// Green Nature University Palette
-const G = { 
-  forest: '#228B22',
-  dark: '#1B5E20',
-  emerald: '#2E8B57',
-  leaf: '#4CAF50',
-  sage: '#A5D6A7',
-  olive: '#6B8E23',
-  mint: '#98FF98',
-  lime: '#8BC34A',
-  brown: '#8D6E63',
-  sky: '#87CEEB',
-  white: '#FFFFFF',
-  lightGray: '#F5F5F5',
-  darkGray: '#424242',
-  orange: '#FF9800',
-  red: '#F44336' 
-};
+import styles from './PrintingProdMachines.module.css';
 
 const BASE = '/api/v1/printing-assets';
 const api = axios.create();
@@ -42,6 +22,26 @@ api.interceptors.request.use(cfg => {
   return cfg;
 });
 
+// Status → semantic badge
+const STATUS_BADGE = {
+  'In Store': 'badgeInfo',
+  'Moved to Production': 'badgeInfo',
+  'Active/Functional': 'badgeSuccess',
+  'Idle in Production': 'badgeWarning',
+  'Returned to Store': 'badgeSuccess',
+  'Under Maintenance': 'badgeDanger'
+};
+
+// Status → print document color
+const STATUS_COLOR = {
+  'In Store': '#0284C7',
+  'Moved to Production': '#0284C7',
+  'Active/Functional': '#16A34A',
+  'Idle in Production': '#D97706',
+  'Returned to Store': '#059669',
+  'Under Maintenance': '#DC2626'
+};
+
 // Toast System
 const Toast = ({ type, message, onClose }) => {
   useEffect(() => {
@@ -49,59 +49,33 @@ const Toast = ({ type, message, onClose }) => {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bg = type === 'error' ? G.red : type === 'warning' ? G.orange : G.leaf;
+  const isError = type === 'error';
+  const isWarning = type === 'warning';
+  const Icon = isError || isWarning ? AlertTriangle : CheckCircle;
+  const color = isError ? '#DC2626' : isWarning ? '#D97706' : '#16A34A';
+  const tone = isError ? styles.toastError : isWarning ? styles.toastWarning : styles.toastSuccess;
+
   return (
-    <div style={{
-      position: 'fixed', bottom: 24, right: 24, background: bg, color: '#fff',
-      padding: '16px 24px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12,
-      boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 9999, animation: 'slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-    }}>
-      {type === 'error' ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
-      <span style={{ fontWeight: 600, fontSize: 14 }}>{message}</span>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4, marginLeft: 8 }}><X size={16} /></button>
+    <div className={`${styles.toast} ${tone}`}>
+      <span className={styles.toastIcon}><Icon size={20} color={color} /></span>
+      <span className={styles.toastMsg}>{message}</span>
+      <button className={styles.toastClose} onClick={onClose} aria-label="Dismiss"><X size={16} /></button>
     </div>
   );
 };
 
-// 3D Button Component
-const Btn3D = ({ children, onClick, color = G.emerald, icon: Icon, disabled }) => (
+// Flat primary button with yellow scatter sweep
+const Btn3D = ({ children, onClick, icon: Icon, disabled, className = '', type }) => (
   <button 
     onClick={onClick}
     disabled={disabled}
-    style={{
-      background: `linear-gradient(145deg, ${color}, ${color}dd)`,
-      color: '#fff',
-      border: 'none',
-      borderRadius: 8,
-      padding: '12px 20px',
-      fontWeight: 800,
-      fontSize: 14,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
-      boxShadow: `4px 4px 0 ${G.dark}`,
-      transition: 'all 0.1s',
-      opacity: disabled ? 0.6 : 1,
-      transform: 'translate(0, 0)'
-    }}
-    onMouseDown={e => !disabled && (e.currentTarget.style.transform = 'translate(4px, 4px)', e.currentTarget.style.boxShadow = '0 0 0 transparent')}
-    onMouseUp={e => !disabled && (e.currentTarget.style.transform = 'translate(0, 0)', e.currentTarget.style.boxShadow = `4px 4px 0 ${G.dark}`)}
-    onMouseLeave={e => !disabled && (e.currentTarget.style.transform = 'translate(0, 0)', e.currentTarget.style.boxShadow = `4px 4px 0 ${G.dark}`)}
+    type={type}
+    className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSweep} ${className}`}
   >
     {Icon && <Icon size={18} />}
     {children}
   </button>
 );
-
-const STATUS_COLORS = {
-  'In Store': G.olive,
-  'Moved to Production': G.emerald,
-  'Active/Functional': G.leaf,
-  'Idle in Production': G.orange,
-  'Returned to Store': G.sage,
-  'Under Maintenance': G.brown
-};
 
 const PrintingProdMachines = () => {
   const [machines, setMachines] = useState([]);
@@ -161,100 +135,178 @@ const PrintingProdMachines = () => {
     }
   };
 
-  return (
-    <div style={{ background: G.lightGray, minHeight: '100vh', fontFamily: "'Inter', sans-serif", width: '100%', padding: '0 0 40px 0' }}>
-      
-      {/* GLOBAL STYLES FOR ANIMATIONS */}
-      <style>{`
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        .spin-icon { animation: spin 1s linear infinite; }
-      `}</style>
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank', 'width=980,height=740');
+    if (!printWindow) {
+      showMsg('warning', 'Popup blocked. Please allow popups to print.');
+      return;
+    }
 
-      {/* FULL WIDTH HEADER STRIP */}
-      <div style={{ background: `linear-gradient(90deg, ${G.dark}, ${G.forest})`, padding: '24px 40px', color: '#fff', boxShadow: `0 8px 30px ${G.dark}66`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
+    const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const money = (n) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    const statusColor = (s) => STATUS_COLOR[s] || '#111827';
+
+    const rows = machines.map((m, idx) => `
+      <tr>
+        <td class="no">${idx + 1}</td>
+        <td class="left">
+          <div class="mid">${esc(m.machine_id)}</div>
+          <div class="name">${esc(m.machine_name)}</div>
+        </td>
+        <td>${esc(m.model_serial || '—')}</td>
+        <td class="notes">${esc(m.condition_notes || '—')}</td>
+        <td><span class="status" style="color:${statusColor(m.status)}">${esc(m.status)}</span></td>
+        <td class="right">${parseFloat(m.internal_value) > 0 ? 'ETB ' + money(parseFloat(m.internal_value)) : 'Pending'}</td>
+      </tr>
+    `).join('');
+
+    const bodyRows = machines.length
+      ? rows + `<tr class="grand"><td colspan="5">Grand Total</td><td class="right">ETB ${money(totalValue)}</td></tr>`
+      : `<tr><td colspan="6" class="notes" style="text-align:center;padding:24px;color:#6B7280">No machines registered yet.</td></tr>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Machine Asset Registry</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #111827; margin: 0; padding: 24px; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #2563EB; color: #fff; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; }
+  thead th.right { text-align: right; }
+  tbody td { border: 1px solid #E5E7EB; padding: 10px 12px; font-size: 13px; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #F9FAFB; }
+  .no { width: 42px; text-align: center; color: #6B7280; font-variant-numeric: tabular-nums; }
+  .right { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mid { font-size: 11px; font-weight: 600; color: #2563EB; text-transform: uppercase; letter-spacing: 0.04em; }
+  .name { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .notes { max-width: 220px; color: #4B5563; }
+  .status { font-weight: 600; }
+  .grand td { background: #EFF6FF !important; border-top: 2px solid #2563EB; font-weight: 700; }
+  @media print {
+    body { padding: 0; }
+    thead { display: table-header-group; }
+  }
+</style>
+</head>
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>Machine ID & Name</th>
+        <th>Model / Serial</th>
+        <th>Condition Notes</th>
+        <th>Status</th>
+        <th class="right">Value</th>
+      </tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 350);
+  };
+
+  const totalCount = machines.length;
+  const totalValue = machines.reduce((sum, m) => sum + (parseFloat(m.internal_value) || 0), 0);
+
+  return (
+    <div className={styles.page}>
+      {/* PAGE HEADER */}
+      <header className={styles.pageHeader}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Monitor size={32} color={G.mint} /> Printing Machine Asset Registry
+          <h1 className={styles.pageTitle}>
+            <Monitor size={26} className={styles.pageTitleIcon} /> Printing Machine Asset Registry
           </h1>
-          <p style={{ margin: '6px 0 0 44px', opacity: 0.9, fontSize: 15 }}>
+          <p className={styles.pageSubtitle}>
             Register new production machines. Value appraisal is managed exclusively by Finance.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <Btn3D color={G.emerald} icon={Plus} onClick={() => setShowModal(true)}>Register New Machine</Btn3D>
-          <button onClick={load} disabled={loading} style={{ background: G.white+'33', border: 'none', color: '#fff', borderRadius: 8, padding: '12px', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center' }} title="Refresh">
-            <SegmentedSpinner size={20} />
+        <div className={styles.headerActions}>
+          <Btn3D icon={Plus} className={styles.btnLg} onClick={() => setShowModal(true)}>Register New Machine</Btn3D>
+          <button onClick={handlePrint} className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSweep}`} title="Print registry">
+            <Printer size={16} /> Print
+          </button>
+          <button onClick={load} disabled={loading} className={styles.iconBtn} title="Refresh" aria-label="Refresh">
+            {loading ? <SegmentedSpinner size={20} /> : <RefreshCw size={18} />}
           </button>
         </div>
-      </div>
+      </header>
 
       {/* REGISTRY CONTENT */}
-      <div style={{ padding: '40px' }}>
-        {loading && machines.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 80, color: G.forest, fontWeight: 800, fontSize: 20 }}>Loading Assets...</div>
-        ) : machines.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 40px', background: '#fff', borderRadius: 16, border: `2px dashed ${G.sage}` }}>
-            <Monitor size={64} color={G.sage} style={{ marginBottom: 20 }} />
-            <div style={{ fontSize: 24, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-              No Machines Registered
-            </div>
-            <p style={{ color: G.olive, fontSize: 15 }}>Click "Register New Machine" to add your first asset.</p>
-          </div>
-        ) : (
-          <div style={{ background: '#fff', border: `4px solid ${G.dark}`, boxShadow: `8px 8px 0 ${G.dark}`, width: '100%', overflowX: 'auto', animation: 'fadeIn 0.4s ease-out' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 1000 }}>
+      {loading && machines.length === 0 ? (
+        <div className={styles.loadingState}>
+          <SegmentedSpinner size={56} label="Loading machines..." />
+        </div>
+      ) : machines.length === 0 ? (
+        <div className={styles.emptyState}>
+          <Monitor size={64} className={styles.emptyIcon} />
+          <div className={styles.emptyTitle}>No Machines Registered</div>
+          <p className={styles.emptyText}>Click "Register New Machine" to add your first asset.</p>
+        </div>
+      ) : (
+        <div className={styles.tableCard}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ background: G.dark, color: '#fff' }}>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}` }}>Machine ID & Name</th>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}` }}>Model / Serial</th>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}` }}>Condition Notes</th>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}` }}>Status</th>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}` }}>Finance Val.</th>
-                  <th style={{ padding: '16px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13, borderBottom: `4px solid ${G.forest}`, textAlign: 'right' }}>Quick Actions</th>
+                <tr>
+                  <th className={styles.colNo}>No.</th>
+                  <th>Machine ID & Name</th>
+                  <th>Model / Serial</th>
+                  <th>Condition Notes</th>
+                  <th>Status</th>
+                  <th>Finance Val.</th>
+                  <th className={styles.thRight}>Quick Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {machines.map((m, idx) => (
-                  <tr key={m.id} style={{ borderBottom: `2px solid ${G.lightGray}`, background: idx % 2 === 0 ? '#fff' : '#fcfcfc', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = G.mint+'22'} onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#fff' : '#fcfcfc'}>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top' }}>
-                      <div style={{ fontSize: 12, fontWeight: 900, color: G.emerald, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Hash size={12} /> {m.machine_id}
-                      </div>
-                      <div style={{ fontSize: 16, fontWeight: 900, color: G.darkGray, marginTop: 4 }}>{m.machine_name}</div>
+                  <tr key={m.id}>
+                    <td className={styles.colNo}>{idx + 1}</td>
+                    <td>
+                      <div className={styles.machineId}><Hash size={12} /> {m.machine_id}</div>
+                      <div className={styles.machineName}>{m.machine_name}</div>
                     </td>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top', color: G.dark, fontSize: 14, fontWeight: 600 }}>
-                      {m.model_serial || '—'}
-                    </td>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top', color: G.darkGray, fontSize: 13, maxWidth: 250 }}>
-                      {m.condition_notes || '—'}
-                    </td>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top' }}>
-                      <span style={{ 
-                        background: STATUS_COLORS[m.status] || G.sage, color: '#fff', padding: '4px 10px', borderRadius: 4, 
-                        fontSize: 11, fontWeight: 800, boxShadow: '2px 2px 0 rgba(0,0,0,0.15)', display: 'inline-block' 
-                      }}>
+                    <td className={styles.cellModel}>{m.model_serial || '—'}</td>
+                    <td className={styles.cellNotes}>{m.condition_notes || '—'}</td>
+                    <td>
+                      <span className={`${styles.badge} ${styles[STATUS_BADGE[m.status] || 'badgeNeutral']}`}>
                         {m.status}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top' }}>
+                    <td>
                       {parseFloat(m.internal_value) > 0 ? (
-                        <div style={{ fontWeight: 900, color: G.forest, fontSize: 15 }}>
+                        <div className={styles.valueText}>
                           ETB {parseFloat(m.internal_value).toLocaleString()}
                         </div>
                       ) : (
-                        <div style={{ background: G.sage, color: G.dark, padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800, display: 'inline-block' }}>
-                          Pending Appraisal
-                        </div>
+                        <span className={`${styles.badge} ${styles.badgeWarning}`}>Pending Appraisal</span>
                       )}
                     </td>
-                    <td style={{ padding: '16px 20px', verticalAlign: 'top', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {m.status !== 'Active/Functional' && <button onClick={() => updateStatus(m.id, 'Active/Functional')} style={{ background: '#fff', border: `2px solid ${G.leaf}`, color: G.leaf, padding: '4px 8px', borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: 'pointer', boxShadow: `2px 2px 0 ${G.leaf}` }}>Set Active</button>}
-                        {m.status !== 'Idle in Production' && <button onClick={() => updateStatus(m.id, 'Idle in Production')} style={{ background: '#fff', border: `2px solid ${G.orange}`, color: G.orange, padding: '4px 8px', borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: 'pointer', boxShadow: `2px 2px 0 ${G.orange}` }}>Set Idle</button>}
-                        {m.status !== 'Under Maintenance' && <button onClick={() => updateStatus(m.id, 'Under Maintenance')} style={{ background: '#fff', border: `2px solid ${G.brown}`, color: G.brown, padding: '4px 8px', borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: 'pointer', boxShadow: `2px 2px 0 ${G.brown}` }}>Maint.</button>}
-                        {m.status !== 'Returned to Store' && <button onClick={() => updateStatus(m.id, 'Returned to Store')} style={{ background: '#fff', border: `2px solid ${G.dark}`, color: G.dark, padding: '4px 8px', borderRadius: 4, fontWeight: 800, fontSize: 11, cursor: 'pointer', boxShadow: `2px 2px 0 ${G.dark}` }}>Return</button>}
+                    <td>
+                      <div className={styles.rowActions}>
+                        {m.status !== 'Active/Functional' && (
+                          <button onClick={() => updateStatus(m.id, 'Active/Functional')} className={`${styles.actionBtn} ${styles.actActive} ${styles.btnSweep}`}>Set Active</button>
+                        )}
+                        {m.status !== 'Idle in Production' && (
+                          <button onClick={() => updateStatus(m.id, 'Idle in Production')} className={`${styles.actionBtn} ${styles.actIdle} ${styles.btnSweep}`}>Set Idle</button>
+                        )}
+                        {m.status !== 'Under Maintenance' && (
+                          <button onClick={() => updateStatus(m.id, 'Under Maintenance')} className={`${styles.actionBtn} ${styles.actMaint} ${styles.btnSweep}`}>Maint.</button>
+                        )}
+                        {m.status !== 'Returned to Store' && (
+                          <button onClick={() => updateStatus(m.id, 'Returned to Store')} className={`${styles.actionBtn} ${styles.actReturn} ${styles.btnSweep}`}>Return</button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -262,55 +314,69 @@ const PrintingProdMachines = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+          <div className={styles.tableFooter}>
+            <div className={styles.footerStat}>
+              <span className={styles.footerLabel}>Total Machines</span>
+              <span className={styles.footerValue}>{totalCount}</span>
+            </div>
+            <div className={styles.footerStat}>
+              <span className={styles.footerLabel}>Grand Total Value</span>
+              <span className={`${styles.footerValue} ${styles.footerValueMoney}`}>
+                ETB {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* REGISTRATION MODAL */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)', padding: 20 }}>
-          <div style={{ background: '#fff', width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', border: `4px solid ${G.dark}`, boxShadow: `10px 10px 0 ${G.dark}`, animation: 'fadeIn 0.2s ease-out' }}>
-            <div style={{ background: G.dark, color: '#fff', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Register Production Machine</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={24} /></button>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Register Production Machine</h2>
+              <button onClick={() => setShowModal(false)} className={styles.closeBtn} aria-label="Close"><X size={20} /></button>
             </div>
-            <form onSubmit={handleRegister} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              <div style={{ background: G.mint+'44', borderLeft: `4px solid ${G.emerald}`, padding: 16, fontSize: 13, color: G.dark, fontWeight: 600, display: 'flex', gap: 12 }}>
-                <Info size={24} style={{ flexShrink: 0 }} />
+            <form onSubmit={handleRegister} className={styles.modalBody}>
+              <div className={styles.infoNote}>
+                <Info size={20} className={styles.infoNoteIcon} />
                 <span>Asset valuation and price entry are restricted. Finance will appraise and set the value once registered.</span>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: G.darkGray, marginBottom: 8 }}>MACHINE NAME *</label>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="pm-machine-name">Machine Name *</label>
                 <input 
+                  id="pm-machine-name"
                   autoFocus required
                   value={formData.machine_name} onChange={e => setFormData({...formData, machine_name: e.target.value})}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: 0, border: `2px solid ${G.sage}`, fontSize: 15, outline: 'none', fontFamily: 'inherit' }}
+                  className={styles.formInput}
                   placeholder="e.g. Heidelberg Speedmaster 52"
                 />
               </div>
               
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: G.darkGray, marginBottom: 8 }}>MODEL & SERIAL NUMBER</label>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="pm-model-serial">Model & Serial Number</label>
                 <input 
+                  id="pm-model-serial"
                   value={formData.model_serial} onChange={e => setFormData({...formData, model_serial: e.target.value})}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: 0, border: `2px solid ${G.sage}`, fontSize: 15, outline: 'none', fontFamily: 'inherit' }}
+                  className={styles.formInput}
                   placeholder="e.g. SM52-2 / SN-9827364"
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: G.darkGray, marginBottom: 8 }}>CONDITION / NOTES</label>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="pm-notes">Condition / Notes</label>
                 <textarea 
+                  id="pm-notes"
                   value={formData.condition_notes} onChange={e => setFormData({...formData, condition_notes: e.target.value})}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: 0, border: `2px solid ${G.sage}`, fontSize: 15, outline: 'none', fontFamily: 'inherit', minHeight: 100, resize: 'vertical' }}
+                  className={`${styles.formInput} ${styles.formTextarea}`}
                   placeholder="Enter current condition or any remarks..."
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10 }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ background: '#fff', color: G.dark, border: `2px solid ${G.dark}`, padding: '12px 24px', fontWeight: 800, cursor: 'pointer' }}>CANCEL</button>
-                <Btn3D color={G.forest}>SUBMIT TO REGISTRY</Btn3D>
+              <div className={styles.modalFooter}>
+                <button type="button" onClick={() => setShowModal(false)} className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSweep}`}>Cancel</button>
+                <Btn3D>Submit to Registry</Btn3D>
               </div>
             </form>
           </div>
