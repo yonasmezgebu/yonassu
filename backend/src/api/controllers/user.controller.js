@@ -165,7 +165,7 @@ exports.createUser = catchAsync(async (req, res) => {
     to: phone,
     message: `Welcome ${fullName} to Sutana EMS! You can now login using your email: ${email}.`
   }).catch(err => console.error('Failed to send SMS:', err.message));
-  await audit('USER_CREATED', result, {
+  await audit('USER_CREATED', adminId, {
     ip,
     details: { fullName, email, phone, departmentId, roleIds }
   });
@@ -232,7 +232,7 @@ exports.updateUser = catchAsync(async (req, res) => {
       }
     }
   });
-  await audit('USER_UPDATED', id, {
+  await audit('USER_UPDATED', adminId, {
     ip,
     details: { updates: Object.keys(updateData), roleChanged: !!roleIds }
   });
@@ -269,7 +269,7 @@ exports.deleteUser = catchAsync(async (req, res) => {
       deleted_at: db.fn.now(),
       updated_at: db.fn.now()
     });
-  await audit('USER_DELETED', id, { ip, details: { deletedBy: adminId } });
+  await audit('USER_DELETED', adminId, { ip, details: { deletedBy: adminId } });
   res.json({
     status: 'success',
     message: 'User deleted successfully'
@@ -296,7 +296,7 @@ exports.restoreUser = catchAsync(async (req, res) => {
       deleted_at: null,
       updated_at: db.fn.now()
     });
-  await audit('USER_RESTORED', id, { ip, details: { restoredBy: adminId } });
+  await audit('USER_RESTORED', adminId, { ip, details: { restoredBy: adminId } });
   res.json({
     status: 'success',
     message: 'User restored successfully'
@@ -328,7 +328,7 @@ exports.forcePasswordReset = catchAsync(async (req, res) => {
         updated_at: db.fn.now()
       });
   });
-  await audit('FORCE_PASSWORD_RESET', id, { ip, details: { resetBy: adminId } });
+  await audit('FORCE_PASSWORD_RESET', adminId, { ip, details: { resetBy: adminId } });
   res.json({
     status: 'success',
     message: 'Password reset successfully.'
@@ -427,7 +427,7 @@ exports.assignRoles = catchAsync(async (req, res) => {
   }
 
   // 10. Audit trail
-  await audit('ROLE_ASSIGNED', id, {
+  await audit('ROLE_ASSIGNED', adminId, {
     ip,
     details: {
       roleName: roleRecord.name,
@@ -465,7 +465,7 @@ exports.removeRole = catchAsync(async (req, res) => {
     .where('user_id', id)
     .where('role_id', roleId)
     .delete();
-  await audit('ROLE_REMOVED', id, { ip, details: { roleId, removedBy: adminId } });
+  await audit('ROLE_REMOVED', adminId, { ip, details: { roleId, removedBy: adminId } });
   res.json({
     status: 'success',
     message: 'Role removed successfully'
@@ -594,7 +594,7 @@ exports.promoteToEmployee = catchAsync(async (req, res) => {
     }
   });
 
-  await audit('USER_PROMOTED_TO_EMPLOYEE', id, {
+  await audit('USER_PROMOTED_TO_EMPLOYEE', adminId, {
     ip,
     details: { promotedBy: adminId, promoterRoles: assignerRoles }
   });
@@ -631,7 +631,7 @@ exports.revokeRole = catchAsync(async (req, res) => {
 
   await db('user_roles').where({ user_id: id, role_id: roleId }).delete();
 
-  await audit('ROLE_REVOKED', id, {
+  await audit('ROLE_REVOKED', adminId, {
     ip,
     details: { roleName: roleRecord.name, roleId, revokedBy: adminId }
   });
@@ -692,7 +692,7 @@ exports.createCustomRole = catchAsync(async (req, res) => {
       assigned_by: adminId,
       assigned_at: db.fn.now()
     });
-    await audit('CUSTOM_ROLE_ASSIGNED', assignToUserId, {
+    await audit('CUSTOM_ROLE_ASSIGNED', adminId, {
       ip,
       details: { roleName: name, newRoleId, branchId: branchId || null, assignedBy: adminId }
     });
