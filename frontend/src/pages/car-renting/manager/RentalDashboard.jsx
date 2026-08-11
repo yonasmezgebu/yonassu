@@ -165,7 +165,7 @@ const RentalDashboard = () => {
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
   return (
-    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div className="rd-page" style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <DecorPlants />
 
       {/* ── HEADER ── */}
