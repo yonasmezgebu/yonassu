@@ -79,11 +79,13 @@ const ensureCentralTable = async () => {
 
 /* Short in-memory dedup: the global audit middleware and controllers that
    already call `audit()` can both fire for the same request. Collapse
-   identical (user, module, recordIdentifier, ip) writes within 3s. */
+   identical (user, module, action, recordIdentifier, ip) writes within 3s —
+   the action is part of the key so two different actions on the same record
+   (e.g. order created then immediately status-updated) are never collapsed. */
 const recentCentralWrites = new Map();
 const CENTRAL_DEDUP_MS = 3000;
 const dedupKey = (userId, action, details) =>
-  `${userId || ''}|${mapModule(action, details)}|${pickIdentifier(details) || ''}|${details.ip || ''}`;
+  `${userId || ''}|${mapModule(action, details)}|${String(action || '')}|${pickIdentifier(details) || ''}|${details.ip || ''}`;
 
 const captureLegacy = async (action, userId, details = {}) => {
   try {
