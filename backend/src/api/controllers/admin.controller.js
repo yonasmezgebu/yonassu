@@ -705,7 +705,7 @@ exports.getAdminTiers = catchAsync(async (req, res) => {
 });
 exports.assignAdminTier = catchAsync(async (req, res) => {
   const { userId, tier } = req.body;
-  await audit('ADMIN_TIER_ASSIGNED', userId, { ip: req.ip, details: { tier, assignedBy: req.user.id } });
+  await audit('ADMIN_TIER_ASSIGNED', req.user.id, { ip: req.ip, details: { tier, assignedBy: req.user.id } });
   const data = await adminService.assignAdminTier(userId, tier);
   res.json({ status: 'success', data });
 });
