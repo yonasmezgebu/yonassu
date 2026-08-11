@@ -4,6 +4,7 @@ import apiClient from '../../services/apiClient';
 import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import { Plus, List, AlertCircle, Clock, CheckCircle, X, Truck } from 'lucide-react';
+import './PharmacyTransferRequests.css';
 
 const URGENCY_COLORS = { LOW: '#6B7280', MEDIUM: '#F59E0B', HIGH: '#EF4444' };
 const STATUS_BADGES = {
@@ -61,7 +62,7 @@ const PharmacyTransferRequests = () => {
   };
 
   return (
-    <div style={{ padding: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
+    <div className="ptr-root" style={{ padding: '1.5rem', fontFamily: 'Inter, sans-serif' }}>
       <ToastContainer />
       <div style={{ display: 'flex', gap: 10, marginBottom: '1.5rem' }}>
         <button onClick={() => setTab('list')} style={{
