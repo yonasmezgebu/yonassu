@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CheckSquare, AlertTriangle, Send, Check } from 'lucide-react';
 import { printingState, approvePrepress, updateJobStage } from '../../utils/printingTransactionService';
 import { playSound } from '../../utils/printingSound';
+import { StageStyles } from './printingStageStyles';
+import StageNav from './StageNav';
 
 const PrintingPrepress = () => {
   const [jobs, setJobs] = useState([]);
@@ -11,7 +13,7 @@ const PrintingPrepress = () => {
   const refreshJobs = () => {
     const prepressJobs = printingState.jobs.filter(j => j.status === 'Prepress');
     setJobs([...prepressJobs]);
-    
+
     // Initialize checklists if not present
     const initChecks = { ...checklists };
     prepressJobs.forEach(j => {
@@ -58,38 +60,40 @@ const PrintingPrepress = () => {
   };
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a' }}>
-          <CheckSquare color="#f59e0b" size={28} /> FILE CHECK / PREPRESS
+    <div className="stg-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
+      <StageStyles />
+      <StageNav current="prepress" />
+      <div className="stg-head">
+        <h1 className="stg-title">
+          <CheckSquare color="#D97706" /> FILE CHECK / PREPRESS
         </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Quality-check design files. All checks must pass before sending to print.</p>
+        <p className="stg-sub">Quality-check design files. All checks must pass before sending to print.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+      <div className="stg-card-grid">
         {jobs.map(j => {
           const checks = checklists[j.id] || {};
           const passed = isAllChecked(j.id);
           const file = j.files && j.files.length > 0 ? j.files[j.files.length - 1].name : 'No file attached';
 
           return (
-            <div key={j.id} style={{ background: 'white', borderRadius: 10, border: '1px solid #e2e8f0', padding: 20, display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 20 }}>
-              
+            <div key={j.id} className="stg-job-card">
+
               {/* Job Info */}
               <div>
-                <div style={{ fontSize: 18, fontWeight: 'bold', color: '#0f172a', marginBottom: 8 }}>{j.id}</div>
-                <div style={{ fontSize: 13, color: '#475569', marginBottom: 4 }}><strong>Customer:</strong> {j.customerName}</div>
-                <div style={{ fontSize: 13, color: '#475569', marginBottom: 4 }}><strong>Type:</strong> {j.jobType}</div>
-                <div style={{ fontSize: 13, color: '#475569', marginBottom: 12 }}><strong>File:</strong> <a href="#" style={{ color: '#3b82f6' }}>{file}</a></div>
-                <div style={{ display: 'inline-block', padding: '4px 10px', background: passed ? '#dcfce7' : '#fef3c7', color: passed ? '#16a34a' : '#d97706', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                <div className="stg-job-id">{j.id}</div>
+                <div className="stg-job-meta"><strong>Customer:</strong> {j.customerName}</div>
+                <div className="stg-job-meta"><strong>Type:</strong> {j.jobType}</div>
+                <div className="stg-job-file"><strong>File:</strong> <a href="#">{file}</a></div>
+                <span className="stg-pill" style={{ background: passed ? '#DCFCE7' : '#FEF3C7', color: passed ? '#16A34A' : '#D97706' }}>
                   {passed ? 'Ready for Print' : 'Pending Checklist'}
-                </div>
+                </span>
               </div>
 
               {/* Checklist */}
-              <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: 13, color: '#475569', textTransform: 'uppercase' }}>Mandatory Checklist</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="stg-checklist">
+                <h4 className="stg-check-title">Mandatory Checklist</h4>
+                <div className="stg-check-grid">
                   {[
                     { key: 'bleed', label: 'Bleed Checked' },
                     { key: 'res', label: 'Resolution Checked (300dpi+)' },
@@ -97,8 +101,8 @@ const PrintingPrepress = () => {
                     { key: 'fonts', label: 'Fonts Embedded/Outlined' },
                     { key: 'size', label: 'Final Size Correct' }
                   ].map(c => (
-                    <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', color: checks[c.key] ? '#16a34a' : '#475569', fontWeight: checks[c.key] ? 600 : 400 }}>
-                      <input type="checkbox" checked={checks[c.key] || false} onChange={() => toggleCheck(j.id, c.key)} style={{ accentColor: '#16a34a', width: 16, height: 16 }} />
+                    <label key={c.key} className={`stg-check-item${checks[c.key] ? ' stg-checked' : ''}`}>
+                      <input type="checkbox" checked={checks[c.key] || false} onChange={() => toggleCheck(j.id, c.key)} />
                       {c.label}
                     </label>
                   ))}
@@ -106,44 +110,45 @@ const PrintingPrepress = () => {
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <button 
+              <div className="stg-actions-col">
+                <button
                   onClick={() => handleApprove(j.id)}
                   disabled={!passed}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: passed ? '#16a34a' : '#e2e8f0', color: passed ? 'white' : '#94a3b8', border: 'none', borderRadius: 6, cursor: passed ? 'pointer' : 'not-allowed', fontWeight: 600 }}
+                  className="stg-btn stg-btn--success stg-btn--block"
                 >
                   <Check size={16} /> Approve File
                 </button>
-                <button 
+                <button
                   disabled={!passed}
                   onClick={() => { updateJobStage(j.id, 'Printing'); playSound('success'); refreshJobs(); }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: passed ? '#0891b2' : '#e2e8f0', color: passed ? 'white' : '#94a3b8', border: 'none', borderRadius: 6, cursor: passed ? 'pointer' : 'not-allowed', fontWeight: 600 }}
+                  className="stg-btn stg-btn--cyan stg-btn--block"
                 >
                   <Send size={16} /> Send to Print
                 </button>
 
-                <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '4px 0' }} />
-                
+                <hr className="stg-divider" />
+
                 <div>
-                  <input 
-                    placeholder="Notes for Designer..." 
-                    value={fixNotes[j.id] || ''} 
-                    onChange={(e) => setFixNotes(p => ({...p, [j.id]: e.target.value}))} 
-                    style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, marginBottom: 8, boxSizing: 'border-box' }} 
+                  <input
+                    placeholder="Notes for Designer..."
+                    value={fixNotes[j.id] || ''}
+                    onChange={(e) => setFixNotes(p => ({...p, [j.id]: e.target.value}))}
+                    className="stg-textarea"
+                    style={{ marginBottom: 8 }}
                   />
-                  <button 
+                  <button
                     onClick={() => handleRequestFix(j.id)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}
+                    className="stg-btn stg-btn--soft-red stg-btn--block"
                   >
                     <AlertTriangle size={14} /> Request Fix
                   </button>
                 </div>
               </div>
-              
+
             </div>
           );
         })}
-        {jobs.length === 0 && <div style={{ padding: 40, background: 'white', borderRadius: 8, textAlign: 'center', color: '#94a3b8', border: '1px solid #e2e8f0' }}>No jobs currently in Prepress.</div>}
+        {jobs.length === 0 && <div className="stg-empty stg-empty--card">No jobs currently in Prepress.</div>}
       </div>
     </div>
   );
