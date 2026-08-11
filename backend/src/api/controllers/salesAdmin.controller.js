@@ -32,7 +32,8 @@ exports.createPriceList = catchAsync(async (req, res) => {
   if (items && items.length) {
     await db('price_list_items').insert(items.map(i => ({ price_list_id: id, ...i })));
   }
-  log(req, 'Price List Created', id, null, { name, effective_from, effective_to, priority });
+  const list = await db('price_lists').where('id', id).first();
+  log(req, 'Price List Created', `Price List #${id} — ${list ? list.name : name}`, null, { ...list, items_count: items ? items.length : 0 });
   res.status(201).json({ status: 'success', data: { id } });
 });
 
@@ -41,7 +42,8 @@ exports.updatePriceListItem = catchAsync(async (req, res) => {
   const { unit_price, min_quantity } = req.body;
   const before = await db('price_list_items').where('id', id).first();
   await db('price_list_items').where('id', id).update({ unit_price, min_quantity });
-  log(req, 'Price List Item Updated', id, before ? { unit_price: before.unit_price, min_quantity: before.min_quantity } : null, { unit_price, min_quantity });
+  const after = await db('price_list_items').where('id', id).first();
+  log(req, 'Price List Item Updated', `Price List Item #${id}`, before, after);
   res.json({ status: 'success' });
 });
 
@@ -55,7 +57,7 @@ exports.getPromotions = catchAsync(async (req, res) => {
 
 exports.createPromotion = catchAsync(async (req, res) => {
   const promo = await salesAdmin.createPromotion(req.body, req.user.id);
-  log(req, 'Promotion Created', promo.id, null, { name: promo.name });
+  log(req, 'Promotion Created', `Promotion #${promo.id} — ${promo.name}`, null, promo);
   res.status(201).json({ status: 'success', data: { promotion: promo } });
 });
 
@@ -64,7 +66,7 @@ exports.togglePromotion = catchAsync(async (req, res) => {
   const promo = await db('promotions').where('id', id).first();
   if (!promo) throw new AppError('Promotion not found', 404);
   await db('promotions').where('id', id).update({ is_active: !promo.is_active });
-  log(req, 'Promotion Toggled', id, { is_active: promo.is_active }, { is_active: !promo.is_active });
+  log(req, 'Promotion Toggled', `Promotion #${id} — ${promo.name}`, promo, { ...promo, is_active: !promo.is_active });
   res.json({ status: 'success' });
 });
 
@@ -114,14 +116,15 @@ exports.getLeads = catchAsync(async (req, res) => {
 
 exports.createLead = catchAsync(async (req, res) => {
   const lead = await salesAdmin.createLead({ ...req.body, assigned_to: req.body.assigned_to || req.user.id });
-  log(req, 'Lead Created', lead.id, null, { name: lead.name });
+  log(req, 'Lead Created', `Lead #${lead.id} — ${lead.name}`, null, lead);
   res.status(201).json({ status: 'success', data: { lead } });
 });
 
 exports.convertLead = catchAsync(async (req, res) => {
   const { leadId } = req.params;
+  const lead = await db('leads').where('id', leadId).first();
   const customer = await salesAdmin.convertLeadToCustomer(leadId);
-  log(req, 'Lead Converted to Customer', leadId, null, { customerId: customer.id });
+  log(req, 'Lead Converted to Customer', `Lead #${leadId} — ${lead ? lead.name : ''}`, lead, customer);
   res.json({ status: 'success', data: { customer } });
 });
 
@@ -136,7 +139,7 @@ exports.getOpportunities = catchAsync(async (req, res) => {
 
 exports.createOpportunity = catchAsync(async (req, res) => {
   const opp = await salesAdmin.createOpportunity({ ...req.body, assigned_to: req.body.assigned_to || req.user.id });
-  log(req, 'Opportunity Created', opp.id, null, { name: opp.name });
+  log(req, 'Opportunity Created', `Opportunity #${opp.id} — ${opp.name}`, null, opp);
   res.status(201).json({ status: 'success', data: { opportunity: opp } });
 });
 
@@ -147,7 +150,8 @@ exports.updateOpportunityStage = catchAsync(async (req, res) => {
   if (lost_reason) updateData.lost_reason = lost_reason;
   const before = await db('opportunities').where('id', id).first();
   await db('opportunities').where('id', id).update(updateData);
-  log(req, 'Opportunity Stage Changed', id, before ? { stage: before.stage } : null, { stage });
+  const after = await db('opportunities').where('id', id).first();
+  log(req, 'Opportunity Stage Changed', `Opportunity #${id} — ${before ? before.name : ''}`, before, after);
   res.json({ status: 'success' });
 });
 
@@ -162,13 +166,14 @@ exports.getQuotations = catchAsync(async (req, res) => {
 
 exports.createQuotation = catchAsync(async (req, res) => {
   const quote = await salesAdmin.createQuotation(req.body, req.user.id);
-  log(req, 'Quotation Created', quote.id, null, { number: quote.quote_number });
+  log(req, 'Quotation Created', `Quotation ${quote.quote_number}`, null, quote);
   res.status(201).json({ status: 'success', data: { quotation: quote } });
 });
 
 exports.updateQuotationStatus = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  const before = await db('quotations').where('id', id).first();
   if (status === 'sent') {
     await db('quotations').where('id', id).update({ status: 'sent', updated_at: db.fn.now() });
   } else if (status === 'accepted') {
@@ -176,7 +181,8 @@ exports.updateQuotationStatus = catchAsync(async (req, res) => {
   } else {
     await db('quotations').where('id', id).update({ status, updated_at: db.fn.now() });
   }
-  log(req, 'Quotation Status Changed', id, null, { status });
+  const after = await db('quotations').where('id', id).first();
+  log(req, 'Quotation Status Changed', `Quotation ${before ? before.quote_number : id}`, before, after);
   res.json({ status: 'success' });
 });
 
@@ -191,7 +197,7 @@ exports.getRMAReturns = catchAsync(async (req, res) => {
 
 exports.createRMAReturn = catchAsync(async (req, res) => {
   const rmaReturn = await salesAdmin.createRMAReturn(req.body, req.user.id);
-  log(req, 'RMA Return Created', rmaReturn.id, null, { number: rmaReturn.return_number });
+  log(req, 'RMA Return Created', `RMA ${rmaReturn.return_number}`, null, rmaReturn);
   res.status(201).json({ status: 'success', data: { return: rmaReturn } });
 });
 
@@ -206,7 +212,8 @@ exports.approveRMAReturn = catchAsync(async (req, res) => {
     rejection_reason: approved ? null : req.body.rejection_reason,
     updated_at: db.fn.now()
   });
-  log(req, 'RMA Return Approved', id, { status: rma.status }, { status: approved ? 'approved' : 'rejected' });
+  const after = await db('rma_returns').where('id', id).first();
+  log(req, 'RMA Return Approved', `RMA ${rma.return_number}`, rma, after);
   res.json({ status: 'success' });
 });
 
@@ -221,7 +228,7 @@ exports.getSalesTargets = catchAsync(async (req, res) => {
 
 exports.setSalesTarget = catchAsync(async (req, res) => {
   const target = await salesAdmin.setSalesTarget(req.body);
-  log(req, 'Sales Target Set', target.id, null, req.body);
+  log(req, 'Sales Target Set', `Sales Target #${target.id}`, null, target);
   res.status(201).json({ status: 'success', data: { target } });
 });
 
