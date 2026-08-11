@@ -39,7 +39,7 @@ const MODULE_MAP = [
   ['/store-sales-requests', 'Sales'],
   ['/hr-settings', 'HR'],
   ['/hr', 'HR'],
-  ['/store-inventory', 'Inventory'],
+  ['/store-inventory', 'Pharmacy Store'],
   ['/store', 'Store'],
   ['/finance', 'Finance'],
   ['/pharmacy', 'Pharmacy'],
