@@ -1,207 +1,560 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, Plus, X, Edit3, Trash2, MapPin, Phone, Clock,
-  User, Hash, CheckCircle, XCircle, Loader2, Save, RotateCcw,
-  ShieldCheck, Zap, AlertTriangle
+  User, Hash, CheckCircle, XCircle, Save, RotateCcw,
+  ShieldCheck, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-// ─── accent colour ──────────────────────────────────────────────────
-const C   = '#B9B979';            // primary accent
-const CD  = '#8f8f47';            // darker shade (shadow depth)
-const CL  = 'rgba(185,185,121,0.15)'; // light tint
+// ─── Branch-page scoped CSS (enterprise 24-rule system) ──────────────────────
+const BRANCH_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-const SHARED_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse    { 0%,100%{opacity:1;transform:scale(1)}     50%{opacity:.5;transform:scale(.9)} }
-  @keyframes spin     { to{transform:rotate(360deg)} }
-  @keyframes fadeIn   { to{opacity:1} }
-  @keyframes laserSweep { 0%{left:-150%} 100%{left:150%} }
+  /* ── Keyframes ── */
+  @keyframes pb-fadeUp  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pb-slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+  @keyframes pb-toastIn { from { opacity:0; transform:translateX(60px); } to { opacity:1; transform:translateX(0); } }
 
-  .b-card {
-    --hc:${C};
-    position:relative;overflow:hidden;background:white;border-radius:0;
-    box-shadow:0 2px 14px rgba(0,80,0,0.07);
-    transition:background-size .4s,box-shadow .4s;animation:fadeUp .5s ease both;
-    background-image:linear-gradient(to right,var(--hc),var(--hc)),
-                     linear-gradient(to bottom,var(--hc),var(--hc)),
-                     linear-gradient(to left,var(--hc),var(--hc)),
-                     linear-gradient(to top,var(--hc),var(--hc));
-    background-position:0 0,100% 0,100% 100%,0 100%;
-    background-repeat:no-repeat;
-    background-size:0% 4px,4px 0%,0% 4px,4px 0%;
+  /* ── Page root ── */
+  .pb-root {
+    font-family: 'Inter','Segoe UI','Roboto',-apple-system,sans-serif;
+    background: #F5F6FA;
+    min-height: calc(100vh - 60px);
+    padding: 10px;
+    box-sizing: border-box;
+    color: #111827;
   }
-  .b-card:hover{
-    box-shadow:0 8px 28px rgba(0,80,0,0.13),0 0 18px var(--hc);
-    background-size:100% 4px,4px 100%,100% 4px,4px 100%;
+  @media (max-width:1024px) { .pb-root { padding:6px; } }
+  @media (max-width:768px)  { .pb-root { padding:4px; } }
+
+  /* ── Inner content cap ── */
+  .pb-inner {
+    max-width: 1536px;
+    margin: 0 auto;
+    padding: 24px;
+    box-sizing: border-box;
   }
-  .b-card::before{
-    content:'';position:absolute;top:0;left:-150%;width:60%;height:100%;
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);
-    transform:skewX(-20deg);transition:none;pointer-events:none;z-index:1;
+  @media (max-width:1024px) { .pb-inner { padding:16px; } }
+  @media (max-width:768px)  { .pb-inner { padding:12px; } }
+
+  /* ── Header bar ── */
+  .pb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    animation: pb-fadeUp .3s ease;
+    flex-wrap: wrap;
   }
-  .b-card:hover::before{ animation:laserSweep 0.7s ease forwards; }
-
-  .btn-olive {
-    display:inline-flex;align-items:center;gap:8px;
-    padding:11px 22px;font-weight:900;font-size:14px;cursor:pointer;
-    letter-spacing:.08em;text-transform:uppercase;
-    background:linear-gradient(135deg,#fff,#f5f5dc);color:#3a3a00;
-    border:2px solid ${C};border-radius:14px;
-    box-shadow:0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1);
-    transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
+  .pb-header-left { display:flex; flex-direction:column; gap:4px; }
+  .pb-title {
+    font-size: 26px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .btn-olive:active:not(:disabled){ transform:translateY(5px);box-shadow:0 0 0 ${CD}; }
-  .btn-olive:hover:not(:disabled) { filter:brightness(1.05); }
-  .btn-olive:disabled             { filter:grayscale(.7) opacity(.7);cursor:not-allowed;transform:translateY(5px);box-shadow:0 0 0 ${CD}; }
-
-  .btn-olive-primary {
-    display:inline-flex;align-items:center;gap:10px;
-    padding:12px 28px;font-weight:900;font-size:15px;cursor:pointer;
-    letter-spacing:.12em;text-transform:uppercase;
-    background:linear-gradient(135deg,${C},${CD});color:white;
-    border:2px solid ${CD};border-radius:14px;
-    box-shadow:0 5px 0 #5c5c22,0 8px 15px rgba(92,92,34,.28),inset 0 2px 0 rgba(255,255,255,.2);
-    transition:all .1s;font-family:'Inter','Segoe UI',sans-serif;
+  .pb-subtitle {
+    font-size: 13px;
+    color: #6B7280;
+    margin: 0;
+    font-weight: 400;
   }
-  .btn-olive-primary:active:not(:disabled){ transform:translateY(5px);box-shadow:0 0 0 #5c5c22; }
-  .btn-olive-primary:hover:not(:disabled) { filter:brightness(1.08); }
-  .btn-olive-primary:disabled             { filter:grayscale(.8) opacity(.7);cursor:not-allowed;transform:translateY(5px);box-shadow:none; }
+  .pb-header-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
-  .b-row { border-bottom:1px solid rgba(185,185,121,.15);transition:background .2s,transform .2s; }
-  .b-row:hover { background:rgba(185,185,121,.08);transform:translateX(3px); }
-
-  .b-input {
-    width:100%;padding:12px 12px 12px 38px;border:2px solid #e9e9d0;border-radius:10px;
-    font-size:14px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;
-    transition:border-color .2s,box-shadow .2s;
+  /* ── Info/summary bar ── */
+  .pb-infobar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    animation: pb-fadeUp .35s ease;
   }
-  .b-input:focus { border-color:${C};box-shadow:0 0 0 3px ${CL}; }
-
-  .b-label { display:block;font-size:11px;font-weight:900;color:#6b6b3a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em; }
-
-  .b-badge-active   { padding:4px 12px;border-radius:99px;font-size:11px;font-weight:900;background:#f0f0d8;color:#5c5c22;display:inline-flex;align-items:center;gap:5px; }
-  .b-badge-inactive { padding:4px 12px;border-radius:99px;font-size:11px;font-weight:900;background:#f5f5f5;color:#888;display:inline-flex;align-items:center;gap:5px; }
-
-  .artistic-title {
-    font-size:2.8rem;font-weight:900;color:#2a2a00;letter-spacing:-.02em;
-    text-shadow:1px 1px 0 #fff,2px 2px 0 #fff,3px 3px 0 ${C},4px 4px 0 ${C},5px 5px 0 ${CD},6px 6px 0 ${CD},7px 7px 15px rgba(0,0,0,.2);
-    margin:0;display:flex;align-items:center;gap:12px;line-height:1.1;
+  .pb-infobar-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: #EFF6FF;
+    display: flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+    color: #2563EB;
   }
-  .artistic-subtitle {
-    font-size:.95rem;color:#8a8a50;font-weight:800;text-align:center;
-    text-transform:uppercase;letter-spacing:.15em;margin:0;
-    text-shadow:1px 1px 0 rgba(255,255,255,.9);
+  .pb-infobar-text h3 {
+    font-size: 14px; font-weight: 600; color: #111827; margin: 0 0 2px;
+  }
+  .pb-infobar-text p {
+    font-size: 13px; color: #6B7280; margin: 0; line-height: 1.5;
+  }
+
+  /* ── Form card ── */
+  .pb-form-card {
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 24px;
+    overflow: hidden;
+    animation: pb-fadeUp .3s ease;
+  }
+  .pb-form-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+  .pb-form-header svg { color: #2563EB; }
+  .pb-form-body { padding: 20px 24px; }
+
+  /* ── Form grid ── */
+  .pb-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width:768px) { .pb-form-grid { grid-template-columns: 1fr; } }
+  .pb-form-grid-full { grid-column: 1 / -1; }
+
+  /* ── Field label ── */
+  .pb-field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 6px;
+  }
+  .pb-field-label .req { color: #DC2626; margin-left: 2px; }
+
+  /* ── Input with icon ── */
+  .pb-field-wrap { position: relative; }
+  .pb-field-wrap svg {
+    position: absolute; left: 11px; top: 50%; transform:translateY(-50%);
+    color: #9CA3AF; pointer-events: none;
+  }
+  .pb-field-wrap textarea ~ svg,
+  .pb-field-wrap.pb-textarea-wrap svg { top: 12px; transform: none; }
+  .pb-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #111827;
+    background: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .pb-input:focus {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+  }
+  .pb-input::placeholder { color: #9CA3AF; }
+  textarea.pb-input {
+    height: auto;
+    padding: 8px 12px 8px 34px;
+    resize: vertical;
+    min-height: 64px;
+  }
+
+  /* ── Checkbox row ── */
+  .pb-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pb-checkbox-row input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: #2563EB;
+    cursor: pointer;
+  }
+  .pb-checkbox-label {
+    font-size: 14px; font-weight: 500; color: #111827;
+  }
+
+  /* ── Form actions ── */
+  .pb-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #E5E7EB;
+    flex-wrap: wrap;
+  }
+
+  /* ── Buttons (all variants) ── */
+  .pb-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+    white-space: nowrap;
+    border: 1px solid #E5E7EB;
+    background: #ffffff;
+    color: #111827;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .pb-btn:hover:not(:disabled) {
+    background: #FBBF24;
+    border-color: #F59E0B;
+    color: #111827;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(251,191,36,.25);
+  }
+  .pb-btn:active:not(:disabled) { transform: translateY(0); }
+  .pb-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Primary */
+  .pb-btn-primary {
+    background: #2563EB;
+    border-color: #2563EB;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(37,99,235,.25);
+  }
+  .pb-btn-primary:hover:not(:disabled) {
+    background: #FBBF24;
+    border-color: #F59E0B;
+    color: #111827;
+    box-shadow: 0 4px 12px rgba(251,191,36,.3);
+  }
+
+  /* Danger */
+  .pb-btn-danger {
+    background: transparent;
+    border-color: #DC2626;
+    color: #DC2626;
+  }
+  .pb-btn-danger:hover:not(:disabled) {
+    background: #FBBF24;
+    border-color: #F59E0B;
+    color: #111827;
+    box-shadow: 0 4px 8px rgba(251,191,36,.25);
+  }
+
+  /* Icon-only (32×32) */
+  .pb-btn-icon {
+    width: 32px; height: 32px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 8px;
+  }
+
+  /* ── Branch grid ── */
+  .pb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px,1fr));
+    gap: 16px;
+  }
+  @media (max-width:1024px) { .pb-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width:640px)  { .pb-grid { grid-template-columns: 1fr; } }
+
+  /* ── Branch card ── */
+  .pb-card {
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: box-shadow 150ms ease, transform 150ms ease;
+    animation: pb-fadeUp .35s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+  .pb-card::before {
+    content:'';
+    position:absolute;
+    top:0;left:0;right:0;
+    height:3px;
+    background:#2563EB;
+    opacity:0;
+    transition: opacity 150ms ease;
+  }
+  .pb-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-2px);
+  }
+  .pb-card:hover::before { opacity:1; }
+
+  /* ── Card header row ── */
+  .pb-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .pb-card-icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: #EFF6FF;
+    display: flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    color: #2563EB;
+  }
+  .pb-card-name {
+    font-size: 15px; font-weight: 600; color: #111827; margin: 0 0 3px;
+    line-height: 1.3;
+  }
+  .pb-card-code {
+    font-size: 12px; color: #6B7280; font-family: monospace; font-weight: 500;
+  }
+
+  /* ── Card meta list ── */
+  .pb-card-meta {
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 13px; color: #6B7280;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #F3F4F6;
+    flex: 1;
+  }
+  .pb-card-meta-row {
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .pb-card-meta-row svg { flex-shrink:0; margin-top:1px; color: #9CA3AF; }
+
+  /* ── Card action row ── */
+  .pb-card-actions {
+    display: flex; gap: 8px;
+    margin-top: 4px;
+  }
+
+  /* ── Badges ── */
+  .pb-badge {
+    display: inline-flex; align-items:center; gap:4px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .pb-badge-active   { background:#DCFCE7; color:#16A34A; }
+  .pb-badge-inactive { background:#F3F4F6; color:#6B7280; }
+
+  /* ── Loading / empty states ── */
+  .pb-state-center {
+    display: flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 80px 24px;
+    gap: 16px;
+    color: #6B7280;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+  }
+  .pb-state-center h3 { font-size:16px; font-weight:600; color:#111827; margin:0; }
+  .pb-state-center p  { font-size:14px; color:#6B7280; margin:0; }
+
+  /* ── Toast (fixed, top-right) ── */
+  .pb-toast {
+    position: fixed;
+    top: 80px; right: 20px;
+    z-index: 9999;
+    min-width: 280px; max-width: 380px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    display: flex; align-items:center; gap:12px;
+    font-size: 14px; font-weight: 500;
+    animation: pb-toastIn 250ms ease;
+  }
+  .pb-toast-success { border-left:4px solid #16A34A; color:#16A34A; }
+  .pb-toast-error   { border-left:4px solid #DC2626; color:#DC2626; }
+  .pb-toast-text    { color:#111827; font-weight:400; flex:1; }
+
+  /* ── Confirm modal ── */
+  .pb-overlay {
+    position:fixed; inset:0;
+    background: rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9998;
+    animation: pb-fadeUp .15s ease;
+  }
+  .pb-modal {
+    background:#ffffff;
+    border-radius:12px;
+    padding:32px 36px;
+    max-width:420px; width:100%;
+    box-shadow:0 20px 40px rgba(0,0,0,.15);
+    animation: pb-fadeUp .2s ease;
+    margin:16px;
+  }
+  .pb-modal h2 { font-size:18px; font-weight:600; color:#111827; margin:0 0 10px; }
+  .pb-modal p  { font-size:14px; color:#6B7280; line-height:1.6; margin:0 0 24px; }
+  .pb-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+
+  /* ── Count chip ── */
+  .pb-count-chip {
+    display:inline-flex; align-items:center;
+    padding:2px 10px;
+    background:#EFF6FF; color:#2563EB;
+    border-radius:9999px;
+    font-size:12px; font-weight:600;
+    margin-left:8px;
+  }
+
+  /* ── Responsive button wrapping ── */
+  @media (max-width:640px) {
+    .pb-card-actions { flex-wrap:wrap; }
+    .pb-card-actions .pb-btn { flex:1; justify-content:center; }
+    .pb-header-actions { width:100%; }
+    .pb-form-actions .pb-btn { flex:1; justify-content:center; }
   }
 `;
 
-// ─── Confirm delete modal ────────────────────────────────────────────
+// ─── Toast ───────────────────────────────────────────────────────────────────
+const Toast = ({ msg }) => {
+  if (!msg?.text) return null;
+  return (
+    <div className={`pb-toast pb-toast-${msg.type}`}>
+      {msg.type === 'success'
+        ? <CheckCircle size={18} />
+        : <XCircle size={18} />}
+      <span className="pb-toast-text">{msg.text}</span>
+    </div>
+  );
+};
+
+// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
 const ConfirmModal = ({ text, onConfirm, onCancel }) => (
-  <div style={{ position:'fixed',inset:0,background:'rgba(42,42,0,.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,animation:'fadeIn .2s ease' }}>
-    <div style={{ background:'white',padding:'32px 40px',borderRadius:24,boxShadow:'0 20px 40px rgba(0,0,0,.2)',maxWidth:420,animation:'fadeUp .3s ease' }}>
-      <AlertTriangle size={36} color={C} style={{ marginBottom:14 }} />
-      <h2 style={{ margin:'0 0 12px',fontSize:20,fontWeight:900,color:'#2a2a00' }}>Are you sure?</h2>
-      <p style={{ margin:'0 0 24px',fontSize:14,color:'#6b6b3a',lineHeight:1.6 }}>{text}</p>
-      <div style={{ display:'flex',gap:12,justifyContent:'flex-end' }}>
-        <button onClick={onCancel} style={{ padding:'10px 20px',borderRadius:12,border:'2px solid #e9e9d0',background:'transparent',color:'#888',fontWeight:800,cursor:'pointer' }}>Cancel</button>
-        <button onClick={onConfirm} style={{ padding:'10px 20px',borderRadius:12,border:'none',background:'#e11d48',color:'white',fontWeight:800,cursor:'pointer',boxShadow:'0 4px 12px rgba(225,29,72,.3)' }}>Delete</button>
+  <div className="pb-overlay">
+    <div className="pb-modal">
+      <div style={{ marginBottom: 14, color: '#DC2626' }}>
+        <AlertTriangle size={32} />
+      </div>
+      <h2>Delete this branch?</h2>
+      <p>{text}</p>
+      <div className="pb-modal-actions">
+        <button className="pb-btn" onClick={onCancel}>
+          <X size={15} /> Cancel
+        </button>
+        <button className="pb-btn pb-btn-danger" onClick={onConfirm}
+          style={{ background:'#DC2626', borderColor:'#DC2626', color:'#fff' }}
+          onMouseEnter={e=>{e.currentTarget.style.background='#FBBF24';e.currentTarget.style.borderColor='#F59E0B';e.currentTarget.style.color='#111827';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='#DC2626';e.currentTarget.style.borderColor='#DC2626';e.currentTarget.style.color='#fff';}}>
+          <Trash2 size={15} /> Delete
+        </button>
       </div>
     </div>
   </div>
 );
 
-// ─── Inline Toast ────────────────────────────────────────────────────
-const Toast = ({ msg }) => msg?.text ? (
-  <div style={{ position:'fixed',top:20,right:20,zIndex:9999,padding:'14px 22px',borderRadius:14,
-    background: msg.type==='success' ? '#f0f0d8' : '#fef2f2',
-    border:`2px solid ${msg.type==='success' ? C : '#fca5a5'}`,
-    color: msg.type==='success' ? '#3a3a00' : '#991b1b',
-    fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:10,
-    boxShadow:`0 8px 24px rgba(0,0,0,.12)`,animation:'fadeUp .3s ease'
-  }}>
-    {msg.type==='success' ? <CheckCircle size={18}/> : <XCircle size={18}/>}
-    {msg.text}
-  </div>
-) : null;
-
-// ─── Field helper ────────────────────────────────────────────────────
-const Field = ({ label, icon: Icon, name, value, onChange, placeholder, required, type='text', rows }) => (
+// ─── Field helper ─────────────────────────────────────────────────────────────
+const Field = ({ label, icon: Icon, name, value, onChange, placeholder, required, type = 'text', rows }) => (
   <div>
-    <label className="b-label">{label}{required && <span style={{ color:'#e11d48',marginLeft:3 }}>*</span>}</label>
-    <div style={{ position:'relative' }}>
-      <Icon size={15} style={{ position:'absolute',left:12,top:14,color:C,opacity:.8 }} />
+    <label className="pb-field-label">
+      {label}{required && <span className="req">*</span>}
+    </label>
+    <div className={`pb-field-wrap${rows ? ' pb-textarea-wrap' : ''}`}>
+      <Icon size={14} />
       {rows ? (
-        <textarea name={name} value={value} onChange={onChange} rows={rows}
-          className="b-input" placeholder={placeholder}
-          style={{ minHeight:64,resize:'vertical',paddingLeft:38 }} />
+        <textarea
+          name={name} value={value} onChange={onChange} rows={rows}
+          className="pb-input" placeholder={placeholder}
+        />
       ) : (
-        <input type={type} name={name} value={value} onChange={onChange} required={required}
-          className="b-input" placeholder={placeholder} style={{ paddingLeft:38 }} />
+        <input
+          type={type} name={name} value={value} onChange={onChange}
+          required={required} className="pb-input" placeholder={placeholder}
+        />
       )}
     </div>
   </div>
 );
 
-// ─── Branch Card ─────────────────────────────────────────────────────
+// ─── Branch Card ──────────────────────────────────────────────────────────────
 const BranchCard = ({ b, onEdit, onDelete, idx }) => (
-  <div className="b-card" style={{ padding:24,animationDelay:`${idx*0.07}s` }}>
-    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16 }}>
-      <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-        <div style={{ width:48,height:48,borderRadius:14,background:`linear-gradient(135deg,${C},${CD})`,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 5px 14px rgba(185,185,121,.45)`,flexShrink:0 }}>
-          <Building2 size={24} color="white" />
+  <div className="pb-card" style={{ animationDelay: `${idx * 0.06}s` }}>
+
+    {/* Head */}
+    <div className="pb-card-head">
+      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <div className="pb-card-icon-wrap">
+          <Building2 size={22} />
         </div>
         <div>
-          <h3 style={{ fontSize:16,fontWeight:900,margin:0,color:'#2a2a00' }}>{b.name}</h3>
-          {b.code && <span style={{ fontSize:12,color:C,fontWeight:800,fontFamily:'monospace' }}>#{b.code}</span>}
+          <p className="pb-card-name">{b.name}</p>
+          {b.code && <span className="pb-card-code">#{b.code}</span>}
         </div>
       </div>
-      <span className={b.is_active ? 'b-badge-active' : 'b-badge-inactive'}>
-        {b.is_active ? <CheckCircle size={11}/> : <XCircle size={11}/>}
+      <span className={`pb-badge ${b.is_active ? 'pb-badge-active' : 'pb-badge-inactive'}`}>
+        {b.is_active ? <CheckCircle size={11} /> : <XCircle size={11} />}
         {b.is_active ? 'Active' : 'Inactive'}
       </span>
     </div>
 
-    <div style={{ display:'flex',flexDirection:'column',gap:8,fontSize:13,color:'#6b6b3a' }}>
-      {b.phone        && <div style={{ display:'flex',alignItems:'center',gap:8 }}><Phone   size={14} color={C} />{b.phone}</div>}
-      {b.manager_name && <div style={{ display:'flex',alignItems:'center',gap:8 }}><User    size={14} color={C} />{b.manager_name}</div>}
-      {b.working_hours&& <div style={{ display:'flex',alignItems:'center',gap:8 }}><Clock   size={14} color={C} />{b.working_hours}</div>}
-      {b.address      && <div style={{ display:'flex',alignItems:'flex-start',gap:8 }}><MapPin size={14} color={C} style={{ marginTop:2 }} />{b.address}</div>}
+    {/* Meta */}
+    <div className="pb-card-meta">
+      {b.phone && (
+        <div className="pb-card-meta-row">
+          <Phone size={13} /> <span>{b.phone}</span>
+        </div>
+      )}
+      {b.manager_name && (
+        <div className="pb-card-meta-row">
+          <User size={13} /> <span>{b.manager_name}</span>
+        </div>
+      )}
+      {b.working_hours && (
+        <div className="pb-card-meta-row">
+          <Clock size={13} /> <span>{b.working_hours}</span>
+        </div>
+      )}
+      {b.address && (
+        <div className="pb-card-meta-row">
+          <MapPin size={13} /> <span>{b.address}</span>
+        </div>
+      )}
+      {!b.phone && !b.manager_name && !b.working_hours && !b.address && (
+        <span style={{ color:'#9CA3AF', fontSize:13, fontStyle:'italic' }}>No details added</span>
+      )}
     </div>
 
-    <div style={{ display:'flex',gap:10,marginTop:18,paddingTop:14,borderTop:`1px solid ${CL}` }}>
-      <button onClick={() => onEdit(b)} style={{
-        flex:1,padding:'10px 12px',
-        background:`linear-gradient(135deg,#fafad2,#f5f5c0)`,color:CD,
-        border:`2px solid ${C}`,borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:12,
-        display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-        boxShadow:`0 3px 0 ${CD}`,transition:'all .1s'
-      }}
-        onMouseDown={e => { e.currentTarget.style.transform='translateY(3px)'; e.currentTarget.style.boxShadow='0 0 0 transparent'; }}
-        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 3px 0 ${CD}`; }}
-        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow=`0 3px 0 ${CD}`; }}
-      >
-        <Edit3 size={13}/> Edit
+    {/* Actions */}
+    <div className="pb-card-actions">
+      <button className="pb-btn" style={{ flex:1, justifyContent:'center' }} onClick={() => onEdit(b)}>
+        <Edit3 size={14} /> Edit
       </button>
-      <button onClick={() => onDelete(b.id)} style={{
-        flex:1,padding:'10px 12px',
-        background:'linear-gradient(135deg,#fff5f5,#fee2e2)',color:'#e11d48',
-        border:'2px solid #fca5a5',borderRadius:10,cursor:'pointer',fontWeight:800,fontSize:12,
-        display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-        boxShadow:'0 3px 0 #fca5a5',transition:'all .1s'
-      }}
-        onMouseDown={e => { e.currentTarget.style.transform='translateY(3px)'; e.currentTarget.style.boxShadow='0 0 0 transparent'; }}
-        onMouseUp={e   => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #fca5a5'; }}
-        onMouseLeave={e=> { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 3px 0 #fca5a5'; }}
-      >
-        <Trash2 size={13}/> Delete
+      <button className="pb-btn pb-btn-danger" style={{ flex:1, justifyContent:'center' }} onClick={() => onDelete(b.id)}>
+        <Trash2 size={14} /> Delete
       </button>
     </div>
   </div>
 );
 
-// ─── Main Component ──────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 const PharmacyBranches = () => {
   const [branches,   setBranches]   = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -209,7 +562,7 @@ const PharmacyBranches = () => {
   const [showForm,   setShowForm]   = useState(false);
   const [editing,    setEditing]    = useState(null);
   const [msg,        setMsg]        = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null); // id to delete
+  const [confirmDel, setConfirmDel] = useState(null);
 
   const EMPTY = { name:'', code:'', address:'', phone:'', working_hours:'', manager_name:'', is_active:true };
   const [formData, setFormData] = useState(EMPTY);
@@ -258,8 +611,8 @@ const PharmacyBranches = () => {
     finally { setSaving(false); }
   };
 
-  const handleDelete = id => setConfirmDel(id);
-  const confirmDelete = async () => {
+  const handleDelete    = id => setConfirmDel(id);
+  const confirmDelete   = async () => {
     try {
       await pharmacyService.deleteBranch(confirmDel);
       showMsg('success', 'Branch deleted');
@@ -268,121 +621,138 @@ const PharmacyBranches = () => {
     finally { setConfirmDel(null); }
   };
 
-  // ── render ──────────────────────────────────────────────────────────
+  // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding:0,minHeight:'calc(100vh - 64px)',background:'#EFEFD9',fontFamily:"'Inter','Segoe UI',sans-serif" }}>
-      <style>{SHARED_CSS}</style>
+    <div className="pb-root">
+      <style>{BRANCH_CSS}</style>
       <Toast msg={msg} />
-      {confirmDel && <ConfirmModal text="Delete this branch? This action cannot be undone." onConfirm={confirmDelete} onCancel={() => setConfirmDel(null)} />}
+      {confirmDel && (
+        <ConfirmModal
+          text="This action cannot be undone. All data associated with this branch will be permanently removed."
+          onConfirm={confirmDelete}
+          onCancel={() => setConfirmDel(null)}
+        />
+      )}
 
-      {/* ── HEADER ── */}
-      <div style={{ display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:'2.5rem',marginTop:'0.5rem',animation:'fadeUp .35s ease' }}>
-        <div style={{ justifySelf:'start' }}>
-          <h1 className="artistic-title">
-            Branches. <Building2 style={{ color:C,filter:`drop-shadow(0 0 8px ${C})` }} size={38}/>
-          </h1>
-        </div>
-        <div style={{ justifySelf:'center' }}>
-          <p className="artistic-subtitle">Pharmacy Location Network</p>
-        </div>
-        <div style={{ justifySelf:'end',display:'flex',gap:12 }}>
-          <button onClick={fetchBranches} style={{
-            display:'inline-flex',alignItems:'center',gap:8,padding:'11px 22px',
-            background:'linear-gradient(135deg,#fff,#f5f5dc)',color:'#3a3a00',
-            border:`2px solid ${C}`,borderRadius:14,fontWeight:900,fontSize:14,cursor:'pointer',
-            letterSpacing:'.08em',textTransform:'uppercase',
-            boxShadow:`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`,
-            transition:'all .1s',fontFamily:"'Inter',sans-serif"
-          }}
-            onMouseDown={e=>{e.currentTarget.style.transform='translateY(5px)';e.currentTarget.style.boxShadow=`0 0 0 ${CD}`;}}
-            onMouseUp={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 5px 0 ${CD},0 8px 15px rgba(143,143,71,.18),inset 0 2px 0 rgba(255,255,255,1)`;}}
-          >
-            <RotateCcw size={16}/> Refresh
-          </button>
-          <button onClick={() => showForm ? handleCancel() : openForm()} className="btn-olive-primary">
-            {showForm ? <X size={18}/> : <Plus size={18}/>}
-            {showForm ? 'Cancel' : 'Add Branch'}
-          </button>
-        </div>
-      </div>
+      <div className="pb-inner">
 
-      {/* ── INFO BAR ── */}
-      <div style={{ background:'rgba(255,255,255,.55)',border:'2px solid rgba(255,255,255,1)',borderRadius:16,padding:'18px 28px',marginBottom:24,display:'flex',gap:16,alignItems:'center',boxShadow:'0 10px 30px rgba(0,80,0,.04)',animation:'fadeUp .4s ease' }}>
-        <div style={{ background:`linear-gradient(135deg,${C},${CD})`,color:'white',padding:12,borderRadius:'50%',boxShadow:`0 4px 12px rgba(185,185,121,.45)`,flexShrink:0 }}>
-          <ShieldCheck size={22}/>
-        </div>
-        <div>
-          <h3 style={{ margin:'0 0 3px',fontSize:14,fontWeight:900,color:'#2a2a00',textTransform:'uppercase',letterSpacing:'.05em' }}>Manage Your Branch Network</h3>
-          <p style={{ margin:0,fontSize:13,color:'#8a8a50',fontWeight:600 }}>
-            Add, edit, or remove pharmacy locations. Each branch has its own contact details and working hours.
-            <span style={{ marginLeft:10,padding:'2px 10px',borderRadius:99,background:CL,color:CD,fontWeight:800,fontSize:12 }}>
-              {branches.length} {branches.length===1?'Branch':'Branches'}
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {/* ── FORM ── */}
-      {showForm && (
-        <div className="b-card" style={{ padding:28,marginBottom:28,animationDelay:'0s',overflow:'visible' }}>
-          <div style={{ padding:'18px 28px',background:`linear-gradient(135deg,${C},${CD})`,color:'white',display:'flex',alignItems:'center',gap:12,margin:'-28px -28px 24px',borderRadius:'0 0 0 0' }}>
-            {editing ? <Edit3 size={20}/> : <Plus size={20}/>}
-            <span style={{ fontSize:16,fontWeight:900,letterSpacing:'.05em',textTransform:'uppercase' }}>
-              {editing ? 'Edit Branch' : 'New Branch'}
-            </span>
+        {/* ── PAGE HEADER ── */}
+        <div className="pb-header">
+          <div className="pb-header-left">
+            <h1 className="pb-title">
+              <Building2 size={24} color="#2563EB" />
+              Pharmacy Branches
+            </h1>
+            <p className="pb-subtitle">
+              Manage your pharmacy location network
+              <span className="pb-count-chip">{branches.length} {branches.length === 1 ? 'branch' : 'branches'}</span>
+            </p>
           </div>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:18 }}>
-              <Field label="Branch Name" icon={Building2} name="name"         value={formData.name}          onChange={handleChange} placeholder="e.g. Downtown Pharmacy" required />
-              <Field label="Code"        icon={Hash}       name="code"         value={formData.code}          onChange={handleChange} placeholder="e.g. DTP" />
-              <Field label="Phone"       icon={Phone}      name="phone"        value={formData.phone}         onChange={handleChange} placeholder="+251-XXX-XXXX" />
-              <Field label="Manager Name"icon={User}       name="manager_name" value={formData.manager_name}  onChange={handleChange} placeholder="Manager name" />
-              <Field label="Working Hours"icon={Clock}     name="working_hours"value={formData.working_hours} onChange={handleChange} placeholder="Mon-Sat 8AM-6PM" />
-              <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:4 }}>
-                <label style={{ display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'12px 0',userSelect:'none' }}>
-                  <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleChange}
-                    style={{ width:18,height:18,accentColor:C,cursor:'pointer' }}/>
-                  <span style={{ fontSize:14,fontWeight:800,color:'#3a3a00' }}>Active Branch</span>
-                </label>
-              </div>
-              <div style={{ gridColumn:'1 / -1' }}>
-                <Field label="Address" icon={MapPin} name="address" value={formData.address} onChange={handleChange} placeholder="Full address" rows={2} />
-              </div>
-            </div>
 
-            <div style={{ display:'flex',gap:12,marginTop:24 }}>
-              <button type="submit" disabled={saving} className="btn-olive-primary">
-                {saving ? <SegmentedSpinner size={16} /> : <Save size={16}/>}
-                {saving ? 'Saving...' : editing ? 'Update Branch' : 'Create Branch'}
-              </button>
-              <button type="button" onClick={handleCancel} className="btn-olive">
-                <X size={16}/> Cancel
-              </button>
-            </div>
-          </form>
+          <div className="pb-header-actions">
+            <button
+              className="pb-btn"
+              onClick={fetchBranches}
+              disabled={loading}
+              aria-label="Refresh branches"
+            >
+              {loading ? <SegmentedSpinner size={15} /> : <RefreshCw size={15} />}
+              Refresh
+            </button>
+            <button
+              className={`pb-btn ${showForm ? '' : 'pb-btn-primary'}`}
+              onClick={() => showForm ? handleCancel() : openForm()}
+            >
+              {showForm ? <X size={15} /> : <Plus size={15} />}
+              {showForm ? 'Cancel' : 'Add Branch'}
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* ── BRANCH GRID ── */}
-      {loading ? (
-        <div style={{ padding:'80px 20px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center' }}>
-          <Zap size={40} style={{ color:C,marginBottom:16,animation:'pulse 1.5s ease-in-out infinite' }}/>
-          <div style={{ fontSize:18,color:'#2a2a00',fontWeight:900 }}>Loading Branches...</div>
+        {/* ── INFO BAR ── */}
+        <div className="pb-infobar">
+          <div className="pb-infobar-icon">
+            <ShieldCheck size={22} />
+          </div>
+          <div className="pb-infobar-text">
+            <h3>Manage Your Branch Network</h3>
+            <p>Add, edit, or remove pharmacy locations. Each branch has its own contact details and working hours.</p>
+          </div>
         </div>
-      ) : branches.length === 0 ? (
-        <div className="b-card" style={{ padding:'80px 24px',textAlign:'center' }}>
-          <Building2 size={56} style={{ color:C,opacity:.4,marginBottom:16 }}/>
-          <h3 style={{ fontSize:18,fontWeight:900,color:'#6b6b3a',margin:'0 0 6px' }}>No Branches Yet</h3>
-          <p style={{ color:'#a0a07a',fontSize:14,margin:0 }}>Click <strong>Add Branch</strong> to register your first pharmacy location.</p>
-        </div>
-      ) : (
-        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:20 }}>
-          {branches.map((b, i) => (
-            <BranchCard key={b.id} b={b} idx={i} onEdit={openForm} onDelete={handleDelete} />
-          ))}
-        </div>
-      )}
+
+        {/* ── ADD / EDIT FORM ── */}
+        {showForm && (
+          <div className="pb-form-card">
+            <div className="pb-form-header">
+              {editing ? <Edit3 size={16} /> : <Plus size={16} />}
+              {editing ? 'Edit Branch' : 'Add New Branch'}
+            </div>
+            <div className="pb-form-body">
+              <form onSubmit={handleSubmit}>
+                <div className="pb-form-grid">
+                  <Field label="Branch Name"  icon={Building2} name="name"          value={formData.name}          onChange={handleChange} placeholder="e.g. Downtown Pharmacy" required />
+                  <Field label="Branch Code"  icon={Hash}      name="code"          value={formData.code}          onChange={handleChange} placeholder="e.g. DTP" />
+                  <Field label="Phone"        icon={Phone}     name="phone"         value={formData.phone}         onChange={handleChange} placeholder="+251-XXX-XXXX" />
+                  <Field label="Manager Name" icon={User}      name="manager_name"  value={formData.manager_name}  onChange={handleChange} placeholder="Manager full name" />
+                  <Field label="Working Hours"icon={Clock}     name="working_hours" value={formData.working_hours} onChange={handleChange} placeholder="Mon–Sat 8 AM – 6 PM" />
+
+                  {/* Active toggle */}
+                  <div style={{ display:'flex', alignItems:'flex-end', paddingBottom: 2 }}>
+                    <label className="pb-checkbox-row">
+                      <input
+                        type="checkbox"
+                        name="is_active"
+                        checked={formData.is_active}
+                        onChange={handleChange}
+                      />
+                      <span className="pb-checkbox-label">Active Branch</span>
+                    </label>
+                  </div>
+
+                  {/* Address — full width */}
+                  <div className="pb-form-grid-full">
+                    <Field label="Address" icon={MapPin} name="address" value={formData.address} onChange={handleChange} placeholder="Full address" rows={2} />
+                  </div>
+                </div>
+
+                <div className="pb-form-actions">
+                  <button type="submit" disabled={saving} className="pb-btn pb-btn-primary">
+                    {saving ? <SegmentedSpinner size={15} /> : <Save size={15} />}
+                    {saving ? 'Saving…' : editing ? 'Update Branch' : 'Create Branch'}
+                  </button>
+                  <button type="button" onClick={handleCancel} className="pb-btn">
+                    <X size={15} /> Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── BRANCH GRID ── */}
+        {loading ? (
+          <div className="pb-state-center">
+            <SegmentedSpinner size={40} />
+            <p>Loading branches…</p>
+          </div>
+        ) : branches.length === 0 ? (
+          <div className="pb-state-center">
+            <Building2 size={48} color="#D1D5DB" />
+            <h3>No Branches Yet</h3>
+            <p>Click <strong>Add Branch</strong> to register your first pharmacy location.</p>
+            <button className="pb-btn pb-btn-primary" onClick={() => openForm()}>
+              <Plus size={15} /> Add First Branch
+            </button>
+          </div>
+        ) : (
+          <div className="pb-grid">
+            {branches.map((b, i) => (
+              <BranchCard key={b.id} b={b} idx={i} onEdit={openForm} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 };
