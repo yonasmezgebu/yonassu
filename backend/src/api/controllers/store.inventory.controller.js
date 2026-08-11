@@ -275,6 +275,15 @@ exports.createReceipt = async (req, res) => {
       }
     }
     await trx.commit();
+
+    // ── Central Audit Log ──
+    await audit.captureLegacy('STORE_GOODS_RECEIVED', req.user?.id, {
+      module: 'Pharmacy Store',
+      recordIdentifier: receipt_no,
+      afterState: { receipt_no, supplier_name, items, remarks },
+      ip: req.ip,
+    });
+
     res.status(201).json({ success: true, message: 'Receipt created', data: { id: receipt_id } });
   } catch (e) {
     await trx.rollback();
@@ -419,7 +428,7 @@ exports.createIssue = async (req, res) => {
 
     // ── Central Audit Log ──
     await audit.captureLegacy('STORE_ISSUE_TO_DEPT', req.user?.id, {
-      module: 'Store',
+      module: 'Pharmacy Store',
       department: department || 'Unknown',
       recordIdentifier: issue_no,
       afterState: { issue_no, department, issued_to, items, remarks },
@@ -540,7 +549,7 @@ exports.createTransfer = async (req, res) => {
 
     // ── Central Audit Log ──
     await audit.captureLegacy('STORE_MOVEMENT_TRANSFER', req.user?.id, {
-      module: 'Store',
+      module: 'Pharmacy Store',
       recordIdentifier: transfer_no,
       afterState: { transfer_no, from_location, to_location, transfer_type, items, remarks },
       ip: req.ip,
@@ -677,7 +686,7 @@ exports.addNewStock = async (req, res) => {
 
     // ── Central Audit Log ──
     await audit.captureLegacy('STORE_NEW_ITEM_REGISTERED', req.user?.id, {
-      module: 'Store',
+      module: 'Pharmacy Store',
       recordIdentifier: `drug-${drugId}`,
       afterState: { name: name.trim(), batch_no: batch_no.trim(), initial_quantity: qty, category, unit },
       ip: req.ip,
@@ -881,7 +890,7 @@ exports.approveAdjustment = async (req, res) => {
 
     // ── Central Audit Log ──
     await audit.captureLegacy('STORE_ADJUSTMENT_APPROVED', req.user?.id, {
-      module: 'Store',
+      module: 'Pharmacy Store',
       recordIdentifier: refAdj.adjustment_no,
       afterState: { adjustment_no: refAdj.adjustment_no, lines_approved: pendingLines.length },
       ip: req.ip,
