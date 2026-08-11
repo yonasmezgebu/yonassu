@@ -252,7 +252,7 @@ const RentalOrders = () => {
 
   /* ── LIST VIEW ── */
   return (
-    <div style={S.page}>
+    <div className="ro-page" style={S.page}>
       <Toast toasts={toasts} remove={removeToast} />
 
       {/* ── TOP BANNER ── */}
