@@ -27,7 +27,7 @@ exports.createBudget = catchAsync(async (req, res) => {
     name, period_type: periodType, start_date: startDate, end_date: endDate,
     status: 'draft', created_by: req.user.id, notes: notes || ''
   });
-  await audit('BUDGET_CREATED', id, { ip: req.ip, details: { name, periodType } });
+  await audit('BUDGET_CREATED', req.user.id, { ip: req.ip, details: { name, periodType } });
   res.status(201).json({ status: 'success', data: { budgetId: id } });
 });
 
@@ -52,7 +52,7 @@ exports.approveBudget = catchAsync(async (req, res) => {
   if (!budget) throw new AppError('Budget not found', 404);
   if (budget.status !== 'draft') throw new AppError('Only draft budgets can be approved', 400);
   await db('budget_periods').where('id', id).update({ status: 'active', approved_by: req.user.id, approved_at: db.fn.now(), updated_at: db.fn.now() });
-  await audit('BUDGET_APPROVED', id, { ip: req.ip, details: { name: budget.name } });
+  await audit('BUDGET_APPROVED', req.user.id, { ip: req.ip, details: { name: budget.name } });
   res.json({ status: 'success', message: 'Budget approved and activated' });
 });
 
