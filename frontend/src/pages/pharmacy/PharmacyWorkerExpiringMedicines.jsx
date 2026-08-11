@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import './StockOperations.css';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
 import { Clock, Search, RefreshCw, Download, Printer, Bell, Package, Calendar } from 'lucide-react';
