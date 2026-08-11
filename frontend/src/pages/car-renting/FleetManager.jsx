@@ -41,9 +41,9 @@ const getImageUrl = (path) => {
    IN-APP TOAST  (No native alert/confirm)
 ══════════════════════════════════════════════════ */
 const TCONF = {
-  success: { bg: G.dark,    border: G.leaf,    Icon: CheckCircle },
-  error:   { bg: G.error,   border: '#b71c1c', Icon: AlertCircle },
-  warning: { bg: G.warning, border: '#e65100', Icon: AlertTriangle },
+  success: { bg: '#DCFCE7', border: '#16A34A', Icon: CheckCircle },
+  error:   { bg: '#FEE2E2', border: '#DC2626', Icon: AlertCircle },
+  warning: { bg: '#FEF3C7', border: '#D97706', Icon: AlertTriangle },
 };
 
 const Toast = ({ toasts, remove }) => (
@@ -53,15 +53,22 @@ const Toast = ({ toasts, remove }) => (
       return (
         <div key={t.id} onClick={() => remove(t.id)} style={{
           display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'all', cursor: 'pointer',
-          background: s.bg, color: '#fff', padding: '13px 18px',
-          borderLeft: `5px solid ${s.border}`,
-          boxShadow: '0 4px 0 rgba(0,0,0,.3), 0 10px 24px rgba(0,0,0,.2)',
-          fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 700,
-          minWidth: 300, animation: 'fmSlideIn .28s ease',
+          background: '#FFFFFF', color: '#111827', padding: '12px 16px',
+          borderTop: '1px solid #E5E7EB',
+          borderRight: '1px solid #E5E7EB',
+          borderBottom: '1px solid #E5E7EB',
+          borderLeft: `4px solid ${s.border}`,
+          borderRadius: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 500,
+          minWidth: 280, maxWidth: 'calc(100vw - 32px)',
+          animation: 'fmSlideIn .28s ease',
         }}>
-          <s.Icon size={16} />
+          <span style={{ width: 28, height: 28, borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <s.Icon size={15} color={s.border} />
+          </span>
           <span style={{ flex: 1 }}>{t.message}</span>
-          <X size={14} style={{ opacity: 0.7 }} />
+          <X size={15} style={{ color: '#9CA3AF', flexShrink: 0 }} />
         </div>
       );
     })}
@@ -75,38 +82,35 @@ const ConfirmModal = ({ open, title, message, danger, onConfirm, onCancel }) => 
   if (!open) return null;
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(27,94,32,0.75)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 10000, padding: 20,
+      zIndex: 10000, padding: 16,
     }}>
       <div style={{
-        background: G.white, maxWidth: 440, width: '100%',
-        border: `3px solid ${danger ? G.error : G.forest}`,
-        borderTop: `8px solid ${danger ? G.error : G.forest}`,
-        boxShadow: `0 8px 0 ${danger ? '#b71c1c' : G.dark}, 0 16px 32px rgba(0,0,0,.25)`,
-        padding: '32px 28px', fontFamily: "'Inter',sans-serif",
+        background: '#FFFFFF', maxWidth: 440, width: '100%',
+        borderRadius: 12,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+        padding: '24px', fontFamily: "'Inter',sans-serif",
         animation: 'fmSlideIn .25s ease',
       }}>
         <div style={{
-          width: 48, height: 48, background: danger ? '#FFEBEE' : '#E8F5E9',
+          width: 44, height: 44, borderRadius: '50%', background: danger ? '#FEE2E2' : '#EFF6FF',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 16,
         }}>
-          {danger ? <AlertTriangle size={26} color={G.error} /> : <CheckCircle size={26} color={G.forest} />}
+          {danger ? <AlertTriangle size={22} color="#DC2626" /> : <CheckCircle size={22} color="#2563EB" />}
         </div>
-        <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 900, color: G.dark }}>{title}</h3>
-        <p style={{ margin: '0 0 28px', fontSize: 14, color: G.text, lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 600, color: '#111827' }}>{title}</h3>
+        <p style={{ margin: '0 0 24px', fontSize: 14, color: '#6B7280', lineHeight: 1.5 }}>{message}</p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button onClick={onCancel} className="fm-btn" style={{
-            padding: '10px 22px', border: `2px solid ${G.sage}`,
-            background: G.white, color: G.text, fontWeight: 700, cursor: 'pointer', fontSize: 13,
-            boxShadow: `0 4px 0 ${G.sage}`,
+            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #E5E7EB',
+            background: '#FFFFFF', color: '#111827', fontWeight: 500, cursor: 'pointer', fontSize: 14,
           }}>Cancel</button>
           <button onClick={onConfirm} className="fm-btn" style={{
-            padding: '10px 22px', border: `2px solid ${danger ? '#b71c1c' : G.dark}`,
-            background: danger ? G.error : G.forest, color: '#fff',
-            fontWeight: 800, cursor: 'pointer', fontSize: 13,
-            boxShadow: `0 4px 0 ${danger ? '#7f0000' : G.dark}`,
+            height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid transparent',
+            background: danger ? '#DC2626' : '#2563EB', color: '#fff',
+            fontWeight: 500, cursor: 'pointer', fontSize: 14,
           }}>Confirm</button>
         </div>
       </div>
@@ -201,13 +205,13 @@ const FleetManager = () => {
     : cars;
 
   const statusBadge = (car) => {
-    if (car.deleted_at) return { label: 'Hidden', bg: '#ECEFF1', color: '#607D8B' };
+    if (car.deleted_at) return { label: 'Hidden', bg: '#F3F4F6', color: '#6B7280' };
     const map = {
-      Available:   { label: 'Available',   bg: '#E8F5E9', color: G.forest },
-      Booked:      { label: 'Booked',      bg: '#E3F2FD', color: '#1565C0' },
-      Maintenance: { label: 'Maintenance', bg: '#FFEBEE', color: G.error },
+      Available:   { label: 'Available',   bg: '#DCFCE7', color: '#16A34A' },
+      Booked:      { label: 'Booked',      bg: '#E0F2FE', color: '#0284C7' },
+      Maintenance: { label: 'Maintenance', bg: '#FEE2E2', color: '#DC2626' },
     };
-    return map[car.availability] || { label: car.availability, bg: G.lightGray, color: G.text };
+    return map[car.availability] || { label: car.availability, bg: '#F3F4F6', color: '#6B7280' };
   };
 
   /* ── Keyframes ── */
@@ -218,15 +222,21 @@ const FleetManager = () => {
     s.textContent = `
       @keyframes fmSlideIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
       @keyframes fmSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-      .fm-btn { transition: transform .08s, box-shadow .08s; }
-      .fm-btn:hover { transform: translateY(-2px); }
-      .fm-btn:active { transform: translateY(4px) !important; box-shadow: none !important; }
-      .fm-row:hover { background: #E8F5E9 !important; }
+      .fm-btn { transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+      .fm-btn:hover:not(:disabled) { background: #EAB308 !important; color: #111827 !important; border-color: #B45309 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transform: translateY(-1px); }
+      .fm-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+      .fm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .fm-row:hover td { background: #F9FAFB; }
+      .fm-kpi:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+      .fm-table { min-width: 700px; }
       @media (max-width: 768px) {
+        .fm-btn { min-height: 44px; }
+        .fm-table { min-width: 0 !important; width: 100% !important; }
         .fm-table thead { display: none; }
-        .fm-table tr { display: block; margin-bottom: 16px; border: 2px solid ${G.sage}; background: #fff; }
-        .fm-table td { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid ${G.sage}; font-size: 13px; }
-        .fm-table td::before { content: attr(data-label); font-weight: 800; color: ${G.dark}; margin-right: 8px; }
+        .fm-table tr { display: block; margin-bottom: 12px; border: 1px solid #E5E7EB; border-radius: 10px; background: #FFFFFF; }
+        .fm-table td { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
+        .fm-table td::before { content: attr(data-label); font-weight: 500; color: #6B7280; margin-right: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .fm-table tr:last-child td:last-child { border-bottom: none; }
         .fm-grid { grid-template-columns: 1fr !important; }
       }
     `;
@@ -247,42 +257,41 @@ const FleetManager = () => {
 
       {/* ══ FULL-WIDTH CONTAINER ══ */}
       <div style={{
-        minHeight: '100vh', background: G.forest,
-        fontFamily: "'Inter',sans-serif", color: G.text,
+        minHeight: '100vh', background: 'transparent',
+        fontFamily: "'Inter',sans-serif", color: '#111827',
         width: '100%', margin: 0, padding: 0,
       }}>
 
         {/* ── TOP HEADER BAR ── */}
         <div style={{
-          background: G.dark, padding: '0 28px',
-          borderBottom: `4px solid ${G.olive}`,
+          background: '#FFFFFF', padding: '24px 28px',
+          border: '1px solid #E5E7EB',
+          borderRadius: 10,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}>
-          <div style={{ height: 4, background: `linear-gradient(90deg, ${G.mint}, ${G.lime}, ${G.leaf}, ${G.mint})`, backgroundSize: '400% 100%', animation: 'shimmerG 3s linear infinite' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: G.mint, letterSpacing: 1, textTransform: 'uppercase' }}>
+              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#111827', letterSpacing: 'normal', textTransform: 'none', lineHeight: 1.3 }}>
                 🚗 Rental Post Dashboard
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: G.sage }}>
+              <p style={{ margin: '6px 0 0', fontSize: 14, color: '#6B7280' }}>
                 Manage vehicles published on the public Car Rental page
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="fm-btn" onClick={() => fetchCars(true)} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: G.emerald, color: '#fff', border: `2px solid ${G.olive}`,
-                padding: '10px 18px', cursor: 'pointer',
-                fontWeight: 800, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 16px', borderRadius: 8,
+                background: '#FFFFFF', color: '#111827', border: '1px solid #E5E7EB',
+                fontWeight: 500, fontSize: 14, cursor: 'pointer',
               }}>
                 <RefreshCw size={14} style={{ animation: isRefreshing ? 'fmSpin 1s linear infinite' : 'none' }} /> Refresh
               </button>
               <button className="fm-btn" onClick={() => navigate('/car-renting/manager/assets')} style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: G.lime, color: G.dark, border: `2px solid ${G.olive}`,
-                padding: '10px 20px', cursor: 'pointer',
-                fontWeight: 900, fontSize: 12, textTransform: 'uppercase',
-                boxShadow: `0 5px 0 ${G.dark}`,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 36, padding: '0 16px', borderRadius: 8,
+                background: '#2563EB', color: '#FFFFFF', border: '1px solid transparent',
+                fontWeight: 500, fontSize: 14, cursor: 'pointer',
               }}>
                 📋 Go to Asset Register
               </button>
@@ -292,64 +301,65 @@ const FleetManager = () => {
 
         {/* ── KPI SUMMARY STRIP ── */}
         <div style={{
-          background: G.forest, padding: '20px 28px',
-          borderBottom: `3px solid ${G.olive}`,
+          background: 'transparent', padding: 0, marginTop: 16,
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16,
         }} className="fm-grid">
           {[
-            { icon: Layers,     label: 'Total Vehicles',   value: cars.length,         color: G.mint   },
-            { icon: CheckCircle,label: 'Available Now',    value: availCount,          color: G.lime   },
-            { icon: EyeOff,     label: 'Hidden/Drafts',    value: hiddenCars.length,   color: '#FFCC80' },
+            { icon: Layers,     label: 'Total Vehicles',   value: cars.length,         color: '#0284C7', bg: '#E0F2FE' },
+            { icon: CheckCircle,label: 'Available Now',    value: availCount,          color: '#16A34A', bg: '#DCFCE7' },
+            { icon: EyeOff,     label: 'Hidden/Drafts',    value: hiddenCars.length,   color: '#D97706', bg: '#FEF3C7' },
           ].map((k, i) => (
-            <div key={i} style={{
-              background: G.dark, border: `2px solid ${G.olive}`,
-              borderTop: `4px solid ${k.color}`,
+            <div key={i} className="fm-kpi" style={{
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderRadius: 10,
               padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-              boxShadow: `0 4px 0 ${G.olive}`,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: 10 }}>
+              <div style={{ background: k.bg, borderRadius: 8, padding: 10 }}>
                 <k.icon size={20} color={k.color} />
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: G.sage, textTransform: 'uppercase', letterSpacing: 0.8 }}>{k.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{k.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>{k.value}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* ── MAIN CONTENT AREA ── */}
-        <div style={{ background: G.lightGray, minHeight: 'calc(100vh - 200px)' }}>
-          <div style={{ padding: '24px 28px' }}>
+        <div style={{ background: 'transparent', minHeight: 0 }}>
+          <div style={{ padding: '16px 0 24px' }}>
 
             <div style={{
-              background: G.white, border: `2px solid ${G.sage}`,
-              overflow: 'hidden', boxShadow: `0 6px 0 ${G.sage}`,
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
             }}>
               <div style={{
-                background: G.dark, padding: '14px 20px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                borderBottom: `3px solid ${G.olive}`,
+                background: '#FFFFFF', padding: '16px 20px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap',
               }}>
-                <span style={{ fontSize: 13, fontWeight: 900, color: G.mint, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#111827', textTransform: 'none', letterSpacing: 'normal' }}>
                   🌿 Rental Post Roster — {filteredCars.length} Vehicle{filteredCars.length !== 1 ? 's' : ''}
-                  {searchQuery && <span style={{ fontSize: 11, color: G.sage, fontWeight: 600, textTransform: 'none', marginLeft: 8 }}>matching "{searchQuery}"</span>}
+                  {searchQuery && <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500, textTransform: 'none', marginLeft: 8 }}>matching "{searchQuery}"</span>}
                 </span>
-                <span style={{ fontSize: 11, color: G.sage }}>
+                <span style={{ fontSize: 12, color: '#6B7280' }}>
                   {activeCars.length} active · {hiddenCars.length} hidden
                 </span>
               </div>
 
               {loading ? (
-                <div style={{ padding: '60px 20px', textAlign: 'center', color: G.emerald }}>
-                  <Leaf size={36} color={G.sage} style={{ marginBottom: 12, animation: 'fmSpin 2s linear infinite' }} />
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Loading rental vehicles…</div>
+                <div style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', border: '4px solid #E5E7EB', borderTop: '4px solid #2563EB', borderRight: '4px solid #2563EB', animation: 'fmSpin 1s linear infinite', margin: '0 auto 16px' }} />
+                  <div style={{ fontWeight: 500, fontSize: 14, color: '#6B7280' }}>Loading rental vehicles…</div>
                 </div>
               ) : cars.length === 0 ? (
-                <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-                  <Car size={48} color={G.sage} style={{ marginBottom: 14 }} />
-                  <div style={{ fontWeight: 900, fontSize: 16, color: G.dark }}>No vehicles found</div>
-                  <div style={{ color: G.olive, fontSize: 13, marginTop: 6 }}>
+                <div style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <Car size={26} color="#2563EB" />
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: '#111827' }}>No vehicles found</div>
+                  <div style={{ color: '#6B7280', fontSize: 14, marginTop: 6 }}>
                     Go to the Asset Register to add and publish vehicles.
                   </div>
                 </div>
@@ -357,14 +367,14 @@ const FleetManager = () => {
                 <div style={{ overflowX: 'auto' }}>
                   <table className="fm-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ background: '#E8F5E9', borderBottom: `2px solid ${G.sage}` }}>
+                      <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                         {['#', 'Vehicle', 'Type', 'Specs', 'Rate / Day', 'Status', 'Visibility Actions'].map((h, i) => (
                           <th key={h} style={{
                             padding: '12px 16px',
                             textAlign: i >= 6 ? 'center' : 'left',
-                            fontSize: 11, fontWeight: 900, color: G.dark,
-                            textTransform: 'uppercase', letterSpacing: 0.8,
-                            borderRight: i < 6 ? `1px solid ${G.sage}` : 'none',
+                            fontSize: 12, fontWeight: 500, color: '#6B7280',
+                            textTransform: 'uppercase', letterSpacing: '0.03em',
+                            borderRight: 'none',
                             whiteSpace: 'nowrap',
                           }}>{h}</th>
                         ))}
@@ -373,7 +383,7 @@ const FleetManager = () => {
                     <tbody>
                       {filteredCars.length === 0 ? (
                         <tr>
-                          <td colSpan="7" style={{ padding: '40px 20px', textAlign: 'center', color: G.olive, fontWeight: 700 }}>
+                          <td colSpan="7" style={{ padding: '40px 20px', textAlign: 'center', color: '#6B7280', fontWeight: 500 }}>
                             No vehicles match "{searchQuery}"
                           </td>
                         </tr>
@@ -381,88 +391,87 @@ const FleetManager = () => {
                         const badge = statusBadge(car);
                         return (
                           <tr key={car.id} className="fm-row" style={{
-                            borderBottom: `1px solid ${G.sage}`,
-                            background: idx % 2 === 0 ? G.white : '#F9FBE7',
-                            transition: 'background .15s', opacity: car.deleted_at ? 0.7 : 1,
+                            transition: 'background .15s', opacity: car.deleted_at ? 0.65 : 1,
                           }}>
                             {/* # */}
-                            <td data-label="#" style={{ padding: '12px 16px', fontSize: 13, color: G.olive, fontWeight: 700, borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="#" style={{ padding: '12px 16px', fontSize: 14, color: '#9CA3AF', fontWeight: 500, whiteSpace: 'nowrap' }}>
                               {idx + 1}
                             </td>
                             {/* Vehicle */}
-                            <td data-label="Vehicle" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}` }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 46, height: 46, background: G.sage, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <td data-label="Vehicle" style={{ padding: '12px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, background: '#EFF6FF', borderRadius: 8, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   {car.image1
                                     ? <img src={getImageUrl(car.image1)} alt={car.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    : <Car size={20} color={G.dark} />}
+                                    : <Car size={18} color="#2563EB" />}
                                 </div>
                                 <div>
                                   <div style={{
-                                    fontWeight: 900, fontSize: 14, color: car.deleted_at ? G.olive : G.dark,
+                                    fontWeight: 600, fontSize: 14, color: car.deleted_at ? '#6B7280' : '#111827',
                                     textDecoration: car.deleted_at ? 'line-through' : 'none',
                                   }}>{car.name}</div>
-                                  {car.deleted_at && <div style={{ fontSize: 10, fontWeight: 800, color: '#607D8B' }}>HIDDEN FROM PUBLIC</div>}
+                                  {car.deleted_at && <div style={{ fontSize: 12, fontWeight: 600, color: '#D97706', marginTop: 2 }}>HIDDEN FROM PUBLIC</div>}
                                 </div>
                               </div>
                             </td>
                             {/* Type */}
-                            <td data-label="Type" style={{ padding: '12px 16px', fontSize: 12, fontWeight: 700, color: G.olive, borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Type" style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: '#6B7280', whiteSpace: 'nowrap' }}>
                               {car.carType || '—'}
                             </td>
                             {/* Specs */}
-                            <td data-label="Specs" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}` }}>
+                            <td data-label="Specs" style={{ padding: '12px 16px' }}>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <span style={{ background: '#E8F5E9', padding: '2px 7px', fontSize: 11, fontWeight: 700, color: G.forest }}>⚙️ {car.transmission}</span>
-                                <span style={{ background: '#FFF8E1', padding: '2px 7px', fontSize: 11, fontWeight: 700, color: '#E65100' }}>⛽ {car.fuelType}</span>
-                                <span style={{ background: '#E3F2FD', padding: '2px 7px', fontSize: 11, fontWeight: 700, color: '#1565C0' }}>👥 {car.seats}</span>
+                                <span style={{ background: '#E0F2FE', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 500, color: '#0284C7', whiteSpace: 'nowrap' }}>⚙️ {car.transmission}</span>
+                                <span style={{ background: '#FEF3C7', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 500, color: '#B45309', whiteSpace: 'nowrap' }}>⛽ {car.fuelType}</span>
+                                <span style={{ background: '#F3F4F6', padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 500, color: '#6B7280', whiteSpace: 'nowrap' }}>👥 {car.seats}</span>
                               </div>
                             </td>
                             {/* Rate */}
-                            <td data-label="Rate / Day" style={{ padding: '12px 16px', fontWeight: 900, fontSize: 14, color: G.forest, borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Rate / Day" style={{ padding: '12px 16px', fontWeight: 600, fontSize: 14, color: '#111827', whiteSpace: 'nowrap', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                               ETB {Number(car.dailyRate || car.daily_rate || 0).toLocaleString()}
                             </td>
                             {/* Status */}
-                            <td data-label="Status" style={{ padding: '12px 16px', borderRight: `1px solid ${G.sage}`, whiteSpace: 'nowrap' }}>
+                            <td data-label="Status" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                               <span style={{
-                                display: 'inline-block',
+                                display: 'inline-flex', alignItems: 'center',
                                 background: badge.bg, color: badge.color,
-                                padding: '4px 12px', fontSize: 11, fontWeight: 800,
-                                border: `1px solid ${badge.color}30`,
+                                padding: '2px 10px', fontSize: 12, fontWeight: 500,
+                                borderRadius: 9999,
                               }}>
                                 {badge.label}
                               </span>
                             </td>
                             {/* Actions */}
                             <td data-label="Actions" style={{ padding: '12px 16px', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                 {car.deleted_at ? (
                                   <>
                                     <button className="fm-btn" title="Restore to public storefront" onClick={() => handleRestore(car.id, car.name)} style={{
-                                      display: 'flex', alignItems: 'center', gap: 5,
-                                      padding: '6px 12px', border: `2px solid ${G.forest}`,
-                                      background: '#E8F5E9', color: G.forest, fontSize: 11, fontWeight: 800,
-                                      cursor: 'pointer', boxShadow: `0 3px 0 ${G.dark}`,
+                                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                                      height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent',
+                                      background: '#2563EB', color: '#fff', fontSize: 13, fontWeight: 500,
+                                      cursor: 'pointer',
                                     }}>
-                                      <RotateCcw size={12} /> Publish
+                                      <RotateCcw size={13} /> Publish
                                     </button>
                                     <button className="fm-btn" title="Delete Forever" onClick={() => handleHardDelete(car.id, car.name)} style={{
-                                      display: 'flex', alignItems: 'center', gap: 5,
-                                      padding: '6px 12px', border: `2px solid ${G.error}`,
-                                      background: '#FFEBEE', color: G.error, fontSize: 11, fontWeight: 800,
-                                      cursor: 'pointer', boxShadow: `0 3px 0 #b71c1c`,
+                                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                                      height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent',
+                                      background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 500,
+                                      cursor: 'pointer',
                                     }}>
-                                      <Trash2 size={12} /> Delete
+                                      <Trash2 size={13} /> Delete
                                     </button>
                                   </>
                                 ) : (
                                   <>
                                     <button className="fm-btn" title="Hide from customers" onClick={() => handleSoftDelete(car.id, car.name)} style={{
-                                      padding: '7px 10px', border: `2px solid ${G.warning}`,
-                                      background: '#FFF8E1', color: '#E65100', cursor: 'pointer',
-                                      boxShadow: '0 3px 0 #bf360c', display: 'flex', alignItems: 'center',
+                                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                                      height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent',
+                                      background: '#FEF3C7', color: '#B45309', cursor: 'pointer',
+                                      fontSize: 13, fontWeight: 500,
                                     }}>
-                                      <EyeOff size={14} /> Unpublish
+                                      <EyeOff size={13} /> Unpublish
                                     </button>
                                   </>
                                 )}
@@ -477,7 +486,7 @@ const FleetManager = () => {
               )}
             </div>
             
-            <div style={{ marginTop: 16, fontSize: 12, color: G.emerald, fontWeight: 600 }}>
+            <div style={{ marginTop: 12, fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
               💡 To add new vehicles or edit details, please use the Master Asset Register.
             </div>
           </div>
