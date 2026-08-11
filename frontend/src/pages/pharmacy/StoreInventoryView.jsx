@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import './StoreInventoryView.css';
 import {
   Database, RefreshCw, Send, Loader2, CheckCircle, XCircle, Search,
   Package, List, AlertTriangle, Inbox, Check, Clock, Truck, ShoppingBag,
@@ -27,10 +28,10 @@ Object.values(preloadedAudio).forEach(a => { a.load(); });
 
 // ── Step Config ──────────────────────────────────────────────────────────────
 const STEPS = [
-  { key: 'PENDING_APPROVAL', label: 'Requested to CEO', icon: <Clock size={16}/> },
-  { key: 'APPROVED',         label: 'CEO Approved',      icon: <CheckCircle size={16}/> },
-  { key: 'SHIPPED',          label: 'Store Shipped',      icon: <Truck size={16}/> },
-  { key: 'COMPLETED',        label: 'Pharmacy Received',  icon: <ShoppingBag size={16}/> },
+  { key: 'PENDING_APPROVAL', label: 'Requested', icon: <Clock size={16}/> },
+  { key: 'APPROVED',         label: 'Approved',  icon: <CheckCircle size={16}/> },
+  { key: 'SHIPPED',          label: 'Shipped',   icon: <Truck size={16}/> },
+  { key: 'COMPLETED',        label: 'Received',  icon: <ShoppingBag size={16}/> },
 ];
 const STATUS_ORDER = {
   PENDING_APPROVAL: 0, APPROVED: 1, SHIPPED: 2, COMPLETED: 3,
@@ -42,31 +43,25 @@ function StepTracker({ status }) {
   const currentIdx = STATUS_ORDER[status] ?? 0;
   const isRejected = status === 'REJECTED' || status === 'CANCELLED';
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:0, margin:'16px 0 12px' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', margin:'16px 0', width:'100%', maxWidth:500 }}>
       {STEPS.map((step, idx) => {
         const done   = idx < currentIdx;
         const active = idx === currentIdx && !isRejected;
-        const bg     = isRejected ? '#fee2e2' : done ? PURPLE : active ? CYAN : '#e2e8f0';
-        const col    = isRejected ? '#ef4444' : (done || active) ? DARK : '#94a3b8';
-        const border = active ? `2px solid ${DARK}` : `2px solid transparent`;
-
+        const bg     = isRejected ? '#FEE2E2' : active ? '#2563EB' : done ? '#16A34A' : '#F3F4F6';
+        const col    = isRejected ? '#DC2626' : (active || done) ? '#FFFFFF' : '#9CA3AF';
+        
         return (
           <React.Fragment key={step.key}>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', minWidth:80 }}>
-              <div className={active ? "icon3d" : ""} style={{
-                width:36, height:36, background:bg,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                color:col, border: active || done ? `2px solid ${DARK}` : `2px solid #cbd5e1`,
-                boxShadow: active || done ? `0 4px 6px rgba(0,0,0,0.05)` : 'none',
-              }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:2 }}>
+              <div style={{ width:32, height:32, borderRadius:'50%', background:bg, color:col, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:(active||done)?'0 2px 4px rgba(0,0,0,0.1)':'none', transition:'all 0.2s' }}>
                 {done ? <Check size={16}/> : step.icon}
               </div>
-              <div style={{ fontSize:10, fontWeight:900, color:DARK, textAlign:'center', marginTop:8, lineHeight:1.2, textTransform:'uppercase' }}>
+              <div style={{ fontSize:10, fontWeight:600, color:(active||done)?'#111827':'#9CA3AF', marginTop:6, textTransform:'uppercase', letterSpacing:'0.02em', textAlign:'center', position:'absolute', top:36, width:100, left:'50%', transform:'translateX(-50%)' }}>
                 {step.label}
               </div>
             </div>
             {idx < STEPS.length-1 && (
-              <div style={{ flex:1, height:4, background: idx < currentIdx ? DARK : '#cbd5e1', marginBottom:28, borderTop: idx < currentIdx ? `1px solid ${DARK}` : 'none' }}/>
+              <div style={{ flex:1, height:2, background: idx < currentIdx ? '#16A34A' : '#E5E7EB', margin:'0 8px', zIndex:1 }}/>
             )}
           </React.Fragment>
         );
@@ -78,119 +73,79 @@ function StepTracker({ status }) {
 // ── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
-    PENDING_APPROVAL: { bg:PURPLE, text:DARK,     label:'⏳ Pending CEO' },
-    APPROVED:         { bg:CYAN,   text:DARK,     label:'✅ CEO Approved' },
-    REJECTED:         { bg:'#fee2e2', text:'#dc2626',label:'❌ Rejected' },
-    SHIPPED:          { bg:'#fef3c7', text:'#d97706',label:'🚚 Shipped' },
-    COMPLETED:        { bg:'#d1fae5', text:'#059669',label:'✅ Received' },
-    CANCELLED:        { bg:'#f1f5f9', text:'#64748b',label:'🚫 Cancelled' },
-    DISCREPANCY:      { bg:'#ffedd5', text:'#c2410c',label:'⚠️ Discrepancy' },
+    PENDING_APPROVAL: { bg:'#F3F4F6', text:'#4B5563', label:'Pending CEO' },
+    APPROVED:         { bg:'#E0F2FE', text:'#0284C7', label:'CEO Approved' },
+    REJECTED:         { bg:'#FEE2E2', text:'#DC2626', label:'Rejected' },
+    SHIPPED:          { bg:'#FEF3C7', text:'#D97706', label:'Shipped' },
+    COMPLETED:        { bg:'#DCFCE7', text:'#16A34A', label:'Received' },
+    CANCELLED:        { bg:'#F3F4F6', text:'#4B5563', label:'Cancelled' },
+    DISCREPANCY:      { bg:'#FEF3C7', text:'#D97706', label:'Discrepancy' },
   };
-  const c = map[status] || { bg:'#f1f5f9', text:'#64748b', label:status };
+  const c = map[status] || { bg:'#F3F4F6', text:'#4B5563', label:status };
   return (
-    <span className="badge3d" style={{
-      background:c.bg, color:c.text, padding:'6px 14px',
-      fontSize:11, fontWeight:900, whiteSpace:'nowrap',
-      border:`2px solid ${c.text}`,
-      textTransform:'uppercase'
+    <span style={{
+      background:c.bg, color:c.text, padding:'4px 10px', borderRadius:999,
+      fontSize:11.5, fontWeight:600, whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:'0.02em'
     }}>{c.label}</span>
   );
 }
 
-// ── Info Box ─────────────────────────────────────────────────────────────────
-function InfoBox({ label, value, color, highlight }) {
-  return (
-    <div className="card3d" style={{
-      background: highlight ? CYAN : 'white',
-      padding:'12px 14px', textAlign:'center',
-      border: `3px solid ${DARK}`,
-      boxShadow: `4px 4px 0 ${DARK}`,
-      display: 'flex', flexDirection: 'column', justifyContent: 'center'
-    }}>
-      <div style={{ fontSize:22, fontWeight:900, color:DARK }}>{value??'—'}</div>
-      <div style={{ fontSize:11, color:DARK, fontWeight:900, marginTop:4, textTransform:'uppercase' }}>{label}</div>
-    </div>
-  );
-}
-
-// ── Row detail ────────────────────────────────────────────────────────────────
+// ── Detail Row ────────────────────────────────────────────────────────────────
 function DetailRow({ label, value }) {
   return (
-    <div style={{ display:'flex', justifyContent:'space-between', paddingBottom:8, marginBottom:8, borderBottom:`3px solid ${DARK}` }}>
-      <span style={{ color:DARK, fontWeight:800, fontSize:12, textTransform:'uppercase' }}>{label}</span>
-      <span style={{ fontWeight:900, fontSize:13, color:DARK }}>{value}</span>
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <span style={{ color:'#6B7280', fontWeight:500, fontSize:11, textTransform:'uppercase', letterSpacing:'0.03em' }}>{label}</span>
+      <span style={{ fontWeight:500, fontSize:13, color:'#111827' }}>{value}</span>
     </div>
   );
 }
 
-// ── Request Card ─────────────────────────────────────────────────────────────
+// ── Request Card (Rendered as Table Row) ─────────────────────────────────────
 function RequestCard({ r, onReceive }) {
   const [expanded, setExpanded] = useState(false);
   const isShipped = r.status === 'SHIPPED';
   return (
-    <div className="card3d" style={{
-      background: isShipped ? CYAN : 'white',
-      border: `3px solid ${DARK}`,
-      marginBottom:20,
-      boxShadow: `4px 4px 0 ${DARK}`,
-      animation:'rowIn3D .4s ease-out both',
-    }}>
-      {/* Shipped Banner */}
-      {isShipped && (
-        <div style={{ background:DARK, padding:'12px 20px', display:'flex', alignItems:'center', gap:10, borderBottom:`3px solid ${DARK}` }}>
-          <span className="icon3d"><Truck size={18} color={CYAN}/></span>
-          <span style={{ color:CYAN, fontWeight:900, fontSize:13, textTransform:'uppercase' }}>📦 SHIPMENT ARRIVED — ACTION REQUIRED</span>
-          <span style={{ marginLeft:'auto', background:CYAN, color:DARK, padding:'4px 12px', fontSize:11, fontWeight:900, textTransform:'uppercase', border:`2px solid ${CYAN}` }}>
-            {r.shipped_qty} units ready
-          </span>
-        </div>
+    <React.Fragment>
+      <tr className="siv-req-row" style={{ background: isShipped ? '#EFF6FF' : 'transparent', borderBottom: expanded ? 'none' : '1px solid var(--c-border)', transition:'background 150ms ease' }}>
+        <td style={{ padding:'12px 18px', fontWeight:500 }}>{r.request_code}</td>
+        <td style={{ padding:'12px 18px', fontWeight:500, color:'#111827' }}>{r.drug_name}</td>
+        <td style={{ padding:'12px 18px' }}>{r.requested_qty}</td>
+        <td style={{ padding:'12px 18px' }}>{r.shipped_qty||'—'}</td>
+        <td style={{ padding:'12px 18px' }}><StatusBadge status={r.status}/></td>
+        <td style={{ padding:'12px 18px', textAlign:'right' }}>
+          <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+            <button onClick={() => setExpanded(e => !e)} className="siv-btn siv-btn-ghost">
+              {expanded ? 'Hide' : 'Details'}
+            </button>
+            {isShipped && (
+              <button onClick={() => onReceive(r)} className="siv-btn siv-btn-primary">
+                Receive
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr style={{ background: isShipped ? '#EFF6FF' : '#F9FAFB', borderBottom:'1px solid var(--c-border)' }}>
+          <td colSpan={6} style={{ padding:'16px 24px 32px' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+              <StepTracker status={r.status}/>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:20, background:'#FFFFFF', padding:16, borderRadius:8, border:'1px solid #E5E7EB' }}>
+                <DetailRow label="Pharm Stock at Req" value={r.pharmacy_qty_at_request??'—'}/>
+                <DetailRow label="Store Stock at Req" value={r.store_qty_at_request??'—'}/>
+                <DetailRow label="Urgency"      value={r.urgency}/>
+                <DetailRow label="Requested At" value={r.created_at ? new Date(r.created_at).toLocaleString() : '—'}/>
+                {r.approved_at && <DetailRow label="Approved At" value={new Date(r.approved_at).toLocaleString()}/>}
+                {r.shipped_at  && <DetailRow label="Shipped At"  value={new Date(r.shipped_at).toLocaleString()}/>}
+                {r.received_at && <DetailRow label="Received At" value={new Date(r.received_at).toLocaleString()}/>}
+                {r.received_qty!=null && <DetailRow label="Received Qty" value={r.received_qty}/>}
+                {r.decision_reason && <DetailRow label="Note" value={r.decision_reason}/>}
+              </div>
+            </div>
+          </td>
+        </tr>
       )}
-      <div style={{ padding:'20px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
-          <div>
-            <div style={{ fontSize:18, fontWeight:900, color:DARK }}>{r.drug_name}</div>
-            <div style={{ fontSize:12, color:ACCENT, fontFamily:'monospace', marginTop:4, fontWeight:800 }}>{r.request_code}</div>
-          </div>
-          <StatusBadge status={r.status}/>
-        </div>
-        <StepTracker status={r.status}/>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginTop:20 }}>
-          <InfoBox label="Requested"          value={r.requested_qty} />
-          <InfoBox label="Pharmacy Stock"     value={r.pharmacy_qty_at_request??'—'} />
-          <InfoBox label="Store Stock"        value={r.store_qty_at_request??'—'} />
-          {r.shipped_qty!=null && <InfoBox label="Shipped" value={r.shipped_qty} highlight={isShipped}/>}
-        </div>
-        <button onClick={() => setExpanded(e => !e)}
-          className="btn3d"
-          style={{ marginTop:16, background:PURPLE, border:`3px solid ${DARK}`, color:DARK, fontSize:11, fontWeight:900, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>
-          {expanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-          {expanded ? 'HIDE DETAILS' : 'SHOW DETAILS'}
-        </button>
-        {expanded && (
-          <div style={{ marginTop:16, background:PURPLE, padding:'16px', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}` }}>
-            <DetailRow label="Urgency"      value={r.urgency}/>
-            <DetailRow label="Requested At" value={r.created_at ? new Date(r.created_at).toLocaleString() : '—'}/>
-            {r.approved_at && <DetailRow label="Approved At" value={new Date(r.approved_at).toLocaleString()}/>}
-            {r.shipped_at  && <DetailRow label="Shipped At"  value={new Date(r.shipped_at).toLocaleString()}/>}
-            {r.received_at && <DetailRow label="Received At" value={new Date(r.received_at).toLocaleString()}/>}
-            {r.received_qty!=null && <DetailRow label="Received Qty" value={r.received_qty}/>}
-            {r.decision_reason && <DetailRow label="Note" value={r.decision_reason}/>}
-          </div>
-        )}
-        {isShipped && (
-          <button onClick={() => onReceive(r)} 
-            className="btn3d"
-            style={{
-            marginTop:20, width:'100%', padding:'14px',
-            background:PURPLE, color:DARK, border:`3px solid ${DARK}`,
-            cursor:'pointer', fontWeight:900, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-            boxShadow:`4px 4px 0 ${DARK}`, textTransform:'uppercase'
-          }}>
-            <span className="icon3d"><Inbox size={18}/></span> Confirm Receipt &amp; Update Stock
-          </button>
-        )}
-      </div>
-    </div>
+    </React.Fragment>
   );
 }
 
@@ -295,7 +250,7 @@ export default function StoreInventoryView() {
   const otherRequests   = myRequests.filter(r => r.status !== 'SHIPPED');
 
   return (
-    <div style={{ padding:0, margin:0, minHeight:'100vh', width:'100%', background:CYAN, fontFamily:"'Inter','Segoe UI',sans-serif", overflowX:'hidden' }}>
+    <div className="siv-root" style={{ padding:0, margin:0, minHeight:'100vh', width:'100%', background:CYAN, fontFamily:"'Inter','Segoe UI',sans-serif", overflowX:'hidden' }}>
       <style>{`
         @keyframes spin     { 100%{transform:rotate(360deg)} }
         @keyframes fadeUp   { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
@@ -376,10 +331,10 @@ export default function StoreInventoryView() {
       )}
 
       {/* ── HEADER ── */}
-      <div style={{ background: DARK, borderBottom: `4px solid ${ACCENT}`, padding: '0 24px', animation: 'fadeUp .3s ease' }}>
+      <div className="siv-header" style={{ background: DARK, borderBottom: `4px solid ${ACCENT}`, padding: '0 24px', animation: 'fadeUp .3s ease' }}>
         <div style={{ height: 3, background: `linear-gradient(90deg,${ACCENT},${CYAN},${PURPLE},${ACCENT})`, backgroundSize: '400% 100%', animation: 'shimmer 2.5s linear infinite' }} />
         
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 0', flexWrap:'wrap', gap:16 }}>
+        <div className="siv-header-inner" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 0', flexWrap:'wrap', gap:16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div className="icon3d" style={{
               width: 48, height: 48, background: PURPLE,
@@ -389,17 +344,17 @@ export default function StoreInventoryView() {
               <Database size={24} color={DARK} />
             </div>
             <div>
-              <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: CYAN, margin: 0, lineHeight: 1.1 }}>
+              <h1 className="siv-title" style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px', color: CYAN, margin: 0, lineHeight: 1.1 }}>
                 Store Inventory
               </h1>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', color: PURPLE }}>
+              <p className="siv-subtitle" style={{ margin: 0, fontSize: 11, fontWeight: 900, letterSpacing: '3px', textTransform: 'uppercase', color: PURPLE }}>
                 Request Stock • Track Shipments
               </p>
             </div>
           </div>
           <div style={{ display:'flex', gap:10 }}>
             {shippedRequests.length > 0 && activeTab !== 'my_requests' && (
-              <button type="button" onClick={() => setActiveTab('my_requests')} className="btn3d" style={{
+              <button type="button" onClick={() => setActiveTab('my_requests')} className="btn3d siv-btn-shipped" style={{
                 background:PURPLE, color:DARK, border:`3px solid ${DARK}`,
                 padding:'10px 18px', fontWeight:900, fontSize:12, cursor:'pointer',
                 boxShadow:`4px 4px 0 ${DARK}`, display:'inline-flex',
@@ -408,7 +363,7 @@ export default function StoreInventoryView() {
                 <Truck size={16} color={DARK} /> Receive Shipments ({shippedRequests.length}) <ArrowRight size={16} />
               </button>
             )}
-            <button type="button" onClick={handleRefresh} disabled={loading} className="btn3d" style={{
+            <button type="button" onClick={handleRefresh} disabled={loading} className="btn3d siv-btn-refresh" style={{
               background:CYAN, color:DARK, border:`3px solid ${DARK}`,
               padding:'10px 18px', fontWeight:900, fontSize:12, cursor:'pointer',
               boxShadow:`4px 4px 0 ${DARK}`, display:'inline-flex',
@@ -421,24 +376,24 @@ export default function StoreInventoryView() {
         </div>
       </div>
 
-      <div style={{ padding:'24px', animation:'fadeUp .35s ease' }}>
+      <div className="siv-body" style={{ padding:'24px', animation:'fadeUp .35s ease' }}>
 
         {/* ── KPI CHIPS ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20, marginBottom:24 }}>
+        <div className="siv-kpi-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20, marginBottom:24 }}>
           {[
             { label:'Store Items',    value:storeStock.length,                         icon:Package,  color:PURPLE },
             { label:'My Requests',    value:myRequests.length,                          icon:List,     color:CYAN },
             { label:'Shipped',        value:shippedRequests.length,                     icon:Truck,    color:PURPLE },
             { label:'Completed',      value:myRequests.filter(r=>r.status==='COMPLETED').length, icon:CheckCircle, color:CYAN },
           ].map((kpi,i) => (
-            <div key={i} className="card3d" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, display:'flex', flexDirection:'column' }}>
+            <div key={i} className="card3d siv-kpi-card" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, display:'flex', flexDirection:'column' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <span style={{ fontSize:12, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>{kpi.label}</span>
-                <div className="iconPop" style={{ background:DARK, padding:8, border:`3px solid ${DARK}` }}>
+                <span className="siv-kpi-label" style={{ fontSize:12, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>{kpi.label}</span>
+                <div className="iconPop siv-kpi-icon" style={{ background:DARK, padding:8, border:`3px solid ${DARK}` }}>
                   <kpi.icon size={18} color={'white'}/>
                 </div>
               </div>
-              <div style={{ fontSize:'2.5rem', fontWeight:900, color:DARK, marginTop:16 }}>
+              <div className="siv-kpi-value" style={{ fontSize:'2.5rem', fontWeight:900, color:DARK, marginTop:16 }}>
                 {kpi.value}
               </div>
             </div>
@@ -446,8 +401,8 @@ export default function StoreInventoryView() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display:'flex', gap:12, marginBottom:24 }}>
-          <button type="button" className="btn3d" onClick={(e) => { e.preventDefault(); setActiveTab('store_stock'); }} style={{
+        <div className="siv-tabs" style={{ display:'flex', gap:12, marginBottom:24 }}>
+          <button type="button" className={`btn3d siv-tab ${activeTab === 'store_stock' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveTab('store_stock'); }} style={{
             background: activeTab === 'store_stock' ? DARK : 'white',
             color: activeTab === 'store_stock' ? CYAN : DARK,
             border: `3px solid ${DARK}`, padding: '12px 24px', fontWeight: 900, fontSize: 13, textTransform: 'uppercase',
@@ -455,7 +410,7 @@ export default function StoreInventoryView() {
           }}>
             <span className="icon3d"><Package size={16}/></span> Store Stock
           </button>
-          <button type="button" className="btn3d" onClick={(e) => { e.preventDefault(); setActiveTab('my_requests'); }} style={{
+          <button type="button" className={`btn3d siv-tab ${activeTab === 'my_requests' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveTab('my_requests'); }} style={{
             background: activeTab === 'my_requests' ? DARK : 'white',
             color: activeTab === 'my_requests' ? CYAN : DARK,
             border: `3px solid ${DARK}`, padding: '12px 24px', fontWeight: 900, fontSize: 13, textTransform: 'uppercase',
@@ -474,9 +429,9 @@ export default function StoreInventoryView() {
         {activeTab === 'store_stock' && (
           <div style={{ animation:'fadeUp .4s ease' }}>
             <div style={{ marginBottom:20 }}>
-              <div style={{ position:'relative', maxWidth:400 }}>
-                <Search size={18} color={DARK} style={{ position:'absolute', left:14, top:13, pointerEvents:'none' }}/>
-                <input type="text" placeholder="Search store items..." value={search} onChange={e => setSearch(e.target.value)}
+              <div className="siv-search-wrap" style={{ position:'relative', maxWidth:400 }}>
+                <Search className="siv-search-icon" size={18} color={DARK} style={{ position:'absolute', left:14, top:13, pointerEvents:'none' }}/>
+                <input type="text" className="siv-search-input" placeholder="Search store items..." value={search} onChange={e => setSearch(e.target.value)}
                   style={{ width:'100%', padding:'12px 16px 12px 44px', border:`3px solid ${DARK}`,
                     fontSize:14, outline:'none', background:'white', color:DARK,
                     boxSizing:'border-box', fontWeight:900,
@@ -485,9 +440,9 @@ export default function StoreInventoryView() {
               </div>
             </div>
 
-            <div style={{ background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, overflow:'hidden' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <div className="siv-table-wrap" style={{ background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, overflow:'hidden' }}>
+              <div className="siv-table-scroll" style={{ overflowX: 'auto' }}>
+                <table className="siv-table" style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr>
                       <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Drug Name</th>
@@ -541,8 +496,7 @@ export default function StoreInventoryView() {
                                   ⏳ Pending CEO
                                 </span>
                               : <button type="button" onClick={(e) => { e.preventDefault(); setReqModal({ open:true, item, qty:'', urgency:'MEDIUM' }); }}
-                                  className="btn3d"
-                                  style={{ background:CYAN, color:DARK, border:`3px solid ${DARK}`, padding:'8px 16px', fontWeight:900, fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>
+                                  className="btn3d siv-btn-request" style={{ background:CYAN, color:DARK, border:`3px solid ${DARK}`, padding:'8px 16px', fontWeight:900, fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:6, textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>
                                   <Send size={14}/> Request
                                 </button>
                             }
@@ -552,7 +506,7 @@ export default function StoreInventoryView() {
                     })}
 
                     {filteredStock.length > 0 && (
-                      <tr style={{ background:DARK }}>
+                      <tr className="siv-total-row" style={{ background:DARK }}>
                         <td colSpan={2} style={{ padding:'16px 18px', fontSize:14, fontWeight:900, color:CYAN, textTransform:'uppercase' }}>
                           GRAND TOTAL
                         </td>
@@ -586,24 +540,27 @@ export default function StoreInventoryView() {
                 <div style={{ fontSize:14, color:DARK, fontWeight:700 }}>Go to the "Store Stock" tab to request drugs from the store.</div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
-                {shippedRequests.length > 0 && (
-                  <div style={{ gridColumn: '1 / -1', marginBottom:4, fontSize:14, fontWeight:900, color:DARK, display:'flex', alignItems:'center', gap:8, textTransform:'uppercase', letterSpacing:'.06em' }}>
-                    <span className="icon3d"><Truck size={18}/></span> Awaiting Your Receipt ({shippedRequests.length})
-                  </div>
-                )}
-                {shippedRequests.map(r => (
-                  <RequestCard key={r.id} r={r} onReceive={req => setReceiveModal({ open:true, req, qty:String(req.shipped_qty||'') })}/>
-                ))}
-                
-                {otherRequests.length > 0 && shippedRequests.length > 0 && (
-                  <div style={{ gridColumn: '1 / -1', margin:'20px 0 4px', fontSize:14, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.06em' }}>
-                    Other Requests
-                  </div>
-                )}
-                {otherRequests.map(r => (
-                  <RequestCard key={r.id} r={r} onReceive={req => setReceiveModal({ open:true, req, qty:String(req.shipped_qty||'') })}/>
-                ))}
+              <div className="siv-table-wrap">
+                <table className="siv-table">
+                  <thead>
+                    <tr>
+                      <th>Req Code</th>
+                      <th>Drug</th>
+                      <th>Req Qty</th>
+                      <th>Shipped Qty</th>
+                      <th>Status</th>
+                      <th style={{ textAlign:'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shippedRequests.map(r => (
+                      <RequestCard key={r.id} r={r} onReceive={req => setReceiveModal({ open:true, req, qty:String(req.shipped_qty||'') })}/>
+                    ))}
+                    {otherRequests.map(r => (
+                      <RequestCard key={r.id} r={r} onReceive={req => setReceiveModal({ open:true, req, qty:String(req.shipped_qty||'') })}/>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -614,62 +571,58 @@ export default function StoreInventoryView() {
       {reqModal.open && (
         <div
           onMouseDown={e => { if (e.target === e.currentTarget) { setReqModal({open:false,item:null,qty:'',urgency:'MEDIUM'}); setSavedSig(null); sigCanvas.current?.clear(); } }}
-          style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.75)', zIndex:99999, overflowY:'auto', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px' }}>
-          <div style={{ margin:'auto', flexShrink:0, background:CYAN, width:500, maxWidth:'100%', border:`4px solid ${DARK}`, boxShadow:`8px 8px 0 ${DARK}` }}>
-            <div style={{ padding:'20px 24px', background:DARK, borderBottom:`3px solid ${DARK}` }}>
-              <h3 style={{ margin:0, fontSize:20, color:CYAN, fontWeight:900, textTransform:'uppercase' }}>Request Transfer from Store</h3>
-              <p style={{ margin:'6px 0 0', fontSize:14, color:'white', fontWeight:800 }}>{reqModal.item?.name}</p>
+          style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.4)', zIndex:99999, display:'flex', alignItems:'center', justifyContent:'center', padding:16, backdropFilter:'blur(2px)' }}>
+          <div style={{ background:'#fff', width:500, maxWidth:'100%', borderRadius:12, boxShadow:'0 10px 25px rgba(0,0,0,0.1)', overflow:'hidden', animation:'fadeUp .2s ease' }}>
+            <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--c-border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <h3 style={{ margin:0, fontSize:18, color:'#111827', fontWeight:600 }}>Request Transfer</h3>
+                <p style={{ margin:'4px 0 0', fontSize:13, color:'#6B7280' }}>{reqModal.item?.name}</p>
+              </div>
+              <button onClick={() => { setReqModal({open:false,item:null,qty:'',urgency:'MEDIUM'}); setSavedSig(null); sigCanvas.current?.clear(); }} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#9CA3AF' }}><XCircle size={20}/></button>
             </div>
             <div style={{ padding:24, display:'flex', flexDirection:'column', gap:20 }}>
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>Quantity to Request</label>
+                <label style={{ display:'block', fontSize:12, fontWeight:500, marginBottom:8, color:'#4B5563', textTransform:'uppercase', letterSpacing:'0.03em' }}>Quantity</label>
                 <input type="number" min="1" value={reqModal.qty} onChange={e => setReqModal({...reqModal, qty:e.target.value})}
-                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', boxSizing:'border-box', fontWeight:900, fontSize:18, fontFamily:'Inter', boxShadow:`4px 4px 0 ${DARK}` }} autoFocus/>
+                  className="siv-input" autoFocus/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>Urgency</label>
+                <label style={{ display:'block', fontSize:12, fontWeight:500, marginBottom:8, color:'#4B5563', textTransform:'uppercase', letterSpacing:'0.03em' }}>Urgency</label>
                 <select value={reqModal.urgency} onChange={e => setReqModal({...reqModal, urgency:e.target.value})}
-                  style={{ width:'100%', padding:'14px 16px', border:`3px solid ${DARK}`, outline:'none', fontWeight:900, fontSize:14, fontFamily:'Inter', boxShadow:`4px 4px 0 ${DARK}` }}>
-                  <option value="LOW">LOW</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HIGH">HIGH</option>
+                  className="siv-input">
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
                 </select>
               </div>
               <div>
-                <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, fontWeight:900, marginBottom:8, textTransform:'uppercase', color:DARK }}>
-                  <span>Digital Signature {savedSig && <span style={{ color:'#166534', fontSize:10, marginLeft:6, background:'#dcfce7', padding:'2px 8px', border:'2px solid #166534' }}>✓ SAVED</span>}</span>
+                <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, fontWeight:500, marginBottom:8, color:'#4B5563', textTransform:'uppercase', letterSpacing:'0.03em' }}>
+                  <span>Signature {savedSig && <span style={{ color:'#16A34A', marginLeft:6 }}>✓ Saved</span>}</span>
                   <button type="button" onClick={() => { sigCanvas.current?.clear(); setSavedSig(null); }}
-                    style={{ fontSize:10, color:'white', background:'#ef4444', border:`3px solid ${DARK}`, cursor:'pointer', fontWeight:900, padding:'4px 10px', textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>Clear</button>
+                    style={{ fontSize:11, color:'#DC2626', background:'transparent', border:'none', cursor:'pointer', fontWeight:500 }}>Clear</button>
                 </label>
-                <div style={{ border:`3px solid ${DARK}`, background:'white', boxShadow:`4px 4px 0 ${DARK}` }}>
-                  <SignatureCanvas ref={sigCanvas} penColor={DARK} canvasProps={{ width:452, height:120 }}/>
+                <div style={{ border:'1px solid var(--c-border)', borderRadius:8, background:'#F9FAFB', overflow:'hidden' }}>
+                  <SignatureCanvas ref={sigCanvas} penColor="#111827" canvasProps={{ width:452, height:120 }}/>
                 </div>
                 <button type="button"
                   onClick={() => {
                     if (!sigCanvas.current || sigCanvas.current.isEmpty()) { showMsg('Draw your signature first','error'); return; }
                     setSavedSig(sigCanvas.current.toDataURL());
-                    showMsg('✅ Signature saved!','success');
+                    showMsg('Signature saved!','success');
                   }}
-                  style={{ marginTop:10, width:'100%', padding:'10px', background:'#166534', color:'white', border:`3px solid ${DARK}`, fontWeight:900, fontSize:12, textTransform:'uppercase', cursor:'pointer', boxShadow:`4px 4px 0 ${DARK}`, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                  💾 Save Signature
+                  className="siv-btn siv-btn-secondary" style={{ marginTop:10, width:'100%' }}>
+                  Save Signature
                 </button>
-                {savedSig && (
-                  <div style={{ marginTop:8, border:`2px solid #166534`, padding:8, background:'#f0fdf4' }}>
-                    <div style={{ fontSize:10, fontWeight:900, color:'#166534', marginBottom:4, textTransform:'uppercase' }}>Saved Preview:</div>
-                    <img src={savedSig} alt="signature" style={{ maxWidth:'100%', height:50, objectFit:'contain', display:'block' }}/>
-                  </div>
-                )}
               </div>
-              <div style={{ display:'flex', gap:12, marginTop:10 }}>
+              <div style={{ display:'flex', gap:12, marginTop:8, justifyContent:'flex-end' }}>
                 <button type="button"
                   onClick={() => { setReqModal({open:false,item:null,qty:'',urgency:'MEDIUM'}); setSavedSig(null); sigCanvas.current?.clear(); }}
-                  style={{ flex:1, padding:'14px', background:'white', color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:13, textTransform:'uppercase', cursor:'pointer', boxShadow:`4px 4px 0 ${DARK}` }}>Cancel</button>
+                  className="siv-btn siv-btn-ghost">Cancel</button>
                 <button type="button"
                   onClick={() => submitRequest()}
                   disabled={submittingReq}
-                  style={{ flex:2, padding:'14px', background:PURPLE, color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:13, textTransform:'uppercase', cursor: submittingReq ? 'not-allowed' : 'pointer', boxShadow:`4px 4px 0 ${DARK}`, display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity: submittingReq ? 0.7 : 1 }}>
-                  {submittingReq ? <SegmentedSpinner size={16} /> : <Send size={16}/>}
-                  {submittingReq ? 'Submitting...' : 'Submit to CEO'}
+                  className="siv-btn siv-btn-primary" style={{ minWidth:120 }}>
+                  {submittingReq ? <SegmentedSpinner size={16} /> : 'Submit Request'}
                 </button>
               </div>
             </div>
@@ -679,51 +632,65 @@ export default function StoreInventoryView() {
 
       {/* ── RECEIVE MODAL ── */}
       {receiveModal.open && receiveModal.req && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,28,41,.8)', zIndex:99999, overflowY:'auto', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px', backdropFilter:'blur(4px)' }}>
-          <div className="card3d" style={{ margin:'auto', flexShrink:0, background:CYAN, width:540, maxWidth:'100%', border:`3px solid ${DARK}`, boxShadow:`6px 6px 0 ${DARK}`, animation:'fadeUp .25s ease' }}>
-            <div style={{ background:DARK, padding:'24px', display:'flex', alignItems:'center', gap:16, borderBottom:`3px solid ${DARK}` }}>
-              <div className="iconPop" style={{ background:CYAN, padding:12, border:`3px solid ${DARK}` }}>
-                <Inbox size={28} color={DARK}/>
-              </div>
-              <div>
-                <h3 style={{ margin:0, fontSize:20, color:CYAN, fontWeight:900, textTransform:'uppercase' }}>Confirm Receipt</h3>
-                <p style={{ margin:'4px 0 0', fontSize:13, color:'white', fontWeight:800, textTransform:'uppercase' }}>Step 4 of 4 — Pharmacy Receiving</p>
-              </div>
-            </div>
-            <div style={{ padding:28 }}>
-              <div style={{ background:'white', border:`3px solid ${DARK}`, padding:'20px', marginBottom:24, boxShadow:`4px 4px 0 ${DARK}` }}>
-                <div style={{ fontSize:22, fontWeight:900, color:DARK }}>{receiveModal.req.drug_name}</div>
-                <div style={{ fontSize:12, color:ACCENT, fontFamily:'monospace', marginTop:6, fontWeight:900 }}>{receiveModal.req.request_code}</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginTop:20 }}>
-                  <InfoBox label="Requested"     value={receiveModal.req.requested_qty} />
-                  <InfoBox label="Shipped"        value={receiveModal.req.shipped_qty} highlight />
-                  <InfoBox label="Pharm Stock" value={receiveModal.req.pharmacy_qty_at_request??'—'} />
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.4)', zIndex:99999, display:'flex', alignItems:'center', justifyContent:'center', padding:16, backdropFilter:'blur(2px)' }}>
+          <div style={{ background:'#fff', width:540, maxWidth:'100%', borderRadius:12, boxShadow:'0 10px 25px rgba(0,0,0,0.1)', overflow:'hidden', animation:'fadeUp .2s ease' }}>
+            <div style={{ padding:'20px 24px', borderBottom:'1px solid var(--c-border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ background:'#E0F2FE', color:'#0284C7', padding:8, borderRadius:8 }}>
+                  <Inbox size={20}/>
+                </div>
+                <div>
+                  <h3 style={{ margin:0, fontSize:18, color:'#111827', fontWeight:600 }}>Confirm Receipt</h3>
+                  <p style={{ margin:'2px 0 0', fontSize:13, color:'#6B7280' }}>{receiveModal.req.drug_name}</p>
                 </div>
               </div>
-              <StepTracker status="SHIPPED"/>
-              <div style={{ height:4, background:DARK, margin:'24px 0' }}/>
-              <label style={{ display:'block', fontSize:14, fontWeight:900, marginBottom:10, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>
-                Actual Quantity You Received
+              <button onClick={() => setReceiveModal({open:false,req:null,qty:''})} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#9CA3AF' }}><XCircle size={20}/></button>
+            </div>
+            
+            <div style={{ padding:24 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, marginBottom:24 }}>
+                <div style={{ background:'#F9FAFB', padding:12, borderRadius:8, border:'1px solid var(--c-border)' }}>
+                  <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', fontWeight:500 }}>Requested</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:'#111827', marginTop:4 }}>{receiveModal.req.requested_qty}</div>
+                </div>
+                <div style={{ background:'#EFF6FF', padding:12, borderRadius:8, border:'1px solid #BFDBFE' }}>
+                  <div style={{ fontSize:11, color:'#1D4ED8', textTransform:'uppercase', fontWeight:500 }}>Shipped</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:'#1D4ED8', marginTop:4 }}>{receiveModal.req.shipped_qty}</div>
+                </div>
+                <div style={{ background:'#F9FAFB', padding:12, borderRadius:8, border:'1px solid var(--c-border)' }}>
+                  <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', fontWeight:500 }}>Pharm Stock</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:'#111827', marginTop:4 }}>{receiveModal.req.pharmacy_qty_at_request??'—'}</div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom:24 }}>
+                <StepTracker status="SHIPPED"/>
+              </div>
+
+              <label style={{ display:'block', fontSize:12, fontWeight:500, marginBottom:8, color:'#4B5563', textTransform:'uppercase', letterSpacing:'0.03em' }}>
+                Actual Quantity Received
               </label>
               <input type="number" min="0" value={receiveModal.qty}
                 onChange={e => setReceiveModal({...receiveModal, qty:e.target.value})}
-                style={{ width:'100%', padding:'16px 20px', border:`3px solid ${DARK}`, outline:'none', fontSize:22, fontWeight:900, boxSizing:'border-box', boxShadow:`4px 4px 0 ${DARK}` }}
+                className="siv-input"
                 autoFocus placeholder="Enter count received..."/>
+                
               {receiveModal.qty !== '' && (
                 parseInt(receiveModal.qty) === Number(receiveModal.req.shipped_qty) ? (
-                  <div className="badge3d" style={{ marginTop:12, background:'#d1fae5', border:`3px solid ${DARK}`, padding:'10px 14px', color:DARK, fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase', boxShadow:`3px 3px 0 ${DARK}` }}>
-                    <Check size={18}/> Quantities match — Add to stock
+                  <div style={{ marginTop:12, background:'#DCFCE7', color:'#16A34A', padding:'10px 14px', borderRadius:6, fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:500 }}>
+                    <Check size={16}/> Quantities match
                   </div>
                 ) : (
-                  <div className="badge3d" style={{ marginTop:12, background:'#fee2e2', border:`3px solid #991b1b`, padding:'10px 14px', color:'#991b1b', fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:900, textTransform:'uppercase', boxShadow:`3px 3px 0 #991b1b` }}>
-                    <AlertTriangle size={18}/> Mismatch! Triggers discrepancy report
+                  <div style={{ marginTop:12, background:'#FEE2E2', color:'#DC2626', padding:'10px 14px', borderRadius:6, fontSize:13, display:'flex', alignItems:'center', gap:8, fontWeight:500 }}>
+                    <AlertTriangle size={16}/> Mismatch! Triggers discrepancy report
                   </div>
                 )
               )}
-              <div style={{ display:'flex', gap:16, marginTop:28 }}>
-                <button type="button" onClick={(e) => { e.preventDefault(); setReceiveModal({open:false,req:null,qty:''}); }} className="btn3d" style={{ flex:1, padding:'16px', background:'white', color:DARK, border:`3px solid ${DARK}`, fontWeight:900, fontSize:14, textTransform:'uppercase', boxShadow:`4px 4px 0 ${DARK}` }}>Cancel</button>
-                <button type="button" onClick={(e) => { e.preventDefault(); submitReceive(); }} disabled={submittingReceive||receiveModal.qty===''} className="btn3d" style={{ flex:2, padding:'16px', background:PURPLE, color:DARK, border:`3px solid ${DARK}`, cursor: submittingReceive||receiveModal.qty===''?'not-allowed':'pointer', fontWeight:900, fontSize:14, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center', gap:10, boxShadow:`4px 4px 0 ${DARK}`, opacity: submittingReceive||receiveModal.qty===''?0.6:1 }}>
-                  {submittingReceive ? 'Processing...' : 'Confirm & Update Stock'}
+
+              <div style={{ display:'flex', gap:12, marginTop:24, justifyContent:'flex-end' }}>
+                <button type="button" onClick={() => setReceiveModal({open:false,req:null,qty:''})} className="siv-btn siv-btn-ghost">Cancel</button>
+                <button type="button" onClick={() => submitReceive()} disabled={submittingReceive||receiveModal.qty===''} className="siv-btn siv-btn-primary" style={{ minWidth:160 }}>
+                  {submittingReceive ? <SegmentedSpinner size={16} /> : 'Confirm & Update Stock'}
                 </button>
               </div>
             </div>
