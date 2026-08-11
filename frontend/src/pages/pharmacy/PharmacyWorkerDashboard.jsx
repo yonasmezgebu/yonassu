@@ -48,7 +48,7 @@ const PharmacyWorkerDashboard = () => {
 
     // ── Stock Operations ──
     {
-      label: 'Stock Operations', path: '/pharmacy-worker/stock-operations', icon: 'package', color: '#3b82f6'
+      label: 'Stock Operations', path: '/pharmacy-worker/stock-operations', icon: 'package', color: '#3b82f6', altActiveOn: ['/pharmacy-worker/medicines']
     },
     { type: 'divider' },
 
