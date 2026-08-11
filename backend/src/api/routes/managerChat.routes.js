@@ -40,6 +40,8 @@ router.post('/send-file',               authenticate, authorizeRoles(ROLES), upl
 router.delete('/:messageId',            authenticate, authorizeRoles(ROLES), ctrl.deleteMessage);
 router.get('/unread-count',             authenticate, authorizeRoles(ROLES), ctrl.getUnreadCount);
 router.get('/unread-counts',            authenticate, authorizeRoles(ROLES), ctrl.getUnreadCounts);
+router.patch('/heartbeat',              authenticate, authorizeRoles(ROLES), ctrl.heartbeat);
+router.get('/online-status',            authenticate, authorizeRoles(ROLES), ctrl.getOnlineStatus);
 
 // ── Admin / CEO Routes ────────────────────────────────────────────────────────
 router.get('/admin/users',              authenticate, authorizeRoles(['CEO']), ctrl.getAdminUsers);
