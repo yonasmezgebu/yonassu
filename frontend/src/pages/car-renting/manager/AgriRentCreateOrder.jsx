@@ -9,6 +9,7 @@ import api from '../../../services/apiClient';
 import authService from '../../../services/authService';
 import { PublicNav } from '../../LandingPage/PublicNavFooter';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './AgriRentCreateOrder.css';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
 const C = {
@@ -173,7 +174,7 @@ const AgriRentCreateOrder = () => {
   return (
     <>
       {!isManager && <PublicNav />}
-      <div style={{
+      <div className="arco-page" style={{
         minHeight: '100vh',
         background: C.white,
         paddingTop: isManager ? '1.5rem' : '90px',
