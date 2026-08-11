@@ -278,9 +278,11 @@ pharmacyTransferController.branchToBranch = async (req, res) => {
     await audit('BRANCH_TRANSFER_REQUEST', userId, {
       resource: 'transfer_requests',
       resourceId: requestId,
+      module: 'Pharmacy',
       beforeState: null,
       afterState: { from_branch_id, to_branch_id, drug_id, quantity, status: 'PENDING_APPROVAL' }
     });
+    if (req.res) req.res.locals.__centralAudited = true;
 
     res.status(201).json({
       status: 'success',
@@ -342,9 +344,11 @@ pharmacyTransferController.ceoApproveTransfer = async (req, res) => {
     await audit('BRANCH_TRANSFER_APPROVED', userId, {
       resource: 'transfer_requests',
       resourceId: id,
+      module: 'Pharmacy',
       beforeState: { status: 'PENDING_APPROVAL' },
       afterState: { status: 'COMPLETED', approved_by: userId }
     });
+    if (req.res) req.res.locals.__centralAudited = true;
 
     res.json({ status: 'success', message: 'Transfer approved and executed' });
   } catch (error) {
@@ -372,9 +376,11 @@ pharmacyTransferController.ceoRejectTransfer = async (req, res) => {
     await audit('BRANCH_TRANSFER_REJECTED', userId, {
       resource: 'transfer_requests',
       resourceId: id,
+      module: 'Pharmacy',
       beforeState: { status: 'PENDING_APPROVAL' },
       afterState: { status: 'REJECTED', reason }
     });
+    if (req.res) req.res.locals.__centralAudited = true;
 
     res.json({ status: 'success', message: 'Transfer rejected' });
   } catch (error) {
