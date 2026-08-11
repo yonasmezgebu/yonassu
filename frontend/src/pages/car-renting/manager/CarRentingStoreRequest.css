@@ -1,0 +1,804 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ════════════════════════════════════════════════════════════════
+   Car Renting Store Request — Complete CSS replacement
+   Scope: .crq-page only (root of CarRentingStoreRequest). Sidebar /
+   navbar are NOT touched. CSS-only, no JSX logic changes.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens (exact palette) ─────────────────────────────── */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page: #F5F6FA;
+  --color-bg-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-success: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-warning: #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-info: #0284C7;
+  --color-info-bg: #E0F2FE;
+  --gold: #FFC107;
+  --gold-text: #111827;
+}
+
+/* ── Page Wrapper ────────────────────────────────────────────────
+   dash-content has 24px padding (16/12 on smaller). Negative margins
+   counteract that padding so content runs edge-to-edge end-to-end. */
+.crq-page {
+  box-sizing: border-box !important;
+  margin: -24px !important;
+  padding: 24px !important;
+  min-height: 100vh !important;
+  background: var(--color-bg-page) !important;
+  font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif !important;
+  color: var(--color-text-primary) !important;
+}
+@media (max-width: 1024px) {
+  .crq-page { margin: -16px !important; padding: 16px !important; }
+}
+@media (max-width: 768px) {
+  .crq-page { margin: -12px !important; padding: 12px !important; }
+}
+
+/* ── Toast Notifications ───────────────────────────────────────── */
+.crq-page > div[style*="z-index: 99999"] { gap: 10px !important; }
+.crq-page > div[style*="z-index: 99999"] > div {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  border-radius: 8px !important;
+  border-left: 4px solid var(--color-success) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12) !important;
+  padding: 12px 16px !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  min-width: 240px !important;
+  max-width: 380px !important;
+  animation: crq-slideIn .25s ease !important;
+}
+@keyframes crq-slideIn {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(27, 94, 32)"]  { border-left-color: var(--color-success) !important; }
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(183, 28, 28)"] { border-left-color: var(--color-danger)  !important; }
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(107, 142, 35)"] { border-left-color: var(--color-warning) !important; }
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(27, 94, 32)"] svg  { color: var(--color-success) !important; stroke: var(--color-success) !important; }
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(183, 28, 28)"] svg { color: var(--color-danger)  !important; stroke: var(--color-danger)  !important; }
+.crq-page > div[style*="z-index: 99999"] > div[style*="background: rgb(107, 142, 35)"] svg { color: var(--color-warning) !important; stroke: var(--color-warning) !important; }
+.crq-page > div[style*="z-index: 99999"] > div > span { color: var(--color-text-primary) !important; }
+.crq-page > div[style*="z-index: 99999"] > div > button {
+  background: none !important;
+  border: none !important;
+  color: var(--color-text-secondary) !important;
+  padding: 0 !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  transition: color 150ms ease !important;
+}
+.crq-page > div[style*="z-index: 99999"] > div > button:hover { color: var(--color-text-primary) !important; }
+
+/* ── Confirm Receipt Modal ─────────────────────────────────────── */
+.crq-page > div[style*="inset: 0px"] {
+  background: rgba(0,0,0,.4) !important;
+  padding: 20px !important;
+}
+.crq-page > div[style*="inset: 0px"] > div {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-top: 4px solid var(--color-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.18) !important;
+  padding: 28px !important;
+  max-width: 420px !important;
+  width: 100% !important;
+}
+.crq-page > div[style*="inset: 0px"] h3 {
+  color: var(--color-text-primary) !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  margin: 0 0 12px !important;
+}
+.crq-page > div[style*="inset: 0px"] p {
+  color: var(--color-text-secondary) !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  margin: 0 0 24px !important;
+}
+.crq-page > div[style*="inset: 0px"] > div > div { gap: 12px !important; }
+
+/* ── Page Header (blue banner) ─────────────────────────────────── */
+.crq-page > div[style*="background: rgb(27, 94, 32)"] {
+  background: var(--color-primary) !important;
+  border-radius: 10px !important;
+  border-bottom: none !important;
+  padding: 0 20px !important;
+  min-height: 72px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  margin-bottom: 20px !important;
+}
+/* Cart icon box */
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(1) {
+  background: #FFFFFF !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+}
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(1) svg {
+  color: var(--color-primary) !important;
+  stroke: var(--color-primary) !important;
+}
+/* Titles */
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) {
+  color: #FFFFFF !important;
+  font-size: clamp(22px, 2.5vw, 28px) !important;
+  font-weight: 700 !important;
+  letter-spacing: -.01em !important;
+  line-height: 1.3 !important;
+  text-transform: none !important;
+}
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) {
+  color: #DBEAFE !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+/* Refresh button */
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > button {
+  background: rgba(255,255,255,.16) !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  padding: 0 14px !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page > div[style*="background: rgb(27, 94, 32)"] > button:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+
+/* ── Content Wrapper ───────────────────────────────────────────── */
+.crq-page > div[style*="padding: 28px 32px"] { padding: 0 !important; max-width: 100% !important; }
+
+/* ── KPI Stat Cards ────────────────────────────────────────────── */
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px !important;
+  margin-bottom: 20px !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div {
+  flex: none !important;
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-top: 4px solid var(--color-primary) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  padding: 20px 24px !important;
+  min-width: 0 !important;
+  transition: box-shadow 150ms ease, transform 150ms ease !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+  transform: translateY(-1px) !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div > div:nth-of-type(1) {
+  color: var(--color-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 8px !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div > div:nth-of-type(2) {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:nth-of-type(1) > div:nth-of-type(2) { color: var(--color-primary) !important; }
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:nth-of-type(2) > div:nth-of-type(2) { color: var(--color-warning) !important; }
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:nth-of-type(3) > div:nth-of-type(2) { color: var(--color-info) !important; }
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:nth-of-type(4) > div:nth-of-type(2) { color: var(--color-success) !important; }
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] > div:nth-of-type(5) > div:nth-of-type(2) { color: var(--color-success) !important; }
+
+/* ── Edit Mode Banner ──────────────────────────────────────────── */
+.crq-page [style*="border-left: 6px solid rgb(34, 139, 34)"] {
+  background: var(--color-info-bg) !important;
+  border: 1px solid #BAE6FD !important;
+  border-left: 4px solid var(--color-info) !important;
+  border-radius: 8px !important;
+  padding: 14px 20px !important;
+  margin-bottom: 20px !important;
+}
+.crq-page [style*="border-left: 6px solid rgb(34, 139, 34)"] > div:nth-of-type(1) > svg {
+  color: var(--color-info) !important;
+  stroke: var(--color-info) !important;
+}
+.crq-page [style*="border-left: 6px solid rgb(34, 139, 34)"] > div:nth-of-type(1) > div:nth-of-type(1) {
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+.crq-page [style*="border-left: 6px solid rgb(34, 139, 34)"] > div:nth-of-type(1) > div:nth-of-type(2) {
+  color: var(--color-text-secondary) !important;
+  font-size: 13px !important;
+}
+
+/* ── Cart header + Section headers ─────────────────────────────── */
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid"] {
+  border-left: 4px solid var(--color-primary) !important;
+  padding-left: 12px !important;
+  margin-bottom: 14px !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid"] > span {
+  color: var(--color-text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid"] > span svg {
+  color: var(--color-primary) !important;
+  stroke: var(--color-primary) !important;
+}
+/* Hide Cart button */
+.crq-page [style*="border-left: 5px solid"] > button {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  color: var(--color-text-secondary) !important;
+  padding: 0 12px !important;
+  min-height: 32px !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="border-left: 5px solid"] > button:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+
+/* ── Card Wrappers (cart table / products table / requests table) ──
+   Also the stats cards above; stats rule re-asserts its 4px top. */
+.crq-page div[style*="border: 2px solid rgb(224, 224, 224)"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  overflow-x: auto !important;
+}
+
+/* ── Cart footer ───────────────────────────────────────────────── */
+.crq-page [style*="padding: 18px 20px"] {
+  background: #F9FAFB !important;
+  border-top: 1px solid var(--color-border) !important;
+  padding: 18px 20px !important;
+}
+.crq-page [style*="padding: 18px 20px"] > div > div:nth-of-type(1) > div:nth-of-type(1) {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+}
+.crq-page [style*="padding: 18px 20px"] button { min-height: 44px !important; }
+
+/* ── Notes textarea ────────────────────────────────────────────── */
+.crq-page textarea {
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  outline: none !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.crq-page textarea:hover { border-color: #BFDBFE !important; }
+.crq-page textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+
+/* ── Filter Toolbar ────────────────────────────────────────────── */
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+  padding: 14px 16px !important;
+  margin-bottom: 16px !important;
+  gap: 12px !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > div:nth-of-type(1) {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+  height: 36px !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > div:nth-of-type(1):focus-within {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > div:nth-of-type(1) > svg {
+  color: var(--color-text-muted) !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > div:nth-of-type(1) > input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  width: 100% !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > select {
+  height: 36px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > span {
+  color: var(--color-text-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.crq-page option {
+  color: var(--color-text-primary) !important;
+  background: var(--color-bg-card) !important;
+}
+.crq-page option:hover { background: #F9FAFB !important; }
+
+/* ── Tables ────────────────────────────────────────────────────── */
+.crq-page table:not([style*="border: 1.5px solid"]) {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  min-width: 700px !important;
+  font-size: 14px !important;
+}
+.crq-page table[style*="border: 1.5px solid"] {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  min-width: 0 !important;
+}
+.crq-page table thead { background: #F9FAFB !important; }
+.crq-page table thead th {
+  background: #F9FAFB !important;
+  color: var(--color-text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  padding: 12px 14px !important;
+  white-space: nowrap !important;
+}
+.crq-page table tbody tr {
+  background: var(--color-bg-card) !important;
+  transition: background 150ms ease !important;
+}
+.crq-page table tbody tr:hover { background: #F9FAFB !important; }
+.crq-page table tbody td {
+  border-right: none !important;
+  border-bottom: 1px solid #F3F4F6 !important;
+  padding: 13px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  vertical-align: middle !important;
+  color: var(--color-text-primary) !important;
+}
+.crq-page table tbody tr:last-child td { border-bottom: none !important; }
+.crq-page table tbody td[colspan] { padding: 0 !important; }
+
+/* Row number col (all tables) */
+.crq-page table tbody tr td:nth-of-type(1) {
+  color: var(--color-text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* Cart table */
+.crq-page [style*="border-left: 5px solid rgb(46, 139, 87)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(2) {
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+}
+.crq-page [style*="border-left: 5px solid rgb(46, 139, 87)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(4) { color: var(--color-text-secondary) !important; }
+.crq-page [style*="border-left: 5px solid rgb(46, 139, 87)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(5) {
+  color: var(--color-success) !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* Products table */
+.crq-page div[style*="overflow-x: auto"][style*="margin-bottom: 40px"] > table tbody tr td:nth-of-type(2) {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace !important;
+  font-size: 12px !important;
+  color: var(--color-text-secondary) !important;
+  font-weight: 500 !important;
+}
+.crq-page div[style*="overflow-x: auto"][style*="margin-bottom: 40px"] > table tbody tr td:nth-of-type(3) {
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+}
+.crq-page div[style*="overflow-x: auto"][style*="margin-bottom: 40px"] > table tbody tr td:nth-of-type(6) { color: var(--color-text-secondary) !important; }
+.crq-page div[style*="overflow-x: auto"][style*="margin-bottom: 40px"] > table tbody tr td:nth-of-type(7) {
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+.crq-page table tbody tr td:nth-of-type(8) > span {
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+}
+
+/* Past requests table */
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid rgb(135, 206, 235)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(2) {
+  color: var(--color-primary) !important;
+  font-weight: 600 !important;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid rgb(135, 206, 235)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(3) {
+  color: var(--color-text-secondary) !important;
+  font-size: 13px !important;
+}
+.crq-page > div[style*="padding: 28px 32px"] > div[style*="border-left: 5px solid rgb(135, 206, 235)"] + div[style*="border: 2px solid rgb(224, 224, 224)"] > table tbody tr td:nth-of-type(5) {
+  color: var(--color-text-secondary) !important;
+}
+
+/* ── Pills / Badges ────────────────────────────────────────────── */
+/* Status badge */
+.crq-page [style*="padding: 4px 10px"][style*="border: 1.5px solid"] {
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+}
+/* Cart department badge */
+.crq-page [style*="padding: 2px 7px"] {
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+/* Products category / department badges */
+.crq-page [style*="padding: 3px 8px"] {
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+/* Past requests item-count badge */
+.crq-page [style*="padding: 3px 10px"] {
+  border-radius: 999px !important;
+  padding: 2px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+/* LOW stock tag */
+.crq-page [style*="margin-left: 6px"] {
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+  border-radius: 999px !important;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  margin-left: 8px !important;
+}
+
+/* ── Btn component ─────────────────────────────────────────────── */
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"] {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+  letter-spacing: .01em !important;
+  text-transform: none !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="padding: 7px 16px"] {
+  min-height: 32px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+}
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="padding: 10px 22px"] {
+  min-height: 36px !important;
+  padding: 0 16px !important;
+}
+/* Solid Btn → primary */
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="background: rgb"] {
+  background: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--color-primary-hover) !important;
+}
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="background: rgb"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+/* Outline Btn → secondary */
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="background: transparent"] {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+}
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][style*="background: transparent"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][disabled] { opacity: .5 !important; cursor: not-allowed !important; }
+.crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"][disabled]:hover {
+  background: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--color-primary-hover) !important;
+}
+
+/* ── Show Cart button ──────────────────────────────────────────── */
+.crq-page [style*="background: rgb(255, 152, 0)"] {
+  background: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--color-primary-hover) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  padding: 0 20px !important;
+  min-height: 40px !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="background: rgb(255, 152, 0)"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+
+/* ── View More / Less button ───────────────────────────────────── */
+.crq-page [style*="padding: 6px 14px"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  color: var(--color-text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  min-height: 32px !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="padding: 6px 14px"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+
+/* ── Remove button ─────────────────────────────────────────────── */
+.crq-page [style*="background: rgb(255, 235, 238)"] {
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+  border: 1px solid #FCA5A5 !important;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+  min-height: 32px !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="background: rgb(255, 235, 238)"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+
+/* ── Qty stepper + input ───────────────────────────────────────── */
+.crq-page [style*="width: 28px"][style*="height: 28px"] {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
+}
+.crq-page [style*="width: 28px"][style*="height: 28px"][style*="background: rgb(224, 224, 224)"] {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+.crq-page [style*="width: 28px"][style*="height: 28px"][style*="background: rgb(224, 224, 224)"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+.crq-page [style*="width: 28px"][style*="height: 28px"][style*="background: rgb(34, 139, 34)"] {
+  background: var(--color-primary) !important;
+  border: 1px solid var(--color-primary-hover) !important;
+  color: #FFFFFF !important;
+}
+.crq-page [style*="width: 28px"][style*="height: 28px"][style*="background: rgb(34, 139, 34)"]:hover {
+  background: var(--gold) !important;
+  color: var(--gold-text) !important;
+  border-color: transparent !important;
+}
+.crq-page [style*="width: 28px"][style*="height: 28px"][style*="background: rgb(34, 139, 34)"]:hover svg {
+  color: var(--gold-text) !important;
+  stroke: var(--gold-text) !important;
+}
+.crq-page [style*="width: 60px"] {
+  height: 32px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.crq-page [style*="width: 60px"]:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+}
+
+/* ── Inline detail row ─────────────────────────────────────────── */
+.crq-page [style*="border-bottom: 2px solid rgb(34, 139, 34)"] { border-bottom: 1px solid var(--color-border) !important; }
+.crq-page [style*="background: rgb(240, 247, 240)"] {
+  background: #F9FAFB !important;
+  border-left: 4px solid var(--color-primary) !important;
+  padding: 16px 20px !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] > div:nth-of-type(1) > div > div:nth-of-type(1) {
+  color: var(--color-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] > div:nth-of-type(1) > div > div:nth-of-type(2) {
+  color: var(--color-text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] table thead th { padding: 10px 12px !important; font-size: 11px !important; }
+.crq-page [style*="background: rgb(240, 247, 240)"] table tbody td { padding: 10px 12px !important; font-size: 13px !important; }
+.crq-page [style*="background: rgb(240, 247, 240)"] table tbody tr td:nth-of-type(3) {
+  color: var(--color-success) !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] table tbody tr td:nth-of-type(4) {
+  color: var(--color-text-secondary) !important;
+  font-weight: 600 !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] table tbody td span[style*="color: rgb(76, 175, 80)"] {
+  background: var(--color-success-bg) !important;
+  border-radius: 999px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+.crq-page [style*="background: rgb(240, 247, 240)"] table tbody td span[style*="color: rgb(255, 152, 0)"] {
+  background: var(--color-warning-bg) !important;
+  border-radius: 999px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+/* ── Empty & Loading states ────────────────────────────────────── */
+.crq-page div[style*="border: 2px dashed rgb(224, 224, 224)"] {
+  background: var(--color-bg-card) !important;
+  border: 1px dashed var(--color-border) !important;
+  border-radius: 10px !important;
+  padding: 48px !important;
+}
+.crq-page div[style*="border: 2px dashed rgb(224, 224, 224)"] > svg { color: var(--color-text-muted) !important; }
+.crq-page div[style*="border: 2px dashed rgb(224, 224, 224)"] > div {
+  color: var(--color-text-secondary) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  margin-top: 14px !important;
+}
+.crq-page div[style*="text-align: center"][style*="padding: 60px"] {
+  color: var(--color-text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+/* ── Disabled + Focus rings ────────────────────────────────────── */
+.crq-page button[disabled] { opacity: .5 !important; cursor: not-allowed !important; }
+.crq-page :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Very wide screens: cap + center ─────────────────────────────── */
+@media (min-width: 1536px) {
+  .crq-page > div[style*="padding: 28px 32px"] {
+    max-width: 1536px !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
+  }
+}
+@media (max-width: 768px) {
+  .crq-page > div[style*="background: rgb(27, 94, 32)"] { min-height: 64px !important; padding: 0 14px !important; }
+  .crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) { font-size: 22px !important; }
+  .crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) { font-size: 12px !important; }
+  .crq-page > div[style*="background: rgb(27, 94, 32)"] > button { min-height: 44px !important; }
+  .crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+  .crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > div:nth-of-type(1),
+  .crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 12px"][style*="flex-wrap: wrap"][style*="margin-bottom: 16px"] > select { min-height: 44px !important; }
+  .crq-page [style*="text-transform: uppercase"][style*="letter-spacing: 0.5px"] { min-height: 44px !important; }
+  .crq-page [style*="padding: 6px 14px"] { min-height: 44px !important; }
+  .crq-page [style*="background: rgb(255, 235, 238)"] { min-height: 44px !important; }
+  .crq-page [style*="width: 28px"][style*="height: 28px"] { width: 44px !important; height: 44px !important; }
+  .crq-page [style*="width: 60px"] { height: 44px !important; }
+  .crq-page [style*="border-left: 5px solid"] > button { min-height: 44px !important; }
+}
+@media (max-width: 480px) {
+  .crq-page > div[style*="padding: 28px 32px"] > div[style*="gap: 16px"][style*="flex-wrap: wrap"] { grid-template-columns: 1fr !important; }
+  .crq-page > div[style*="background: rgb(27, 94, 32)"] > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) { font-size: 20px !important; }
+  .crq-page div[style*="border: 2px dashed rgb(224, 224, 224)"] { padding: 32px !important; }
+  .crq-page [style*="padding: 18px 20px"] > div { gap: 12px !important; }
+  .crq-page [style*="padding: 18px 20px"] > div > div:nth-of-type(2) { text-align: left !important; }
+}
