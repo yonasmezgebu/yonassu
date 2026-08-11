@@ -1,0 +1,65 @@
+.tr-page {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page: #F5F6FA;
+  --color-bg-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --font: 'Inter', 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+  box-sizing: border-box !important;
+  width: auto !important;
+  margin: -24px !important;
+  padding: 24px !important;
+  min-height: 100vh !important;
+  background: var(--color-bg-page) !important;
+  font-family: var(--font) !important;
+  color: var(--color-text-primary) !important;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tr-page *,
+.tr-page *::before,
+.tr-page *::after {
+  box-sizing: border-box;
+}
+
+.tr-modal {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+@media (min-width: 1536px) {
+  .tr-page {
+    max-width: 1536px;
+    margin: -24px auto !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .tr-page {
+    margin: -16px !important;
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .tr-page {
+    margin: -12px !important;
+    padding: 12px !important;
+  }
+}
+
+.tr-page .fm-table thead tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tr-page .fm-table td {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tr-page .fm-table tr:last-child td {
+  border-bottom: none;
+}
