@@ -157,7 +157,7 @@ exports.createExpense = catchAsync(async (req, res) => {
       }).catch(err => console.error('Failed to send approval email:', err.message));
     }
   }
-  await audit('EXPENSE_CREATED', expenseId, {
+  await audit('EXPENSE_CREATED', userId, {
     ip,
     details: { categoryId, amount, description, requiresApproval }
   });
@@ -202,7 +202,7 @@ exports.updateExpense = catchAsync(async (req, res) => {
   await db('expenses')
     .where('id', id)
     .update(updateData);
-  await audit('EXPENSE_UPDATED', id, {
+  await audit('EXPENSE_UPDATED', userId, {
     ip,
     details: { updates: Object.keys(updateData) }
   });
@@ -256,7 +256,7 @@ exports.deleteExpense = catchAsync(async (req, res) => {
       deleted_at: db.fn.now(),
       updated_at: db.fn.now()
     });
-  await audit('EXPENSE_DELETED', id, {
+  await audit('EXPENSE_DELETED', userId, {
     ip,
     details: { amount: expense.amount, description: expense.description }
   });
@@ -291,10 +291,10 @@ exports.approveExpense = catchAsync(async (req, res) => {
         rejection_reason: rejectionReason,
         updated_at: db.fn.now()
       });
-    await audit('EXPENSE_REJECTED', id, {
-      ip,
-      details: { reason: rejectionReason }
-    });
+  await audit('EXPENSE_REJECTED', userId, {
+    ip,
+    details: { reason: rejectionReason }
+  });
     const creator = await db('users').where('id', expense.entered_by).first();
     await sendEmail({
       to: creator.email,
@@ -320,7 +320,7 @@ exports.approveExpense = catchAsync(async (req, res) => {
       approved_at: db.fn.now(),
       updated_at: db.fn.now()
     });
-  await audit('EXPENSE_APPROVED', id, {
+  await audit('EXPENSE_APPROVED', userId, {
     ip,
     details: { amount: expense.amount, category: expense.category_name }
   });
@@ -564,7 +564,7 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
         updated_at: db.fn.now()
       });
   });
-  await audit('PO_PAYMENT_PROCESSED', poId, {
+  await audit('PO_PAYMENT_PROCESSED', userId, {
     ip,
     details: { amount, poNumber: purchaseOrder.po_number }
   });
@@ -645,7 +645,7 @@ exports.processInvoicePayment = catchAsync(async (req, res) => {
         updated_at: db.fn.now()
       });
   });
-  await audit('INVOICE_PAYMENT_PROCESSED', saleId, {
+  await audit('INVOICE_PAYMENT_PROCESSED', userId, {
     ip,
     details: { amount, customerId: sale.customer_id, customerName: sale.customer_name }
   });
@@ -938,7 +938,7 @@ exports.createEnhancedExpense = catchAsync(async (req, res) => {
     ip_address: ip, created_at: db.fn.now()
   });
 
-  await audit('EXPENSE_CREATED', expenseId, {
+  await audit('EXPENSE_CREATED', userId, {
     ip, details: { categoryId, amount, tier, requiresApproval: true }
   });
 
@@ -999,7 +999,7 @@ exports.getAuditTrail = catchAsync(async (req, res) => {
 
 exports.createBankTransaction = catchAsync(async (req, res) => {
   const result = await financeService.createBankTransaction(req.body, req.user.id);
-  await audit('BANK_TRANSACTION_CREATED', result.id, {
+  await audit('BANK_TRANSACTION_CREATED', req.user.id, {
     ip: req.ip,
     details: { reference: result.reference, amount: req.body.amount, bankCode: req.body.bankCode }
   });
