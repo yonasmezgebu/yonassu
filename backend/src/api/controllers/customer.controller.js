@@ -92,7 +92,7 @@ exports.updateProfile = catchAsync(async (req, res) => {
   await db('customers')
     .where('id', customer.id)
     .update(updateData);
-  await audit('CUSTOMER_PROFILE_UPDATED', customer.id, {
+  await audit('CUSTOMER_PROFILE_UPDATED', userId, {
     ip,
     details: { updates: Object.keys(updateData) }
   });
@@ -254,7 +254,7 @@ exports.createOrder = catchAsync(async (req, res) => {
     pages_per_copy: pagesPerCopy,
     color_printing: colorPrinting,
     binding_type: bindingType,
-    due_date: dueDate,
+    due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
     special_instructions: specialInstructions || null,
     price_per_unit: priceCalculation.pricePerUnit,
     binding_cost: priceCalculation.bindingCost,
@@ -271,7 +271,7 @@ exports.createOrder = catchAsync(async (req, res) => {
     ip_address: ip,
     changed_at: db.fn.now()
   });
-  await audit('CUSTOMER_ORDER_CREATED', orderId, {
+  await audit('CUSTOMER_ORDER_CREATED', userId, {
     ip,
     details: { orderNumber, productType, quantity, totalPrice: priceCalculation.totalPrice }
   });
@@ -338,7 +338,7 @@ exports.uploadAttachments = catchAsync(async (req, res) => {
       attachments: JSON.stringify(attachments),
       updated_at: db.fn.now()
     });
-  await audit('CUSTOMER_ORDER_ATTACHMENTS_UPLOADED', id, {
+  await audit('CUSTOMER_ORDER_ATTACHMENTS_UPLOADED', userId, {
     ip,
     details: {
       fileCount: newAttachments.length,
@@ -434,7 +434,7 @@ exports.cancelOrder = catchAsync(async (req, res) => {
       changed_at: db.fn.now()
     });
   });
-  await audit('CUSTOMER_ORDER_CANCELLED', id, {
+  await audit('CUSTOMER_ORDER_CANCELLED', userId, {
     ip,
     details: { orderNumber: order.order_number, reason }
   });
@@ -562,7 +562,7 @@ exports.acceptQuote = catchAsync(async (req, res) => {
     pages_per_copy: quote.pages_per_copy,
     color_printing: quote.color_printing,
     binding_type: quote.binding_type,
-    due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     price_per_unit: breakdown.pricePerUnit || 0,
     binding_cost: breakdown.bindingCost || 0,
     total_price: quote.total_price,
@@ -573,7 +573,7 @@ exports.acceptQuote = catchAsync(async (req, res) => {
   await db('customer_quotes')
     .where('id', quoteId)
     .update({ status: 'accepted' });
-  await audit('QUOTE_ACCEPTED', orderId, {
+  await audit('QUOTE_ACCEPTED', userId, {
     ip,
     details: { quoteId, orderNumber }
   });
@@ -742,7 +742,7 @@ exports.makePayment = catchAsync(async (req, res) => {
         updated_at: db.fn.now()
       });
   });
-  await audit('CUSTOMER_PAYMENT_MADE', customer.id, {
+  await audit('CUSTOMER_PAYMENT_MADE', userId, {
     ip,
     details: { amount, paymentMethod, newBalance: customer.current_balance - amount }
   });
@@ -824,7 +824,7 @@ exports.createSupportTicket = catchAsync(async (req, res) => {
     created_at: db.fn.now(),
     ip_address: ip
   });
-  await audit('SUPPORT_TICKET_CREATED', ticketId, {
+  await audit('SUPPORT_TICKET_CREATED', userId, {
     ip,
     details: { subject }
   });
