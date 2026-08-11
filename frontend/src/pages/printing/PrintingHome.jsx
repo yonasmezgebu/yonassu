@@ -13,80 +13,177 @@ const G = {
 const COLORS_ARR = [G.emerald, G.sky, G.orange, G.purple, G.lime, G.red];
 
 const CategoryBar = ({ value, max, color }) => (
-  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
-    <div style={{
-      height: '100%', borderRadius: 0, background: color,
-      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
-      transition: 'width 1.2s ease'
-    }} />
+  <div className="cat-track">
+    <div className="cat-fill" style={{ background: color, width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%` }} />
   </div>
 );
 
-/* ─── Global Animations ─────────────────────────────────────────────────── */
+/* ─── Global Design System (CSS-only, scoped to this page) ─────────────── */
 const GlobalStyles = () => (
   <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+    @keyframes phFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
-
-    .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    .ph-root {
+      --primary:#2563EB; --primary-hover:#1D4ED8; --primary-tint:#EFF6FF;
+      --bg-page:#F5F6FA; --bg-card:#FFFFFF; --border:#E5E7EB;
+      --text-1:#111827; --text-2:#6B7280; --text-3:#9CA3AF;
+      --success:#16A34A; --success-bg:#DCFCE7;
+      --danger:#DC2626; --danger-bg:#FEE2E2;
+      --warning:#D97706; --warning-bg:#FEF3C7;
+      --info:#0284C7; --info-bg:#E0F2FE;
+      --gold:#EAB308; --gold-wipe:rgba(234,179,8,.5); --gold-bg:#FEF3C7;
+      --radius:10px; --radius-sm:8px;
+      --shadow:0 1px 3px rgba(0,0,0,.06);
+      --shadow-hover:0 4px 12px rgba(0,0,0,.08);
+      font-family:'Inter','Segoe UI',Roboto,-apple-system,sans-serif;
+      font-size:14px; line-height:1.5; color:var(--text-1);
+      background:var(--bg-page);
+      padding:12px; overflow-x:hidden;
     }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
 
-    .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    /* ── Typography (rule 2) ── */
+    .artistic-3d-title { font-size:clamp(22px,2.2vw,26px); font-weight:600; color:var(--text-1); letter-spacing:-0.01em; line-height:1.3; margin:0; display:flex; align-items:center; gap:8px; }
+    .artistic-3d-subtitle { font-size:12px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:0.03em; margin:0; text-align:center; }
+    .blink-star { display:inline-block; font-size:20px; animation:none !important; }
+
+    /* ── Page header (full-bleed, rule 24) ── */
+    .ph-header { display:grid; grid-template-columns:1fr auto; align-items:center; gap:12px; margin:0 0 16px; }
+    .ph-header-start { grid-column:1; grid-row:1; justify-self:start; }
+    .ph-header-end { grid-column:2; grid-row:1; justify-self:end; }
+    .ph-header-center { grid-column:1/-1; grid-row:2; justify-self:center; margin-top:2px; }
+
+    /* ── Buttons (rules 3 + 7): hover spreads from a point across the whole button ── */
+    .btn-sync { position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:8px; height:44px; padding:0 20px; border:none; border-radius:var(--radius-sm); background:var(--primary); color:#fff; font-family:inherit; font-size:14px; font-weight:500; letter-spacing:0.03em; cursor:pointer; box-shadow:var(--shadow); transition:box-shadow 150ms ease, transform 150ms ease; z-index:1; }
+    .btn-sync::before { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background:var(--gold); border-radius:inherit; transform:scale(0); transform-origin:top left; transition:transform 300ms cubic-bezier(.4,0,.2,1); z-index:0; }
+    .btn-sync:hover::before { transform:scale(1); }
+    .btn-sync:hover { box-shadow:var(--shadow-hover); }
+    .btn-sync:active { transform:scale(0.97); }
+    .btn-sync:disabled { opacity:.5; cursor:default; box-shadow:none; }
+    .btn-sync > * { position:relative; z-index:1; }
+
+    /* ── Cards (rule 6) ── */
+    .d-card, .d-card-no-hover { position:relative; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; box-shadow:var(--shadow); transition:box-shadow 150ms ease, transform 150ms ease; animation:phFadeUp .4s ease both; cursor:pointer; overflow:hidden; }
+    .d-card:hover, .d-card-no-hover:hover { box-shadow:var(--shadow-hover); transform:translateY(-1px); }
+    .d-card::before, .d-card-no-hover::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--gold); transform:scaleX(0); transform-origin:left; transition:transform 200ms ease; }
+    .d-card:hover::before, .d-card-no-hover:hover::before { transform:scaleX(1); }
+
+    /* Hero card */
+    .ph-hero { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .ph-hero::before { display:none; }
+    .ph-hero:hover { background:var(--gold); border-color:var(--gold); box-shadow:0 4px 12px rgba(234,179,8,.3); }
+    .ph-hero-decor { position:absolute; right:-24px; top:-24px; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,.08); }
+    .ph-hero-icon { position:absolute; right:16px; top:16px; width:44px; height:44px; border-radius:var(--radius-sm); background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; font-size:22px; }
+    .ph-hero-label { color:rgba(255,255,255,.8); margin-bottom:10px; }
+    .ph-hero-value { color:#fff; font-size:2.25rem; font-weight:700; margin:0 0 12px; }
+    .ph-hero-value span { font-size:1rem; font-weight:500; opacity:.8; margin-left:6px; }
+    .ph-hero-foot { font-size:13px; font-weight:500; color:rgba(255,255,255,.9); display:flex; align-items:center; gap:8px; }
+
+    /* ── KPI grid (rule 14: fluid auto-fit) ── */
+    .ph-kpis { display:grid; grid-template-columns:1fr; gap:12px; margin:0 0 16px; }
+    .ph-kpi-top { display:flex; justify-content:space-between; align-items:flex-start; }
+    .ph-kpi-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-2); }
+    .ph-kpi-icon { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:var(--radius-sm); background:#F1F5F9; font-size:18px; }
+    .ph-kpi-value { font-size:1.75rem; font-weight:700; letter-spacing:-0.02em; color:var(--text-1); line-height:1.1; margin:12px 0 4px; }
+    .ph-kpi-sub { font-size:12px; color:var(--text-2); font-weight:500; }
+    .ph-kpi-warn { color:var(--warning); }
+
+    /* ── Row grids ── */
+    .ph-row2 { display:grid; grid-template-columns:1fr; gap:16px; margin:0 0 16px; }
+    .ph-row3 { display:grid; grid-template-columns:1fr; gap:16px; margin:0 0 16px; }
+
+    /* Card headers */
+    .ph-card-head { display:flex; align-items:center; gap:10px; margin:0 0 18px; }
+    .ph-card-icon { font-size:18px; line-height:1; }
+    .ph-card-title { font-size:16px; font-weight:600; color:var(--text-1); margin:0; }
+    .ph-badge { margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:500; background:var(--info-bg); color:var(--info); white-space:nowrap; }
+
+    /* Sub-KPIs */
+    .ph-subkpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 0 18px; }
+    .ph-subkpi { background:#F9FAFB; border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; transition:background 150ms ease, box-shadow 150ms ease; cursor:pointer; }
+    .ph-subkpi:hover { background:#fff; box-shadow:var(--shadow); }
+    .ph-subkpi-icon { font-size:16px; margin-bottom:6px; }
+    .ph-subkpi-val { font-size:1.4rem; font-weight:700; line-height:1.1; }
+    .ph-subkpi-lbl { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-2); margin-top:4px; }
+
+    /* Status header + rows (rule 9 table styling) */
+    .ph-grid-head { display:grid; grid-template-columns:110px 1fr 48px; gap:12px; padding:0 12px; margin:0 0 8px; }
+    .ph-grid-head span { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-2); }
+    .ph-grid-head span:last-child { text-align:right; }
+    .cat-track { background:#F3F4F6; border-radius:4px; height:6px; overflow:hidden; flex:1; }
+    .cat-fill { height:100%; border-radius:4px; transition:width .6s ease; }
+    .cat-row { display:grid; grid-template-columns:110px 1fr 48px; gap:12px; align-items:center; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; transition:background 150ms ease; }
+    .cat-row:hover { background:#F9FAFB; }
+    .cat-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+    .cat-name { font-size:13px; font-weight:500; color:var(--text-1); text-transform:capitalize; }
+    .cat-count { font-size:13px; font-weight:600; color:var(--text-1); text-align:right; }
+
+    /* Activity feed */
+    .ph-activity { display:flex; flex-direction:column; gap:16px; }
+    .top-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; transition:background 150ms ease; }
+    .top-row:hover { background:#F9FAFB; }
+    .ph-avatar { width:32px; height:32px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--primary-tint); font-size:14px; }
+    .ph-act-title { font-size:13px; font-weight:600; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ph-act-sub { font-size:12px; color:var(--text-2); }
+    .ph-act-date { font-size:12px; font-weight:600; color:var(--text-2); white-space:nowrap; }
+    .ph-empty { text-align:center; padding:20px 0; color:var(--text-3); font-size:13px; }
+
+    /* Alert rows */
+    .alert-row { display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-card); cursor:pointer; transition:box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease; margin:0 0 10px; }
+    .alert-row:last-child { margin-bottom:0; }
+    .alert-row:hover { box-shadow:var(--shadow-hover); transform:translateY(-1px); border-color:var(--row-c,var(--gold)); }
+    .alert-icon { width:40px; height:40px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .alert-title { font-size:13px; font-weight:600; color:var(--text-1); }
+    .alert-sub { font-size:12px; color:var(--text-2); }
+    .alert-arrow { font-size:16px; color:var(--text-3); }
+
+    /* Quick actions */
+    .ph-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+    .qa-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px 12px; text-align:center; cursor:pointer; transition:box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease; animation:phFadeUp .4s ease both; }
+    .qa-card:hover { box-shadow:var(--shadow-hover); transform:translateY(-1px); border-color:var(--gold); }
+    .qa-icon { width:44px; height:44px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:20px; background:#F1F5F9; transition:background 150ms ease; }
+    .qa-card:hover .qa-icon { background:var(--gold-bg); }
+    .qa-label { font-size:13px; font-weight:600; color:var(--text-1); margin-bottom:2px; }
+    .qa-sub { font-size:12px; color:var(--text-2); font-weight:500; }
+
+    /* Loading */
+    .ph-loading { display:flex; align-items:center; justify-content:center; min-height:60vh; }
+
+    /* Decor plants — kept, made subtle */
+    .decor-plant { position:fixed; pointer-events:none; user-select:none; z-index:0; opacity:.05 !important; animation:none !important; font-size:40px; }
+
+    /* ── Responsive (rule 14/18, mobile-first) ── */
+    @media (min-width:480px) {
+      .ph-root { padding:16px; }
+      .ph-kpis { grid-template-columns:1fr 1fr; }
     }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+    @media (min-width:768px) {
+      .ph-root { padding:16px; }
+      .ph-header { grid-template-columns:1fr auto 1fr; gap:16px; margin-bottom:24px; }
+      .ph-header-start { grid-column:auto; grid-row:auto; justify-self:start; }
+      .ph-header-center { grid-column:auto; grid-row:auto; justify-self:center; }
+      .ph-header-end { grid-column:auto; grid-row:auto; justify-self:end; }
+      .btn-sync { height:36px; padding:0 16px; }
+      .ph-grid-head { grid-template-columns:150px 1fr 60px; }
+      .cat-row { grid-template-columns:150px 1fr 60px; }
     }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+    @media (min-width:1024px) {
+      .ph-root { padding:24px; }
+      .ph-kpis { grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+      .ph-row2 { grid-template-columns:3fr 2fr; }
+      .ph-row3 { grid-template-columns:1fr 2fr; }
+      .ph-subkpis { grid-template-columns:repeat(4,1fr); gap:12px; }
+      .ph-actions { gap:12px; }
+      .d-card, .d-card-no-hover { padding:20px 24px; }
+    }
+    @media (min-width:1280px) {
+      .ph-root { padding:24px; }
+    }
+    @media (max-width:479px) {
+      .ph-kpi-value { font-size:1.5rem; }
+      .qa-card { min-height:120px; }
+      .cat-row, .top-row { min-height:48px; }
+      .btn-sync { height:44px; }
+    }
   `}</style>
 );
 
@@ -99,7 +196,7 @@ const DecorPlants = () => (
       { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
       { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
     ].map((p,i) => (
-      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation:`floatLeaf ${9+i*1.5}s ease-in-out infinite`, animationDelay:`${i*1.2}s`, zIndex:0 }}>{p.e}</span>
+      <span key={i} className="decor-plant" style={{ top: p.top, left: p.left, right: p.right, bottom: p.bottom }}>{p.e}</span>
     ))}
   </>
 );
@@ -161,13 +258,20 @@ export default function PrintingHome() {
 
   const nav = (path) => navigate(path);
 
-  if (!data) return <div>Loading...</div>;
+  if (!data) return (
+    <div className="ph-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
+      <GlobalStyles />
+      <div className="ph-loading">
+        <SegmentedSpinner size={40} label="Loading dashboard..." />
+      </div>
+    </div>
+  );
 
   const { fleetStats, activeOrders, maintenance, orders } = data;
 
   // Breakdown by status
   const statuses = ['available', 'inUse', 'maintenance'];
-  const statusColors = { 'available': G.emerald, 'inUse': G.orange, 'maintenance': G.red };
+  const statusColors = { 'available': '#16A34A', 'inUse': '#D97706', 'maintenance': '#DC2626' };
   const maxStatusCount = Math.max(...statuses.map(s => fleetStats[s] || 0), 1);
   
   // Recent Activity mock (Orders + Maintenance)
@@ -178,108 +282,103 @@ export default function PrintingHome() {
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
   return (
-    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div className="ph-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
       <DecorPlants />
       {/* ── HEADER ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
-        <div style={{ justifySelf: 'start' }}>
+      <div className="ph-header">
+        <div className="ph-header-start">
           <h1 className="artistic-3d-title">
             Welcome!&nbsp;<span className="blink-star">🌿</span>
           </h1>
         </div>
-        <div style={{ justifySelf: 'center' }}>
+        <div className="ph-header-center">
           <p className="artistic-3d-subtitle">
             Printing Management · It&apos;s {timeString}
           </p>
         </div>
-        <div style={{ justifySelf: 'end' }}>
-                    <button onClick={loadData} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+        <div className="ph-header-end">
+          <button onClick={loadData} className="btn-sync" disabled={refreshing}>
             {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+            <span>SYNC</span>
           </button>
         </div>
       </div>
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div className="ph-kpis">
         
         {/* Fleet Value Hero */}
-        <div className="d-card" onClick={() => nav('/printing-manager/fleet')}
-          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>🖨️</span>
+        <div className="d-card ph-hero" onClick={() => nav('/printing-manager/fleet')} style={{ animationDelay: '0.05s' }}>
+          <div className="ph-hero-decor" />
+          <div className="ph-hero-icon">🖨️</div>
+          <div className="ph-kpi-label ph-hero-label">Total Machine Fleet</div>
+          <div className="ph-kpi-value ph-hero-value">
+            {fleetStats.total} <span>Machines</span>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Machine Fleet</div>
-          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
-            {fleetStats.total} <span style={{ fontSize: '1.1rem', opacity: 0.75, marginLeft: 6 }}>Machines</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>📊</span> Across Store and Production Lines
-          </div>
+          <div className="ph-hero-foot">📊 Across Store and Production Lines</div>
         </div>
 
         {/* Prod Machines */}
         <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/printing-manager/fleet')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Production</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🏭</span></div>
+          <div className="ph-kpi-top">
+            <span className="ph-kpi-label">Production</span>
+            <div className="ph-kpi-icon">🏭</div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.prod}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Active on floor</div>
+          <div className="ph-kpi-value">{fleetStats.prod}</div>
+          <div className="ph-kpi-sub">Active on floor</div>
         </div>
 
         {/* Store Machines */}
         <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/printing-manager/fleet')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Store Inventory</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>📦</span></div>
+          <div className="ph-kpi-top">
+            <span className="ph-kpi-label">Store Inventory</span>
+            <div className="ph-kpi-icon">📦</div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.store}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Stored / Backups</div>
+          <div className="ph-kpi-value">{fleetStats.store}</div>
+          <div className="ph-kpi-sub">Stored / Backups</div>
         </div>
 
         {/* Active Orders */}
-        <div className="d-card" style={{ animationDelay: '0.2s', background: activeOrders.length > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/printing-manager/orders')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: activeOrders.length > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Orders</span>
-            <div style={{ background: activeOrders.length > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{activeOrders.length > 0 ? '⏱️' : '✅'}</span></div>
+        <div className="d-card" style={{ animationDelay: '0.2s' }} onClick={() => nav('/printing-manager/orders')}>
+          <div className="ph-kpi-top">
+            <span className={`ph-kpi-label${activeOrders.length > 0 ? ' ph-kpi-warn' : ''}`}>Active Orders</span>
+            <div className="ph-kpi-icon">{activeOrders.length > 0 ? '⏱️' : '✅'}</div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: activeOrders.length > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{activeOrders.length}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently processing</div>
+          <div className={`ph-kpi-value${activeOrders.length > 0 ? ' ph-kpi-warn' : ''}`}>{activeOrders.length}</div>
+          <div className="ph-kpi-sub">Currently processing</div>
         </div>
       </div>
 
       {/* ── ROW 2: MOVEMENT BREAKDOWN + ACTIVITY FEED ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div className="ph-row2">
         
         {/* Fleet Status Breakdown */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🔀</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Machine Status Breakdown</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Real-time</span>
+          <div className="ph-card-head">
+            <span className="ph-card-icon">🔀</span>
+            <h3 className="ph-card-title">Machine Status Breakdown</h3>
+            <span className="ph-badge">Real-time</span>
           </div>
           {/* Sub-KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+          <div className="ph-subkpis">
             {[
-              { label: 'Total Machines', val: fleetStats.total,       icon: '🖨️', c: G.forest },
-              { label: 'Available Now',  val: fleetStats.available,   icon: '✅', c: G.emerald },
-              { label: 'In Use',         val: fleetStats.inUse,       icon: '⚙️', c: G.orange },
-              { label: 'In Maintenance', val: fleetStats.maintenance, icon: '🔧', c: G.red },
+              { label: 'Total Machines', val: fleetStats.total,       icon: '🖨️', c: '#2563EB' },
+              { label: 'Available Now',  val: fleetStats.available,   icon: '✅', c: '#16A34A' },
+              { label: 'In Use',         val: fleetStats.inUse,       icon: '⚙️', c: '#D97706' },
+              { label: 'In Maintenance', val: fleetStats.maintenance, icon: '🔧', c: '#DC2626' },
             ].map(k => (
-              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+              <div key={k.label} className="ph-subkpi">
+                <div className="ph-subkpi-icon">{k.icon}</div>
+                <div className="ph-subkpi-val" style={{ color: k.c }}>{k.val}</div>
+                <div className="ph-subkpi-lbl">{k.label}</div>
               </div>
             ))}
           </div>
           {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 60px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
-            {['Status', '', 'Count'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
-            ))}
+          <div className="ph-grid-head">
+            <span>Status</span>
+            <span></span>
+            <span>Count</span>
           </div>
           {statuses.map((status, i) => {
             const count = fleetStats[status];
@@ -287,42 +386,42 @@ export default function PrintingHome() {
             return (
               <div key={status} className="cat-row">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textTransform: 'capitalize' }}>{status}</span>
+                  <span className="cat-dot" style={{ background: c }} />
+                  <span className="cat-name">{status}</span>
                 </div>
                 <CategoryBar value={count} max={maxStatusCount} color={c} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{count}</span>
+                <span className="cat-count">{count}</span>
               </div>
             );
           })}
         </div>
 
         {/* Recent Activity Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="ph-activity">
           <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>📜</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Activity</span>
+            <div className="ph-card-head">
+              <span className="ph-card-icon">📜</span>
+              <h3 className="ph-card-title">Recent Activity</h3>
             </div>
             {recentActivity.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
-                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No activity yet
+              <div className="ph-empty">
+                <span style={{ fontSize: 28, marginBottom: 8, opacity: 0.4, display: 'inline-block' }}>📉</span><br />No activity yet
               </div>
             ) : recentActivity.map((l) => {
-              const c = l.type === 'Order' ? G.emerald : G.orange;
+              const c = l.type === 'Order' ? '#16A34A' : '#D97706';
               const icon = l.type === 'Order' ? '📦' : '🔧';
               return (
                 <div key={l.id} className="top-row">
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="ph-avatar" style={{ background: `${c}1A`, color: c }}>
                     <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div className="ph-act-title">
                       {l.type}: {l.title}
                     </div>
-                    <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{l.sub}</div>
+                    <div className="ph-act-sub">{l.sub}</div>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                  <span className="ph-act-date">
                     {l.date ? new Date(l.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''}
                   </span>
                 </div>
@@ -333,44 +432,44 @@ export default function PrintingHome() {
       </div>
 
       {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div className="ph-row3">
         {/* Alerts */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
+          <h3 className="ph-card-title" style={{ margin: '0 0 14px' }}>⚠ Attention Required</h3>
           {[
-            { label: `${fleetStats.maintenance} In Maintenance`, sub: 'Machines currently being serviced', icon: '🔧', bg: '#FFFBEB', c: '#f59e0b', path: '/printing-manager/fleet' },
-            { label: `${activeOrders.length} Active Orders`, sub: 'Check end dates', icon: '⏱️', bg: '#EFF6FF', c: '#3b82f6', path: '/printing-manager/orders' }
+            { label: `${fleetStats.maintenance} In Maintenance`, sub: 'Machines currently being serviced', icon: '🔧', bg: '#FEF3C7', c: '#D97706', path: '/printing-manager/fleet' },
+            { label: `${activeOrders.length} Active Orders`, sub: 'Check end dates', icon: '⏱️', bg: '#E0F2FE', c: '#0284C7', path: '/printing-manager/orders' }
           ].map(row => (
             <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
-              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+              <div className="alert-icon" style={{ background: row.bg }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
-                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
+                <div className="alert-title">{row.label}</div>
+                <div className="alert-sub">{row.sub}</div>
               </div>
-              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
+              <span className="alert-arrow">›</span>
             </div>
           ))}
         </div>
 
         {/* Quick Actions */}
         <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <h3 className="ph-card-title" style={{ margin: '0 0 16px' }}>⚡ Quick Operations</h3>
+          <div className="ph-actions">
             {[
-              { label: 'View Fleet',      sub: 'All assets',   icon: '🖨️', bg: '#E6F2EB', color: G.forest,  href: '/printing-manager/fleet' },
-              { label: 'New Order',       sub: 'Create order', icon: '📝', bg: '#E8F9F1', color: G.emerald, href: '/printing-manager/orders/new' },
-              { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', bg: '#FFF3E0', color: G.orange,  href: '/printing-manager/fleet' },
-              { label: 'Material Stock',  sub: 'Refills',      icon: '📦', bg: '#E1F5FE', color: G.sky,     href: '/printing-manager/materials' },
-              { label: 'Add Machine',     sub: 'New Asset',    icon: '➕', bg: '#F1F8E9', color: G.olive,   href: '/printing-manager/fleet' },
-              { label: 'Tax Receipts',    sub: 'Billing',      icon: '🧾', bg: '#F3E5F5', color: G.purple,  href: '/printing-manager/tax' },
-              { label: 'Reports',         sub: 'Analytics',    icon: '📊', bg: '#EFEBE9', color: G.brown,   href: '/printing-manager/reports/finance' }
+              { label: 'View Fleet',      sub: 'All assets',   icon: '🖨️', href: '/printing-manager/fleet' },
+              { label: 'New Order',       sub: 'Create order', icon: '📝', href: '/printing-manager/orders/new' },
+              { label: 'Maintenance',     sub: 'Requests',     icon: '🔧', href: '/printing-manager/fleet' },
+              { label: 'Material Stock',  sub: 'Refills',      icon: '📦', href: '/printing-manager/materials' },
+              { label: 'Add Machine',     sub: 'New Asset',    icon: '➕', href: '/printing-manager/fleet' },
+              { label: 'Tax Receipts',    sub: 'Billing',      icon: '🧾', href: '/printing-manager/tax' },
+              { label: 'Reports',         sub: 'Analytics',    icon: '📊', href: '/printing-manager/reports/finance' }
             ].map((a, i) => (
               <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
-                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize:22 }}>{a.icon}</span>
+                <div className="qa-icon">
+                  <span style={{ fontSize: 20 }}>{a.icon}</span>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
+                <div className="qa-label">{a.label}</div>
+                <div className="qa-sub">{a.sub}</div>
               </div>
             ))}
           </div>
