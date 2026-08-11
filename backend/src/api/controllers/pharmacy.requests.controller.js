@@ -3,6 +3,7 @@ const AppError = require('../../utils/AppError');
 const { getFileInfo } = require('../middleware/upload.middleware');
 const { v4: uuidv4 } = require('uuid');
 const { catchAsync } = require('../../utils/catchAsync');
+const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 
 const requestsController = {
   // ==============================
@@ -210,6 +211,7 @@ const requestsController = {
       io.emit('request-status-updated', { id, status: 'approved', request_number: request.request_number });
     }
 
+    logPharmacyAction(req, 'Prescription Request Approved', request.request_number, { status: 'pending' }, { status: 'approved' }, 'Pharmacy Sales');
     res.json({ status: 'success', data: updated });
   }),
 
@@ -250,6 +252,7 @@ const requestsController = {
       io.emit('request-status-updated', { id, status: 'rejected', request_number: request.request_number });
     }
 
+    logPharmacyAction(req, 'Prescription Request Rejected', request.request_number, { status: 'pending' }, { status: 'rejected', rejection_reason }, 'Pharmacy Sales');
     res.json({ status: 'success', data: updated });
   }),
 
@@ -284,6 +287,7 @@ const requestsController = {
       io.emit('request-status-updated', { id, status: 'ready_for_pickup', request_number: request.request_number });
     }
 
+    logPharmacyAction(req, 'Prescription Request Ready', request.request_number, { status: request.status }, { status: 'ready_for_pickup' }, 'Pharmacy Sales');
     res.json({ status: 'success', data: updated });
   }),
 
@@ -340,6 +344,7 @@ const requestsController = {
     });
 
     const updated = await db('prescription_requests').where({ id }).first();
+    logPharmacyAction(req, 'Prescription Request Completed', request.request_number, { status: request.status }, { status: status || 'picked_up', payment_method }, 'Pharmacy Sales');
     res.json({ status: 'success', data: updated });
   }),
 
