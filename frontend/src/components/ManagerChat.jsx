@@ -24,6 +24,26 @@ const roleColor = r => ROLE_COLORS[r] || '#2563EB';
 
 const BASE = ((apiClient.defaults?.baseURL || 'http://localhost:5000/api/v1').replace('/api/v1','')).replace(/\/+$/, '');
 
+// ─── Online presence helpers ──────────────────────────────────────────────────
+// A user is considered online if they were seen in the last 90 seconds
+const ONLINE_THRESHOLD_MS = 90_000;
+function isOnline(lastSeenAt) {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
+}
+function lastSeenText(lastSeenAt) {
+  if (!lastSeenAt) return 'Offline';
+  if (isOnline(lastSeenAt)) return 'Online';
+  const diff = Date.now() - new Date(lastSeenAt).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins < 1)    return 'Just now';
+  if (mins < 60)   return `Last seen ${mins}m ago`;
+  if (hours < 24)  return `Last seen ${hours}h ago`;
+  return `Last seen ${days}d ago`;
+}
+
 // ─── Segmented Spinner ────────────────────────────────────────────────────────
 function SegmentedSpinner({ size = 18 }) {
   return (
@@ -42,16 +62,25 @@ function SegmentedSpinner({ size = 18 }) {
   );
 }
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-const Avatar = ({ name, role, size = 40, avatar = null }) => {
-  if (avatar) {
-    const src = avatar.startsWith('http') ? avatar : `${BASE}/${avatar}`;
-    return <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
-  }
-  const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+// ─── Avatar with optional online dot ─────────────────────────────────────────
+const Avatar = ({ name, role, size = 40, avatar = null, onlineAt = null }) => {
+  const online = isOnline(onlineAt);
+  const dotSize = Math.max(8, Math.round(size * 0.26));
+  const inner = avatar
+    ? (() => { const src = avatar.startsWith('http') ? avatar : `${BASE}/${avatar}`; return <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />; })()
+    : (() => { const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); return <div style={{ width: size, height: size, borderRadius: '50%', background: roleColor(role), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.35, flexShrink: 0, userSelect: 'none' }}>{initials}</div>; })();
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: roleColor(role), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.35, flexShrink: 0, userSelect: 'none' }}>
-      {initials}
+    <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+      {inner}
+      {onlineAt !== null && (
+        <span style={{
+          position: 'absolute', bottom: 0, right: 0,
+          width: dotSize, height: dotSize, borderRadius: '50%',
+          background: online ? '#16A34A' : '#9CA3AF',
+          border: '2px solid #fff',
+          boxSizing: 'border-box',
+        }} title={lastSeenText(onlineAt)} />
+      )}
     </div>
   );
 };
@@ -565,7 +594,7 @@ function GroupConversationView({ group, myId, isCeo, allUsers, onBack, onLeft, o
 }
 
 // ─── DM Conversation View ─────────────────────────────────────────────────────
-function ConversationView({ partner, onBack, myId, onImageClick }) {
+function ConversationView({ partner, onBack, myId, onImageClick, onlineAt }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -693,11 +722,14 @@ function ConversationView({ partner, onBack, myId, onImageClick }) {
       {/* Header */}
       <div className={styles.chatHeader}>
         <button onClick={onBack} className={styles.btnSecondary} style={{ height: 32, padding: '0 12px', fontSize: 13 }}>← Back</button>
-        <Avatar name={partner.name} role={partner.role} avatar={partner.avatar} size={40} />
+        <Avatar name={partner.name} role={partner.role} avatar={partner.avatar} size={40} onlineAt={onlineAt ?? null} />
         <div className={styles.chatHeaderInfo}>
           <div className={styles.chatHeaderName}>{partner.name}</div>
           <div className={styles.chatHeaderSub}>
             <span style={{ background: '#EFF6FF', color: '#2563EB', padding: '1px 8px', borderRadius: 4, fontSize: 12, fontWeight: 500 }}>{partner.role}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: isOnline(onlineAt) ? '#16A34A' : '#9CA3AF' }}>
+              {lastSeenText(onlineAt)}
+            </span>
           </div>
         </div>
       </div>
@@ -803,6 +835,7 @@ export default function ManagerChat() {
   const [groups, setGroups] = useState([]);
   const [selected, setSelected] = useState(null);
   const [unreadMap, setUnreadMap] = useState({});
+  const [onlineMap, setOnlineMap] = useState({});   // userId → last_seen_at ISO string
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('dm');
@@ -816,7 +849,15 @@ export default function ManagerChat() {
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
-    try { const r = await apiClient.get('/manager-chat/users'); setUsers(r.data || []); } catch (_) {}
+    try {
+      const r = await apiClient.get('/manager-chat/users');
+      const data = r.data || [];
+      setUsers(data);
+      // Seed online map from the initial user list
+      const map = {};
+      data.forEach(u => { if (u.last_seen_at) map[u.id] = u.last_seen_at; });
+      setOnlineMap(prev => ({ ...prev, ...map }));
+    } catch (_) {}
     setLoadingUsers(false);
   }, []);
 
@@ -826,6 +867,27 @@ export default function ManagerChat() {
 
   useEffect(() => { fetchUsers(); fetchGroups(); }, [fetchUsers, fetchGroups]);
   useEffect(() => { if (tab === 'groups') fetchGroups(); }, [tab, fetchGroups]);
+
+  // ── Heartbeat: stamp my own last_seen_at while chat is open ──────────────
+  useEffect(() => {
+    const ping = () => apiClient.patch('/manager-chat/heartbeat').catch(() => {});
+    ping(); // immediately on mount
+    const iv = setInterval(ping, 30_000); // every 30 s
+    return () => clearInterval(iv);
+  }, []);
+
+  // ── Poll online status every 15 s ─────────────────────────────────────────
+  useEffect(() => {
+    const pollOnline = async () => {
+      try {
+        const r = await apiClient.get('/manager-chat/online-status');
+        setOnlineMap(r.data || {});
+      } catch (_) {}
+    };
+    pollOnline();
+    const iv = setInterval(pollOnline, 15_000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     const poll = async () => {
@@ -943,14 +1005,21 @@ export default function ManagerChat() {
               ) : filtered.length === 0 ? (
                 <div style={{ padding: 20, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No contacts found</div>
               ) : filtered.map(u => {
-                const unread = unreadMap[u.id] || 0;
-                const isSel = selected?.type === 'dm' && selected.data.id === u.id;
+                const unread  = unreadMap[u.id] || 0;
+                const lastSeen = onlineMap[u.id] ?? u.last_seen_at ?? null;
+                const online  = isOnline(lastSeen);
+                const isSel   = selected?.type === 'dm' && selected.data.id === u.id;
                 return (
-                  <div key={u.id} className={`${styles.contactRow} ${isSel ? styles.selected : ''}`} onClick={() => setSelected({ type: 'dm', data: u })}>
-                    <Avatar name={u.name} role={u.role} avatar={u.avatar} size={40} />
+                  <div key={u.id} className={`${styles.contactRow} ${isSel ? styles.selected : ''}`} onClick={() => {
+                    setSelected({ type: 'dm', data: u });
+                    if (unread > 0) setUnreadMap(prev => ({ ...prev, [u.id]: 0 }));
+                  }}>
+                    <Avatar name={u.name} role={u.role} avatar={u.avatar} size={40} onlineAt={lastSeen} />
                     <div className={styles.contactInfo}>
                       <div className={styles.contactName}>{u.name}</div>
-                      <div className={styles.contactRole} style={{ color: roleColor(u.role) }}>{u.role}</div>
+                      <div className={styles.contactRole} style={{ color: online ? '#16A34A' : roleColor(u.role), fontWeight: online ? 600 : 400 }}>
+                        {online ? '● Online' : u.role}
+                      </div>
                     </div>
                     {unread > 0 && <span className={styles.unreadBadge}>{unread > 9 ? '9+' : unread}</span>}
                   </div>
@@ -964,16 +1033,52 @@ export default function ManagerChat() {
                 </div>
               ) : filteredGroups.map(g => {
                 const isSel = selected?.type === 'group' && selected.data.id === g.id;
+                const photoSrc = g.profile_photo
+                  ? (g.profile_photo.startsWith('http') ? g.profile_photo : `${BASE}${g.profile_photo}`)
+                  : null;
+                const initials = (g.name || 'G').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                 return (
                   <div key={g.id} className={`${styles.contactRow} ${isSel ? styles.selected : ''}`} onClick={() => setSelected({ type: 'group', data: g })}>
-                    {g.profile_photo ? (
-                      <img src={g.profile_photo.startsWith('http') ? g.profile_photo : `${BASE}${g.profile_photo}`} alt={g.name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB' }} />
-                    ) : (
-                      <div style={{ width: 40, height: 40, background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>👥</div>
-                    )}
+                    {/* Group avatar */}
+                    <div style={{ position: 'relative', flexShrink: 0, width: 40, height: 40 }}>
+                      {photoSrc ? (
+                        <img
+                          src={photoSrc}
+                          alt={g.name}
+                          style={{
+                            width: 40, height: 40,
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '2px solid #E5E7EB',
+                            display: 'block',
+                          }}
+                          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                        />
+                      ) : null}
+                      <div style={{
+                        width: 40, height: 40,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #3B82F6 0%, #7C3AED 100%)',
+                        color: '#fff',
+                        display: photoSrc ? 'none' : 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        userSelect: 'none',
+                        border: '2px solid #E5E7EB',
+                        flexShrink: 0,
+                      }}>
+                        {initials}
+                      </div>
+                    </div>
+
                     <div className={styles.contactInfo}>
                       <div className={styles.contactName}>{g.name}</div>
-                      <div className={styles.contactRole}>{g.member_count || 1} members{g.description ? ` • ${g.description}` : ''}</div>
+                      <div className={styles.contactRole}>
+                        {g.member_count || 1} member{g.member_count !== 1 ? 's' : ''}
+                        {g.description ? ` · ${g.description}` : ''}
+                      </div>
                     </div>
                   </div>
                 );
@@ -986,7 +1091,13 @@ export default function ManagerChat() {
         <div className={`${styles.card} ${styles.chatCol}`}>
           {selected ? (
             selected.type === 'dm' ? (
-              <ConversationView partner={selected.data} myId={myId} onBack={() => setSelected(null)} onImageClick={setPreviewImage} />
+              <ConversationView
+                partner={selected.data}
+                myId={myId}
+                onBack={() => setSelected(null)}
+                onImageClick={setPreviewImage}
+                onlineAt={onlineMap[selected.data.id] ?? selected.data.last_seen_at ?? null}
+              />
             ) : (
               <GroupConversationView
                 group={selected.data} myId={myId} isCeo={isCeo} allUsers={users}
