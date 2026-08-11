@@ -155,7 +155,7 @@ exports.createSupplier = catchAsync(async (req, res) => {
     is_active: true,
     created_at: db.fn.now()
   });
-  await audit('SUPPLIER_CREATED', supplierId, {
+  await audit('SUPPLIER_CREATED', userId, {
     ip,
     details: { name, contactPerson, email }
   });
@@ -213,7 +213,7 @@ exports.updateSupplier = catchAsync(async (req, res) => {
   await db('suppliers')
     .where('id', id)
     .update(updateData);
-  await audit('SUPPLIER_UPDATED', id, {
+  await audit('SUPPLIER_UPDATED', userId, {
     ip,
     details: { updates: Object.keys(updateData) }
   });
@@ -260,7 +260,7 @@ exports.deleteSupplier = catchAsync(async (req, res) => {
       deleted_at: db.fn.now(),
       updated_at: db.fn.now()
     });
-  await audit('SUPPLIER_DELETED', id, {
+  await audit('SUPPLIER_DELETED', userId, {
     ip,
     details: { name: supplier.name }
   });
@@ -287,7 +287,7 @@ exports.restoreSupplier = catchAsync(async (req, res) => {
       deleted_at: null,
       updated_at: db.fn.now()
     });
-  await audit('SUPPLIER_RESTORED', id, { ip });
+  await audit('SUPPLIER_RESTORED', userId, { ip });
   res.json({
     status: 'success',
     message: 'Supplier restored successfully'
@@ -530,7 +530,7 @@ exports.createPurchaseOrder = catchAsync(async (req, res) => {
     }
     return poId;
   });
-  await audit('PURCHASE_ORDER_CREATED', result, {
+  await audit('PURCHASE_ORDER_CREATED', userId, {
     ip,
     details: {
       poNumber,
@@ -604,7 +604,7 @@ exports.updatePurchaseOrder = catchAsync(async (req, res) => {
         });
     }
   });
-  await audit('PURCHASE_ORDER_UPDATED', id, {
+  await audit('PURCHASE_ORDER_UPDATED', userId, {
     ip,
     details: { updates: Object.keys(req.body) }
   });
@@ -682,7 +682,7 @@ exports.submitForApproval = catchAsync(async (req, res) => {
       }
     }).catch(err => console.error('Failed to send approval email:', err.message));
   }
-  await audit('PURCHASE_ORDER_SUBMITTED', id, {
+  await audit('PURCHASE_ORDER_SUBMITTED', userId, {
     ip,
     details: { poNumber: purchaseOrder.po_number, totalAmount: purchaseOrder.total_amount }
   });
@@ -789,7 +789,7 @@ exports.approvePurchaseOrder = catchAsync(async (req, res) => {
   } catch (emailErr) {
     console.error('Failed to send approval notification:', emailErr.message);
   }
-  await audit('PURCHASE_ORDER_APPROVED', id, {
+  await audit('PURCHASE_ORDER_APPROVED', userId, {
     ip,
     details: {
       poNumber: purchaseOrder.po_number,
@@ -828,7 +828,7 @@ exports.cancelPurchaseOrder = catchAsync(async (req, res) => {
       rejection_reason: reason,
       updated_at: db.fn.now()
     });
-  await audit('PURCHASE_ORDER_CANCELLED', id, {
+  await audit('PURCHASE_ORDER_CANCELLED', userId, {
     ip,
     details: {
       poNumber: purchaseOrder.po_number,
@@ -1050,7 +1050,7 @@ exports.registerReceiving = catchAsync(async (req, res) => {
         updated_at: db.fn.now()
       });
   });
-  await audit('RECEIVING_REGISTERED', poId, {
+  await audit('RECEIVING_REGISTERED', userId, {
     ip,
     details: {
       poNumber: purchaseOrder.po_number,
