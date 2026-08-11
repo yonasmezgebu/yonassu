@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-/* ─── Color Palette ───────────────────────────────────────────────────────── */
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', mint: '#98FF98',
-  brown: '#8D6E63', sky: '#87CEEB', white: '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray: '#424242', orange: '#FF9800', red: '#F44336',
-};
+import {
+  Boxes,
+  Search,
+  RefreshCw,
+  X,
+  AlertTriangle,
+  CheckCircle,
+  Package,
+  Flame,
+  Info,
+  TrendingUp,
+  Printer,
+} from 'lucide-react';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import styles from './PrintingProdMaterials.module.css';
 
 /* ─── API ─────────────────────────────────────────────────────────────────── */
 const BASE = '/api/v1/printing-assets';
@@ -18,171 +25,17 @@ api.interceptors.request.use(cfg => {
   return cfg;
 });
 
-/* ─── Global Styles ───────────────────────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-
-    * { box-sizing: border-box; }
-
-    .pm-page {
-      margin: -24px;
-      padding: 0;
-      min-height: 100vh;
-      width: calc(100% + 48px);
-      background: ${G.lightGray};
-      font-family: 'Inter', sans-serif;
-      position: relative;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideRight {
-      from { opacity: 0; transform: translateX(-24px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes toastIn {
-      from { transform: translateX(110%); opacity: 0; }
-      to   { transform: translateX(0);   opacity: 1; }
-    }
-    @keyframes barGrow {
-      from { width: 0; }
-    }
-    @keyframes pulse3d {
-      0%,100% { box-shadow: 6px 6px 0 ${G.dark}; }
-      50%      { box-shadow: 8px 8px 0 ${G.dark}; }
-    }
-
-    .pm-btn {
-      border-radius: 0;
-      border: 3px solid ${G.dark};
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      cursor: pointer;
-      box-shadow: 5px 5px 0 ${G.dark};
-      transition: all 0.12s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'Inter', sans-serif;
-    }
-    .pm-btn:hover:not(:disabled) {
-      transform: translate(-2px, -2px);
-      box-shadow: 7px 7px 0 ${G.dark};
-    }
-    .pm-btn:active:not(:disabled) {
-      transform: translate(4px, 4px);
-      box-shadow: 1px 1px 0 ${G.dark};
-    }
-    .pm-btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-      transform: translate(2px, 2px);
-      box-shadow: 3px 3px 0 ${G.dark};
-    }
-
-    .pm-card {
-      background: ${G.white};
-      border: 4px solid ${G.forest};
-      box-shadow: 8px 8px 0 ${G.dark};
-      animation: fadeUp 0.4s ease backwards;
-    }
-
-    .pm-input {
-      border-radius: 0;
-      border: 3px solid ${G.forest};
-      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.08), 4px 4px 0 ${G.sage};
-      outline: none;
-      font-family: 'Inter', sans-serif;
-      font-weight: 700;
-      transition: all 0.15s;
-      background: ${G.white};
-    }
-    .pm-input:focus {
-      border-color: ${G.dark};
-      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.08), 4px 4px 0 ${G.emerald};
-    }
-
-    .pm-row {
-      border-bottom: 3px solid ${G.sage};
-      transition: background 0.15s;
-      animation: slideRight 0.35s ease backwards;
-    }
-    .pm-row:hover { background: ${G.mint}33 !important; }
-    .pm-row:last-child { border-bottom: none; }
-
-    .pm-header-txt {
-      font-size: clamp(1.8rem, 4vw, 3rem);
-      font-weight: 900;
-      color: ${G.white};
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      text-shadow: 4px 4px 0 ${G.dark}, 6px 6px 20px rgba(0,0,0,0.35);
-      margin: 0;
-      line-height: 1.1;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .pm-grid-4 { grid-template-columns: 1fr 1fr !important; }
-      .pm-grid-3 { grid-template-columns: 1fr !important; }
-      .pm-table-wrap { overflow-x: auto; }
-      .pm-actions { flex-direction: column !important; }
-      .pm-header-bar { padding: 24px 20px !important; flex-direction: column !important; gap: 20px !important; }
-    }
-    @media (max-width: 480px) {
-      .pm-grid-4 { grid-template-columns: 1fr !important; }
-    }
-  `}</style>
-);
-
 /* ─── Toast ───────────────────────────────────────────────────────────────── */
 const Toast = ({ toast }) => toast ? (
-  <div style={{
-    position: 'fixed', bottom: 32, right: 32, zIndex: 9999,
-    background: toast.type === 'success' ? G.forest : G.red,
-    color: G.white, border: `3px solid ${G.dark}`,
-    boxShadow: `6px 6px 0 ${G.dark}`,
-    padding: '18px 28px', display: 'flex', gap: 14, alignItems: 'center',
-    fontWeight: 900, fontSize: 14, textTransform: 'uppercase', letterSpacing: 1,
-    animation: 'toastIn .3s ease',
-  }}>
-    <span style={{ fontSize: 22 }}>{toast.type === 'success' ? '✅' : '❌'}</span>
-    <span>{toast.msg}</span>
+  <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : toast.type === 'warning' ? styles.toastWarning : styles.toastError}`}>
+    <span className={styles.toastIcon}>
+      {toast.type === 'success'
+        ? <CheckCircle size={20} color="#16A34A" />
+        : <AlertTriangle size={20} color={toast.type === 'warning' ? '#D97706' : '#DC2626'} />}
+    </span>
+    <span className={styles.toastMsg}>{toast.msg}</span>
   </div>
 ) : null;
-
-/* ─── Progress Bar ────────────────────────────────────────────────────────── */
-const ProgressBar = ({ pct }) => {
-  const color = pct > 90 ? G.red : pct > 65 ? G.orange : G.leaf;
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-        <span>Consumption Progress</span>
-        <span style={{ color: pct > 90 ? G.red : G.darkGray }}>{pct}%</span>
-      </div>
-      <div style={{ background: `${G.sage}55`, height: 12, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
-        <div style={{
-          height: '100%', background: color, width: `${Math.min(pct, 100)}%`,
-          animation: 'barGrow 1s ease', transition: 'width 0.4s',
-          boxShadow: `inset 0 2px 0 rgba(255,255,255,0.3)`,
-        }} />
-      </div>
-    </div>
-  );
-};
-
-/* ─── Stat Card ───────────────────────────────────────────────────────────── */
-const StatCard = ({ label, value, sub, color = G.forest, delay = 0 }) => (
-  <div className="pm-card" style={{ padding: '24px 28px', animationDelay: `${delay}s` }}>
-    <div style={{ fontSize: 11, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>{label}</div>
-    <div style={{ fontSize: 36, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-    {sub && <div style={{ fontSize: 12, fontWeight: 700, color: G.darkGray, marginTop: 6 }}>{sub}</div>}
-  </div>
-);
 
 /* ─── Consume Modal ───────────────────────────────────────────────────────── */
 const ConsumeModal = ({ mat, onClose, onDone, showToast }) => {
@@ -204,45 +57,54 @@ const ConsumeModal = ({ mat, onClose, onDone, showToast }) => {
     setBusy(false);
   };
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(27,94,32,0.88)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, backdropFilter: 'blur(4px)' }}>
-      <div className="pm-card" style={{ width: 520, maxWidth: '100%', padding: 0 }}>
-        <div style={{ background: G.dark, padding: '22px 28px', borderBottom: `4px solid ${G.olive}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, color: G.white, fontSize: 20, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2 }}>🔥 Log Consumption</h2>
-          <button onClick={onClose} className="pm-btn" style={{ background: G.red, color: G.white, borderColor: G.dark, padding: '8px 16px', fontSize: 13 }}>✕ CLOSE</button>
-        </div>
-        <div style={{ padding: 36 }}>
-          <div style={{ fontSize: 12, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>{mat.material_id} · {mat.category}</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: G.dark, textTransform: 'uppercase', marginBottom: 24 }}>{mat.material_name}</div>
+  const statCards = [
+    { label: 'Moved In', val: parseFloat(mat.quantity_moved).toLocaleString(), color: '#0284C7' },
+    { label: 'Consumed', val: parseFloat(mat.quantity_consumed).toLocaleString(), color: '#D97706' },
+    { label: 'Remaining', val: remaining.toLocaleString(), color: remaining < 5 ? '#DC2626' : '#16A34A' },
+  ];
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 28 }}>
-            {[
-              { label: 'Moved In', val: parseFloat(mat.quantity_moved).toLocaleString(), color: G.forest },
-              { label: 'Consumed', val: parseFloat(mat.quantity_consumed).toLocaleString(), color: G.orange },
-              { label: 'Remaining', val: remaining.toLocaleString(), color: remaining < 5 ? G.red : G.leaf },
-            ].map(s => (
-              <div key={s.label} style={{ background: G.lightGray, border: `3px solid ${G.dark}`, boxShadow: `3px 3px 0 ${G.dark}`, padding: '14px 16px', textAlign: 'center' }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.val} <span style={{ fontSize: 12 }}>{mat.unit}</span></div>
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Log Consumption</h2>
+          <button onClick={onClose} className={styles.modalClose} aria-label="Close"><X size={20} /></button>
+        </div>
+        <div className={styles.modalBody}>
+          <div>
+            <div className={styles.modalMeta}>{mat.material_id} · {mat.category}</div>
+            <div className={styles.modalName}>{mat.material_name}</div>
+          </div>
+
+          <div className={styles.modalStatGrid}>
+            {statCards.map(s => (
+              <div key={s.label} className={styles.modalStat}>
+                <div className={styles.modalStatLabel}>{s.label}</div>
+                <div className={styles.modalStatValue} style={{ color: s.color }}>
+                  {s.val} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{mat.unit}</span>
+                </div>
               </div>
             ))}
           </div>
 
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>
-            Quantity to Consume ({mat.unit})
-          </label>
-          <input
-            type="number" min="0.001" step="0.001" value={qty}
-            onChange={e => setQty(e.target.value)}
-            className="pm-input"
-            style={{ width: '100%', padding: '16px 20px', fontSize: 22, fontWeight: 900, marginBottom: 28 }}
-            placeholder="0"
-            autoFocus
-          />
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor="consume-qty">Quantity to Consume ({mat.unit})</label>
+            <input
+              id="consume-qty"
+              type="number" min="0.001" step="0.001" value={qty}
+              onChange={e => setQty(e.target.value)}
+              className={styles.formInput}
+              placeholder="0"
+              autoFocus
+            />
+          </div>
 
-          <button onClick={submit} disabled={busy || !qty} className="pm-btn"
-            style={{ width: '100%', background: G.orange, color: G.white, borderColor: G.dark, padding: '18px 0', fontSize: 16, justifyContent: 'center' }}>
-            {busy ? '⏳ SAVING...' : '🔥 CONFIRM CONSUMPTION'}
+          <button
+            onClick={submit}
+            disabled={busy || !qty}
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnLg} ${styles.submitBtn} ${styles.btnSweep}`}
+          >
+            {busy ? <><SegmentedSpinner size={16} /> Saving...</> : <><Flame size={18} /> Confirm Consumption</>}
           </button>
         </div>
       </div>
@@ -295,260 +157,301 @@ const PrintingProdMaterials = () => {
     (m.category      || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="pm-page">
-      <GlobalStyles />
+  const overallRate = totalMoved > 0 ? Math.round((totalConsumed / totalMoved) * 100) : 0;
 
-      {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <div className="pm-header-bar" style={{
-        background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 60%, ${G.emerald} 100%)`,
-        borderBottom: `6px solid ${G.lime}`,
-        padding: '40px 60px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        boxShadow: `0 10px 30px ${G.dark}66`,
-      }}>
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+
+  const handlePrint = () => {
+    const rows = filtered.map(m => {
+      const usage = pct(m);
+      const usageColor = usage > 90 ? '#DC2626' : usage > 65 ? '#D97706' : '#16A34A';
+      return `<tr>
+        <td><strong>${esc(m.material_id)}</strong><br/><span style="color:#6B7280;font-size:11px">${esc(m.material_name)}</span></td>
+        <td><span class="chip">${esc(m.category || '—')}</span></td>
+        <td class="num">${parseFloat(m.quantity_moved || 0).toLocaleString()} <span class="u">${esc(m.unit || '')}</span></td>
+        <td class="num">${parseFloat(m.quantity_consumed || 0).toLocaleString()} <span class="u">${esc(m.unit || '')}</span></td>
+        <td class="num">${parseFloat(m.quantity_remaining || 0).toLocaleString()} <span class="u">${esc(m.unit || '')}</span></td>
+        <td class="num"><b style="color:${usageColor}">${usage}%</b></td>
+      </tr>`;
+    }).join('');
+
+    const win = window.open('', '_blank', 'width=1100,height=800');
+    if (!win) { showToast('warning', 'Popup blocked — allow popups for this site to print'); return; }
+
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"/>
+<title>Production Materials — Stock Report</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 16px; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  p.meta { font-size: 11px; color: #6B7280; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { display: table-header-group; }
+  th { background: #2563EB; color: #fff; text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  td { border-bottom: 1px solid #E5E7EB; padding: 7px 10px; vertical-align: middle; }
+  tbody tr:nth-child(even) { background: #F9FAFB; }
+  .chip { display: inline-block; background: #EFF6FF; color: #2563EB; padding: 2px 8px; border-radius: 999px; font-size: 10px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .u { color: #9CA3AF; font-size: 10px; }
+  tfoot td { background: #F3F4F6; font-weight: 700; border-top: 2px solid #2563EB; }
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+</style></head><body>
+<h1>Production Materials — Stock Report</h1>
+<p class="meta">Printing Department · Generated ${new Date().toLocaleString()} · ${filtered.length} of ${materials.length} materials</p>
+<table>
+  <thead><tr><th>Material</th><th>Category</th><th>Moved In</th><th>Consumed</th><th>Remaining</th><th>Usage</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr>
+    <td>Grand Total (${filtered.length} items)</td>
+    <td></td>
+    <td class="num">${filtered.reduce((s, m) => s + parseFloat(m.quantity_moved || 0), 0).toLocaleString()}</td>
+    <td class="num">${filtered.reduce((s, m) => s + parseFloat(m.quantity_consumed || 0), 0).toLocaleString()}</td>
+    <td class="num">${filtered.reduce((s, m) => s + parseFloat(m.quantity_remaining || 0), 0).toLocaleString()}</td>
+    <td class="num">${overallRate}%</td>
+  </tr></tfoot>
+</table>
+<script>setTimeout(() => { window.focus(); window.print(); }, 350);</script>
+</body></html>`);
+    win.document.close();
+  };
+
+  return (
+    <div className={styles.page}>
+      {/* ── PAGE HEADER ─────────────────────────────────────────────── */}
+      <header className={styles.pageHeader}>
         <div>
-          <h1 className="pm-header-txt">🏭 Production Materials</h1>
-          <div style={{ fontSize: 14, fontWeight: 800, color: G.mint, textTransform: 'uppercase', letterSpacing: 4, marginTop: 10 }}>
-            Printing Department — Live Stock
-          </div>
+          <h1 className={styles.pageTitle}>
+            <Boxes size={26} className={styles.pageTitleIcon} /> Production Materials
+          </h1>
+          <p className={styles.pageSubtitle}>Printing Department — Live Stock</p>
         </div>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className={styles.headerActions}>
           {criticalCount > 0 && (
-            <div style={{ background: G.red, color: G.white, border: `3px solid ${G.dark}`, boxShadow: `4px 4px 0 ${G.dark}`, padding: '10px 20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13 }}>
-              ⚠ {criticalCount} Critical
-            </div>
+            <span className={`${styles.badge} ${styles.badgeDanger} ${styles.criticalBadge}`}>
+              <AlertTriangle size={14} /> {criticalCount} Critical
+            </span>
           )}
-          <button onClick={load} className="pm-btn"
-            style={{ background: G.lime, color: G.dark, borderColor: G.dark, padding: '14px 28px', fontSize: 14 }}>
-            🔄 REFRESH
+          <button onClick={load} disabled={loading} className={styles.iconBtn} title="Refresh" aria-label="Refresh">
+            {loading ? <SegmentedSpinner size={20} /> : <RefreshCw size={18} />}
+          </button>
+          <button
+            onClick={handlePrint}
+            disabled={filtered.length === 0}
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSweep}`}
+          >
+            <Printer size={15} /> Print
           </button>
         </div>
+      </header>
+
+      {/* ── KPI CARDS ───────────────────────────────────────────────── */}
+      <div className={styles.kpiGrid}>
+        {[
+          { label: 'Materials in Production', value: materials.length, sub: 'Active materials', color: '#2563EB' },
+          { label: 'Total Moved In', value: totalMoved.toLocaleString(), sub: 'Quantity moved in', color: '#0284C7' },
+          { label: 'Total Consumed', value: totalConsumed.toLocaleString(), sub: 'Quantity consumed', color: '#D97706' },
+          { label: 'Total Remaining', value: totalRemaining.toLocaleString(), sub: 'Quantity on hand', color: '#16A34A' },
+        ].map(s => (
+          <div key={s.label} className={styles.kpiCard}>
+            <div className={styles.kpiLabel}>{s.label}</div>
+            <div className={styles.kpiValue} style={{ color: s.color }}>{s.value}</div>
+            <div className={styles.kpiSub}>{s.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ── STAT STRIP ─────────────────────────────────────────────────── */}
-      <div style={{ background: G.dark, borderBottom: `4px solid ${G.forest}`, padding: '0 60px' }}>
-        <div className="pm-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
-          {[
-            { label: 'Materials in Production', val: materials.length, color: G.lime },
-            { label: 'Total Moved In', val: totalMoved.toLocaleString(), color: G.sky },
-            { label: 'Total Consumed', val: totalConsumed.toLocaleString(), color: G.orange },
-            { label: 'Total Remaining', val: totalRemaining.toLocaleString(), color: G.leaf },
-          ].map((s, i) => (
-            <div key={i} style={{ padding: '20px 24px', borderRight: i < 3 ? `2px solid ${G.forest}55` : 'none', textAlign: i === 0 ? 'left' : 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: G.sage, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 }}>{s.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: s.color }}>{s.val}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── SEARCH BAR ─────────────────────────────────────────────────── */}
-      <div style={{ background: G.white, borderBottom: `4px solid ${G.sage}`, padding: '20px 60px', display: 'flex', gap: 16, alignItems: 'center' }}>
+      {/* ── SEARCH BAR ──────────────────────────────────────────────── */}
+      <div className={styles.searchCard}>
+        <Search size={18} className={styles.searchIcon} />
         <input
           type="text"
-          placeholder="🔍 Search by name, ID or category..."
+          placeholder="Search by name, ID or category..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="pm-input"
-          style={{ flex: 1, maxWidth: 480, padding: '12px 18px', fontSize: 14 }}
+          className={styles.searchInput}
         />
-        <div style={{ fontSize: 13, fontWeight: 800, color: G.olive, textTransform: 'uppercase', letterSpacing: 1 }}>
-          {filtered.length} / {materials.length} records
-        </div>
+        <span className={styles.searchCount}>{filtered.length} / {materials.length} records</span>
         {searchTerm && (
-          <button onClick={() => setSearchTerm('')} className="pm-btn"
-            style={{ background: G.lightGray, color: G.darkGray, borderColor: G.sage, padding: '10px 18px', fontSize: 12, boxShadow: `3px 3px 0 ${G.sage}` }}>
-            ✕ CLEAR
+          <button onClick={() => setSearchTerm('')} className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSweep}`}>
+            <X size={14} /> Clear
           </button>
         )}
       </div>
 
-      {/* ── MAIN CONTENT ───────────────────────────────────────────────── */}
-      <div style={{ padding: '32px 60px 60px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '100px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 20 }}>🌿</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 4 }}>
-              Loading Production Stock...
+      {/* ── MAIN CONTENT ────────────────────────────────────────────── */}
+      {loading && materials.length === 0 ? (
+        <div className={styles.loadingState}>
+          <SegmentedSpinner size={56} label="Loading production stock..." />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className={styles.emptyState}>
+          <Package size={64} className={styles.emptyIcon} />
+          <div className={styles.emptyTitle}>
+            {materials.length === 0 ? 'No Production Materials Found' : 'No Results Match Your Search'}
+          </div>
+          <p className={styles.emptyText}>
+            {materials.length === 0
+              ? 'Materials appear here automatically when the Printing Supervisor confirms receipt from the Store Materials page.'
+              : 'Try a different search term.'}
+          </p>
+        </div>
+      ) : (
+        <div className={styles.tableCard}>
+          <div className={styles.tableWrap}>
+            <div className={styles.tableInner}>
+              <div className={styles.gridHead}>
+                {['Material', 'Category', 'Moved In', 'Consumed', 'Remaining', 'Usage %', 'Action'].map((h, i) => (
+                  <div key={h} className={`${styles.headCell} ${i >= 2 ? styles.headRight : ''}`}>{h}</div>
+                ))}
+              </div>
+
+              {filtered.map(m => {
+                const usage = pct(m);
+                const remaining = parseFloat(m.quantity_remaining || 0);
+                const reorder = parseFloat(m.reorder_level || 5);
+                const isCrit = remaining <= reorder;
+                const usageColor = usage > 90 ? '#DC2626' : usage > 65 ? '#D97706' : '#16A34A';
+                const usageClass = usage > 90 ? styles.usageDanger : usage > 65 ? styles.usageWarn : styles.usageOk;
+
+                return (
+                  <div key={m.id} className={`${styles.gridRow} ${isCrit ? styles.gridRowCrit : ''}`}>
+                    {/* Material */}
+                    <div className={`${styles.cell} ${styles.cellStack}`}>
+                      <div className={styles.matId}>{m.material_id}</div>
+                      <div className={styles.matName}>{m.material_name}</div>
+                      {m.unit && <div className={styles.matUnit}>Unit: {m.unit}</div>}
+                      {m.moved_date && (
+                        <div className={styles.matDate}>Last updated: {new Date(m.updated_at || m.moved_date).toLocaleDateString()}</div>
+                      )}
+                      {isCrit && (
+                        <span className={`${styles.badge} ${styles.badgeDanger} ${styles.critBadge}`}>
+                          <AlertTriangle size={12} /> Critical Low
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Category */}
+                    <div className={styles.cell}>
+                      <span className={styles.catPill}>{m.category || '—'}</span>
+                    </div>
+
+                    {/* Moved */}
+                    <div className={`${styles.cell} ${styles.cellRight}`}>
+                      <div>
+                        <div className={`${styles.val} ${styles.valMoved}`}>{parseFloat(m.quantity_moved).toLocaleString()}</div>
+                        <div className={styles.valUnit}>{m.unit}</div>
+                      </div>
+                    </div>
+
+                    {/* Consumed */}
+                    <div className={`${styles.cell} ${styles.cellRight}`}>
+                      <div>
+                        <div className={`${styles.val} ${styles.valConsumed}`}>{parseFloat(m.quantity_consumed).toLocaleString()}</div>
+                        <div className={styles.valUnit}>{m.unit}</div>
+                      </div>
+                    </div>
+
+                    {/* Remaining */}
+                    <div className={`${styles.cell} ${styles.cellRight}`}>
+                      <div>
+                        <div className={`${styles.val} ${isCrit ? styles.valRemainingCrit : styles.valRemaining}`}>{remaining.toLocaleString()}</div>
+                        <div className={styles.valUnit}>{m.unit}</div>
+                      </div>
+                    </div>
+
+                    {/* Usage */}
+                    <div className={`${styles.cell} ${styles.cellUsage}`}>
+                      <div className={`${styles.usagePct} ${usageClass}`}>{usage}%</div>
+                      <div className={styles.usageBarTrack}>
+                        <div className={styles.usageBarFill} style={{ width: `${Math.min(usage, 100)}%`, background: usageColor }} />
+                      </div>
+                    </div>
+
+                    {/* Action */}
+                    <div className={`${styles.cell} ${styles.cellAction}`}>
+                      <button
+                        onClick={() => setConsumeTarget(m)}
+                        disabled={remaining <= 0}
+                        className={`${styles.logBtn} ${styles.btnSweep}`}
+                      >
+                        {remaining <= 0 ? 'Depleted' : 'Log Use'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className={styles.gridTotal}>
+                <div className={`${styles.cell} ${styles.totalLabel}`}>Grand Total ({filtered.length} items)</div>
+                <div className={styles.cell} />
+                <div className={`${styles.cell} ${styles.cellRight}`}>
+                  <div className={`${styles.val} ${styles.valMoved}`}>{filtered.reduce((s, m) => s + parseFloat(m.quantity_moved || 0), 0).toLocaleString()}</div>
+                </div>
+                <div className={`${styles.cell} ${styles.cellRight}`}>
+                  <div className={`${styles.val} ${styles.valConsumed}`}>{filtered.reduce((s, m) => s + parseFloat(m.quantity_consumed || 0), 0).toLocaleString()}</div>
+                </div>
+                <div className={`${styles.cell} ${styles.cellRight}`}>
+                  <div className={`${styles.val} ${styles.valRemaining}`}>{filtered.reduce((s, m) => s + parseFloat(m.quantity_remaining || 0), 0).toLocaleString()}</div>
+                </div>
+                <div className={`${styles.cell} ${styles.cellUsage}`}>
+                  <div className={`${styles.usagePct} ${overallRate > 90 ? styles.usageDanger : overallRate > 65 ? styles.usageWarn : styles.usageOk}`}>{overallRate}%</div>
+                </div>
+                <div className={styles.cell} />
+              </div>
             </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="pm-card" style={{ textAlign: 'center', padding: '80px 40px' }}>
-            <div style={{ fontSize: 72, marginBottom: 20 }}>📦</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>
-              {materials.length === 0 ? 'No Production Materials Found' : 'No Results Match Your Search'}
+        </div>
+      )}
+
+      {/* ── INFO PANEL ──────────────────────────────────────────────── */}
+      {!loading && materials.length > 0 && (
+        <div className={styles.infoGrid}>
+          <div className={styles.infoCard}>
+            <div className={styles.infoTitle}>
+              <Info size={18} /> How Materials Appear Here
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: G.olive, maxWidth: 480, margin: '0 auto' }}>
-              {materials.length === 0
-                ? 'Materials appear here automatically when the Printing Supervisor confirms receipt from the Store Materials page.'
-                : 'Try a different search term.'}
-            </div>
-          </div>
-        ) : (
-          <div className="pm-card" style={{ padding: 0, overflow: 'hidden' }}>
-            {/* Table Header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '2.5fr 1.2fr 1fr 1fr 1fr 1fr 180px',
-              background: `linear-gradient(90deg, ${G.dark}, ${G.forest})`,
-              borderBottom: `4px solid ${G.lime}`,
-            }}>
-              {['Material', 'Category', 'Moved In', 'Consumed', 'Remaining', 'Usage %', 'Action'].map(h => (
-                <div key={h} style={{
-                  padding: '18px 20px', color: G.white, fontWeight: 900,
-                  fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2,
-                  borderRight: `2px solid ${G.forest}88`,
-                }}>
-                  {h}
+            <div className={styles.steps}>
+              {[
+                { step: '1', text: 'Supervisor requests material from the Store Materials page', color: '#2563EB' },
+                { step: '2', text: 'CEO approves the request', color: '#1D4ED8' },
+                { step: '3', text: 'General Store Keeper ships the material', color: '#0284C7' },
+                { step: '4', text: 'Supervisor confirms receipt — material appears here automatically', color: '#16A34A' },
+              ].map(s => (
+                <div key={s.step} className={styles.stepRow}>
+                  <div className={styles.stepNum} style={{ background: s.color }}>{s.step}</div>
+                  <div className={styles.stepText}>{s.text}</div>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Rows */}
-            {filtered.map((m, i) => {
-              const usage     = pct(m);
-              const remaining = parseFloat(m.quantity_remaining || 0);
-              const reorder   = parseFloat(m.reorder_level || 5);
-              const isCrit    = remaining <= reorder;
-              const usageColor = usage > 90 ? G.red : usage > 65 ? G.orange : G.leaf;
-              const rowBg     = i % 2 === 0 ? '#f8fff8' : G.white;
-
-              return (
-                <div key={m.id} className="pm-row" style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2.5fr 1.2fr 1fr 1fr 1fr 1fr 180px',
-                  background: isCrit ? `${G.red}08` : rowBg,
-                  borderLeft: `5px solid ${isCrit ? G.red : usageColor}`,
-                  animationDelay: `${i * 0.04}s`,
-                }}>
-                  {/* Material name */}
-                  <div style={{ padding: '20px 20px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 900, color: G.olive, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 }}>{m.material_id}</div>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: G.dark, textTransform: 'uppercase', lineHeight: 1.2, marginBottom: 4 }}>{m.material_name}</div>
-                    {m.unit && <div style={{ fontSize: 11, fontWeight: 700, color: G.darkGray }}>Unit: {m.unit}</div>}
-                    {m.moved_date && (
-                      <div style={{ fontSize: 10, fontWeight: 700, color: G.sage, marginTop: 4 }}>
-                        Last updated: {new Date(m.updated_at || m.moved_date).toLocaleDateString()}
-                      </div>
-                    )}
-                    {isCrit && (
-                      <div style={{ display: 'inline-block', marginTop: 6, background: G.red, color: G.white, fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, padding: '3px 10px', border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
-                        ⚠ CRITICAL LOW
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Category */}
-                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center' }}>
-                    <span style={{ background: G.dark, color: G.white, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1, padding: '6px 12px', border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.olive}` }}>
-                      {m.category || '—'}
-                    </span>
-                  </div>
-
-                  {/* Moved */}
-                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: G.forest }}>
-                      {parseFloat(m.quantity_moved).toLocaleString()}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: G.olive }}>{m.unit}</div>
-                    </div>
-                  </div>
-
-                  {/* Consumed */}
-                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: G.orange }}>
-                      {parseFloat(m.quantity_consumed).toLocaleString()}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: G.olive }}>{m.unit}</div>
-                    </div>
-                  </div>
-
-                  {/* Remaining */}
-                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: isCrit ? G.red : G.leaf }}>
-                      {remaining.toLocaleString()}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: G.olive }}>{m.unit}</div>
-                    </div>
-                  </div>
-
-                  {/* Usage % + mini bar */}
-                  <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: usageColor, marginBottom: 6 }}>{usage}%</div>
-                    <div style={{ background: `${G.sage}55`, height: 10, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}` }}>
-                      <div style={{ height: '100%', background: usageColor, width: `${Math.min(usage, 100)}%`, animation: 'barGrow 1s ease' }} />
-                    </div>
-                  </div>
-
-                  {/* Action */}
-                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center' }}>
-                    <button
-                      onClick={() => setConsumeTarget(m)}
-                      className="pm-btn"
-                      disabled={remaining <= 0}
-                      style={{
-                        background: remaining <= 0 ? G.lightGray : G.orange,
-                        color: remaining <= 0 ? G.darkGray : G.white,
-                        borderColor: G.dark,
-                        padding: '10px 16px',
-                        fontSize: 12,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {remaining <= 0 ? '✓ DEPLETED' : '🔥 LOG USE'}
-                    </button>
-                  </div>
+          <div className={styles.infoCard}>
+            <div className={styles.infoTitle}>
+              <TrendingUp size={18} /> Summary Breakdown
+            </div>
+            <div className={styles.summaryList}>
+              {[
+                { label: 'Total Materials', val: materials.length, color: '#111827' },
+                { label: 'Critical / Low Stock', val: criticalCount, color: criticalCount > 0 ? '#DC2626' : '#16A34A' },
+                { label: 'Total Moved In', val: `${totalMoved.toLocaleString()} units`, color: '#0284C7' },
+                { label: 'Total Consumed', val: `${totalConsumed.toLocaleString()} units`, color: '#D97706' },
+                { label: 'Total Remaining', val: `${totalRemaining.toLocaleString()} units`, color: '#16A34A' },
+                { label: 'Overall Usage Rate', val: `${totalMoved > 0 ? Math.round((totalConsumed / totalMoved) * 100) : 0}%`, color: '#6B7280' },
+              ].map(r => (
+                <div key={r.label} className={styles.summaryRow}>
+                  <span className={styles.summaryLabel}>{r.label}</span>
+                  <span className={styles.summaryValue} style={{ color: r.color }}>{r.val}</span>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── INFO PANEL ──────────────────────────────────────────────── */}
-        {!loading && materials.length > 0 && (
-          <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }} className="pm-grid-3">
-            <div className="pm-card" style={{ padding: 28, animationDelay: '0.2s' }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16, borderBottom: `3px solid ${G.lime}`, paddingBottom: 12 }}>
-                📊 How Materials Appear Here
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {[
-                  { step: '1', icon: '📨', text: 'Supervisor requests material from Store Materials page', color: G.forest },
-                  { step: '2', icon: '✅', text: 'CEO approves the request', color: G.emerald },
-                  { step: '3', icon: '📦', text: 'General Store Keeper ships the material', color: G.sky },
-                  { step: '4', icon: '📥', text: 'Supervisor confirms receipt — material appears HERE automatically', color: G.leaf },
-                ].map(s => (
-                  <div key={s.step} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                    <div style={{ background: s.color, color: G.white, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, border: `2px solid ${G.dark}`, boxShadow: `2px 2px 0 ${G.dark}`, flexShrink: 0 }}>{s.step}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: G.darkGray, paddingTop: 4 }}>{s.icon} {s.text}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pm-card" style={{ padding: 28, animationDelay: '0.3s' }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16, borderBottom: `3px solid ${G.lime}`, paddingBottom: 12 }}>
-                📈 Summary Breakdown
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[
-                  { label: 'Total Materials', val: materials.length, color: G.dark },
-                  { label: 'Critical / Low Stock', val: criticalCount, color: criticalCount > 0 ? G.red : G.leaf },
-                  { label: 'Total Moved In', val: `${totalMoved.toLocaleString()} units`, color: G.forest },
-                  { label: 'Total Consumed', val: `${totalConsumed.toLocaleString()} units`, color: G.orange },
-                  { label: 'Total Remaining', val: `${totalRemaining.toLocaleString()} units`, color: G.leaf },
-                  { label: 'Overall Usage Rate', val: `${totalMoved > 0 ? Math.round((totalConsumed / totalMoved) * 100) : 0}%`, color: G.olive },
-                ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${G.sage}55`, paddingBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: G.darkGray, textTransform: 'uppercase', letterSpacing: 0.5 }}>{r.label}</span>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: r.color }}>{r.val}</span>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ── MODALS ─────────────────────────────────────────────────────── */}
+      {/* ── MODALS ──────────────────────────────────────────────────── */}
       {consumeTarget && (
         <ConsumeModal
           mat={consumeTarget}
