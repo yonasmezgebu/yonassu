@@ -1,16 +1,142 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sliders, Plus, Trash2, Search, Eye, EyeOff, RefreshCw, CheckCircle, XCircle, Package, Calendar, Hash, AlertCircle, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react';
+import { Sliders, Plus, Trash2, Search, Eye, EyeOff, RefreshCw, CheckCircle, Package, Calendar, Hash, AlertCircle, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react';
 import { NotifStore } from './StoreHomeNew';
-import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-/* ─── Color Palette ─────────────────────────────────────────── */
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', mint: '#98FF98', lime: '#8BC34A',
-  brown: '#8D6E63', sky: '#87CEEB', white: '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray: '#424242', orange: '#FF9800', red: '#F44336',
-};
+/* ── Enterprise CSS ─────────────────────────────────────────────── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --cp: #2563EB; --cp-h: #1D4ED8;
+    --cbg: #F5F6FA; --ccard: #FFFFFF; --cborder: #E5E7EB;
+    --ct1: #111827; --ct2: #6B7280; --ctm: #9CA3AF;
+    --cok: #16A34A; --cok-bg: #DCFCE7;
+    --cdanger: #DC2626; --cdanger-bg: #FEE2E2;
+    --cwarn: #D97706; --cwarn-bg: #FEF3C7;
+    --cinfo: #0284C7; --cinfo-bg: #E0F2FE;
+    --gold: #F59E0B; --gold-text: #111827;
+  }
 
+  /* ── Page ── */
+  .adj-page {
+    box-sizing: border-box;
+    margin: 10px auto; width: calc(100% - 20px); max-width: 1536px;
+    min-height: calc(100vh - 20px); padding: 24px 24px 48px;
+    background: var(--cbg);
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    color: var(--ct1); line-height: 1.5;
+  }
+  @media (max-width: 1024px) { .adj-page { margin: 6px auto; width: calc(100% - 12px); padding: 16px 16px 40px; } }
+  @media (max-width: 480px)  { .adj-page { margin: 4px auto; width: calc(100% - 8px);  padding: 12px 12px 32px; } }
+
+  /* ── Header ── */
+  .adj-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--cborder); }
+  .adj-header-left { display: flex; align-items: center; gap: 12px; }
+  .adj-header-icon { background: var(--cinfo-bg); color: var(--cinfo); padding: 10px; border-radius: 10px; display: flex; flex-shrink: 0; }
+  .adj-page-title { font-size: clamp(22px,3vw,28px); font-weight: 600; line-height: 1.3; margin: 0 0 2px; color: var(--ct1); }
+  .adj-page-sub { font-size: 13px; color: var(--ct2); margin: 0; }
+  .adj-header-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Buttons ── */
+  .adj-btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--cborder); background: var(--ccard); color: var(--ct1); font-family: inherit; transition: all 150ms ease-in-out; white-space: nowrap; min-width: 44px; justify-content: center; }
+  .adj-btn:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,.10); transform: translateY(-1px); }
+  .adj-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .adj-btn-primary { background: var(--cp); color: #fff; border-color: var(--cp); }
+  .adj-btn-primary:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  .adj-btn-danger  { background: var(--ccard); color: var(--cdanger); border-color: var(--cdanger); }
+  .adj-btn-danger:hover:not(:disabled) { background: var(--gold); color: var(--gold-text); border-color: transparent; }
+  .adj-btn-icon { width: 36px; height: 36px; padding: 0; }
+  .adj-btn-sm   { height: 30px; padding: 0 12px; font-size: 12px; }
+
+  /* ── Spinner ── */
+  .adj-spinner { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(37,99,235,.2); border-top-color: var(--cp); animation: adj-spin 700ms linear infinite; flex-shrink: 0; }
+  .adj-spinner.lg { width: 28px; height: 28px; border-width: 3px; }
+  .adj-spinner.white { border-color: rgba(255,255,255,.3); border-top-color: #fff; }
+  @keyframes adj-spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats Strip ── */
+  .adj-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease; }
+  .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .stat-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ctm); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .stat-val { font-size: 24px; font-weight: 700; color: var(--ct1); font-variant-numeric: tabular-nums; line-height: 1; }
+
+  /* ── Search bar ── */
+  .adj-search-bar { display: flex; align-items: center; gap: 12px; background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; padding: 0 16px; height: 44px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .adj-search-input { border: none; outline: none; font-size: 14px; font-family: inherit; flex: 1; background: transparent; color: var(--ct1); }
+  .adj-search-count { font-size: 13px; font-weight: 500; color: var(--ctm); white-space: nowrap; }
+
+  /* ── Badges ── */
+  .adj-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; white-space: nowrap; letter-spacing: 0.02em; }
+  .adj-badge-approved { background: var(--cok-bg); color: var(--cok); }
+  .adj-badge-rejected { background: var(--cdanger-bg); color: var(--cdanger); }
+  .adj-badge-awaiting { background: var(--cinfo-bg); color: var(--cinfo); }
+
+  /* ── List / Cards ── */
+  .adj-list { display: flex; flex-direction: column; gap: 12px; }
+  .adj-card-row { background: var(--ccard); border: 1px solid var(--cborder); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); overflow: hidden; transition: box-shadow 150ms ease, transform 150ms ease; }
+  .adj-card-row:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .adj-row-inner { padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-left: 4px solid transparent; }
+  .adj-row-inner.st-APPROVED { border-left-color: var(--cok); }
+  .adj-row-inner.st-REJECTED { border-left-color: var(--cdanger); }
+  .adj-row-inner.st-PENDING  { border-left-color: var(--cinfo); }
+
+  .adj-left { display: flex; align-items: center; gap: 14px; }
+  .adj-icon-box { background: var(--cbg); color: var(--ct2); padding: 9px; border-radius: 8px; display: flex; flex-shrink: 0; }
+  .adj-no { font-size: 15px; font-weight: 600; color: var(--ct1); margin-bottom: 2px; }
+  .adj-meta { font-size: 12px; color: var(--ct2); display: flex; gap: 12px; flex-wrap: wrap; }
+  .adj-meta span { display: flex; align-items: center; gap: 4px; }
+  .adj-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* ── Expand panel ── */
+  .adj-expand { border-top: 1px solid var(--cborder); animation: adj-slidedown 200ms ease; }
+  @keyframes adj-slidedown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .adj-expand-meta { padding: 12px 20px; background: #F9FAFB; display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--ct2); border-bottom: 1px solid var(--cborder); }
+  .adj-expand-meta strong { color: var(--ct1); font-weight: 600; }
+  .adj-expand-table-wrap { overflow-x: auto; }
+  .adj-table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; }
+  .adj-table thead tr { background: #F9FAFB; }
+  .adj-table th { padding: 10px 14px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ctm); border-bottom: 1px solid var(--cborder); text-align: left; }
+  .adj-table td { padding: 10px 14px; border-bottom: 1px solid var(--cborder); color: var(--ct1); transition: background 150ms; vertical-align: middle; }
+  .adj-table tbody tr:last-child td { border-bottom: none; }
+  .adj-table tbody tr:hover td { background: #F9FAFB; }
+  .adj-reject-reason { padding: 10px 20px; background: var(--cdanger-bg); border-top: 1px solid var(--cdanger); color: var(--cdanger); font-size: 13px; font-weight: 500; }
+
+  /* ── State boxes ── */
+  .adj-state { padding: 64px 24px; text-align: center; color: var(--ct2); font-size: 14px; }
+  .adj-empty { background: var(--ccard); border: 1px dashed var(--cborder); border-radius: 10px; padding: 64px 24px; text-align: center; color: var(--ctm); font-size: 14px; }
+
+  /* ── MODAL ── */
+  .adj-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .adj-modal { background: var(--ccard); border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,.15); width: 100%; max-width: 800px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: adj-modalin 150ms ease-out; }
+  @keyframes adj-modalin { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+  .adj-modal-hd { padding: 16px 24px; border-bottom: 1px solid var(--cborder); display: flex; justify-content: space-between; align-items: center; background: #F9FAFB; flex-shrink: 0; }
+  .adj-modal-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--ct1); display: flex; align-items: center; gap: 10px; }
+  .adj-modal-sub { font-size: 13px; color: var(--ct2); margin-top: 2px; font-weight: 400; }
+  .adj-modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+  @media (max-width: 480px) { .adj-modal-body { padding: 16px; } }
+  .adj-modal-ft { padding: 14px 24px; border-top: 1px solid var(--cborder); display: flex; justify-content: flex-end; gap: 10px; background: #F9FAFB; flex-shrink: 0; }
+
+  /* ── Form grid ── */
+  .adj-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .adj-form-grid { grid-template-columns: 1fr; } }
+  .adj-fg { display: flex; flex-direction: column; gap: 6px; }
+  .adj-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; color: var(--ct2); display: flex; align-items: center; gap: 4px; }
+  .adj-input { height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--cborder); font-size: 14px; font-family: inherit; color: var(--ct1); background: var(--ccard); width: 100%; box-sizing: border-box; outline: none; transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .adj-input:focus { border-color: var(--cp); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  .adj-input:read-only { background: #F9FAFB; color: var(--ctm); cursor: not-allowed; }
+  select.adj-input { appearance: auto; cursor: pointer; }
+
+  /* ── Line Items ── */
+  .adj-line-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--cborder); padding-bottom: 8px; }
+  .adj-line-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--ct1); }
+  .adj-line-table-wrap { border: 1px solid var(--cborder); border-radius: 8px; overflow-x: auto; margin-bottom: 16px; }
+  .adj-line-input { height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--cborder); font-size: 13px; font-family: inherit; color: var(--ct1); background: var(--ccard); width: 100%; min-width: 80px; box-sizing: border-box; outline: none; transition: border-color 150ms, box-shadow 150ms; }
+  .adj-line-input:focus { border-color: var(--cp); box-shadow: 0 0 0 2px rgba(37,99,235,.1); }
+  .adj-line-input:read-only { background: #F9FAFB; color: var(--ctm); cursor: not-allowed; }
+  select.adj-line-input { appearance: auto; }
+`;
+
+/* ─── API ──────────────────────────────────────────────────────── */
 const API = '/api/v1/store-inventory';
 function hdrs() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }; }
 async function apiFetch(url, opts = {}) {
@@ -19,139 +145,14 @@ async function apiFetch(url, opts = {}) {
   if (!r.ok) throw new Error(d.message || 'Request failed');
   return d;
 }
-
 const REASONS = ['Damaged goods', 'Expired goods', 'Count correction', 'System error correction', 'Donation/Write-off', 'Other'];
 
-/* ─── CSS Styles (injected once) ────────────────────────────── */
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-  * { box-sizing: border-box; }
-  .adj-page { font-family: 'Inter', sans-serif; background: ${G.lightGray}; min-height: 100vh; width: 100%; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 1000px; } }
-
-  /* 3D Buttons */
-  .btn-primary {
-    background: linear-gradient(145deg, ${G.emerald}, ${G.forest});
-    color: #fff; border: none; border-bottom: 4px solid ${G.dark};
-    border-right: 3px solid ${G.dark}; padding: 11px 22px;
-    font-weight: 800; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 6px 16px rgba(27,94,32,0.3);
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(27,94,32,0.4); }
-  .btn-primary:active { transform: translateY(2px); border-bottom: 1px solid ${G.dark}; box-shadow: none; }
-
-  .btn-orange {
-    background: linear-gradient(145deg, #FFA726, ${G.orange});
-    color: #fff; border: none; border-bottom: 4px solid #E65100;
-    border-right: 3px solid #E65100; padding: 11px 22px;
-    font-weight: 800; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 6px 16px rgba(230,81,0,0.25);
-  }
-  .btn-orange:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(230,81,0,0.35); }
-  .btn-orange:active { transform: translateY(2px); border-bottom: 1px solid #E65100; box-shadow: none; }
-
-  .btn-ghost {
-    background: rgba(255,255,255,0.15); backdrop-filter: blur(8px);
-    color: #fff; border: 2px solid rgba(255,255,255,0.4); padding: 10px 14px;
-    font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 7px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-  }
-  .btn-ghost:hover { background: rgba(255,255,255,0.25); }
-
-  .btn-danger {
-    background: linear-gradient(145deg, #EF5350, ${G.red});
-    color: #fff; border: none; border-bottom: 3px solid #B71C1C;
-    padding: 7px 10px; cursor: pointer; display: inline-flex;
-    align-items: center; transition: all 0.15s;
-    box-shadow: 0 4px 10px rgba(211,47,47,0.3);
-  }
-  .btn-danger:hover { transform: translateY(-1px); }
-  .btn-danger:active { transform: translateY(1px); border-bottom: 1px solid #B71C1C; }
-  .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  .btn-view {
-    background: linear-gradient(145deg, #fff, #f0f9f0);
-    color: ${G.forest}; border: 2px solid ${G.forest};
-    border-bottom: 3px solid ${G.dark}; padding: 7px 14px;
-    font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px; transition: all 0.15s; font-family: 'Inter', sans-serif;
-    box-shadow: 0 3px 8px rgba(34,139,34,0.2);
-  }
-  .btn-view:hover { background: linear-gradient(145deg, #E8F5E9, #C8E6C9); transform: translateY(-1px); }
-  .btn-view:active { transform: translateY(1px); border-bottom: 1px solid ${G.dark}; }
-
-  .btn-cancel {
-    background: linear-gradient(145deg, #fff, #f5f5f5);
-    color: ${G.darkGray}; border: 2px solid #9E9E9E; border-bottom: 3px solid #616161;
-    padding: 11px 22px; font-weight: 700; font-size: 13px; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 7px; transition: all 0.15s;
-    font-family: 'Inter', sans-serif; box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-  }
-  .btn-cancel:hover { background: #f0f0f0; transform: translateY(-1px); }
-
-  /* Cards */
-  .adj-card {
-    background: ${G.white}; border: 2px solid ${G.dark};
-    box-shadow: 5px 5px 0 ${G.sage}; transition: all 0.2s;
-    animation: fadeIn 0.3s ease;
-  }
-  .adj-card:hover { box-shadow: 7px 7px 0 ${G.olive}; transform: translateY(-1px); }
-
-  /* Input */
-  .adj-input {
-    width: 100%; padding: 10px 13px;
-    border: 2px solid ${G.sage}; background: #fff;
-    font-family: 'Inter', sans-serif; font-size: 13px;
-    outline: none; color: ${G.darkGray}; transition: border 0.2s;
-  }
-  .adj-input:focus { border-color: ${G.forest}; box-shadow: 0 0 0 3px rgba(34,139,34,0.12); }
-  .adj-input-readonly { background: #F0F9F0; color: ${G.forest}; font-weight: 800; cursor: default; }
-
-  /* Badge */
-  .badge-await { background: #EFF6FF; color: #1D4ED8; border: 2px solid #3B82F6; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-approved { background: #D1FAE5; color: ${G.dark}; border: 2px solid ${G.leaf}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-  .badge-rejected { background: #FEE2E2; color: #991B1B; border: 2px solid ${G.red}; padding: 4px 10px; font-weight: 800; font-size: 11px; }
-
-  /* Table */
-  .adj-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .adj-table th { background: ${G.dark}; color: #fff; padding: 10px 14px; text-align: left; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-  .adj-table td { padding: 10px 14px; border-bottom: 1px solid ${G.sage}; color: ${G.darkGray}; vertical-align: middle; }
-  .adj-table tr:nth-child(even) td { background: #F1F8E9; }
-  .adj-table tr:last-child td { border-bottom: none; }
-  .adj-table tr:hover td { background: #E8F5E9; }
-
-  /* Detail expand */
-  .adj-detail { animation: slideDown 0.3s ease; overflow: hidden; }
-
-  /* Search bar */
-  .adj-search { background: #fff; border: 2px solid ${G.dark}; box-shadow: 3px 3px 0 ${G.sage}; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
-  .adj-search input { border: none; outline: none; flex: 1; font-family: 'Inter', sans-serif; font-size: 13px; background: transparent; color: ${G.darkGray}; }
-
-  /* Modal */
-  .adj-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
-  .adj-modal { background: #fff; border: 3px solid ${G.dark}; box-shadow: 10px 10px 0 ${G.dark}; width: 100%; max-width: 800px; max-height: 92vh; display: flex; flex-direction: column; }
-
-  /* Stat chips */
-  .stat-chip { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 10px 18px; text-align: center; }
-
-  /* Responsive */
-  @media (max-width: 640px) {
-    .adj-grid-2 { grid-template-columns: 1fr !important; }
-    .adj-header-row { flex-direction: column; align-items: flex-start !important; }
-    .adj-header-actions { width: 100%; justify-content: flex-end; }
-    .adj-card-row { flex-direction: column; align-items: flex-start !important; }
-    .adj-table { font-size: 11px; }
-    .adj-table th, .adj-table td { padding: 7px 8px; }
-    .btn-primary, .btn-orange { padding: 9px 14px; font-size: 12px; }
-    .adj-modal { margin: 8px; max-height: 95vh; }
-    .adj-stats { flex-wrap: wrap; }
-    .adj-lines-table { overflow-x: auto; display: block; }
-  }
-`;
+/* ─── Status Badge ───────────────────────────────────────────── */
+const StatusBadge = ({ status }) => {
+  if (status === 'APPROVED') return <span className="adj-badge adj-badge-approved">Approved</span>;
+  if (status === 'REJECTED') return <span className="adj-badge adj-badge-rejected">Rejected</span>;
+  return <span className="adj-badge adj-badge-awaiting">Awaiting Approval</span>;
+};
 
 /* ─── Adjustment Form Modal ─────────────────────────────────── */
 const AdjustmentForm = ({ onSuccess, onClose }) => {
@@ -188,135 +189,111 @@ const AdjustmentForm = ({ onSuccess, onClose }) => {
         method: 'POST',
         body: JSON.stringify({ ...form, items: items.map(it => ({ ...it, quantity: Number(it.quantity) })) })
       });
-      NotifStore.push(`✅ ${form.adjustment_no} submitted for CEO approval!`, 'success');
+      NotifStore.push(`${form.adjustment_no} submitted for CEO approval!`, 'success');
       onSuccess();
-    } catch (e) { NotifStore.push('❌ Failed: ' + e.message, 'error'); }
+    } catch (e) { NotifStore.push('Failed: ' + e.message, 'error'); }
     finally { setSaving(false); }
   };
 
   return (
-    <div className="adj-modal-bg">
-      <div className="adj-modal">
-        {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, ${G.dark}, ${G.forest})`, color: '#fff', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ background: G.orange, padding: 8, boxShadow: '3px 3px 0 rgba(0,0,0,0.3)' }}>
-              <Sliders size={20} color="#fff" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 16 }}>New Stock Adjustment</div>
-              <div style={{ fontSize: 11, opacity: 0.8 }}>Submit for CEO approval</div>
-            </div>
+    <div className="adj-overlay" onClick={onClose}>
+      <div className="adj-modal" onClick={e => e.stopPropagation()}>
+        <div className="adj-modal-hd">
+          <div>
+            <h2 className="adj-modal-title"><Sliders size={20} color="var(--cwarn)" /> New Stock Adjustment</h2>
+            <div className="adj-modal-sub">Submit inventory corrections for CEO approval</div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900 }}>×</button>
+          <button className="adj-btn adj-btn-icon" style={{ border: 'none', background: 'transparent', boxShadow: 'none' }} onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
-          {/* Form Fields */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14, marginBottom: 22 }} className="adj-grid-2">
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-                <Hash size={11} style={{ display: 'inline', marginRight: 4 }} />Adjustment No
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input value={loadingNo ? 'Generating…' : form.adjustment_no} readOnly className="adj-input adj-input-readonly" />
-                {loadingNo && <SegmentedSpinner size={24} />}
+        <form id="adj-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <div className="adj-modal-body">
+            <div className="adj-form-grid">
+              <div className="adj-fg">
+                <label className="adj-label"><Hash size={14} /> Adjustment No</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input value={loadingNo ? 'Generating…' : form.adjustment_no} readOnly className="adj-input" />
+                  {loadingNo && <span className="adj-spinner" style={{ position: 'absolute', right: 10 }} />}
+                </div>
+              </div>
+              <div className="adj-fg">
+                <label className="adj-label"><Calendar size={14} /> Date</label>
+                <input type="date" value={form.adjustment_date} onChange={e => setForm(p => ({ ...p, adjustment_date: e.target.value }))} className="adj-input" required />
+              </div>
+              <div className="adj-fg">
+                <label className="adj-label"><AlertCircle size={14} /> Reason *</label>
+                <select value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} className="adj-input" required>
+                  <option value="">Select reason…</option>
+                  {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="adj-fg">
+                <label className="adj-label">Remarks</label>
+                <input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional notes…" className="adj-input" />
               </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-                <Calendar size={11} style={{ display: 'inline', marginRight: 4 }} />Date
-              </label>
-              <input type="date" value={form.adjustment_date} onChange={e => setForm(p => ({ ...p, adjustment_date: e.target.value }))} className="adj-input" />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-                <AlertCircle size={11} style={{ display: 'inline', marginRight: 4 }} />Reason *
-              </label>
-              <select value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} className="adj-input" required>
-                <option value="">Select reason…</option>
-                {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: G.dark, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>Remarks</label>
-              <input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="Optional notes…" className="adj-input" />
-            </div>
-          </div>
 
-          {/* Lines Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottom: `2px solid ${G.sage}`, paddingBottom: 10 }}>
-            <span style={{ fontWeight: 900, fontSize: 13, color: G.dark, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Adjustment Lines ({items.length})
-            </span>
-            <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', adjustment_type: 'ADD', quantity: '', batch_no: '' }])} className="btn-orange" style={{ padding: '7px 14px', fontSize: 12 }}>
-              <Plus size={13} /> Add Line
-            </button>
-          </div>
+            <div className="adj-line-hd">
+              <span className="adj-line-title">Adjustment Lines ({items.length})</span>
+              <button type="button" onClick={() => setItems(p => [...p, { drug_id: '', adjustment_type: 'ADD', quantity: '', batch_no: '' }])} className="adj-btn adj-btn-sm">
+                <Plus size={14} /> Add Line
+              </button>
+            </div>
 
-          {/* Lines Table */}
-          <div style={{ border: `2px solid ${G.dark}`, marginBottom: 22, overflow: 'hidden' }} className="adj-lines-table">
-            <table className="adj-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '35%' }}>Drug *</th>
-                  <th>Batch No</th>
-                  <th>Type</th>
-                  <th>Qty *</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: 6 }}>
-                      <select value={item.drug_id} onChange={e => handleDrugChange(i, e.target.value)} className="adj-input" style={{ padding: '7px 8px' }} required>
-                        <option value="">Select drug…</option>
-                        {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name}{d.strength ? ' ' + d.strength : ''}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: 6 }}>
-                      <input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} placeholder="Auto" className="adj-input" style={{ padding: '7px 8px', background: item.batch_no ? '#F0F9F0' : '#fff', fontWeight: item.batch_no ? 700 : 400, color: item.batch_no ? G.forest : G.darkGray }} />
-                    </td>
-                    <td style={{ padding: 6 }}>
-                      <select value={item.adjustment_type} onChange={e => setItem(i, 'adjustment_type', e.target.value)} className="adj-input" style={{ padding: '7px 8px', color: item.adjustment_type === 'ADD' ? G.forest : G.red, fontWeight: 800 }}>
-                        <option value="ADD">＋ ADD</option>
-                        <option value="REMOVE">－ REMOVE</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: 6 }}>
-                      <input type="number" min={1} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} className="adj-input" style={{ padding: '7px 8px' }} required />
-                    </td>
-                    <td style={{ padding: 6, textAlign: 'center' }}>
-                      <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} className="btn-danger">
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
+            <div className="adj-line-table-wrap">
+              <table className="adj-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '35%' }}>Drug *</th>
+                    <th>Batch No</th>
+                    <th>Type</th>
+                    <th>Qty *</th>
+                    <th style={{ width: 40, textAlign: 'center' }}></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((item, i) => (
+                    <tr key={i}>
+                      <td>
+                        <select value={item.drug_id} onChange={e => handleDrugChange(i, e.target.value)} className="adj-line-input" style={{ minWidth: 160 }} required>
+                          <option value="">Select drug…</option>
+                          {drugs.map(d => <option key={d.drug_id || d.id} value={d.drug_id || d.id}>{d.drug_name || d.name}{d.strength ? ' ' + d.strength : ''}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" value={item.batch_no} onChange={e => setItem(i, 'batch_no', e.target.value)} placeholder="Auto" className="adj-line-input" readOnly={!!item.batch_no} />
+                      </td>
+                      <td>
+                        <select value={item.adjustment_type} onChange={e => setItem(i, 'adjustment_type', e.target.value)} className="adj-line-input" style={{ color: item.adjustment_type === 'ADD' ? 'var(--cok)' : 'var(--cdanger)', fontWeight: 600 }}>
+                          <option value="ADD">+ ADD</option>
+                          <option value="REMOVE">- REMOVE</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="number" min={1} value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} className="adj-line-input" required />
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button type="button" onClick={() => setItems(p => p.filter((_, idx) => idx !== i))} disabled={items.length === 1} className="adj-btn adj-btn-danger adj-btn-icon" style={{ height: 30, width: 30 }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button type="button" onClick={onClose} className="btn-cancel">Cancel</button>
-            <button type="submit" disabled={saving || loadingNo} className="btn-primary" style={{ opacity: saving || loadingNo ? 0.7 : 1 }}>
-              <CheckCircle size={16} />
-              {saving ? 'Submitting…' : 'Submit Adjustment'}
+          <div className="adj-modal-ft">
+            <button type="button" onClick={onClose} className="adj-btn">Cancel</button>
+            <button type="submit" disabled={saving || loadingNo} className="adj-btn adj-btn-primary">
+              {saving ? <><span className="adj-spinner white" /> Submitting…</> : <><CheckCircle size={16} /> Submit Adjustment</>}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-/* ─── Status Badge ───────────────────────────────────────────── */
-const StatusBadge = ({ status }) => {
-  if (status === 'APPROVED') return <span className="badge-approved">✅ APPROVED</span>;
-  if (status === 'REJECTED') return <span className="badge-rejected">❌ REJECTED</span>;
-  return <span className="badge-await">⏳ AWAITING APPROVAL</span>;
 };
 
 /* ─── Main Page ─────────────────────────────────────────────── */
@@ -338,16 +315,12 @@ const StoreStockAdjustment = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Group individual rows by adjustment_no so detail shows all lines together
   const grouped = React.useMemo(() => {
     const map = {};
     adjustments.forEach(r => {
       const key = r.adjustment_no || `adj-${r.id}`;
-      if (!map[key]) {
-        map[key] = { ...r, lines: [] };
-      }
+      if (!map[key]) map[key] = { ...r, lines: [] };
       map[key].lines.push(r);
-      // Use worst status (PENDING > REJECTED > APPROVED)
       if (r.status === 'PENDING' || (!map[key].status)) map[key].status = r.status;
     });
     return Object.values(map);
@@ -373,184 +346,147 @@ const StoreStockAdjustment = () => {
       {showForm && <AdjustmentForm onSuccess={() => { setShowForm(false); load(); }} onClose={() => setShowForm(false)} />}
 
       {/* ── Header ── */}
-      <div style={{ background: `linear-gradient(135deg, ${G.dark} 0%, ${G.forest} 55%, ${G.emerald} 100%)`, padding: '24px 32px 0', color: '#fff', borderBottom: `4px solid ${G.dark}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 20 }} className="adj-header-row">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ background: G.orange, padding: 12, boxShadow: '4px 4px 0 rgba(0,0,0,0.3)' }}>
-              <Sliders size={28} color="#fff" />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: -0.5 }}>Stock Adjustments</h1>
-              <p style={{ margin: 0, fontSize: 13, opacity: 0.8 }}>Add or remove stock quantities · CEO approval required</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }} className="adj-header-actions">
-            <button onClick={() => setShowForm(true)} className="btn-orange">
-              <Plus size={17} /> New Adjustment
-            </button>
-            <button onClick={load} className="btn-ghost">
-              <SegmentedSpinner size={15} />
-            </button>
+      <div className="adj-header">
+        <div className="adj-header-left">
+          <div className="adj-header-icon"><Sliders size={24} /></div>
+          <div>
+            <h1 className="adj-page-title">Stock Adjustments</h1>
+            <p className="adj-page-sub">Add or remove stock quantities (Requires CEO approval)</p>
           </div>
         </div>
-
-        {/* Stats Strip */}
-        <div style={{ display: 'flex', gap: 0, borderTop: '1px solid rgba(255,255,255,0.15)' }} className="adj-stats">
-          {[
-            { label: 'Total', value: stats.total, icon: <Package size={14} /> },
-            { label: 'Awaiting', value: stats.awaiting, icon: '⏳' },
-            { label: 'Approved', value: stats.approved, icon: '✅' },
-            { label: 'Rejected', value: stats.rejected, icon: '❌' },
-          ].map((s, i) => (
-            <div key={i} className="stat-chip" style={{ flex: 1, borderRight: i < 3 ? '1px solid rgba(255,255,255,0.15)' : 'none', padding: '12px 16px' }}>
-              <div style={{ fontSize: 10, opacity: 0.75, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{s.icon} {s.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 900 }}>{s.value}</div>
-            </div>
-          ))}
+        <div className="adj-header-btns">
+          <button onClick={() => setShowForm(true)} className="adj-btn adj-btn-primary">
+            <Plus size={16} /> New Adjustment
+          </button>
+          <button onClick={load} className="adj-btn adj-btn-icon" disabled={loading} title="Refresh">
+            {loading ? <span className="adj-spinner" /> : <RefreshCw size={16} />}
+          </button>
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div style={{ padding: '24px 32px' }}>
+      {/* ── Stats Strip ── */}
+      <div className="adj-stats">
+        {[
+          { label: 'Total Adjustments', value: stats.total, icon: <Package size={14} /> },
+          { label: 'Awaiting Approval', value: stats.awaiting, icon: <AlertCircle size={14} /> },
+          { label: 'Approved', value: stats.approved, icon: <CheckCircle size={14} /> },
+          { label: 'Rejected', value: stats.rejected, icon: <Trash2 size={14} /> },
+        ].map((s, i) => (
+          <div key={i} className="stat-card">
+            <div className="stat-label">{s.icon} {s.label}</div>
+            <div className="stat-val">{s.value}</div>
+          </div>
+        ))}
+      </div>
 
-        {/* Search Bar */}
-        <div className="adj-search" style={{ marginBottom: 20 }}>
-          <Search size={17} color={G.olive} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by adjustment no, reason, or drug name…" />
-          <span style={{ fontWeight: 800, color: G.forest, fontSize: 12, background: G.sage, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-            {filtered.length} records
-          </span>
+      {/* ── Search Bar ── */}
+      <div className="adj-search-bar">
+        <Search size={16} color="var(--ctm)" />
+        <input className="adj-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by adjustment no, reason, or drug name…" />
+        <span className="adj-search-count">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* ── List ── */}
+      {loading ? (
+        <div className="adj-state">
+          <span className="adj-spinner lg" style={{ display: 'inline-block', marginBottom: 12 }} />
+          <div>Loading adjustments…</div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="adj-empty">No adjustments found. Click <strong>New Adjustment</strong> to create one.</div>
+      ) : (
+        <div className="adj-list">
+          {filtered.map((r) => {
+            const isOpen = expanded === (r.adjustment_no || r.id);
+            const totalLines = r.lines?.length || 1;
+            const date = r.adjustment_date ? new Date(r.adjustment_date).toLocaleDateString() : new Date(r.created_at).toLocaleDateString();
 
-        {/* List */}
-        {loading ? (
-          <div style={{ padding: 80, textAlign: 'center' }}>
-            <SegmentedSpinner size={24} />
-            <div style={{ color: G.forest, fontWeight: 700, fontSize: 14 }}>Loading adjustments…</div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: 80, textAlign: 'center', border: `3px dashed ${G.sage}`, background: '#FAFFF5' }}>
-            <Sliders size={40} color={G.sage} style={{ marginBottom: 12 }} />
-            <div style={{ color: G.olive, fontWeight: 700, fontSize: 15 }}>No adjustments found</div>
-            <div style={{ color: G.sage, fontSize: 13, marginTop: 4 }}>Create your first stock adjustment using the button above</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filtered.map((r, idx) => {
-              const isOpen = expanded === (r.adjustment_no || r.id);
-              const totalLines = r.lines?.length || 1;
-              const date = r.adjustment_date ? new Date(r.adjustment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-              return (
-                <div key={r.adjustment_no || r.id} className="adj-card" style={{ overflow: 'hidden' }}>
-                  {/* Card Row */}
-                  <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderLeft: `5px solid ${r.status === 'APPROVED' ? G.leaf : r.status === 'REJECTED' ? G.red : G.sky}` }} className="adj-card-row">
-
-                    {/* Left: Icon + Info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ background: r.status === 'APPROVED' ? G.leaf : r.status === 'REJECTED' ? G.red : G.sky, padding: 10, boxShadow: '3px 3px 0 rgba(0,0,0,0.2)', flexShrink: 0 }}>
-                        <Sliders size={20} color="#fff" />
+            return (
+              <div key={r.adjustment_no || r.id} className="adj-card-row">
+                <div className={`adj-row-inner st-${r.status}`}>
+                  <div className="adj-left">
+                    <div className="adj-icon-box"><Sliders size={20} /></div>
+                    <div>
+                      <div className="adj-no">{r.adjustment_no || `ADJ-${r.id}`}</div>
+                      <div className="adj-meta">
+                        <span><Calendar size={12} /> {date}</span>
+                        <span><Package size={12} /> {totalLines} line{totalLines > 1 ? 's' : ''}</span>
+                        <span>· {r.reason || 'N/A'}</span>
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 900, fontSize: 15, color: G.dark, marginBottom: 2 }}>
-                          {r.adjustment_no || `ADJ-${r.id}`}
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 12, color: G.olive }}>
-                          <span><Calendar size={11} style={{ display: 'inline', marginRight: 3 }} />{date}</span>
-                          <span><Package size={11} style={{ display: 'inline', marginRight: 3 }} />{totalLines} line{totalLines > 1 ? 's' : ''}</span>
-                          <span>📋 {r.reason || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Badge + Button */}
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-                      <StatusBadge status={r.status} />
-                      <button
-                        onClick={() => setExpanded(isOpen ? null : (r.adjustment_no || r.id))}
-                        className="btn-view"
-                      >
-                        {isOpen ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Details</>}
-                        {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      </button>
                     </div>
                   </div>
-
-                  {/* Expandable Detail */}
-                  {isOpen && (
-                    <div className="adj-detail" style={{ borderTop: `2px solid ${G.sage}` }}>
-                      {/* Detail Header */}
-                      <div style={{ background: '#F1F8E9', padding: '10px 20px', borderBottom: `1px solid ${G.sage}`, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, color: G.olive, fontWeight: 700 }}>Adjustment No: <strong style={{ color: G.dark }}>{r.adjustment_no}</strong></span>
-                        <span style={{ fontSize: 12, color: G.olive, fontWeight: 700 }}>Date: <strong style={{ color: G.dark }}>{date}</strong></span>
-                        <span style={{ fontSize: 12, color: G.olive, fontWeight: 700 }}>Reason: <strong style={{ color: G.dark }}>{r.reason}</strong></span>
-                        <span style={{ fontSize: 12, color: G.olive, fontWeight: 700 }}>Lines: <strong style={{ color: G.dark }}>{totalLines}</strong></span>
-                      </div>
-
-                      {/* Lines Table */}
-                      <div style={{ overflowX: 'auto' }}>
-                        <table className="adj-table">
-                          <thead>
-                            <tr>
-                              <th>#</th>
-                              <th>Drug</th>
-                              <th>Batch No</th>
-                              <th>Type</th>
-                              <th>Before</th>
-                              <th>Qty</th>
-                              <th>After</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(r.lines || [r]).map((line, li) => (
-                              <tr key={li}>
-                                <td style={{ fontWeight: 800, color: G.olive, width: 36 }}>{li + 1}</td>
-                                <td>
-                                  <div style={{ fontWeight: 700, color: G.dark }}>{line.drug_name || `Drug #${line.drug_id}`}</div>
-                                  {line.strength && <div style={{ fontSize: 11, color: G.olive }}>{line.strength}</div>}
-                                </td>
-                                <td>
-                                  <span style={{ background: '#F0F9F0', color: G.forest, fontWeight: 700, padding: '2px 8px', fontSize: 11 }}>
-                                    {line.batch_no || '—'}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span style={{ color: line.adjustment_type === 'ADD' ? G.forest : G.red, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    {line.adjustment_type === 'ADD'
-                                      ? <><TrendingUp size={13} /> + ADD</>
-                                      : <><TrendingDown size={13} /> − REMOVE</>}
-                                  </span>
-                                </td>
-                                <td style={{ color: G.darkGray }}>{line.quantity_before ?? '—'}</td>
-                                <td>
-                                  <strong style={{ color: line.adjustment_type === 'ADD' ? G.forest : G.red, fontSize: 14 }}>
-                                    {line.adjustment_type === 'ADD' ? '+' : '−'}{Math.abs(line.adjustment_qty)}
-                                  </strong>
-                                </td>
-                                <td style={{ color: G.darkGray }}>{line.quantity_after ?? '—'}</td>
-                                <td><StatusBadge status={line.status} /></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Rejection reason */}
-                      {r.status === 'REJECTED' && r.rejection_reason && (
-                        <div style={{ padding: '10px 20px', background: '#FFF5F5', borderTop: `1px solid #FECACA` }}>
-                          <span style={{ fontSize: 12, color: '#991B1B', fontWeight: 700 }}>❌ Rejection Reason: </span>
-                          <span style={{ fontSize: 12, color: '#7F1D1D' }}>{r.rejection_reason}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="adj-actions">
+                    <StatusBadge status={r.status} />
+                    <button onClick={() => setExpanded(isOpen ? null : (r.adjustment_no || r.id))} className="adj-btn adj-btn-sm">
+                      {isOpen ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Details</>}
+                      {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                {isOpen && (
+                  <div className="adj-expand">
+                    <div className="adj-expand-meta">
+                      <div><strong>Adjustment No:</strong> {r.adjustment_no}</div>
+                      <div><strong>Date:</strong> {date}</div>
+                      <div><strong>Reason:</strong> {r.reason}</div>
+                      <div><strong>Lines:</strong> {totalLines}</div>
+                    </div>
+
+                    <div className="adj-expand-table-wrap">
+                      <table className="adj-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Drug</th>
+                            <th>Batch No</th>
+                            <th>Type</th>
+                            <th>Before</th>
+                            <th>Qty</th>
+                            <th>After</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(r.lines || [r]).map((line, li) => (
+                            <tr key={li}>
+                              <td style={{ color: 'var(--ctm)', fontWeight: 500 }}>{li + 1}</td>
+                              <td>
+                                <div style={{ fontWeight: 600, color: 'var(--ct1)' }}>{line.drug_name || `Drug #${line.drug_id}`}</div>
+                                {line.strength && <div style={{ fontSize: 11, color: 'var(--ct2)' }}>{line.strength}</div>}
+                              </td>
+                              <td style={{ color: 'var(--ct2)' }}>{line.batch_no || '—'}</td>
+                              <td>
+                                <span style={{ color: line.adjustment_type === 'ADD' ? 'var(--cok)' : 'var(--cdanger)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  {line.adjustment_type === 'ADD' ? <><TrendingUp size={13} /> ADD</> : <><TrendingDown size={13} /> REMOVE</>}
+                                </span>
+                              </td>
+                              <td style={{ color: 'var(--ct2)' }}>{line.quantity_before ?? '—'}</td>
+                              <td>
+                                <strong style={{ color: line.adjustment_type === 'ADD' ? 'var(--cok)' : 'var(--cdanger)', fontSize: 14 }}>
+                                  {line.adjustment_type === 'ADD' ? '+' : '−'}{Math.abs(line.adjustment_qty)}
+                                </strong>
+                              </td>
+                              <td style={{ color: 'var(--ct2)' }}>{line.quantity_after ?? '—'}</td>
+                              <td><StatusBadge status={line.status} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {r.status === 'REJECTED' && r.rejection_reason && (
+                      <div className="adj-reject-reason">
+                        Rejection Reason: {r.rejection_reason}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
