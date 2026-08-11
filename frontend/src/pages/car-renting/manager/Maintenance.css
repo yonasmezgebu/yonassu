@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ════════════════════════════════════════════════════════════════
+   Fleet Maintenance — CSS completion pass
+   Scope: .mt-page root only. Sidebar / navbar are NOT touched.
+   The page markup is already inline-styled to the enterprise design;
+   this file adds the edge-to-edge wrapper, focus rings, segmented
+   spinner, and a few rule-14/rule-9 polish overrides. No logic.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens (exact palette) ─────────────────────────────── */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-bg-page: #F5F6FA;
+  --color-bg-card: #FFFFFF;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-success: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-warning: #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-info: #0284C7;
+  --color-info-bg: #E0F2FE;
+  --gold: #FFC107;
+  --gold-text: #111827;
+}
+
+/* ── Page Wrapper ────────────────────────────────────────────────
+   dash-content has 24px padding (16/12 on smaller). Negative margins
+   counteract it so content runs edge-to-edge end-to-end. */
+.mt-page {
+  box-sizing: border-box !important;
+  width: auto !important;
+  margin: -24px !important;
+  padding: 24px !important;
+  min-height: 100vh !important;
+  background: var(--color-bg-page) !important;
+  font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif !important;
+  color: var(--color-text-primary) !important;
+}
+@media (max-width: 1024px) {
+  .mt-page { margin: -16px !important; padding: 16px !important; }
+}
+@media (max-width: 768px) {
+  .mt-page { margin: -12px !important; padding: 12px !important; }
+}
+
+/* ── Content area: page padding is provided by the wrapper, so the
+      card column only adds the gap below the header banner. ────── */
+.mt-page .fm-content {
+  padding: 24px 0 0 !important;
+  max-width: 100% !important;
+}
+@media (max-width: 1024px) {
+  .mt-page .fm-content { padding: 16px 0 0 !important; }
+}
+@media (max-width: 768px) {
+  .mt-page .fm-content { padding: 12px 0 0 !important; }
+}
+
+/* ── Rule 19: cap + center on very wide screens ────────────────── */
+@media (min-width: 1536px) {
+  .mt-page {
+    max-width: 1536px;
+    margin: -24px auto !important;
+  }
+}
+
+/* ── Rule 12: input focus ring ─────────────────────────────────── */
+.mt-page input:focus,
+.mt-page select:focus,
+.mt-page textarea:focus {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+.mt-page ::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+/* ── Rule 16: segmented circular spinner ───────────────────────── */
+.mt-page div[style*="animation: fmSpin 1s linear infinite"] {
+  border: 4px solid transparent !important;
+  background: conic-gradient(
+    from 0deg,
+    #2563EB 0deg 40deg, transparent 40deg 50deg,
+    #2563EB 50deg 90deg, transparent 90deg 100deg,
+    #2563EB 100deg 140deg, transparent 140deg 150deg,
+    #2563EB 150deg 190deg, transparent 190deg 200deg,
+    #2563EB 200deg 240deg, transparent 240deg 250deg,
+    #2563EB 250deg 290deg, transparent 290deg 300deg,
+    #2563EB 300deg 340deg, transparent 340deg 350deg,
+    #2563EB 350deg 360deg
+  ) !important;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+}
+
+/* ── Rule 14: form action toolbar wraps on small screens ───────── */
+.mt-page [style*="border-top: 1px solid rgb(229, 231, 235)"] {
+  flex-wrap: wrap !important;
+}
+
+/* ── Rule 9 polish: rows keep vertical centering, no trailing edge ─ */
+.mt-page .fm-table td {
+  vertical-align: middle !important;
+}
+.mt-page .fm-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
