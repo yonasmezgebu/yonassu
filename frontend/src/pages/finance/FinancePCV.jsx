@@ -8,171 +8,246 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ── Global CSS ─────────────────────────────────────────────── */
 const G = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
   .pcv-wrap {
-    padding: 24px;
-    background: #F5F5F5;
+    --color-primary:        #2563EB;
+    --color-primary-hover:  #1D4ED8;
+    --color-bg-page:        #F5F6FA;
+    --color-bg-card:        #FFFFFF;
+    --color-border:         #E5E7EB;
+    --color-text-primary:   #111827;
+    --color-text-secondary: #6B7280;
+    --color-text-muted:     #9CA3AF;
+    --color-success:        #16A34A;
+    --color-success-bg:     #DCFCE7;
+    --color-danger:         #DC2626;
+    --color-danger-bg:      #FEE2E2;
+    --color-warning:        #D97706;
+    --color-warning-bg:     #FEF3C7;
+    --color-info:           #0284C7;
+    --color-info-bg:        #E0F2FE;
+
+    width: 100%;
     min-height: 100vh;
-    font-family: 'Inter', sans-serif;
-    width: 100%;
+    padding: 24px;
+    background: var(--color-bg-page);
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-primary);
     box-sizing: border-box;
   }
+  .pcv-wrap * { box-sizing: border-box; }
+  @media (max-width: 1023px) { .pcv-wrap { padding: 16px; } }
+  @media (max-width: 767px)  { .pcv-wrap { padding: 12px; } }
+  @media (min-width: 1536px) { .pcv-wrap { max-width: 1536px; margin: 0 auto; } }
+
+  /* ── Cards ── */
   .pcv-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 0;
-    margin-bottom: 22px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    margin-bottom: 20px;
     width: 100%;
+    padding: 24px;
     box-sizing: border-box;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
   }
+  .pcv-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-1px);
+  }
+
+  /* ── Inputs ── */
   .pcv-inp {
     width: 100%;
-    padding: 11px 14px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
     box-sizing: border-box;
     outline: none;
     font-size: 14px;
-    font-weight: 600;
-    color: #424242;
-    background: #FFFFFF;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    background: var(--color-bg-card);
+    font-family: inherit;
+    transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
   }
   .pcv-inp:focus {
-    border-color: #228B22;
-    box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
   }
+  .pcv-inp::placeholder { color: var(--color-text-muted); }
+
   .pcv-lbl {
     display: block;
     font-size: 12px;
-    font-weight: 800;
-    color: #1B5E20;
-    margin-bottom: 7px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
-  .btn-green {
-    background: #228B22;
-    color: #FFFFFF;
-    border: none;
-    border-radius: 0;
+
+  /* ── Buttons ── */
+  .btn-green, .btn-olive, .btn-outline, .btn-danger {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s, transform 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition: all 150ms ease;
   }
-  .btn-green:hover {
-    background: #1B5E20;
+  .btn-green  { background: var(--color-primary); color: #FFFFFF; border-color: var(--color-primary); }
+  .btn-olive  { background: #10B981; color: #FFFFFF; border-color: #10B981; }
+  .btn-outline{ background: #FFFFFF; color: var(--color-primary); border-color: var(--color-border); }
+  .btn-danger { background: var(--color-danger); color: #FFFFFF; border-color: var(--color-danger); }
+  .btn-green:hover:not(:disabled), .btn-olive:hover:not(:disabled),
+  .btn-outline:hover, .btn-danger:hover:not(:disabled) {
+    background: #FBBF24;
+    border-color: #F59E0B;
+    color: #111827;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251,191,36,.3);
   }
-  .btn-olive {
-    background: #6B8E23;
-    color: #FFFFFF;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s;
+  .btn-green:disabled, .btn-olive:disabled, .btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
-  .btn-olive:hover { background: #556B2F; }
-  .btn-outline {
-    background: #FFFFFF;
-    color: #1B5E20;
-    border: 2px solid #228B22;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s, color 0.2s;
-  }
-  .btn-outline:hover { background: #228B22; color: #FFFFFF; }
-  .btn-danger {
-    background: #F44336;
-    color: #FFFFFF;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s;
-  }
-  .btn-danger:hover { background: #C62828; }
+
+  /* ── Tabs ── */
   .tab-btn {
     flex: 1;
-    padding: 15px;
-    font-size: 15px;
-    font-weight: 700;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
+    height: 44px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    transition: all 0.2s;
+    gap: 8px;
+    font-family: inherit;
+    transition: all 150ms ease;
   }
   .tab-active {
-    background: #228B22;
+    background: var(--color-primary);
     color: #FFFFFF;
-    border-color: #1B5E20;
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(37,99,235,.25);
   }
-  .tab-inactive {
-    background: #FFFFFF;
-    color: #424242;
+  .tab-inactive { background: #FFFFFF; color: var(--color-text-secondary); }
+  .tab-inactive:hover {
+    background: #FBBF24;
+    color: #111827;
+    border-color: #F59E0B;
+    transform: translateY(-1px);
   }
-  .tab-inactive:hover { background: #2E8B57; color: #FFFFFF; }
-  .pcv-tr { transition: background 0.15s; }
-  .pcv-tr:hover { background: #A5D6A7 !important; }
+
+  .pcv-tr { transition: background 150ms ease-in-out; }
+  .pcv-tr:hover { background: #F9FAFB !important; }
+
   .section-title {
     font-size: 16px;
-    font-weight: 800;
-    color: #1B5E20;
-    margin: 0 0 14px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #8D6E63;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -0.01em;
   }
+
+  /* ── Payment method tiles ── */
   .pay-method-tile {
-    padding: 18px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
+    padding: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 500;
     font-size: 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    transition: all 0.2s;
-  }
-  .pay-method-tile:hover { background: #A5D6A7; color: #1B5E20; }
-  .status-card {
     background: #FFFFFF;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
-    padding: 18px 22px;
+    color: var(--color-text-primary);
+    transition: all 150ms ease;
+  }
+  .pay-method-tile:hover {
+    border-color: var(--color-primary);
+    background: #EFF6FF;
+    color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(37,99,235,.1);
+    transform: translateY(-1px);
+  }
+
+  /* ── Status cards ── */
+  .status-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     gap: 16px;
     margin-bottom: 12px;
-    transition: box-shadow 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+    transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
   }
-  .status-card:hover { box-shadow: 0 4px 12px rgba(34,139,34,0.15); }
-  .pcv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .pcv-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  .status-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-1px);
+  }
+
+  .pcv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pcv-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+
+  @media (max-width: 900px) { .pcv-grid-2 { grid-template-columns: 1fr; } }
   @media (max-width: 768px) {
-    .pcv-grid-2, .pcv-grid-3 { grid-template-columns: 1fr; }
-    .pcv-wrap { padding: 12px; }
-    .tab-btn { font-size: 13px; padding: 12px 8px; }
+    .pcv-grid-3 { grid-template-columns: 1fr; }
+    .pcv-card { padding: 20px; }
+    .tab-btn { font-size: 13px; padding: 0 12px; }
+    .status-card { flex-wrap: wrap; }
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 480px) {
+    .status-card { gap: 12px; padding: 14px 16px; }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
 `;
 
 /* ── Notification Banner ─────────────────────────────────────── */
 const Notif = ({ n, onClose }) => {
   if (!n) return null;
   return (
-    <div style={{ background: n.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFFFFF', padding: '14px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, border: '2px solid #1B5E20', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ background: n.type === 'error' ? 'var(--color-danger-bg)' : 'var(--color-success-bg)', color: n.type === 'error' ? '#991B1B' : '#166534', padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, border: '1px solid var(--color-border)', borderLeft: '4px solid ' + (n.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'), borderRadius: 8, width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,.06)', animation: 'slideIn 150ms ease-out' }}>
       {n.type === 'error' ? <XCircle size={18} /> : <CheckCircle size={18} />}
       {n.msg}
-      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', fontWeight: 900, fontSize: 18, lineHeight: 1 }}>✕</button>
+      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: n.type === 'error' ? '#991B1B' : '#166534', cursor: 'pointer', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>✕</button>
     </div>
   );
 };
@@ -204,7 +279,7 @@ const SigPad = ({ label, onSave }) => {
     if (!drawing.current) return;
     const c = canvasRef.current, ctx = c.getContext('2d'), p = getPos(e, c);
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(p.x, p.y);
-    ctx.strokeStyle = '#1B5E20'; ctx.lineWidth = 2; ctx.lineCap = 'square'; ctx.stroke();
+    ctx.strokeStyle = '#2563EB'; ctx.lineWidth = 2; ctx.lineCap = 'square'; ctx.stroke();
     lastPos.current = p; setEmpty(false);
   }, []);
 
@@ -225,19 +300,19 @@ const SigPad = ({ label, onSave }) => {
   };
 
   return (
-    <div style={{ border: '2px solid #8D6E63', borderRadius: 0, overflow: 'hidden', background: '#FFFFFF' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#A5D6A7', borderBottom: '2px solid #8D6E63' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 5 }}>
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', background: '#FFFFFF' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#F9FAFB', borderBottom: '1px solid var(--color-border)' }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}>
           <PenTool size={12} /> {label}
-          {saved && <span style={{ background: '#228B22', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', marginLeft: 4 }}>✓ Saved</span>}
+          {saved && <span style={{ background: 'var(--color-primary)', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', marginLeft: 4, borderRadius: 9999, fontWeight: 600 }}>✓ Saved</span>}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" className="btn-danger" onClick={handleClear} style={{ fontSize: 11, padding: '3px 9px' }}><Trash2 size={11} /></button>
-          <button type="button" onClick={handleSave} disabled={empty} style={{ fontSize: 11, padding: '3px 9px', background: empty ? '#9E9E9E' : '#2E8B57', color: '#FFFFFF', border: 'none', borderRadius: 0, cursor: empty ? 'not-allowed' : 'pointer', fontWeight: 700 }}>Save</button>
+          <button type="button" className="btn-danger" onClick={handleClear} style={{ fontSize: 11, padding: '0 10px', height: 28, gap: 6 }}><Trash2 size={11} /></button>
+          <button type="button" onClick={handleSave} disabled={empty} style={{ fontSize: 11, padding: '0 10px', height: 28, background: empty ? 'var(--color-text-muted)' : 'var(--color-primary)', color: '#FFFFFF', border: 'none', borderRadius: 6, cursor: empty ? 'not-allowed' : 'pointer', fontWeight: 500, transition: 'all 150ms ease' }}>Save</button>
         </div>
       </div>
       <canvas ref={canvasRef} width={400} height={110} onMouseDown={start} onMouseMove={move} onMouseUp={stop} onMouseLeave={stop} style={{ width: '100%', height: 110, display: 'block', cursor: 'crosshair', touchAction: 'none', background: '#FFFFFF' }} />
-      <div style={{ padding: '4px 10px', fontSize: 10, color: '#1B5E20', textAlign: 'center', background: '#A5D6A7', borderTop: '2px solid #8D6E63', fontWeight: 700 }}>
+      <div style={{ padding: '6px 10px', fontSize: 10, color: 'var(--color-text-secondary)', textAlign: 'center', background: '#F9FAFB', borderTop: '1px solid var(--color-border)', fontWeight: 500 }}>
         {empty ? 'Draw signature then Save' : saved ? '✓ Captured' : 'Press Save to confirm'}
       </div>
     </div>
@@ -247,12 +322,12 @@ const SigPad = ({ label, onSave }) => {
 /* ── Print Signature Block ───────────────────────────────────── */
 const SigBlock = ({ label, name, sig }) => (
   <div style={{ textAlign: 'center', minWidth: 180 }}>
-    <div style={{ height: 70, border: '2px solid #424242', borderRadius: 0, marginBottom: 6, overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ height: 70, border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 6, overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {sig ? <img src={sig} alt={label} style={{ maxHeight: 65, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#ccc', fontSize: 11 }}>—</span>}
     </div>
-    <div style={{ borderTop: '2px solid #424242', paddingTop: 4 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#424242' }}>{name || '_______________'}</div>
-      <div style={{ fontSize: 11, color: '#424242', marginTop: 2, fontWeight: 600 }}>{label}</div>
+    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 4 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{name || '_______________'}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, fontWeight: 400 }}>{label}</div>
     </div>
   </div>
 );
@@ -260,13 +335,13 @@ const SigBlock = ({ label, name, sig }) => (
 /* ── Status Badge ─────────────────────────────────────────────── */
 const StatusBadge = ({ status }) => {
   const map = {
-    pending_ceo:      { label: 'Awaiting CEO',      bg: '#FFF3E0', color: '#FF9800' },
-    approved_finance: { label: 'CEO Approved',       bg: '#A5D6A7', color: '#1B5E20' },
-    rejected:         { label: 'Rejected by CEO',    bg: '#FFEBEE', color: '#F44336' },
-    completed:        { label: 'Completed',           bg: '#E3F2FD', color: '#1565C0' },
+    pending_ceo:      { label: 'Awaiting CEO',      bg: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
+    approved_finance: { label: 'CEO Approved',       bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
+    rejected:         { label: 'Rejected by CEO',    bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' },
+    completed:        { label: 'Completed',           bg: 'var(--color-info-bg)', color: 'var(--color-info)' },
   };
-  const s = map[status] || { label: status, bg: '#F5F5F5', color: '#424242' };
-  return <span style={{ background: s.bg, color: s.color, padding: '4px 12px', fontSize: 11, fontWeight: 800, border: `1px solid ${s.color}`, whiteSpace: 'nowrap' }}>{s.label}</span>;
+  const s = map[status] || { label: status, bg: '#F3F4F6', color: 'var(--color-text-secondary)' };
+  return <span style={{ background: s.bg, color: s.color, padding: '2px 10px', fontSize: 12, fontWeight: 500, border: '1px solid transparent', borderRadius: 9999, whiteSpace: 'nowrap' }}>{s.label}</span>;
 };
 
 /* ── Finalize Modal ───────────────────────────────────────────── */
@@ -321,39 +396,39 @@ const FinalizeModal = ({ pcv, onClose, onDone }) => {
   };
 
   const overlay = children => (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       {children}
     </div>
   );
 
   if (step === 'confirm') return overlay(
-    <div style={{ background: '#FFFFFF', borderRadius: 0, padding: 36, maxWidth: 500, width: '100%', border: '2px solid #1B5E20', boxShadow: '0 25px 60px rgba(0,0,0,.3)' }}>
+    <div style={{ background: '#FFFFFF', borderRadius: 12, padding: 32, maxWidth: 500, width: '100%', border: '1px solid var(--color-border)', boxShadow: '0 25px 60px rgba(0,0,0,.25)' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ background: '#A5D6A7', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #1B5E20' }}>
-          <CheckCircle size={40} color="#1B5E20" />
+        <div style={{ background: 'var(--color-success-bg)', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', borderRadius: '50%', border: '1px solid var(--color-success)' }}>
+          <CheckCircle size={40} color="var(--color-success)" />
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: '0 0 6px' }}>CEO Approved!</h2>
-        <p style={{ color: '#424242', fontSize: 13, margin: 0 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>CEO Approved!</h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, margin: 0 }}>
           <b>{pcv.pcv_number}</b> was approved by the CEO.<br />
           Click <b>"Save & Record"</b> to record it in the cashbook and print the voucher.
         </p>
       </div>
-      <div style={{ background: '#F5F5F5', border: '2px solid #8D6E63', padding: 16, marginBottom: 24 }}>
-        <div className="pcv-grid-2" style={{ fontSize: 13, gap: 10 }}>
-          <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Voucher No.</span><b style={{ fontFamily: 'monospace' }}>{pcv.pcv_number}</b></div>
-          <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Date</span><b>{new Date(pcv.date).toLocaleDateString('en-GB')}</b></div>
-          <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Paid To</span><b>{pcv.paid_to}</b></div>
-          <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Method</span><b>{pm}</b></div>
+      <div style={{ background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 10, padding: 16, marginBottom: 24 }}>
+        <div className="pcv-grid-2" style={{ fontSize: 13, gap: 8 }}>
+          <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Voucher No.</span><b style={{ fontFamily: 'monospace' }}>{pcv.pcv_number}</b></div>
+          <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Date</span><b>{new Date(pcv.date).toLocaleDateString('en-GB')}</b></div>
+          <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Paid To</span><b>{pcv.paid_to}</b></div>
+          <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Method</span><b>{pm}</b></div>
           <div style={{ gridColumn: 'span 2' }}>
-            <span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Amount</span>
-            <span style={{ fontWeight: 900, fontSize: 22, color: '#1B5E20' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Amount</span>
+            <span style={{ fontWeight: 700, fontSize: 22, color: 'var(--color-primary)' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
-          {pcv.description && <div style={{ gridColumn: 'span 2' }}><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Description</span><span>{pcv.description}</span></div>}
+          {pcv.description && <div style={{ gridColumn: 'span 2' }}><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Description</span><span>{pcv.description}</span></div>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 12 }}>
-        <button className="btn-outline" onClick={onClose} style={{ flex: 1, padding: '12px', fontSize: 14 }}>Cancel</button>
-        <button className="btn-green" onClick={finalize} style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '12px', fontSize: 14 }}>
+        <button className="btn-outline" onClick={onClose} style={{ flex: 1, padding: '0 16px', height: 40, fontSize: 14 }}>Cancel</button>
+        <button className="btn-green" onClick={finalize} style={{ flex: 2, padding: '0 16px', height: 40, fontSize: 14 }}>
           <CheckCircle size={18} /> Save & Record in Cashbook
         </button>
       </div>
@@ -361,38 +436,38 @@ const FinalizeModal = ({ pcv, onClose, onDone }) => {
   );
 
   if (step === 'loading') return overlay(
-    <div style={{ background: '#FFFFFF', border: '2px solid #1B5E20', padding: 40, textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,.3)' }}>
+    <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 12, padding: 40, textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,.25)' }}>
       <SegmentedSpinner size={40} />
-      <p style={{ fontWeight: 700, color: '#1B5E20', fontSize: 16, margin: 0 }}>Recording in cashbook…</p>
+      <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 16, margin: 0 }}>Recording in cashbook…</p>
     </div>
   );
 
   if (step === 'error') return overlay(
-    <div style={{ background: '#FFFFFF', border: '2px solid #F44336', padding: 36, maxWidth: 440, width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,.3)', textAlign: 'center' }}>
-      <XCircle size={48} color="#F44336" style={{ marginBottom: 12 }} />
-      <h3 style={{ color: '#F44336', fontWeight: 800, margin: '0 0 8px' }}>Finalize Failed</h3>
-      <p style={{ color: '#424242', fontSize: 13, marginBottom: 20 }}>{errMsg}</p>
-      <button className="btn-danger" onClick={onClose} style={{ padding: '10px 24px', fontSize: 14 }}>Close</button>
+    <div style={{ background: '#FFFFFF', border: '1px solid var(--color-danger)', borderRadius: 12, padding: 32, maxWidth: 440, width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,.25)', textAlign: 'center' }}>
+      <XCircle size={48} color="var(--color-danger)" style={{ marginBottom: 12 }} />
+      <h3 style={{ color: 'var(--color-danger)', fontWeight: 600, margin: '0 0 8px' }}>Finalize Failed</h3>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 20 }}>{errMsg}</p>
+      <button className="btn-danger" onClick={onClose} style={{ padding: '0 16px', height: 36, fontSize: 14 }}>Close</button>
     </div>
   );
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ background: '#FFFFFF', border: '2px solid #228B22', padding: 40, maxWidth: 520, width: '100%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,.3)' }}>
-          <div style={{ background: '#A5D6A7', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid #1B5E20' }}>
-            <CheckCircle size={48} color="#1B5E20" />
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 12, padding: 32, maxWidth: 520, width: '100%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,.25)' }}>
+          <div style={{ background: 'var(--color-success-bg)', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', borderRadius: '50%', border: '1px solid var(--color-success)' }}>
+            <CheckCircle size={48} color="var(--color-success)" />
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1B5E20', margin: '0 0 8px' }}>Saved to Cashbook!</h2>
-          <p style={{ color: '#424242', marginBottom: 6, fontWeight: 600 }}><b>{pcv.pcv_number}</b> has been finalized.</p>
-          <p style={{ color: '#6B8E23', fontSize: 13, marginBottom: 28, fontWeight: 700 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>Saved to Cashbook!</h2>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 400 }}><b>{pcv.pcv_number}</b> has been finalized.</p>
+          <p style={{ color: 'var(--color-primary)', fontSize: 13, marginBottom: 28, fontWeight: 500 }}>
             ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} has been deducted from the cashbook.
           </p>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button className="btn-outline" onClick={printPCV} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', fontSize: 14 }}>
+            <button className="btn-outline" onClick={printPCV} style={{ flex: 1, padding: '0 16px', height: 40, fontSize: 14 }}>
               <Printer size={16} /> Print PCV
             </button>
-            <button className="btn-green" onClick={onClose} style={{ flex: 1, padding: '12px', fontSize: 14 }}>Close</button>
+            <button className="btn-green" onClick={onClose} style={{ flex: 1, padding: '0 16px', height: 40, fontSize: 14 }}>Close</button>
           </div>
         </div>
       </div>
@@ -439,38 +514,38 @@ const PCVStatusTab = () => {
   const PCVCard = ({ pcv, isApproved }) => {
     const isUnread = !pcv.finance_read && (pcv.status === 'approved_finance' || pcv.status === 'rejected');
     return (
-      <div className="status-card" style={{ border: isApproved ? '2px solid #228B22' : '2px solid #8D6E63', background: isApproved ? '#F1F8E9' : '#FFFFFF' }}>
-        <div style={{ flexShrink: 0, background: isApproved ? '#A5D6A7' : '#FFF3E0', padding: 10 }}>
-          <Banknote size={22} color={isApproved ? '#1B5E20' : '#FF9800'} />
+      <div className="status-card" style={{ border: isApproved ? '1px solid var(--color-success)' : '1px solid var(--color-border)', background: isApproved ? 'var(--color-success-bg)' : 'var(--color-bg-card)' }}>
+        <div style={{ flexShrink: 0, background: isApproved ? 'var(--color-success-bg)' : 'var(--color-warning-bg)', padding: 10, borderRadius: 8 }}>
+          <Banknote size={22} color={isApproved ? 'var(--color-success)' : 'var(--color-warning)'} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 15, color: '#1B5E20' }}>{pcv.pcv_number}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: 'var(--color-primary)' }}>{pcv.pcv_number}</span>
             <StatusBadge status={pcv.status} />
           </div>
-          <div style={{ fontSize: 13, color: '#424242', display: 'flex', gap: 10, flexWrap: 'wrap', fontWeight: 600 }}>
-            <span>To: <b style={{ color: '#1B5E20' }}>{pcv.paid_to}</b></span>
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', gap: 8, flexWrap: 'wrap', fontWeight: 400 }}>
+            <span>To: <b style={{ color: 'var(--color-primary)' }}>{pcv.paid_to}</b></span>
             <span>·</span>
             <span>{new Date(pcv.date).toLocaleDateString('en-GB')}</span>
             <span>·</span>
-            <span style={{ fontWeight: 800, color: isApproved ? '#1B5E20' : '#FF9800' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontWeight: 700, color: isApproved ? 'var(--color-success)' : 'var(--color-warning)' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             <span>·</span>
             <span>{pcv.payment_method}</span>
           </div>
           {pcv.status === 'rejected' && pcv.reject_reason && (
-            <div style={{ marginTop: 8, fontSize: 12, background: '#FFEBEE', color: '#F44336', padding: '4px 12px', display: 'inline-block', border: '1px solid #F44336', fontWeight: 700 }}>
+            <div style={{ marginTop: 8, fontSize: 12, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', padding: '2px 12px', display: 'inline-block', borderRadius: 6, fontWeight: 500 }}>
               Reason: {pcv.reject_reason}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
           {isUnread && (
-            <button className="btn-olive" onClick={() => handleMarkRead(pcv.id)} style={{ padding: '9px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
+            <button className="btn-olive" onClick={() => handleMarkRead(pcv.id)} style={{ padding: '0 14px', height: 32, fontSize: 12, whiteSpace: 'nowrap' }}>
               Mark as Read
             </button>
           )}
           {isApproved && (
-            <button className="btn-green" onClick={() => { if (isUnread) handleMarkRead(pcv.id); setTarget(pcv); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <button className="btn-green" onClick={() => { if (isUnread) handleMarkRead(pcv.id); setTarget(pcv); }} style={{ padding: '0 16px', height: 36, fontSize: 13, whiteSpace: 'nowrap' }}>
               <ArrowRight size={15} /> Continue PCV
             </button>
           )}
@@ -482,10 +557,10 @@ const PCVStatusTab = () => {
   const Section = ({ title, items, accentColor, isApproved }) => {
     if (!items.length) return null;
     return (
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: accentColor, margin: 0 }}>{title}</h3>
-          <span style={{ background: accentColor, color: '#FFFFFF', padding: '2px 10px', fontSize: 12, fontWeight: 800 }}>{items.length}</span>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: accentColor, margin: 0 }}>{title}</h3>
+          <span style={{ background: accentColor, color: '#FFFFFF', padding: '2px 10px', fontSize: 12, fontWeight: 500, borderRadius: 9999 }}>{items.length}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {items.map(p => <PCVCard key={p.id} pcv={p} isApproved={!!isApproved} />)}
@@ -499,31 +574,31 @@ const PCVStatusTab = () => {
       <Notif n={notif} onClose={() => setNotif(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: '0 0 4px' }}>PCV Status Tracker</h2>
-          <p style={{ color: '#424242', fontSize: 14, margin: 0, fontWeight: 600 }}>Track and finalize approved Petty Cashs.</p>
+          <h2 style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 4px', letterSpacing: '-0.01em' }}>PCV Status Tracker</h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, margin: 0, fontWeight: 400 }}>Track and finalize approved Petty Cashs.</p>
         </div>
-        <button className="btn-green" onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', fontSize: 13 }}>
+        <button className="btn-green" onClick={load} style={{ padding: '0 16px', height: 36, fontSize: 13 }}>
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 80, color: '#1B5E20', fontWeight: 700 }}>
+        <div style={{ textAlign: 'center', padding: 80, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
           <SegmentedSpinner size={32} />
           Loading PCVs…
         </div>
       ) : pcvs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 80, background: '#FFFFFF', border: '2px solid #8D6E63' }}>
-          <CheckCircle size={48} color="#4CAF50" style={{ marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1B5E20', margin: '0 0 8px' }}>No PCVs yet</h3>
-          <p style={{ color: '#424242', margin: 0, fontWeight: 600 }}>Create a PCV from the "New Voucher" tab.</p>
+        <div style={{ textAlign: 'center', padding: 48, background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 10 }}>
+          <CheckCircle size={48} color="var(--color-success)" style={{ marginBottom: 16, display: 'block', margin: '0 auto 16px' }} />
+          <h3 style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>No PCVs yet</h3>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontWeight: 400 }}>Create a PCV from the "New Voucher" tab.</p>
         </div>
       ) : (
         <>
-          <Section title="CEO Approved — Ready to Finalize" items={groups.approved} accentColor="#228B22" isApproved={true} />
-          <Section title="Awaiting CEO Approval"             items={groups.pending}  accentColor="#FF9800" />
-          <Section title="Rejected by CEO"                   items={groups.rejected} accentColor="#F44336" />
-          <Section title="Completed"                         items={groups.done}     accentColor="#1565C0" />
+          <Section title="CEO Approved — Ready to Finalize" items={groups.approved} accentColor="var(--color-success)" isApproved={true} />
+          <Section title="Awaiting CEO Approval"             items={groups.pending}  accentColor="var(--color-warning)" />
+          <Section title="Rejected by CEO"                   items={groups.rejected} accentColor="var(--color-danger)" />
+          <Section title="Completed"                         items={groups.done}     accentColor="var(--color-info)" />
         </>
       )}
 
@@ -587,9 +662,9 @@ const NewVoucherTab = ({ onSubmitted }) => {
       <Notif n={notif} onClose={() => setNotif(null)} />
 
       {/* General Information */}
-      <div className="pcv-card" style={{ padding: 28 }}>
+      <div className="pcv-card" style={{ padding: 24 }}>
         <h3 className="section-title"><User size={18} /> General Information</h3>
-        <div className="pcv-grid-2" style={{ marginBottom: 18 }}>
+        <div className="pcv-grid-2" style={{ marginBottom: 16 }}>
           <div>
             <label className="pcv-lbl">Date *</label>
             <input className="pcv-inp" type="date" required value={date} onChange={e => setDate(e.target.value)} />
@@ -599,17 +674,17 @@ const NewVoucherTab = ({ onSubmitted }) => {
             <input className="pcv-inp" required value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Payee name" />
           </div>
         </div>
-        <div className="pcv-grid-2" style={{ marginBottom: 18 }}>
+        <div className="pcv-grid-2" style={{ marginBottom: 16 }}>
           <div>
             <label className="pcv-lbl">Amount (ETB) *</label>
-            <input className="pcv-inp" required type="number" step="0.01" value={amount} onChange={handleAmount} placeholder="0.00" style={{ fontSize: 16, fontWeight: 800, color: '#1B5E20' }} />
+            <input className="pcv-inp" required type="number" step="0.01" value={amount} onChange={handleAmount} placeholder="0.00" style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-primary)' }} />
           </div>
           <div>
             <label className="pcv-lbl">Amount in Words</label>
-            <input className="pcv-inp" readOnly value={amountWords} placeholder="Auto-filled" style={{ background: '#F5F5F5', fontStyle: 'italic' }} />
+            <input className="pcv-inp" readOnly value={amountWords} placeholder="Auto-filled" style={{ background: 'var(--color-bg-page)', fontStyle: 'italic' }} />
           </div>
         </div>
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 16 }}>
           <label className="pcv-lbl">Description *</label>
           <input className="pcv-inp" required value={description} onChange={e => setDescription(e.target.value)} placeholder="Purpose of payment" />
         </div>
@@ -620,19 +695,19 @@ const NewVoucherTab = ({ onSubmitted }) => {
       </div>
 
       {/* Payment Method */}
-      <div className="pcv-card" style={{ padding: 28 }}>
+      <div className="pcv-card" style={{ padding: 24 }}>
         <h3 className="section-title"><Banknote size={18} /> Payment Method</h3>
-        <div className="pcv-grid-3" style={{ marginBottom: paymentMethod !== 'Cash' ? 20 : 0 }}>
+        <div className="pcv-grid-3" style={{ marginBottom: paymentMethod !== 'Cash' ? 16 : 0 }}>
           {[{ t: 'Cash', Icon: Banknote }, { t: 'Bank', Icon: Building }, { t: 'Telebirr', Icon: Smartphone }].map(({ t, Icon }) => (
-            <div key={t} className="pay-method-tile" onClick={() => setPaymentMethod(t)} style={{ background: paymentMethod === t ? '#228B22' : '#FFFFFF', color: paymentMethod === t ? '#FFFFFF' : '#424242', border: paymentMethod === t ? '2px solid #1B5E20' : '2px solid #8D6E63' }}>
+            <div key={t} className="pay-method-tile" onClick={() => setPaymentMethod(t)} style={{ background: paymentMethod === t ? 'var(--color-primary)' : '#FFFFFF', color: paymentMethod === t ? '#FFFFFF' : 'var(--color-text-primary)', border: paymentMethod === t ? '1px solid var(--color-primary)' : '1px solid var(--color-border)', boxShadow: paymentMethod === t ? '0 2px 8px rgba(37,99,235,.25)' : 'none' }}>
               <Icon size={28} /> {t}
             </div>
           ))}
         </div>
 
         {paymentMethod === 'Bank' && (
-          <div style={{ background: '#A5D6A7', padding: 20, border: '2px solid #1B5E20' }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#1B5E20', marginBottom: 14 }}>Bank Details</div>
+          <div style={{ background: 'var(--color-bg-page)', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 16 }}>Bank Details</div>
             <div className="pcv-grid-2">
               <input className="pcv-inp" required value={bankName}      onChange={e => setBankName(e.target.value)}      placeholder="Bank Name *" />
               <input className="pcv-inp" required value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Account Holder *" />
@@ -643,8 +718,8 @@ const NewVoucherTab = ({ onSubmitted }) => {
         )}
 
         {paymentMethod === 'Telebirr' && (
-          <div style={{ background: '#A5D6A7', padding: 20, border: '2px solid #1B5E20' }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#1B5E20', marginBottom: 14 }}>Telebirr Details</div>
+          <div style={{ background: 'var(--color-bg-page)', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 16 }}>Telebirr Details</div>
             <div className="pcv-grid-2">
               <input className="pcv-inp" required value={telebirrNumber} onChange={e => setTelebirrNumber(e.target.value)} placeholder="Mobile Number *" />
               <input className="pcv-inp" required value={telebirrName}   onChange={e => setTelebirrName(e.target.value)}   placeholder="Full Name *" />
@@ -654,7 +729,7 @@ const NewVoucherTab = ({ onSubmitted }) => {
       </div>
 
       {/* Signatures */}
-      <div className="pcv-card" style={{ padding: 28 }}>
+      <div className="pcv-card" style={{ padding: 24 }}>
         <h3 className="section-title"><PenTool size={18} /> Signatures</h3>
         <div className="pcv-grid-3">
           {[
@@ -666,13 +741,13 @@ const NewVoucherTab = ({ onSubmitted }) => {
               <label className="pcv-lbl">{label}</label>
               <input className="pcv-inp" required value={nameVal} onChange={e => setName(e.target.value)} placeholder="Full name" style={{ marginBottom: 10 }} />
               <SigPad label={label.replace(' *', '')} onSave={onSig} />
-              {sig && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#228B22', fontWeight: 800 }}>✓ Signature ready</p>}
+              {sig && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--color-primary)', fontWeight: 500 }}>✓ Signature ready</p>}
             </div>
           ))}
         </div>
       </div>
 
-      <button type="submit" disabled={loading} className="btn-green" style={{ width: '100%', padding: '18px', fontSize: 17, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, background: loading ? '#9E9E9E' : '#228B22', marginTop: 4 }}>
+      <button type="submit" disabled={loading} className="btn-green" style={{ width: '100%', height: 44, padding: '0 16px', fontSize: 16, background: loading ? 'var(--color-text-muted)' : 'var(--color-primary)', marginTop: 4, borderRadius: 8 }}>
         {loading ? <><SegmentedSpinner size={20} /> Processing…</> : <><CheckCircle size={20} /> Generate Petty Cash</>}
       </button>
     </form>
@@ -681,27 +756,27 @@ const NewVoucherTab = ({ onSubmitted }) => {
 
 /* ── Submitted Success Screen ─────────────────────────────────── */
 const SubmittedScreen = ({ data, onNewPCV, onViewStatus }) => (
-  <div style={{ background: '#FFFFFF', border: '2px solid #228B22', padding: 40, textAlign: 'center' }}>
-    <div style={{ background: '#A5D6A7', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid #1B5E20' }}>
-      <Clock size={48} color="#1B5E20" />
+  <div style={{ background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: 10, padding: 32, textAlign: 'center' }}>
+    <div style={{ background: 'var(--color-info-bg)', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', borderRadius: '50%', border: '1px solid var(--color-info)' }}>
+      <Clock size={48} color="var(--color-info)" />
     </div>
-    <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1B5E20', margin: '0 0 8px' }}>Sent for CEO Approval</h2>
-    <p style={{ color: '#424242', marginBottom: 4, fontWeight: 600 }}>Your PCV is now <b>waiting for CEO approval</b>.</p>
-    <p style={{ color: '#6B8E23', fontSize: 13, marginBottom: 24, fontWeight: 700 }}>Once approved, go to the <b>PCV Status</b> tab to finalize and record in the cashbook.</p>
-    <div style={{ background: '#F5F5F5', padding: 20, border: '2px solid #8D6E63', textAlign: 'left', marginBottom: 24 }}>
-      <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 800, color: '#1B5E20', textAlign: 'center', letterSpacing: 2, marginBottom: 14 }}>{data.pcvNumber}</div>
+    <h2 style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>Sent for CEO Approval</h2>
+    <p style={{ color: 'var(--color-text-secondary)', marginBottom: 4, fontWeight: 400 }}>Your PCV is now <b>waiting for CEO approval</b>.</p>
+    <p style={{ color: 'var(--color-primary)', fontSize: 13, marginBottom: 24, fontWeight: 500 }}>Once approved, go to the <b>PCV Status</b> tab to finalize and record in the cashbook.</p>
+    <div style={{ background: 'var(--color-bg-page)', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10, textAlign: 'left', marginBottom: 24 }}>
+      <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: 'var(--color-primary)', textAlign: 'center', letterSpacing: 2, marginBottom: 14 }}>{data.pcvNumber}</div>
       <div className="pcv-grid-2" style={{ fontSize: 14, gap: 12 }}>
-        <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Date</span><b>{data.date}</b></div>
-        <div><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Method</span><b>{data.paymentMethod}</b></div>
-        <div style={{ gridColumn: 'span 2' }}><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Paid To</span><b>{data.paidTo}</b></div>
-        <div style={{ gridColumn: 'span 2' }}><span style={{ color: '#6B8E23', fontSize: 11, display: 'block', fontWeight: 700 }}>Amount</span><span style={{ fontWeight: 900, color: '#1B5E20', fontSize: 24 }}>ETB {parseFloat(data.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+        <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Date</span><b>{data.date}</b></div>
+        <div><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Method</span><b>{data.paymentMethod}</b></div>
+        <div style={{ gridColumn: 'span 2' }}><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Paid To</span><b>{data.paidTo}</b></div>
+        <div style={{ gridColumn: 'span 2' }}><span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', fontWeight: 500 }}>Amount</span><span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 24 }}>ETB {parseFloat(data.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
       </div>
     </div>
     <div style={{ display: 'flex', gap: 12 }}>
-      <button className="btn-outline" onClick={onViewStatus} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', fontSize: 14 }}>
+      <button className="btn-outline" onClick={onViewStatus} style={{ flex: 1, padding: '0 16px', height: 40, fontSize: 14 }}>
         View PCV Status →
       </button>
-      <button className="btn-green" onClick={onNewPCV} style={{ flex: 1, padding: '13px', fontSize: 14 }}>New PCV</button>
+      <button className="btn-green" onClick={onNewPCV} style={{ flex: 1, padding: '0 16px', height: 40, fontSize: 14 }}>New PCV</button>
     </div>
   </div>
 );
