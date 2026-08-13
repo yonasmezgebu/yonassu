@@ -317,26 +317,34 @@ const StoreHomeNew = () => {
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
       <div className="grid-kpi">
-        {/* Pharmacy Store Hero */}
+        {/* Total Value Hero */}
         <div className="card card-primary" onClick={() => nav('/pharmacy-store/stock-list')}>
           <div className="kpi-header">
-            <span className="label-text">Pharmacy Store</span>
-            <div className="kpi-icon">⭐</div>
+            <span className="label-text">Total Stock Value</span>
+            <div className="kpi-icon">💰</div>
           </div>
-          <div className="kpi-val">{totalQuantity.toLocaleString()}</div>
-          <div className="kpi-sub">👋 Hello - Total Stock Count</div>
+          <div className="kpi-val">ETB {Number(s.totalValue || 0).toLocaleString()}</div>
+          <div className="kpi-sub">Current value of all inventory</div>
         </div>
 
-        {/* Pending Requests */}
-        <div className="card" onClick={() => nav('/pharmacy-store/goods-issue')}>
+        {/* Categories / SKUs */}
+        <div className="card" onClick={() => nav('/pharmacy-store/stock-list')}>
           <div className="kpi-header">
-            <span className="label-text" style={{ color: pendingRequests > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>Pending Requests</span>
-            <div className="kpi-icon" style={{ background: pendingRequests > 0 ? 'var(--color-warning-bg)' : 'var(--color-success-bg)' }}>
-              {pendingRequests > 0 ? '⚠️' : '✅'}
-            </div>
+            <span className="label-text" style={{ color: 'var(--color-info)' }}>Total SKUs</span>
+            <div className="kpi-icon" style={{ background: 'var(--color-info-bg)' }}>📦</div>
           </div>
-          <div className="kpi-val" style={{ color: pendingRequests > 0 ? 'var(--color-warning)' : 'inherit' }}>{pendingRequests}</div>
-          <div className="kpi-sub">{pendingRequests > 0 ? 'Requires attention' : 'All caught up!'}</div>
+          <div className="kpi-val">{totalItems.toLocaleString()}</div>
+          <div className="kpi-sub">Distinct stock lines</div>
+        </div>
+
+        {/* Pharmacy Store Total Qty */}
+        <div className="card" onClick={() => nav('/pharmacy-store/stock-list')}>
+          <div className="kpi-header">
+            <span className="label-text" style={{ color: 'var(--color-success)' }}>Total Quantity</span>
+            <div className="kpi-icon" style={{ background: 'var(--color-success-bg)' }}>⭐</div>
+          </div>
+          <div className="kpi-val" style={{ color: 'var(--color-success)' }}>{totalQuantity.toLocaleString()}</div>
+          <div className="kpi-sub">Total physical units</div>
         </div>
 
         {/* Low Stock */}
@@ -349,16 +357,6 @@ const StoreHomeNew = () => {
           </div>
           <div className="kpi-val" style={{ color: lowStockCount > 0 ? 'var(--color-warning)' : 'inherit' }}>{lowStockCount}</div>
           <div className="kpi-sub">Items below minimum</div>
-        </div>
-
-        {/* Categories */}
-        <div className="card" onClick={() => nav('/pharmacy-store/stock-list')}>
-          <div className="kpi-header">
-            <span className="label-text" style={{ color: 'var(--color-info)' }}>Categories</span>
-            <div className="kpi-icon" style={{ background: 'var(--color-info-bg)' }}>📦</div>
-          </div>
-          <div className="kpi-val">{totalItems.toLocaleString()}</div>
-          <div className="kpi-sub">Distinct stock lines</div>
         </div>
       </div>
 
