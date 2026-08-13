@@ -2,158 +2,161 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import salesService from '../../services/salesService';
-import printingService from '../../services/printingService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-/* ─── Color Palette ─────────────────────────────────────────────────────── */
-const G = {
-  primary: '#2563EB', primaryHover: '#1D4ED8', primaryBg: '#EFF6FF',
-  success: '#16A34A', successBg: '#DCFCE7',
-  danger: '#DC2626', dangerBg: '#FEE2E2',
-  warning: '#D97706', warningBg: '#FEF3C7',
-  info: '#0284C7', infoBg: '#E0F2FE',
-  text: '#111827', textSec: '#6B7280', textMuted: '#9CA3AF',
-  border: '#E5E7EB', bgPage: '#F5F6FA', bgCard: '#FFFFFF',
-  amber: '#EAB308', amberDark: '#78350F', amberBg: '#FEFCE8',
-  track: '#F3F4F6', white: '#FFFFFF'
-};
-
-const COLORS_ARR = ['#2563EB', '#0284C7', '#16A34A', '#D97706', '#7C3AED', '#0891B2', '#DC2626'];
-
-/* ─── Global Animations ─────────────────────────────────────────────────── */
-
-const CategoryBar = ({ value, max, color }) => (
-  <div style={{ background: '#F3F4F6', borderRadius: 999, height: 8, overflow: 'hidden', flex: 1 }}>
-    <div style={{
-      height: '100%', borderRadius: 999, background: color,
-      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
-      transition: 'width 1.2s ease'
-    }} />
-  </div>
-);
-
+/* ─── Global Animations & Enterprise Styles ─── */
 const GlobalStyles = () => (
   <style>{`
     :root {
-      --primary:#2563EB; --primary-hover:#1D4ED8; --primary-bg:#EFF6FF;
-      --success:#16A34A; --success-bg:#DCFCE7;
-      --danger:#DC2626; --danger-bg:#FEE2E2;
-      --warning:#D97706; --warning-bg:#FEF3C7;
-      --info:#0284C7; --info-bg:#E0F2FE;
-      --bg-page:#F5F6FA; --bg-card:#FFFFFF; --border:#E5E7EB;
-      --text:#111827; --text-sec:#6B7280; --text-muted:#9CA3AF;
-      --amber:#EAB308; --amber-dark:#78350F; --amber-bg:#FEFCE8;
-      --card-shadow:0 1px 3px rgba(0,0,0,.06);
-      --card-shadow-hover:0 4px 12px rgba(0,0,0,.08), 0 0 0 1px rgba(234,179,8,.20), 0 2px 12px rgba(234,179,8,.18);
-      --ring:0 0 0 3px rgba(234,179,8,.30);
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      
+      /* Base fonts */
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
     }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes rowIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes softPulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+    /* Edge Spacing */
+    .page-wrapper {
+      padding: 10px;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      min-height: calc(100vh - 60px);
+      background: var(--color-bg-page);
+    }
 
     .so-page {
-      background:var(--bg-page); color:var(--text);
-      font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
-      font-size:14px; line-height:1.5;
-      min-height:calc(100vh - 64px); padding:20px; margin:-24px; overflow-x:hidden;
+      background: var(--color-bg-page);
+      color: var(--color-text-primary);
+      font-family: var(--font-family);
+      font-size: 16px;
+      line-height: 1.5;
+      padding: 24px;
+      margin: 0 auto;
+      max-width: 1600px;
+      box-sizing: border-box;
+      border-radius: 12px;
     }
-    .so-title { font-size:26px; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1.3; margin:0; display:flex; align-items:center; gap:12px; }
-    .so-subtitle { font-size:12px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; margin:0; }
-    .blink-star { animation:softPulse 2.5s ease-in-out infinite; display:inline-block; }
 
-    .so-header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; margin:0 0 24px; width:100%; animation:fadeUp .35s ease; }
-    .so-kpis { display:grid; grid-template-columns:2.5fr 1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
-    .so-row2 { display:grid; grid-template-columns:3fr 2fr; gap:16px; margin-bottom:16px; }
-    .so-row3 { display:grid; grid-template-columns:1fr 2fr; gap:16px; margin-bottom:16px; }
-    .so-subkpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-    .so-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; }
+    
+    .so-title { font-size: 28px; font-weight: 700; color: var(--color-text-primary); }
+    .so-section-title { font-size: 18px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 16px; }
+    
+    .so-subtitle { font-size: 13px; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
-    .d-card, .d-card-no-hover {
-      position:relative; background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
-      padding:20px; box-shadow:var(--card-shadow);
-      transition:box-shadow .15s ease, transform .15s ease, border-color .15s ease;
-      animation:fadeUp .5s ease both; cursor:pointer;
+    /* Buttons */
+    .btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: all 150ms ease-in-out;
     }
-    .d-card:hover, .d-card-no-hover:hover { border-color:var(--amber); box-shadow:var(--card-shadow-hover); transform:translateY(-1px); }
-    .d-card:focus-visible, .d-card-no-hover:focus-visible, .btn-sync:focus-visible { outline:none; box-shadow:var(--ring); }
-
-    .so-table-card { overflow-x:auto; }
-
-    .btn-sync {
-      position:relative; display:flex; align-items:center; justify-content:center; gap:8px;
-      height:36px; padding:0 16px; border-radius:8px; border:1px solid transparent;
-      background:var(--primary); color:#fff; font-weight:500; font-size:14px; letter-spacing:.01em;
-      cursor:pointer; box-shadow:var(--card-shadow);
-      transition:background .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease;
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--color-primary); color: #FFF; }
+    .btn-primary:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; }
+    
+    /* Cards */
+    .d-card {
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: all 150ms ease-in-out;
+      cursor: pointer;
     }
-    .btn-sync:hover { background:var(--amber); border-color:var(--amber); color:var(--amber-dark); box-shadow:0 4px 12px rgba(234,179,8,.30); }
-    .btn-sync:active { transform:scale(.97); }
-    .btn-sync:disabled { opacity:.5; cursor:not-allowed; }
-
-    .alert-row {
-      display:flex; align-items:center; gap:12px; padding:12px 16px; margin-bottom:8px;
-      background:var(--bg-card); border:1px solid var(--border); border-radius:10px; cursor:pointer;
-      transition:all .15s ease; animation:rowIn .4s ease both;
+    .d-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
     }
-    .alert-row:hover { background:var(--amber-bg); border-color:var(--amber); transform:translateX(3px); box-shadow:0 3px 10px rgba(234,179,8,.15); }
+    
+    .d-card-static {
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
 
+    /* Grid Layouts */
+    .so-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+    .so-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .so-row2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+    
     .cat-row {
-      display:grid; grid-template-columns:150px 1fr 70px 80px; gap:12px; align-items:center;
-      padding:12px 14px; border-radius:8px; cursor:pointer;
-      transition:background .15s ease, box-shadow .15s ease; animation:rowIn .4s ease both;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border-radius: 8px; cursor: pointer; gap: 16px;
+      background: var(--color-bg-card); border: 1px solid var(--color-border);
+      margin-bottom: 8px;
+      transition: all 150ms ease-in-out;
     }
-    .cat-row:hover { background:var(--amber-bg); box-shadow:0 2px 8px rgba(234,179,8,.12); }
+    .cat-row:hover { background: #FFD70015; border-color: #FFD700; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 
-    .top-row {
-      display:flex; align-items:center; gap:12px; padding:12px 14px; margin-bottom:8px;
-      background:var(--bg-card); border:1px solid var(--border); border-radius:10px; cursor:pointer;
-      transition:all .15s ease; animation:rowIn .4s ease both;
+    /* Tables */
+    .table-container { overflow-x: auto; min-width: 100%; border-radius: 8px; border: 1px solid var(--color-border); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { background: #F9FAFB; padding: 12px 16px; text-transform: uppercase; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: 0.03em; border-bottom: 1px solid var(--color-border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); transition: background 150ms ease-in-out; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F9FAFB; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    th.num { text-align: right; }
+    
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .badge-success { background: var(--color-success-bg); color: var(--color-success); }
+    
+    @media (max-width: 1024px) {
+      .so-kpis { grid-template-columns: repeat(2, 1fr); }
+      .so-row2 { grid-template-columns: 1fr; }
+      .page-wrapper { padding: 6px; }
+      .so-page { padding: 16px; }
     }
-    .top-row:hover { background:var(--amber-bg); border-color:var(--amber); box-shadow:0 3px 10px rgba(234,179,8,.15); }
-
-    .qa-card {
-      position:relative; background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
-      padding:16px 14px; text-align:center; cursor:pointer;
-      transition:all .15s ease; animation:fadeUp .4s ease both;
+    @media (max-width: 768px) {
+      .page-wrapper { padding: 4px; }
+      .so-page { padding: 12px; }
+      .so-title { font-size: 24px; }
+      .so-header { flex-direction: column; align-items: flex-start; }
     }
-    .qa-card:hover { border-color:var(--amber); background:var(--amber-bg); transform:translateY(-1px); box-shadow:0 4px 12px rgba(234,179,8,.16); }
-
-    @media (max-width:1280px) { .so-kpis { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:1024px) {
-      .so-row2, .so-row3 { grid-template-columns:1fr; }
-      .so-header { grid-template-columns:1fr auto; }
-    }
-    @media (max-width:768px) {
-      .so-page { padding:16px; }
-      .so-header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; }
-      .so-subtitle { width:100%; order:3; }
-      .so-subkpis { grid-template-columns:repeat(2,1fr); }
-      .so-actions { grid-template-columns:repeat(2,1fr); }
-      .btn-sync { min-height:44px; }
-      .alert-row, .top-row { min-height:48px; }
-      .qa-card { padding:16px 10px; }
-      .cat-row { grid-template-columns:140px 1fr 60px 70px; min-width:560px; }
-    }
-    @media (max-width:480px) {
-      .so-page { padding:12px; }
-      .so-kpis { grid-template-columns:1fr; }
-      .so-subkpis { grid-template-columns:1fr; }
-      .so-actions { grid-template-columns:repeat(2,1fr); gap:12px; }
-      .so-title { font-size:24px; }
+    @media (max-width: 480px) {
+      .so-kpis { grid-template-columns: 1fr; }
     }
   `}</style>
 );
 
-
 const fmt = (n) => Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
-const SalesOverview = () => {
+export default function SalesOverview() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
   const [stats, setStats] = useState(null);
-  const [printingStats, setPrintingStats] = useState(null);
   const [activities, setActivities] = useState([]);
   
   const [refreshing, setRefreshing] = useState(false);
@@ -169,21 +172,17 @@ const SalesOverview = () => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [salesRes, printStatsRes, printOrdersRes] = await Promise.allSettled([
+      const [salesRes, historyRes] = await Promise.allSettled([
         salesService.getSalesReports({ range: 'today' }),
-        printingService.getStatistics(),
-        printingService.getOrders({ limit: 6 })
+        salesService.getSales({ limit: 6 })
       ]);
       
       if (salesRes.status === 'fulfilled') {
         setStats(salesRes.value.data?.data || salesRes.value.data);
       }
-      if (printStatsRes.status === 'fulfilled') {
-        setPrintingStats(printStatsRes.value.data?.data);
-      }
-      if (printOrdersRes.status === 'fulfilled') {
-        const orders = printOrdersRes.value.data?.data?.orders || [];
-        setActivities(orders);
+      if (historyRes.status === 'fulfilled') {
+        const h = historyRes.value.data?.data?.sales || [];
+        setActivities(h);
       }
     } catch (err) {
       console.error('Failed to fetch sales dashboard data:', err);
@@ -199,228 +198,146 @@ const SalesOverview = () => {
   const totalRevenue = parseFloat(data.totalRevenue) || 0;
   const totalOrders = parseInt(data.totalTransactions) || 0;
   const activeCustomers = parseInt(data.uniqueCustomers) || 0;
-  
-  const monthlyRevenue = printingStats?.monthlyRevenue?.[0]?.revenue || 0;
-  const pendingCount = parseInt(printingStats?.pendingOrders) || 0;
-  const pastDueCount = parseInt(printingStats?.pastDueOrders) || 0;
+  const avgOrder = parseFloat(data.averageOrderValue) || 0;
   
   const topProducts = data.topProducts || [];
-  const totalProductsSold = topProducts.length || 0;
+  const salesByMethod = data.salesByMethod || [];
   const firstName = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || user?.full_name?.split(' ')[0] || 'Manager';
-  
-  const maxProdRev = Math.max(...topProducts.map(p => p.revenue || 0), 1);
 
   return (
-    <div className="so-page">
-      <GlobalStyles />
-      {/* ── HEADER ── */}
-      <div className="so-header">
-        <div style={{ justifySelf: 'start' }}>
-          <h1 className="so-title">
-            Welcome! &nbsp;<span className="blink-star">🌿</span>
-          </h1>
-        </div>
-        <div style={{ justifySelf: 'center' }}>
-          <p className="so-subtitle">
-            SALES MANAGEMENT · IT'S {timeString}
-          </p>
-        </div>
-        <div style={{ justifySelf: 'end' }}>
-                    <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.5 : 1 }}>
-            {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div className="so-kpis">
-
-        {/* Revenue Hero */}
-        <div className="d-card" onClick={() => nav('/sales/pos')}
-          style={{ background: 'linear-gradient(135deg, ' + G.primary + ' 0%, ' + G.primaryHover + ' 100%)', color: '#fff', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 8, padding: 12 }}>
-            <span style={{ fontSize: 22 }}>⭐</span>
+    <div className="page-wrapper">
+      <div className="so-page">
+        <GlobalStyles />
+        
+        {/* ── HEADER ── */}
+        <div className="so-header">
+          <div>
+            <h1 className="so-title">Sales Overview</h1>
+            <p className="so-subtitle">Performance &amp; Metrics · {timeString}</p>
           </div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.85, marginBottom: 10 }}>Sales Overview</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 14, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ fontSize: '1.1rem', opacity: 0.75, marginRight: 6 }}>ETB</span>{fmtInt(totalRevenue)}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, opacity: 0.9 }}>
-            <span>👋</span> Hello, {firstName} — Today's Total Revenue
+          <div>
+            <button onClick={load} className="btn btn-primary" disabled={refreshing}>
+              {refreshing ? <SegmentedSpinner size={16} /> : <span>↻</span>}
+              SYNC DATA
+            </button>
           </div>
         </div>
 
-        {/* Total Invoices */}
-        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/sales/pos')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: G.textSec, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Invoices</span>
-            <div style={{ background: G.primaryBg, borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>🧾</span></div>
+        {/* ── ROW 1: KPI HERO CARDS ── */}
+        <div className="so-kpis">
+          <div className="d-card" onClick={() => nav('/sales/pos')} style={{ background: 'var(--color-primary)', color: '#FFF' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, textTransform: 'uppercase', opacity: 0.8, marginBottom: 8 }}>Today's Revenue</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>ETB {fmtInt(totalRevenue)}</div>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Hello, {firstName} 👋</div>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: G.text, letterSpacing: '-0.02em', margin: '12px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{fmtInt(totalOrders)}</div>
-          <div style={{ fontSize: 12, color: G.textSec, fontWeight: 500 }}>Orders processed today</div>
+
+          <div className="d-card" onClick={() => nav('/sales/pos')}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Transactions</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{fmtInt(totalOrders)}</div>
+          </div>
+
+          <div className="d-card" onClick={() => nav('/sales/pos')}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Customers</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{fmtInt(activeCustomers)}</div>
+          </div>
+
+          <div className="d-card" onClick={() => nav('/sales/pos')}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Order Value</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>ETB {fmtInt(avgOrder)}</div>
+          </div>
         </div>
 
-        {/* Active Customers */}
-        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/sales/pos')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: G.textSec, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Customers</span>
-            <div style={{ background: G.primaryBg, borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>👥</span></div>
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: G.text, letterSpacing: '-0.02em', margin: '12px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{fmtInt(activeCustomers)}</div>
-          <div style={{ fontSize: 12, color: G.textSec, fontWeight: 500 }}>Served today</div>
-        </div>
-
-        {/* This Month */}
-        <div className="d-card" style={{ animationDelay: '0.2s' }} onClick={() => nav('/sales/finance-review')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: G.textSec, textTransform: 'uppercase', letterSpacing: '0.05em' }}>This Month</span>
-            <div style={{ background: G.primaryBg, borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>📈</span></div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: G.text, margin: '16px 0 6px', fontVariantNumeric: 'tabular-nums' }}>{fmtInt(monthlyRevenue)}</div>
-          <div style={{ fontSize: 12, color: G.textSec, fontWeight: 500 }}>Monthly revenue (ETB)</div>
-        </div>
-      </div>
-
-      {/* ── ROW 2: REVENUE BREAKDOWN + ACTIVITY FEED ── */}
-      <div className="so-row2">
-
-        {/* Revenue Breakdown */}
-        <div className="d-card-no-hover so-table-card" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 18 }}>📦</span>
-            <span style={{ fontSize: 16, fontWeight: 600, color: G.text }}>Top Products Breakdown</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: G.textSec, fontWeight: 500 }}>Across {totalProductsSold} top sellers</span>
-          </div>
-          {/* Sub-KPIs */}
-          <div className="so-subkpis">
-            {[
-              { label: 'Avg Order',    val: fmt(data.averageOrderValue), icon: '💵', c: G.primary },
-              { label: 'Products',     val: totalProductsSold,           icon: '🏷️', c: G.success },
-              { label: 'Transactions', val: totalOrders,                 icon: '🔄', c: G.info    },
-              { label: 'Pending',      val: pendingCount,                icon: '⏳', c: G.warning },
-            ].map(k => (
-              <div key={k.label} style={{ background: G.bgCard, borderRadius: 10, padding: '12px 14px', border: '1px solid ' + k.c + '33' }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: k.c, overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>{k.val}</div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: G.textSec, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+        {/* ── ROW 2 ── */}
+        <div className="so-row2">
+          
+          <div className="d-card-static">
+            <h2 className="so-section-title">Top Selling Products (Today)</h2>
+            {topProducts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No sales recorded today.</div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th className="num">Qty Sold</th>
+                      <th className="num">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.map((p, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 500 }}>{p.name}</td>
+                        <td className="num">{fmtInt(p.quantity)}</td>
+                        <td className="num" style={{ fontWeight: 500 }}>{fmt(p.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            )}
           </div>
-          {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '0 14px 8px', marginBottom: 4, borderBottom: '1px solid ' + G.border }}>
-            {['Product', '', 'Units', 'Revenue'].map((h, hi) => (
-              <div key={h + hi} style={{ fontSize: 12, fontWeight: 500, color: G.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: hi === 3 ? 'right' : 'left' }}>{h}</div>
-            ))}
-          </div>
-          {topProducts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 0', color: G.textSec, fontSize: 13 }}>No product sales yet</div>
-          ) : topProducts.map((row, i) => {
-            const c = COLORS_ARR[i % COLORS_ARR.length];
-            return (
-              <div key={row.name} className="cat-row" onClick={() => nav('/sales/store-inventory')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: G.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</span>
-                </div>
-                <CategoryBar value={row.revenue} max={maxProdRev} color={c} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: G.text, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtInt(row.quantity)}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: G.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtInt(row.revenue)}</span>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Recent Activity Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize: 18 }}>📜</span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: G.text }}>Recent Orders</span>
-            </div>
-            {activities.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: G.textSec, fontSize: 13 }}>
-                <span style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No orders yet
-              </div>
-            ) : activities.map((l) => {
-              const c = l.status_code === 'delivered' ? G.success : l.status_code === 'in_progress' ? G.info : G.warning;
-              const icon = l.status_code === 'delivered' ? '✅' : '⏳';
-              return (
-                <div key={l.id} className="top-row" onClick={() => nav(`/printing/orders/${l.id}`)}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                  </div>
-                  <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: G.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {l.order_number} — {l.customer_name}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="d-card-static">
+              <h2 className="so-section-title">Payment Methods</h2>
+              {salesByMethod.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>No data available.</div>
+              ) : (
+                salesByMethod.map((m, i) => {
+                  const pmIcon = m.name?.toLowerCase().includes('cash') ? '💵'
+                    : m.name?.toLowerCase().includes('bank') ? '🏦'
+                    : m.name?.toLowerCase().includes('tele') ? '📱'
+                    : '💳';
+                  return (
+                    <div key={i} className="cat-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>{pmIcon}</span>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{m.name || 'Unknown'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{fmt(m.percentage)}% of today's sales</div>
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>ETB {fmt(m.amount)}</div>
                     </div>
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: c, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(l.total_price)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
-      <div className="so-row3">
-
-        {/* Sales Alerts */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: G.text, marginBottom: 14 }}>⚠ Attention Required</div>
-          {[
-            { label: `${pendingCount} Pending Orders`, sub: `Orders awaiting fulfillment`, icon: '⏳', bg: '#E0F2FE', c: '#0284C7', path: '/printing/orders' },
-            { label: `${pastDueCount} Past Due`, sub: 'Orders beyond deadline', icon: '🚨', bg: '#FEF3C7', c: '#D97706', path: '/printing/orders' }
-          ].map(row => (
-            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
-              <div style={{ background: row.bg, padding: 9, borderRadius: 8 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: G.text }}>{row.label}</div>
-                <div style={{ fontSize: 12, color: G.textSec, fontWeight: 500 }}>{row.sub}</div>
-              </div>
-              <span style={{ fontSize: 14, color: G.textMuted }}>›</span>
+                  );
+                })
+              )}
             </div>
-          ))}
-          {/* Quick info list */}
-          {activities.slice(0,3).map((item, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:`1px solid ${G.border}` }}>
-              <span style={{ fontSize:12, fontWeight:600, color:G.warning, minWidth:28, fontVariantNumeric:'tabular-nums' }}>{item.order_number}</span>
-              <span style={{ fontSize:12, fontWeight:600, color:G.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{item.product_type || 'Custom Order'}</span>
-              <span style={{ fontSize:12, color:G.textSec }}>{item.status_name}</span>
-            </div>
-          ))}
-        </div>
 
-        {/* Quick Actions */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: G.text, marginBottom: 16 }}>⚡ Quick Operations</div>
-          <div className="so-actions">
-            {[
-              { label: 'New Sale',       sub: 'POS System',    icon: '🛒', bg: G.primaryBg, color: G.primary, href: '/sales/pos' },
-              { label: 'Invoices',       sub: 'Manage',        icon: '🧾', bg: G.primaryBg, color: G.primary, href: '/printing/orders' },
-              { label: 'Customers',      sub: 'Directory',     icon: '👥', bg: G.primaryBg, color: G.primary, href: '/sales/customers' },
-              { label: 'Reports',        sub: 'Analytics',     icon: '📊', bg: G.primaryBg, color: G.primary, href: '/sales/ceo-report' },
-              { label: 'Store Inv',      sub: 'View stock',    icon: '📦', bg: G.primaryBg, color: G.primary, href: '/sales/store-inventory' },
-              { label: 'Finance',        sub: 'Review',        icon: '💵', bg: G.primaryBg, color: G.primary, href: '/sales/finance-review' },
-              { label: 'Stock Ops',      sub: 'Manage stock',  icon: '🔄', bg: G.primaryBg, color: G.primary, href: '/sales/stock-operations' }
-            ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
-                <div style={{ width: 46, height: 46, borderRadius: 10, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize: 22 }}>{a.icon}</span>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: G.text, marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 11, color: G.textSec, fontWeight: 500 }}>{a.sub}</div>
-              </div>
-            ))}
+            <div className="d-card-static" style={{ flex: 1 }}>
+              <h2 className="so-section-title">Recent Sales</h2>
+              {activities.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>No recent sales found.</div>
+              ) : (
+                activities.slice(0, 5).map((a) => {
+                  const pmIcon = a.payment_method_name?.toLowerCase().includes('cash') ? '💵'
+                    : a.payment_method_name?.toLowerCase().includes('bank') ? '🏦'
+                    : a.payment_method_name?.toLowerCase().includes('tele') ? '📱'
+                    : '💳';
+                  return (
+                    <div key={a.id} className="cat-row" onClick={() => nav('/sales/pos')}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 14 }}>
+                          {a.invoice_number || `#${a.id}`}
+                          {a.customer_name && <span style={{ fontWeight: 400, color: 'var(--color-text-secondary)', marginLeft: 6 }}>— {a.customer_name}</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <span>{pmIcon} {a.payment_method_name || 'Cash'}</span>
+                          {a.cashier_name && <span>👤 {a.cashier_name}</span>}
+                          <span>🕐 {new Date(a.sale_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-success)', whiteSpace: 'nowrap' }}>ETB {fmt(a.total_amount)}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
+          
         </div>
       </div>
     </div>
   );
-};
-
-export default SalesOverview;
+}
