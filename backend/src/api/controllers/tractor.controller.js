@@ -1,6 +1,7 @@
 const tractorRepository = require('../../repositories/tractor.repository');
 const TractorModel = require('../../models/Tractor.model');
 const { logger } = require('../../config/logger');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 exports.getAllTractorsPublic = async (req, res) => {
   try {
@@ -62,6 +63,7 @@ exports.createTractor = async (req, res) => {
     };
 
     const newTractor = await tractorRepository.createAndReturn(dataToInsert);
+    carRentalAudit.log(req, 'Tractor Created', newTractor.name || `Tractor #${newTractor.id}`, null, dataToInsert);
     res.status(201).json({ status: 'success', data: TractorModel.fromDatabase(newTractor).toJSON() });
   } catch (error) {
     logger.error('Error creating tractor:', error);
@@ -106,6 +108,7 @@ exports.updateTractor = async (req, res) => {
     };
 
     const updatedTractor = await tractorRepository.updateAndReturn(id, dataToUpdate);
+    carRentalAudit.log(req, 'Tractor Updated', existingTractor.name || `Tractor #${id}`, existingTractor.toJSON(), updatedTractor.toJSON());
     res.status(200).json({ status: 'success', data: TractorModel.fromDatabase(updatedTractor).toJSON() });
   } catch (error) {
     logger.error('Error updating tractor:', error);
@@ -122,6 +125,7 @@ exports.deleteTractor = async (req, res) => {
     }
 
     await tractorRepository.softDelete(id);
+    carRentalAudit.log(req, 'Tractor Deleted', existingTractor.name || `Tractor #${id}`, existingTractor.toJSON(), null);
     res.status(200).json({ status: 'success', message: 'Tractor deleted successfully' });
   } catch (error) {
     logger.error('Error deleting tractor:', error);
@@ -132,7 +136,9 @@ exports.deleteTractor = async (req, res) => {
 exports.restoreTractor = async (req, res) => {
   try {
     const { id } = req.params;
+    const existingTractor = await tractorRepository.findById(id);
     await tractorRepository.restore(id);
+    carRentalAudit.log(req, 'Tractor Restored', existingTractor?.name || `Tractor #${id}`, null, { restored: true });
     res.status(200).json({ status: 'success', message: 'Tractor restored successfully' });
   } catch (error) {
     logger.error('Error restoring tractor:', error);
@@ -148,6 +154,7 @@ exports.hardDeleteTractor = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Tractor not found' });
     }
     await tractorRepository.delete(id);
+    carRentalAudit.log(req, 'Tractor Permanently Deleted', existingTractor.name || `Tractor #${id}`, existingTractor.toJSON(), null);
     res.status(200).json({ status: 'success', message: 'Tractor permanently deleted' });
   } catch (error) {
     logger.error('Error in hardDeleteTractor:', error);
@@ -165,7 +172,9 @@ exports.updateAssetValue = async (req, res) => {
     }
 
     const { db } = require('../../config/database');
+    const existingTractor = await db('tractors').where({ id }).first();
     await db('tractors').where({ id }).update({ asset_value, updated_at: new Date() });
+    carRentalAudit.log(req, 'Tractor Asset Value Updated', existingTractor?.name || `Tractor #${id}`, { asset_value: existingTractor?.asset_value ?? null }, { asset_value });
     
     res.status(200).json({ status: 'success', message: 'Asset value updated successfully' });
   } catch (error) {
