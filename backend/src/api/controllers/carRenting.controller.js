@@ -4,6 +4,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const notificationRepository = require('../../repositories/notification.repository');
 const Maintenance = require('../../models/Maintenance.model');
 const FuelService = require('../../models/FuelService.model');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 /* ─── Helper: ensure tables exist ─────────────────────────────── */
 async function ensureTables() {
@@ -32,6 +33,69 @@ async function ensureTables() {
   try { await db.raw("ALTER TABLE \`car_renting_store_requests\` ADD \`department\` varchar(50) DEFAULT 'Car Rental'"); } catch (e) {}
 }
 
+exports.getDashboardStats = catchAsync(async (req, res) => {
+  await ensureTables();
+  
+  // Fleet Stats
+  const cars = await db('cars').whereNull('deleted_at');
+  const tractors = await db('tractors').whereNull('deleted_at');
+  
+  const totalCars = cars.length;
+  const totalAgri = tractors.length;
+  const totalFleet = totalCars + totalAgri;
+
+  const allAssets = [
+    ...cars.map(c => ({ ...c, asset_type: 'car' })),
+    ...tractors.map(t => ({ ...t, asset_type: 'agri_equipment' }))
+  ];
+
+  let availableCount = 0;
+  let bookedCount = 0;
+  let maintenanceCount = 0;
+  let totalValue = 0;
+
+  allAssets.forEach(a => {
+    totalValue += Number(a.asset_value) || 0;
+    const status = (a.availability || '').toLowerCase();
+    if (status === 'available') availableCount++;
+    else if (status === 'booked' || status === 'rented') bookedCount++;
+    else if (status === 'maintenance') maintenanceCount++;
+    else availableCount++; // Default to available
+  });
+
+  const fleetStats = {
+    total: totalFleet,
+    cars: totalCars,
+    agri: totalAgri,
+    available: availableCount,
+    rented: bookedCount,
+    maintenance: maintenanceCount,
+    totalValue: totalValue
+  };
+
+  // Active Orders (Rental Orders)
+  const activeOrders = await db('rental_orders')
+    .whereIn('status', ['Active', 'In Progress', 'active', 'in_progress', 'Approved'])
+    .orderBy('created_at', 'desc')
+    .limit(10);
+
+  // Active Maintenance
+  const activeMaintenance = await db('car_renting_maintenance')
+    .whereNotIn('status', ['COMPLETED', 'CEO_REJECTED', 'FINANCE_REJECTED'])
+    .orderBy('created_at', 'desc')
+    .limit(10);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      fleetStats,
+      activeOrders,
+      maintenance: activeMaintenance,
+      assets: allAssets
+    }
+  });
+});
+
 exports.createStoreRequest = catchAsync(async (req, res) => {
   const { items, notes, department } = req.body;
   if (!items || !items.length) throw new AppError('At least one item required', 400);
@@ -58,6 +122,10 @@ exports.createStoreRequest = catchAsync(async (req, res) => {
   } catch (e) { console.error('Failed to notify CEO', e); }
 
   const request = await db('car_renting_store_requests').where({ id }).first();
+  carRentalAudit.log(req, 'Store Request Created', num, null, {
+    request_number: num, requested_by: req.user.id, notes: notes || null, status: request.status, department: request.department,
+    items: items.map(i => ({ product_id: i.product_id, quantity_requested: i.quantity_requested }))
+  });
   res.status(201).json({ status: 'success', data: request });
 });
 
@@ -97,6 +165,7 @@ exports.updateStoreRequest = catchAsync(async (req, res) => {
   } catch (e) { console.error('Failed to notify CEO of update', e); }
 
   const updated = await db('car_renting_store_requests').where({ id }).first();
+  carRentalAudit.log(req, 'Store Request Updated', request.request_number, request, updated);
   res.json({ status: 'success', message: 'Request updated successfully', data: updated });
 });
 
@@ -127,6 +196,8 @@ exports.createMaintenance = catchAsync(async (req, res) => {
       location: location || null,
       status: 'PENDING_CEO'
   });
+
+  carRentalAudit.log(req, 'Maintenance Request Created', `MNT #${record.id}`, null, record);
 
   try {
       await notificationRepository.create({
@@ -160,6 +231,7 @@ exports.ceoApproveMaintenance = catchAsync(async (req, res) => {
   if(record.status !== 'PENDING_CEO') throw new AppError('Record is not pending CEO approval', 400);
 
   const updated = await Maintenance.updateStatus(id, 'PENDING_FINANCE');
+  carRentalAudit.log(req, 'Maintenance Approved by CEO', `MNT #${id}`, record, updated);
   
   try {
       await notificationRepository.create({
@@ -181,6 +253,7 @@ exports.financeApproveMaintenance = catchAsync(async (req, res) => {
   if(record.status !== 'PENDING_FINANCE') throw new AppError('Record is not pending Finance confirmation', 400);
 
   const updated = await Maintenance.updateStatus(id, 'FINANCE_READY');
+  carRentalAudit.log(req, 'Maintenance Payment Confirmed', `MNT #${id}`, record, updated);
 
   // Notify Car/Tractor Manager that payment is confirmed and they can prepare
   try {
@@ -295,6 +368,7 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
   } catch (e) { console.error('finance_cashbook insert error:', e); }
 
   const updated = await Maintenance.updateStatus(id, 'PAYMENT_RELEASED');
+  carRentalAudit.log(req, 'Maintenance Payment Released', `MNT #${id}`, record, { ...updated, pvNumber, amountETB, paymentMethod });
 
   // Notify Car/Tractor Manager
   try {
@@ -327,6 +401,7 @@ exports.completeMaintenance = catchAsync(async (req, res) => {
   if(!record) throw new AppError('Record not found', 404);
   
   const updated = await Maintenance.updateStatus(id, 'COMPLETED');
+  carRentalAudit.log(req, 'Maintenance Completed', `MNT #${id}`, record, updated);
   res.json({ status: 'success', data: updated });
 });
 
@@ -436,6 +511,8 @@ exports.updateStoreRequestStatus = catchAsync(async (req, res) => {
   });
 
   const updated = await db('car_renting_store_requests').where({ id }).first();
+  const statusLabel = String(newStatus || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  carRentalAudit.log(req, `Store Request ${statusLabel}`, request.request_number, request, updated);
   res.json({ status: 'success', message: `Status updated to ${newStatus}`, data: updated });
 });
 
@@ -460,6 +537,7 @@ exports.createFuelService = catchAsync(async (req, res) => {
   };
 
   const record = await FuelService.create(data);
+  carRentalAudit.log(req, `${data.request_type === 'Fuel' ? 'Fuel' : 'Service'} Request Created`, `FS #${record.id}`, null, record);
 
   try {
     await notificationRepository.create({
@@ -486,6 +564,7 @@ exports.ceoApproveFuelService = catchAsync(async (req, res) => {
   if(record.status !== 'PENDING_CEO') throw new AppError('Record is not pending CEO approval', 400);
 
   const updated = await FuelService.updateStatus(id, 'PENDING_FINANCE');
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Approved by CEO`, `FS #${id}`, record, updated);
   
   try {
     await notificationRepository.create({
@@ -507,6 +586,7 @@ exports.financeApproveFuelService = catchAsync(async (req, res) => {
   if(record.status !== 'PENDING_FINANCE') throw new AppError('Record is not pending Finance confirmation', 400);
 
   const updated = await FuelService.updateStatus(id, 'FINANCE_READY');
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Payment Confirmed`, `FS #${id}`, record, updated);
 
   try {
     await notificationRepository.create({
@@ -593,6 +673,7 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
   }
 
   const updated = await FuelService.updateStatus(id, 'PAYMENT_RELEASED');
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Payment Released`, `FS #${id}`, record, { ...updated, pvNumber, amountETB, paymentMethod });
 
   try {
     await notificationRepository.create({
@@ -614,5 +695,6 @@ exports.completeFuelService = catchAsync(async (req, res) => {
   if(record.status !== 'PAYMENT_RELEASED') throw new AppError('Payment must be released before marking as completed', 400);
 
   const updated = await FuelService.updateStatus(id, 'COMPLETED');
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Completed`, `FS #${id}`, record, updated);
   res.json({ status: 'success', data: updated });
 });
