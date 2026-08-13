@@ -16,6 +16,36 @@ router.get(
   CEODashboardController.getDashboardOverview
 );
 router.get(
+  '/sales-overview',
+  authenticate,
+  authorize(['ceo:dashboard', 'ceo:revenue']),
+  CEODashboardController.getCEOSalesOverview
+);
+router.get(
+  '/purchase-overview',
+  authenticate,
+  authorize(['ceo:dashboard', 'ceo:revenue']),
+  CEODashboardController.getCEOPurchaseOverview
+);
+router.get(
+  '/finance-overview',
+  authenticate,
+  authorize(['ceo:dashboard', 'ceo:revenue']),
+  CEODashboardController.getCEOFinanceOverview
+);
+router.get(
+  '/hr-overview',
+  authenticate,
+  authorize(['ceo:dashboard']),
+  CEODashboardController.getCEOHROverview
+);
+router.get(
+  '/pharmacy-overview',
+  authenticate,
+  authorize(['ceo:dashboard']),
+  CEODashboardController.getCEOPharmacyOverview
+);
+router.get(
   '/revenue',
   authenticate,
   authorize(['ceo:revenue']),
