@@ -1,212 +1,314 @@
-import React, { useState } from 'react';
-import { submitNotification, receiveNotification, triggerNotification } from '../../utils/ceoNotifications';
-import { DollarSign, Filter, Download, CheckCircle, XCircle, BarChart2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-const CEOSales = () => {
-  const [reports, setReports] = useState([
-    { id: 'SR-101', department: 'Pharmacy', total: 12500, date: '2026-07-01', status: 'PENDING' },
-    { id: 'SR-102', department: 'Car Rental', total: 4500, date: '2026-07-01', status: 'PENDING' },
-  ]);
+/* ─── Global Animations & Enterprise Styles ─── */
+const GlobalStyles = () => (
+  <style>{`
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      
+      /* Base fonts */
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    }
 
-  const [transactions] = useState([
-    { id: 'TXN-991', department: 'Pharmacy', branch: 'Main', amount: 150, date: '2026-07-01', crv: 'CRV-01' },
-    { id: 'TXN-992', department: 'Printing', branch: 'Main', amount: 850, date: '2026-07-01', crv: 'CRV-02' },
-  ]);
+    /* Edge Spacing */
+    .page-wrapper {
+      padding: 10px;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      min-height: calc(100vh - 60px);
+      background: var(--color-bg-page);
+    }
 
-  const [rejectId, setRejectId] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
+    .so-page {
+      background: var(--color-bg-page);
+      color: var(--color-text-primary);
+      font-family: var(--font-family);
+      font-size: 16px;
+      line-height: 1.5;
+      padding: 24px;
+      margin: 0 auto;
+      max-width: 1600px;
+      box-sizing: border-box;
+      border-radius: 12px;
+    }
 
-  const [filters, setFilters] = useState({ department: 'All', branch: 'All', date: 'Today' });
-  const [chartGrain, setChartGrain] = useState('Daily');
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; }
+    
+    .so-title { font-size: 28px; font-weight: 700; color: var(--color-text-primary); }
+    .so-section-title { font-size: 18px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 16px; }
+    
+    .so-subtitle { font-size: 13px; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
-  const handleApprove = (id) => {
-    setReports(reports.map(r => r.id === id ? { ...r, status: 'APPROVED' } : r));
-    submitNotification('Sales Report Approved', `Report ${id} has been approved. Finance notified.`);
-  };
+    /* Buttons */
+    .btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: all 150ms ease-in-out;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--color-primary); color: #FFF; }
+    .btn-primary:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; }
+    
+    /* Cards */
+    .d-card-static {
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
 
-  const handleReject = () => {
-    if (!rejectReason) return alert('Reason is required');
-    setReports(reports.map(r => r.id === rejectId ? { ...r, status: 'REJECTED' } : r));
-    receiveNotification('Sales Report Rejected', `Report ${rejectId} rejected: ${rejectReason}`);
-    setRejectId(null);
-    setRejectReason('');
-  };
+    /* Grid Layouts */
+    .so-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+    .so-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .so-row2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+    
+    .cat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border-radius: 8px; gap: 16px;
+      background: var(--color-bg-card); border: 1px solid var(--color-border);
+      margin-bottom: 8px;
+    }
 
-  const handleExport = (format) => {
-    triggerNotification('Export Started', `Exporting sales data as ${format}`);
-  };
+    /* Tables */
+    .table-container { overflow-x: auto; min-width: 100%; border-radius: 8px; border: 1px solid var(--color-border); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { background: #F9FAFB; padding: 12px 16px; text-transform: uppercase; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: 0.03em; border-bottom: 1px solid var(--color-border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); transition: background 150ms ease-in-out; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F9FAFB; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    th.num { text-align: right; }
+    
+    @media (max-width: 1024px) {
+      .so-kpis { grid-template-columns: repeat(2, 1fr); }
+      .so-row2 { grid-template-columns: 1fr; }
+      .page-wrapper { padding: 6px; }
+      .so-page { padding: 16px; }
+    }
+    @media (max-width: 768px) {
+      .page-wrapper { padding: 4px; }
+      .so-page { padding: 12px; }
+      .so-title { font-size: 24px; }
+      .so-header { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 480px) {
+      .so-kpis { grid-template-columns: 1fr; }
+    }
+  `}</style>
+);
+
+const fmt = (n) => Number(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = (n) => Number(n || 0).toLocaleString();
+
+export default function CEOSales() {
+  const [stats, setStats] = useState(null);
+  const [activities, setActivities] = useState([]);
+  
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [salesRes, historyRes] = await Promise.allSettled([
+        apiClient.get('/pos/reports', { params: { range: 'today' } }),
+        apiClient.get('/pos/sales', { params: { limit: 6 } })
+      ]);
+      
+      if (salesRes.status === 'fulfilled') {
+        setStats(salesRes.value.data?.data || salesRes.value.data);
+      }
+      if (historyRes.status === 'fulfilled') {
+        const h = historyRes.value.data?.data?.sales || [];
+        setActivities(h);
+      }
+    } catch (err) {
+      console.error('Failed to fetch CEO sales dashboard data:', err);
+    }
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const data = stats || {};
+  const totalRevenue = parseFloat(data.totalRevenue) || 0;
+  const totalOrders = parseInt(data.totalTransactions) || 0;
+  const activeCustomers = parseInt(data.uniqueCustomers) || 0;
+  const avgOrder = parseFloat(data.averageOrderValue) || 0;
+  
+  const topProducts = data.topProducts || [];
+  const salesByMethod = data.salesByMethod || [];
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0 }}>💰 SALES MANAGEMENT</h1>
-          <p style={{ color: '#64748b', margin: 0 }}>🔗 Manage Sales Across All Branches</p>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => handleExport('PDF')} style={{ padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <Download size={16}/> Export PDF
-          </button>
-          <button onClick={() => handleExport('Excel')} style={{ padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <Download size={16}/> Export Excel
-          </button>
-        </div>
-      </div>
-
-      {/* FILTERS & SUMMARY */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 24 }}>
-        <div style={{ flex: 1, background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Filter size={18}/> Filters</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <select style={{ padding: 8, borderRadius: 4, border: '1px solid #cbd5e1' }} value={filters.department} onChange={e => setFilters({...filters, department: e.target.value})}>
-              <option value="All">All Departments</option>
-              <option value="Pharmacy">Pharmacy</option>
-              <option value="Car Rental">Car Rental</option>
-              <option value="Agri Rental">Agri Rental</option>
-              <option value="Printing">Printing</option>
-            </select>
-            <select style={{ padding: 8, borderRadius: 4, border: '1px solid #cbd5e1' }} value={filters.branch} onChange={e => setFilters({...filters, branch: e.target.value})}>
-              <option value="All">All Branches</option>
-              <option value="Main">Main Branch</option>
-            </select>
-            <select style={{ padding: 8, borderRadius: 4, border: '1px solid #cbd5e1' }} value={filters.date} onChange={e => setFilters({...filters, date: e.target.value})}>
-              <option value="Today">Today</option>
-              <option value="Week">This Week</option>
-              <option value="Month">This Month</option>
-              <option value="Year">This Year</option>
-            </select>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="number" placeholder="Min $" style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #cbd5e1' }} />
-              <input type="number" placeholder="Max $" style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #cbd5e1' }} />
-            </div>
+    <div className="page-wrapper">
+      <div className="so-page">
+        <GlobalStyles />
+        
+        {/* ── HEADER ── */}
+        <div className="so-header">
+          <div>
+            <h1 className="so-title">Sales Overview</h1>
+            <p className="so-subtitle">Executive Performance &amp; Metrics · {timeString}</p>
+          </div>
+          <div>
+            <button onClick={load} className="btn btn-primary" disabled={refreshing}>
+              {refreshing ? <SegmentedSpinner size={16} /> : <span>↻</span>}
+              SYNC DATA
+            </button>
           </div>
         </div>
 
-        <div style={{ flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: 24, borderRadius: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: 16, opacity: 0.9 }}>Total Sales Revenue</div>
-          <div style={{ fontSize: 36, fontWeight: 'bold' }}>$17,000.00</div>
-          <div style={{ fontSize: 14, opacity: 0.8 }}>Filtered by: {filters.date} | {filters.department}</div>
-        </div>
-      </div>
-
-      {/* TREND CHART PLACEHOLDER & DEPARTMENT BREAKDOWN */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart2 size={18}/> Revenue Trend</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['Daily', 'Weekly', 'Monthly'].map(g => (
-                <button key={g} onClick={() => setChartGrain(g)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', background: chartGrain === g ? '#0f172a' : '#f1f5f9', color: chartGrain === g ? 'white' : '#64748b', cursor: 'pointer' }}>
-                  {g}
-                </button>
-              ))}
-            </div>
+        {/* ── ROW 1: KPI HERO CARDS ── */}
+        <div className="so-kpis">
+          <div className="d-card-static" style={{ background: 'var(--color-primary)', color: '#FFF' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, textTransform: 'uppercase', opacity: 0.8, marginBottom: 8 }}>Today's Revenue</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>ETB {fmtInt(totalRevenue)}</div>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Store &amp; POS Network</div>
           </div>
-          <div style={{ height: 200, background: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-            [ {chartGrain} Bar Chart Visualization Rendered Here ]
+
+          <div className="d-card-static">
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Transactions</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{fmtInt(totalOrders)}</div>
+          </div>
+
+          <div className="d-card-static">
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Customers</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>{fmtInt(activeCustomers)}</div>
+          </div>
+
+          <div className="d-card-static">
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Avg Order Value</div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)' }}>ETB {fmtInt(avgOrder)}</div>
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Department Breakdown</h3>
-          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>Pharmacy</td><td style={{ textAlign: 'right', fontWeight: 'bold' }}>$12,500</td></tr>
-              <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>Car Rental</td><td style={{ textAlign: 'right', fontWeight: 'bold' }}>$4,500</td></tr>
-              <tr><td style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>Printing</td><td style={{ textAlign: 'right', fontWeight: 'bold' }}>$0</td></tr>
-              <tr><td style={{ padding: '8px 0' }}>Agri Rental</td><td style={{ textAlign: 'right', fontWeight: 'bold' }}>$0</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        {/* ── ROW 2 ── */}
+        <div className="so-row2">
+          
+          <div className="d-card-static">
+            <h2 className="so-section-title">Top Selling Products (Today)</h2>
+            {topProducts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No sales recorded today.</div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th className="num">Qty Sold</th>
+                      <th className="num">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topProducts.map((p, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 500 }}>{p.name}</td>
+                        <td className="num">{fmtInt(p.quantity)}</td>
+                        <td className="num" style={{ fontWeight: 500 }}>{fmt(p.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
-      {/* FINANCE REPORTS APPROVAL */}
-      <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 24 }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Finance-Submitted Sales Reports</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8fafc' }}>
-            <tr>
-              <th style={{ padding: 12 }}>Report ID</th>
-              <th style={{ padding: 12 }}>Department</th>
-              <th style={{ padding: 12 }}>Date</th>
-              <th style={{ padding: 12 }}>Total</th>
-              <th style={{ padding: 12 }}>Status</th>
-              <th style={{ padding: 12 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map(r => (
-              <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: 12, fontWeight: 'bold' }}>{r.id}</td>
-                <td style={{ padding: 12 }}>{r.department}</td>
-                <td style={{ padding: 12 }}>{r.date}</td>
-                <td style={{ padding: 12, fontWeight: 'bold' }}>ETB {r.total}</td>
-                <td style={{ padding: 12 }}>
-                  <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 'bold', background: r.status === 'APPROVED' ? '#dcfce7' : r.status === 'REJECTED' ? '#fee2e2' : '#fef3c7', color: r.status === 'APPROVED' ? '#166534' : r.status === 'REJECTED' ? '#991b1b' : '#b45309' }}>
-                    {r.status}
-                  </span>
-                </td>
-                <td style={{ padding: 12 }}>
-                  {r.status === 'PENDING' && (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleApprove(r.id)} style={{ background: '#22c55e', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <CheckCircle size={14}/> Approve
-                      </button>
-                      <button onClick={() => setRejectId(r.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <XCircle size={14}/> Reject
-                      </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="d-card-static">
+              <h2 className="so-section-title">Payment Methods</h2>
+              {salesByMethod.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>No data available.</div>
+              ) : (
+                salesByMethod.map((m, i) => {
+                  const pmIcon = m.name?.toLowerCase().includes('cash') ? '💵'
+                    : m.name?.toLowerCase().includes('bank') ? '🏦'
+                    : m.name?.toLowerCase().includes('tele') ? '📱'
+                    : '💳';
+                  return (
+                    <div key={i} className="cat-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>{pmIcon}</span>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{m.name || 'Unknown'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{fmt(m.percentage)}% of today's sales</div>
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>ETB {fmt(m.amount)}</div>
                     </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  );
+                })
+              )}
+            </div>
 
-      {rejectId && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', padding: 24, borderRadius: 8, width: 400 }}>
-            <h3>Reject Report {rejectId}</h3>
-            <textarea placeholder="Enter rejection reason (required)..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} style={{ width: '100%', height: 100, padding: 8, marginBottom: 16, border: '1px solid #cbd5e1', borderRadius: 4 }}></textarea>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setRejectId(null)} style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleReject} style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Submit Rejection</button>
+            <div className="d-card-static" style={{ flex: 1 }}>
+              <h2 className="so-section-title">Recent Sales</h2>
+              {activities.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>No recent sales found.</div>
+              ) : (
+                activities.slice(0, 5).map((a) => {
+                  const pmIcon = a.payment_method_name?.toLowerCase().includes('cash') ? '💵'
+                    : a.payment_method_name?.toLowerCase().includes('bank') ? '🏦'
+                    : a.payment_method_name?.toLowerCase().includes('tele') ? '📱'
+                    : '💳';
+                  return (
+                    <div key={a.id} className="cat-row">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 14 }}>
+                          {a.invoice_number || `#${a.id}`}
+                          {a.customer_name && <span style={{ fontWeight: 400, color: 'var(--color-text-secondary)', marginLeft: 6 }}>— {a.customer_name}</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <span>{pmIcon} {a.payment_method_name || 'Cash'}</span>
+                          {a.cashier_name && <span>👤 {a.cashier_name}</span>}
+                          <span>🕐 {new Date(a.sale_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: 'var(--color-success)', whiteSpace: 'nowrap' }}>ETB {fmt(a.total_amount)}</div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
+          
         </div>
-      )}
-
-      {/* ALL TRANSACTIONS (CRV) */}
-      <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>All Transactions (CRVs)</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: '#f8fafc' }}>
-            <tr>
-              <th style={{ padding: 12 }}>CRV #</th>
-              <th style={{ padding: 12 }}>TXN ID</th>
-              <th style={{ padding: 12 }}>Department</th>
-              <th style={{ padding: 12 }}>Branch</th>
-              <th style={{ padding: 12 }}>Date</th>
-              <th style={{ padding: 12 }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map(t => (
-              <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: 12, color: '#3b82f6', cursor: 'pointer' }}>{t.crv}</td>
-                <td style={{ padding: 12 }}>{t.id}</td>
-                <td style={{ padding: 12 }}>{t.department}</td>
-                <td style={{ padding: 12 }}>{t.branch}</td>
-                <td style={{ padding: 12 }}>{t.date}</td>
-                <td style={{ padding: 12, fontWeight: 'bold' }}>ETB {t.amount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );
-};
-
-export default CEOSales;
+}
