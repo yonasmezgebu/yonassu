@@ -1,0 +1,146 @@
+.page {
+  padding: 28px;
+  background: #f0f4f8;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+.headerLeft h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+}
+.headerLeft p { color: #64748b; margin: 0; font-size: 14px; }
+.exportBtn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+  font-weight: 600; color: #334155; cursor: pointer;
+  transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.exportBtn:hover { background: #f8fafc; transform: translateY(-1px); }
+
+/* ── KPI Grid ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.kpiCard {
+  border-radius: 16px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.kpiCard.blue   { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+.kpiCard.indigo { background: linear-gradient(135deg, #4338ca, #6366f1); }
+.kpiCard.amber  { background: linear-gradient(135deg, #b45309, #f59e0b); }
+.kpiCard.red    { background: linear-gradient(135deg, #be123c, #f43f5e); }
+.kpiCard.teal   { background: linear-gradient(135deg, #0f766e, #14b8a6); }
+.kpiLabel {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: rgba(255,255,255,0.8); margin-bottom: 10px;
+}
+.kpiValue {
+  font-size: 28px; font-weight: 800; color: white;
+  letter-spacing: -0.5px; line-height: 1;
+}
+.kpiSub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 6px; }
+.kpiIcon {
+  position: absolute; right: -8px; bottom: -8px;
+  opacity: 0.15;
+}
+
+/* ── Charts Row ── */
+.chartsRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* ── Tables Row ── */
+.tablesRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.fullRow { margin-bottom: 20px; }
+
+/* ── Card ── */
+.card {
+  background: white; border-radius: 16px;
+  padding: 24px; border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.cardTitle {
+  font-size: 17px; font-weight: 700; color: #0f172a;
+  margin: 0 0 20px 0; display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Table ── */
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left; padding: 11px 14px;
+  background: #f8fafc; color: #64748b;
+  font-weight: 700; font-size: 12px; text-transform: uppercase;
+  border-bottom: 2px solid #e2e8f0;
+}
+.table td {
+  padding: 14px 14px; border-bottom: 1px solid #f1f5f9;
+  color: #334155; font-size: 13px;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: #fafafa; }
+.bold { font-weight: 700; color: #0f172a; }
+.green { color: #059669; font-weight: 700; }
+.red   { color: #dc2626; font-weight: 700; }
+.amber { color: #d97706; font-weight: 700; }
+
+/* ── Badge ── */
+.badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.badge.orange { background: #fef3c7; color: #b45309; }
+.badge.blue   { background: #dbeafe; color: #1d4ed8; }
+.badge.red    { background: #fee2e2; color: #b91c1c; }
+.badge.green  { background: #dcfce7; color: #166534; }
+.badge.gray   { background: #f1f5f9; color: #475569; }
+
+/* ── Progress bar ── */
+.progressWrap { width: 100%; background: #f1f5f9; border-radius: 4px; height: 6px; margin-top: 4px; }
+.progressBar  { height: 6px; border-radius: 4px; background: linear-gradient(90deg,#3b82f6,#6366f1); }
+
+/* ── Loading ── */
+.loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 60vh; gap: 16px; color: #64748b;
+}
+.spinner {
+  width: 40px; height: 40px; border: 4px solid #e2e8f0;
+  border-top-color: #3b82f6; border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { text-align: center; color: #94a3b8; padding: 24px; font-size: 14px; }
+
+@media print {
+  .page { background: white; padding: 0; }
+  .exportBtn { display: none; }
+  .kpiCard { box-shadow: none; border: 1px solid #cbd5e1; }
+}
