@@ -18,6 +18,7 @@ import { io } from 'socket.io-client';
 import UserProfile from '../../pages/shared/UserProfile';
 import './DashboardLayout.css';
 import SegmentedSpinner from '../ui/SegmentedSpinner';
+import { apiLoadingEvents } from '../ui/GlobalLoader';
 
 const ICONS = {
   default:       <Box size={18} strokeWidth={2.5} />,
@@ -709,7 +710,19 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const socketRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [_apiLoading, _setApiLoading] = useState(false);
 
+  useEffect(() => {
+    let count = 0;
+    const onStart = () => { count++; _setApiLoading(true); };
+    const onStop  = () => { count = Math.max(0, count - 1); if (count === 0) _setApiLoading(false); };
+    apiLoadingEvents.addEventListener('start', onStart);
+    apiLoadingEvents.addEventListener('stop', onStop);
+    return () => {
+      apiLoadingEvents.removeEventListener('start', onStart);
+      apiLoadingEvents.removeEventListener('stop', onStop);
+    };
+  }, []);
   // Determine resolved backend URL for profile photos
   const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
   const resolvePhoto = (url) => {
@@ -1201,7 +1214,15 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
           
           <div className="dash-topbar-center" style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
             <div className="dash-search" style={{ flex: 1, position: 'relative' }}>
-              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#047857' }}><Search size={18} /></span>
+              <span className="dash-search-icon" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#047857', display: 'flex' }}>
+                {_apiLoading ? (
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ animation: 'dash-search-spin 0.8s linear infinite' }}>
+                    <circle cx="9" cy="9" r="7" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeDasharray="35 10" />
+                  </svg>
+                ) : (
+                  <Search size={18} />
+                )}
+              </span>
               <input 
                 type="text" 
                 placeholder="Search sales, medicines, orders..." 
