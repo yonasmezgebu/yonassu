@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { rentalState } from '../../../utils/rentalManagerState';
+import apiClient from '../../../services/apiClient';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 import './RentalDashboard.css';
 
@@ -121,32 +121,22 @@ const RentalDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setRefreshing(true);
-    const assets = rentalState.getAssets();
-    const activeOrders = rentalState.getRentalOrders().filter(o => o.status === 'active');
-    const maintenance = rentalState.getMaintenanceRecords().filter(m => m.status === 'in_progress');
-
-    const totalFleetValue = assets.reduce((sum, a) => sum + (Number(a.cost) || 150000), 0);
-
-    const fleetStats = {
-        total: assets.length,
-        cars: assets.filter(a => a.asset_type === 'car').length,
-        agri: assets.filter(a => a.asset_type === 'agri_equipment').length,
-        available: assets.filter(a => a.status === 'available').length,
-        rented: assets.filter(a => a.status === 'rented').length,
-        maintenance: assets.filter(a => a.status === 'maintenance').length,
-        totalValue: totalFleetValue
-    };
-
-    setData({ fleetStats, activeOrders, maintenance, assets });
-    setTimeout(() => setRefreshing(false), 500);
+    try {
+      const res = await apiClient.get('/car-renting/dashboard');
+      if (res.success) {
+        setData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
     load();
-    const unsub = rentalState.subscribe(load);
-    return unsub;
   }, [load]);
 
   const nav = (path) => { window.history.pushState({}, '', path); window.dispatchEvent(new PopStateEvent('popstate')); };
