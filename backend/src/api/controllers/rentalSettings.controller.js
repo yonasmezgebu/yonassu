@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 // ─── GET RENTAL SETTINGS (public) ─────────────────────────────────────
 exports.getSettings = catchAsync(async (req, res) => {
@@ -33,6 +34,7 @@ exports.updateSettings = catchAsync(async (req, res) => {
   }
 
   const updated = await db('rental_settings').first();
+  carRentalAudit.log(req, 'Rental Settings Updated', 'Contact Settings', existing, updated);
   res.json({ status: 'success', data: updated });
 });
 
@@ -67,13 +69,16 @@ exports.getUnreadCount = catchAsync(async (req, res) => {
 // ─── MARK MESSAGE AS READ ──────────────────────────────────────────────────
 exports.markRead = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const msg = await db('rental_messages').where({ id }).first();
   await db('rental_messages').where({ id }).update({ is_read: true, updated_at: db.fn.now() });
+  carRentalAudit.log(req, 'Rental Message Marked Read', id, msg ? { is_read: msg.is_read } : null, { is_read: true });
   res.json({ status: 'success' });
 });
 
 // ─── MARK ALL MESSAGES AS READ ─────────────────────────────────────────────
 exports.markAllRead = catchAsync(async (req, res) => {
   await db('rental_messages').where({ is_read: false }).update({ is_read: true, updated_at: db.fn.now() });
+  carRentalAudit.log(req, 'Rental Messages Marked All Read', null, null, { is_read: true });
   res.json({ status: 'success' });
 });
 
@@ -81,13 +86,17 @@ exports.markAllRead = catchAsync(async (req, res) => {
 exports.toggleReadStatus = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { isRead } = req.body;
+  const msg = await db('rental_messages').where({ id }).first();
   await db('rental_messages').where({ id }).update({ is_read: !!isRead, updated_at: db.fn.now() });
+  carRentalAudit.log(req, 'Rental Message Read Status Toggled', id, msg ? { is_read: msg.is_read } : null, { is_read: !!isRead });
   res.json({ status: 'success' });
 });
 
 // ─── DELETE MESSAGE ────────────────────────────────────────────────────────
 exports.deleteMessage = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const msg = await db('rental_messages').where({ id }).first();
   await db('rental_messages').where({ id }).delete();
+  carRentalAudit.log(req, 'Rental Message Deleted', id, msg, null);
   res.json({ status: 'success' });
 });
