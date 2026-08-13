@@ -240,7 +240,9 @@
 .moduleBadge--Printing    { background: #FDE9E9; color: #B91C1C; }
 .moduleBadge--Finance     { background: #DCFCE7; color: #166534; }
 .moduleBadge--Pharmacy    { background: #FEF3C7; color: #92400E; }
+.moduleBadge--PharmacyStore { background: #FEF3C7; color: #92400E; }
 .moduleBadge--Store       { background: #DBEAFE; color: #1D4ED8; }
+.moduleBadge--CarRental   { background: #FFEDD5; color: #9A3412; }
 .moduleBadge--Procurement { background: #EDE9FE; color: #5B21B6; }
 .moduleBadge--Sales       { background: #FCE7F3; color: #9D174D; }
 .moduleBadge--Inventory   { background: #CCFBF1; color: #115E59; }
