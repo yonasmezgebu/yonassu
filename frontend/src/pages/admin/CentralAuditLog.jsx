@@ -30,6 +30,10 @@ const CentralAuditLog = ({ fixedModule }) => {
   const isPrinting   = !isSuperAdmin && !isCEO && (
     roleStr.includes('printing') || deptStr.includes('printing')
   );
+  const isCarRental  = !isSuperAdmin && !isCEO && (
+    roleStr.includes('car rental') || roleStr.includes('car renting') ||
+    deptStr.includes('car rental') || deptStr.includes('car renting')
+  );
 
   // Lock modules based on role — HR and Store are locked to their module.
   // Printing follows the Sales pattern: module records plus own activity.
@@ -127,6 +131,8 @@ const CentralAuditLog = ({ fixedModule }) => {
                 ? 'Printing department activity log — all printing module records plus your own actions.'
                 : isSales
                 ? 'Sales activity log — all sales module records plus your own actions.'
+                : isCarRental
+                ? 'Car & Agri Rental activity log — your department records only.'
                 : 'Append-only system record of all module activities.'}
             </p>
           </div>
@@ -172,6 +178,7 @@ const CentralAuditLog = ({ fixedModule }) => {
             <option value="Pharmacy Sales">Pharmacy Sales</option>
             <option value="Pharmacy">Pharmacy (Legacy)</option>
             <option value="Store">Store</option>
+            <option value="Car Rental">Car Rental</option>
             <option value="Procurement">Procurement</option>
             <option value="Sales">Sales</option>
             <option value="Inventory">Inventory</option>
@@ -223,7 +230,7 @@ const CentralAuditLog = ({ fixedModule }) => {
                           </td>
                           {!isLocked && (
                             <td>
-                              <span className={`${styles.moduleBadge} ${styles[`moduleBadge--${log.module}`] || ''}`}>{log.module}</span>
+                              <span className={`${styles.moduleBadge} ${styles[`moduleBadge--${String(log.module || '').replace(/\s+/g, '')}`] || ''}`}>{log.module}</span>
                             </td>
                           )}
                           <td>
