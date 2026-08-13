@@ -13,118 +13,195 @@ const monthName = (m) => new Date(2000, parseInt(m) - 1).toLocaleString('default
 /* ─── CSS Styles for Hover and Responsive ──────────────────────── */
 const styles = `
   .pv-wrapper {
+    --color-primary:#2563EB;
+    --color-primary-hover:#1D4ED8;
+    --color-bg-page:#F5F6FA;
+    --color-bg-card:#FFFFFF;
+    --color-border:#E5E7EB;
+    --color-text-primary:#111827;
+    --color-text-secondary:#6B7280;
+    --color-text-muted:#9CA3AF;
+    --color-success:#16A34A; --color-success-bg:#DCFCE7;
+    --color-danger:#DC2626;  --color-danger-bg:#FEE2E2;
+    --color-warning:#D97706; --color-warning-bg:#FEF3C7;
+    --color-info:#0284C7;    --color-info-bg:#E0F2FE;
+    --gold:#FBBF24; --gold-border:#F59E0B;
     padding: 24px;
-    background-color: #F5F5F5;
+    background-color: #F5F6FA;
     min-height: 100vh;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    line-height: 1.5;
     width: 100%;
     box-sizing: border-box;
     margin: 0;
   }
+  @media (max-width: 1024px) { .pv-wrapper { padding: 16px; } }
+  @media (max-width: 768px)  { .pv-wrapper { padding: 12px; } }
+  @media (min-width: 1920px) { .pv-wrapper { padding: 28px; } }
   .pv-container {
     width: 100%;
-    margin: 0;
+    max-width: 1800px;
+    margin: 0 auto;
     padding: 0;
   }
-  .btn-primary {
-    background: #2E8B57;
-    color: white;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* ── Cards ─────────────────────────────── */
+  .card-container {
+    background: #FFFFFF;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    width: 100%;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
   }
-  .btn-primary:hover {
-    background: #228B22;
+  .card-container:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   }
-  .btn-tab {
-    border-radius: 0;
+  /* ── Buttons: every button on the page gets a gold hover (rule 3) ── */
+  .pv-wrapper button {
+    font-family: inherit;
+    border-radius: 8px;
+    transition: all 0.15s ease !important;
+  }
+  .pv-wrapper button:not(:disabled):hover {
+    background: var(--gold) !important;
+    border-color: var(--gold-border) !important;
+    color: #111827 !important;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.35) !important;
+    transform: translateY(-1px) !important;
+  }
+  .pv-wrapper button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: #2563EB;
+    color: #FFFFFF;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 700;
-    transition: all 0.2s ease;
-    border: 2px solid #8D6E63;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  /* ── Tabs ──────────────────────────────── */
+  .btn-tab {
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    border: 1px solid var(--color-border);
+    background: #FFFFFF;
+    color: #374151;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
   .btn-tab.active {
-    background: #228B22;
-    color: white;
-    border-color: #1B5E20;
+    background: #2563EB;
+    color: #FFFFFF;
+    border-color: #2563EB;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
   }
   .btn-tab.inactive {
     background: #FFFFFF;
-    color: #424242;
+    color: #374151;
+    border-color: #E5E7EB;
   }
-  .btn-tab:hover {
-    background: #2E8B57;
-    color: white;
-  }
+  /* ── Tables ────────────────────────────── */
   .table-row {
-    transition: background 0.2s ease;
+    transition: background 0.15s ease;
   }
   .table-row:hover {
-    background: #A5D6A7 !important;
+    background: #F9FAFB !important;
   }
+  /* ── Inputs ────────────────────────────── */
   .form-input {
     width: 100%;
-    padding: 12px 14px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
     box-sizing: border-box;
     outline: none;
     font-size: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
     background: #FFFFFF;
-    color: #424242;
-    font-weight: 600;
+    color: var(--color-text-primary);
+    font-weight: 400;
   }
   .form-input:focus {
-    border-color: #228B22;
-    box-shadow: 0 0 5px rgba(34,139,34,0.5);
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
-  .card-container {
-    background: #FFFFFF;
-    border-radius: 0;
-    border: 1px solid #8D6E63;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    width: 100%;
+  .form-input:disabled, .form-input[readonly] {
+    background: #F9FAFB;
+    color: var(--color-text-secondary);
   }
+  /* ── Section titles ────────────────────── */
   .section-title {
-    color: #1B5E20;
-    font-size: 18px;
-    font-weight: 800;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-weight: 600;
     margin: 0 0 16px 0;
     display: flex;
     align-items: center;
     gap: 8px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #8D6E63;
+    border-bottom: 1px solid var(--color-border);
   }
   .grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 16px;
   }
   .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 16px;
   }
-  @media (max-width: 768px) {
-    .grid-2, .grid-3 {
-      grid-template-columns: 1fr;
-    }
-    .pv-wrapper {
-      padding: 16px;
-    }
+  /* ── Payment-method tiles ──────────────── */
+  .pv-option {
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .pv-option:hover {
+    background: var(--gold) !important;
+    border-color: var(--gold-border) !important;
+    color: #111827 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.25);
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: .5; }
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 480px) {
+    .grid-2, .grid-3 {
+      grid-template-columns: 1fr;
+    }
   }
   @media print {
     @page { margin: 15mm; size: A4; }
@@ -177,7 +254,7 @@ const SigPad = ({ label, onSave }) => {
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = '#1B5E20';
+    ctx.strokeStyle = '#2563EB';
     ctx.lineWidth = 2;
     ctx.lineCap = 'square';
     ctx.lineJoin = 'miter';
@@ -222,23 +299,23 @@ const SigPad = ({ label, onSave }) => {
   };
 
   return (
-    <div style={{ border: '2px solid #8D6E63', borderRadius: 0, overflow: 'hidden', background: '#FFFFFF' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#A5D6A7', borderBottom: '2px solid #8D6E63' }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <PenTool size={14} /> {label}
-          {saved && <span style={{ background: '#228B22', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', borderRadius: 0, marginLeft: 4 }}>✓ Saved</span>}
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#F9FAFB', borderBottom: '1px solid var(--color-border)' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <PenTool size={14} color="var(--color-primary)" /> {label}
+          {saved && <span style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', fontSize: 10, padding: '2px 8px', borderRadius: 99, marginLeft: 4, fontWeight: 600 }}>✓ Saved</span>}
         </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" onClick={handleClear} style={{ fontSize: 11, padding: '4px 10px', border: 'none', background: '#F44336', color: '#FFFFFF', borderRadius: 0, cursor: 'pointer', fontWeight: 700 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={handleClear} style={{ fontSize: 12, padding: '6px 12px', border: 'none', background: 'var(--color-danger)', color: '#FFFFFF', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
             Clear
           </button>
-          <button type="button" onClick={handleSave} disabled={isEmpty} style={{ fontSize: 11, padding: '4px 10px', border: 'none', background: isEmpty ? '#9E9E9E' : '#2E8B57', color: '#FFFFFF', borderRadius: 0, cursor: isEmpty ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
+          <button type="button" onClick={handleSave} disabled={isEmpty} style={{ fontSize: 12, padding: '6px 12px', border: 'none', background: isEmpty ? '#9CA3AF' : '#2563EB', color: '#FFFFFF', borderRadius: 8, cursor: isEmpty ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
             Save
           </button>
         </div>
       </div>
       <canvas ref={canvasRef} width={400} height={120} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw} style={{ width: '100%', height: 120, display: 'block', cursor: 'crosshair', background: '#FFFFFF', touchAction: 'none' }} />
-      <div style={{ padding: '6px 10px', background: '#A5D6A7', borderTop: '2px solid #8D6E63', fontSize: 11, color: '#1B5E20', textAlign: 'center', fontWeight: 700 }}>
+      <div style={{ padding: '8px 10px', background: '#F9FAFB', borderTop: '1px solid var(--color-border)', fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', fontWeight: 500 }}>
         {isEmpty ? 'Draw signature and Save' : saved ? '✓ Captured' : 'Press Save'}
       </div>
     </div>
@@ -248,12 +325,12 @@ const SigPad = ({ label, onSave }) => {
 /* ─── Printed Signature Block ─────────────────────────────────── */
 const PrintSigBlock = ({ label, name, sigImage }) => (
   <div style={{ width: '210px', textAlign: 'center' }}>
-    <div style={{ height: 80, border: '2px solid #424242', borderRadius: 0, marginBottom: 6, overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {sigImage ? <img src={sigImage} alt="signature" style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#424242', fontSize: 11 }}>—</span>}
+    <div style={{ height: 80, border: '1px solid var(--color-border)', borderRadius: 10, marginBottom: 6, overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {sigImage ? <img src={sigImage} alt="signature" style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#9CA3AF', fontSize: 11 }}>—</span>}
     </div>
-    <div style={{ borderTop: '2px solid #424242', paddingTop: 4 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#424242' }}>{name || '_______________'}</div>
-      <div style={{ fontSize: 11, color: '#424242', marginTop: 2, fontWeight: 600 }}>{label}</div>
+    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 4 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{name || '_______________'}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, fontWeight: 400 }}>{label}</div>
     </div>
   </div>
 );
@@ -588,8 +665,8 @@ const FinancePV = () => {
   };
 
   const statusConfig = {
-    PENDING_FINANCE: { bg: '#FFF3E0', color: '#FF9800', label: 'CEO Confirmed — Awaiting Finance' },
-    FINANCE_READY:   { bg: '#A5D6A7', color: '#1B5E20', label: 'Finance Ready — Payment Set' },
+    PENDING_FINANCE: { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)', label: 'CEO Confirmed — Awaiting Finance' },
+    FINANCE_READY:   { bg: 'var(--color-info-bg)', color: 'var(--color-info)', label: 'Finance Ready — Payment Set' },
   };
 
   /* ─── SUCCESS SCREEN ─── */
@@ -597,25 +674,25 @@ const FinancePV = () => {
     return (
       <div className="pv-wrapper">
         <style>{styles}</style>
-        <div className="no-print card-container" style={{ maxWidth: 600, margin: '40px auto', padding: 40, textAlign: 'center', borderColor: '#228B22' }}>
-          <div style={{ width: 80, height: 80, background: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', borderRadius: 0 }}>
-            <CheckCircle size={48} color="#FFFFFF" />
+        <div className="no-print card-container" style={{ maxWidth: 600, margin: '40px auto', padding: 40, textAlign: 'center' }}>
+          <div style={{ width: 80, height: 80, background: 'var(--color-success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', borderRadius: '50%', border: '1px solid var(--color-success)' }}>
+            <CheckCircle size={48} color="var(--color-success)" />
           </div>
-          <h2 style={{ margin: '0 0 10px', fontSize: 24, fontWeight: 800, color: '#1B5E20' }}>General Payment Generated!</h2>
+          <h2 style={{ margin: '0 0 10px', fontSize: 26, fontWeight: 700, color: 'var(--color-text-primary)' }}>General Payment Generated!</h2>
           {submitted.pvNumber && (
-            <div style={{ fontSize: 16, color: '#424242', marginBottom: 12, fontWeight: 700 }}>
-              PV Number: <span style={{ color: '#228B22' }}>{submitted.pvNumber}</span>
+            <div style={{ fontSize: 15, color: 'var(--color-text-secondary)', marginBottom: 12, fontWeight: 500 }}>
+              PV Number: <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontFamily: 'monospace' }}>{submitted.pvNumber}</span>
             </div>
           )}
-          <div style={{ fontSize: 16, color: '#424242', marginBottom: 30, background: '#F5F5F5', padding: 16, border: '2px solid #8D6E63' }}>
-            <div style={{ color: '#1B5E20', fontSize: 28, fontWeight: 900, marginBottom: 8 }}>ETB {parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-            Paid to <strong>{submitted.paidTo}</strong>
+          <div style={{ fontSize: 15, color: 'var(--color-text-secondary)', marginBottom: 30, background: '#F9FAFB', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
+            <div style={{ color: 'var(--color-primary)', fontSize: 28, fontWeight: 700, marginBottom: 8 }}>ETB {parseFloat(submitted.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            Paid to <strong style={{ color: 'var(--color-text-primary)' }}>{submitted.paidTo}</strong>
           </div>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-            <button className="btn-primary" onClick={() => window.print()} style={{ padding: '14px 28px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn-primary" onClick={() => window.print()} style={{ padding: '12px 28px', fontSize: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
               <Printer size={20} /> Print PV
             </button>
-            <button className="btn-primary" onClick={resetForm} style={{ padding: '14px 28px', fontSize: 16, background: '#6B8E23' }}>
+            <button onClick={resetForm} style={{ padding: '12px 28px', fontSize: 15, background: '#FFFFFF', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               New PV
             </button>
           </div>
@@ -623,7 +700,7 @@ const FinancePV = () => {
 
         {/* Print-only PV document */}
         <div className="print-only" style={{ maxWidth: 720, margin: '0 auto', fontFamily: 'Arial, sans-serif', padding: 20 }}>
-          <div style={{ textAlign: 'center', borderBottom: '3px solid #1B5E20', paddingBottom: 12, marginBottom: 16 }}>
+          <div style={{ textAlign: 'center', borderBottom: '2px solid #1B5E20', paddingBottom: 12, marginBottom: 16 }}>
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: '#1B5E20' }}>SUTANA TRADING</h2>
             <h3 style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 700, color: '#424242' }}>General Payment</h3>
             {submitted.pvNumber && <div style={{ fontSize: 14, marginTop: 4, fontWeight: 700 }}>PV No: {submitted.pvNumber}</div>}
@@ -687,10 +764,10 @@ const FinancePV = () => {
       
       {/* ── Notification Banner (replaces alerts) ── */}
       {notification && (
-        <div style={{ width: '100%', background: notification.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFFFFF', padding: '16px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, border: '2px solid #1B5E20' }}>
+        <div style={{ position: 'fixed', top: 76, right: 24, zIndex: 9999, width: 'min(420px, calc(100vw - 48px))', background: notification.type === 'error' ? 'var(--color-danger-bg)' : 'var(--color-success-bg)', color: notification.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)', padding: '14px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, fontSize: 14, borderRadius: 8, borderLeft: `4px solid ${notification.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', animation: 'toastIn 0.25s ease both' }}>
           <AlertCircle size={20} />
-          {notification.msg}
-          <button onClick={() => setNotification(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', fontWeight: 900 }}>✕</button>
+          <span style={{ flex: 1 }}>{notification.msg}</span>
+          <button onClick={() => setNotification(null)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>✕</button>
         </div>
       )}
 
@@ -717,14 +794,14 @@ const FinancePV = () => {
         {/* ══ PENDING PAYMENT TAB ══ */}
         {activeTab === 'pending' && (
           <div className="card-container">
-            <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a5f,#0f172a)', borderBottom: '2px solid #1e40af', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '20px 24px', background: '#0F172A', borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={20} /> Pending Payments
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#93C5FD', fontWeight: 500 }}>All pending Fleet payments and Payroll payments in one place.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94A3B8', fontWeight: 400 }}>All pending Fleet payments and Payroll payments in one place.</p>
               </div>
-              <button onClick={() => { loadPending(); fetchPayrollQueue(); }} style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              <button onClick={() => { loadPending(); fetchPayrollQueue(); }} style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
                 <RefreshCw size={15} /> Refresh All
               </button>
             </div>
@@ -733,34 +810,34 @@ const FinancePV = () => {
             <div style={{ padding: '20px 24px 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <div style={{ width: 4, height: 22, background: '#F59E0B', borderRadius: 2 }} />
-                <span style={{ fontWeight: 800, fontSize: 14, color: '#334155' }}>Fleet & Maintenance Payments</span>
-                {pendingList.length > 0 && <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 700, border: '1px solid #FDE68A' }}>{pendingList.length} pending</span>}
+                <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>Fleet & Maintenance Payments</span>
+                {pendingList.length > 0 && <span style={{ background: 'var(--color-warning-bg)', color: '#92400E', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600, border: '1px solid #FDE68A' }}>{pendingList.length} pending</span>}
               </div>
             </div>
 
             {pendingLoad ? (
               <div style={{ background: '#FFFFFF', padding: 0 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#2E8B57', opacity: 0.7 }}>
+                  <thead style={{ background: '#F9FAFB', opacity: 0.7 }}>
                     <tr>
                       {['SOURCE', 'ASSET / DESCRIPTION', 'AMOUNT (ETB)', 'STATUS', 'ACTION'].map(h => (
-                        <th key={h} style={{ padding: '16px', borderBottom: '2px solid #8D6E63' }}>
-                          <div style={{ height: 14, background: 'rgba(255,255,255,0.4)', borderRadius: 4, width: '70%' }}></div>
+                        <th key={h} style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-border)' }}>
+                          <div style={{ height: 14, background: '#E5E7EB', borderRadius: 4, width: '70%' }}></div>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {[1, 2, 3, 4, 5].map(i => (
-                      <tr key={i} style={{ borderBottom: '1px solid #E0E0E0' }}>
-                        <td style={{ padding: '16px' }}><div style={{ height: 24, width: 80, background: '#F5F5F5', borderRadius: 4, animation: 'pulse 1.5s infinite' }}></div></td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ height: 18, width: 140, background: '#F5F5F5', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite' }}></div>
-                          <div style={{ height: 14, width: 200, background: '#F5F5F5', borderRadius: 4, animation: 'pulse 1.5s infinite' }}></div>
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '14px 16px' }}><div style={{ height: 24, width: 80, background: '#F9FAFB', borderRadius: 4, animation: 'pulse 1.5s infinite' }}></div></td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ height: 18, width: 140, background: '#F9FAFB', borderRadius: 4, marginBottom: 8, animation: 'pulse 1.5s infinite' }}></div>
+                          <div style={{ height: 14, width: 200, background: '#F9FAFB', borderRadius: 4, animation: 'pulse 1.5s infinite' }}></div>
                         </td>
-                        <td style={{ padding: '16px', textAlign: 'right' }}><div style={{ height: 24, width: 100, background: '#F5F5F5', borderRadius: 4, marginLeft: 'auto', animation: 'pulse 1.5s infinite' }}></div></td>
-                        <td style={{ padding: '16px', textAlign: 'center' }}><div style={{ height: 28, width: 120, background: '#F5F5F5', borderRadius: 4, margin: '0 auto', animation: 'pulse 1.5s infinite' }}></div></td>
-                        <td style={{ padding: '16px', textAlign: 'center' }}><div style={{ height: 36, width: 140, background: '#F5F5F5', borderRadius: 6, margin: '0 auto', animation: 'pulse 1.5s infinite' }}></div></td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right' }}><div style={{ height: 24, width: 100, background: '#F9FAFB', borderRadius: 4, marginLeft: 'auto', animation: 'pulse 1.5s infinite' }}></div></td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}><div style={{ height: 28, width: 120, background: '#F9FAFB', borderRadius: 4, margin: '0 auto', animation: 'pulse 1.5s infinite' }}></div></td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}><div style={{ height: 36, width: 140, background: '#F9FAFB', borderRadius: 6, margin: '0 auto', animation: 'pulse 1.5s infinite' }}></div></td>
                       </tr>
                     ))}
                   </tbody>
@@ -768,55 +845,55 @@ const FinancePV = () => {
               </div>
 
             ) : pendingList.length === 0 ? (
-              <div style={{ padding: 60, textAlign: 'center', color: '#1B5E20', background: '#FFFFFF' }}>
-                <CheckCircle size={48} style={{ color: '#4CAF50', margin: '0 auto 16px', display: 'block', opacity: 0.8 }} />
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>No pending payments</h3>
-                <p style={{ margin: '8px 0 0', fontSize: 14, fontWeight: 600, opacity: 0.8 }}>All CEO-approved payments have been processed.</p>
+              <div style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)', background: '#F9FAFB' }}>
+                <CheckCircle size={48} style={{ color: 'var(--color-success)', margin: '0 auto 16px', display: 'block', opacity: 0.6 }} />
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>No pending payments</h3>
+                <p style={{ margin: '8px 0 0', fontSize: 14, fontWeight: 400, opacity: 0.8 }}>All CEO-approved payments have been processed.</p>
               </div>
 
             ) : (
               <div style={{ overflowX: 'auto', width: '100%' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ background: '#2E8B57', color: '#FFFFFF' }}>
+                  <thead style={{ background: '#F9FAFB', color: 'var(--color-text-secondary)' }}>
                     <tr>
-                      <th style={{ padding: '16px', fontWeight: 800, fontSize: 13, borderBottom: '2px solid #8D6E63' }}>SOURCE</th>
-                      <th style={{ padding: '16px', fontWeight: 800, fontSize: 13, borderBottom: '2px solid #8D6E63' }}>ASSET / DESCRIPTION</th>
-                      <th style={{ padding: '16px', fontWeight: 800, fontSize: 13, borderBottom: '2px solid #8D6E63', textAlign: 'right' }}>AMOUNT (ETB)</th>
-                      <th style={{ padding: '16px', fontWeight: 800, fontSize: 13, borderBottom: '2px solid #8D6E63', textAlign: 'center' }}>STATUS</th>
-                      <th style={{ padding: '16px', fontWeight: 800, fontSize: 13, borderBottom: '2px solid #8D6E63', textAlign: 'center' }}>ACTION</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 500, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: '1px solid var(--color-border)' }}>SOURCE</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 500, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: '1px solid var(--color-border)' }}>ASSET / DESCRIPTION</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 500, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>AMOUNT (ETB)</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 500, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>STATUS</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 500, fontSize: 12, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pendingList.map((item, idx) => {
-                      const sc = statusConfig[item.status] || { bg: '#F5F5F5', color: '#424242', label: item.status };
+                      const sc = statusConfig[item.status] || { bg: '#F3F4F6', color: 'var(--color-text-secondary)', label: item.status };
                       return (
-                        <tr key={item.id} className="table-row" style={{ background: idx % 2 === 0 ? '#FFFFFF' : '#F5F5F5', borderBottom: '1px solid #8D6E63' }}>
-                          <td style={{ padding: '16px' }}>
-                            <span style={{ background: '#6B8E23', color: '#FFFFFF', padding: '4px 8px', fontSize: 12, fontWeight: 700, border: '1px solid #1B5E20' }}>
+                        <tr key={item.id} className="table-row" style={{ background: '#FFFFFF', borderBottom: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{ background: 'var(--color-info-bg)', color: 'var(--color-info)', padding: '4px 10px', fontSize: 12, fontWeight: 600, borderRadius: 99 }}>
                               {item.source}
                             </span>
                           </td>
-                          <td style={{ padding: '16px' }}>
-                            <div style={{ fontWeight: 800, color: '#1B5E20', fontSize: 15 }}>{item.asset || '—'}</div>
-                            <div style={{ fontSize: 13, color: '#424242', marginTop: 4, fontWeight: 600 }}>{item.description}</div>
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 14 }}>{item.asset || '—'}</div>
+                            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, fontWeight: 400 }}>{item.description}</div>
                           </td>
-                          <td style={{ padding: '16px', textAlign: 'right', fontWeight: 900, color: '#1B5E20', fontSize: 18 }}>
+                          <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text-primary)', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
                             {item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </td>
-                          <td style={{ padding: '16px', textAlign: 'center' }}>
-                            <span style={{ background: sc.bg, color: sc.color, padding: '6px 12px', fontSize: 12, fontWeight: 800, border: `1px solid \${sc.color}` }}>
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <span style={{ background: sc.bg, color: sc.color, padding: '5px 12px', fontSize: 12, fontWeight: 600, borderRadius: 99, border: `1px solid ${sc.color}` }}>
                               {sc.label}
                             </span>
                           </td>
-                          <td style={{ padding: '16px', textAlign: 'center' }}>
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                             {item.status === 'PENDING_FINANCE' && (
-                              <button className="btn-primary" onClick={() => handleConfirm(item)} disabled={processId === item.id} style={{ padding: '10px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, background: '#FF9800' }}>
+                              <button className="btn-primary" onClick={() => handleConfirm(item)} disabled={processId === item.id} style={{ padding: '8px 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                 {processId === item.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />}
                                 Confirm Payment
                               </button>
                             )}
                             {item.status === 'FINANCE_READY' && (
-                              <button className="btn-primary" onClick={() => handleContinuePayment(item)} style={{ padding: '10px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <button className="btn-primary" onClick={() => handleContinuePayment(item)} style={{ padding: '8px 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                 <Banknote size={14} /> Continue →
                               </button>
                             )}
@@ -833,8 +910,8 @@ const FinancePV = () => {
             <div style={{ padding: '8px 24px 4px', marginTop: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <div style={{ width: 4, height: 22, background: '#16A34A', borderRadius: 2 }} />
-                <span style={{ fontWeight: 800, fontSize: 14, color: '#334155' }}>Payroll Payments</span>
-                {payrollQueue.length > 0 && <span style={{ background: '#DCFCE7', color: '#15803D', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 700, border: '1px solid #86EFAC' }}>{payrollQueue.length} pending</span>}
+                <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>Payroll Payments</span>
+                {payrollQueue.length > 0 && <span style={{ background: 'var(--color-success-bg)', color: '#15803D', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600, border: '1px solid #86EFAC' }}>{payrollQueue.length} pending</span>}
               </div>
             </div>
 
@@ -842,14 +919,14 @@ const FinancePV = () => {
               <style>{`
                 @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
                 .pq-card { animation: fadeUp .25s ease both; }
-                .pq-emp-row:hover { background: #f0fdf4 !important; }
-                .pq-pay-btn:hover { background: #15803d !important; transform: scale(1.03); }
+                .pq-emp-row:hover { background: #F9FAFB !important; }
+                .pq-pay-btn:hover { background: #FBBF24 !important; color:#111827 !important; transform: scale(1.03); }
               `}</style>
 
               {payrollToast && (
-                <div style={{ position: 'fixed', top: 20, right: 24, zIndex: 9999, background: payrollToast.type === 'success' ? '#16A34A' : '#DC2626', color: '#fff', padding: '14px 22px', borderRadius: 12, fontSize: 14, fontWeight: 600, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: 10, maxWidth: 480 }}>
+                <div style={{ position: 'fixed', top: 76, right: 24, zIndex: 9999, width: 'min(480px, calc(100vw - 48px))', background: payrollToast.type === 'success' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)', color: payrollToast.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)', padding: '14px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 10, borderLeft: `4px solid ${payrollToast.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)'}`, animation: 'toastIn 0.25s ease both' }}>
                   {payrollToast.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-                  {payrollToast.msg}
+                  <span style={{ flex: 1 }}>{payrollToast.msg}</span>
                 </div>
               )}
 
@@ -880,7 +957,7 @@ const FinancePV = () => {
                   const pct = totalEmp > 0 ? Math.round((paidCount / totalEmp) * 100) : 0;
 
                   return (
-                    <div key={key} className="pq-card" style={{ background: '#fff', borderRadius: 16, border: `2px solid ${allPaid ? '#86efac' : '#e2e8f0'}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                    <div key={key} className="pq-card" style={{ background: '#fff', borderRadius: 10, border: `1px solid ${allPaid ? '#86efac' : '#E2E8F0'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                       {/* ── Month Card Header ── */}
                       <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 16, background: allPaid ? '#f0fdf4' : '#fff' }}>
                         {/* Icon */}
@@ -1113,8 +1190,8 @@ const FinancePV = () => {
 
             {/* Payment Modal */}
             {payModal && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-                <div style={{ background: '#fff', borderRadius: 14, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 24px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: '100%', maxWidth: 520, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
                   <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CreditCard size={20} color="#16A34A" />
                     {payModal.isBulk ? `Pay ${Object.values(payrollSelected).filter(Boolean).length} Selected Employees` : `Pay ${payModal.emp?.full_name}`}
@@ -1189,65 +1266,67 @@ const FinancePV = () => {
         {activeTab === 'pv' && (
           <form onSubmit={handleSubmit} style={{ width: '100%' }}>
             {maintSource && (
-              <div style={{ background: '#A5D6A7', border: '2px solid #1B5E20', padding: '16px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, color: '#1B5E20' }}>
-                <CheckCircle size={24} />
-                PV pre-filled for <strong>{maintSource.asset}</strong>. Complete form and generate.
-                <button type="button" onClick={() => { setMaintSource(null); resetForm(); }} style={{ marginLeft: 'auto', background: '#F44336', color: '#FFFFFF', border: 'none', padding: '8px 16px', fontWeight: 800, cursor: 'pointer' }}>Clear</button>
+              <div style={{ background: 'var(--color-info-bg)', border: '1px solid #BAE6FD', padding: '14px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 500, color: '#0369A1', borderRadius: 10, flexWrap: 'wrap' }}>
+                <CheckCircle size={20} />
+                <span style={{ flex: 1 }}>PV pre-filled for <strong>{maintSource.asset}</strong>. Complete form and generate.</span>
+                <button type="button" onClick={() => { setMaintSource(null); resetForm(); }} style={{ background: 'var(--color-danger)', color: '#FFFFFF', border: 'none', padding: '8px 14px', fontWeight: 600, fontSize: 13, borderRadius: 8, cursor: 'pointer' }}>Clear</button>
               </div>
             )}
 
             {/* General Information */}
-            <div className="card-container" style={{ padding: 32 }}>
+            <div className="card-container" style={{ padding: 24 }}>
               <h3 className="section-title"><User size={20} /> General Information</h3>
               <div className="grid-2" style={{ marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Date Paid *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Date Paid *</label>
                   <input className="form-input" required type="date" value={date} onChange={e => setDate(e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Paid To *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Paid To *</label>
                   <input className="form-input" required value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Supplier / Employee / Vendor" />
                 </div>
               </div>
               <div className="grid-2" style={{ marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Amount (ETB) *</label>
-                  <input className="form-input" required type="number" step="0.01" value={amount} onChange={handleAmountChange} placeholder="0.00" style={{ fontSize: 16, fontWeight: 800, color: '#1B5E20' }} />
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Amount (ETB) *</label>
+                  <input className="form-input" required type="number" step="0.01" value={amount} onChange={handleAmountChange} placeholder="0.00" style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Amount in Words</label>
-                  <input className="form-input" readOnly value={amountWords} placeholder="Auto-filled" style={{ background: '#F5F5F5', fontStyle: 'italic' }} />
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Amount in Words</label>
+                  <input className="form-input" readOnly value={amountWords} placeholder="Auto-filled" style={{ fontStyle: 'italic' }} />
                 </div>
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Description *</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Description *</label>
                 <input className="form-input" required value={description} onChange={e => setDescription(e.target.value)} placeholder="Reason for payment" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Reference # (Optional)</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Reference # (Optional)</label>
                 <input className="form-input" value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder="Bill #, Order ID" />
               </div>
             </div>
 
             {/* Payment Method */}
-            <div className="card-container" style={{ padding: 32 }}>
+            <div className="card-container" style={{ padding: 24 }}>
               <h3 className="section-title"><Banknote size={20} /> Payment Method</h3>
               <div className="grid-3" style={{ marginBottom: paymentMethod !== 'Cash' ? 24 : 0 }}>
                 {[{ type: 'Cash', icon: Banknote }, { type: 'Bank', icon: Building }, { type: 'Telebirr', icon: Smartphone }].map(({ type, icon: Icon }) => (
-                  <div key={type} onClick={() => setPaymentMethod(type)} style={{
-                    padding: 20, border: '2px solid #8D6E63', cursor: 'pointer', fontWeight: 800, fontSize: 16,
-                    background: paymentMethod === type ? '#228B22' : '#FFFFFF',
-                    color: paymentMethod === type ? '#FFFFFF' : '#424242',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, transition: 'all 0.2s'
+                  <div key={type} className="pv-option" onClick={() => setPaymentMethod(type)} style={{
+                    padding: 20, border: `1px solid ${paymentMethod === type ? '#2563EB' : 'var(--color-border)'}`, cursor: 'pointer', fontWeight: 600, fontSize: 15, lineHeight: 1.3,
+                    background: paymentMethod === type ? '#EFF6FF' : '#FFFFFF',
+                    color: paymentMethod === type ? '#1D4ED8' : '#111827',
+                    borderRadius: 10,
+                    boxShadow: paymentMethod === type ? '0 2px 10px rgba(37,99,235,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, transition: 'all 0.15s ease'
                   }}>
-                    <Icon size={32} /> {type}
+                    <Icon size={30} color={paymentMethod === type ? '#2563EB' : '#6B7280'} /> {type}
                   </div>
                 ))}
               </div>
 
               {paymentMethod === 'Bank' && (
-                <div style={{ background: '#A5D6A7', padding: 24, border: '2px solid #1B5E20' }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#1B5E20', fontWeight: 800 }}>Bank Details</h4>
+                <div style={{ background: '#F9FAFB', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Bank Details</h4>
                   <div className="grid-2">
                     <input className="form-input" required value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Bank Name *" />
                     <input className="form-input" required value={accountHolder} onChange={e => setAccountHolder(e.target.value)} placeholder="Account Holder *" />
@@ -1258,8 +1337,8 @@ const FinancePV = () => {
               )}
 
               {paymentMethod === 'Telebirr' && (
-                <div style={{ background: '#A5D6A7', padding: 24, border: '2px solid #1B5E20' }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#1B5E20', fontWeight: 800 }}>Telebirr Details</h4>
+                <div style={{ background: '#F9FAFB', padding: 20, border: '1px solid var(--color-border)', borderRadius: 10 }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 600 }}>Telebirr Details</h4>
                   <div className="grid-2">
                     <input className="form-input" required value={telebirrNumber} onChange={e => setTelebirrNumber(e.target.value)} placeholder="Mobile Number *" />
                     <input className="form-input" required value={telebirrName} onChange={e => setTelebirrName(e.target.value)} placeholder="Full Name *" />
@@ -1269,21 +1348,21 @@ const FinancePV = () => {
             </div>
 
             {/* Signatures */}
-            <div className="card-container" style={{ padding: 32 }}>
+            <div className="card-container" style={{ padding: 24 }}>
               <h3 className="section-title"><PenTool size={20} /> Signatures</h3>
               <div className="grid-3">
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Prepared By (Name) *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Prepared By (Name) *</label>
                   <input className="form-input" required value={preparedBy} onChange={e => setPreparedBy(e.target.value)} placeholder="Accountant Name" style={{ marginBottom: 12 }} />
                   <SigPad label="Prepared By" onSave={setPreparedSig} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Checked By (Name) *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Checked By (Name) *</label>
                   <input className="form-input" required value={checkedBy} onChange={e => setCheckedBy(e.target.value)} placeholder="Manager Name" style={{ marginBottom: 12 }} />
                   <SigPad label="Checked By" onSave={setCheckedSig} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>Payee's Name *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Payee's Name *</label>
                   <input className="form-input" required value={receiverName} onChange={e => setReceiverName(e.target.value)} placeholder="Payee Name" style={{ marginBottom: 12 }} />
                   <SigPad label="Payee" onSave={setReceiverSig} />
                 </div>
@@ -1291,12 +1370,12 @@ const FinancePV = () => {
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary" style={{
-              width: '100%', padding: '20px', fontSize: 18,
-              background: loading ? '#9E9E9E' : '#228B22',
+              width: '100%', minHeight: 44, fontSize: 16,
+              background: loading ? '#9CA3AF' : '#2563EB',
               display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
               marginTop: 16
             }}>
-              {loading ? <SegmentedSpinner size={24} /> : <CheckCircle size={24} />}
+              {loading ? <SegmentedSpinner size={22} /> : <CheckCircle size={22} />}
               {loading ? 'Processing...' : maintSource ? `Generate PV & Release Payment for \${maintSource.asset}` : 'Generate General Payment'}
             </button>
           </form>
@@ -1462,22 +1541,22 @@ const FinancePV = () => {
 
           return (
           <div className="card-container" id="printable-history">
-            <div style={{ padding: '20px 24px', background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ padding: '20px 24px', background: '#F9FAFB', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CheckCircle size={20} color="#16A34A" /> Completed Payments History
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748B', fontWeight: 600 }}>Click any row to expand full detail. All records are read-only.</p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 400 }}>Click any row to expand full detail. All records are read-only.</p>
               </div>
-              <div className="no-print" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <select value={histMonthFilter} onChange={e => setHistMonthFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 14, fontWeight: 600, color: '#334155', background: '#fff' }}>
+              <div className="no-print" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select value={histMonthFilter} onChange={e => setHistMonthFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14, fontWeight: 500, color: '#374151', background: '#fff', height: 38 }}>
                   <option value="All">All Time</option>
                   {allMonths.map(m => <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>)}
                 </select>
-                <button onClick={openPrintPage} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, background: '#EFF6FF', color: '#1D4ED8', border: '1.5px solid #BFDBFE', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={openPrintPage} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8, background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
                   <Printer size={16} /> Print
                 </button>
-                <button className="btn-primary" onClick={() => { loadPending(); fetchPayrollQueue(); }} style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, background: '#0F172A', color: '#fff' }}>
+                <button className="btn-primary" onClick={() => { loadPending(); fetchPayrollQueue(); }} style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <RefreshCw size={16} /> Refresh
                 </button>
               </div>
@@ -1649,9 +1728,9 @@ const FinancePV = () => {
                                 <div style={{ overflowX: 'auto' }}>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                                     <thead>
-                                      <tr style={{ background: '#E2E8F0' }}>
+                                      <tr style={{ background: '#F9FAFB' }}>
                                         {['#','Employee','Department','Base Salary','Allowances','Extras','Deductions','Net Pay','Bank / Account','Status'].map(h => (
-                                          <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', textAlign: ['Base Salary','Allowances','Extras','Deductions','Net Pay'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left' }}>{h}</th>
+                                          <th key={h} style={{ padding: '10px 12px', fontWeight: 500, color: '#6B7280', whiteSpace: 'nowrap', textAlign: ['Base Salary','Allowances','Extras','Deductions','Net Pay'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left' }}>{h}</th>
                                         ))}
                                       </tr>
                                     </thead>
@@ -1663,7 +1742,7 @@ const FinancePV = () => {
                                         const isPaid = true; // History tab assumes paid
                                         const isCash = (emp.payment_method || '').toLowerCase().includes('cash');
                                         return (
-                                          <tr key={emp.employee_id} style={{ background: isPaid ? '#F0FDF4' : ei % 2 === 0 ? '#fff' : '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                                          <tr key={emp.employee_id} className="table-row" style={{ background: '#FFFFFF', borderBottom: '1px solid var(--color-border)' }}>
                                             <td style={{ padding: '10px 12px', color: '#94A3B8', fontWeight: 700 }}>{ei + 1}</td>
                                             <td style={{ padding: '10px 12px' }}>
                                               <div style={{ fontWeight: 700, color: '#0F172A' }}>{emp.full_name}</div>
