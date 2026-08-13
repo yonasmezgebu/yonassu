@@ -4,459 +4,513 @@ import {
   X, CheckCircle, AlertCircle, RefreshCw, Trash2, CreditCard, TrendingDown, Edit2
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Color Palette ────────────────────────────────────────────── */
 const C = {
-  forest:     '#228B22',
-  darkGreen:  '#1B5E20',
-  emerald:    '#2E8B57',
-  leafGreen:  '#4CAF50',
-  sage:       '#A5D6A7',
-  olive:      '#6B8E23',
-  mint:       '#F1F8F1',
-  lime:       '#8BC34A',
-  earthBrown: '#8D6E63',
-  skyBlue:    '#87CEEB',
+  forest:     '#2563EB',
+  darkGreen:  '#1D4ED8',
+  emerald:    '#16A34A',
+  leafGreen:  '#2563EB',
+  sage:       '#BFDBFE',
+  olive:      '#6B7280',
+  mint:       '#EFF6FF',
+  lime:       '#16A34A',
+  earthBrown: '#E5E7EB',
+  skyBlue:    '#E0F2FE',
   white:      '#FFFFFF',
-  lightGray:  '#F5F5F5',
-  darkGray:   '#424242',
-  orange:     '#FF9800',
-  red:        '#F44336',
-  border:     '#C8E6C9',
+  lightGray:  '#F5F6FA',
+  darkGray:   '#111827',
+  orange:     '#D97706',
+  red:        '#DC2626',
+  border:     '#E5E7EB',
 };
 
 /* ─── Global Styles ────────────────────────────────────────────── */
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
+  *, *::before, *::after { box-sizing: border-box; }
 
+  /* ── 1/4 Design tokens ── */
   .ll-wrap {
-    font-family: 'Inter', sans-serif;
-    background: ${C.lightGray};
-    min-height: 100vh;
-    width: 100%;
-    color: ${C.darkGray};
+    --color-primary:#2563EB;
+    --color-primary-hover:#1D4ED8;
+    --color-bg-page:#F5F6FA;
+    --color-bg-card:#FFFFFF;
+    --color-border:#E5E7EB;
+    --color-text-primary:#111827;
+    --color-text-secondary:#6B7280;
+    --color-text-muted:#9CA3AF;
+    --color-success:#16A34A; --color-success-bg:#DCFCE7;
+    --color-danger:#DC2626;  --color-danger-bg:#FEE2E2;
+    --color-warning:#D97706; --color-warning-bg:#FEF3C7;
+    --color-info:#0284C7;    --color-info-bg:#E0F2FE;
+    --color-gold:#F59E0B;    --color-gold-bg:#FEF3C7;
+    --color-row-hover:#F9FAFB;
+
+    /* 2/25 Typography: 16px body, 1.5 leading, 1.3 headings */
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+
+    /* 17/18/24 Safe-edge + flush wiring: mirror dash-content padding */
+    background: var(--color-bg-page);
+    margin: -24px;
+    padding: 24px;
+    min-height: calc(100vh - 60px);
     display: flex;
     flex-direction: column;
+    gap: 16px;
   }
+  @media (max-width: 1024px) { .ll-wrap { margin: -16px; padding: 16px; } }
+  @media (max-width: 768px)  { .ll-wrap { margin: -12px; padding: 12px; } }
+  @media (min-width: 1536px) { .ll-wrap { margin-left: auto; margin-right: auto; max-width: 1560px; } }
 
   /* ── Header ── */
   .ll-header {
     width: 100%;
-    background: ${C.darkGreen};
-    padding: 0.9rem 1.5rem;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 16px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 3px solid ${C.forest};
     flex-shrink: 0;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
-  .ll-header-left { display: flex; flex-direction: column; gap: 2px; }
+  .ll-header-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .ll-title {
-    font-size: 1.4rem;
-    font-weight: 900;
-    color: ${C.white};
+    font-size: 28px;               /* 25: 28px page title */
+    font-weight: 700;
+    color: var(--color-text-primary);
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    letter-spacing: -0.3px;
-    text-transform: uppercase;
+    gap: 10px;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    margin: 0;
   }
-  .ll-title svg { color: ${C.sage}; flex-shrink: 0; }
+  .ll-title svg { color: var(--color-primary); flex-shrink: 0; }
   .ll-subtitle {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: ${C.sage};
-    letter-spacing: 1.5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
     text-transform: uppercase;
-    padding-left: 2px;
+    letter-spacing: 0.05em;
+    margin: 0;
   }
 
-  /* ── Sync Button ── */
+  /* ── Sync Button (3/7/22) ── */
   .ll-btn-sync {
-    background: transparent;
-    border: 2px solid rgba(255,255,255,0.4);
-    color: ${C.white};
-    padding: 0.5rem 1rem;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    height: 36px;
+    padding: 0 16px;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    font-weight: 700;
-    font-size: 0.78rem;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    transition: background 0.18s, border-color 0.18s, transform 0.15s;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: 8px;
+    transition: all 150ms ease-in-out;
     white-space: nowrap;
-  }
-  .ll-btn-sync:hover {
-    background: rgba(255,255,255,0.12);
-    border-color: ${C.sage};
-    transform: translateY(-1px);
+    font-family: inherit;
   }
   .ll-btn-sync.spinning svg { animation: ll-spin 0.9s linear infinite; }
   @keyframes ll-spin { to { transform: rotate(360deg); } }
 
-  /* ── Tab Navigation ── */
+  /* ── Tab Navigation (14: scroll-snap on mobile) ── */
   .ll-tabs {
     width: 100%;
     display: flex;
-    background: ${C.white};
-    border-bottom: 2.5px solid ${C.border};
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
     overflow-x: auto;
     flex-shrink: 0;
     scrollbar-width: none;
+    gap: 4px;
+    padding: 0 8px;
+    margin: 0;
+    scroll-snap-type: x proximity;
   }
   .ll-tabs::-webkit-scrollbar { display: none; }
   .ll-tab {
-    padding: 0.9rem 1.2rem;
-    font-weight: 700;
-    font-size: 0.78rem;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    color: #757575;
+    padding: 12px 16px;
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent;
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    transition: color 0.18s, background 0.18s, border-color 0.18s;
+    gap: 8px;
+    transition: color 150ms ease-in-out, background 150ms ease-in-out, border-color 150ms ease-in-out;
     flex-shrink: 0;
+    min-height: 48px;
+    border-radius: 8px 8px 0 0;
+    scroll-snap-align: start;
   }
-  .ll-tab:hover { color: ${C.forest}; background: ${C.mint}; }
-  .ll-tab.active { color: ${C.forest}; border-bottom-color: ${C.forest}; background: ${C.mint}; }
+  .ll-tab:hover { color: var(--color-primary); background: var(--color-row-hover); }
+  .ll-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); background: var(--color-info-bg); }
 
   /* ── Content Area ── */
   .ll-body {
     width: 100%;
     flex: 1;
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 16px;
   }
 
-  /* ── Dashboard Cards ── */
+  /* ── Dashboard Cards (6/14) ── */
   .ll-stat-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
     width: 100%;
   }
+  .ll-stat-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: box-shadow 150ms ease-in-out, transform 150ms ease-in-out, border-color 150ms ease-in-out;
+    cursor: default;
+    min-width: 0;
+  }
+  .ll-stat-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .ll-card-label { font-size: 12px; font-weight: 500; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.4; }
+  .ll-card-val { font-size: 26px; font-weight: 700; color: var(--color-text-primary); margin-top: 4px; font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .ll-card-val.danger { color: var(--color-danger); }
+  .ll-card-strip { height: 3px; background: var(--color-primary); margin-top: 8px; border-radius: 99px; }
+  .ll-card-strip.danger { background: var(--color-danger); }
+
+  /* ── Hero (single primary accent) ── */
   .ll-stat-hero {
     grid-column: 1 / -1;
-    background: ${C.forest} !important;
-    border: 2.5px solid ${C.darkGreen} !important;
-    padding: 1.5rem 2rem;
+    background: var(--color-primary) !important;
+    border: 1px solid var(--color-primary) !important;
+    padding: 20px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: background 0.18s;
-    color: ${C.white} !important;
+    gap: 16px;
+    border-radius: 10px;
+    color: #FFFFFF !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: background 150ms ease-in-out, box-shadow 150ms ease-in-out, transform 150ms ease-in-out;
   }
-  .ll-stat-card.ll-stat-hero:hover { background: ${C.darkGreen}; }
-  .ll-stat-card.ll-stat-hero .ll-card-label { color: ${C.sage} !important; font-size: 0.78rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-  .ll-stat-card.ll-stat-hero .ll-card-val { color: ${C.white} !important; font-size: 2.4rem; font-weight: 900; letter-spacing: -1px; margin-top: 4px; }
-  .ll-stat-card.ll-stat-hero .ll-card-icon { color: rgba(255,255,255,0.25); }
+  .ll-stat-card.ll-stat-hero:hover { background: var(--color-primary-hover) !important; box-shadow: 0 4px 12px rgba(37,99,235,0.25); transform: translateY(-1px); }
+  .ll-stat-card.ll-stat-hero .ll-card-label { color: rgba(255,255,255,0.85) !important; }
+  .ll-stat-card.ll-stat-hero .ll-card-val { color: #FFFFFF !important; font-size: 30px; font-weight: 700; margin-top: 4px; }
+  .ll-stat-card.ll-stat-hero .ll-card-icon { color: rgba(255,255,255,0.3); }
 
-  .ll-stat-card {
-    background: ${C.white};
-    border: 2px solid ${C.border};
-    padding: 1.2rem 1.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
-    cursor: default;
-  }
-  .ll-stat-card:hover {
-    border-color: ${C.leafGreen};
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(34,139,34,0.1);
-  }
-  .ll-card-label { font-size: 0.72rem; font-weight: 700; color: #757575; text-transform: uppercase; letter-spacing: 0.8px; }
-  .ll-card-val { font-size: 1.5rem; font-weight: 900; color: ${C.forest}; letter-spacing: -0.5px; margin-top: 4px; }
-  .ll-card-val.danger { color: ${C.red}; }
-  .ll-card-strip { height: 3px; background: ${C.leafGreen}; margin-top: 0.6rem; }
-  .ll-card-strip.danger { background: ${C.red}; }
-
-  /* ── Action bar ── */
+  /* ── Action bar (14: wrap) ── */
   .ll-action-bar {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 0.75rem;
+    gap: 12px;
     flex-wrap: wrap;
   }
 
-  /* ── Primary Button ── */
+  /* ── Buttons: every button gets a gold hover (3/7/19/20/21) ── */
+  .ll-wrap button {
+    font-family: inherit;
+    border-radius: 8px;
+    transition: all 150ms ease-in-out !important;
+  }
+  .ll-wrap button:not(:disabled):hover {
+    background: var(--color-gold) !important;
+    border-color: var(--color-gold) !important;
+    color: #111827 !important;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.35) !important;
+    transform: translateY(-1px) !important;
+  }
+  .ll-wrap button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .ll-wrap button:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .ll-btn {
-    background: ${C.forest};
-    color: ${C.white};
-    border: 2.5px solid ${C.forest};
-    padding: 0.65rem 1.4rem;
+    background: var(--color-primary);
+    color: #FFFFFF;
+    border: 1px solid var(--color-primary);
+    height: 36px;
+    padding: 0 16px;
     font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 0.82rem;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 14px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     white-space: nowrap;
   }
-  .ll-btn:hover {
-    background: ${C.darkGreen};
-    border-color: ${C.darkGreen};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(27,94,32,0.25);
-  }
-  .ll-btn:disabled { opacity: 0.52; cursor: not-allowed; transform: none; box-shadow: none; }
   .ll-btn.outline {
-    background: transparent;
-    color: ${C.darkGray};
-    border-color: #bdbdbd;
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+    box-shadow: none;
   }
-  .ll-btn.outline:hover { background: ${C.lightGray}; border-color: #9e9e9e; transform: none; box-shadow: none; }
   .ll-btn.pay-btn {
-    background: ${C.emerald};
-    border-color: ${C.emerald};
-    padding: 0.3rem 0.7rem;
-    font-size: 0.72rem;
+    background: var(--color-success);
+    border-color: var(--color-success);
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
   }
-  .ll-btn.pay-btn:hover { background: ${C.forest}; border-color: ${C.forest}; }
   .ll-btn.del-btn {
-    background: ${C.red};
-    border-color: ${C.red};
-    padding: 0.3rem 0.55rem;
-    font-size: 0.72rem;
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
   }
-  .ll-btn.del-btn:hover { background: #c62828; border-color: #c62828; }
 
-  /* ── Table ── */
+  /* ── Table (9/25) ── */
   .ll-table-wrap {
     width: 100%;
     overflow-x: auto;
-    border: 2px solid ${C.border};
-    background: ${C.white};
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    border-radius: 10px;
   }
   .ll-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 700px;
+    min-width: 700px;            /* 14: horizontal scroll, no page overflow */
+    font-size: 14px;             /* 25: 14px tables */
   }
-  .ll-thead { background: ${C.forest}; }
+  .ll-thead { background: #F9FAFB; }
   .ll-th {
-    padding: 0.85rem 1rem;
-    color: ${C.white};
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-    text-align: left;
-    border-right: 1px solid rgba(255,255,255,0.15);
-  }
-  .ll-th:last-child { border-right: none; }
-  .ll-tbody tr { transition: background 0.15s; border-bottom: 1px solid ${C.border}; }
-  .ll-tbody tr:hover { background: ${C.mint}; }
-  .ll-tbody tr:last-child { border-bottom: none; }
-  .ll-td {
-    padding: 0.85rem 1rem;
-    font-size: 0.85rem;
+    padding: 12px 16px;
+    color: var(--color-text-muted);
+    font-size: 12px;
     font-weight: 500;
-    color: ${C.darkGray};
-    vertical-align: middle;
-  }
-  .ll-td.mono { font-family: monospace; font-weight: 700; font-size: 0.8rem; }
-  .ll-td.amount { font-weight: 800; color: ${C.darkGreen}; }
-  .ll-td.balance-due { font-weight: 800; color: ${C.red}; }
-  .ll-td.balance-ok { font-weight: 800; color: ${C.forest}; }
-  .ll-td-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
-  .ll-empty {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #9e9e9e;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .ll-empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-
-  /* ── Status Badge ── */
-  .ll-badge {
-    display: inline-block;
-    padding: 3px 9px;
-    font-size: 0.68rem;
-    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: ${C.white};
+    letter-spacing: 0.03em;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
     white-space: nowrap;
   }
-  .ll-badge.paid    { background: ${C.leafGreen}; }
-  .ll-badge.partial { background: ${C.orange}; }
-  .ll-badge.overdue { background: ${C.red}; }
-  .ll-badge.pending { background: ${C.skyBlue}; color: ${C.darkGray}; }
+  .ll-tbody tr { transition: background 150ms ease-in-out; border-bottom: 1px solid var(--color-border); }
+  .ll-tbody tr:hover { background: var(--color-row-hover); }
+  .ll-tbody tr:last-child { border-bottom: none; }
+  .ll-td {
+    padding: 12px 16px;          /* ~48px rows */
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    vertical-align: middle;
+  }
+  .ll-td.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; font-size: 13px; color: var(--color-primary); font-variant-numeric: tabular-nums; }
+  .ll-td.amount { font-weight: 700; color: var(--color-text-primary); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ll-td.balance-due { font-weight: 700; color: var(--color-danger); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ll-td.balance-ok { font-weight: 700; color: var(--color-success); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ll-td-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ll-empty {
+    text-align: center;
+    padding: 48px 16px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .ll-empty-icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.6; }
 
-  /* ── Modal ── */
+  /* ── Status Badge (8) ── */
+  .ll-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 99px;
+    white-space: nowrap;
+    line-height: 1.6;
+  }
+  .ll-badge.paid    { background: var(--color-success-bg); color: #15803D; }
+  .ll-badge.partial { background: var(--color-warning-bg); color: #92400E; }
+  .ll-badge.overdue { background: var(--color-danger-bg); color: #B91C1C; }
+  .ll-badge.pending { background: var(--color-info-bg); color: #0369A1; }
+
+  /* ── Modal (13) ── */
   .ll-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(3px);
+    background: rgba(0,0,0,0.4);
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     z-index: 1000;
-    padding: 1rem;
+    padding: 16px;
     overflow-y: auto;
   }
   .ll-modal {
-    background: ${C.white};
+    background: var(--color-bg-card);
     width: 100%;
     max-width: 580px;
-    border: 2.5px solid ${C.forest};
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.25);
     margin: auto;
     overflow: hidden;
   }
   .ll-modal-head {
-    background: ${C.darkGreen};
-    padding: 1rem 1.4rem;
+    background: var(--color-primary);
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   .ll-modal-title {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: ${C.white};
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #FFFFFF;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
   }
   .ll-modal-close {
-    background: rgba(255,255,255,0.12);
-    border: 1.5px solid rgba(255,255,255,0.3);
-    color: ${C.white};
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #FFFFFF;
     cursor: pointer;
-    padding: 0.25rem 0.5rem;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     display: flex;
     align-items: center;
-    transition: background 0.15s;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 150ms ease-in-out;
   }
-  .ll-modal-close:hover { background: rgba(255,255,255,0.25); }
-  .ll-modal-body { padding: 1.4rem; }
+  .ll-modal-body { padding: 20px; }
 
-  /* ── Balance info strip in pay modal ── */
+  /* ── Balance info strip ── */
   .ll-balance-strip {
-    background: ${C.mint};
-    border: 2px solid ${C.leafGreen};
-    padding: 1rem 1.2rem;
-    margin-bottom: 1.2rem;
+    background: var(--color-info-bg);
+    border: 1px solid #BFDBFE;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
-  .ll-balance-strip .lbl { font-size: 0.7rem; font-weight: 700; color: ${C.forest}; text-transform: uppercase; letter-spacing: 0.8px; }
-  .ll-balance-strip .val { font-size: 1.5rem; font-weight: 900; color: ${C.darkGray}; }
-  .ll-balance-strip .meta { font-size: 0.78rem; color: ${C.olive}; font-weight: 600; }
+  .ll-balance-strip .lbl { font-size: 12px; font-weight: 600; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .ll-balance-strip .val { font-size: 24px; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+  .ll-balance-strip .meta { font-size: 13px; color: var(--color-text-secondary); font-weight: 400; }
 
-  /* ── Form Fields ── */
-  .ll-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .ll-form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+  /* ── Form Fields (12) ── */
+  .ll-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ll-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .ll-form-group:last-child { margin-bottom: 0; }
   .ll-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: ${C.darkGray};
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.03em;
   }
   .ll-input, .ll-select {
     width: 100%;
-    padding: 0.65rem 0.85rem;
-    border: 2px solid #bdbdbd;
-    background: ${C.white};
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-card);
     font-family: 'Inter', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: ${C.darkGray};
-    transition: border-color 0.18s, box-shadow 0.18s;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
     outline: none;
     appearance: auto;
   }
   .ll-input:focus, .ll-select:focus {
-    border-color: ${C.forest};
-    border-width: 2.5px;
-    box-shadow: 0 0 0 3px rgba(34,139,34,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
-  .ll-input::placeholder { color: #bdbdbd; }
+  .ll-input::placeholder { color: var(--color-text-muted); }
   .ll-form-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1.5px solid ${C.border};
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
     flex-wrap: wrap;
   }
 
-  /* ── Toast ── */
+  /* ── Toast (13/22) ── */
   .ll-toasts {
     position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
+    bottom: 24px;
+    right: 24px;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 12px;
     z-index: 9000;
     pointer-events: none;
   }
   .ll-toast {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.8rem 1.2rem;
-    background: ${C.darkGreen};
-    color: ${C.white};
-    border-left: 4px solid ${C.leafGreen};
-    font-size: 0.85rem;
-    font-weight: 600;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--color-success-bg);
+    color: #15803D;
+    border-left: 4px solid var(--color-success);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
     animation: ll-slidein 0.28s cubic-bezier(0.16,1,0.3,1);
     min-width: 260px;
     max-width: 380px;
     pointer-events: all;
   }
-  .ll-toast.error { background: #b71c1c; border-left-color: ${C.red}; }
+  .ll-toast.error { background: var(--color-danger-bg); color: #B91C1C; border-left-color: var(--color-danger); }
   @keyframes ll-slidein { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-  /* ── Responsive ── */
-  @media (max-width: 1100px) {
-    .ll-stat-grid { grid-template-columns: 1fr 1fr 1fr; }
-    .ll-stat-hero { grid-column: 1 / -1; }
+  /* ── Responsive (14/16/18) ── */
+  @media (max-width: 1280px) {
+    .ll-title { font-size: 26px; }
   }
   @media (max-width: 768px) {
-    .ll-header { padding: 0.75rem 1rem; }
-    .ll-title { font-size: 1.1rem; }
-    .ll-body { padding: 1rem; gap: 1rem; }
-    .ll-stat-grid { grid-template-columns: 1fr 1fr; }
-    .ll-stat-hero .ll-card-val { font-size: 1.6rem; }
-    .ll-tab { padding: 0.75rem 0.9rem; font-size: 0.72rem; }
+    .ll-header { padding: 12px 16px; }
+    .ll-title { font-size: 24px; }
+    .ll-tab { padding: 10px 12px; font-size: 12px; }
     .ll-form-grid { grid-template-columns: 1fr; }
     .ll-modal { max-width: 100%; margin: 0; }
-    .ll-btn-sync span { display: none; }
+    .ll-toasts { right: 12px; left: 12px; }
+    .ll-toast { min-width: 0; max-width: 100%; }
+    .ll-btn, .ll-btn-sync { height: 44px; }          /* 14: tap target ≥ 44px */
+    .ll-btn.pay-btn, .ll-btn.del-btn { height: 40px; }
   }
   @media (max-width: 480px) {
-    .ll-stat-grid { grid-template-columns: 1fr; }
-    .ll-title { font-size: 1rem; }
+    .ll-title { font-size: 22px; }
     .ll-action-bar { justify-content: stretch; }
-    .ll-btn { width: 100%; justify-content: center; }
+    .ll-action-bar .ll-btn { width: 100%; justify-content: center; }
   }
 `;
 
@@ -805,7 +859,7 @@ export default function FinanceLiabilities() {
                                   Pay
                                 </button>
                               )}
-                              <button className="ll-btn" style={{ background: '#ffa000', borderColor: '#ffa000', color: '#fff', marginLeft: '0.2rem', marginRight: '0.2rem' }} onClick={() => openEdit(r)}>
+                              <button className="ll-btn" style={{ width: '32px', height: '32px', padding: '0', justifyContent: 'center', background: '#2563EB', borderColor: '#2563EB', color: '#fff' }} onClick={() => openEdit(r)}>
                                 <Edit2 size={12} />
                               </button>
                               <button className="ll-btn del-btn" onClick={() => setDeleteItem(r)}>
