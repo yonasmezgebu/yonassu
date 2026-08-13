@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const notificationRepository = require('../../repositories/notification.repository');
 const { logger } = require('../../config/logger');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 // ── HELPER: Sync to Finance ───────────────────────────────────────────────────
 const syncToFinance = async (order, userId) => {
@@ -265,6 +266,13 @@ exports.createManualOrder = async (req, res) => {
       }
     }
 
+    carRentalAudit.log(req, 'AgriRent Order Created (Manual)', orderNumber, null, {
+      order_number: orderNumber, tractor_id: tractorId || null, customer_name: customerName,
+      total_days: totalDays, daily_rate: dailyRate, total_amount: totalAmount,
+      field_location: fieldLocation || null, field_size_hectares: fieldSizeHectares || null,
+      payment_method: paymentMethod || 'Cash', status: 'approved', is_manual: true
+    });
+
     res.status(201).json({
       status: 'success',
       message: 'Manual order created successfully',
@@ -417,6 +425,10 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const updated = await db('agrirent_orders').where({ id }).first();
+    carRentalAudit.log(req, `AgriRent Order ${String(status).toLowerCase()}`, order.order_number,
+      { status: order.status, manager_note: order.manager_note },
+      { status, manager_note: managerNote || order.manager_note }
+    );
     res.status(200).json({ status: 'success', data: updated });
   } catch (error) {
     logger.error('Error updating agrirent order status:', error);
@@ -441,6 +453,11 @@ exports.updatePaymentStatus = async (req, res) => {
       payment_status: paymentStatus,
       updated_at: new Date()
     });
+
+    carRentalAudit.log(req, 'AgriRent Order Payment Status Changed', order.order_number,
+      { payment_status: order.payment_status },
+      { payment_status: paymentStatus }
+    );
 
     // If confirmed, push to finance book automatically
     if (paymentStatus === 'Confirmed') {
