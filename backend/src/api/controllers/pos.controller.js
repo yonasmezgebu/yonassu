@@ -525,10 +525,7 @@ exports.getSalesHistory = catchAsync(async (req, res) => {
       'u.full_name as cashier_name',
       'pm.name as payment_method_name'
     )
-    .whereNull('ps.deleted_at')   // exclude cancelled/returned sales
-    .where(function() {
-      this.where('ps.is_submitted', false).orWhereNull('ps.is_submitted');
-    });
+    .whereNull('ps.deleted_at');   // exclude voided/deleted sales
   if (startDate && endDate) {
     query = query.whereBetween('ps.sale_date', [startDate, endDate]);
   }
