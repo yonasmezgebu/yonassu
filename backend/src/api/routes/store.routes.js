@@ -7,8 +7,12 @@ const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 const StorePRController = require('../controllers/storePurchaseResearch.controller');
+const GeneralStoreDashboardController = require('../controllers/generalStoreDashboard.controller');
 
 router.use(authenticate);
+
+router.get('/dashboard', GeneralStoreDashboardController.getDashboardStats);
+
 
 const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'Sales/Cashier', 'CEO', 'Admin'];
 const ceoRoles = ['CEO', 'Admin'];
