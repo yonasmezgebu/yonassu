@@ -6,6 +6,9 @@ const { authenticate, authorizeRoles } = require('../middleware/auth.middleware'
 const storeRoles = ['Pharmacy Store Keeper', 'General Store Keeper', 'CEO', 'Admin'];
 const managerRoles = ['Car Renting Manager', 'Admin', 'CEO'];
 
+// Dashboard overview
+router.get('/dashboard', authenticate, authorizeRoles([...managerRoles, 'Finance', 'Finance Manager', 'CEO', 'Admin']), carRentingController.getDashboardStats);
+
 // Store Request Flow
 router.post('/store-requests',          authenticate, authorizeRoles([...managerRoles, ...storeRoles]), carRentingController.createStoreRequest);
 router.get('/store-requests',           authenticate, authorizeRoles([...managerRoles, ...storeRoles]), carRentingController.getStoreRequests);
