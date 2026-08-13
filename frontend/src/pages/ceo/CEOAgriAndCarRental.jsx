@@ -1,893 +1,296 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Truck, CheckCircle, XCircle, Search, RefreshCw, Eye, Package, Leaf, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
-import { triggerNotification } from '../../utils/ceoNotifications';
+import React, { useState, useEffect, useCallback } from 'react';
+import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-const api = axios.create({ baseURL: '' });
-api.interceptors.request.use(cfg => {
-  const t = localStorage.getItem('token') || sessionStorage.getItem('token');
-  if (t) cfg.headers.Authorization = `Bearer ${t}`;
-  return cfg;
-});
-
-/* ─── Palette (Natural Greens) ─── */
-const C = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57',
-  leaf: '#4CAF50', sage: '#A5D6A7', olive: '#6B8E23',
-  white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
-  red: '#F44336', orange: '#FF9800', midGray: '#E0E0E0',
-  textSec: '#757575', sageLight: '#E8F5E9', blue: '#0ea5e9',
+/* ─── Color Palette ─────────────────────────────────────────────────────── */
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
+  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
+  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
+  orange: '#FF9800', red: '#F44336', purple: '#7C3AED',
 };
+const COLORS_ARR = [G.emerald, G.sky, G.orange, G.purple, G.lime, G.red];
 
-const Btn = ({ onClick, children, color, icon: Icon, outline, disabled }) => (
-  <button 
-    onClick={onClick} 
-    disabled={disabled}
-    style={{
-      background: outline ? 'transparent' : color,
-      color: outline ? color : '#fff',
-      border: `2px solid ${color}`,
-      padding: '8px 16px',
-      fontSize: 13,
-      fontWeight: 800,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      textTransform: 'uppercase',
-      opacity: disabled ? 0.6 : 1,
-      transition: 'all 0.2s'
-    }}
-    onMouseEnter={e => { if (!disabled && outline) e.currentTarget.style.background = `${color}15`; }}
-    onMouseLeave={e => { if (!disabled && outline) e.currentTarget.style.background = 'transparent'; }}
-  >
-    {Icon && <Icon size={16} />}
-    {children}
-  </button>
+const CategoryBar = ({ value, max, color }) => (
+  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
+    <div style={{
+      height: '100%', borderRadius: 0, background: color,
+      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
+      transition: 'width 1.2s ease'
+    }} />
+  </div>
 );
 
-const Toast = ({ msg, type }) => (
-  <div style={{
-    position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-    background: type === 'error' ? '#FFEBEE' : C.sageLight,
-    borderLeft: `5px solid ${type === 'error' ? C.red : C.forest}`,
-    padding: '16px 24px', color: C.darkGray, fontWeight: 700,
-    boxShadow: '0 10px 25px rgba(0,0,0,0.2)', fontSize: 14,
-    display: 'flex', alignItems: 'center', gap: 12
-  }}>
-    {type === 'error' ? <XCircle color={C.red} /> : <CheckCircle color={C.forest} />}
-    {msg}
+/* ─── Enterprise Design System ──────────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .artistic-3d-title {
+      font-size: 26px; font-weight: 600; color: #111827; letter-spacing: -0.02em;
+      margin: 0; display: flex; align-items: center; gap: 10px; line-height: 1.3;
+    }
+    .artistic-3d-subtitle {
+      font-size: 13px; color: #6B7280; font-weight: 500; text-align: center;
+      text-transform: uppercase; letter-spacing: 0.05em; margin: 0; line-height: 1.5;
+    }
+    .blink-star { display: inline-block; animation: none; }
+
+    .btn-sync {
+      position: relative; background: #2563EB; color: #FFFFFF; border: none;
+      height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 500; font-size: 14px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      margin: 0; box-shadow: none; text-transform: none; letter-spacing: normal;
+      transition: background 150ms ease-in-out, transform 150ms ease-in-out;
+    }
+    .btn-sync:hover { background: #FFC107; color: #111827; }
+    .btn-sync:active { transform: scale(0.98); }
+    .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .d-card-no-hover {
+      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB;
+      border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      animation: fadeUp 150ms ease both;
+      transition: box-shadow 150ms ease, transform 150ms ease;
+    }
+    .d-card-no-hover:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+    .alert-row {
+      position: relative; display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+      background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px;
+      margin-bottom: 10px; transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+    .alert-row:hover { background: #EFF6FF; border-color: #BFDBFE; transform: translateX(2px); }
+
+    .cat-row {
+      position: relative; display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px;
+      align-items: center; padding: 10px 12px; border-radius: 8px;
+      transition: background 150ms ease;
+    }
+    .cat-row:hover { background: #F9FAFB; }
+
+    .top-row {
+      position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      border-radius: 8px; background: #F9FAFB; margin-bottom: 8px;
+      transition: background 150ms ease;
+    }
+    .top-row:hover { background: #EFF6FF; }
+
+    .qa-card {
+      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px;
+      padding: 18px 14px; text-align: center;
+      transition: box-shadow 150ms ease, transform 150ms ease;
+    }
+    .qa-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  `}</style>
+);
+
+const DecorPlants = () => (
+  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+    {/* Minimal decor items can go here if needed */}
   </div>
 );
 
 export default function CEOAgriAndCarRental() {
-  const [activeTab, setActiveTab] = useState('Car Rental');
-  
-  // Data
-  const [carRequests, setCarRequests] = useState([]);
-  const [agriRequests, setAgriRequests] = useState([]);
-  const [carHistory, setCarHistory] = useState([]);
-  const [agriHistory, setAgriHistory] = useState([]);
-  const [allHistory, setAllHistory] = useState([]);
-  const [historyFilter, setHistoryFilter] = useState('All');
-  const [maintenanceRecords, setMaintenanceRecords] = useState([]);
-  const maintenancePending = maintenanceRecords.filter(r => r.status === 'PENDING_CEO');
-  const maintenanceDone    = maintenanceRecords.filter(r => r.status !== 'PENDING_CEO');
-  const [loading, setLoading] = useState(true);
-  
-  // Row expansion state for history
-  const [expandedRows, setExpandedRows] = useState({});
-  const [rowDetails, setRowDetails] = useState({});
-  const [rowDetailLoading, setRowDetailLoading] = useState({});
-  
-  // Modals
-  const [viewDetail, setViewDetail] = useState(null); // { type, data }
-  const [rejectModal, setRejectModal] = useState(null); // { type, id }
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [expandedMaint, setExpandedMaint] = useState(null);
-  const [toastMsg, setToastMsg] = useState(null);
-
-  const showToast = (msg, type = 'success') => {
-    setToastMsg({ msg, type });
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
-  const loadAllData = async () => {
-    setLoading(true);
-    try {
-      const [resReq, resMaint, resFuel] = await Promise.all([
-        api.get('/api/v1/car-renting/store-requests'),
-        api.get('/api/v1/car-renting/maintenance/finance'),
-        api.get('/api/v1/car-renting/fuel-service')
-      ]);
-      const all = resReq.data?.data || [];
-      const allMaintRaw = resMaint.data?.data || resMaint.data || [];
-      const allFuelRaw = resFuel.data?.data || resFuel.data || [];
-
-      // Normalize Fuel to look like Maintenance for CEO view
-      const allFuel = allFuelRaw.map(f => ({
-        ...f,
-        type: f.request_type, // map request_type to type
-        isFuel: true,
-      }));
-      const allMaint = [...allMaintRaw, ...allFuel];
-
-      // Split Store Requests
-      const carAll = all.filter(r => r.department === 'Car Rental' || !r.department);
-      const agriAll = all.filter(r => r.department === 'AgriRent');
-
-      const carH = carAll.filter(r => r.status !== 'FORWARDED_TO_CEO');
-      const agriH = agriAll.filter(r => r.status !== 'FORWARDED_TO_CEO');
-      setCarRequests(carAll.filter(r => r.status === 'FORWARDED_TO_CEO'));
-      setAgriRequests(agriAll.filter(r => r.status === 'FORWARDED_TO_CEO'));
-      setCarHistory(carH);
-      setAgriHistory(agriH);
-
-      // Split Maintenance
-      setMaintenanceRecords(allMaint);
-      const maintHistory = allMaint
-        .filter(r => r.status !== 'PENDING_CEO')
-        .map(r => ({
-          ...r,
-          department: 'Maintenance',
-          request_number: r.isFuel ? `FS-${String(r.id).padStart(4, '0')}` : `MNT-${String(r.id).padStart(4, '0')}`,
-          item_count: r.isFuel ? `1 ${r.request_type}` : '1 Service',
-          isMaintenance: true,
-          isFuel: !!r.isFuel
-        }));
-
-      // Combine
-      setAllHistory([...carH, ...agriH, ...maintHistory].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
-    } catch (e) {
-      console.error('Fetch failed:', e);
-      setCarRequests([]); setCarHistory([]);
-      setAgriRequests([]); setAgriHistory([]);
-      setMaintenanceRecords([]);
-      setAllHistory([]);
-    }
-    setLoading(false);
-  };
-
-  const fetchRequests = loadAllData;
-  const fetchMaintenance = loadAllData;
-
-  const handleApproveMaintenance = async (r) => {
-    setProcessing(true);
-    try {
-      if (r.isFuel) {
-        await api.patch(`/api/v1/car-renting/fuel-service/${r.id}/ceo-approve`);
-      } else {
-        await api.patch(`/api/v1/car-renting/maintenance/${r.id}/ceo-approve`);
-      }
-      showToast(`${r.isFuel ? r.type : 'Maintenance'} Request ${r.id} Approved successfully`);
-      fetchMaintenance();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to approve', 'error');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const toggleRowDetail = async (r) => {
-    const id = r.id;
-    const isOpen = !!expandedRows[id];
-    if (isOpen) {
-      setExpandedRows(prev => ({ ...prev, [id]: false }));
-      return;
-    }
-    setExpandedRows(prev => ({ ...prev, [id]: true }));
-    if (!rowDetails[id]) {
-      setRowDetailLoading(prev => ({ ...prev, [id]: true }));
-      try {
-        if (r.isMaintenance) {
-          setRowDetails(prev => ({ ...prev, [id]: r }));
-        } else {
-          const res = await api.get(`/api/v1/car-renting/store-requests/${id}`);
-          setRowDetails(prev => ({ ...prev, [id]: res.data?.data || res.data }));
-        }
-      } catch {
-        showToast('Failed to load detail', 'error');
-        setExpandedRows(prev => ({ ...prev, [id]: false }));
-      } finally {
-        setRowDetailLoading(prev => ({ ...prev, [id]: false }));
-      }
-    }
-  };
+  const [data, setData] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
 
   useEffect(() => {
-    fetchRequests();
-    fetchMaintenance();
+    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchDetail = async (type, id) => {
+  const load = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const res = await api.get(`/api/v1/car-renting/store-requests/${id}`);
-      setViewDetail({ type, data: res.data?.data || res.data });
+      const res = await apiClient.get('/car-renting/dashboard');
+      if (res.success) {
+        setData(res.data);
+      }
     } catch (err) {
-      showToast('Failed to load request details', 'error');
-    }
-  };
-
-  const handleApprove = async (type, id) => {
-    setProcessing(true);
-    try {
-      await api.patch(`/api/v1/car-renting/store-requests/${id}/status`, { status: 'APPROVED' });
-      
-      // Notify Store that items are approved and pending shipment
-      await triggerNotification({
-        roleTarget: 'General Store Keeper',
-        title: `${type} Request Approved`,
-        message: `A ${type} request has been approved by the CEO and is pending shipment.`,
-        type: 'info',
-        link: '/general-store/dashboard'
-      });
-
-      showToast(`Request ${id} Approved successfully`);
-      setViewDetail(null);
-      fetchRequests();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to approve', 'error');
+      console.error('Failed to load dashboard:', err);
     } finally {
-      setProcessing(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleReject = async () => {
-    if (!rejectionReason.trim()) {
-      showToast('Rejection reason is required', 'error');
-      return;
-    }
-    setProcessing(true);
-    try {
-      const { id } = rejectModal;
-      await api.patch(`/api/v1/car-renting/store-requests/${id}/status`, { status: 'REJECTED', rejection_reason: rejectionReason });
-      
-      showToast(`Request ${id} Rejected successfully`);
-      setRejectModal(null);
-      setRejectionReason('');
-      setViewDetail(null);
-      fetchRequests();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to reject', 'error');
-    } finally {
-      setProcessing(false);
-    }
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const activeData = activeTab === 'Car Rental' ? carRequests : agriRequests;
-  const filteredHistory = historyFilter === 'All'
-    ? allHistory
-    : historyFilter === 'Car Rental'
-      ? allHistory.filter(r => r.department === 'Car Rental' || !r.department)
-      : allHistory.filter(r => r.department === 'AgriRent');
+  if (!data) return <div style={{ padding: '2rem', textAlign: 'center' }}><SegmentedSpinner size={40} /></div>;
 
-  const STATUS = {
-    PENDING_STORE:    { label: 'Pending Store',  color: C.orange,  bg: '#FFF8E1' },
-    FORWARDED_TO_CEO: { label: 'With CEO',       color: C.blue,    bg: '#E3F2FD' },
-    APPROVED:         { label: 'CEO Approved',   color: C.leaf,    bg: '#F1F8E9' },
-    REJECTED:         { label: 'Rejected',       color: C.red,     bg: '#FFEBEE' },
-    SHIPPED:          { label: 'Shipped',        color: C.emerald, bg: '#E8F5E9' },
-    RECEIVED:         { label: 'Received',       color: C.forest,  bg: '#E8F5E9' },
-  };
-  
-  const StatusBadge = ({ status }) => {
-    const cfg = STATUS[status] || { label: status, color: C.textSec, bg: C.light };
-    return (
-      <span style={{
-        background: cfg.bg, color: cfg.color, border: `1.5px solid ${cfg.color}`,
-        padding: '4px 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
-        letterSpacing: 0.5, borderRadius: 0, display: 'inline-block',
-      }}>{cfg.label}</span>
-    );
-  };
+  const { fleetStats, activeOrders, maintenance } = data;
+
+  const statuses = ['available', 'rented', 'maintenance'];
+  const statusColors = { 'available': G.emerald, 'rented': G.orange, 'maintenance': G.red };
+  const maxStatusCount = Math.max(...statuses.map(s => fleetStats[s] || 0), 1);
+
+  const recentActivity = [
+      ...activeOrders.map(o => ({ id: `ord-${o.id}`, type: 'Rental', title: o.order_number, sub: `Active order`, date: o.start_datetime })),
+      ...maintenance.map(m => ({ id: `mnt-${m.id}`, type: 'Maintenance', title: m.description, sub: m.asset_name, date: m.scheduled_date }))
+  ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
   return (
-    <div style={{ minHeight: '100vh', background: C.light, fontFamily: '"Inter", system-ui, sans-serif' }}>
-      {toastMsg && <Toast msg={toastMsg.msg} type={toastMsg.type} />}
+    <div className="rd-page" style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", position: 'relative' }}>
+      <GlobalStyles />
+      <DecorPlants />
 
-      {/* HEADER */}
-      <div style={{ background: C.dark, padding: '24px 32px', color: '#fff', borderBottom: `4px solid ${C.forest}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ background: C.forest, padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Truck size={28} color="#fff" />
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1 }}>Agri & Car Rental Approvals</h1>
-            <p style={{ margin: '4px 0 0', color: C.sage, fontSize: 13, fontWeight: 600 }}>Review and approve store requests from the Car Rental and AgriRent departments</p>
-          </div>
+      {/* ── HEADER ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
+        <div style={{ justifySelf: 'start' }}>
+          <h1 className="artistic-3d-title">
+            CEO Car &amp; Agri Rental Dashboard&nbsp;<span className="blink-star">🌿</span>
+          </h1>
+        </div>
+        <div style={{ justifySelf: 'center' }}>
+          <p className="artistic-3d-subtitle">
+            Executive Overview · {timeString}
+          </p>
+        </div>
+        <div style={{ justifySelf: 'end' }}>
+          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+            {refreshing && <SegmentedSpinner size={16} />}
+            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+          </button>
         </div>
       </div>
 
-      <div style={{ padding: '32px' }}>
-        {/* TABS */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          <button 
-            onClick={() => setActiveTab('Car Rental')}
-            style={{ 
-              padding: '12px 28px', fontSize: 14, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer',
-              background: activeTab === 'Car Rental' ? C.blue : C.white,
-              color: activeTab === 'Car Rental' ? '#fff' : C.darkGray,
-              border: `2px solid ${activeTab === 'Car Rental' ? C.blue : C.midGray}`,
-              display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: activeTab === 'Car Rental' ? '0 4px 12px rgba(14,165,233,0.3)' : 'none'
-            }}
-          >
-            <Truck size={16} /> Car Rental
-            <span style={{ background: activeTab === 'Car Rental' ? 'rgba(255,255,255,0.3)' : C.blue, color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 12, fontWeight: 900 }}>
-              {carRequests.length}
-            </span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('AgriRent')}
-            style={{ 
-              padding: '12px 28px', fontSize: 14, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer',
-              background: activeTab === 'AgriRent' ? C.olive : C.white,
-              color: activeTab === 'AgriRent' ? '#fff' : C.darkGray,
-              border: `2px solid ${activeTab === 'AgriRent' ? C.olive : C.midGray}`,
-              display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: activeTab === 'AgriRent' ? '0 4px 12px rgba(107,142,35,0.3)' : 'none'
-            }}
-          >
-            <Leaf size={16} /> AgriRent
-            <span style={{ background: activeTab === 'AgriRent' ? 'rgba(255,255,255,0.3)' : C.olive, color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 12, fontWeight: 900 }}>
-              {agriRequests.length}
-            </span>
-          </button>
-          <button 
-            onClick={() => { setActiveTab('Maintenance'); fetchMaintenance(); }}
-            style={{ 
-              padding: '12px 28px', fontSize: 14, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer',
-              background: activeTab === 'Maintenance' ? C.forest : C.white,
-              color: activeTab === 'Maintenance' ? '#fff' : C.darkGray,
-              border: `2px solid ${activeTab === 'Maintenance' ? C.forest : C.midGray}`,
-              display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: activeTab === 'Maintenance' ? '0 4px 12px rgba(34,139,34,0.3)' : 'none'
-            }}
-          >
-            🔧 Fleet & Fuel
-            <span style={{ background: activeTab === 'Maintenance' ? 'rgba(255,255,255,0.3)' : C.forest, color: '#fff', borderRadius: 20, padding: '1px 8px', fontSize: 12, fontWeight: 900 }}>
-              {maintenancePending.length}
-            </span>
-          </button>
+      {/* ── ROW 1: KPI HERO CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+
+        {/* Fleet Value Hero */}
+        <div className="d-card-no-hover"
+          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', animationDelay: '0.05s' }}>
+          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
+            <span style={{ fontSize: 24 }}>🚗</span>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Fleet Size</div>
+          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
+            {fleetStats.total} <span style={{ fontSize: '1.1rem', opacity: 0.75, marginLeft: 6 }}>Vehicles</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+            <span>📊</span> Across Car and AgriRent Lines
+          </div>
         </div>
 
-        {/* DATA TABLE */}
-        {activeTab !== 'Maintenance' && (
-        <div style={{ background: C.white, border: `2px solid ${C.midGray}` }}>
-          <div style={{ padding: '16px 20px', borderBottom: `2px solid ${C.midGray}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: C.darkGray, textTransform: 'uppercase' }}>
-              Pending {activeTab} Requests
-            </h2>
-            <Btn outline color={C.textSec} icon={RefreshCw} onClick={fetchRequests}>Refresh</Btn>
+        {/* Cars */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.1s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Cars Fleet</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚕</span></div>
           </div>
-
-          {loading ? (
-            <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <SegmentedSpinner size={28} />
-              <div style={{ fontWeight: 700 }}>Loading requests...</div>
-              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-            </div>
-          ) : activeData.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <Package size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
-              <div style={{ fontSize: 16, fontWeight: 800 }}>No pending requests</div>
-              <p style={{ margin: '8px 0 0', fontSize: 13 }}>There are currently no store requests awaiting CEO approval for {activeTab}.</p>
-            </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: C.dark, color: '#fff' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Request #</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Department</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Date</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Requester</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 800, textTransform: 'uppercase' }}>Items</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, textTransform: 'uppercase' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeData.map((req, i) => (
-                  <tr key={req.id} style={{ borderBottom: `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 800 }}>{req.request_number}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        background: activeTab === 'Car Rental' ? '#e0f2fe' : '#f0fdf4',
-                        color: activeTab === 'Car Rental' ? C.blue : C.olive,
-                        border: `1.5px solid ${activeTab === 'Car Rental' ? C.blue : C.olive}`,
-                        padding: '3px 10px', fontSize: 11, fontWeight: 900,
-                        textTransform: 'uppercase', letterSpacing: 0.5, display: 'inline-flex', alignItems: 'center', gap: 4
-                      }}>
-                        {activeTab === 'Car Rental' ? <Truck size={11} /> : <Leaf size={11} />}
-                        {activeTab}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: C.textSec }}>{new Date(req.created_at).toLocaleDateString()}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{req.requester_name || 'Unknown'}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <span style={{ background: C.forest, color: '#fff', padding: '2px 8px', borderRadius: 12, fontWeight: 800, fontSize: 11 }}>
-                        {req.item_count || 0}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Btn color={C.blue} icon={Eye} onClick={() => fetchDetail(activeTab, req.id)}>Review</Btn>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.cars}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Standard vehicles</div>
         </div>
-        )}
 
-        {/* ══ MAINTENANCE TAB ══ */}
-        {activeTab === 'Maintenance' && (
-          <div>
-
-            {/* ── PENDING CEO APPROVAL ── */}
-            <div style={{ background: C.white, border: `2px solid ${C.midGray}`, marginBottom: 24 }}>
-              <div style={{ padding: '16px 20px', borderBottom: `2px solid ${C.midGray}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e40af' }}>
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}>⏳ Pending Your Approval</h2>
-                <Btn outline color="#fff" icon={RefreshCw} onClick={fetchMaintenance}>Refresh</Btn>
-              </div>
-              {maintenancePending.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: C.textSec }}>
-                  <CheckCircle size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-                  <div style={{ fontSize: 15, fontWeight: 800 }}>All clear — no pending approvals</div>
-                  <p style={{ margin: '6px 0 0', fontSize: 13 }}>No maintenance requests are waiting for your approval.</p>
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#1e40af', color: '#fff' }}>
-                      {['ID', 'Asset', 'Type', 'Department', 'Cost (ETB)', 'Scheduled', 'Priority', 'Action'].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: h === 'Action' ? 'right' : 'left', fontWeight: 800, textTransform: 'uppercase' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {maintenancePending.map((r, i) => {
-                      const isExpanded = expandedMaint === r.id;
-                      const parsedImages = r.images ? JSON.parse(r.images) : [];
-                      return (
-                        <React.Fragment key={r.id}>
-                          <tr style={{ borderBottom: isExpanded ? 'none' : `1px solid ${C.midGray}`, background: isExpanded ? '#EFF6FF' : (i % 2 === 0 ? C.white : '#F0F9FF'), transition: 'background 0.2s' }}>
-                            <td style={{ padding: '12px 16px', fontWeight: 900, color: '#1e40af', fontFamily: 'monospace' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <button onClick={() => setExpandedMaint(isExpanded ? null : r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#1e40af', display: 'flex', alignItems: 'center' }}>
-                                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                </button>
-                                {r.isFuel ? 'FS-' : 'MNT-'}{String(r.id).padStart(4, '0')}
-                              </div>
-                            </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700 }}>
-                              <div>{r.asset_name}</div>
-                              <div style={{ fontSize: 11, color: C.textSec, textTransform: 'capitalize' }}>{r.asset_type}</div>
-                            </td>
-                            <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{r.type}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ background: r.asset_type === 'tractor' ? '#f0fdf4' : '#e0f2fe', color: r.asset_type === 'tractor' ? C.olive : C.blue, border: `1.5px solid ${r.asset_type === 'tractor' ? C.olive : C.blue}`, padding: '3px 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>
-                                {r.asset_type === 'tractor' ? '🌿 AgriRent' : '🚗 Car Rental'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 800, color: '#1e40af' }}>ETB {(r.estimated_cost_cents / 100).toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-                            <td style={{ padding: '12px 16px', color: C.textSec }}>{new Date(r.requested_date || r.scheduled_date).toLocaleDateString('en-GB')}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800, background: r.priority==='Urgent'?'#FEE2E2':r.priority==='High'?'#FFEDD5':C.sageLight, color: r.priority==='Urgent'?'#B91C1C':r.priority==='High'?'#C2410C':C.dark }}>
-                                {r.priority || 'Normal'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <Btn color={C.forest} icon={CheckCircle} onClick={() => handleApproveMaintenance(r)} disabled={processing}>Approve</Btn>
-                            </td>
-                          </tr>
-                        {isExpanded && (
-                          <tr style={{ background: '#F0FDF4', borderBottom: `1px solid ${C.midGray}` }}>
-                            <td colSpan={8} style={{ padding: '0 24px 24px 44px' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, padding: 20, background: '#fff', border: `1px solid ${C.sage}`, borderRadius: 8 }}>
-                                <div>
-                                  <h4 style={{ margin: '0 0 12px', color: C.dark, fontSize: 13, textTransform: 'uppercase', fontWeight: 900, borderBottom: `2px solid ${C.sage}`, paddingBottom: 6 }}>Service Details</h4>
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>DESCRIPTION</span><b>{r.description}</b></div>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>PRIORITY</span>
-                                      <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800, background: r.priority==='Urgent'?'#FEE2E2':r.priority==='High'?'#FFEDD5':C.sageLight, color: r.priority==='Urgent'?'#B91C1C':r.priority==='High'?'#C2410C':C.dark }}>
-                                        {r.priority || 'Normal'}
-                                      </span>
-                                    </div>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>MECHANIC / GARAGE</span>{r.mechanic_name || 'N/A'}</div>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>MECHANIC PHONE</span>{r.mechanic_phone || 'N/A'}</div>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>LOCATION</span>{r.location || 'N/A'}</div>
-                                    <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>REPORTED BY</span>{r.reported_by || 'N/A'}</div>
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 style={{ margin: '0 0 12px', color: C.dark, fontSize: 13, textTransform: 'uppercase', fontWeight: 900, borderBottom: `2px solid ${C.sage}`, paddingBottom: 6 }}>Notes & Attachments</h4>
-                                  {r.notes && <div style={{ fontSize: 13, background: '#F8FAFC', padding: 12, border: '1px solid #E2E8F0', borderRadius: 6, marginBottom: 16 }}>{r.notes}</div>}
-                                  {!r.notes && parsedImages.length === 0 && <div style={{ color: C.textSec, fontSize: 12, fontStyle: 'italic' }}>No additional notes or images provided.</div>}
-                                  
-                                  {parsedImages.length > 0 && (
-                                    <div>
-                                      <span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700, marginBottom: 8 }}>ATTACHED IMAGE</span>
-                                      <div style={{ display: 'flex', gap: 12 }}>
-                                        {parsedImages.map((img, idx) => (
-                                          <div key={idx} style={{ width: 120, height: 120, border: '1px solid #CBD5E1', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')}>
-                                            <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Damage/Proforma" />
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <div style={{ fontSize: 10, color: C.textSec, marginTop: 6 }}>Click image to view full size</div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+        {/* Agri Equipment */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.15s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Agri Equipment</span>
+            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚜</span></div>
           </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.agri}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Tractors &amp; Farming</div>
+        </div>
 
-            {/* ── MAINTENANCE RECORDS (Completed/Released) ── */}
-            <div style={{ background: C.white, border: `2px solid ${C.midGray}` }}>
-              <div style={{ padding: '16px 20px', borderBottom: `2px solid ${C.midGray}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.dark }}>
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}>🔧 Fleet & Fuel Records</h2>
-                <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '2px 12px', fontSize: 12, fontWeight: 900 }}>{maintenanceDone.length} record{maintenanceDone.length !== 1 ? 's' : ''}</span>
-              </div>
-              {maintenanceDone.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: C.textSec }}>
-                  <Package size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-                  <div style={{ fontSize: 14, fontWeight: 800 }}>No completed records yet</div>
-                  <p style={{ margin: '6px 0 0', fontSize: 13 }}>Approved and paid maintenance requests will appear here.</p>
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: C.dark, color: '#fff' }}>
-                      {['ID', 'Asset', 'Type', 'Dept', 'Cost (ETB)', 'Scheduled', 'Status'].map(h => (
-                        <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {maintenanceDone.map((r, i) => {
-                      const statusColors = {
-                        PENDING_FINANCE:  { bg: '#FFF3E0', color: '#E65100', label: 'Awaiting Finance' },
-                        FINANCE_READY:    { bg: '#EDE9FE', color: '#6D28D9', label: 'Finance Confirmed' },
-                        FINANCE_APPROVED: { bg: '#E3F2FD', color: '#1565C0', label: 'Finance Approved' },
-                        PAYMENT_RELEASED: { bg: '#DCFCE7', color: '#15803D', label: '✅ Payment Released' },
-                        COMPLETED:        { bg: C.forest,  color: '#fff',     label: '✅ Completed' },
-                      };
-                      const s = statusColors[r.status] || { bg: '#EEE', color: '#616161', label: r.status };
-                      return (
-                        <tr key={r.id} style={{ borderBottom: `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight }}>
-                          <td style={{ padding: '12px 16px', fontWeight: 900, color: C.forest, fontFamily: 'monospace' }}>
-                            {r.isFuel ? 'FS-' : 'MNT-'}{String(r.id).padStart(4, '0')}
-                          </td>
-                          <td style={{ padding: '12px 16px', fontWeight: 700 }}>
-                            <div>{r.asset_name}</div>
-                            <div style={{ fontSize: 11, color: C.textSec, textTransform: 'capitalize' }}>{r.asset_type}</div>
-                          </td>
-                          <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{r.type}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ background: r.asset_type === 'tractor' ? '#f0fdf4' : '#e0f2fe', color: r.asset_type === 'tractor' ? C.olive : C.blue, border: `1.5px solid ${r.asset_type === 'tractor' ? C.olive : C.blue}`, padding: '3px 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>
-                              {r.asset_type === 'tractor' ? '🌿 AgriRent' : '🚗 Car Rental'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 16px', fontWeight: 800, color: C.forest }}>ETB {(r.estimated_cost_cents / 100).toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-                          <td style={{ padding: '12px 16px', color: C.textSec }}>{new Date(r.requested_date || r.scheduled_date).toLocaleDateString('en-GB')}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: s.bg, color: s.color, fontSize: 11, fontWeight: 800, border: `1px solid ${s.color}` }}>{s.label}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+        {/* Active Rentals */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.2s', background: activeOrders.length > 0 ? '#FFF8F0' : undefined }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: activeOrders.length > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Rentals</span>
+            <div style={{ background: activeOrders.length > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{activeOrders.length > 0 ? '⏱️' : '✅'}</span></div>
           </div>
-        )}
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: activeOrders.length > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{activeOrders.length}</div>
+          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently rented out</div>
+        </div>
+      </div>
 
-        {/* ══ PAST REQUESTS (FLOW HISTORY) — ALL DEPARTMENTS ══ */}
-        {activeTab !== 'Maintenance' && (
-          <>
-          <div style={{ marginTop: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ borderLeft: `5px solid ${C.blue}`, paddingLeft: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: C.darkGray, textTransform: 'uppercase' }}>
-                Past Requests — Flow History
-              </h2>
-              <div style={{ fontSize: 12, color: C.textSec, marginTop: 2, fontWeight: 600 }}>
-                {allHistory.length} total record{allHistory.length !== 1 ? 's' : ''} across all departments
+      {/* ── ROW 2: FLEET STATUS BREAKDOWN + ACTIVITY FEED ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+
+        {/* Fleet Status Breakdown */}
+        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <span style={{ fontSize:18 }}>🔀</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Fleet Status Breakdown</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Real-time</span>
+          </div>
+          {/* Sub-KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+            {[
+              { label: 'Total Fleet',    val: fleetStats.total,       icon: '🚙', c: G.forest },
+              { label: 'Available Now',  val: fleetStats.available,   icon: '✅', c: G.emerald },
+              { label: 'Rented Out',     val: fleetStats.rented,      icon: '⏱️', c: G.orange },
+              { label: 'In Maintenance', val: fleetStats.maintenance, icon: '🔧', c: G.red },
+            ].map(k => (
+              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
+                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
               </div>
+            ))}
+          </div>
+          {/* Header row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 60px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+            {['Status', '', 'Count'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+            ))}
+          </div>
+          {statuses.map((status, i) => {
+            const count = fleetStats[status];
+            const c = statusColors[status] || COLORS_ARR[i % COLORS_ARR.length];
+            return (
+              <div key={status} className="cat-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textTransform: 'capitalize' }}>{status}</span>
+                </div>
+                <CategoryBar value={count} max={maxStatusCount} color={c} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Recent Activity Feed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize:18 }}>📜</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Activity</span>
             </div>
-          {/* Department Filter Buttons */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['All', 'Car Rental', 'AgriRent', 'Maintenance'].map(f => {
-              const isActive = historyFilter === f;
-              const col = f === 'Car Rental' ? C.blue : f === 'AgriRent' ? C.olive : f === 'Maintenance' ? C.forest : C.darkGray;
-              const Icon = f === 'Car Rental' ? Truck : f === 'AgriRent' ? Leaf : f === 'Maintenance' ? Wrench : null;
+            {recentActivity.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
+                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No activity yet
+              </div>
+            ) : recentActivity.map((l) => {
+              const c = l.type === 'Rental' ? G.emerald : G.orange;
+              const icon = l.type === 'Rental' ? '🤝' : '🔧';
               return (
-                <button key={f} onClick={() => setHistoryFilter(f)} style={{
-                  padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                  background: isActive ? col : C.white,
-                  color: isActive ? '#fff' : col,
-                  border: `2px solid ${isActive ? col : C.midGray}`,
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  textTransform: 'uppercase', letterSpacing: 0.5,
-                  boxShadow: isActive ? `0 3px 8px ${col}40` : 'none',
-                }}>
-                  {Icon && <Icon size={12} />}
-                  {f}
-                  <span style={{
-                    background: isActive ? 'rgba(255,255,255,0.3)' : col,
-                    color: '#fff', borderRadius: 10, padding: '0 6px', fontSize: 11, fontWeight: 900,
-                  }}>
-                    {f === 'All' ? allHistory.length : f === 'Car Rental'
-                      ? allHistory.filter(r => r.department === 'Car Rental' || (!r.department && !r.isMaintenance)).length
-                      : allHistory.filter(r => r.department === f).length}
+                <div key={l.id} className="top-row">
+                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 14 }}>{icon}</span>
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {l.type}: {l.title}
+                    </div>
+                    <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{l.sub}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                    {l.date ? new Date(l.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''}
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>
         </div>
-
-        <div style={{ background: C.white, border: `2px solid ${C.midGray}` }}>
-          {loading ? (
-            <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <SegmentedSpinner size={28} />
-            </div>
-          ) : filteredHistory.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: C.textSec }}>
-              <Package size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <div style={{ fontSize: 16, fontWeight: 800 }}>No history records{historyFilter !== 'All' ? ` for ${historyFilter}` : ''}</div>
-            </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: C.dark, color: '#fff' }}>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>#</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Request #</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Department</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Date</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Items</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredHistory.map((r, i) => {
-                  const isOpen = !!expandedRows[r.id];
-                  const det = rowDetails[r.id];
-                  const loadingDet = !!rowDetailLoading[r.id];
-                  const dept = r.department || 'Car Rental';
-                  const deptColor = dept === 'AgriRent' ? C.olive : dept === 'Maintenance' ? C.forest : C.blue;
-                  const DeptIcon = dept === 'AgriRent' ? Leaf : dept === 'Maintenance' ? Wrench : Truck;
-
-                  return (
-                    <React.Fragment key={r.id}>
-                      <tr style={{ borderBottom: isOpen ? 'none' : `1px solid ${C.midGray}`, background: i % 2 === 0 ? C.white : C.sageLight }}>
-                        <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{i + 1}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: 900, color: C.forest, fontFamily: 'monospace', fontSize: 12 }}>{r.request_number}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <span style={{
-                            background: dept === 'AgriRent' ? '#f0fdf4' : dept === 'Maintenance' ? '#E8F5E9' : '#e0f2fe',
-                            color: deptColor, border: `1.5px solid ${deptColor}`,
-                            padding: '3px 10px', fontSize: 11, fontWeight: 800,
-                            textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4,
-                          }}>
-                            <DeptIcon size={11} />{dept}
-                          </span>
-                        </td>
-                        <td style={{ padding: '11px 14px', color: C.textSec, fontWeight: 700 }}>{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <span style={{ background: C.sageLight, border: `1px solid ${C.sage}`, color: C.forest, padding: '3px 10px', fontWeight: 800, fontSize: 12 }}>{r.item_count || '—'}</span>
-                        </td>
-                        <td style={{ padding: '11px 14px' }}><StatusBadge status={r.status} /></td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <button onClick={() => toggleRowDetail(r)} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: 'none',
-                            border: `1.5px solid ${isOpen ? C.forest : C.blue}`, color: isOpen ? C.forest : C.blue,
-                            fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', borderRadius: 0,
-                          }}>
-                            {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {isOpen ? 'View Less' : 'View More'}
-                          </button>
-                        </td>
-                      </tr>
-                      {isOpen && (
-                        <tr>
-                          <td colSpan={7} style={{ padding: 0, borderBottom: `2px solid ${C.forest}` }}>
-                            <div style={{ background: '#F0F7F0', borderLeft: `5px solid ${deptColor}`, padding: '18px 28px' }}>
-                              {loadingDet ? (
-                                <div style={{ padding: '20px', textAlign: 'center', color: C.textSec }}><SegmentedSpinner size={18} /> Loading...</div>
-                              ) : det ? (
-                                <>
-                                  {det.isMaintenance ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                                      <div>
-                                        <h4 style={{ margin: '0 0 12px', color: C.dark, fontSize: 13, textTransform: 'uppercase', fontWeight: 900, borderBottom: `2px solid ${C.sage}`, paddingBottom: 6 }}>Service Details</h4>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
-                                          <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>DESCRIPTION</span><b>{det.description}</b></div>
-                                          <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>PRIORITY</span>
-                                            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800, background: det.priority==='Urgent'?'#FEE2E2':det.priority==='High'?'#FFEDD5':C.sageLight, color: det.priority==='Urgent'?'#B91C1C':det.priority==='High'?'#C2410C':C.dark }}>
-                                              {det.priority || 'Normal'}
-                                            </span>
-                                          </div>
-                                          <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>MECHANIC</span>{det.mechanic_name || 'N/A'}</div>
-                                          <div><span style={{ color: C.textSec, display: 'block', fontSize: 11, fontWeight: 700 }}>LOCATION</span>{det.location || 'N/A'}</div>
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <h4 style={{ margin: '0 0 12px', color: C.dark, fontSize: 13, textTransform: 'uppercase', fontWeight: 900, borderBottom: `2px solid ${C.sage}`, paddingBottom: 6 }}>Notes & Attachments</h4>
-                                        {det.notes && <div style={{ fontSize: 13, background: '#fff', padding: 12, border: '1px solid #E2E8F0', borderRadius: 6, marginBottom: 12 }}>{det.notes}</div>}
-                                        {det.images && JSON.parse(det.images).length > 0 && (
-                                          <div style={{ display: 'flex', gap: 8 }}>
-                                            {JSON.parse(det.images).map((img, idx) => (
-                                              <div key={idx} style={{ width: 80, height: 80, border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')}>
-                                                <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Attachment" />
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
-                                        {[
-                                          { label: 'Department', value: dept },
-                                          { label: 'Requested By', value: det.requester_name || '—' },
-                                          { label: 'CEO Approved By', value: det.approver_name || '—' },
-                                          { label: 'Store Handler', value: det.store_handler_name || '—' },
-                                        ].map(f => (
-                                          <div key={f.label} style={{ borderLeft: `3px solid ${C.sage}`, paddingLeft: 12 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.textSec, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray }}>{f.value}</div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                                        <thead>
-                                          <tr style={{ background: C.dark }}>
-                                            {['#', 'Product', 'Qty Requested', 'Qty Shipped', 'Status'].map(h => (
-                                              <th key={h} style={{ padding: '8px 12px', color: '#fff', fontWeight: 800, fontSize: 10, textAlign: 'left', textTransform: 'uppercase' }}>{h}</th>
-                                            ))}
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {(det.items || []).map((it, idx) => (
-                                            <tr key={idx} style={{ borderBottom: `1px solid ${C.midGray}`, background: '#fff' }}>
-                                              <td style={{ padding: '8px 12px', color: C.textSec }}>{idx + 1}</td>
-                                              <td style={{ padding: '8px 12px', fontWeight: 800 }}>{it.product_name}</td>
-                                              <td style={{ padding: '8px 12px', fontWeight: 900, color: C.forest }}>{it.quantity_requested}</td>
-                                              <td style={{ padding: '8px 12px', fontWeight: 800, color: C.emerald }}>{it.quantity_shipped ?? '—'}</td>
-                                              <td style={{ padding: '8px 12px' }}>
-                                                {it.quantity_shipped ? <span style={{ color: C.emerald, fontWeight: 800, fontSize: 10 }}>✓ SHIPPED</span> : <span style={{ color: C.textSec, fontSize: 10 }}>—</span>}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </>
-                                  )}
-                                </>
-                              ) : (
-                                <div style={{ color: C.red, fontSize: 13, fontWeight: 700 }}>Failed to load details.</div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-          </>
-        )}
       </div>
-
-      {/* DETAIL MODAL */}
-      {viewDetail && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 24 }}>
-          <div style={{ background: C.white, width: '100%', maxWidth: 700, borderTop: `6px solid ${C.forest}`, boxShadow: '0 20px 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
-            <div style={{ padding: '20px 24px', borderBottom: `2px solid ${C.midGray}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, textTransform: 'uppercase', color: C.darkGray }}>
-                  Review {viewDetail.type} Request
-                </h2>
-                <div style={{ color: C.textSec, fontSize: 13, marginTop: 4, fontWeight: 700 }}>{viewDetail.data.request_number}</div>
-              </div>
-              <button onClick={() => setViewDetail(null)} style={{ background: 'none', border: 'none', fontSize: 24, color: C.textSec, cursor: 'pointer' }}>&times;</button>
-            </div>
-            
-            <div style={{ padding: 24, overflowY: 'auto' }}>
-              <div style={{ background: '#F9FAFB', border: `2px solid ${C.midGray}`, padding: 16, marginBottom: 24, fontSize: 13 }}>
-                <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
-                  <div>
-                    <div style={{ color: C.textSec, fontWeight: 800, fontSize: 10, textTransform: 'uppercase' }}>Requested By</div>
-                    <div style={{ fontWeight: 800, color: C.darkGray }}>{viewDetail.data.requester_name}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: C.textSec, fontWeight: 800, fontSize: 10, textTransform: 'uppercase' }}>Date</div>
-                    <div style={{ fontWeight: 800, color: C.darkGray }}>{new Date(viewDetail.data.created_at).toLocaleString()}</div>
-                  </div>
-                </div>
-                <div>
-                  <div style={{ color: C.textSec, fontWeight: 800, fontSize: 10, textTransform: 'uppercase' }}>Notes / Reason</div>
-                  <div style={{ fontWeight: 700, color: C.darkGray, fontStyle: viewDetail.data.notes ? 'normal' : 'italic' }}>
-                    {viewDetail.data.notes || 'No notes provided.'}
-                  </div>
-                </div>
-              </div>
-
-              <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 900, textTransform: 'uppercase', color: C.darkGray }}>Requested Items</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, border: `2px solid ${C.midGray}` }}>
-                <thead>
-                  <tr style={{ background: C.dark, color: '#fff' }}>
-                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800 }}>Product</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800 }}>Qty Requested</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800 }}>In Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(viewDetail.data.items || []).map((it, idx) => {
-                    const lowStock = (it.stock_quantity || 0) < it.quantity_requested;
-                    return (
-                      <tr key={idx} style={{ borderBottom: `1px solid ${C.midGray}` }}>
-                        <td style={{ padding: '10px 12px', fontWeight: 800 }}>{it.product_name}</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800, fontSize: 14 }}>{it.quantity_requested}</td>
-                        <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800, color: lowStock ? C.red : C.forest }}>
-                          {it.stock_quantity || 0}
-                          {lowStock && <div style={{ fontSize: 10, color: C.red }}>Low Stock!</div>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ padding: '16px 24px', background: '#F9FAFB', borderTop: `2px solid ${C.midGray}`, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <Btn outline color={C.textSec} onClick={() => setViewDetail(null)}>Close</Btn>
-              <Btn color={C.red} icon={XCircle} onClick={() => setRejectModal({ type: viewDetail.type, id: viewDetail.data.id })} disabled={processing}>Reject</Btn>
-              <Btn color={C.forest} icon={CheckCircle} onClick={() => handleApprove(viewDetail.type, viewDetail.data.id)} disabled={processing}>Approve & Send to Store</Btn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* REJECT MODAL */}
-      {rejectModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}>
-          <div style={{ background: C.white, width: '100%', maxWidth: 450, borderTop: `5px solid ${C.red}`, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-            <div style={{ padding: 24 }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 900, textTransform: 'uppercase', color: C.darkGray }}>Reject {rejectModal.type} Request</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: C.textSec }}>Please provide a reason for rejecting this request. It will be sent back to the manager.</p>
-              <textarea 
-                value={rejectionReason} 
-                onChange={e => setRejectionReason(e.target.value)}
-                placeholder="Type rejection reason here..."
-                rows={4}
-                style={{ width: '100%', padding: 12, border: `2px solid ${C.midGray}`, outline: 'none', fontFamily: 'inherit', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ padding: '16px 24px', background: '#F9FAFB', borderTop: `1px solid ${C.midGray}`, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <Btn outline color={C.textSec} onClick={() => { setRejectModal(null); setRejectionReason(''); }}>Cancel</Btn>
-              <Btn color={C.red} icon={XCircle} onClick={handleReject} disabled={processing}>Confirm Reject</Btn>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
