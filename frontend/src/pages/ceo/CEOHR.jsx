@@ -1,248 +1,420 @@
-import React, { useState } from 'react';
-import { submitNotification, receiveNotification, triggerNotification } from '../../utils/ceoNotifications';
-import { Users, User, Download, CheckCircle, XCircle, Calendar, Briefcase } from 'lucide-react';
-import HRDepartments from '../hr/HRDepartments';
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../../services/apiClient';
+import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import { useAuth } from '../../hooks/useAuth';
 
-const CEOHR = () => {
-  const [activeTab, setActiveTab] = useState('Employees');
+const G = {
+  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57',
+  olive: '#6B8E23', brown: '#8D6E63', sky: '#87CEEB',
+  orange: '#FF9800', purple: '#7C3AED', blue: '#3b82f6',
+};
+const COLORS_ARR = [G.forest, G.orange, G.sky, G.purple, G.emerald, G.brown, G.blue];
 
-  // Seeded 14 employees
-  const [employees] = useState([
-    { id: 'EMP-001', name: 'John Doe', dept: 'Pharmacy', role: 'Manager', branch: 'Main', hireDate: '2024-01-15', status: 'Active', salary: 5000 },
-    { id: 'EMP-002', name: 'Jane Smith', dept: 'Pharmacy', role: 'Pharmacist', branch: 'Main', hireDate: '2025-03-10', status: 'Active', salary: 3000 },
-    { id: 'EMP-003', name: 'Alice Brown', dept: 'Car Rental', role: 'Manager', branch: 'Main', hireDate: '2023-11-01', status: 'On Leave', salary: 4500 },
-    { id: 'EMP-004', name: 'Bob White', dept: 'Store', role: 'Manager', branch: 'Main', hireDate: '2022-05-20', status: 'Active', salary: 4000 },
-    { id: 'EMP-005', name: 'Charlie Green', dept: 'Finance', role: 'Manager', branch: 'Main', hireDate: '2024-08-12', status: 'Active', salary: 5500 },
-    { id: 'EMP-006', name: 'Diana Prince', dept: 'HR', role: 'Manager', branch: 'Main', hireDate: '2023-01-05', status: 'Active', salary: 4800 },
-    { id: 'EMP-007', name: 'Eve Black', dept: 'Purchase', role: 'Manager', branch: 'Main', hireDate: '2025-01-20', status: 'Active', salary: 4600 },
-    { id: 'EMP-008', name: 'Frank Gray', dept: 'Printing', role: 'Manager', branch: 'Main', hireDate: '2024-04-14', status: 'Active', salary: 3800 },
-    { id: 'EMP-009', name: 'Grace Hill', dept: 'Agri Rental', role: 'Manager', branch: 'Main', hireDate: '2023-09-09', status: 'Active', salary: 4200 },
-    { id: 'EMP-010', name: 'Henry Ford', dept: 'Car Rental', role: 'Driver', branch: 'Main', hireDate: '2025-06-01', status: 'Active', salary: 2000 },
-    { id: 'EMP-011', name: 'Ivy Stone', dept: 'Pharmacy', role: 'Cashier', branch: 'Main', hireDate: '2026-02-15', status: 'Active', salary: 1500 },
-    { id: 'EMP-012', name: 'Jack Daniels', dept: 'Store', role: 'Clerk', branch: 'Main', hireDate: '2025-11-11', status: 'Active', salary: 1800 },
-    { id: 'EMP-013', name: 'Karen Page', dept: 'Finance', role: 'Accountant', branch: 'Main', hireDate: '2024-07-22', status: 'Active', salary: 3500 },
-    { id: 'EMP-014', name: 'Leo Messi', dept: 'Printing', role: 'Operator', branch: 'Main', hireDate: '2026-01-10', status: 'Active', salary: 2200 },
-  ]);
+const CategoryBar = ({ value, max, color }) => (
+  <div style={{ background: '#E5E7EB', borderRadius: 99, height: 8, overflow: 'hidden', flex: 1 }}>
+    <div style={{
+      height: '100%', borderRadius: 99, background: color || '#2563EB',
+      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
+      transition: 'width 150ms ease-in-out',
+    }} />
+  </div>
+);
 
-  const [leaveRequests, setLeaveRequests] = useState([
-    { id: 'LR-301', name: 'Jane Smith', dept: 'Pharmacy', type: 'Annual', start: '2026-07-10', end: '2026-07-20', days: 10, status: 'PENDING' },
-    { id: 'LR-302', name: 'Alice Brown', dept: 'Car Rental', type: 'Sick', start: '2026-07-01', end: '2026-07-05', days: 5, status: 'APPROVED' },
-  ]);
+const GlobalStyles = () => (
+  <style>{`
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    }
+    
+    @keyframes phFadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    
+    .hr-page-wrapper {
+      padding: 10px; /* Safe edge margin desktop */
+      min-height: calc(100vh - 60px);
+      box-sizing: border-box;
+      background: var(--color-bg-page);
+      font-family: var(--font-family);
+      animation: phFadeUp 0.35s ease;
+    }
+    
+    .hr-page-content {
+      background: var(--color-bg-page);
+      padding: 24px;
+      margin: 0 auto;
+      max-width: 1536px;
+      line-height: 1.5;
+      font-size: 16px;
+      color: var(--color-text-primary);
+    }
 
-  const [rejectId, setRejectId] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [viewEmployee, setViewEmployee] = useState(null);
+    h1, h2, h3, h4, h5, h6 { 
+      line-height: 1.3; 
+      margin: 0; 
+    }
 
-  const handleApproveLeave = (req) => {
-    setLeaveRequests(leaveRequests.map(r => r.id === req.id ? { ...r, status: 'APPROVED' } : r));
-    submitNotification('Leave Request Approved', `Leave for ${req.name} approved. Employee status will update to On Leave on start date.`);
-  };
+    .hr-btn {
+      border-radius: 8px; height: 36px; padding: 0 16px; font-weight: 500; font-size: 14px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 1px solid var(--color-border); transition: all 150ms ease-in-out;
+      background: #FFF; color: var(--color-text-primary);
+    }
+    .hr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hr-btn:hover:not(:disabled) { 
+      background: #FFD700; color: #000; border-color: #FFD700; 
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234,179,8,0.3); 
+    }
+    
+    .hr-btn-primary { 
+      background: var(--color-primary); color: #FFF; border-color: transparent; 
+    }
+    .hr-btn-primary:hover:not(:disabled) { 
+      background: #FFD700; color: #000; border-color: #FFD700; 
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234,179,8,0.3); 
+    }
+    
+    .hr-card {
+      background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px;
+      padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease-in-out; cursor: default;
+    }
+    .hr-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px);
+    }
+    
+    .hr-alert-row {
+      display: flex; align-items: center; gap: 16px; padding: 16px;
+      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
+      cursor: default; margin-bottom: 16px; transition: all 150ms ease-in-out;
+    }
+    
+    .hr-cat-row {
+      display: grid; grid-template-columns: 180px 1fr 80px 80px; gap: 16px; align-items: center;
+      padding: 12px 16px; border-bottom: 1px solid var(--color-border); 
+      cursor: default; transition: all 150ms ease-in-out;
+    }
+    .hr-cat-row:last-child {
+      border-bottom: none;
+    }
+    
+    .hr-top-row {
+      display: flex; align-items: center; gap: 16px; padding: 12px 16px;
+      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
+      margin-bottom: 8px; cursor: default; transition: all 150ms ease-in-out;
+    }
+    
+    .hr-alert-row:hover, .hr-cat-row:hover, .hr-top-row:hover {
+      background: #F9FAFB; 
+      box-shadow: inset 2px 0 0 var(--color-primary);
+    }
+    
+    .hr-grid-kpi  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .hr-grid-main { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; }
+    .hr-grid-bot  { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+    .hr-sub-kpis  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    
+    .label-header {
+      font-size: 14px; font-weight: 500; color: var(--color-text-muted); 
+      text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.3;
+    }
 
-  const handleRejectLeave = () => {
-    if (!rejectReason) return alert('Reason is required');
-    setLeaveRequests(leaveRequests.map(r => r.id === rejectId ? { ...r, status: 'REJECTED' } : r));
-    receiveNotification('Leave Request Rejected', `LR ${rejectId} rejected: ${rejectReason}`);
-    setRejectId(null);
-    setRejectReason('');
-  };
+    @media (max-width: 1024px) {
+      .hr-page-wrapper { padding: 6px; }
+      .hr-page-content { padding: 16px; }
+      .hr-grid-kpi { grid-template-columns: repeat(2, 1fr); }
+      .hr-grid-main, .hr-grid-bot { grid-template-columns: 1fr; }
+      .hr-sub-kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .hr-page-wrapper { padding: 4px; }
+      .hr-page-content { padding: 12px; }
+      .hr-grid-kpi { grid-template-columns: 1fr; }
+      .hr-sub-kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .hr-cat-row { grid-template-columns: 120px 1fr 60px 60px; gap: 8px; padding: 12px 8px; }
+    }
+  `}</style>
+);
 
-  const handleExport = () => {
-    triggerNotification('Export Started', `Exporting HR ${activeTab} Report as PDF...`);
-  };
+export default function CEOHR() {
+  const { user } = useAuth();
+  const [data, setData]           = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError]         = useState(null);
+  const [timeString, setTimeString] = useState('');
+
+  useEffect(() => {
+    const tick = () =>
+      setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await api.get('/ceo/hr-overview');
+      setData(res?.data || null);
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to load HR data');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const firstName  = user?.fullName?.split(' ')[0] || user?.full_name?.split(' ')[0] || 'CEO';
+
+  const activeCount    = data?.headcount?.active           || 0;
+  const presentCount   = data?.attendance?.present         || 0;
+  const onLeaveCount   = data?.leaves?.approvedThisMonth   || 0;
+  const pendingCount   = data?.leaves?.pendingCount        || 0;
+  const pendingLeaves  = data?.leaves?.recent              || [];
+  const recentHires    = data?.recentHires                 || [];
+  const deptBreakdown  = data?.departments                 || [];
+  const totalDepts     = deptBreakdown.length;
+  const attendanceRate = activeCount > 0 ? Math.round((presentCount / activeCount) * 100) : 0;
+  const maxDeptCount   = Math.max(...deptBreakdown.map(d => d.count), 1);
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0 }}>👥 HUMAN RESOURCES</h1>
-          <p style={{ color: '#64748b', margin: 0 }}>🔗 Manage HR & Payroll Across All Departments</p>
-        </div>
-        <button onClick={handleExport} style={{ padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <Download size={16}/> Export Report
-        </button>
-      </div>
+    <div className="hr-page-wrapper">
+      <div className="hr-page-content">
+        <GlobalStyles />
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        {['Employees', 'Departments', 'Leave Requests', 'Payroll', 'Attendance'].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: activeTab === tab ? '#0f172a' : 'white', color: activeTab === tab ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 'bold', border: activeTab === tab ? 'none' : '1px solid #e2e8f0' }}>
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'Employees' && (
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>All Employees ({employees.length})</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#f8fafc' }}>
-              <tr>
-                <th style={{ padding: 12 }}>EMP ID</th>
-                <th style={{ padding: 12 }}>Name</th>
-                <th style={{ padding: 12 }}>Department</th>
-                <th style={{ padding: 12 }}>Role</th>
-                <th style={{ padding: 12 }}>Branch</th>
-                <th style={{ padding: 12 }}>Status</th>
-                <th style={{ padding: 12 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map(e => (
-                <tr key={e.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: 12, fontWeight: 'bold' }}>{e.id}</td>
-                  <td style={{ padding: 12 }}>{e.name}</td>
-                  <td style={{ padding: 12 }}>{e.dept}</td>
-                  <td style={{ padding: 12 }}>{e.role}</td>
-                  <td style={{ padding: 12 }}>{e.branch}</td>
-                  <td style={{ padding: 12 }}>
-                    <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 'bold', background: e.status === 'Active' ? '#dcfce7' : '#fee2e2', color: e.status === 'Active' ? '#166534' : '#991b1b' }}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    <button onClick={() => setViewEmployee(e)} style={{ background: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <User size={14}/> Profile
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {activeTab === 'Departments' && (
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', minHeight: '600px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Departments Management</h3>
-          <div style={{ height: 'calc(100% - 40px)', overflow: 'auto' }}>
-            <HRDepartments />
+        {/* HEADER */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: 32, gap: 16 }}>
+          <div style={{ justifySelf: 'start' }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              🌿 Welcome, {firstName}!
+            </h1>
+          </div>
+          <div style={{ justifySelf: 'center' }}>
+            <p style={{ fontSize: 16, color: 'var(--color-text-secondary)', fontWeight: 500, margin: 0 }}>
+              Universal HR Hub · It&apos;s {timeString}
+            </p>
+          </div>
+          <div style={{ justifySelf: 'end' }}>
+            <button onClick={load} className="hr-btn hr-btn-primary" disabled={refreshing}>
+              {refreshing && <SegmentedSpinner size={16} />}
+              <span>SYNC</span>
+            </button>
           </div>
         </div>
-      )}
 
-      {activeTab === 'Leave Requests' && (
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Leave Requests</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#f8fafc' }}>
-              <tr>
-                <th style={{ padding: 12 }}>LR #</th>
-                <th style={{ padding: 12 }}>Employee Name</th>
-                <th style={{ padding: 12 }}>Department</th>
-                <th style={{ padding: 12 }}>Dates</th>
-                <th style={{ padding: 12 }}>Days</th>
-                <th style={{ padding: 12 }}>Status</th>
-                <th style={{ padding: 12 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaveRequests.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: 12, fontWeight: 'bold' }}>{r.id}</td>
-                  <td style={{ padding: 12 }}>{r.name}</td>
-                  <td style={{ padding: 12 }}>{r.dept}</td>
-                  <td style={{ padding: 12 }}>{r.start} to {r.end}</td>
-                  <td style={{ padding: 12 }}>{r.days}</td>
-                  <td style={{ padding: 12 }}>
-                    <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 12, fontWeight: 'bold', background: r.status === 'APPROVED' ? '#dcfce7' : r.status === 'REJECTED' ? '#fee2e2' : '#fef3c7', color: r.status === 'APPROVED' ? '#166534' : r.status === 'REJECTED' ? '#991b1b' : '#b45309' }}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    {r.status === 'PENDING' && (
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => handleApproveLeave(r)} style={{ background: '#22c55e', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle size={14}/> Approve
-                        </button>
-                        <button onClick={() => setRejectId(r.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <XCircle size={14}/> Reject
-                        </button>
+        {/* LOADING */}
+        {refreshing && !data && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', flexDirection: 'column', gap: 16 }}>
+            <SegmentedSpinner size={40} color="var(--color-primary)" />
+            <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: 16, fontWeight: 500 }}>Loading Workforce Data…</p>
+          </div>
+        )}
+
+        {/* ERROR */}
+        {error && (
+          <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', borderRadius: 10, padding: 24, color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span style={{ fontSize: 32 }}>⚠</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 4 }}>Failed to load HR data</div>
+              <div style={{ fontSize: 16, opacity: 0.9 }}>{error}</div>
+              <button onClick={load} className="hr-btn" style={{ marginTop: 12 }}>Retry</button>
+            </div>
+          </div>
+        )}
+
+        {/* MAIN DASHBOARD */}
+        {!error && data && (
+          <>
+            {/* ── ROW 1: KPI HERO CARDS ── */}
+            <div className="hr-grid-kpi">
+
+              {/* Health Score Hero */}
+              <div className="hr-card"
+                style={{ background: `linear-gradient(135deg, ${G.forest} 0%, ${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', borderColor: 'transparent' }}>
+                <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+                <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: 10 }}>
+                  <span style={{ fontSize: 22 }}>⭐</span>
+                </div>
+                <div className="label-header" style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 12 }}>Workforce Health Score</div>
+                <div style={{ fontSize: '3rem', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 16 }}>
+                  {attendanceRate}<span style={{ fontSize: '1.5rem', opacity: 0.75, marginLeft: 6 }}>%</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500, opacity: 0.9 }}>
+                  <span>👋</span> Hello, {firstName} — Today&apos;s Attendance
+                </div>
+              </div>
+
+              {/* Total Staff */}
+              <div className="hr-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <span className="label-header">Total Staff</span>
+                  <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>👥</span></div>
+                </div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6, lineHeight: 1 }}>{activeCount.toLocaleString()}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Employees on payroll</div>
+              </div>
+
+              {/* Present Today */}
+              <div className="hr-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <span className="label-header">Present Today</span>
+                  <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>✅</span></div>
+                </div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6, lineHeight: 1 }}>{presentCount.toLocaleString()}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Currently clocked in</div>
+              </div>
+
+              {/* Pending Approvals */}
+              <div className="hr-card" style={{ borderColor: pendingCount > 0 ? 'var(--color-warning)' : undefined }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <span className="label-header" style={{ color: pendingCount > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>Pending Approvals</span>
+                  <div style={{ background: pendingCount > 0 ? 'var(--color-warning-bg)' : 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}>
+                    <span style={{ fontSize: 18 }}>{pendingCount > 0 ? '⚠️' : '✅'}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 700, color: pendingCount > 0 ? 'var(--color-warning)' : 'var(--color-text-primary)', marginBottom: 6, lineHeight: 1 }}>{pendingCount}</div>
+                <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{pendingCount > 0 ? 'Requires attention' : 'All caught up!'}</div>
+              </div>
+            </div>
+
+            {/* ── ROW 2: DEPARTMENTS + RECENT HIRES ── */}
+            <div className="hr-grid-main">
+
+              {/* Dept Breakdown */}
+              <div className="hr-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <span style={{ fontSize: 24 }}>🏢</span>
+                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Department Headcount</h2>
+                  <span style={{ marginLeft: 'auto', fontSize: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Across {totalDepts} depts</span>
+                </div>
+                <div className="hr-sub-kpis">
+                  {[
+                    { label: 'Active Depts',    val: totalDepts,   icon: '🏢', c: G.forest },
+                    { label: 'Total Employees', val: activeCount,  icon: '👥', c: G.orange },
+                    { label: 'On Leave',        val: onLeaveCount, icon: '🌴', c: G.sky    },
+                    { label: 'Leave Requests',  val: pendingCount, icon: '⏳', c: G.purple },
+                  ].map(k => (
+                    <div key={k.label} style={{ background: 'var(--color-bg-page)', borderRadius: 8, padding: '16px', border: `1px solid ${k.c}30` }}>
+                      <div style={{ fontSize: 20, marginBottom: 8 }}>{k.icon}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: k.c }}>{k.val}</div>
+                      <div className="label-header" style={{ marginTop: 6, fontSize: 12 }}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr 80px 80px', gap: 16, padding: '12px 16px', background: '#F9FAFB', borderBottom: '1px solid var(--color-border)', borderRadius: '8px 8px 0 0' }}>
+                  {['Department', '', 'Count', '%'].map((h, i) => (
+                    <div key={i} className="label-header" style={{ textAlign: (h === 'Count' || h === '%') ? 'right' : 'left' }}>{h}</div>
+                  ))}
+                </div>
+                {deptBreakdown.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No department data yet</div>
+                ) : deptBreakdown.map((row, i) => {
+                  const c = COLORS_ARR[i % COLORS_ARR.length];
+                  const pct = activeCount > 0 ? Math.round((row.count / activeCount) * 100) : 0;
+                  return (
+                    <div key={i} className="hr-cat-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{row.department}</span>
                       </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      <CategoryBar value={row.count} max={maxDeptCount} color={c} />
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' }}>{row.count}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-success)', textAlign: 'right' }}>{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
 
-      {activeTab === 'Payroll' && (
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 16 }}>Payroll Summary (Read-Only)</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#f8fafc' }}>
-              <tr>
-                <th style={{ padding: 12 }}>Employee Name</th>
-                <th style={{ padding: 12 }}>Department</th>
-                <th style={{ padding: 12 }}>Base Salary</th>
-                <th style={{ padding: 12 }}>Deductions</th>
-                <th style={{ padding: 12 }}>Net Pay</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map(e => (
-                <tr key={e.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: 12 }}>{e.name}</td>
-                  <td style={{ padding: 12 }}>{e.dept}</td>
-                  <td style={{ padding: 12 }}>${e.salary}</td>
-                  <td style={{ padding: 12 }}>${e.salary * 0.1}</td>
-                  <td style={{ padding: 12, fontWeight: 'bold' }}>${e.salary * 0.9}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {activeTab === 'Attendance' && (
-        <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b' }}>
-          <Calendar size={48} style={{ opacity: 0.5, marginBottom: 16 }}/>
-          <h3>Unified Attendance View</h3>
-          <p>This view dynamically pulls from the individual department attendance modules.</p>
-        </div>
-      )}
-
-      {/* REJECT MODAL */}
-      {rejectId && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', padding: 24, borderRadius: 8, width: 400 }}>
-            <h3>Reject Leave {rejectId}</h3>
-            <textarea placeholder="Enter rejection reason (required)..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} style={{ width: '100%', height: 100, padding: 8, marginBottom: 16, border: '1px solid #cbd5e1', borderRadius: 4 }}></textarea>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button onClick={() => setRejectId(null)} style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleRejectLeave} style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Submit</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW PROFILE MODAL */}
-      {viewEmployee && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', padding: 24, borderRadius: 8, width: 500 }}>
-            <h3 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>Employee Profile</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              <div><strong>Name:</strong> {viewEmployee.name}</div>
-              <div><strong>ID:</strong> {viewEmployee.id}</div>
-              <div><strong>Department:</strong> {viewEmployee.dept}</div>
-              <div><strong>Role:</strong> {viewEmployee.role}</div>
-              <div><strong>Hire Date:</strong> {viewEmployee.hireDate}</div>
-              <div><strong>Status:</strong> {viewEmployee.status}</div>
-            </div>
-            
-            <h4 style={{ marginBottom: 8 }}>Performance Summary</h4>
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, marginBottom: 24 }}>
-              Task Completion Rate: 95%<br/>
-              Attendance Rate: 98%<br/>
-              Punctuality: 100%
+              {/* Recent Hires */}
+              <div className="hr-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <span style={{ fontSize: 24 }}>🚀</span>
+                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Recent Hires</h2>
+                </div>
+                {recentHires.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>
+                    <span style={{ fontSize: 32, display: 'block', marginBottom: 12, opacity: 0.4 }}>📭</span>No recent hires
+                  </div>
+                ) : recentHires.slice(0, 7).map((hire, i) => (
+                  <div key={hire.id || i} className="hr-top-row">
+                    <div style={{ width: 44, height: 44, borderRadius: 8, background: `${G.emerald}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>
+                      👋
+                    </div>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hire.name}</div>
+                      <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>{hire.role} · {hire.dept}</div>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: G.emerald, whiteSpace: 'nowrap' }}>
+                      {hire.hireDate ? new Date(hire.hireDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <button onClick={() => setViewEmployee(null)} style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}>Close Profile</button>
-          </div>
-        </div>
-      )}
+            {/* ── ROW 3: ALERTS ── */}
+            <div className="hr-grid-bot">
+
+              {/* Alerts */}
+              <div className="hr-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <span style={{ fontSize: 24 }}>⚠</span>
+                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Attention Required</h2>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                  {[
+                    { label: `${pendingCount} Pending Requests`, sub: 'Leaves awaiting approval', icon: '⏳', bg: 'var(--color-info-bg)' },
+                    { label: `${onLeaveCount} Staff on Leave`,   sub: 'Currently not in office',  icon: '🌴', bg: 'var(--color-warning-bg)' },
+                  ].map(row => (
+                    <div key={row.label} className="hr-alert-row">
+                      <div style={{ background: row.bg, padding: 12, borderRadius: 8 }}><span style={{ fontSize: 24 }}>{row.icon}</span></div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>{row.label}</div>
+                        <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginTop: 4 }}>{row.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {pendingLeaves.length > 0 && (
+                  <div style={{ marginTop: 24 }}>
+                    <div className="label-header" style={{ marginBottom: 16 }}>Recent Leaves</div>
+                    {pendingLeaves.slice(0, 3).map((item, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 12px', borderTop: '1px solid var(--color-border)', transition: 'all 150ms ease' }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning)', minWidth: 32 }}>{item.name}</span>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.type || 'Leave Request'}</span>
+                        <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                          {item.start_date ? new Date(item.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
-};
-
-export default CEOHR;
+}
