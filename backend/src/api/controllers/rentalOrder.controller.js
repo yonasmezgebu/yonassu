@@ -6,6 +6,7 @@ const notificationRepository = require('../../repositories/notification.reposito
 const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 // ── HELPER: Sync car rental payment to Finance Receivables ───────────────────────
 // Mirrors same logic as AgriRent syncToFinance
@@ -206,6 +207,11 @@ exports.updateOrderStatus = async (req, res, next) => {
     if (status === 'REJECTED') extraData.rejected_at = new Date();
 
     const updated = await rentalOrderRepository.updateStatus(id, status, extraData);
+
+    carRentalAudit.log(req, `Rental Order ${String(status).toLowerCase()}`, order.orderNumber,
+      { status: order.status, car_id: order.carId },
+      { status, managerNote: managerNote || null }
+    );
 
     // If approved/active, update car status to Booked
     if (['APPROVED', 'ON_TRIP', 'ACTIVE'].includes(status)) {
@@ -413,6 +419,12 @@ exports.createManualOrder = async (req, res) => {
       });
     } catch (e) { /* non-fatal */ }
 
+    carRentalAudit.log(req, 'Rental Order Created (Manual)', orderNumber, null, {
+      order_number: orderNumber, car_id: carId ? parseInt(carId) : null, customer_name: customerName,
+      total_days: totalDays, daily_rate: dailyRate, rental_amount: rentalAmount, total_amount: totalAmount,
+      payment_method: paymentMethod || 'Bank/Telebirr', status: 'APPROVED', is_manual: true
+    });
+
     res.status(201).json({
       status: 'success',
       message: 'Car Rental order created and sent to Finance for verification',
@@ -610,6 +622,7 @@ exports.cancelOrder = async (req, res) => {
         status: 'CANCELLED',
         cancellation_reason: reason
       });
+      carRentalAudit.log(req, 'Rental Order Cancelled', order.orderNumber, order.toJSON(), updated.toJSON());
       // Release the car back to Available
       if (order.carId) {
         await carRepository.update(order.carId, { availability: 'Available' });
@@ -652,6 +665,7 @@ exports.approveCancellation = async (req, res) => {
         is_cancellation_requested: false,
         cancellation_reason: null
       });
+      carRentalAudit.log(req, 'Rental Order Cancellation Rejected', order.orderNumber, order.toJSON(), updated.toJSON());
       await notificationRepository.create({
         userId: order.customerId,
         title: 'Cancellation Rejected',
@@ -676,6 +690,7 @@ exports.approveCancellation = async (req, res) => {
 
     const updated = await rentalOrderRepository.update(id, updateData);
     await carRepository.update(order.carId, { availability: 'Available' });
+    carRentalAudit.log(req, 'Rental Order Cancellation Approved', order.orderNumber, order.toJSON(), updated.toJSON());
 
     await notificationRepository.create({
       userId: order.customerId,
@@ -729,6 +744,7 @@ exports.approveExtension = async (req, res) => {
 
     if (!isApproved) {
       await rentalOrderRepository.update(id, { pending_extension_days: null });
+      carRentalAudit.log(req, 'Rental Order Extension Rejected', order.orderNumber, { pending_extension_days: order.pending_extension_days }, { pending_extension_days: null });
       await notificationRepository.create({
         userId: order.customerId,
         title: 'Extension Rejected',
@@ -749,6 +765,12 @@ exports.approveExtension = async (req, res) => {
       additional_owed: order.additionalOwed ? order.additionalOwed + extensionFee : extensionFee,
       pending_extension_days: null,
       payment_status: 'UNPAID' // Reset so finance sees it and customer can upload new proof
+    });
+
+    carRentalAudit.log(req, 'Rental Order Extension Approved', order.orderNumber, {
+      return_date: order.returnDate, extension_fee: order.extension_fee, total_amount: order.totalAmount, pending_extension_days: order.pending_extension_days
+    }, {
+      return_date: currentReturnDate, extension_fee: extensionFee, total_amount: order.totalAmount + extensionFee, pending_extension_days: null, payment_status: 'UNPAID'
     });
 
     // Notify customer
@@ -810,6 +832,13 @@ exports.processReturn = async (req, res) => {
       manager_note: notes
     });
 
+    carRentalAudit.log(req, 'Rental Order Return Processed', order.orderNumber, {
+      status: order.status, additional_owed: order.additionalOwed, security_deposit: order.securityDeposit
+    }, {
+      status: 'COMPLETED', damage_fee: damageFee || 0, fuel_fee: fuelFee || 0, late_fee: lateFee || 0,
+      actual_return_odometer: odometer, additional_owed: netDue, refund_amount: refund, manager_note: notes
+    });
+
     await carRepository.update(order.carId, { availability: 'Available' });
 
     await notificationRepository.create({
@@ -842,6 +871,8 @@ exports.markNoShow = async (req, res) => {
       refund_amount: Math.max(0, refundAmount)
     });
 
+    carRentalAudit.log(req, 'Rental Order No-Show', order.orderNumber, order.toJSON(), updated.toJSON());
+
     await carRepository.update(order.carId, { availability: 'Available' });
     
     await notificationRepository.create({
@@ -867,6 +898,7 @@ exports.updatePickupRemarks = async (req, res) => {
     
     // Both customer and manager can update this
     const updated = await rentalOrderRepository.update(id, { pickup_remarks: remarks });
+    carRentalAudit.log(req, 'Rental Order Pickup Remarks Updated', order.orderNumber, { pickup_remarks: order.pickup_remarks }, { pickup_remarks: remarks });
     res.status(200).json({ status: 'success', message: 'Pickup remarks updated', data: updated.toJSON() });
   } catch (error) {
     logger.error('Error updating pickup remarks:', error);
