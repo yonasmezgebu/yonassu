@@ -24,7 +24,7 @@ import CEOHR from './CEOHR';
 import HRPolicies from '../hr/HRPolicies';
 import HRAnnouncements from '../hr/HRAnnouncements';
 import CEOPharmacyHub from './CEOPharmacyHub';
-import CEOPharmacyM20M22 from './CEOPharmacyM20M22';
+import CEOPharmacySales from './CEOPharmacySales';
 import CEOStoreRequisitions from './CEOStoreRequisitions';
 import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
 import CEODirectDelivery from './CEODirectDelivery';
@@ -88,7 +88,7 @@ const CEODashboard = () => {
         { label: 'Purchase', path: '/ceo/purchase', icon: 'shopping-cart', color: '#3b82f6' },
         { label: 'Finance', path: '/ceo/finance', icon: 'dollar-sign', color: '#8b5cf6' },
         { label: 'HR', path: '/ceo/hr', icon: 'users', color: '#ec4899' },
-        { label: 'Pharmacy', path: '/ceo/pharmacy-hub', icon: 'plus-circle', color: '#ef4444' },
+        { label: 'Pharmacy', path: '/ceo/pharmacy', icon: 'plus-circle', color: '#ef4444' },
         { label: 'Store', path: '/ceo/store-requisitions', icon: 'clipboard', color: '#059669' },
         { label: 'Agri and Car Rental', path: '/ceo/agri-and-car-rental', icon: 'truck', color: '#0ea5e9' },
         { label: 'Tender (Bid)', path: '/ceo/tenders', icon: 'award', color: '#84cc16' },
@@ -145,7 +145,7 @@ const CEODashboard = () => {
             
             {/* Pharmacy Hub */}
             <Route path="pharmacy-hub" element={<CEOPharmacyHub />} />
-            <Route path="pharmacy" element={<CEOPharmacyM20M22 />} />
+            <Route path="pharmacy" element={<CEOPharmacySales />} />
 
             <Route path="procurement-decisions" element={<CEOProcurementDecisions />} />
             <Route path="direct-delivery" element={<CEODirectDelivery />} />
