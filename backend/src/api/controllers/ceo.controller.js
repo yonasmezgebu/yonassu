@@ -190,6 +190,649 @@ exports.getDashboardOverview = catchAsync(async (req, res) => {
     data
   });
 });
+
+exports.getCEOFinanceOverview = catchAsync(async (req, res) => {
+  const now = new Date();
+  const startOfMonth  = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear   = new Date(now.getFullYear(), 0, 1);
+  const endOfDay      = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // ── 1. Revenue (all dept sales this month) ──
+  const pharmRev   = await db('pharmacy_sales').where('is_submitted', true).whereBetween('created_at', [startOfMonth, endOfDay]).sum('total_amount as t').first();
+  const posRev     = await db('pos_sales').where('status_id', 1).whereBetween('sale_date', [startOfMonth, endOfDay]).sum('total_amount as t').first();
+  const printRev   = await db('printing_orders').where('status_id', 5).whereBetween('created_at', [startOfMonth, endOfDay]).sum('total_price as t').first();
+  const rentalRev  = await db('rental_orders').where('status', 'APPROVED').whereBetween('created_at', [startOfMonth, endOfDay]).sum('total_amount as t').first();
+  const monthRevenue = [pharmRev, posRev, printRev, rentalRev].reduce((s, r) => s + parseFloat(r?.t || 0), 0);
+
+  // ── 2. Expenses this month ──
+  const monthExpenses = await db('expenses').whereNull('deleted_at').whereBetween('created_at', [startOfMonth, endOfDay]).sum('amount as t').first();
+  const expByCategory = await db('expenses as e')
+    .leftJoin('expense_categories as ec', 'e.category_id', 'ec.id')
+    .whereNull('e.deleted_at').whereBetween('e.created_at', [startOfMonth, endOfDay])
+    .select('ec.name as category', db.raw('SUM(e.amount) as total'))
+    .groupBy('ec.name').orderBy('total', 'desc').limit(8);
+
+  const monthExp = parseFloat(monthExpenses?.t || 0);
+  const netProfit = monthRevenue - monthExp;
+
+  // ── 3. Revenue trends (last 6 months) ──
+  const revenueTrends = [];
+  for (let i = 5; i >= 0; i--) {
+    const d      = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    const mEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+    const pR  = await db('pharmacy_sales').where('is_submitted', true).whereBetween('created_at', [mStart, mEnd]).sum('total_amount as t').first();
+    const rR  = await db('pos_sales').where('status_id', 1).whereBetween('sale_date', [mStart, mEnd]).sum('total_amount as t').first();
+    const prR = await db('printing_orders').where('status_id', 5).whereBetween('created_at', [mStart, mEnd]).sum('total_price as t').first();
+    const cR  = await db('rental_orders').where('status', 'APPROVED').whereBetween('created_at', [mStart, mEnd]).sum('total_amount as t').first();
+    const eR  = await db('expenses').whereNull('deleted_at').whereBetween('created_at', [mStart, mEnd]).sum('amount as t').first();
+    const rev = [pR, rR, prR, cR].reduce((s, r) => s + parseFloat(r?.t || 0), 0);
+    const exp = parseFloat(eR?.t || 0);
+    revenueTrends.push({
+      name:    d.toLocaleString('default', { month: 'short' }),
+      Revenue: parseFloat(rev.toFixed(2)),
+      Expenses: parseFloat(exp.toFixed(2)),
+      Profit:  parseFloat((rev - exp).toFixed(2))
+    });
+  }
+
+  // ── 4. Receivables (customers who owe us money) ──
+  const receivableRows = await db('customers').where('current_balance', '>', 0).whereNull('deleted_at')
+    .select('id', 'name', 'phone', 'current_balance').orderBy('current_balance', 'desc').limit(15);
+  const totalReceivable = receivableRows.reduce((s, r) => s + parseFloat(r.current_balance || 0), 0);
+
+  // Also finance_receivables table
+  let finReceivables = 0;
+  try {
+    const fr = await db('finance_receivables').where('outstanding_balance', '>', 0).sum('outstanding_balance as t').first();
+    finReceivables = parseFloat(fr?.t || 0);
+  } catch (e) {}
+
+  // ── 5. Payables (what we owe to suppliers) ──
+  const payableRows = await db('purchase_orders as po')
+    .leftJoin('suppliers as s', 'po.supplier_id', 's.id')
+    .whereNull('po.deleted_at').whereRaw('po.paid_amount < po.total_amount')
+    .select('s.name as supplier_name', db.raw('SUM(po.total_amount - po.paid_amount) as owed'), db.raw('COUNT(po.id) as po_count'))
+    .groupBy('s.id', 's.name').orderBy('owed', 'desc').limit(10);
+  const totalPayable = payableRows.reduce((s, r) => s + parseFloat(r.owed || 0), 0);
+
+  // ── 6. Cash flow (bank_payments) ──
+  let cashInMonth = 0, cashOutMonth = 0;
+  try {
+    const inFlow  = await db('bank_payments').where('status', 'completed').whereBetween('created_at', [startOfMonth, endOfDay]).where('description', 'not like', '%PO payment%').sum('amount as t').first();
+    const outFlow = await db('po_payments').whereBetween('processed_at', [startOfMonth, endOfDay]).sum('amount as t').first();
+    cashInMonth  = parseFloat(inFlow?.t  || 0);
+    cashOutMonth = parseFloat(outFlow?.t || 0);
+  } catch (e) {}
+
+  // ── 7. Tax obligations (from vat_amount, withholding_tax on expenses) ──
+  let vatOwed = 0, withholdingOwed = 0;
+  try {
+    const taxRow = await db('expenses').whereNull('deleted_at').whereBetween('created_at', [startOfYear, endOfDay])
+      .sum('vat_amount as vat').sum('withholding_tax as wht').first();
+    vatOwed         = parseFloat(taxRow?.vat || 0);
+    withholdingOwed = parseFloat(taxRow?.wht || 0);
+  } catch (e) {}
+
+  // ── 8. Pending expense approvals ──
+  const pendingExpenses = await db('expenses').whereNull('approved_at').whereNull('deleted_at')
+    .count('id as count').sum('amount as total').first();
+
+  // ── 9. Recent transactions (income_submissions + expenses) ──
+  let recentTransactions = [];
+  try {
+    const incomeRows = await db('finance_income_submissions as fi')
+      .leftJoin('users as u', 'fi.submitted_by', 'u.id')
+      .whereNotNull('fi.approved_at')
+      .select('fi.id', 'fi.department_source as dept', 'fi.total_amount as amount', db.raw("'Income' as direction"), 'fi.submission_date as date', 'u.full_name as by')
+      .orderBy('fi.submission_date', 'desc').limit(10);
+    const expRows = await db('expenses as e')
+      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.id')
+      .leftJoin('users as u', 'e.entered_by', 'u.id')
+      .whereNotNull('e.approved_at').whereNull('e.deleted_at')
+      .select('e.id', 'ec.name as dept', 'e.amount', db.raw("'Expense' as direction"), 'e.date', 'u.full_name as by')
+      .orderBy('e.date', 'desc').limit(10);
+    recentTransactions = [...incomeRows, ...expRows]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 15);
+  } catch (e) {}
+
+  res.json({
+    status: 'success',
+    data: {
+      monthRevenue,    monthExp,    netProfit,
+      revenueTrends,  expByCategory,
+      totalReceivable: totalReceivable + finReceivables,
+      receivableRows,
+      totalPayable,   payableRows,
+      cashInMonth,    cashOutMonth,
+      netCashFlow: cashInMonth - cashOutMonth,
+      vatOwed,        withholdingOwed,
+      totalTaxOwed: vatOwed + withholdingOwed,
+      pendingExpenses: {
+        count: parseInt(pendingExpenses?.count || 0),
+        total: parseFloat(pendingExpenses?.total || 0)
+      },
+      recentTransactions
+    }
+  });
+});
+
+exports.getCEOHROverview = catchAsync(async (req, res) => {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+
+  // 1. Employee Counts
+  const totalEmployees = await db('hr_employees').count('employee_id as count').first();
+  const activeEmployees = await db('hr_employees').where('employment_status', 'Active').count('employee_id as count').first();
+  const inactiveEmployees = await db('hr_employees').where('employment_status', '!=', 'Active').count('employee_id as count').first();
+  const newHiresThisMonth = await db('hr_employees').where('hire_date', '>=', startOfMonth).count('employee_id as count').first();
+
+  // 2. Gender Breakdown
+  const genderBreakdown = await db('hr_employees').select('gender').count('employee_id as count').groupBy('gender');
+
+  // 3. Employment Type Breakdown
+  const employmentTypeBreakdown = await db('hr_employees').select('employment_type').count('employee_id as count').groupBy('employment_type');
+
+  // 4. Department Breakdown
+  const deptBreakdown = await db('hr_employees as e')
+    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
+    .select(
+      db.raw('COALESCE(d.dept_name, CONCAT("Dept #", e.dept_id)) as department'),
+      db.raw('COUNT(e.employee_id) as count')
+    )
+    .groupBy('e.dept_id', 'd.dept_name')
+    .orderBy('count', 'desc');
+
+  // 5. Attendance Summary (Today)
+  const presentCount = await db('etp_daily_attendance')
+    .where('attendance_date', todayStr).where('attendance_status', 'Present')
+    .countDistinct('employee_id as count').first();
+  const absentCount = await db('etp_daily_attendance')
+    .where('attendance_date', todayStr).where('attendance_status', 'Absent')
+    .countDistinct('employee_id as count').first();
+  const lateCount = await db('etp_daily_attendance')
+    .where('attendance_date', todayStr).where('attendance_status', 'Late')
+    .countDistinct('employee_id as count').first();
+
+  // Monthly attendance totals
+  const monthlyAttendance = await db('etp_daily_attendance')
+    .where('attendance_date', '>=', startOfMonth)
+    .select(
+      db.raw('SUM(net_work_hours) as totalHours'),
+      db.raw('SUM(overtime_hours) as overtimeHours'),
+      db.raw('SUM(absent_days) as absentDays')
+    )
+    .first();
+
+  // 6. Leave Requests
+  const pendingLeaves = await db('leave_requests').where('status', 'pending').count('id as count').first();
+  const approvedLeavesMonth = await db('leave_requests').where('status', 'approved').where('created_at', '>=', startOfMonth).count('id as count').first();
+  const recentLeaves = await db('leave_requests as lr')
+    .leftJoin('hr_employees as e', 'lr.employee_id', 'e.employee_id')
+    .select('lr.id', 'e.full_name as name', 'lr.leave_type as type', 'lr.start_date', 'lr.end_date', 'lr.total_days as days', 'lr.status', 'lr.created_at')
+    .orderBy('lr.created_at', 'desc')
+    .limit(20);
+
+  // 7. Payroll Summary
+  const totalPayroll = await db('hr_employees').where('employment_status', 'Active').sum('base_salary as total').first();
+  const totalAllowances = await db('hr_employees').where('employment_status', 'Active')
+    .select(db.raw('SUM(COALESCE(housing_allowance,0) + COALESCE(transport_allowance,0) + COALESCE(communication_allowance,0)) as total'))
+    .first();
+
+  const payrollTrend = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    payrollTrend.push({
+      month: d.toLocaleString('default', { month: 'short', year: '2-digit' }),
+      amount: parseFloat(totalPayroll?.total || 0)
+    });
+  }
+
+  // 8. Recent Hires with position titles
+  const recentHires = await db('hr_employees as e')
+    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
+    .leftJoin('hr_positions as p', 'e.position_id', 'p.position_id')
+    .select(
+      'e.employee_id as id',
+      'e.full_name as name',
+      db.raw('COALESCE(d.dept_name, IF(e.dept_id IS NOT NULL, CONCAT("Dept #", e.dept_id), "Unassigned")) as dept'),
+      db.raw('COALESCE(p.position_title, IF(e.position_id IS NOT NULL, CONCAT("Position #", e.position_id), "No Role")) as role'),
+      'e.hire_date as hireDate',
+      'e.employment_status as status',
+      'e.employment_type as empType',
+      'e.base_salary as salary'
+    )
+    .orderBy('e.hire_date', 'desc')
+    .limit(15);
+
+  // 9. Full Employee List
+  const employeesList = await db('hr_employees as e')
+    .leftJoin('hr_departments as d', 'e.dept_id', 'd.dept_id')
+    .leftJoin('hr_positions as p', 'e.position_id', 'p.position_id')
+    .select(
+      'e.employee_id as id',
+      'e.full_name as name',
+      db.raw('COALESCE(d.dept_name, IF(e.dept_id IS NOT NULL, CONCAT("Dept #", e.dept_id), "Unassigned")) as dept'),
+      db.raw('COALESCE(p.position_title, IF(e.position_id IS NOT NULL, CONCAT("Position #", e.position_id), "No Role")) as role'),
+      'e.hire_date as hireDate',
+      'e.employment_status as status',
+      'e.employment_type as empType',
+      'e.gender',
+      'e.personal_phone as phone',
+      'e.personal_email as email',
+      'e.base_salary as salary'
+    )
+    .orderBy('e.full_name', 'asc');
+
+  res.json({
+    status: 'success',
+    data: {
+      headcount: {
+        total: parseInt(totalEmployees?.count || 0),
+        active: parseInt(activeEmployees?.count || 0),
+        inactive: parseInt(inactiveEmployees?.count || 0),
+        newThisMonth: parseInt(newHiresThisMonth?.count || 0),
+      },
+      attendance: {
+        present: parseInt(presentCount?.count || 0),
+        absent: parseInt(absentCount?.count || 0),
+        late: parseInt(lateCount?.count || 0),
+        totalHoursThisMonth: parseFloat(monthlyAttendance?.totalHours || 0),
+        overtimeHoursThisMonth: parseFloat(monthlyAttendance?.overtimeHours || 0),
+        absentDaysThisMonth: parseFloat(monthlyAttendance?.absentDays || 0),
+      },
+      leaves: {
+        pendingCount: parseInt(pendingLeaves?.count || 0),
+        approvedThisMonth: parseInt(approvedLeavesMonth?.count || 0),
+        recent: recentLeaves
+      },
+      payroll: {
+        totalBaseSalary: parseFloat(totalPayroll?.total || 0),
+        totalAllowances: parseFloat(totalAllowances?.total || 0),
+        trend: payrollTrend
+      },
+      departments: deptBreakdown,
+      genderBreakdown,
+      employmentTypeBreakdown,
+      recentHires,
+      employees: employeesList
+    }
+  });
+});
+
+exports.getCEOPurchaseOverview = catchAsync(async (req, res) => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // ── 1. Total purchase spend (all time + this month) ──
+  const totalSpend = await db('purchase_orders')
+    .whereNull('deleted_at')
+    .sum('total_amount as total')
+    .first();
+
+  const monthSpend = await db('purchase_orders')
+    .whereNull('deleted_at')
+    .whereBetween('created_at', [startOfMonth, endOfDay])
+    .sum('total_amount as total')
+    .first();
+
+  // ── 2. Pending POs (not yet completed/received) ──
+  const pendingPOs = await db('purchase_orders as po')
+    .leftJoin('po_statuses as s', 'po.status_id', 's.id')
+    .whereNull('po.deleted_at')
+    .whereNotIn('s.status_code', ['COMPLETED', 'RECEIVED', 'CANCELLED'])
+    .select(
+      'po.id', 'po.po_number', 'po.total_amount', 'po.created_at',
+      's.status_code as status'
+    )
+    .orderBy('po.created_at', 'asc')
+    .limit(20);
+
+  const pendingCount = await db('purchase_orders as po')
+    .leftJoin('po_statuses as s', 'po.status_id', 's.id')
+    .whereNull('po.deleted_at')
+    .whereNotIn('s.status_code', ['COMPLETED', 'RECEIVED', 'CANCELLED'])
+    .count('po.id as total')
+    .first();
+
+  const pendingValue = await db('purchase_orders as po')
+    .leftJoin('po_statuses as s', 'po.status_id', 's.id')
+    .whereNull('po.deleted_at')
+    .whereNotIn('s.status_code', ['COMPLETED', 'RECEIVED', 'CANCELLED'])
+    .sum('po.total_amount as total')
+    .first();
+
+  // ── 3. Supplier Debts (unpaid balances) ──
+  const supplierDebtsRaw = await db('purchase_orders as po')
+    .leftJoin('suppliers as s', 'po.supplier_id', 's.id')
+    .whereNull('po.deleted_at')
+    .whereRaw('po.paid_amount < po.total_amount')
+    .select(
+      's.id as supplier_id',
+      's.name as supplier_name',
+      's.phone as supplier_phone',
+      db.raw('SUM(po.total_amount - po.paid_amount) as debt'),
+      db.raw('COUNT(po.id) as unpaid_po_count'),
+      db.raw('MIN(po.created_at) as oldest_po')
+    )
+    .groupBy('s.id', 's.name', 's.phone')
+    .orderBy('debt', 'desc');
+
+  const totalSupplierDebt = supplierDebtsRaw.reduce(
+    (sum, s) => sum + parseFloat(s.debt || 0), 0
+  );
+
+  // ── 4. Top Suppliers by total purchase volume (this month) ──
+  const majorSuppliers = await db('purchase_orders as po')
+    .leftJoin('suppliers as s', 'po.supplier_id', 's.id')
+    .whereNull('po.deleted_at')
+    .whereBetween('po.created_at', [startOfMonth, endOfDay])
+    .select(
+      's.name as supplier_name',
+      's.phone as supplier_phone',
+      db.raw('COUNT(po.id) as po_count'),
+      db.raw('SUM(po.total_amount) as total_volume'),
+      db.raw('SUM(po.paid_amount) as paid_volume')
+    )
+    .groupBy('s.id', 's.name', 's.phone')
+    .orderBy('total_volume', 'desc')
+    .limit(10);
+
+  // ── 5. Purchase Spend Trends (last 6 months) ──
+  const spendTrends = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    const mEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+    const res2 = await db('purchase_orders')
+      .whereNull('deleted_at')
+      .whereBetween('created_at', [mStart, mEnd])
+      .sum('total_amount as total')
+      .first();
+    const paid2 = await db('purchase_orders')
+      .whereNull('deleted_at')
+      .whereBetween('created_at', [mStart, mEnd])
+      .sum('paid_amount as total')
+      .first();
+    spendTrends.push({
+      name: d.toLocaleString('default', { month: 'short' }),
+      Spend: parseFloat(res2?.total || 0),
+      Paid: parseFloat(paid2?.total || 0)
+    });
+  }
+
+  // ── 6. Purchase Requisitions pending CEO approval ──
+  let pendingRequisitions = [];
+  try {
+    pendingRequisitions = await db('purchase_requisitions as pr')
+      .leftJoin('users as u', 'pr.requested_by', 'u.id')
+      .whereIn('pr.status', ['PENDING', 'CEO_REVIEW'])
+      .select(
+        'pr.id', 'pr.pr_number', 'pr.drug_name', 'pr.quantity_requested',
+        'pr.urgency', 'pr.requesting_dept', 'pr.created_at',
+        'u.full_name as requested_by_name'
+      )
+      .orderBy('pr.created_at', 'asc')
+      .limit(10);
+  } catch (e) { pendingRequisitions = []; }
+
+  // ── 7. Finance payables (from finance_payables table) ──
+  let financePayables = [];
+  let totalFinancePayable = 0;
+  try {
+    const fp = await db('finance_payables')
+      .where('status', '!=', 'PAID')
+      .select('id', 'payee_name', 'amount', 'due_date', 'status', 'description')
+      .orderBy('due_date', 'asc')
+      .limit(10);
+    financePayables = fp;
+    totalFinancePayable = fp.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  } catch (e) { financePayables = []; }
+
+  res.json({
+    status: 'success',
+    data: {
+      totalSpend: parseFloat(totalSpend?.total || 0),
+      monthSpend: parseFloat(monthSpend?.total || 0),
+      pendingCount: parseInt(pendingCount?.total || 0),
+      pendingValue: parseFloat(pendingValue?.total || 0),
+      pendingPOs,
+      supplierDebts: supplierDebtsRaw,
+      totalSupplierDebt,
+      majorSuppliers,
+      spendTrends,
+      pendingRequisitions,
+      financePayables,
+      totalFinancePayable
+    }
+  });
+});
+
+exports.getCEOSalesOverview = catchAsync(async (req, res) => {
+  const now = new Date();
+  
+  // Date definitions
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  
+  // 1. Pharmacy Sales (from submitted pharmacy_sales)
+  const pharmacyToday = await db('pharmacy_sales')
+    .where('is_submitted', true)
+    .whereBetween('created_at', [startOfDay, endOfDay])
+    .sum('total_amount as total')
+    .first();
+    
+  const pharmacyMonth = await db('pharmacy_sales')
+    .where('is_submitted', true)
+    .whereBetween('created_at', [startOfMonth, endOfDay])
+    .sum('total_amount as total')
+    .first();
+
+  // 2. Retail/POS Sales (from pos_sales or retail_transactions)
+  // According to existing codebase pos_sales is used for CEO revenue breakdowns
+  const retailToday = await db('pos_sales')
+    .where('status_id', 1)
+    .whereBetween('sale_date', [startOfDay, endOfDay])
+    .sum('total_amount as total')
+    .first();
+    
+  const retailMonth = await db('pos_sales')
+    .where('status_id', 1)
+    .whereBetween('sale_date', [startOfMonth, endOfDay])
+    .sum('total_amount as total')
+    .first();
+
+  // 3. Printing Sales (status_id = 5 for completed/delivered)
+  const printToday = await db('printing_orders')
+    .where('status_id', 5)
+    .whereBetween('created_at', [startOfDay, endOfDay])
+    .sum('total_price as total')
+    .first();
+    
+  const printMonth = await db('printing_orders')
+    .where('status_id', 5)
+    .whereBetween('created_at', [startOfMonth, endOfDay])
+    .sum('total_price as total')
+    .first();
+
+  // 4. Car Rental Sales (from rental_orders)
+  const rentalToday = await db('rental_orders')
+    .where('status', 'APPROVED')
+    .whereBetween('created_at', [startOfDay, endOfDay])
+    .sum('total_amount as total')
+    .first();
+    
+  const rentalMonth = await db('rental_orders')
+    .where('status', 'APPROVED')
+    .whereBetween('created_at', [startOfMonth, endOfDay])
+    .sum('total_amount as total')
+    .first();
+
+  // 5. Agri Rental Sales (from agrirent_orders if exists, else 0)
+  let agriToday = { total: 0 }, agriMonth = { total: 0 };
+  try {
+    const hasAgriTable = await db.schema.hasTable('agrirent_orders');
+    if (hasAgriTable) {
+      agriToday = await db('agrirent_orders').whereBetween('created_at', [startOfDay, endOfDay]).sum('total_amount as total').first();
+      agriMonth = await db('agrirent_orders').whereBetween('created_at', [startOfMonth, endOfDay]).sum('total_amount as total').first();
+    }
+  } catch (e) {
+    // Ignore if table missing
+  }
+
+  const pToday = parseFloat(pharmacyToday?.total || 0);
+  const pMonth = parseFloat(pharmacyMonth?.total || 0);
+  const rToday = parseFloat(retailToday?.total || 0);
+  const rMonth = parseFloat(retailMonth?.total || 0);
+  const prToday = parseFloat(printToday?.total || 0);
+  const prMonth = parseFloat(printMonth?.total || 0);
+  const cToday = parseFloat(rentalToday?.total || 0);
+  const cMonth = parseFloat(rentalMonth?.total || 0);
+  const aToday = parseFloat(agriToday?.total || 0);
+  const aMonth = parseFloat(agriMonth?.total || 0);
+
+  // 6. Tender Sales/Revenue (Placeholder for now until revenue table is identified)
+  const tMonth = 0;
+  const tToday = 0;
+
+  const totalSalesToday = pToday + rToday + prToday + cToday + aToday + tToday;
+  const totalSalesMonth = pMonth + rMonth + prMonth + cMonth + aMonth + tMonth;
+
+  // Breakdown array for charts
+  const departmentBreakdown = [
+    { department: 'Pharmacy', sales: pMonth },
+    { department: 'Retail/Sales', sales: rMonth },
+    { department: 'Printing', sales: prMonth },
+    { department: 'Car Rental', sales: cMonth },
+    { department: 'Agri Rental', sales: aMonth },
+    { department: 'Tender', sales: tMonth }
+  ].sort((a, b) => b.sales - a.sales);
+
+  // Sales Trends (Last 6 Months)
+  const salesTrends = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+    
+    const pRes = await db('pharmacy_sales').where('is_submitted', true).whereBetween('created_at', [mStart, mEnd]).sum('total_amount as total').first();
+    const rRes = await db('pos_sales').where('status_id', 1).whereBetween('sale_date', [mStart, mEnd]).sum('total_amount as total').first();
+    const prRes = await db('printing_orders').where('status_id', 5).whereBetween('created_at', [mStart, mEnd]).sum('total_price as total').first();
+    const cRes = await db('rental_orders').where('status', 'APPROVED').whereBetween('created_at', [mStart, mEnd]).sum('total_amount as total').first();
+    
+    let aRes = { total: 0 };
+    try {
+      if (await db.schema.hasTable('agrirent_orders')) {
+        aRes = await db('agrirent_orders').whereBetween('created_at', [mStart, mEnd]).sum('total_amount as total').first();
+      }
+    } catch (e) {}
+
+    salesTrends.push({
+      name: d.toLocaleString('default', { month: 'short' }),
+      Pharmacy: parseFloat(pRes?.total || 0),
+      Retail: parseFloat(rRes?.total || 0),
+      Printing: parseFloat(prRes?.total || 0),
+      CarRental: parseFloat(cRes?.total || 0),
+      AgriRental: parseFloat(aRes?.total || 0),
+      Tender: 0 // Placeholder
+    });
+  }
+
+  // Top Selling Products (Pharmacy & Retail - Current Month)
+  let topProducts = [];
+  try {
+    const pItems = await db('pharmacy_sale_items as psi')
+      .join('pharmacy_sales as ps', 'psi.sale_id', 'ps.id')
+      .where('ps.is_submitted', true)
+      .whereBetween('ps.created_at', [startOfMonth, endOfDay])
+      .select('psi.drug_name as name', db.raw('SUM(psi.quantity) as qty'), db.raw('SUM(psi.total_price) as revenue'))
+      .groupBy('psi.drug_name')
+      .orderBy('revenue', 'desc')
+      .limit(5);
+
+    const rItems = await db('retail_transaction_items as rti')
+      .join('retail_transactions as rt', 'rti.transaction_id', 'rt.id')
+      .join('retail_products as rp', 'rti.product_id', 'rp.id')
+      .whereBetween('rt.created_at', [startOfMonth, endOfDay])
+      .select('rp.name', db.raw('SUM(rti.quantity) as qty'), db.raw('SUM(rti.line_total) as revenue'))
+      .groupBy('rp.name')
+      .orderBy('revenue', 'desc')
+      .limit(5);
+
+    topProducts = [...pItems, ...rItems]
+      .map(p => ({
+        name: p.name,
+        qty: parseFloat(p.qty),
+        revenue: parseFloat(p.revenue)
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  } catch (e) {
+    console.error('Error fetching top products:', e);
+  }
+
+  // Outstanding Customer Payments (from finance_receivables)
+  let outstandingPayments = [];
+  let totalOutstanding = 0;
+  try {
+    const receivables = await db('finance_receivables')
+      .where('outstanding_balance', '>', 0)
+      .select('id', 'customer_name', 'department_source', 'invoice_date', 'outstanding_balance as amount')
+      .orderBy('invoice_date', 'asc');
+      
+    outstandingPayments = receivables.slice(0, 10); // Top 10 oldest unpaid
+    totalOutstanding = receivables.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+  } catch (e) {
+    console.error('Error fetching receivables:', e);
+  }
+
+  // Also check rental_orders for unpaid
+  try {
+    const unpaidRentals = await db('rental_orders')
+      .whereIn('payment_status', ['UNPAID', 'PENDING', 'PARTIAL'])
+      .where(function() {
+         this.where('additional_owed', '>', 0).orWhere('total_amount', '>', 0);
+      })
+      .select('id', 'customer_name', 'created_at as invoice_date', 
+              db.raw('COALESCE(additional_owed, total_amount) as amount'))
+      .orderBy('created_at', 'asc');
+      
+    for (const r of unpaidRentals) {
+      if (r.amount > 0) {
+        totalOutstanding += parseFloat(r.amount);
+        outstandingPayments.push({
+          id: `R-${r.id}`,
+          customer_name: r.customer_name || 'Car Rental Customer',
+          department_source: 'Car Rental',
+          invoice_date: r.invoice_date,
+          amount: parseFloat(r.amount)
+        });
+      }
+    }
+    outstandingPayments.sort((a, b) => new Date(a.invoice_date) - new Date(b.invoice_date));
+    outstandingPayments = outstandingPayments.slice(0, 10);
+  } catch (e) {
+    console.error('Error fetching unpaid rentals:', e);
+  }
+
+  res.json({
+    status: 'success',
+    data: {
+      todaySales: totalSalesToday,
+      monthSales: totalSalesMonth,
+      departmentBreakdown,
+      salesTrends,
+      topProducts,
+      outstandingPayments,
+      totalOutstanding
+    }
+  });
+});
+
 exports.getRevenueMetrics = catchAsync(async (req, res) => {
   const { period = 'week' } = req.query;
   const validPeriods = ['today', 'week', 'month', 'quarter', 'year'];
@@ -1710,6 +2353,182 @@ module.exports.getEmployeeMonthlyAttendance = catchAsync(async (req, res) => {
 
   const records = recordsRaw[0] || [];
   res.json({ status: 'success', data: { records } });
+});
+
+// ── CEO Pharmacy Sales & Operations Dashboard (Aggregated) ──
+module.exports.getCEOPharmacyOverview = catchAsync(async (req, res) => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const ninetyDaysFromNow = new Date();
+  ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+  const today = now.toISOString().split('T')[0];
+  const expiringDate = new Date();
+  expiringDate.setDate(expiringDate.getDate() + 30);
+  const expiringDateStr = expiringDate.toISOString().split('T')[0];
+
+  // 1. Total all-time sales
+  const totalSalesQuery = await db('pharmacy_sales').sum('total_amount as total').first();
+  const totalSales = parseFloat(totalSalesQuery?.total || 0);
+
+  // 2. Customers served
+  const customersServedQuery = await db('pharmacy_sales').countDistinct('recipient_phone as count').first();
+  const customersServed = parseInt(customersServedQuery?.count || 0);
+
+  // 3. Total medications in stock
+  const totalMedicationsQuery = await db('pharmacy_medications').where('is_active', true).count('id as count').first();
+  const totalMedications = parseInt(totalMedicationsQuery?.count || 0);
+
+  // 4. Total stock quantity
+  const totalStockQuery = await db('pharmacy_medications').sum('stock_quantity as qty').first();
+  const totalStockQuantity = parseInt(totalStockQuery?.qty || 0);
+
+  // 5. Stock Value
+  const stockResult = await db('pharmacy_medications')
+    .select(db.raw('SUM(stock_quantity * price) as total_value'))
+    .first();
+  const stockValue = parseFloat(stockResult?.total_value || 0);
+
+  // 6. Low-Stock medicines (full list)
+  const lowStockAlerts = await db('pharmacy_medications')
+    .whereRaw('stock_quantity <= reorder_level')
+    .select('id', 'name', 'stock_quantity as stock', 'price_unit as unit', 'reorder_level as reorderLevel');
+  const lowStockCount = lowStockAlerts.length;
+
+  // 7. Expired/Expiring medicines
+  const expiredProducts = await db('pharmacy_medications')
+    .where('expiry_date', '<', today)
+    .andWhere('stock_quantity', '>', 0)
+    .select('id', 'name', 'expiry_date as date', 'stock_quantity', 'price');
+  const expiringProducts = await db('pharmacy_medications')
+    .where('expiry_date', '>=', today)
+    .andWhere('expiry_date', '<=', expiringDateStr)
+    .andWhere('stock_quantity', '>', 0)
+    .select('id', 'name', 'expiry_date as date', 'stock_quantity', 'price');
+  const expiredList = [
+    ...expiredProducts.map(p => ({ ...p, status: 'expired' })),
+    ...expiringProducts.map(p => ({ ...p, status: 'expiring' }))
+  ];
+  const expiryCount = expiredList.length;
+
+  // 8. Expiring soon details (next 90 days)
+  const expiringDetails = await db('pharmacy_medications')
+    .select('name', db.raw('NULL as batch_no'), 'expiry_date', 'stock_quantity as quantity', 'price as unit_price')
+    .where('expiry_date', '<=', ninetyDaysFromNow)
+    .where('stock_quantity', '>', 0)
+    .orderBy('expiry_date', 'asc')
+    .limit(15);
+
+  // 9. Current month sales (submitted)
+  const salesRes = await db('pharmacy_sales')
+    .where('is_submitted', true)
+    .where('created_at', '>=', startOfMonth)
+    .sum('total_amount as total')
+    .first();
+  const currentMonthSales = parseFloat(salesRes?.total || 0);
+
+  // 10. Today's live sales (unsubmitted)
+  const todaySalesQuery = await db('pharmacy_sales')
+    .where(function() { this.where('is_submitted', false).orWhereNull('is_submitted'); })
+    .sum('total_amount as total').first();
+  const todaySales = parseFloat(todaySalesQuery?.total || 0);
+
+  const todaySalesCountQuery = await db('pharmacy_sales')
+    .where(function() { this.where('is_submitted', false).orWhereNull('is_submitted'); })
+    .count('id as count').first();
+  const todaySalesCount = parseInt(todaySalesCountQuery?.count || 0);
+
+  // 11. Pending transfers
+  const pendingTransfersQuery = await db('pharmacy_transfer_requests').where('status', 'PENDING').count('id as count').first();
+  const pendingTransfers = parseInt(pendingTransfersQuery?.count || 0);
+
+  // 12. Pending receipts (procurement shipped)
+  const pendingReceiptsQuery = await db('procurement_requests').where('status', 'SHIPPED').count('id as count').first();
+  const pendingReceipts = parseInt(pendingReceiptsQuery?.count || 0);
+
+  // 13. Pending expired reports
+  const pendingExpiredReportsQuery = await db('pharmacy_expired_drugs').where('status', 'PENDING').count('id as count').first().catch(() => ({ count: 0 }));
+  const pendingExpiredReports = parseInt(pendingExpiredReportsQuery?.count || 0);
+
+  // 14. Category breakdown
+  let categoryBreakdown = [];
+  let grandTotal = { sku_count: 0, total_quantity: 0, total_value: 0 };
+  try {
+    categoryBreakdown = await db('pharmacy_medications as m')
+      .leftJoin('pharmacy_categories as c', 'm.category_id', 'c.id')
+      .select(
+        db.raw("COALESCE(c.name, 'Uncategorized') as category"),
+        db.raw('COUNT(m.id) as sku_count'),
+        db.raw('SUM(m.stock_quantity) as total_quantity'),
+        db.raw('SUM(m.stock_quantity * m.price) as total_value')
+      )
+      .where('m.is_active', true)
+      .groupByRaw("COALESCE(c.name, 'Uncategorized')")
+      .orderBy('total_value', 'desc');
+    grandTotal = {
+      sku_count: categoryBreakdown.reduce((s, r) => s + Number(r.sku_count || 0), 0),
+      total_quantity: categoryBreakdown.reduce((s, r) => s + Number(r.total_quantity || 0), 0),
+      total_value: categoryBreakdown.reduce((s, r) => s + Number(r.total_value || 0), 0),
+    };
+  } catch(e) { /* ignore if join fails */ }
+
+  // 15. Top selling products (last 30 days, submitted)
+  let topSelling = [];
+  try {
+    topSelling = await db('pharmacy_sale_items as si')
+      .join('pharmacy_sales as s', 'si.sale_id', 's.id')
+      .where('s.created_at', '>=', thirtyDaysAgo)
+      .where('s.is_submitted', true)
+      .select('si.drug_name as name', db.raw('SUM(si.quantity) as units_sold'), db.raw('SUM(si.total_price) as revenue'))
+      .groupBy('si.drug_name')
+      .orderBy('units_sold', 'desc')
+      .limit(5);
+  } catch(e) { /* ignore */ }
+
+  // 16. Fast & Slow Moving (last 30 days)
+  const itemsMov = await db('pharmacy_sale_items as psi')
+    .join('pharmacy_sales as ps', 'psi.sale_id', 'ps.id')
+    .select('psi.drug_name')
+    .sum('psi.quantity as total_quantity')
+    .where('ps.created_at', '>=', thirtyDaysAgo)
+    .where('ps.is_submitted', true)
+    .groupBy('psi.drug_name')
+    .orderBy('total_quantity', 'desc');
+  const fastMoving = itemsMov.slice(0, 5);
+  const slowMoving = itemsMov.slice(-5).reverse();
+
+  res.json({
+    status: 'success',
+    data: {
+      // Sales & Revenue
+      totalSales,
+      currentMonthSales,
+      todaySales,
+      todaySalesCount,
+      customersServed,
+      // Inventory
+      totalMedications,
+      totalStockQuantity,
+      stockValue,
+      lowStockCount,
+      lowStockAlerts,
+      // Expiry
+      expiryCount,
+      expiredList,
+      expiringDetails,
+      // Operations
+      pendingTransfers,
+      pendingReceipts,
+      pendingExpiredReports,
+      // Analytics
+      categoryBreakdown,
+      grandTotal,
+      topSelling,
+      fastMoving,
+      slowMoving
+    }
+  });
 });
 
 // ── Store Updates Approvals (Store -> CEO) ────────────────────────────────────────────────
