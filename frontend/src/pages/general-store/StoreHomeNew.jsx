@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, TrendingDown, Clock, Inbox, Truck, ArrowUpRight, ClipboardCheck, AlertTriangle, Sprout } from 'lucide-react';
-import { getDashboardStats } from '../../utils/storeApi';
-
+import { Package, TrendingDown, Clock, Inbox, Truck, ArrowUpRight, ClipboardCheck, AlertTriangle, Sprout } from 'lucide-react';
+import apiClient from '../../services/apiClient';
 const StoreHomeNew = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
@@ -14,8 +14,8 @@ const StoreHomeNew = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await getDashboardStats();
-        setStats(res.data || res);
+        const res = await apiClient.get('/store/dashboard');
+        setStats(res.data.data || res.data);
       } catch (err) {
         setError(err.message || 'Failed to load dashboard');
       } finally {
@@ -40,8 +40,8 @@ const StoreHomeNew = () => {
           onClick={() => {
             setLoading(true);
             setError(null);
-            getDashboardStats()
-              .then(res => setStats(res.data || res))
+            apiClient.get('/store/dashboard')
+              .then(res => setStats(res.data.data || res.data))
               .catch(err => setError(err.message || 'Failed to load dashboard'))
               .finally(() => setLoading(false));
           }}
