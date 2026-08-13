@@ -49,6 +49,15 @@ const CEOApprovalsHub = () => {
       accentColor: '#f97316',
       path: '/ceo/store-approvals',
       count: storeCount
+    },
+    {
+      title: 'Pharmacy Approvals',
+      description: 'Review and approve pharmacy procurements, deliveries, and stock updates.',
+      icon: <Package size={28} color="#10B981" />,
+      bg: '#D1FAE5',
+      accentColor: '#10B981',
+      path: '/ceo/pharmacy-hub',
+      count: null
     }
   ];
 
