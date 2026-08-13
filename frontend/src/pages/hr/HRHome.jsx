@@ -18,9 +18,9 @@ const COLORS_ARR = [G.forest, G.orange, G.sky, G.purple, G.emerald, G.brown, G.b
 /* ─── Global Animations ─────────────────────────────────────────────────── */
 
 const CategoryBar = ({ value, max, color }) => (
-  <div style={{ background: '#E5E7EB', borderRadius: 4, height: 6, overflow: 'hidden', flex: 1 }}>
+  <div style={{ background: 'var(--color-border)', borderRadius: 99, height: 8, overflow: 'hidden', flex: 1 }}>
     <div style={{
-      height: '100%', borderRadius: 4, background: '#2563EB',
+      height: '100%', borderRadius: 99, background: color || 'var(--color-primary)',
       width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
       transition: 'width 1.2s ease'
     }} />
@@ -29,289 +29,144 @@ const CategoryBar = ({ value, max, color }) => (
 
 const GlobalStyles = () => (
   <style>{`
-    /* ── Design Tokens ───────────────────────────────────────── */
     :root {
-      --color-primary:        #2563EB;
-      --color-primary-hover:  #1D4ED8;
-      --color-bg-page:        #F5F6FA;
-      --color-bg-card:        #FFFFFF;
-      --color-border:         #E5E7EB;
-      --color-text-primary:   #111827;
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
       --color-text-secondary: #6B7280;
-      --color-text-muted:     #9CA3AF;
-      --color-success:        #16A34A;
-      --color-success-bg:     #DCFCE7;
-      --color-danger:         #DC2626;
-      --color-danger-bg:      #FEE2E2;
-      --color-warning:        #D97706;
-      --color-warning-bg:     #FEF3C7;
-      --color-info:           #0284C7;
-      --color-info-bg:        #E0F2FE;
+      --color-text-muted: #9CA3AF;
+      
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
     }
 
-    /* ── Animations ─────────────────────────────────────────── */
-    @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes rowIn    { from { opacity:0; transform:translateY(8px);  } to { opacity:1; transform:translateY(0); } }
+    @keyframes phFadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-    /* ── Page Wrapper ───────────────────────────────────────── */
-    .hr-home-wrap {
-      margin: 0;
+    /* Edge Spacing */
+    .page-wrapper {
       padding: 24px;
+      box-sizing: border-box;
+      width: 100%;
       min-height: calc(100vh - 60px);
       background: var(--color-bg-page);
-      font-family: 'Inter','Segoe UI','Roboto',-apple-system,sans-serif;
+    }
+    
+    @media (max-width: 1024px) { .page-wrapper { padding: 16px; } }
+    @media (max-width: 768px) { .page-wrapper { padding: 12px; } }
+
+    .so-page {
+      background: var(--color-bg-page);
       color: var(--color-text-primary);
+      font-family: var(--font-family);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 auto;
+      max-width: 1600px;
       box-sizing: border-box;
-      overflow-x: hidden;
+      animation: phFadeUp 0.4s ease both;
     }
 
-    /* ── Header ─────────────────────────────────────────────── */
-    .hr-home-header {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; }
+    
+    .so-title { font-size: 28px; font-weight: 700; color: var(--color-text-primary); }
+    .so-section-title { font-size: 16px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 16px; }
+    
+    /* Buttons */
+    .btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
       align-items: center;
-      margin-bottom: 24px;
-      animation: fadeUp .3s ease;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: all 150ms ease-in-out;
+      background: #FFF;
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
     }
-    .hr-home-title {
-      font-size: 26px !important;
-      font-weight: 600 !important;
-      color: var(--color-text-primary) !important;
-      letter-spacing: -0.01em !important;
-      text-shadow: none !important;
-      margin: 0 !important;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      line-height: 1.3 !important;
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3); }
+    
+    .btn-primary { background: var(--color-primary); color: #FFF; border-color: transparent; }
+    .btn-primary:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3); }
+
+    /* Cards */
+    .d-card, .d-card-static, .d-card-no-hover {
+      position: relative;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: all 150ms ease-in-out;
+      cursor: default;
     }
-    .hr-home-subtitle {
-      font-size: 13px !important;
-      color: var(--color-text-secondary) !important;
-      font-weight: 500 !important;
-      text-transform: uppercase !important;
-      letter-spacing: 0.05em !important;
-      text-shadow: none !important;
+    
+    .d-card:hover, .d-card-static:hover, .d-card-no-hover:hover, .qa-card:hover, .alert-row:hover, .cat-row:hover, .top-row:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
+      border-color: #FFD700;
+      background: #FFFBEB;
     }
 
-    /* ── Sync Button ────────────────────────────────────────── */
-    .btn-sync {
-      position: relative !important;
-      background: var(--color-primary) !important;
-      color: #fff !important;
-      border: none !important;
-      padding: 0 20px !important;
-      height: 36px !important;
-      border-radius: 8px !important;
-      font-weight: 500 !important;
-      font-size: 13px !important;
-      cursor: pointer !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 8px !important;
-      letter-spacing: 0.5px !important;
-      text-transform: none !important;
-      transition: background 150ms ease-in-out, box-shadow 150ms ease-in-out !important;
-      box-shadow: none !important;
-      overflow: hidden !important;
-      z-index: 1 !important;
-    }
-    .btn-sync::before { display: none !important; }
-    .btn-sync::after  { display: none !important; }
-    .btn-sync:hover   { background: var(--color-primary-hover) !important; box-shadow: 0 4px 12px rgba(37,99,235,0.25) !important; }
-    .btn-sync:active  { transform: scale(0.98) !important; }
-    .btn-sync:disabled { opacity: 0.55 !important; cursor: not-allowed !important; }
-
-    /* ── KPI Cards (d-card) ─────────────────────────────────── */
-    .d-card {
-      position: relative !important;
-      overflow: hidden !important;
-      background: var(--color-bg-card) !important;
-      border-radius: 10px !important;
-      padding: 20px 24px !important;
-      border: 1px solid var(--color-border) !important;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
-      cursor: pointer !important;
-      transition: box-shadow 150ms ease, transform 150ms ease !important;
-      animation: fadeUp .4s ease both !important;
-      background-image: none !important;
-    }
-    .d-card::before { display: none !important; }
-    .d-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
-      transform: translateY(-1px) !important;
-      background-color: #FAFBFF !important;
-    }
-
-    /* Hero KPI Card (dark blue) */
-    .d-card[style*="linear-gradient"] {
-      background: var(--color-primary) !important;
-      background-image: none !important;
-      border-color: var(--color-primary) !important;
-      color: #fff !important;
-    }
-    .d-card[style*="linear-gradient"]:hover {
-      background: var(--color-primary-hover) !important;
-      box-shadow: 0 4px 16px rgba(37,99,235,.3) !important;
-    }
-
-    /* ── Section Cards (d-card-no-hover) ────────────────────── */
-    .d-card-no-hover {
-      position: relative !important;
-      overflow: hidden !important;
-      background: var(--color-bg-card) !important;
-      border-radius: 10px !important;
-      padding: 20px 24px !important;
-      border: 1px solid var(--color-border) !important;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
-      transition: box-shadow 150ms ease !important;
-      animation: fadeUp .45s ease both !important;
-      background-image: none !important;
-    }
-    .d-card-no-hover::before { display: none !important; }
-    .d-card-no-hover:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
-      background-color: #FAFBFF !important;
-    }
-
-    /* ── Alert Rows ─────────────────────────────────────────── */
+    /* ── Sub Components ─────────────────────────────────────────── */
     .alert-row {
-      position: relative !important;
-      overflow: hidden !important;
-      display: flex !important;
-      align-items: center !important;
-      gap: 12px !important;
-      padding: 12px 14px !important;
-      background: var(--color-bg-page) !important;
-      border-radius: 8px !important;
-      border: 1px solid var(--color-border) !important;
-      cursor: pointer !important;
-      margin-bottom: 8px !important;
-      transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
+      cursor: pointer; margin-bottom: 8px; transition: all 150ms ease;
     }
-    .alert-row::before { display: none !important; }
-    .alert-row:hover {
-      background: #FFFBEB !important;
-      border-color: var(--color-warning) !important;
-      box-shadow: 0 2px 8px rgba(217,119,6,.12) !important;
-      transform: none !important;
-    }
-
-    /* ── Category / Department Rows ─────────────────────────── */
+    
     .cat-row {
-      position: relative !important;
-      overflow: hidden !important;
-      display: grid !important;
-      grid-template-columns: 150px 1fr 70px 80px !important;
-      gap: 12px !important;
-      align-items: center !important;
-      padding: 10px 14px !important;
-      border-radius: 6px !important;
-      cursor: pointer !important;
-      transition: background 150ms ease !important;
+      display: grid; grid-template-columns: 150px 1fr 70px 80px; gap: 12px; align-items: center;
+      padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all 150ms ease; border: 1px solid transparent;
     }
-    .cat-row::before { display: none !important; }
-    .cat-row:hover { background: #FFFBEB !important; }
 
-    /* ── Activity Rows ──────────────────────────────────────── */
     .top-row {
-      position: relative !important;
-      overflow: hidden !important;
-      display: flex !important;
-      align-items: center !important;
-      gap: 12px !important;
-      padding: 10px 12px !important;
-      border-radius: 6px !important;
-      background: var(--color-bg-page) !important;
-      border: 1px solid var(--color-border) !important;
-      margin-bottom: 6px !important;
-      cursor: pointer !important;
-      transition: background 150ms ease, border-color 150ms ease !important;
+      display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
+      margin-bottom: 8px; cursor: pointer; transition: all 150ms ease;
     }
-    .top-row::before { display: none !important; }
-    .top-row:hover {
-      background: #FFFBEB !important;
-      border-color: #FCD34D !important;
-    }
-
-    /* ── Quick Action Cards ─────────────────────────────────── */
+    
     .qa-card {
-      position: relative !important;
-      overflow: hidden !important;
-      background: var(--color-bg-card) !important;
-      border: 1px solid var(--color-border) !important;
-      border-radius: 8px !important;
-      padding: 16px 10px !important;
-      text-align: center !important;
-      cursor: pointer !important;
-      transition: box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease !important;
-      background-image: none !important;
-    }
-    .qa-card::before { display: none !important; }
-    .qa-card:hover {
-      border-color: var(--color-primary) !important;
-      box-shadow: 0 4px 12px rgba(37,99,235,.12) !important;
-      transform: translateY(-1px) !important;
-      background: #EFF6FF !important;
+      background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px;
+      padding: 16px 12px; text-align: center; cursor: pointer; transition: all 150ms ease;
     }
 
-    /* ── Sub-KPI mini boxes ─────────────────────────────────── */
-    .hr-kpi-mini {
-      background: var(--color-bg-page) !important;
-      border-radius: 8px !important;
-      padding: 12px 14px !important;
-      border: 1px solid var(--color-border) !important;
-      transition: box-shadow 150ms ease, transform 150ms ease !important;
-    }
-    .hr-kpi-mini:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
-      transform: translateY(-1px) !important;
-    }
-
-    /* ── Typography Overrides ───────────────────────────────── */
-    .artistic-3d-title {
-      font-size: 26px !important;
-      font-weight: 600 !important;
-      color: var(--color-text-primary) !important;
-      letter-spacing: -0.01em !important;
-      text-shadow: none !important;
-      margin: 0 !important;
-      line-height: 1.3 !important;
-    }
-    .artistic-3d-subtitle {
-      font-size: 13px !important;
-      color: var(--color-text-secondary) !important;
-      font-weight: 500 !important;
-      text-transform: none !important;
-      letter-spacing: 0 !important;
-      text-shadow: none !important;
-      margin: 0 !important;
-    }
-    .blink-star {
-      animation: none !important;
-      filter: none !important;
-      transform: none !important;
-      display: inline !important;
-    }
-
-    /* ── Responsiveness ─────────────────────────────────────── */
-    @media (max-width: 1280px) {
-      .hr-home-wrap { padding: 20px; }
-    }
+    /* Layout */
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+    .grid-2-chart { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin-bottom: 24px; }
+    .grid-3-split { display: grid; grid-template-columns: 0.5fr 0.5fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .grid-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 24px; }
+    
     @media (max-width: 1024px) {
-      .hr-home-header { grid-template-columns: 1fr auto; }
-      .hr-home-header > div:nth-child(2) { display: none; }
-    }
-    @media (max-width: 768px) {
-      .hr-home-wrap { padding: 16px; }
-      .hr-home-header { display: flex; justify-content: space-between; align-items: center; }
-      .cat-row { grid-template-columns: 120px 1fr 55px !important; }
-      .cat-row > span:last-child { display: none; }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3, .grid-3-split, .grid-3-2, .grid-1-2 { grid-template-columns: 1fr; }
+      .grid-2, .grid-2-chart { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
-      .hr-home-wrap { padding: 12px; }
-      .artistic-3d-title { font-size: 20px !important; }
+      .grid-4 { grid-template-columns: 1fr; }
     }
   `}</style>
 );
@@ -384,153 +239,154 @@ const HRHome = () => {
   const maxDeptCount = Math.max(...deptBreakdown.map(d => d.count), 1);
 
   return (
-    <div style={{ margin: '-24px', padding: '24px', minHeight: 'calc(100vh - 60px)', background: '#F5F6FA', fontFamily: "'Inter','Segoe UI','Roboto',-apple-system,sans-serif", overflowX: 'hidden' }}>
+    <div style={{ margin: '-24px', padding: '24px', minHeight: 'calc(100vh - 60px)', background: 'var(--color-bg-page)', fontFamily: "var(--font-family)", overflowX: 'hidden' }}>
       <GlobalStyles />
+
       {/* ── HEADER ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: 24, marginTop: 8, animation: 'phFadeUp 0.35s ease', width: '100%', position: 'relative', zIndex: 1 }}>
         <div style={{ justifySelf: 'start' }}>
-          <h1 className="artistic-3d-title">
-            Welcome! &nbsp;<span className="blink-star">🌿</span>
+          <h1 style={{ fontSize: 26, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+            🌿 Welcome, {firstName}!
           </h1>
         </div>
         <div style={{ justifySelf: 'center' }}>
-          <p className="artistic-3d-subtitle">
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500, margin: 0 }}>
             Universal HR Hub · It&apos;s {timeString}
           </p>
         </div>
         <div style={{ justifySelf: 'end' }}>
-                    <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
+          <button onClick={load} className="btn btn-primary" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1, gap: 8 }}>
             {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+            <span>SYNC</span>
           </button>
         </div>
       </div>
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 16, marginBottom: 16, position: 'relative', zIndex: 1 }}>
 
         {/* Health Score Hero */}
         <div className="d-card" onClick={() => nav('/hr/employees')}
-          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
+          style={{ background: `linear-gradient(135deg, ${G.forest} 0%, ${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', borderColor: 'transparent' }}>
           <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>⭐</span>
+          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: 10 }}>
+            <span style={{ fontSize: 22 }}>⭐</span>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Workforce Health Score</div>
-          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.85, marginBottom: 12 }}>Workforce Health Score</div>
+          <div style={{ fontSize: '3rem', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 12 }}>
             {attendanceRate}<span style={{ fontSize: '1.5rem', opacity: 0.75, marginLeft: 6 }}>%</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>👋</span> Hello, {firstName} - Today's Attendance Rate
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500, opacity: 0.9 }}>
+            <span>👋</span> Hello, {firstName} — Today&apos;s Attendance Rate
           </div>
         </div>
 
         {/* Total Staff */}
-        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/hr/employees')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Total Staff</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>👥</span></div>
+        <div className="d-card" style={{ cursor: 'pointer' }} onClick={() => nav('/hr/employees')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Staff</span>
+            <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>👥</span></div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{activeCount.toLocaleString()}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Employees on payroll</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6 }}>{activeCount.toLocaleString()}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Employees on payroll</div>
         </div>
 
         {/* Present Today */}
-        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/hr/todays-activities')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Present Today</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>✅</span></div>
+        <div className="d-card" style={{ cursor: 'pointer' }} onClick={() => nav('/hr/todays-activities')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Present Today</span>
+            <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>✅</span></div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{presentCount.toLocaleString()}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently clocked in</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6 }}>{presentCount.toLocaleString()}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Currently clocked in</div>
         </div>
 
         {/* Pending Approvals */}
-        <div className="d-card" style={{ animationDelay: '0.2s', background: pendingCount > 0 ? '#FFF8F0' : undefined }} onClick={() => nav('/hr/employee-info')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: pendingCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Pending Approvals</span>
-            <div style={{ background: pendingCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{pendingCount > 0 ? '⚠️' : '✅'}</span></div>
+        <div className="d-card" style={{ cursor: 'pointer', borderColor: pendingCount > 0 ? 'var(--color-warning)' : undefined }} onClick={() => nav('/hr/employee-info')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: pendingCount > 0 ? 'var(--color-warning)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending Approvals</span>
+            <div style={{ background: pendingCount > 0 ? 'var(--color-warning-bg)' : 'var(--color-success-bg)', borderRadius: 8, padding: 8 }}><span style={{ fontSize: 18 }}>{pendingCount > 0 ? '⚠️' : '✅'}</span></div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: pendingCount > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{pendingCount}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>{pendingCount > 0 ? 'Requires attention' : 'All caught up!'}</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: pendingCount > 0 ? 'var(--color-warning)' : 'var(--color-text-primary)', marginBottom: 6 }}>{pendingCount}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{pendingCount > 0 ? 'Requires attention' : 'All caught up!'}</div>
         </div>
       </div>
 
       {/* ── ROW 2: DEPARTMENT BREAKDOWN + ACTIVITY FEED ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div className="grid-3-2">
 
         {/* Department Breakdown */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🏢</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Department Headcount</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Across {totalDepts} departments</span>
+        <div className="d-card-no-hover">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 18 }}>🏢</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-primary)' }}>Department Headcount</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Across {totalDepts} departments</span>
           </div>
           {/* Sub-KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
             {[
-              { label: 'Active Depts',  val: totalDepts,   icon: '🏢', c: G.forest },
-              { label: 'Total Payroll', val: activeCount,  icon: '👥', c: G.orange },
-              { label: 'On Leave',      val: onLeaveCount, icon: '🌴', c: G.sky    },
-              { label: 'Leave Requests',val: pendingCount, icon: '⏳', c: G.purple },
+              { label: 'Active Depts',   val: totalDepts,   icon: '🏢', c: G.forest },
+              { label: 'Total Employees', val: activeCount,  icon: '👥', c: G.orange },
+              { label: 'On Leave',        val: onLeaveCount, icon: '🌴', c: G.sky    },
+              { label: 'Leave Requests',  val: pendingCount, icon: '⏳', c: G.purple },
             ].map(k => (
-              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
+              <div key={k.label} style={{ background: 'var(--color-bg-page)', borderRadius: 8, padding: '12px 14px', border: `1px solid ${k.c}30` }}>
                 <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: k.c }}>{k.val}</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>{k.label}</div>
               </div>
             ))}
           </div>
           {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 70px 80px', gap: 12, padding: '4px 16px', marginBottom: 8 }}>
             {['Department', '', 'Count', '%'].map((h, hi) => (
-              <div key={`header-${hi}`} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+              <div key={`header-${hi}`} style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
             ))}
           </div>
           {deptBreakdown.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 0', color: G.olive, fontSize: 13 }}>No department data yet</div>
+            <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--color-text-muted)', fontSize: 13 }}>No department data yet</div>
           ) : deptBreakdown.map((row, i) => {
             const c = COLORS_ARR[i % COLORS_ARR.length];
             const pct = activeCount > 0 ? Math.round((row.count / activeCount) * 100) : 0;
             return (
               <div key={`dept-${row.department || 'Unknown'}-${i}`} className="cat-row" onClick={() => nav('/hr/employees')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.department}</span>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{row.department}</span>
                 </div>
                 <CategoryBar value={row.count} max={maxDeptCount} color={c} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{row.count}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: G.emerald, textAlign: 'right' }}>{pct}%</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', textAlign: 'right' }}>{row.count}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-success)', textAlign: 'right' }}>{pct}%</span>
               </div>
             );
           })}
         </div>
 
         {/* Recent Activity Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="d-card-no-hover" style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>📜</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Live Activity</span>
+              <span style={{ fontSize: 18 }}>📜</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>Live Activity</span>
             </div>
             {activities.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
-                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No logs yet
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-muted)', fontSize: 13 }}>
+                <span style={{ fontSize: 28, display: 'block', marginBottom: 8, opacity: 0.4 }}>📉</span>No logs yet
               </div>
             ) : activities.map((l, i) => {
               const c = l.type === 'hire' ? G.emerald : G.orange;
               const icon = l.type === 'hire' ? '👋' : '🚶';
               return (
                 <div key={l.id} className="top-row" onClick={() => nav('/hr/todays-activities')}>
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <span style={{ fontSize: 14 }}>{icon}</span>
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {l.action_type}: {l.employee_id}
                     </div>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: c, whiteSpace: 'nowrap' }}>
                     {l.time}
                   </span>
                 </div>
@@ -540,54 +396,54 @@ const HRHome = () => {
         </div>
       </div>
 
-      {/* ── ROW 3: LOW STOCK ALERTS + QUICK ACTIONS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
+      <div className="grid-1-2">
 
         {/* HR Alerts */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
+        <div className="d-card-no-hover">
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 14 }}>⚠ Attention Required</div>
           {[
-            { label: `${pendingCount} Pending Requests`, sub: `Leaves awaiting approval`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/hr/employee-info' },
-            { label: `${onLeaveCount} Staff on Leave`, sub: 'Currently not in office', icon: '🌴', bg: '#FFFBEB', c: '#f59e0b', path: '/hr/employee-info' }
+            { label: `${pendingCount} Pending Requests`, sub: `Leaves awaiting approval`, icon: '⏳', bg: 'var(--color-info-bg)', c: 'var(--color-info)', path: '/hr/employee-info' },
+            { label: `${onLeaveCount} Staff on Leave`, sub: 'Currently not in office', icon: '🌴', bg: 'var(--color-warning-bg)', c: 'var(--color-warning)', path: '/hr/employee-info' }
           ].map(row => (
-            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
-              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
+            <div key={row.label} className="alert-row" onClick={() => nav(row.path)}>
+              <div style={{ background: row.bg, padding: 10, borderRadius: 8 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
-                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{row.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{row.sub}</div>
               </div>
-              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
+              <span style={{ fontSize: 16, color: 'var(--color-text-muted)' }}>›</span>
             </div>
           ))}
           {/* Pending leaves mini-list */}
           {pendingLeaves.slice(0,3).map((item, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', borderTop:`1px solid ${G.sage}44` }}>
-              <span style={{ fontSize:12, fontWeight:800, color:G.orange, minWidth:28 }}>{item.employee_id}</span>
-              <span style={{ fontSize:12, fontWeight:700, color:G.dark, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>Leave Request</span>
-              <span style={{ fontSize:10, color:G.olive }}>{new Date(item.start_date || new Date()).toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid var(--color-border)` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-warning)', minWidth: 28 }}>{item.employee_id}</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>Leave Request</span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{new Date(item.start_date || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
           ))}
         </div>
 
         {/* Quick Actions */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div className="d-card-no-hover">
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 16 }}>⚡ Quick Operations</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             {[
-              { label: 'Employees',      sub: 'Directory',     icon: '👥', bg: '#E6F2EB', color: G.forest,  href: '/hr/employees' },
-              { label: 'Payroll',        sub: 'Monthly',       icon: '💵', bg: '#E8F9F1', color: G.emerald, href: '/hr/monthly-payroll' },
-              { label: 'Deductions',     sub: 'Manage',        icon: '🛡️', bg: '#F1F8E9', color: G.olive,   href: '/hr/deductions' },
-              { label: 'Salary List',    sub: 'Records',       icon: '📄', bg: '#FFF3E0', color: G.orange,  href: '/hr/salary-list' },
-              { label: 'HR Policies',    sub: 'View rules',    icon: '💼', bg: '#E1F5FE', color: G.sky,     href: '/hr/hr-policies' },
-              { label: 'Announcements',  sub: 'Broadcast',     icon: '🔔', bg: '#F3E5F5', color: G.purple,  href: '/hr/announcements' },
-              { label: 'Requests',       sub: 'Pending items', icon: '⏳', bg: '#EFEBE9', color: G.brown,   href: '/hr/employee-info' }
-            ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
-                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize:22 }}>{a.icon}</span>
+              { label: 'Employees',     sub: 'Directory',     icon: '👥', bg: '#E6F2EB', color: G.forest,  href: '/hr/employees' },
+              { label: 'Payroll',       sub: 'Monthly',       icon: '💵', bg: '#E8F9F1', color: G.emerald, href: '/hr/monthly-payroll' },
+              { label: 'Deductions',    sub: 'Manage',        icon: '🛡️', bg: '#F1F8E9', color: G.olive,   href: '/hr/deductions' },
+              { label: 'Salary List',   sub: 'Records',       icon: '📄', bg: '#FFF3E0', color: G.orange,  href: '/hr/salary-list' },
+              { label: 'HR Policies',   sub: 'View rules',    icon: '💼', bg: '#E1F5FE', color: G.sky,     href: '/hr/hr-policies' },
+              { label: 'Announcements', sub: 'Broadcast',     icon: '🔔', bg: '#F3E5F5', color: G.purple,  href: '/hr/announcements' },
+              { label: 'Requests',      sub: 'Pending items', icon: '⏳', bg: '#EFEBE9', color: G.brown,   href: '/hr/employee-info' }
+            ].map((a) => (
+              <div key={a.label} className="qa-card" onClick={() => nav(a.href)}>
+                <div style={{ width: 46, height: 46, borderRadius: 10, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                  <span style={{ fontSize: 22 }}>{a.icon}</span>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{a.sub}</div>
               </div>
             ))}
           </div>
@@ -598,3 +454,4 @@ const HRHome = () => {
 };
 
 export default HRHome;
+
