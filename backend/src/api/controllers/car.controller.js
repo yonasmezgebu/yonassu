@@ -1,6 +1,7 @@
 const carRepository = require('../../repositories/car.repository');
 const CarModel = require('../../models/Car.model');
 const { logger } = require('../../config/logger');
+const carRentalAudit = require('../../services/carRentalAudit.service');
 
 exports.getAllCarsPublic = async (req, res) => {
   try {
@@ -63,6 +64,7 @@ exports.createCar = async (req, res) => {
     };
 
     const newCar = await carRepository.createAndReturn(dataToInsert);
+    carRentalAudit.log(req, 'Car Created', newCar.name || `Car #${newCar.id}`, null, dataToInsert);
     res.status(201).json({ status: 'success', data: CarModel.fromDatabase(newCar).toJSON() });
   } catch (error) {
     logger.error('Error creating car:', error);
@@ -108,6 +110,7 @@ exports.updateCar = async (req, res) => {
     };
 
     const updatedCar = await carRepository.updateAndReturn(id, dataToUpdate);
+    carRentalAudit.log(req, 'Car Updated', existingCar.name || `Car #${id}`, existingCar.toJSON(), updatedCar.toJSON());
     res.status(200).json({ status: 'success', data: CarModel.fromDatabase(updatedCar).toJSON() });
   } catch (error) {
     logger.error('Error updating car:', error);
@@ -124,6 +127,7 @@ exports.deleteCar = async (req, res) => {
     }
 
     await carRepository.softDelete(id);
+    carRentalAudit.log(req, 'Car Deleted', existingCar.name || `Car #${id}`, existingCar.toJSON(), null);
     res.status(200).json({ status: 'success', message: 'Vehicle deleted successfully' });
   } catch (error) {
     logger.error('Error deleting car:', error);
@@ -134,7 +138,9 @@ exports.deleteCar = async (req, res) => {
 exports.restoreCar = async (req, res) => {
   try {
     const { id } = req.params;
+    const existingCar = await carRepository.findById(id);
     await carRepository.restore(id);
+    carRentalAudit.log(req, 'Car Restored', existingCar?.name || `Car #${id}`, null, { restored: true });
     res.status(200).json({ status: 'success', message: 'Vehicle restored successfully' });
   } catch (error) {
     logger.error('Error restoring car:', error);
@@ -150,6 +156,7 @@ exports.hardDeleteCar = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Vehicle not found' });
     }
     await carRepository.delete(id);
+    carRentalAudit.log(req, 'Car Permanently Deleted', existingCar.name || `Car #${id}`, existingCar.toJSON(), null);
     res.status(200).json({ status: 'success', message: 'Vehicle permanently deleted' });
   } catch (error) {
     logger.error('Error in hardDeleteCar:', error);
@@ -167,7 +174,9 @@ exports.updateAssetValue = async (req, res) => {
     }
 
     const { db } = require('../../config/database');
+    const existingCar = await db('cars').where({ id }).first();
     await db('cars').where({ id }).update({ asset_value, updated_at: new Date() });
+    carRentalAudit.log(req, 'Car Asset Value Updated', existingCar?.name || `Car #${id}`, { asset_value: existingCar?.asset_value ?? null }, { asset_value });
     
     res.status(200).json({ status: 'success', message: 'Asset value updated successfully' });
   } catch (error) {
