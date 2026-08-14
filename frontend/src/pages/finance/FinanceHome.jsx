@@ -358,7 +358,7 @@ const FinanceHome = () => {
               { label: 'Bank',        sub: 'Accounts',  icon: '🏦', bg: 'var(--color-info-bg)',    color: G.blue,    href: '/finance/bank-accounts' },
               { label: 'Receivables', sub: 'Book',      icon: '📋', bg: '#F3E5F5',                 color: G.purple,  href: '/finance/outstanding-ar' },
               { label: 'P&L',         sub: 'Report',    icon: '📈', bg: 'var(--color-info-bg)',    color: G.sky,     href: '/finance/profit-loss' },
-              { label: 'Reports',     sub: 'Hub',       icon: '📊', bg: '#F3F4F6',                 color: G.brown,   href: '/finance/reports-hub' },
+              { label: 'Reports',     sub: 'Cash Flow', icon: '📊', bg: '#F3F4F6',                 color: G.brown,   href: '/finance/cash-flow' },
             ].map((a) => (
               <div key={a.label} className={styles.qaTile} onClick={() => nav(a.href)}>
                 <span className={styles.qaIcon} style={{ background: a.bg, color: a.color }}>{a.icon}</span>
