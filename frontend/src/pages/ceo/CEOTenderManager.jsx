@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/apiClient';
 import {
   Award, CheckCircle, XCircle, Download, Eye, Users, Check,
@@ -26,12 +26,13 @@ const C = {
   red:          '#F44336',
 };
 
-const CEOTenderManager = () => {
+const CEOTenderManager = ({ isApprovalMode = false }) => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const getTabFromUrl = () => {
     const params = new URLSearchParams(location.search);
-    return params.get('tab') || 'Awaiting CEO';
+    return params.get('tab') || (isApprovalMode ? 'Awaiting CEO' : 'Open');
   };
 
   const [activeTab, setActiveTab] = useState(getTabFromUrl);
@@ -368,6 +369,25 @@ const CEOTenderManager = () => {
       )}
 
       {/* ── Page Header ── */}
+      {isApprovalMode && (
+        <div style={{ background: '#1a2e1a', padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.sage}` }}>
+          <button
+            onClick={() => navigate('/ceo/approvals')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'transparent', border: `1px solid ${C.sage}`,
+              color: C.sage, padding: '6px 14px', cursor: 'pointer',
+              fontWeight: 700, fontSize: 13, borderRadius: 4,
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.darkGreen; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage; }}
+          >
+            ← Back to Approvals Hub
+          </button>
+          <span style={{ color: C.sage, fontSize: 12, opacity: 0.7 }}>Administration / Approvals Hub / Tender Approvals</span>
+        </div>
+      )}
       <div style={{ background: C.darkGreen, padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ background: C.forestGreen, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -375,10 +395,10 @@ const CEOTenderManager = () => {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.white, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              CEO TENDER & BID MANAGEMENT
+              {isApprovalMode ? 'CEO TENDER & FUND APPROVALS' : 'CEO TENDER & BID MANAGEMENT'}
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: C.sage, marginTop: 4 }}>
-              Review public bids from sales & procurement flows — approve winning bids
+              {isApprovalMode ? 'Review pending public bids and fund requests requiring CEO approval' : 'Monitor open bids, awarded contracts, and procurement requests'}
             </p>
           </div>
         </div>
@@ -398,28 +418,30 @@ const CEOTenderManager = () => {
 
       <div style={{ padding: '24px 32px', flex: 1 }}>
         {/* ── Stats Row ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 28 }}>
-          {[
-            { label: 'Total Tenders', value: combinedTenders.length, icon: <Package size={24} color={C.forestGreen} />, accent: C.forestGreen },
-            { label: 'Open (Accepting Bids)', value: openCount, icon: <Wallet size={24} color={C.skyBlue} />, accent: C.skyBlue },
-            { label: 'Awaiting CEO Decision', value: awaitingCount, icon: <Clock size={24} color={C.orange} />, accent: C.orange },
-            { label: 'Awarded', value: combinedTenders.filter(t => t.status === 'awarded').length, icon: <CheckCircle size={24} color={C.emerald} />, accent: C.emerald },
-          ].map(s => (
-            <div key={s.label} style={{ background: C.white, border: `1px solid ${C.sage}`, borderLeft: `5px solid ${s.accent}`, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 48, height: 48, background: `${s.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {s.icon}
+        {!isApprovalMode && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 28 }}>
+            {[
+              { label: 'Total Tenders', value: combinedTenders.length, icon: <Package size={24} color={C.forestGreen} />, accent: C.forestGreen },
+              { label: 'Open (Accepting Bids)', value: openCount, icon: <Wallet size={24} color={C.skyBlue} />, accent: C.skyBlue },
+              { label: 'Awaiting CEO Decision', value: awaitingCount, icon: <Clock size={24} color={C.orange} />, accent: C.orange },
+              { label: 'Awarded', value: combinedTenders.filter(t => t.status === 'awarded').length, icon: <CheckCircle size={24} color={C.emerald} />, accent: C.emerald },
+            ].map(s => (
+              <div key={s.label} style={{ background: C.white, border: `1px solid ${C.sage}`, borderLeft: `5px solid ${s.accent}`, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 48, height: 48, background: `${s.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {s.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.darkGray, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: C.darkGreen, marginTop: 4 }}>{s.value}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.darkGray, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: C.darkGreen, marginTop: 4 }}>{s.value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: `2px solid ${C.sage}`, flexWrap: 'wrap' }}>
-          {['Awaiting CEO', 'Open', 'All Tenders', 'Awarded', 'Fund Requests'].map(tab => {
+          {(isApprovalMode ? ['Awaiting CEO', 'Fund Requests'] : ['Open', 'All Tenders', 'Awarded']).map(tab => {
             let count = 0;
             if (tab === 'Awaiting CEO') count = awaitingCount;
             if (tab === 'Open') count = openCount;
