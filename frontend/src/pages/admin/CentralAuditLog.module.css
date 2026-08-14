@@ -266,6 +266,14 @@
   font-family: 'Consolas', 'Courier New', monospace;
 }
 
+.logDescription {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+  white-space: normal;
+}
+
 .logDate {
   font-size: 13px;
   color: var(--color-text-primary);
@@ -343,6 +351,13 @@
   color: var(--color-text-primary);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.diffSummary {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
 /* ── Diff Table (For Objects) ── */
