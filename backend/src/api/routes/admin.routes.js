@@ -206,16 +206,6 @@ router.delete('/delegated/nodes/:nodeId/unassign/:adminId', authenticate, author
 );
 
 /* ════════════════════════════════════════════════
-   DIMENSION 11 — TENANT MANAGEMENT
-   ════════════════════════════════════════════════ */
-router.get('/tenants', authenticate, authorize(['admin:tenant']), AdminController.getTenants);
-router.post('/tenants', authenticate, authorize(['admin:tenant']),
-  body('name').isString(), body('isolation').isIn(['logical', 'schema', 'database', 'instance']), validate,
-  AdminController.createTenant
-);
-router.get('/tenants/:id/audit', authenticate, authorize(['admin:tenant']), AdminController.getTenantAudit);
-
-/* ════════════════════════════════════════════════
    DIMENSION 12 — COMPLIANCE EVIDENCE
    ════════════════════════════════════════════════ */
 router.get('/compliance/evidence', authenticate, authorize(['admin:compliance']), AdminController.getEvidenceList);
@@ -266,19 +256,6 @@ router.post('/privilege-health/remediate/:userId', authenticate, authorize(['adm
   param('userId').isInt(), body('roleId').isInt(), validate,
   AdminController.remediatePrivilegeCreep
 );
-
-/* ════════════════════════════════════════════════
-   DIMENSION 16 — API ACCESS KEYS
-   ════════════════════════════════════════════════ */
-router.get('/api-keys', authenticate, authorize(['admin:api-keys']), AdminController.getApiKeys);
-router.post('/api-keys', authenticate, authorize(['admin:api-keys']),
-  body('name').isString(), body('description').optional().isString(),
-  body('scopes').isArray(), body('ipRestriction').optional().isString(),
-  body('expirationDate').isISO8601(), body('rateLimit').optional().isInt(), validate,
-  AdminController.createApiKey
-);
-router.post('/api-keys/:id/revoke', authenticate, authorize(['admin:api-keys']), AdminController.revokeApiKey);
-router.post('/api-keys/:id/rotate', authenticate, authorize(['admin:api-keys']), AdminController.rotateApiKey);
 
 /* ════════════════════════════════════════════════
    EXISTING ROUTES (Enhanced Dashboard)
