@@ -84,6 +84,7 @@ router.use('/finance-bank', require('./financeBank.routes'));
 router.use('/finance-receivables', require('./financeReceivables.routes'));
 router.use('/finance-payables', require('./financePayables.routes'));
 router.use('/finance-liabilities', require('./financeLiabilities.routes'));
+router.use('/finance-supplier', require('./financeSupplier.routes'));
 router.use('/finance-equity', require('./financeEquity.routes'));
 router.use('/erp-receivables', require('./erpReceivables.routes'));
 router.use('/liabilities-v2', require('./liabilities-erp.routes'));
