@@ -1,98 +1,202 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, RefreshCw, Car, Tractor, CheckCircle, Clock, Wrench, Activity, AlertCircle } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-/* ─── Color Palette ─────────────────────────────────────────────────────── */
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
-  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
-  orange: '#FF9800', red: '#F44336', purple: '#7C3AED',
-};
-const COLORS_ARR = [G.emerald, G.sky, G.orange, G.purple, G.lime, G.red];
+/* ─── Enterprise Global Styles ─── */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+    }
+
+    .car-page {
+      font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+      color: var(--color-text-primary);
+      background: var(--color-bg-page);
+      min-height: 100vh;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    /* ── Cards ── */
+    .car-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: box-shadow 150ms ease-in-out, transform 150ms ease-in-out;
+      padding: 24px;
+    }
+    .car-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+
+    /* ── Buttons ── */
+    .car-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 150ms ease-in-out;
+      white-space: nowrap;
+      height: 36px;
+      font-family: inherit;
+    }
+    .car-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .car-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .car-btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .car-btn-primary:hover {
+      background: #FFD700;
+      color: #111827;
+    }
+    
+    .car-btn-secondary {
+      background: #fff;
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
+    }
+    .car-btn-secondary:hover {
+      background: #FFD700;
+      border-color: #FFD700;
+      color: #111827;
+    }
+
+    /* ── Typography ── */
+    .car-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text-primary);
+      margin: 0 0 4px 0;
+      letter-spacing: -0.02em;
+    }
+    .car-subtitle {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+    .car-section-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── KPI Hero Card ── */
+    .car-hero-card {
+      background: linear-gradient(135deg, var(--color-primary) 0%, #1e40af 100%);
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      border: none;
+    }
+    .car-hero-card::after {
+      content: '';
+      position: absolute;
+      right: -20px;
+      top: -20px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      pointer-events: none;
+    }
+    
+    /* ── Activity Feed Row ── */
+    .car-activity-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--color-bg-page);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      transition: background 150ms ease-in-out, transform 150ms ease-in-out;
+    }
+    .car-activity-row:hover {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transform: translateX(2px);
+    }
+
+    /* ── Status Row ── */
+    .car-status-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 60px;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      transition: background 150ms ease;
+    }
+    .car-status-row:hover {
+      background: var(--color-bg-page);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .car-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+      .car-grid-main { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 640px) {
+      .car-page { padding: 12px; }
+      .car-grid-4 { grid-template-columns: 1fr !important; }
+      .car-status-row { grid-template-columns: 1fr; gap: 8px; }
+    }
+  `}</style>
+);
 
 const CategoryBar = ({ value, max, color }) => (
-  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
+  <div style={{ background: '#E5E7EB', borderRadius: 4, height: 8, overflow: 'hidden', flex: 1 }}>
     <div style={{
-      height: '100%', borderRadius: 0, background: color,
+      height: '100%', borderRadius: 4, background: color,
       width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
-      transition: 'width 1.2s ease'
+      transition: 'width 1.2s ease-in-out'
     }} />
   </div>
 );
 
-/* ─── Enterprise Design System ──────────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    .artistic-3d-title {
-      font-size: 26px; font-weight: 600; color: #111827; letter-spacing: -0.02em;
-      margin: 0; display: flex; align-items: center; gap: 10px; line-height: 1.3;
-    }
-    .artistic-3d-subtitle {
-      font-size: 13px; color: #6B7280; font-weight: 500; text-align: center;
-      text-transform: uppercase; letter-spacing: 0.05em; margin: 0; line-height: 1.5;
-    }
-    .blink-star { display: inline-block; animation: none; }
-
-    .btn-sync {
-      position: relative; background: #2563EB; color: #FFFFFF; border: none;
-      height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 500; font-size: 14px;
-      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      margin: 0; box-shadow: none; text-transform: none; letter-spacing: normal;
-      transition: background 150ms ease-in-out, transform 150ms ease-in-out;
-    }
-    .btn-sync:hover { background: #FFC107; color: #111827; }
-    .btn-sync:active { transform: scale(0.98); }
-    .btn-sync:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .d-card-no-hover {
-      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB;
-      border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      animation: fadeUp 150ms ease both;
-      transition: box-shadow 150ms ease, transform 150ms ease;
-    }
-    .d-card-no-hover:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-
-    .alert-row {
-      position: relative; display: flex; align-items: center; gap: 14px; padding: 12px 16px;
-      background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px;
-      margin-bottom: 10px; transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-    .alert-row:hover { background: #EFF6FF; border-color: #BFDBFE; transform: translateX(2px); }
-
-    .cat-row {
-      position: relative; display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px;
-      align-items: center; padding: 10px 12px; border-radius: 8px;
-      transition: background 150ms ease;
-    }
-    .cat-row:hover { background: #F9FAFB; }
-
-    .top-row {
-      position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-      border-radius: 8px; background: #F9FAFB; margin-bottom: 8px;
-      transition: background 150ms ease;
-    }
-    .top-row:hover { background: #EFF6FF; }
-
-    .qa-card {
-      position: relative; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px;
-      padding: 18px 14px; text-align: center;
-      transition: box-shadow 150ms ease, transform 150ms ease;
-    }
-    .qa-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-  `}</style>
-);
-
-const DecorPlants = () => (
-  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
-    {/* Minimal decor items can go here if needed */}
-  </div>
-);
-
-export default function CEOAgriAndCarRental() {
+export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [timeString, setTimeString] = useState('');
@@ -108,8 +212,9 @@ export default function CEOAgriAndCarRental() {
     setRefreshing(true);
     try {
       const res = await apiClient.get('/car-renting/dashboard');
-      if (res.success) {
-        setData(res.data);
+      const payload = res?.data?.data || res?.data || null;
+      if (payload) {
+        setData(payload);
       }
     } catch (err) {
       console.error('Failed to load dashboard:', err);
@@ -122,12 +227,14 @@ export default function CEOAgriAndCarRental() {
     load();
   }, [load]);
 
-  if (!data) return <div style={{ padding: '2rem', textAlign: 'center' }}><SegmentedSpinner size={40} /></div>;
+  if (!data) return <div style={{ padding: '40px', textAlign: 'center' }}><SegmentedSpinner size={40} color="var(--color-primary)" /></div>;
 
-  const { fleetStats, activeOrders, maintenance } = data;
+  const fleetStats   = data.fleetStats   || { total: 0, cars: 0, agri: 0, available: 0, rented: 0, maintenance: 0, totalValue: 0 };
+  const activeOrders = data.activeOrders || [];
+  const maintenance  = data.maintenance  || [];
 
   const statuses = ['available', 'rented', 'maintenance'];
-  const statusColors = { 'available': G.emerald, 'rented': G.orange, 'maintenance': G.red };
+  const statusColors = { 'available': 'var(--color-success)', 'rented': 'var(--color-warning)', 'maintenance': 'var(--color-danger)' };
   const maxStatusCount = Math.max(...statuses.map(s => fleetStats[s] || 0), 1);
 
   const recentActivity = [
@@ -135,156 +242,202 @@ export default function CEOAgriAndCarRental() {
       ...maintenance.map(m => ({ id: `mnt-${m.id}`, type: 'Maintenance', title: m.description, sub: m.asset_name, date: m.scheduled_date }))
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
+  if (isApprovalMode) {
+    return (
+      <div className="car-page">
+        <GlobalStyles />
+        
+        {/* Back bar */}
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => navigate('/ceo/approvals')} className="car-btn car-btn-secondary">
+            <ArrowLeft size={16} /> Back to Approvals Hub
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Administration / Approvals Hub / Agri & Car Rental Approvals</span>
+        </div>
+        
+        <div style={{ marginBottom: 32 }}>
+          <h1 className="car-title">Agri & Car Rental Approvals</h1>
+          <p className="car-subtitle">Review agricultural equipment and vehicle requests</p>
+        </div>
+        
+        <div className="car-card" style={{ textAlign: 'center', padding: '64px 24px' }}>
+          <CheckCircle size={48} color="var(--color-success)" style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+          <h2 style={{ fontSize: 18, color: 'var(--color-text-primary)', margin: '0 0 8px 0', fontWeight: 600 }}>No Pending Approvals</h2>
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 14 }}>All requests are currently resolved.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="rd-page" style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", position: 'relative' }}>
+    <div className="car-page">
       <GlobalStyles />
-      <DecorPlants />
 
       {/* ── HEADER ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
-        <div style={{ justifySelf: 'start' }}>
-          <h1 className="artistic-3d-title">
-            CEO Car &amp; Agri Rental Dashboard&nbsp;<span className="blink-star">🌿</span>
-          </h1>
-        </div>
-        <div style={{ justifySelf: 'center' }}>
-          <p className="artistic-3d-subtitle">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+            <div style={{ width: 4, height: 28, background: 'var(--color-primary)', borderRadius: 4 }} />
+            <h1 className="car-title">Agri & Car Rental Dashboard</h1>
+          </div>
+          <p className="car-subtitle" style={{ paddingLeft: 16 }}>
             Executive Overview · {timeString}
           </p>
         </div>
-        <div style={{ justifySelf: 'end' }}>
-          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+        <div>
+          <button onClick={load} className="car-btn car-btn-secondary" disabled={refreshing}>
+            {refreshing ? <SegmentedSpinner size={16} /> : <RefreshCw size={16} />}
+            Sync Data
           </button>
         </div>
       </div>
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
-
+      <div className="car-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 24 }}>
+        
         {/* Fleet Value Hero */}
-        <div className="d-card-no-hover"
-          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>🚗</span>
+        <div className="car-card car-hero-card">
+          <div style={{ position: 'absolute', right: 24, top: 24, background: 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 12 }}>
+            <Car size={24} color="#fff" />
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Fleet Size</div>
-          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
-            {fleetStats.total} <span style={{ fontSize: '1.1rem', opacity: 0.75, marginLeft: 6 }}>Vehicles</span>
+          <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, marginBottom: 12 }}>
+            Total Fleet Size
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>📊</span> Across Car and AgriRent Lines
+          <div style={{ fontSize: '36px', fontWeight: 800, lineHeight: 1, marginBottom: 16 }}>
+            {fleetStats.total} <span style={{ fontSize: '16px', opacity: 0.8, fontWeight: 500 }}>Vehicles</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, opacity: 0.9 }}>
+            <Activity size={16} /> Across Car and AgriRent Lines
           </div>
         </div>
 
         {/* Cars */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.1s' }}>
+        <div className="car-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Cars Fleet</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚕</span></div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cars Fleet</span>
+            <div style={{ background: 'var(--color-info-bg)', borderRadius: 8, padding: 10, color: 'var(--color-info)' }}>
+              <Car size={20} />
+            </div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.cars}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Standard vehicles</div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '16px 0 8px' }}>
+            {fleetStats.cars}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 500 }}>Standard vehicles</div>
         </div>
 
         {/* Agri Equipment */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.15s' }}>
+        <div className="car-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Agri Equipment</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🚜</span></div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Agri Equipment</span>
+            <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 10, color: 'var(--color-success)' }}>
+              <Tractor size={20} />
+            </div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{fleetStats.agri}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Tractors &amp; Farming</div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '16px 0 8px' }}>
+            {fleetStats.agri}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 500 }}>Tractors & Farming</div>
         </div>
 
         {/* Active Rentals */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.2s', background: activeOrders.length > 0 ? '#FFF8F0' : undefined }}>
+        <div className="car-card" style={{ background: activeOrders.length > 0 ? 'var(--color-warning-bg)' : undefined, borderColor: activeOrders.length > 0 ? '#FDE68A' : undefined }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: activeOrders.length > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active Rentals</span>
-            <div style={{ background: activeOrders.length > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{activeOrders.length > 0 ? '⏱️' : '✅'}</span></div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: activeOrders.length > 0 ? 'var(--color-warning)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Rentals</span>
+            <div style={{ background: activeOrders.length > 0 ? '#FEF3C7' : 'var(--color-bg-page)', borderRadius: 8, padding: 10, color: activeOrders.length > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+              <Clock size={20} />
+            </div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: activeOrders.length > 0 ? G.orange : G.dark, margin: '12px 0 6px' }}>{activeOrders.length}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently rented out</div>
+          <div style={{ fontSize: '32px', fontWeight: 800, color: activeOrders.length > 0 ? 'var(--color-warning)' : 'var(--color-text-primary)', margin: '16px 0 8px' }}>
+            {activeOrders.length}
+          </div>
+          <div style={{ fontSize: 13, color: activeOrders.length > 0 ? '#B45309' : 'var(--color-text-muted)', fontWeight: 500 }}>Currently rented out</div>
         </div>
       </div>
 
       {/* ── ROW 2: FLEET STATUS BREAKDOWN + ACTIVITY FEED ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+      <div className="car-grid-main" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 24 }}>
 
         {/* Fleet Status Breakdown */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🔀</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Fleet Status Breakdown</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Real-time</span>
-          </div>
+        <div className="car-card">
+          <h2 className="car-section-header">
+            <Activity size={18} color="var(--color-primary)" /> Fleet Status Breakdown
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-success)', fontWeight: 600, background: 'var(--color-success-bg)', padding: '2px 8px', borderRadius: 12 }}>Real-time</span>
+          </h2>
+          
           {/* Sub-KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32 }}>
             {[
-              { label: 'Total Fleet',    val: fleetStats.total,       icon: '🚙', c: G.forest },
-              { label: 'Available Now',  val: fleetStats.available,   icon: '✅', c: G.emerald },
-              { label: 'Rented Out',     val: fleetStats.rented,      icon: '⏱️', c: G.orange },
-              { label: 'In Maintenance', val: fleetStats.maintenance, icon: '🔧', c: G.red },
+              { label: 'Total Fleet',    val: fleetStats.total,       icon: <Car size={16}/>, c: 'var(--color-info)' },
+              { label: 'Available Now',  val: fleetStats.available,   icon: <CheckCircle size={16}/>, c: 'var(--color-success)' },
+              { label: 'Rented Out',     val: fleetStats.rented,      icon: <Clock size={16}/>, c: 'var(--color-warning)' },
+              { label: 'Maintenance',    val: fleetStats.maintenance, icon: <Wrench size={16}/>, c: 'var(--color-danger)' },
             ].map(k => (
-              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
+              <div key={k.label} style={{ background: 'var(--color-bg-page)', borderRadius: 8, padding: 16, border: '1px solid var(--color-border)' }}>
+                <div style={{ color: k.c, marginBottom: 8 }}>{k.icon}</div>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: 4 }}>{k.val}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
               </div>
             ))}
           </div>
+
           {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 60px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 60px', gap: 16, padding: '0 16px 12px 16px' }}>
             {['Status', '', 'Count'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
+              <div key={h} style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: h === 'Count' ? 'right' : 'left' }}>{h}</div>
             ))}
           </div>
-          {statuses.map((status, i) => {
-            const count = fleetStats[status];
-            const c = statusColors[status] || COLORS_ARR[i % COLORS_ARR.length];
-            return (
-              <div key={status} className="cat-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textTransform: 'capitalize' }}>{status}</span>
+
+          {/* Bars */}
+          <div style={{ display: 'grid', gap: 4 }}>
+            {statuses.map(status => {
+              const count = fleetStats[status];
+              const c = statusColors[status];
+              return (
+                <div key={status} className="car-status-row">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{status}</span>
+                  </div>
+                  <CategoryBar value={count} max={maxStatusCount} color={c} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', textAlign: 'right' }}>{count}</span>
                 </div>
-                <CategoryBar value={count} max={maxStatusCount} color={c} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{count}</span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Recent Activity Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>📜</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Activity</span>
-            </div>
+        <div className="car-card">
+          <h2 className="car-section-header">
+            <Clock size={18} color="var(--color-primary)" /> Recent Activity
+          </h2>
+          
+          <div style={{ marginTop: 24 }}>
             {recentActivity.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
-                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No activity yet
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <AlertCircle size={32} color="var(--color-text-muted)" style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500 }}>No recent activity</div>
               </div>
             ) : recentActivity.map((l) => {
-              const c = l.type === 'Rental' ? G.emerald : G.orange;
-              const icon = l.type === 'Rental' ? '🤝' : '🔧';
+              const isRental = l.type === 'Rental';
+              const c = isRental ? 'var(--color-success)' : 'var(--color-warning)';
+              const bg = isRental ? 'var(--color-success-bg)' : 'var(--color-warning-bg)';
+              const IconComp = isRental ? Car : Wrench;
+              
               return (
-                <div key={l.id} className="top-row">
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
+                <div key={l.id} className="car-activity-row">
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: bg, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <IconComp size={20} />
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>
                       {l.type}: {l.title}
                     </div>
-                    <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{l.sub}</div>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{l.sub}</div>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', textAlign: 'right' }}>
                     {l.date ? new Date(l.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''}
-                  </span>
+                  </div>
                 </div>
               );
             })}
