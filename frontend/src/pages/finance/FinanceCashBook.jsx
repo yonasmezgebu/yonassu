@@ -7,154 +7,264 @@ import {
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
-/* ── Global CSS ─────────────────────────────────────────────── */
+/* ── Global CSS (design pass only) ──────────────────────────── */
 const G = `
   .cb-wrap {
-    padding: 24px;
-    background: #F5F5F5;
-    min-height: 100vh;
-    font-family: 'Inter', sans-serif;
+    --color-primary: #2563EB;
+    --color-primary-hover: #1D4ED8;
+    --color-bg-page: #F5F6FA;
+    --color-bg-card: #FFFFFF;
+    --color-border: #E5E7EB;
+    --color-text-primary: #111827;
+    --color-text-secondary: #6B7280;
+    --color-text-muted: #9CA3AF;
+    --color-success: #16A34A;
+    --color-success-bg: #DCFCE7;
+    --color-danger: #DC2626;
+    --color-danger-bg: #FEE2E2;
+    --color-warning: #D97706;
+    --color-warning-bg: #FEF3C7;
+    --color-info: #0284C7;
+    --color-info-bg: #E0F2FE;
+    --color-gold: #F59E0B;
+    --color-gold-hover: #D97706;
+    --color-gold-text: #1F2937;
+    --cb-radius: 10px;
+    --cb-radius-sm: 8px;
+    --cb-transition: 150ms ease-in-out;
+    padding: 0;
     width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: 100%;
     box-sizing: border-box;
+    font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
   }
-  .cb-inp {
+  .cb-wrap *, .cb-wrap *::before, .cb-wrap *::after { box-sizing: border-box; }
+  .cb-wrap h1, .cb-wrap h2, .cb-wrap h3 { line-height: 1.3; }
+
+  /* Inputs */
+  .cb-inp, .cb-select {
     width: 100%;
-    padding: 10px 12px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #424242;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--cb-radius-sm);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text-primary);
     background: #FFFFFF;
     outline: none;
     box-sizing: border-box;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--cb-transition), box-shadow var(--cb-transition);
   }
-  .cb-inp:focus {
-    border-color: #228B22;
-    box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
+  .cb-inp:focus, .cb-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
-  .cb-select {
-    width: 100%;
-    padding: 10px 12px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #424242;
-    background: #FFFFFF;
-    outline: none;
-    box-sizing: border-box;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-  .cb-select:focus { border-color: #228B22; }
+  .cb-select { cursor: pointer; }
   .cb-lbl {
     display: block;
-    font-size: 11px;
-    font-weight: 800;
-    color: #1B5E20;
-    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* Buttons — every button gets a gold hover (text stays readable) */
+  .btn-green, .btn-outline, .btn-reset, .view-btn, .pg-btn, .cb-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--cb-radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--cb-transition), color var(--cb-transition), border-color var(--cb-transition);
   }
   .btn-green {
-    background: #228B22;
+    background: var(--color-primary);
     color: #FFFFFF;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s, transform 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    border: 1px solid var(--color-primary);
   }
-  .btn-green:hover { background: #1B5E20; transform: translateY(-1px); }
+  .btn-green:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
   .btn-outline {
     background: #FFFFFF;
-    color: #1B5E20;
-    border: 2px solid #228B22;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s, color 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
   }
-  .btn-outline:hover { background: #228B22; color: #FFFFFF; }
+  .btn-outline:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
   .btn-reset {
-    background: #F5F5F5;
-    color: #424242;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
-    cursor: pointer;
-    font-weight: 700;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-  .btn-reset:hover { background: #8D6E63; color: #FFFFFF; }
-  .cb-tr { transition: background 0.15s; }
-  .cb-tr:hover { background: #A5D6A7 !important; cursor: pointer; }
-  .cb-card {
     background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 0;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+  .btn-reset:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
+  .view-btn {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    background: var(--color-info-bg);
+    color: var(--color-info);
+    border: 1px solid transparent;
+  }
+  .view-btn:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
+  .pg-btn {
+    height: 32px;
+    min-width: 32px;
+    padding: 0 10px;
+    font-size: 13px;
+    background: #FFFFFF;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+  .pg-btn:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
+  .pg-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #FFFFFF;
+  }
+  .pg-btn.active:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
+  .cb-btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: #FFFFFF;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+  .cb-btn-icon:hover {
+    background: var(--color-gold);
+    border-color: var(--color-gold-hover);
+    color: var(--color-gold-text);
+  }
+  .btn-green:disabled, .btn-outline:disabled, .btn-reset:disabled,
+  .view-btn:disabled, .pg-btn:disabled, .cb-btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Cards */
+  .cb-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--cb-radius);
     padding: 20px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: box-shadow var(--cb-transition), transform var(--cb-transition);
+  }
+  .cb-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
   }
   .cb-filter-panel {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 0;
-    padding: 18px 20px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--cb-radius);
+    padding: 16px 20px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
   .cb-table-wrap {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 0;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--cb-radius);
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     width: 100%;
   }
-  .pg-btn {
-    padding: 6px 12px;
-    border: 2px solid #8D6E63;
-    border-radius: 0;
-    background: #FFFFFF;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 13px;
-    color: #424242;
-    transition: all 0.15s;
+
+  /* Table */
+  .cb-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 720px;
   }
-  .pg-btn:hover { background: #228B22; color: #FFFFFF; border-color: #228B22; }
-  .pg-btn.active { background: #228B22; color: #FFFFFF; border-color: #1B5E20; }
-  .pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .view-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    background: #A5D6A7;
-    border: 1px solid #228B22;
-    border-radius: 0;
-    cursor: pointer;
-    color: #1B5E20;
+  .cb-table-wrap thead th {
+    background: #F9FAFB;
+    color: var(--color-text-secondary);
     font-size: 12px;
-    font-weight: 700;
-    transition: background 0.15s;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border);
   }
-  .view-btn:hover { background: #228B22; color: #FFFFFF; }
+  .cb-table-wrap tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+  }
+  .cb-table-wrap tbody tr { transition: background var(--cb-transition); }
+  .cb-table-wrap tbody tr:hover { background: #F9FAFB; }
+  .cb-table-wrap tbody tr:last-child td { border-bottom: none; }
+
+  /* Pagination */
+  .cb-pagination {
+    padding: 12px 20px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #FFFFFF;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cb-pagination-info {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+  }
+
+  /* Grid */
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: stretch; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr auto; gap: 16px; align-items: flex-end; }
+
+  /* Modal */
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.4);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -163,35 +273,84 @@ const G = `
   }
   .modal-box {
     background: #FFFFFF;
-    border: 2px solid #1B5E20;
-    border-radius: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
     width: 100%;
-    max-width: 760px;
+    max-width: 780px;
     max-height: 90vh;
     overflow: auto;
-    box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   }
-  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
-  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr auto; gap: 14px; align-items: flex-end; }
-  @media (max-width: 900px) {
-    .grid-3 { grid-template-columns: 1fr 1fr; }
+
+  /* Notif / Toast */
+  .cb-notif {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: var(--cb-radius);
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
+    box-sizing: border-box;
+    animation: cbSlideIn var(--cb-transition) ease-out;
+  }
+  .cb-notif-success {
+    background: var(--color-success-bg);
+    border: 1px solid var(--color-success);
+    border-left: 4px solid var(--color-success);
+    color: #166534;
+  }
+  .cb-notif-error {
+    background: var(--color-danger-bg);
+    border: 1px solid var(--color-danger);
+    border-left: 4px solid var(--color-danger);
+    color: #991B1B;
+  }
+  .cb-notif-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--cb-radius-sm);
+    transition: background var(--cb-transition), opacity var(--cb-transition);
+  }
+  .cb-notif-close:hover { opacity: 1; background: rgba(0,0,0,0.08); }
+
+  @keyframes cbSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
     .grid-4 { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 600px) {
-    .grid-3 { grid-template-columns: 1fr; }
+  @media (max-width: 480px) {
     .grid-4 { grid-template-columns: 1fr; }
-    .cb-wrap { padding: 12px; }
+    .btn-green, .btn-outline, .btn-reset, .cb-btn-icon { height: 44px; }
+    .view-btn, .pg-btn { height: 44px; min-width: 44px; }
+    .cb-inp, .cb-select { height: 44px; }
+    .cb-filter-panel { padding: 12px; }
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
 /* ── In-app Notification ─────────────────────────────────────── */
 const Notif = ({ n, onClose }) => {
   if (!n) return null;
   return (
-    <div style={{ background: n.type === 'error' ? '#F44336' : '#4CAF50', color: '#FFFFFF', padding: '14px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, border: '2px solid #1B5E20', width: '100%', boxSizing: 'border-box' }}>
-      {n.type === 'error' ? '⚠' : '✓'} {n.msg}
-      <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', fontWeight: 900, fontSize: 18 }}>✕</button>
+    <div className={`cb-notif ${n.type === 'error' ? 'cb-notif-error' : 'cb-notif-success'}`} role="alert">
+      <span style={{ fontSize: 15, lineHeight: 1 }}>{n.type === 'error' ? '⚠' : '✓'}</span>
+      <span>{n.msg}</span>
+      <button className="cb-notif-close" onClick={onClose} aria-label="Dismiss notification">
+        <X size={16} />
+      </button>
     </div>
   );
 };
@@ -235,30 +394,30 @@ const DocumentModal = ({ doc, onClose }) => {
   const partyLabel = isCRV ? 'RECEIVED FROM' : 'PAID TO';
   const partyName = isCRV ? doc.received_from : doc.paid_to;
 
-  const accentColor = isCRV ? '#228B22' : (isPCV ? '#FF9800' : '#228B22');
-  const accentBg    = isCRV ? '#A5D6A7' : (isPCV ? '#FFF3E0' : '#A5D6A7');
+  const accentColor = isCRV ? 'var(--color-success)' : (isPCV ? 'var(--color-warning)' : 'var(--color-danger)');
+  const accentBg    = isCRV ? 'var(--color-success-bg)' : (isPCV ? 'var(--color-warning-bg)' : 'var(--color-danger-bg)');
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
         {/* Modal Header */}
-        <div style={{ padding: '20px 24px', borderBottom: '2px solid #8D6E63', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1B5E20' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF' }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{docTitle}</div>
-            <div style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 2 }}>{docNumber}</div>
+            <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 4 }}>{docTitle}</div>
+            <div style={{ color: 'var(--color-text-primary)', fontSize: 20, fontWeight: 700, fontFamily: 'monospace', letterSpacing: 1 }}>{docNumber}</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-green" onClick={handlePrint} style={{ padding: '8px 16px', fontSize: 13, background: '#2E8B57' }}>
+            <button className="btn-green" onClick={handlePrint}>
               <Printer size={14} /> Print
             </button>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '8px 12px', display: 'flex', alignItems: 'center', borderRadius: 0 }}>
+            <button className="cb-btn-icon" onClick={onClose} aria-label="Close">
               <X size={18} />
             </button>
           </div>
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: 28 }}>
+        <div style={{ padding: 24 }}>
           {/* Meta grid */}
           <div className="grid-3" style={{ marginBottom: 20 }}>
             {[
@@ -266,27 +425,27 @@ const DocumentModal = ({ doc, onClose }) => {
               ['Payment Method', doc.payment_method],
               ['Reference', doc.reference_no || 'N/A'],
             ].map(([k, v]) => (
-              <div key={k} style={{ background: '#F5F5F5', padding: '12px 16px', border: '1px solid #8D6E63' }}>
-                <div style={{ fontSize: 10, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
-                <div style={{ fontWeight: 700, color: '#1B5E20', fontSize: 14 }}>{v}</div>
+              <div key={k} style={{ background: '#F9FAFB', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
+                <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 14 }}>{v}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: accentBg, border: `2px solid ${accentColor}`, padding: '16px 20px', marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: accentColor, fontWeight: 800, marginBottom: 6 }}>{partyLabel}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>{partyName}</div>
-            <div style={{ fontSize: 13, color: '#424242', fontWeight: 600 }}>{doc.description}</div>
+          <div style={{ background: accentBg, border: `1px solid ${accentColor}`, borderRadius: 8, padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: accentColor, fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 6 }}>{partyLabel}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 8 }}>{partyName}</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', fontWeight: 400 }}>{doc.description}</div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, marginBottom: 4 }}>AMOUNT</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: '#1B5E20' }}>ETB {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 4 }}>AMOUNT</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>ETB {amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
             </div>
             {pm === 'Bank' && (
-              <div style={{ background: '#A5D6A7', border: '2px solid #228B22', padding: '14px 18px', fontSize: 13 }}>
-                <div style={{ fontWeight: 800, color: '#1B5E20', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Building size={14} /> Bank Details</div>
+              <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '14px 18px', fontSize: 14 }}>
+                <div style={{ fontWeight: 600, color: 'var(--color-success)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Building size={14} /> Bank Details</div>
                 <div>Bank: <b>{doc.bank_name}</b></div>
                 <div>A/C Name: <b>{doc.account_holder}</b></div>
                 <div>A/C No: <b>{doc.account_number}</b></div>
@@ -294,22 +453,22 @@ const DocumentModal = ({ doc, onClose }) => {
               </div>
             )}
             {pm === 'Telebirr' && (
-              <div style={{ background: '#FFF3E0', border: '2px solid #FF9800', padding: '14px 18px', fontSize: 13 }}>
-                <div style={{ fontWeight: 800, color: '#FF9800', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Smartphone size={14} /> Telebirr</div>
+              <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '14px 18px', fontSize: 14 }}>
+                <div style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Smartphone size={14} /> Telebirr</div>
                 <div>Mobile: <b>{doc.telebirr_number}</b></div>
                 <div>Name: <b>{doc.telebirr_name}</b></div>
               </div>
             )}
             {pm === 'Cash' && (
-              <div style={{ background: '#A5D6A7', border: '2px solid #228B22', padding: '14px 24px', fontSize: 16, fontWeight: 800, color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 8, padding: '14px 24px', fontSize: 16, fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Banknote size={20} /> By Cash
               </div>
             )}
           </div>
 
           {/* Signatures */}
-          <div style={{ borderTop: '2px solid #8D6E63', paddingTop: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#1B5E20', textTransform: 'uppercase', marginBottom: 14 }}>Signatures</div>
+          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 14 }}>Signatures</div>
             <div style={{ display: 'flex', gap: 16, justifyContent: 'space-around', flexWrap: 'wrap' }}>
               {[
                 { label: 'Prepared By',          name: doc.prepared_by,   sig: doc.prepared_signature },
@@ -317,12 +476,12 @@ const DocumentModal = ({ doc, onClose }) => {
                 { label: isCRV ? "Receiver's Signature" : "Payee's Signature", name: doc.receiver_name, sig: doc.receiver_signature },
               ].map(({ label, name, sig }) => (
                 <div key={label} style={{ flex: 1, textAlign: 'center', minWidth: 140 }}>
-                  <div style={{ height: 80, border: '2px solid #8D6E63', overflow: 'hidden', background: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                    {sig ? <img src={sig} alt={label} style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: '#8D6E63', fontSize: 11 }}>No signature</span>}
+                  <div style={{ height: 80, border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', background: '#F9FAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                    {sig ? <img src={sig} alt={label} style={{ maxHeight: 75, maxWidth: '100%', objectFit: 'contain' }} /> : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>No signature</span>}
                   </div>
-                  <div style={{ borderTop: '2px solid #1B5E20', paddingTop: 6, display: 'inline-block', minWidth: 140 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1B5E20' }}>{name || '—'}</div>
-                    <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{label}</div>
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 6, display: 'inline-block', minWidth: 140 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text-primary)' }}>{name || '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>{label}</div>
                   </div>
                 </div>
               ))}
@@ -534,12 +693,22 @@ const FinanceCashBook = () => {
   // Type badge styling
   const typeBadge = (type) => {
     const map = {
-      CRV: { bg: '#A5D6A7', color: '#1B5E20' },
-      PV:  { bg: '#FFEBEE', color: '#F44336' },
-      PCV: { bg: '#FFF3E0', color: '#FF9800' },
+      CRV: { bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
+      PV:  { bg: 'var(--color-danger-bg)',  color: 'var(--color-danger)' },
+      PCV: { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
     };
-    const s = map[type] || { bg: '#F5F5F5', color: '#424242' };
-    return { background: s.bg, color: s.color, padding: '3px 10px', fontSize: 11, fontWeight: 800, border: `1px solid ${s.color}`, whiteSpace: 'nowrap' };
+    const s = map[type] || { bg: '#F3F4F6', color: 'var(--color-text-secondary)' };
+    return {
+      background: s.bg,
+      color: s.color,
+      padding: '2px 10px',
+      fontSize: 12,
+      fontWeight: 500,
+      border: `1px solid ${s.color}`,
+      borderRadius: 9999,
+      whiteSpace: 'nowrap',
+      display: 'inline-block',
+    };
   };
 
   return (
@@ -549,18 +718,18 @@ const FinanceCashBook = () => {
       <Notif n={notif} onClose={() => setNotif(null)} />
 
       {/* Top Action Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px', color: '#1B5E20', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Book size={24} color="#228B22" /> Expense Book Ledger
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 12, lineHeight: 1.3 }}>
+            <Book size={28} color="var(--color-primary)" /> Expense Book Ledger
           </h1>
-          <p style={{ color: '#424242', margin: 0, fontSize: 14, fontWeight: 600 }}>Central record of all cash receipts and payments</p>
+          <p style={{ color: 'var(--color-text-secondary)', margin: '6px 0 0', fontSize: 14, fontWeight: 400 }}>Central record of all cash receipts and payments</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-outline" onClick={fetchAll} style={{ padding: '10px 16px', fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button className="btn-outline" onClick={fetchAll}>
             <SegmentedSpinner size={14} /> Refresh
           </button>
-          <button className="btn-green" onClick={handlePrintAll} style={{ padding: '10px 16px', fontSize: 13 }}>
+          <button className="btn-green" onClick={handlePrintAll}>
             <Printer size={14} /> Print All ({filtered.length})
           </button>
         </div>
@@ -569,38 +738,38 @@ const FinanceCashBook = () => {
       {/* Summary Cards */}
       <div className="grid-3" style={{ marginBottom: 20 }}>
         {/* Total Receipts */}
-        <div className="cb-card" style={{ borderLeft: '4px solid #228B22' }}>
+        <div className="cb-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Total Receipts</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#228B22' }}>ETB {fmt(totalReceipts)}</div>
-            <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{filtered.filter(e => e.receipts > 0).length} entries</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 6 }}>Total Receipts</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-success)', fontVariantNumeric: 'tabular-nums' }}>ETB {fmt(totalReceipts)}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>{filtered.filter(e => e.receipts > 0).length} entries</div>
           </div>
-          <div style={{ background: '#A5D6A7', padding: 14, display: 'flex', alignItems: 'center' }}>
-            <TrendingUp size={24} color="#1B5E20" />
+          <div style={{ background: 'var(--color-success-bg)', padding: 14, display: 'flex', alignItems: 'center', borderRadius: 8 }}>
+            <TrendingUp size={24} color="var(--color-success)" />
           </div>
         </div>
         {/* Total Payments */}
-        <div className="cb-card" style={{ borderLeft: '4px solid #F44336' }}>
+        <div className="cb-card" style={{ borderLeft: '4px solid var(--color-danger)' }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6B8E23', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Total Payments</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#F44336' }}>ETB {fmt(totalPayments)}</div>
-            <div style={{ fontSize: 11, color: '#6B8E23', marginTop: 2, fontWeight: 600 }}>{filtered.filter(e => e.payments > 0).length} entries</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 6 }}>Total Payments</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>ETB {fmt(totalPayments)}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>{filtered.filter(e => e.payments > 0).length} entries</div>
           </div>
-          <div style={{ background: '#FFEBEE', padding: 14, display: 'flex', alignItems: 'center' }}>
-            <TrendingDown size={24} color="#F44336" />
+          <div style={{ background: 'var(--color-danger-bg)', padding: 14, display: 'flex', alignItems: 'center', borderRadius: 8 }}>
+            <TrendingDown size={24} color="var(--color-danger)" />
           </div>
         </div>
         {/* Net Balance */}
-        <div className="cb-card" style={{ background: '#1B5E20', border: '1px solid #1B5E20' }}>
+        <div className="cb-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
           <div>
-            <div style={{ fontSize: 11, color: '#A5D6A7', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Net Balance</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: netBalance >= 0 ? '#8BC34A' : '#FF5252' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', marginBottom: 6 }}>Net Balance</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: netBalance >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>
               ETB {fmt(netBalance)}
             </div>
-            <div style={{ fontSize: 11, color: '#A5D6A7', marginTop: 2, fontWeight: 600 }}>{filtered.length} total records</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>{filtered.length} total records</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.12)', padding: 14, display: 'flex', alignItems: 'center' }}>
-            <DollarSign size={24} color="#FFFFFF" />
+          <div style={{ background: 'var(--color-info-bg)', padding: 14, display: 'flex', alignItems: 'center', borderRadius: 8 }}>
+            <DollarSign size={24} color="var(--color-primary)" />
           </div>
         </div>
       </div>
@@ -628,11 +797,11 @@ const FinanceCashBook = () => {
           <div>
             <label className="cb-lbl">Search</label>
             <div style={{ position: 'relative' }}>
-              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#8D6E63' }} />
-              <input className="cb-inp" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Reference or description…" style={{ paddingLeft: 30 }} />
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input className="cb-inp" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Reference or description…" style={{ paddingLeft: 32 }} />
             </div>
           </div>
-          <button className="btn-reset" onClick={() => { setDateFrom(''); setDateTo(''); setTypeFilter('All'); setSearch(''); setPage(1); }} style={{ padding: '10px 16px', fontSize: 13 }}>
+          <button className="btn-reset" onClick={() => { setDateFrom(''); setDateTo(''); setTypeFilter('All'); setSearch(''); setPage(1); }}>
             Reset
           </button>
         </div>
@@ -641,48 +810,47 @@ const FinanceCashBook = () => {
       {/* Table */}
       <div className="cb-table-wrap">
         <div style={{ overflowX: 'auto', width: '100%' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 700 }}>
+          <table>
             <thead>
-              <tr style={{ background: '#2E8B57' }}>
+              <tr>
                 {['Date', 'Type', 'Reference', 'Description', 'Receipts (In)', 'Payments (Out)', 'Balance', ''].map((col, i) => (
-                  <th key={i} style={{ padding: '14px 16px', textAlign: ['Receipts (In)', 'Payments (Out)', 'Balance'].includes(col) ? 'right' : 'left', color: '#FFFFFF', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap', borderBottom: '2px solid #1B5E20' }}>{col}</th>
+                  <th key={i} style={['Receipts (In)', 'Payments (Out)', 'Balance'].includes(col) ? { textAlign: 'right' } : undefined}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#1B5E20', fontWeight: 700 }}>
+                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center' }}>
                   <SegmentedSpinner size={28} />
-                  Loading expense book data…
+                  <div style={{ marginTop: 12, color: 'var(--color-text-muted)', fontWeight: 500 }}>Loading expense book data…</div>
                 </td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: '#1B5E20' }}>
-                  <Book size={40} style={{ opacity: 0.3, margin: '0 auto 12px', display: 'block' }} />
-                  <div style={{ fontWeight: 700 }}>{entries.length === 0 ? 'No transactions yet.' : 'No results match your filters.'}</div>
+                <tr><td colSpan={8} style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  <Book size={40} style={{ opacity: 0.3, margin: '0 auto 12px', display: 'block', color: 'var(--color-text-muted)' }} />
+                  <div style={{ fontWeight: 600, fontSize: 16 }}>{entries.length === 0 ? 'No transactions yet.' : 'No results match your filters.'}</div>
                 </td></tr>
-              ) : paginated.map((entry, idx) => {
-                const isEven = idx % 2 === 0;
+              ) : paginated.map((entry) => {
                 const hasRecord = (entry.type === 'PV' || entry.type === 'PCV') && recordMap[entry.reference];
                 return (
-                  <tr key={entry.id} className="cb-tr" style={{ borderBottom: '1px solid #E0E0E0', background: isEven ? '#FFFFFF' : '#F1F8E9' }}>
-                    <td style={{ padding: '13px 16px', color: '#424242', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>
+                  <tr key={entry.id} className="cb-tr">
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
                       {new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td>
                       <span style={typeBadge(entry.type)}>{entry.type}</span>
                     </td>
-                    <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontWeight: 800, color: '#228B22', fontSize: 12 }}>{entry.reference}</td>
-                    <td style={{ padding: '13px 16px', color: '#424242', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{entry.description}</td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#228B22' }}>
-                      {entry.receipts > 0 ? `+ ${fmt(entry.receipts)}` : <span style={{ color: '#BDBDBD' }}>—</span>}
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: 13 }}>{entry.reference}</td>
+                    <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>{entry.description}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
+                      {entry.receipts > 0 ? `+ ${fmt(entry.receipts)}` : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 800, color: '#F44336' }}>
-                      {entry.payments > 0 ? `- ${fmt(entry.payments)}` : <span style={{ color: '#BDBDBD' }}>—</span>}
+                    <td style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--color-danger)' }}>
+                      {entry.payments > 0 ? `- ${fmt(entry.payments)}` : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontWeight: 900, color: entry.balance >= 0 ? '#1B5E20' : '#F44336', fontSize: 13 }}>
+                    <td style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: entry.balance >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
                       {fmt(entry.balance)}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }}>
                       {hasRecord && (
                         <button className="view-btn" onClick={() => setSelectedRecord(hasRecord)}>
                           <Eye size={13} /> View
@@ -698,11 +866,11 @@ const FinanceCashBook = () => {
 
         {/* Pagination */}
         {filtered.length > PER_PAGE && (
-          <div style={{ padding: '14px 20px', borderTop: '2px solid #8D6E63', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F1F8E9', flexWrap: 'wrap', gap: 10 }}>
-            <span style={{ fontSize: 12, color: '#1B5E20', fontWeight: 700 }}>
+          <div className="cb-pagination">
+            <span className="cb-pagination-info">
               Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}
             </span>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button className="pg-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 <ChevronLeft size={15} />
               </button>
