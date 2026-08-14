@@ -4,7 +4,7 @@ import auditService from '../../services/auditService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CentralAuditLog.module.css';
 
-const CentralAuditLog = ({ fixedModule }) => {
+const CentralAuditLog = ({ fixedModule, mode }) => {
   const { user } = useAuth();
 
   /* ── role helpers ── */
@@ -39,6 +39,10 @@ const CentralAuditLog = ({ fixedModule }) => {
   // Printing follows the Sales pattern: module records plus own activity.
   const lockedModule = fixedModule || (isHR ? 'HR' : (isPharmacy ? 'Pharmacy' : (isStore ? 'Store' : '')));
   const isLocked     = !!lockedModule;
+
+  // Finance dashboard mode — renders a clear, human-readable message for every
+  // activity (including transfers/payments) instead of the generic fallback.
+  const financeMode  = mode === 'finance';
 
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -107,6 +111,72 @@ const CentralAuditLog = ({ fixedModule }) => {
     if (/deleted|cancelled|rejected|disqualified|voided|removed|retracted|archived|terminated/.test(a)) return 'delete';
     if (/approved|published|submitted|released|sent|completed|converted|finalized|verified|closed|awarded|forwarded|paid|generated|accepted/.test(a)) return 'status';
     return 'other';
+  };
+
+  // Build a clear, human-readable sentence for any activity so records are never
+  // shown as a bare code or the old "simple event" placeholder. Subjects are
+  // matched longest-first so e.g. "BANK_TRANSACTION_CREATED" reads as a bank
+  // transfer, "PO_PAYMENT_PROCESSED" as a purchase order payment, etc.
+  const SUBJECT_NAMES = [
+    ['BANK_TRANSACTION', 'bank transfer'],
+    ['STORE_TRANSFER',   'stock transfer'],
+    ['PURCHASE_ORDER',   'purchase order'],
+    ['PO_PAYMENT',       'purchase order payment'],
+    ['INVOICE_PAYMENT',  'invoice payment'],
+    ['PETTY_CASH',       'petty cash'],
+    ['TRANSFER',         'transfer'],
+    ['PAYROLL',          'payroll'],
+    ['SALARY',           'salary'],
+    ['BUDGET',           'budget'],
+    ['EXPENSE',          'expense'],
+    ['PAYMENT',          'payment'],
+    ['INVOICE',          'invoice'],
+    ['PAYABLE',          'payable'],
+    ['RECEIVABLE',       'receivable'],
+    ['CASH',             'cash'],
+    ['BANK',             'bank'],
+  ];
+  const VERB_NAMES = {
+    CREATED: 'created', ADDED: 'added', REGISTERED: 'registered', RECORDED: 'recorded',
+    SUBMITTED: 'submitted', POSTED: 'posted', OPENED: 'opened', GENERATED: 'generated',
+    UPDATED: 'updated', CHANGED: 'changed', MODIFIED: 'modified', EDITED: 'edited',
+    ADJUSTED: 'adjusted', TOGGLED: 'toggled', EXTENDED: 'extended', RENEWED: 'renewed',
+    DELETED: 'deleted', REMOVED: 'removed', VOIDED: 'voided', CANCELLED: 'cancelled',
+    REJECTED: 'rejected', ARCHIVED: 'archived', TERMINATED: 'terminated',
+    APPROVED: 'approved', PUBLISHED: 'published', RELEASED: 'released', SENT: 'sent',
+    COMPLETED: 'completed', CONVERTED: 'converted', FINALIZED: 'finalized',
+    VERIFIED: 'verified', CLOSED: 'closed', AWARDED: 'awarded', FORWARDED: 'forwarded',
+    ACCEPTED: 'accepted', PROCESSED: 'processed', DISBURSED: 'disbursed',
+    RECEIVED: 'received', CONFIRMED: 'confirmed', PAID: 'paid',
+    TRANSFERRED: 'transferred', RETURNED: 'returned', RESUMED: 'resumed',
+  };
+
+  const describeAction = (action = '', record = '') => {
+    const raw = String(action || '').trim();
+    const upper = raw.toUpperCase();
+    let base = raw;
+    let matched = false;
+    for (const [prefix, name] of SUBJECT_NAMES) {
+      if (!upper.startsWith(prefix)) continue;
+      const rest = upper.slice(prefix.length).replace(/^_+/, '');
+      let verb = '';
+      for (const [v, label] of Object.entries(VERB_NAMES)) {
+        if (rest.startsWith(v)) { verb = label; break; }
+      }
+      if (verb) base = `${name} ${verb}`;
+      else if (rest) base = `${name} ${rest.toLowerCase().replace(/_+/g, ' ')}`;
+      else base = `${name} recorded`;
+      matched = true;
+      break;
+    }
+    if (!matched) {
+      let s = raw.replace(/^[A-Z][A-Z0-9]*_/, '');
+      base = s.toLowerCase().replace(/_+/g, ' ').trim();
+      if (!base) base = 'Activity recorded';
+    }
+    base = base.charAt(0).toUpperCase() + base.slice(1);
+    const suffix = record ? ` — ${record}` : '';
+    return `${base}${suffix}`;
   };
 
   return (
@@ -235,6 +305,9 @@ const CentralAuditLog = ({ fixedModule }) => {
                           )}
                           <td>
                             <div className={`${styles.actionText} ${styles[`actionText--${tone}`] || ''}`}>{log.action}</div>
+                            {financeMode && (
+                              <div className={styles.logDescription}>{describeAction(log.action, log.record_identifier)}</div>
+                            )}
                             {log.action !== 'UPDATE' && <div className={styles.recordId}>{log.record_identifier || '—'}</div>}
                           </td>
                           <td>
@@ -283,7 +356,7 @@ const CentralAuditLog = ({ fixedModule }) => {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {keys.map(key => {
+                                        {changedKeys.map(key => {
                                           const pv = pObj && pObj[key] !== undefined && pObj[key] !== null ? String(pObj[key]) : '—';
                                           const nv = nObj && nObj[key] !== undefined && nObj[key] !== null ? String(nObj[key]) : '—';
                                           const isChanged = pv !== nv && pObj !== null && nObj !== null;
@@ -312,7 +385,17 @@ const CentralAuditLog = ({ fixedModule }) => {
                                 {!hasAnyValue ? (
                                   <div className={styles.diffBox} style={{ textAlign: 'center' }}>
                                     <div className={styles.diffTitle}>Activity Detail</div>
-                                    <pre className={styles.diffCode}>This is a simple event log. No extended payload or before/after snapshot was recorded for this specific action.</pre>
+                                    {financeMode ? (
+                                      <>
+                                        <p className={styles.diffSummary}>{describeAction(log.action, log.record_identifier)}</p>
+                                        <pre className={styles.diffCode}>
+                                          Performed by {log.user_name} ({log.role}){log.department && log.department !== 'Unknown' ? ` · ${log.department}` : ''} · {formatDate(log.created_at)}
+                                          {log.ip_address ? ` · IP ${log.ip_address}` : ''}
+                                        </pre>
+                                      </>
+                                    ) : (
+                                      <pre className={styles.diffCode}>This is a simple event log. No extended payload or before/after snapshot was recorded for this specific action.</pre>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className={styles.diffContainer}>
