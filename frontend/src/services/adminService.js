@@ -253,16 +253,6 @@ const adminService = {
   unassignDelegatedAdmin: async (nodeId, adminId) => {
     return await apiClient.delete(`/admin/delegated/nodes/${nodeId}/unassign/${adminId}`);
   },
-  /* D11 — Tenants */
-  getTenants: async () => {
-    return await apiClient.get('/admin/tenants');
-  },
-  createTenant: async (data) => {
-    return await apiClient.post('/admin/tenants', data);
-  },
-  getTenantAudit: async (id) => {
-    return await apiClient.get(`/admin/tenants/${id}/audit`);
-  },
   /* D12 — Compliance Evidence */
   getEvidenceList: async () => {
     return await apiClient.get('/admin/compliance/evidence');
@@ -308,19 +298,6 @@ const adminService = {
   },
   remediatePrivilegeCreep: async (userId, roleId) => {
     return await apiClient.post(`/admin/privilege-health/remediate/${userId}`, { roleId });
-  },
-  /* D16 — API Keys */
-  getApiKeys: async () => {
-    return await apiClient.get('/admin/api-keys');
-  },
-  createApiKey: async (data) => {
-    return await apiClient.post('/admin/api-keys', data);
-  },
-  revokeApiKey: async (id) => {
-    return await apiClient.post(`/admin/api-keys/${id}/revoke`);
-  },
-  rotateApiKey: async (id) => {
-    return await apiClient.post(`/admin/api-keys/${id}/rotate`);
   },
   getSocialLinks: async () => {
     return await apiClient.get('/public/social-links');
