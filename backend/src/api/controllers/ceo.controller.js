@@ -316,6 +316,12 @@ exports.getCEOFinanceOverview = catchAsync(async (req, res) => {
       recentTransactions
     }
   });
+  await audit('CEO_FINANCE_OVERVIEW_VIEWED', req.user.id, {
+    ip: req.ip,
+    module: 'CEO',
+    description: `CEO viewed Finance Overview — Month Revenue: ${monthRevenue.toFixed(2)}, Net Profit: ${netProfit.toFixed(2)}`,
+    newValue: { section: 'Finance Overview', monthRevenue, netProfit, monthExpenses: monthExp }
+  });
 });
 
 exports.getCEOHROverview = catchAsync(async (req, res) => {
@@ -459,6 +465,12 @@ exports.getCEOHROverview = catchAsync(async (req, res) => {
       recentHires,
       employees: employeesList
     }
+  });
+  await audit('CEO_HR_OVERVIEW_VIEWED', req.user.id, {
+    ip: req.ip,
+    module: 'CEO',
+    description: `CEO viewed HR Overview`,
+    newValue: { section: 'HR Overview' }
   });
 });
 
@@ -608,6 +620,12 @@ exports.getCEOPurchaseOverview = catchAsync(async (req, res) => {
       financePayables,
       totalFinancePayable
     }
+  });
+  await audit('CEO_PURCHASE_OVERVIEW_VIEWED', req.user.id, {
+    ip: req.ip,
+    module: 'CEO',
+    description: `CEO viewed Purchase & Procurement Overview`,
+    newValue: { section: 'Purchase Overview' }
   });
 });
 
@@ -831,6 +849,12 @@ exports.getCEOSalesOverview = catchAsync(async (req, res) => {
       totalOutstanding
     }
   });
+  await audit('CEO_SALES_OVERVIEW_VIEWED', req.user.id, {
+    ip: req.ip,
+    module: 'CEO',
+    description: `CEO viewed Sales Overview`,
+    newValue: { section: 'Sales Overview' }
+  });
 });
 
 exports.getRevenueMetrics = catchAsync(async (req, res) => {
@@ -844,6 +868,11 @@ exports.getRevenueMetrics = catchAsync(async (req, res) => {
   res.json({
     status: 'success',
     data
+  });
+  await audit('CEO_REVENUE_METRICS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Revenue Metrics (period: ${req.query.period || 'month'})`,
+    newValue: { section: 'Revenue Metrics', period: req.query.period || 'month' }
   });
 });
 exports.getRevenueBreakdown = catchAsync(async (req, res) => {
@@ -945,6 +974,11 @@ exports.getRevenueBreakdown = catchAsync(async (req, res) => {
       historical
     }
   });
+  await audit('CEO_REVENUE_BREAKDOWN_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Revenue Breakdown by department (period: ${req.query.period || 'month'})`,
+    newValue: { section: 'Revenue Breakdown', period: req.query.period || 'month' }
+  });
 });
 exports.getRevenueForecast = catchAsync(async (req, res) => {
   const { months = 6 } = req.query;
@@ -1001,6 +1035,11 @@ exports.getProfitMetrics = catchAsync(async (req, res) => {
     status: 'success',
     data
   });
+  await audit('CEO_PROFIT_METRICS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Profit Metrics (period: ${req.query.period || 'month'})`,
+    newValue: { section: 'Profit Metrics', period: req.query.period || 'month' }
+  });
 });
 exports.getProfitMarginTrends = catchAsync(async (req, res) => {
   const { months = 12 } = req.query;
@@ -1047,6 +1086,11 @@ exports.getProfitMarginTrends = catchAsync(async (req, res) => {
       worstMonth: trends.reduce((worst, t) => t.margin < worst.margin ? t : worst, trends[0])
     }
   });
+  await audit('CEO_PROFIT_MARGIN_TRENDS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Profit Margin Trends (last ${req.query.months || 12} months)`,
+    newValue: { section: 'Profit Margin Trends', months: req.query.months || 12 }
+  });
 });
 exports.getCashFlow = catchAsync(async (req, res) => {
   const { period = 'daily', days = 30 } = req.query;
@@ -1058,6 +1102,11 @@ exports.getCashFlow = catchAsync(async (req, res) => {
   res.json({
     status: 'success',
     data
+  });
+  await audit('CEO_CASH_FLOW_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Cash Flow Summary (period: ${req.query.period || 'monthly'})`,
+    newValue: { section: 'Cash Flow', period: req.query.period || 'monthly' }
   });
 });
 exports.getCashFlowProjection = catchAsync(async (req, res) => {
@@ -1088,12 +1137,22 @@ exports.getCashFlowProjection = catchAsync(async (req, res) => {
       riskLevel: avgNet < 0 ? 'high' : avgNet < 10000 ? 'medium' : 'low'
     }
   });
+  await audit('CEO_CASH_FLOW_PROJECTION_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed Cash Flow Projection (${req.query.months || 3} months ahead)`,
+    newValue: { section: 'Cash Flow Projection', months: req.query.months || 3 }
+  });
 });
 exports.getKPIs = catchAsync(async (req, res) => {
   const data = await getPerformanceKPIs();
   res.json({
     status: 'success',
     data
+  });
+  await audit('CEO_KPIS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO viewed KPI dashboard (period: ${req.query.period || 'monthly'})`,
+    newValue: { section: 'KPIs', period: req.query.period || 'monthly' }
   });
 });
 exports.getSalesTargetPerformance = catchAsync(async (req, res) => {
@@ -1112,6 +1171,11 @@ exports.getSalesTargetPerformance = catchAsync(async (req, res) => {
       status,
       progress: target > 0 ? Math.min(100, (actual / target) * 100).toFixed(1) : 0
     }
+  });
+  await audit('CEO_SALES_TARGET_PERFORMANCE_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: 'CEO reviewed Sales Target vs Actual Performance',
+    newValue: { section: 'Sales Target Performance' }
   });
 });
 exports.getFulfillmentMetrics = catchAsync(async (req, res) => {
@@ -1134,6 +1198,11 @@ exports.getFulfillmentMetrics = catchAsync(async (req, res) => {
       variancePercent: variancePercent.toFixed(1),
       status
     }
+  });
+  await audit('CEO_FULFILLMENT_METRICS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: 'CEO viewed Fulfillment & Order Processing Metrics',
+    newValue: { section: 'Fulfillment Metrics' }
   });
 });
 exports.getInventoryTurnover = catchAsync(async (req, res) => {
@@ -1160,6 +1229,11 @@ exports.getInventoryTurnover = catchAsync(async (req, res) => {
         ? 'Consider reducing inventory levels to improve turnover'
         : 'Inventory turnover is healthy'
     }
+  });
+  await audit('CEO_INVENTORY_TURNOVER_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: 'CEO reviewed Inventory Turnover Rate & Stock Efficiency',
+    newValue: { section: 'Inventory Turnover' }
   });
 });
 exports.getCustomerSatisfaction = catchAsync(async (req, res) => {
@@ -1189,6 +1263,11 @@ exports.getCustomerSatisfaction = catchAsync(async (req, res) => {
       }
     }
   });
+  await audit('CEO_CUSTOMER_SATISFACTION_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: 'CEO viewed Customer Satisfaction & Order Completion metrics',
+    newValue: { section: 'Customer Satisfaction' }
+  });
 });
 exports.getTargets = catchAsync(async (req, res) => {
   const targets = {
@@ -1204,6 +1283,11 @@ exports.getTargets = catchAsync(async (req, res) => {
   res.json({
     status: 'success',
     data: { targets }
+  });
+  await audit('CEO_TARGETS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: 'CEO viewed current business targets & goals',
+    newValue: { section: 'Business Targets' }
   });
 });
 exports.updateTargets = catchAsync(async (req, res) => {
@@ -1299,6 +1383,11 @@ exports.getCriticalAlerts = catchAsync(async (req, res) => {
       }
     }
   });
+  await audit('CEO_CRITICAL_ALERTS_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO reviewed Critical Alerts dashboard (severity filter: ${req.query.severity || 'all'})`,
+    newValue: { section: 'Critical Alerts', severity: req.query.severity || 'all' }
+  });
 });
 exports.dismissAlert = catchAsync(async (req, res) => {
   const { alertId } = req.params;
@@ -1364,6 +1453,11 @@ exports.getAlertHistory = catchAsync(async (req, res) => {
       }
     }
   });
+  await audit('CEO_ALERT_HISTORY_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO reviewed Alert History (last ${req.query.days || 30} days)`,
+    newValue: { section: 'Alert History', days: req.query.days || 30 }
+  });
 });
 exports.comparePeriods = catchAsync(async (req, res) => {
   const { currentPeriod, previousPeriod, metrics } = req.query;
@@ -1412,6 +1506,11 @@ exports.compareSectors = catchAsync(async (req, res) => {
   res.json({
     status: 'success',
     data: comparison
+  });
+  await audit('CEO_SECTOR_COMPARISON_VIEWED', req.user.id, {
+    ip: req.ip, module: 'CEO',
+    description: `CEO compared business sectors by ${req.query.metric || 'revenue'} (period: ${req.query.period || 'month'})`,
+    newValue: { section: 'Sector Comparison', metric: req.query.metric, period: req.query.period }
   });
 });
 exports.getMonthlyReport = catchAsync(async (req, res) => {
@@ -2528,6 +2627,12 @@ module.exports.getCEOPharmacyOverview = catchAsync(async (req, res) => {
       fastMoving,
       slowMoving
     }
+  });
+  await audit('CEO_PHARMACY_OVERVIEW_VIEWED', req.user.id, {
+    ip: req.ip,
+    module: 'CEO',
+    description: `CEO viewed Pharmacy Operations Overview`,
+    newValue: { section: 'Pharmacy Overview' }
   });
 });
 
