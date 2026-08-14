@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -175,7 +175,8 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-export default function CEOPrinting() {
+export default function CEOPrinting({ isApprovalMode = false }) {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [timeString, setTimeString] = useState('');
@@ -249,6 +250,45 @@ export default function CEOPrinting() {
       ...recentOrders.map(o => ({ id: `ord-${o.id}`, type: 'Order', title: o.order_number, sub: o.product_type, date: o.created_at })),
       ...maintenance.map(m => ({ id: `mnt-${m.id}`, type: 'Maintenance', title: m.machine_name || m.brand, sub: m.model_number, date: m.updated_at || new Date() }))
   ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
+
+  if (isApprovalMode) {
+    return (
+      <div className="page-wrapper">
+        <div className="so-page">
+          <GlobalStyles />
+          {/* Back bar */}
+          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={() => navigate('/ceo/approvals')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'transparent', border: '1px solid #2563EB',
+                color: '#2563EB', padding: '6px 14px', cursor: 'pointer',
+                fontWeight: 700, fontSize: 13, borderRadius: 4,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#2563EB'; }}
+            >
+              ← Back to Approvals Hub
+            </button>
+            <span style={{ fontSize: 12, color: '#6B7280' }}>Administration / Approvals Hub / Printing Approvals</span>
+          </div>
+          <div className="so-header">
+            <div>
+              <h1 className="so-title">CEO Printing Approvals</h1>
+              <p className="so-subtitle">Review internal printing and publishing requests</p>
+            </div>
+          </div>
+          <div className="d-card-static" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>✅</span>
+            <h2 style={{ fontSize: 20, color: 'var(--color-text-primary)' }}>No Pending Printing Approvals</h2>
+            <p>All printing requests are currently resolved.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-wrapper">
