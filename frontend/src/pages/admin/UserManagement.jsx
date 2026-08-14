@@ -5,6 +5,15 @@ import { formatDate } from '../../utils/formatters';
 import styles from './UserManagement.module.css';
 import AddUserModal from './AddUserModal';
 import AssignRolePanel from './AssignRolePanel';
+import Modal from '../../components/ui/Modal';
+
+const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
+const resolvePhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${BACKEND_URL}${cleanUrl}`;
+};
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -26,6 +35,7 @@ const UserManagement = () => {
 
   // Feedback
   const [toast, setToast] = useState(null);
+  const [confirmBox, setConfirmBox] = useState(null);
 
   useEffect(() => {
     // Get current user's roles from local storage/auth context
@@ -70,26 +80,37 @@ const UserManagement = () => {
     fetchUsers();
   };
 
-  const handleStatusChange = async (userId, newStatus) => {
-    if (!window.confirm(`Are you sure you want to ${newStatus === 'inactive' ? 'deactivate' : 'restore'} this user?`)) return;
-    try {
-      await adminService.updateUserStatus(userId, { status: newStatus });
-      showToast(newStatus === 'inactive' ? 'User deactivated.' : 'User restored.');
-      fetchUsers();
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to update user status.', 'error');
-    }
+  const handleStatusChange = (userId, newStatus) => {
+    const action = newStatus === 'inactive' ? 'deactivate' : 'restore';
+    setConfirmBox({
+      message: `Are you sure you want to ${action} this user?`,
+      danger: newStatus === 'inactive',
+      onConfirm: async () => {
+        try {
+          await adminService.updateUserStatus(userId, { status: newStatus });
+          showToast(newStatus === 'inactive' ? 'User deactivated.' : 'User restored.');
+          fetchUsers();
+        } catch (error) {
+          showToast(error.response?.data?.message || 'Failed to update user status.', 'error');
+        }
+      }
+    });
   };
 
-  const handlePromoteToEmployee = async (user) => {
-    if (!window.confirm(`Onboard "${user.fullName || user.full_name}" as an Employee?`)) return;
-    try {
-      await adminService.promoteToEmployee(user.id);
-      showToast('User successfully onboarded as Employee!');
-      fetchUsers();
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to promote user.', 'error');
-    }
+  const handlePromoteToEmployee = (user) => {
+    setConfirmBox({
+      message: `Onboard "${user.fullName || user.full_name}" as an Employee?`,
+      danger: false,
+      onConfirm: async () => {
+        try {
+          await adminService.promoteToEmployee(user.id);
+          showToast('User successfully onboarded as Employee!');
+          fetchUsers();
+        } catch (error) {
+          showToast(error.response?.data?.message || 'Failed to promote user.', 'error');
+        }
+      }
+    });
   };
 
   const handleExport = async () => {
@@ -231,13 +252,19 @@ const UserManagement = () => {
                 <tr key={user.id} style={{ opacity: user.deleted_at ? 0.6 : 1 }}>
                   <td>
                     <div className={styles.userCell}>
-                      <div className={styles.avatarSmall} style={{
-                        background: user.is_employee
-                          ? 'linear-gradient(135deg, #059669, #10b981)'
-                          : 'linear-gradient(135deg, #9ca3af, #d1d5db)'
-                      }}>
-                        {user.fullName ? user.fullName.charAt(0) : (user.full_name ? user.full_name.charAt(0) : '?')}
-                      </div>
+                      {resolvePhoto(user.profile_photo) ? (
+                        <div className={styles.avatarSmall}>
+                          <img src={resolvePhoto(user.profile_photo)} alt={user.fullName || user.full_name || 'avatar'} />
+                        </div>
+                      ) : (
+                        <div className={styles.avatarSmall} style={{
+                          background: user.is_employee
+                            ? 'linear-gradient(135deg, #059669, #10b981)'
+                            : 'linear-gradient(135deg, #9ca3af, #d1d5db)'
+                        }}>
+                          {user.fullName ? user.fullName.charAt(0) : (user.full_name ? user.full_name.charAt(0) : '?')}
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontWeight: 600, color: '#111827' }}>
                           {user.fullName || user.full_name} {user.deleted_at && <span style={{ color: '#ef4444' }}>(Deleted)</span>}
@@ -359,6 +386,26 @@ const UserManagement = () => {
             fetchUsers();
           }}
         />
+      )}
+
+      {/* In-app Confirmation */}
+      {confirmBox && (
+        <Modal isOpen onClose={() => setConfirmBox(null)} title="Confirm Action">
+          <p className={styles.confirmText}>{confirmBox.message}</p>
+          <div className={styles.confirmActions}>
+            <button className={styles.btnSecondary} onClick={() => setConfirmBox(null)}>Cancel</button>
+            <button
+              className={confirmBox.danger ? styles.btnDanger : styles.btnPrimary}
+              onClick={() => {
+                const fn = confirmBox.onConfirm;
+                setConfirmBox(null);
+                if (fn) fn();
+              }}
+            >
+              Confirm
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
