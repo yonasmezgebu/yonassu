@@ -40,7 +40,8 @@ const MODULE_PREFIX_MAP = [
   { re: /^(SALE|ORDER|QUOTE|CUSTOMER|CART_|POS_|SUPPORT_)/, module: 'Sales' },
   { re: /^(PRINTING|TAX_RECEIPT)/, module: 'Printing' },
   { re: /^(MACHINE|TRACTOR|VEHICLE|RENTAL|CAR_)/, module: 'Store' },
-  { re: /^(USER|ROLE|LOGIN|LOGOUT|PASSWORD|2FA|TOKEN|SESSION|SETTING|BACKUP|CACHE|AUDIT|DATABASE|ADMIN|BREAK_GLASS|ELEVATION|SOD_|CERTIFICATION|DORMANT|SINGLE_ROLE|COMPOSITE_ROLE|SERVICE_ACCOUNT|FIELD_SENSITIVITY|DELEGATED_ADMIN|TENANT_|EVIDENCE_|DR_TEST|UNAUTHORIZED|INVALID_API_KEY|CEO_)/, module: 'Admin' },
+  { re: /^CEO_/, module: 'CEO' },
+  { re: /^(USER|ROLE|LOGIN|LOGOUT|PASSWORD|2FA|TOKEN|SESSION|SETTING|BACKUP|CACHE|AUDIT|DATABASE|ADMIN|BREAK_GLASS|ELEVATION|SOD_|CERTIFICATION|DORMANT|SINGLE_ROLE|COMPOSITE_ROLE|SERVICE_ACCOUNT|FIELD_SENSITIVITY|DELEGATED_ADMIN|EVIDENCE_|DR_TEST|UNAUTHORIZED|INVALID_API_KEY)/, module: 'Admin' },
 ];
 
 const mapModule = (action, details = {}) => {
@@ -127,6 +128,7 @@ const captureLegacy = async (action, userId, details = {}) => {
         dept     = u.department_name || dept;
       }
     }
+    const resolvedIdentifier = pickIdentifier(details) || details.description || null;
     await db('central_audit_logs').insert({
       user_id: userId || null,
       user_name: userName || 'System',
@@ -134,7 +136,7 @@ const captureLegacy = async (action, userId, details = {}) => {
       department: dept || 'General',
       module: mapModule(action, details),
       action: String(action || 'ACTION'),
-      record_identifier: pickIdentifier(details),
+      record_identifier: resolvedIdentifier,
       previous_value: details.beforeState != null
         ? JSON.stringify(details.beforeState)
         : (details.previousValue != null ? JSON.stringify(details.previousValue) : null),
