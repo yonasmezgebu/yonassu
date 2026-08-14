@@ -8,156 +8,256 @@ import {
 import apiClient from '../../services/apiClient';
 import { getPendingUpdateRequests, approveUpdateRequest, rejectUpdateRequest } from '../../utils/storeApi';
 
-/* ─── Color Palette ─── */
-const C = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57',
-  leaf: '#4CAF50', sage: '#A5D6A7', mint: '#E8F5E9',
-  white: '#FFFFFF', lightGray: '#F1F8F1', gray: '#6B7280',
-  darkGray: '#374151', border: '#C8E6C9',
-  warning: '#F59E0B', warningDark: '#D97706',
-  error: '#EF4444', errorDark: '#DC2626',
-  blue: '#3B82F6', blueDark: '#2563EB',
-};
 
-/* ─── Global Hub Styles ─── */
-const HUB_STYLE = `
-  @keyframes hubSlideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes hubSpin      { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .hub-item { animation: hubSlideDown 0.18s ease forwards; }
-  .hub-btn:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-2px) !important; }
-  .audit-table td { padding: 11px 14px; vertical-align: middle; color: #374151; }
-  .audit-table tr:last-child td { border-bottom: none; }
-  @media print {
-    body * { visibility: hidden; }
-    .print-area, .print-area * { visibility: visible; }
-    .print-area { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; }
-  }
-`;
+/* ─── Enterprise Global Styles (25-Rule Pass) ─── */
+const GlobalStyles = () => (
+  <style>{`
+    /* ─────────── Design Tokens (25-Rule Pass) ─────────── */
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    }
 
-/* ─── Shared 3D Button ─── */
-const Btn = ({ onClick, disabled, children, color = C.emerald, border = C.dark, style = {} }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={disabled ? '' : 'hub-btn'}
-    style={{
-      background: disabled ? '#9CA3AF' : color,
-      color: C.white,
-      border: `2px solid ${disabled ? '#6B7280' : border}`,
-      boxShadow: disabled ? 'none' : `0 5px 0 ${border}`,
-      padding: '11px 22px',
-      fontWeight: 800,
-      fontSize: 13,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 6,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      borderRadius: 0,
-      transition: 'transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease',
-      opacity: disabled ? 0.7 : 1,
-      ...style,
-    }}
-    onMouseEnter={e => { if (!disabled) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 7px 0 ${border}`; } }}
-    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = disabled ? 'none' : `0 5px 0 ${border}`; }}
-    onMouseDown={e => { if (!disabled) { e.currentTarget.style.transform = 'translateY(4px)'; e.currentTarget.style.boxShadow = 'none'; } }}
-    onMouseUp={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = disabled ? 'none' : `0 5px 0 ${border}`; }}
-  >
-    {children}
-  </button>
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; font-family: var(--font-family); }
+
+    @keyframes phFadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes hubSpin {
+      from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+    }
+    @keyframes deliveryPulse {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.18); opacity: 0.15; }
+    }
+    @keyframes deliveryRide {
+      0%, 100% { transform: translateX(-4px); }
+      50% { transform: translateX(4px); }
+    }
+
+    .ph-page-wrapper {
+      padding: 10px; /* Safe edge margin */
+      min-height: calc(100vh - 60px);
+      box-sizing: border-box;
+      background: var(--color-bg-page);
+      font-family: var(--font-family);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--color-text-primary);
+      animation: phFadeUp 0.3s ease;
+    }
+
+    .ph-page-content {
+      background: var(--color-bg-page);
+      padding: 24px;
+      margin: 0 auto;
+      max-width: 1536px;
+      box-sizing: border-box;
+    }
+
+    .ph-btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      transition: all 150ms ease-in-out;
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      font-family: var(--font-family);
+      white-space: nowrap;
+    }
+    .ph-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ph-btn:hover:not(:disabled) {
+      background: #FFD700 !important;
+      color: #111827 !important;
+      border-color: #FFD700 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234,179,8,0.25);
+    }
+    .ph-btn-primary { background: var(--color-primary); color: #FFF; border-color: var(--color-primary); }
+    .ph-btn-danger { background: var(--color-danger-bg); color: var(--color-danger); border-color: #fca5a5; }
+    .ph-btn-warning { background: var(--color-warning-bg); color: var(--color-warning); border-color: #fcd34d; }
+
+    .ph-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: box-shadow 150ms ease-in-out, transform 150ms ease-in-out;
+      margin-bottom: 16px;
+    }
+    .ph-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
+    }
+
+    .ph-table-wrap { overflow-x: auto; min-width: 100%; }
+    .ph-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+    .ph-table th {
+      background: #F9FAFB;
+      padding: 12px 16px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-size: 12px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .ph-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+      vertical-align: middle;
+    }
+    .ph-table tr { transition: background 150ms ease-in-out; }
+    .ph-table tr:last-child td { border-bottom: none; }
+    .ph-table tbody tr:hover { background: #F9FAFB !important; }
+    .ph-table tbody tr { background: var(--color-bg-card); }
+
+    .ph-badge {
+      display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px;
+      font-size: 12px; font-weight: 500;
+    }
+    .ph-badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+    .ph-badge-success { background: var(--color-success-bg); color: var(--color-success); }
+    .ph-badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger); }
+    .ph-badge-info    { background: var(--color-info-bg);    color: var(--color-info); }
+    .ph-badge-default { background: #F3F4F6; color: var(--color-text-secondary); }
+
+    .ph-toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: var(--color-bg-card); border-radius: 8px;
+      border-left: 4px solid var(--color-primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      padding: 14px 20px; display: flex; align-items: center; gap: 10px; max-width: 380px;
+      animation: phFadeUp 0.3s ease;
+    }
+
+    /* Tab navigation buttons */
+    .ph-tab {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; font-weight: 600; font-size: 14px;
+      background: var(--color-bg-card); color: var(--color-text-secondary);
+      border: 1px solid var(--color-border); border-radius: 8px;
+      cursor: pointer; transition: all 150ms ease-in-out;
+    }
+    .ph-tab:hover { background: #F9FAFB; color: var(--color-text-primary); }
+    .ph-tab.active {
+      background: #EFF6FF; color: var(--color-primary);
+      border-color: var(--color-primary);
+      border-left: 3px solid var(--color-primary);
+    }
+
+    @media (max-width: 1024px) {
+      .ph-page-wrapper { padding: 6px; }
+      .ph-page-content { padding: 16px; }
+    }
+    @media (max-width: 768px) {
+      .ph-page-wrapper { padding: 4px; }
+      .ph-page-content { padding: 12px; }
+      .ph-btn { min-height: 44px; }
+      .ph-tab { min-height: 44px; flex: 1; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .ph-tab { flex: 100%; }
+    }
+  `}</style>
 );
 
-/* ─── Filter / Toggle Button (3D pill-style) ─── */
+
+/* ─── Standardized Button ─── */
+const Btn = ({ onClick, disabled, children, color, border, style = {} }) => {
+  let btnClass = 'ph-btn';
+  const c = String(color || '');
+  if (c.includes('primary') || c.includes('2E8B57') || c.includes('228B22')) btnClass += ' ph-btn-primary';
+  else if (c.includes('danger') || c.includes('EF4444')) btnClass += ' ph-btn-danger';
+  else if (c.includes('warning') || c.includes('F59E0B')) btnClass += ' ph-btn-warning';
+  
+  return (
+    <button onClick={onClick} disabled={disabled} className={btnClass} style={style}>
+      {children}
+    </button>
+  );
+};
+
+/* ─── Standardized Filter Button ─── */
 const FilterBtn = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={active ? '' : 'hub-btn'}
-    style={{
-      padding: '9px 20px',
-      fontWeight: 800,
-      fontSize: 12,
-      textTransform: 'uppercase',
-      letterSpacing: 0.7,
-      cursor: 'pointer',
-      borderRadius: 0,
-      border: `2px solid ${active ? C.dark : C.border}`,
-      background: active ? C.forest : C.white,
-      color: active ? C.white : C.darkGray,
-      boxShadow: active ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`,
-      transition: 'transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease, color 0.12s ease',
-    }}
-    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = active ? `0 6px 0 ${C.dark}` : `0 6px 0 ${C.border}`; }}
-    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = active ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`; }}
-    onMouseDown={e => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = 'none'; }}
-    onMouseUp={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = active ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`; }}
-  >
+  <button onClick={onClick} className={`ph-btn ${active ? 'ph-btn-primary' : ''}`}>
     {children}
   </button>
 );
 
 const Badge = ({ status }) => {
-  const map = {
-    PENDING: { bg: '#FEF3C7', color: '#92400E', border: '#F59E0B', text: 'PENDING' },
-    APPROVED: { bg: '#D1FAE5', color: '#065F46', border: '#10B981', text: 'APPROVED' },
-    REJECTED: { bg: '#FEE2E2', color: '#991B1B', border: '#EF4444', text: 'REJECTED' },
-    SHIPPED: { bg: '#DBEAFE', color: '#1E40AF', border: '#3B82F6', text: 'SHIPPED' },
-    COMPLETED: { bg: '#D1FAE5', color: '#065F46', border: '#10B981', text: 'COMPLETED' },
-    Pending: { bg: '#FEF3C7', color: '#92400E', border: '#F59E0B', text: 'PENDING' },
-    Approved: { bg: '#D1FAE5', color: '#065F46', border: '#10B981', text: 'APPROVED' },
-    Rejected: { bg: '#FEE2E2', color: '#991B1B', border: '#EF4444', text: 'REJECTED' },
-  };
-  const s = map[status] || { bg: '#F3F4F6', color: '#374151', border: '#9CA3AF', text: status };
-  return (
-    <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, padding: '2px 10px', fontSize: 11, fontWeight: 800, letterSpacing: 1 }}>
-      {s.text}
-    </span>
-  );
+  const s = (status || '').toUpperCase();
+  let bClass = 'ph-badge ph-badge-default';
+  if (s.includes('PENDING') || s === 'WAIT') bClass = 'ph-badge ph-badge-warning';
+  else if (s.includes('APPROVE') || s === 'COMPLETED' || s === 'SHIPPED') bClass = 'ph-badge ph-badge-success';
+  else if (s.includes('REJECT')) bClass = 'ph-badge ph-badge-danger';
+  return <span className={bClass}>{status}</span>;
 };
 
 /* ─── Loading Spinner ─── */
 const Spinner = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: C.gray }}>
-    <style>{HUB_STYLE}</style>
-    <RefreshCw size={24} style={{ animation: 'hubSpin 1s linear infinite' }} />
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--color-text-secondary)' }}>
+    
+    <RefreshCw size={24} className="hub-spinner" />
     <span style={{ fontWeight: 600 }}>Loading...</span>
   </div>
 );
 
 /* ─── Empty State ─── */
 const Empty = ({ icon: Icon = Package, message = 'No records found.' }) => (
-  <div style={{ textAlign: 'center', padding: '60px 20px', color: C.gray }}>
-    <Icon size={48} color={C.sage} style={{ marginBottom: 12 }} />
+  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-secondary)' }}>
+    <Icon size={48} color={'var(--color-primary)'} style={{ marginBottom: 12 }} />
     <p style={{ margin: 0, fontWeight: 600, fontSize: 15 }}>{message}</p>
   </div>
 );
 
 /* ─── Toast ─── */
 const ToastMsg = ({ msg, onClose }) => {
-  const colors = { success: C.forest, error: C.error, info: C.blue, warning: C.warning };
+  const colors = { success: 'var(--color-success)', error: 'var(--color-danger)', info: 'var(--color-info)', warning: 'var(--color-warning)' };
   useEffect(() => { const t = setTimeout(onClose, 5000); return () => clearTimeout(t); }, []);
   return (
-    <div style={{
-      position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-      background: C.white, border: `2px solid ${colors[msg.type] || C.forest}`,
-      boxShadow: `0 6px 0 ${colors[msg.type] || C.forest}`,
-      padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10, maxWidth: 380,
-    }}>
-      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.darkGray }}>{msg.text}</span>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.gray }}><X size={16} /></button>
+    <div className="ph-toast" style={{ borderLeftColor: colors[msg.type] || 'var(--color-primary)' }}>
+      <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{msg.text}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', display: 'flex' }}><X size={16} /></button>
     </div>
   );
 };
 
 
 const AnimatedEmpty = () => (
-  <div style={{ textAlign: 'center', padding: '80px 20px', color: C.gray, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+  <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
     <div style={{ position: 'relative', width: 80, height: 80, marginBottom: 20 }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, border: `4px solid ${C.mint}`, borderRadius: '50%', animation: 'hubSpin 3s linear infinite' }} />
-      <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, border: `4px dashed ${C.sage}`, borderRadius: '50%', animation: 'hubSpin 4s linear infinite reverse' }} />
-      <Package size={32} color={C.forest} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', animation: 'hubSlideDown 1.5s ease-in-out infinite alternate' }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, border: `4px solid ${'var(--color-primary)'}`, borderRadius: '50%', animation: 'hubSpin 3s linear infinite' }} />
+      <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, border: `4px dashed ${'var(--color-primary)'}`, borderRadius: '50%', animation: 'hubSpin 4s linear infinite reverse' }} />
+      <Package size={32} color={'var(--color-primary)'} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', animation: 'hubSlideDown 1.5s ease-in-out infinite alternate' }} />
     </div>
-    <h3 style={{ margin: '0 0 8px', color: C.darkGray, fontSize: 18, fontWeight: 800 }}>All Caught Up!</h3>
+    <h3 style={{ margin: '0 0 8px', color: 'var(--color-text-secondary)', fontSize: 18, fontWeight: 800 }}>All Caught Up!</h3>
     <p style={{ margin: 0, fontWeight: 500, fontSize: 14 }}>No pending procurement requests waiting for approval.</p>
   </div>
 );
@@ -207,9 +307,9 @@ const TabProcurement = ({ toast }) => {
     <div style={{ padding: '24px 30px' }}>
       {loading ? <Spinner /> : requests.length === 0 ? <AnimatedEmpty /> : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div className="ph-table-wrap"><table className="ph-table">
             <thead>
-              <tr style={{ background: C.forest, color: C.white }}>
+              <tr>
                 {['Reference', 'Item / Purpose', 'Requested By', 'Amount', 'Status', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1 }}>{h}</th>
                 ))}
@@ -217,22 +317,22 @@ const TabProcurement = ({ toast }) => {
             </thead>
             <tbody>
               {requests.map((r, i) => (
-                <tr key={r.id} style={{ background: i % 2 === 0 ? C.mint : C.white, borderBottom: `1px solid ${C.border}` }}>
+                <tr key={r.id} >
                   <td style={{ padding: '10px 16px', fontWeight: 700 }}>{r.reference_number || r.pr_no || `#${r.id}`}</td>
                   <td style={{ padding: '10px 16px' }}>{r.item_name || r.drug_name || r.purpose || '—'}</td>
                   <td style={{ padding: '10px 16px' }}>{r.requested_by_name || r.requestedBy || '—'}</td>
-                  <td style={{ padding: '10px 16px', fontWeight: 700, color: C.forest }}>ETB {parseFloat(r.amount || r.estimated_total || r.estimated_cost || 0).toLocaleString()}</td>
+                  <td style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-primary)' }}>ETB {parseFloat(r.amount || r.estimated_total || r.estimated_cost || 0).toLocaleString()}</td>
                   <td style={{ padding: '10px 16px' }}><Badge status={r.status} /></td>
                   <td style={{ padding: '10px 16px' }}>
                     {(r.status === 'PENDING_CEO' || r.status === 'PENDING_CEO_REVIEW') && (
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <Btn onClick={() => decide(r.id, 'APPROVED')} disabled={acting === r.id} color={C.forest} border={C.dark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                        <Btn onClick={() => decide(r.id, 'APPROVED')} disabled={acting === r.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                           <CheckCircle size={13} /> Approve
                         </Btn>
-                        <Btn onClick={() => decide(r.id, 'REJECTED')} disabled={acting === r.id} color={C.error} border={C.errorDark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                        <Btn onClick={() => decide(r.id, 'REJECTED')} disabled={acting === r.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                           <XCircle size={13} /> Reject
                         </Btn>
-                        <Btn onClick={() => decide(r.id, 'WAIT')} disabled={acting === r.id} color={C.warning} border={C.darkGray} style={{ padding: '6px 12px', fontSize: 11, color: C.dark }}>
+                        <Btn onClick={() => decide(r.id, 'WAIT')} disabled={acting === r.id} color={'var(--color-warning)'} border={'var(--color-border)'} style={{ padding: '6px 12px', fontSize: 11, color: 'var(--color-primary)' }}>
                           Wait
                         </Btn>
                       </div>
@@ -242,8 +342,7 @@ const TabProcurement = ({ toast }) => {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </table></div></div>
       )}
     </div>
   );
@@ -253,20 +352,20 @@ const TabProcurement = ({ toast }) => {
    TAB 3 — DIRECT DELIVERY (Pharmacy Manager → CEO → Finance)
 ═══════════════════════════════════════════════════════════ */
 const AnimatedDeliveryEmpty = () => (
-  <div style={{ textAlign: 'center', padding: '80px 20px', color: C.gray, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+  <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
     <div style={{ position: 'relative', width: 100, height: 100, marginBottom: 24 }}>
       {/* Outer pulsing ring */}
-      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `${C.mint}`, animation: 'deliveryPulse 2s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `${'var(--color-primary)'}`, animation: 'deliveryPulse 2s ease-in-out infinite' }} />
       {/* Truck icon */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Truck size={38} color={C.forest} style={{ animation: 'deliveryRide 2.5s ease-in-out infinite' }} />
+        <Truck size={38} color={'var(--color-primary)'} style={{ animation: 'deliveryRide 2.5s ease-in-out infinite' }} />
       </div>
     </div>
-    <h3 style={{ margin: '0 0 8px', color: C.darkGray, fontSize: 18, fontWeight: 800 }}>All Clear — No Pending Deliveries</h3>
-    <p style={{ margin: '0 0 4px', fontWeight: 500, fontSize: 14, color: C.gray }}>
+    <h3 style={{ margin: '0 0 8px', color: 'var(--color-text-secondary)', fontSize: 18, fontWeight: 800 }}>All Clear — No Pending Deliveries</h3>
+    <p style={{ margin: '0 0 4px', fontWeight: 500, fontSize: 14, color: 'var(--color-text-secondary)' }}>
       Pharmacy Manager has not submitted any deliveries requiring your confirmation.
     </p>
-    <p style={{ margin: 0, fontSize: 12, color: C.sage }}>
+    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-primary)' }}>
       When goods arrive directly from a supplier to the pharmacy, you will be notified here.
     </p>
   </div>
@@ -306,39 +405,25 @@ const TabDelivery = ({ toast }) => {
     finally { setActing(null); }
   };
 
-  const EXTRA_STYLE = `
-    @keyframes deliveryPulse {
-      0%, 100% { transform: scale(1); opacity: 0.4; }
-      50% { transform: scale(1.18); opacity: 0.15; }
-    }
-    @keyframes deliveryRide {
-      0%, 100% { transform: translateX(-4px); }
-      50% { transform: translateX(4px); }
-    }
-  `;
-
-  if (loading) return <Spinner />;
-
   return (
     <div style={{ padding: '24px 30px' }}>
-      <style>{EXTRA_STYLE}</style>
 
       {/* Page heading */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 900, color: C.dark, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Truck size={18} color={C.forest} />
+        <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 900, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Truck size={18} color={'var(--color-primary)'} />
           Direct Delivery Confirmations
         </h2>
-        <p style={{ margin: 0, fontSize: 12, color: C.gray }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
           Goods received directly from supplier to pharmacy stock — awaiting CEO confirmation before Finance processes payment.
         </p>
       </div>
 
       {deliveries.length === 0 ? <AnimatedDeliveryEmpty /> : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div className="ph-table-wrap"><table className="ph-table">
             <thead>
-              <tr style={{ background: C.forest, color: C.white }}>
+              <tr>
                 {['Delivery No', 'Drug / Item', 'Supplier', 'Qty', 'Unit Price', 'Total (ETB)', 'Date', 'Received By', 'Invoice', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.8, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
@@ -347,22 +432,22 @@ const TabDelivery = ({ toast }) => {
             <tbody>
               {deliveries.map((d, i) => (
                 <React.Fragment key={d.id}>
-                  <tr style={{ background: i % 2 === 0 ? C.mint : C.white, borderBottom: `1px solid ${C.border}` }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 800, color: C.forest }}>{d.delivery_no}</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: C.dark }}>{d.drug_name}</td>
-                    <td style={{ padding: '10px 14px', color: C.darkGray }}>{d.supplier_name}</td>
+                  <tr >
+                    <td style={{ padding: '10px 14px', fontWeight: 800, color: 'var(--color-primary)' }}>{d.delivery_no}</td>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>{d.drug_name}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)' }}>{d.supplier_name}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>{d.quantity} {d.unit_of_measure}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>ETB {parseFloat(d.unit_price || 0).toLocaleString()}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: C.forest }}>ETB {parseFloat(d.total_amount || 0).toLocaleString()}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: 'var(--color-primary)' }}>ETB {parseFloat(d.total_amount || 0).toLocaleString()}</td>
                     <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{d.delivery_date ? new Date(d.delivery_date).toLocaleDateString() : '—'}</td>
-                    <td style={{ padding: '10px 14px', color: C.gray, fontSize: 12 }}>{d.received_by_name || '—'}</td>
-                    <td style={{ padding: '10px 14px', color: C.gray, fontSize: 12 }}>{d.invoice_no || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontSize: 12 }}>{d.received_by_name || '—'}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontSize: 12 }}>{d.invoice_no || '—'}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <Btn onClick={() => decide(d.id, 'CONFIRM')} disabled={acting === d.id} color={C.forest} border={C.dark} style={{ padding: '6px 11px', fontSize: 11 }}>
+                        <Btn onClick={() => decide(d.id, 'CONFIRM')} disabled={acting === d.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 11px', fontSize: 11 }}>
                           <CheckCircle size={12} /> Confirm
                         </Btn>
-                        <Btn onClick={() => setShowRejectFor(d.id)} disabled={acting === d.id} color={C.error} border={C.errorDark} style={{ padding: '6px 11px', fontSize: 11 }}>
+                        <Btn onClick={() => setShowRejectFor(d.id)} disabled={acting === d.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 11px', fontSize: 11 }}>
                           <XCircle size={12} /> Reject
                         </Btn>
                       </div>
@@ -370,20 +455,20 @@ const TabDelivery = ({ toast }) => {
                   </tr>
                   {/* Inline reject form */}
                   {showRejectFor === d.id && (
-                    <tr style={{ background: '#fff8f8', borderBottom: `2px solid ${C.error}` }}>
+                    <tr style={{ background: '#fff8f8', borderBottom: `2px solid ${'var(--color-danger)'}` }}>
                       <td colSpan={10} style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: C.error }}>Rejection reason:</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-danger)' }}>Rejection reason:</span>
                           <input
                             value={rejectNote}
                             onChange={e => setRejectNote(e.target.value)}
                             placeholder="Enter reason for rejection..."
-                            style={{ flex: 1, minWidth: 200, padding: '7px 10px', border: `2px solid ${C.error}`, outline: 'none', fontSize: 12, borderRadius: 0 }}
+                            style={{ flex: 1, minWidth: 200, padding: '7px 10px', border: `2px solid ${'var(--color-danger)'}`, outline: 'none', fontSize: 12, borderRadius: 0 }}
                           />
-                          <Btn onClick={() => decide(d.id, 'REJECT')} color={C.error} border={C.errorDark} style={{ padding: '7px 14px', fontSize: 12 }}>
+                          <Btn onClick={() => decide(d.id, 'REJECT')} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '7px 14px', fontSize: 12 }}>
                             Confirm Rejection
                           </Btn>
-                          <Btn onClick={() => { setShowRejectFor(null); setRejectNote(''); }} color={C.gray} border={C.darkGray} style={{ padding: '7px 14px', fontSize: 12 }}>
+                          <Btn onClick={() => { setShowRejectFor(null); setRejectNote(''); }} color={'var(--color-text-secondary)'} border={'var(--color-border)'} style={{ padding: '7px 14px', fontSize: 12 }}>
                             Cancel
                           </Btn>
                         </div>
@@ -392,8 +477,8 @@ const TabDelivery = ({ toast }) => {
                   )}
                   {/* Notes row if any */}
                   {d.notes && (
-                    <tr style={{ background: i % 2 === 0 ? '#edf9f1' : '#f8fffb', borderBottom: `1px solid ${C.border}` }}>
-                      <td colSpan={10} style={{ padding: '4px 14px 10px', fontSize: 11, color: C.gray }}>
+                    <tr style={{ background: i % 2 === 0 ? '#edf9f1' : '#f8fffb', borderBottom: `1px solid ${'var(--color-border)'}` }}>
+                      <td colSpan={10} style={{ padding: '4px 14px 10px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
                         📝 {d.notes}
                       </td>
                     </tr>
@@ -401,14 +486,13 @@ const TabDelivery = ({ toast }) => {
                 </React.Fragment>
               ))}
             </tbody>
-          </table>
-        </div>
+          </table></div></div>
       )}
 
       {/* Flow explanation card */}
-      <div style={{ marginTop: 28, background: C.mint, border: `2px solid ${C.sage}`, padding: '14px 18px', fontSize: 12 }}>
-        <div style={{ fontWeight: 800, color: C.forest, marginBottom: 6 }}>📋 How This Flow Works</div>
-        <div style={{ color: C.darkGray, lineHeight: 1.7 }}>
+      <div style={{ marginTop: 28, background: 'var(--color-primary)', border: `2px solid ${'var(--color-primary)'}`, padding: '14px 18px', fontSize: 12 }}>
+        <div style={{ fontWeight: 800, color: 'var(--color-primary)', marginBottom: 6 }}>📋 How This Flow Works</div>
+        <div style={{ color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
           <strong>1. Pharmacy Manager</strong> records goods received directly from supplier (bypasses general store) →
           <strong> 2. CEO</strong> reviews and confirms receipt here (stock is automatically updated in pharmacy) →
           <strong> 3. Finance</strong> receives notification to create a payable and pay the supplier.
@@ -471,10 +555,10 @@ const TabStockUpdates = ({ toast }) => {
   return (
     <div style={{ padding: '24px 30px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.dark }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
           Pending Stock Updates ({requests.length})
         </h3>
-        <Btn onClick={load} color={C.emerald} border={C.dark} style={{ padding: '7px 14px', fontSize: 12 }}>
+        <Btn onClick={load} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}>
           <RefreshCw size={13} /> Refresh
         </Btn>
       </div>
@@ -492,24 +576,24 @@ const TabStockUpdates = ({ toast }) => {
             const reasonText = newData.reason || r.reason || '—';
 
             return (
-              <div key={r.id || idx} style={{ background: C.white, border: `2px solid ${C.border}`, boxShadow: `0 3px 0 ${C.border}`, padding: 18 }}>
+              <div key={r.id || idx} className="ph-card" style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: C.dark, marginBottom: 3 }}>{medicineName} (Request #{r.id})</div>
-                    <div style={{ fontSize: 12, color: C.gray }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)', marginBottom: 3 }}>{medicineName} (Request #{r.id})</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       Before: <strong>{currentQty} units</strong> → After: <strong>{requestedQty} units</strong>
                     </div>
-                    <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Requested by: {r.requested_by_name || '—'} &nbsp;|&nbsp; {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                    <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Reason: {reasonText}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Requested by: {r.requested_by_name || '—'} &nbsp;|&nbsp; {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Reason: {reasonText}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Badge status={r.status || 'PENDING'} />
                     {(r.status === 'PENDING' || r.status === 'Pending') && (
                       <>
-                        <Btn onClick={() => approve(r)} disabled={acting === r.id} color={C.forest} border={C.dark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                        <Btn onClick={() => approve(r)} disabled={acting === r.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                           <CheckCircle size={12} /> Approve
                         </Btn>
-                        <Btn onClick={() => setShowRejectFor(showRejectFor === r.id ? null : r.id)} disabled={acting === r.id} color={C.error} border={C.errorDark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                        <Btn onClick={() => setShowRejectFor(showRejectFor === r.id ? null : r.id)} disabled={acting === r.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                           <XCircle size={12} /> Reject
                         </Btn>
                       </>
@@ -519,8 +603,8 @@ const TabStockUpdates = ({ toast }) => {
 
                 {/* Reject Dropdown */}
                 {showRejectFor === r.id && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px dashed ${C.border}` }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: C.darkGray, marginBottom: 6 }}>REJECTION REASON *</div>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px dashed ${'var(--color-border)'}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 6 }}>REJECTION REASON *</div>
                     <textarea
                       value={rejectReason[r.id] || ''}
                       onChange={e => setRejectReason(prev => ({ ...prev, [r.id]: e.target.value }))}
@@ -528,15 +612,15 @@ const TabStockUpdates = ({ toast }) => {
                       rows={2}
                       style={{
                         width: '100%', boxSizing: 'border-box', padding: 10, fontSize: 13,
-                        border: `2px solid ${C.error}`, borderRadius: 0, resize: 'vertical',
+                        border: `2px solid ${'var(--color-danger)'}`, borderRadius: 0, resize: 'vertical',
                         fontFamily: 'Inter, sans-serif', marginBottom: 10,
                       }}
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <Btn onClick={() => reject(r)} disabled={acting === r.id} color={C.error} border={C.errorDark} style={{ padding: '6px 12px', fontSize: 12 }}>
+                      <Btn onClick={() => reject(r)} disabled={acting === r.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 12 }}>
                         <Send size={13} /> Confirm Reject
                       </Btn>
-                      <Btn onClick={() => setShowRejectFor(null)} color={C.gray} border={C.darkGray} style={{ padding: '6px 12px', fontSize: 12 }}>
+                      <Btn onClick={() => setShowRejectFor(null)} color={'var(--color-text-secondary)'} border={'var(--color-border)'} style={{ padding: '6px 12px', fontSize: 12 }}>
                         Cancel
                       </Btn>
                     </div>
@@ -678,57 +762,46 @@ const TabAuditLog = () => {
 
     const reportTitle = category === 'all' ? 'FULL AUDIT LOG REPORT' : `${cats.find(c => c.id === category)?.label.toUpperCase()} REPORT`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Print Report - SUTANA EMS</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-          body { font-family: 'Inter', sans-serif; padding: 40px; color: #111827; background: #fff; }
-          .header { text-align: center; margin-bottom: 40px; border-bottom: 4px solid #065F46; padding-bottom: 20px; }
-          .header h1 { margin: 0; font-size: 28px; font-weight: 800; color: #065F46; letter-spacing: 1px; text-transform: uppercase; }
-          .header p { margin: 8px 0 0; font-size: 14px; color: #4B5563; font-weight: 600; }
-          .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; padding-bottom: 12px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; margin-bottom: 40px; }
-          th { background: #F3F4F6; padding: 14px; border-bottom: 3px solid #111827; color: #111827; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-          td { padding: 12px 14px; border-bottom: 1px solid #D1D5DB; vertical-align: middle; color: #374151; }
-          tr:nth-child(even) td { background-color: #F9FAFB; }
-          .footer { text-align: center; font-size: 11px; color: #9CA3AF; margin-top: 50px; border-top: 1px solid #E5E7EB; padding-top: 20px; }
-          @media print {
-            body { padding: 0; }
-            @page { margin: 1cm; size: auto; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>🌿 SUTANA EMS</h1>
-          <p>${reportTitle}</p>
-        </div>
-        <div class="meta">
-          <span><strong>FILTERS:</strong> ${filteredLabel(status, time)}</span>
-          <span><strong>GENERATED:</strong> ${new Date().toLocaleString()}</span>
-          <span><strong>TOTAL RECORDS:</strong> ${data.length}</span>
-        </div>
-        <table>
-          <thead>
-            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-          </thead>
-          <tbody>
-            ${rowsHtml || '<tr><td colspan="6" style="text-align:center; padding: 20px; font-weight:600;">No records found matching criteria.</td></tr>'}
-          </tbody>
-        </table>
-        <div class="footer">
-          SUTANA Enterprise Management System &mdash; System Generated Document
-        </div>
-        <script>
-          window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 300); }
-        </script>
-      </body>
-      </html>
-    `;
+    const H = (t) => `<${t}>`; // helper so OXC does not see raw closing tags
+    const CH = (t) => `</${t}>`;
+    const html = [
+      '<!DOCTYPE html>',
+      H('html lang="en"'),
+        H('head'),
+          H('meta charset="UTF-8"'),
+          H('title') + 'Print Report - SUTANA EMS' + CH('title'),
+          H('style'),
+            "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');",
+            'body { font-family: Inter, sans-serif; padding: 40px; color: #111827; background: #fff; }',
+            '.header { text-align: center; margin-bottom: 40px; border-bottom: 4px solid #065F46; padding-bottom: 20px; }',
+            '.header h1 { margin: 0; font-size: 28px; font-weight: 800; color: #065F46; letter-spacing: 1px; text-transform: uppercase; }',
+            '.header p { margin: 8px 0 0; font-size: 14px; color: #4B5563; font-weight: 600; }',
+            '.meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; padding-bottom: 12px; }',
+            'table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; margin-bottom: 40px; }',
+            'th { background: #F3F4F6; padding: 14px; border-bottom: 3px solid #111827; color: #111827; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }',
+            'td { padding: 12px 14px; border-bottom: 1px solid #D1D5DB; vertical-align: middle; color: #374151; }',
+            'tr:nth-child(even) td { background-color: #F9FAFB; }',
+            '.footer { text-align: center; font-size: 11px; color: #9CA3AF; margin-top: 50px; border-top: 1px solid #E5E7EB; padding-top: 20px; }',
+            '@media print { body { padding: 0; } @page { margin: 1cm; size: auto; } }',
+          CH('style'),
+        CH('head'),
+        H('body'),
+          H('div class="header"') + H('h1') + '🌿 SUTANA EMS' + CH('h1') + H('p') + reportTitle + CH('p') + CH('div'),
+          H('div class="meta"') +
+            H('span') + H('strong') + 'FILTERS:' + CH('strong') + ' ' + filteredLabel(status, time) + CH('span') +
+            H('span') + H('strong') + 'GENERATED:' + CH('strong') + ' ' + new Date().toLocaleString() + CH('span') +
+            H('span') + H('strong') + 'TOTAL RECORDS:' + CH('strong') + ' ' + data.length + CH('span') +
+          CH('div'),
+          H('table'),
+            H('thead') + H('tr') + headers.map(h => H('th') + h + CH('th')).join('') + CH('tr') + CH('thead'),
+            H('tbody') + (rowsHtml || H('tr') + '<td colspan="6" style="text-align:center;padding:20px;font-weight:600;">No records found.</td>' + CH('tr')) + CH('tbody'),
+          CH('table'),
+          H('div class="footer"') + 'SUTANA Enterprise Management System &mdash; System Generated Document' + CH('div'),
+          H('script') + 'window.onload=function(){setTimeout(function(){window.print();window.close();},300);}' + CH('script'),
+        CH('body'),
+      CH('html'),
+    ].join('\n');
+
 
     printWindow.document.open();
     printWindow.document.write(html);
@@ -804,7 +877,7 @@ const TabAuditLog = () => {
 
     if (category === 'all') return (
       <tr key={`${cat}-${r.id}`}>
-        <td style={{ fontWeight: 600, color: C.forest }}>{u.mod}</td>
+        <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{u.mod}</td>
         <td>{u.id}</td>
         <td>{u.details}</td>
         <td>{u.qty}</td>
@@ -865,27 +938,27 @@ const TabAuditLog = () => {
 
   return (
     <div style={{ padding: '24px 30px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, padding: '20px', background: C.white, border: `1px solid ${C.border}`, boxShadow: `0 4px 12px rgba(0,0,0,0.05)` }}>
+      <div className="ph-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {cats.map(c => (
               <FilterBtn key={c.id} active={category === c.id} onClick={() => setCategory(c.id)}>{c.label}</FilterBtn>
             ))}
           </div>
-          <Btn onClick={handlePrint} color={C.darkGray} border="#1F2937" style={{ padding: '8px 16px', fontSize: 12 }}>
+          <Btn onClick={handlePrint} style={{ padding: '8px 16px', fontSize: 12 }}>
             <FileText size={14} /> Print Log
           </Btn>
         </div>
 
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.gray, marginRight: 4 }}>STATUS:</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginRight: 4 }}>STATUS:</span>
             {['Approved', 'Rejected', 'All'].map(s => (
               <button
                 key={s} onClick={() => setStatus(s)}
                 style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${status === s ? C.forest : C.border}`,
-                  background: status === s ? C.forest : C.white, color: status === s ? C.white : C.gray,
+                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${status === s ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: status === s ? 'var(--color-primary)' : 'var(--color-bg-card)', color: status === s ? 'var(--color-bg-card)' : 'var(--color-text-secondary)',
                   cursor: 'pointer', borderRadius: 4
                 }}
               >
@@ -895,13 +968,13 @@ const TabAuditLog = () => {
           </div>
 
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.gray, marginRight: 4 }}>TIME:</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginRight: 4 }}>TIME:</span>
             {['Week', 'Month', 'Quarter', 'Year', 'All'].map(t => (
               <button
                 key={t} onClick={() => setTime(t)}
                 style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${time === t ? C.forest : C.border}`,
-                  background: time === t ? C.forest : C.white, color: time === t ? C.white : C.gray,
+                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${time === t ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: time === t ? 'var(--color-primary)' : 'var(--color-bg-card)', color: time === t ? 'var(--color-bg-card)' : 'var(--color-text-secondary)',
                   cursor: 'pointer', borderRadius: 4
                 }}
               >
@@ -912,10 +985,10 @@ const TabAuditLog = () => {
         </div>
       </div>
 
-      <div className="print-area" style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: '24px' }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: C.dark }}>
+      <div className="print-area" style={{ background: 'var(--color-bg-card)', border: `1px solid ${'var(--color-border)'}`, borderRadius: 8, padding: '24px' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
           {category === 'all' ? 'FULL AUDIT LOG' : cats.find(c => c.id === category)?.label.toUpperCase() + ' LOG'} 
-          <span style={{ fontSize: 13, color: C.gray, fontWeight: 500, marginLeft: 8 }}>— {filteredLabel(status, time)}</span>
+          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500, marginLeft: 8 }}>— {filteredLabel(status, time)}</span>
         </h2>
         
         {loading ? <Spinner /> : data.length === 0 ? <Empty icon={FileText} message="No records match your filters." /> : (
@@ -924,7 +997,7 @@ const TabAuditLog = () => {
               <thead>
                 <tr>
                   {renderTableHeaders().map(h => (
-                    <th key={h} style={{ padding: '12px 14px', borderBottom: `2px solid ${C.dark}`, color: C.dark, fontWeight: 800 }}>{h}</th>
+                    <th key={h} style={{ padding: '12px 14px', borderBottom: `2px solid ${'var(--color-primary)'}`, color: 'var(--color-primary)', fontWeight: 800 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -934,7 +1007,7 @@ const TabAuditLog = () => {
                     if (!row) return null;
                     return React.cloneElement(row, {
                       key: `${r.id || i}-${i}`,
-                      style: { borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? C.lightGray : C.white }
+                      style: { borderBottom: `1px solid ${'var(--color-border)'}`, background: i % 2 === 0 ? 'var(--color-bg-page)' : 'var(--color-bg-card)' }
                     });
                   })}
               </tbody>
@@ -975,34 +1048,34 @@ const TabAdjustments = ({ toast }) => {
   return (
     <div style={{ padding: '24px 30px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.dark }}>Pending Adjustments ({adjustments.length})</h3>
-        <Btn onClick={load} color={C.emerald} border={C.dark} style={{ padding: '7px 14px', fontSize: 12 }}><RefreshCw size={13} /> Refresh</Btn>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>Pending Adjustments ({adjustments.length})</h3>
+        <Btn onClick={load} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}><RefreshCw size={13} /> Refresh</Btn>
       </div>
       {loading ? <Spinner /> : adjustments.length === 0 ? <Empty icon={Sliders} message="No pending adjustments found." /> : (
         <div style={{ display: 'grid', gap: 14 }}>
           {adjustments.map((a, i) => (
-            <div key={a.id || i} style={{ background: C.white, border: `2px solid ${C.border}`, boxShadow: `0 3px 0 ${C.border}`, padding: 18 }}>
+            <div key={a.id || i} className="ph-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <div style={{ fontWeight: 800, color: C.dark, fontSize: 14, marginBottom: 3 }}>{a.drug_name || a.medicine_name || a.item_name || `Adjustment #${a.id}`}</div>
-                  <div style={{ fontSize: 12, color: C.gray }}>
+                  <div style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: 14, marginBottom: 3 }}>{a.drug_name || a.medicine_name || a.item_name || `Adjustment #${a.id}`}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     Before: <strong>{a.quantity_before ?? a.old_quantity ?? '—'}</strong> → After: <strong>{a.quantity_after ?? a.new_quantity ?? '—'}</strong>
                     &nbsp;<span style={{ background: a.adjustment_type === 'REMOVE' ? '#fee2e2' : '#d1fae5', color: a.adjustment_type === 'REMOVE' ? '#b91c1c' : '#065f46', padding: '1px 8px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>
                       {a.adjustment_type === 'REMOVE' ? '▼ REMOVE' : '▲ ADD'} {Math.abs(a.adjustment_qty ?? 0)}
                     </span>
                     &nbsp;| By: {a.adjusted_by_name || '—'}
                   </div>
-                  <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Reason: {a.reason || '—'}&nbsp;{a.adjustment_no ? `| Ref: ${a.adjustment_no}` : ''}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Reason: {a.reason || '—'}&nbsp;{a.adjustment_no ? `| Ref: ${a.adjustment_no}` : ''}</div>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{a.created_at ? new Date(a.created_at).toLocaleString() : ''}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Badge status={a.status || 'PENDING'} />
                   {(a.status === 'PENDING' || a.status === 'Pending') && (
                     <>
-                      <Btn onClick={() => decide(a.id, 'approve')} disabled={acting === a.id} color={C.forest} border={C.dark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                      <Btn onClick={() => decide(a.id, 'approve')} disabled={acting === a.id} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                         <CheckCircle size={12} /> Approve
                       </Btn>
-                      <Btn onClick={() => decide(a.id, 'reject')} disabled={acting === a.id} color={C.error} border={C.errorDark} style={{ padding: '6px 12px', fontSize: 11 }}>
+                      <Btn onClick={() => decide(a.id, 'reject')} disabled={acting === a.id} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '6px 12px', fontSize: 11 }}>
                         <XCircle size={12} /> Reject
                       </Btn>
                     </>
@@ -1063,8 +1136,8 @@ const TabPhysicalCount = ({ toast }) => {
   return (
     <div style={{ padding: '24px 30px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.dark }}>Pending Physical Counts ({counts.length})</h3>
-        <Btn onClick={load} color={C.emerald} border={C.dark} style={{ padding: '7px 14px', fontSize: 12 }}><RefreshCw size={13} /> Refresh</Btn>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>Pending Physical Counts ({counts.length})</h3>
+        <Btn onClick={load} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '7px 14px', fontSize: 12 }}><RefreshCw size={13} /> Refresh</Btn>
       </div>
       {loading ? <Spinner /> : counts.length === 0 ? <Empty icon={ClipboardCheck} message="No pending physical counts found." /> : (
         <div style={{ display: 'grid', gap: 14 }}>
@@ -1074,53 +1147,53 @@ const TabPhysicalCount = ({ toast }) => {
             const isExpanded = expanded[c.id] !== false;
             const busy = acting === c.id;
             return (
-              <div key={c.id || i} style={{ background: C.white, border: `2px solid ${C.border}`, boxShadow: `0 3px 0 ${C.border}` }}>
+              <div key={c.id || i} className="ph-card" style={{ padding: 0, overflow: 'hidden' }}>
                 {/* Card Header */}
                 <div
                   onClick={() => toggleExpand(c.id)}
                   style={{
                     padding: '16px 20px', cursor: 'pointer', display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12,
-                    background: isExpanded ? C.lightBase : 'transparent'
+                    background: isExpanded ? 'var(--color-bg-page)' : 'transparent'
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 800, color: C.dark, fontSize: 15, marginBottom: 4 }}>
-                      {c.count_no} <span style={{ fontSize: 13, fontWeight: 600, color: C.gray, marginLeft: 8 }}>{c.count_date ? new Date(c.count_date).toLocaleDateString() : ''}</span>
+                    <div style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: 15, marginBottom: 4 }}>
+                      {c.count_no} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginLeft: 8 }}>{c.count_date ? new Date(c.count_date).toLocaleDateString() : ''}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: C.gray }}>
-                      Items Counted: <strong>{items.length}</strong> &nbsp;|&nbsp; Variance Detected: <strong style={{ color: hasVariance ? C.error : C.emerald }}>{hasVariance ? 'YES' : 'NO'}</strong>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      Items Counted: <strong>{items.length}</strong> &nbsp;|&nbsp; Variance Detected: <strong style={{ color: hasVariance ? 'var(--color-danger)' : 'var(--color-primary)' }}>{hasVariance ? 'YES' : 'NO'}</strong>
                     </div>
-                    <div style={{ fontSize: 12, color: C.gray, marginTop: 4 }}>By User ID: {c.counted_by || '—'}&nbsp;{c.remarks ? `| Remarks: ${c.remarks}` : ''}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>By User ID: {c.counted_by || '—'}&nbsp;{c.remarks ? `| Remarks: ${c.remarks}` : ''}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <Badge status={c.status || 'PENDING'} />
-                    {isExpanded ? <ChevronUp size={18} color={C.gray} /> : <ChevronDown size={18} color={C.gray} />}
+                    {isExpanded ? <ChevronUp size={18} color={'var(--color-text-secondary)'} /> : <ChevronDown size={18} color={'var(--color-text-secondary)'} />}
                   </div>
                 </div>
 
                 {/* Card Body */}
                 {isExpanded && (
-                  <div style={{ padding: 20, borderTop: `1px solid ${C.border}` }}>
-                    <div style={{ background: C.lightBase, border: `1px solid ${C.border}`, borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <div style={{ padding: 20, borderTop: `1px solid ${'var(--color-border)'}` }}>
+                    <div style={{ background: 'var(--color-bg-page)', border: `1px solid var(--color-border)`, borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
+                      <div className="ph-table-wrap"><table className="ph-table">
                         <thead>
-                          <tr style={{ background: C.white, borderBottom: `2px solid ${C.border}`, textAlign: 'left' }}>
-                            <th style={{ padding: '10px 14px', color: C.gray, fontWeight: 700 }}>Medicine</th>
-                            <th style={{ padding: '10px 14px', color: C.gray, fontWeight: 700 }}>System Qty</th>
-                            <th style={{ padding: '10px 14px', color: C.gray, fontWeight: 700 }}>Physical Qty</th>
-                            <th style={{ padding: '10px 14px', color: C.gray, fontWeight: 700 }}>Variance</th>
+                          <tr style={{ background: 'var(--color-bg-card)', borderBottom: `2px solid ${'var(--color-border)'}`, textAlign: 'left' }}>
+                            <th style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontWeight: 700 }}>Medicine</th>
+                            <th style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontWeight: 700 }}>System Qty</th>
+                            <th style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontWeight: 700 }}>Physical Qty</th>
+                            <th style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontWeight: 700 }}>Variance</th>
                           </tr>
                         </thead>
                         <tbody>
                           {items.map((it, idx) => {
                             const diff = Number(it.variance ?? (it.physical_quantity - it.system_quantity));
                             return (
-                              <tr key={idx} style={{ borderBottom: `1px solid ${C.border}`, background: diff !== 0 ? '#fff5f5' : C.white }}>
-                                <td style={{ padding: '10px 14px', fontWeight: 600, color: C.dark }}>{it.drug_name || '—'} {it.strength || ''}</td>
-                                <td style={{ padding: '10px 14px', color: C.darkGray }}>{it.system_quantity ?? '—'}</td>
-                                <td style={{ padding: '10px 14px', fontWeight: 700, color: C.dark }}>{it.physical_quantity ?? '—'}</td>
-                                <td style={{ padding: '10px 14px', fontWeight: 800, color: diff > 0 ? C.emerald : diff < 0 ? C.error : C.gray }}>
+                              <tr key={idx} style={{ borderBottom: `1px solid ${'var(--color-border)'}`, background: diff !== 0 ? '#fff5f5' : 'var(--color-bg-card)' }}>
+                                <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--color-primary)' }}>{it.drug_name || '—'} {it.strength || ''}</td>
+                                <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)' }}>{it.system_quantity ?? '—'}</td>
+                                <td style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>{it.physical_quantity ?? '—'}</td>
+                                <td style={{ padding: '10px 14px', fontWeight: 800, color: diff > 0 ? 'var(--color-primary)' : diff < 0 ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
                                   {diff > 0 ? `+${diff}` : diff}
                                 </td>
                               </tr>
@@ -1128,7 +1201,8 @@ const TabPhysicalCount = ({ toast }) => {
                           })}
                         </tbody>
                       </table>
-                    </div>
+                      </div>{/* end ph-table-wrap */}
+                    </div>{/* end bg-page div */}
 
                     {(c.status === 'PENDING' || c.status === 'Pending') && (
                       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1139,17 +1213,17 @@ const TabPhysicalCount = ({ toast }) => {
                               placeholder="Rejection reason..."
                               value={rejectMap[c.id] || ''}
                               onChange={e => setRejectMap({ ...rejectMap, [c.id]: e.target.value })}
-                              style={{ flex: 1, padding: '8px 12px', border: `2px solid ${C.error}`, fontSize: 13, fontFamily: 'inherit' }}
+                              style={{ flex: 1, padding: '8px 12px', border: `2px solid ${'var(--color-danger)'}`, fontSize: 13, fontFamily: 'inherit' }}
                             />
-                            <Btn onClick={() => handleReject(c)} disabled={busy} color={C.error} border={C.errorDark} style={{ padding: '0 16px' }}>Confirm</Btn>
-                            <Btn onClick={() => setShowRejectFor(null)} disabled={busy} color={C.gray} border={C.darkGray} style={{ padding: '0 16px' }}>Cancel</Btn>
+                            <Btn onClick={() => handleReject(c)} disabled={busy} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '0 16px' }}>Confirm</Btn>
+                            <Btn onClick={() => setShowRejectFor(null)} disabled={busy} color={'var(--color-text-secondary)'} border={'var(--color-border)'} style={{ padding: '0 16px' }}>Cancel</Btn>
                           </div>
                         ) : (
                           <>
-                            <Btn onClick={() => handleApprove(c)} disabled={busy} color={C.forest} border={C.dark} style={{ padding: '8px 16px', fontSize: 13 }}>
+                            <Btn onClick={() => handleApprove(c)} disabled={busy} color={'var(--color-primary)'} border={'var(--color-primary)'} style={{ padding: '8px 16px', fontSize: 13 }}>
                               <CheckCircle size={14} /> Approve & Update Inventory
                             </Btn>
-                            <Btn onClick={() => setShowRejectFor(c.id)} disabled={busy} color={C.error} border={C.errorDark} style={{ padding: '8px 16px', fontSize: 13 }}>
+                            <Btn onClick={() => setShowRejectFor(c.id)} disabled={busy} color={'var(--color-danger)'} border={'var(--color-danger)'} style={{ padding: '8px 16px', fontSize: 13 }}>
                               <XCircle size={14} /> Reject
                             </Btn>
                           </>
@@ -1200,21 +1274,22 @@ const CEOPharmacyHub = () => {
   const ActiveComponent = ActiveTab.component;
 
   return (
-    <div style={{ minHeight: '100vh', background: C.lightGray, width: '100%', fontFamily: "'Inter', sans-serif" }}>
-      <style>{HUB_STYLE + '* { box-sizing: border-box; }'}</style>
+    <div className="ph-page-wrapper">
+      <div className="ph-page-content">
+      <GlobalStyles />
 
       {/* Header */}
-      <div style={{ background: C.forest, padding: '18px 30px', borderBottom: `4px solid ${C.dark}` }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: C.white, letterSpacing: 1, textTransform: 'uppercase' }}>
-          🌿 Pharmacy Hub — CEO Control Panel
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+          🌿 Pharmacy Hub
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: C.sage, fontWeight: 500 }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-primary)', fontWeight: 500 }}>
           Manage pharmacy operations, approvals, and finances from one place
         </p>
       </div>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', background: C.white, borderBottom: `3px solid ${C.border}`, padding: '8px 20px', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1222,32 +1297,9 @@ const CEOPharmacyHub = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '10px 18px', fontWeight: 800, fontSize: 12,
-                background: isActive ? C.forest : C.white,
-                color: isActive ? C.white : C.gray,
-                border: `2px solid ${isActive ? C.dark : C.border}`,
-                boxShadow: isActive ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`,
-                cursor: 'pointer',
-                textTransform: 'uppercase', letterSpacing: 0.6,
-                borderRadius: 0,
-                transition: 'transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease, color 0.12s ease',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = isActive ? `0 6px 0 ${C.dark}` : `0 6px 0 ${C.border}`;
-                if (!isActive) e.currentTarget.style.color = C.forest;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = '';
-                e.currentTarget.style.boxShadow = isActive ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`;
-                if (!isActive) e.currentTarget.style.color = C.gray;
-              }}
-              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = 'none'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = isActive ? `0 4px 0 ${C.dark}` : `0 4px 0 ${C.border}`; }}
+              className={`ph-tab ${isActive ? 'active' : ''}`}
             >
-              <Icon size={15} />
+              <Icon size={16} />
               {tab.label}
             </button>
           );
@@ -1261,6 +1313,7 @@ const CEOPharmacyHub = () => {
 
       {/* Toast Notification */}
       {toastMsg && <ToastMsg key={toastMsg.id} msg={toastMsg} onClose={() => setToastMsg(null)} />}
+    </div>
     </div>
   );
 };
