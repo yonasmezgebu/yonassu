@@ -16,11 +16,11 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── PALETTE ──────────────────────────────────────────────────────────────────
 const G = {
-  forest:   '#228B22', dark:     '#1B5E20', emerald:  '#2E8B57',
-  leaf:     '#4CAF50', sage:     '#A5D6A7', olive:    '#6B8E23',
-  mint:     '#98FF98', lime:     '#8BC34A', brown:    '#8D6E63',
-  sky:      '#87CEEB', white:    '#FFFFFF', lightGray:'#F5F5F5',
-  darkGray: '#424242', orange:   '#FF9800', red:      '#F44336',
+  dark:      '#2563EB', forest:    '#16A34A', emerald:   '#16A34A',
+  leaf:      '#16A34A', sage:      '#E5E7EB', olive:     '#D97706',
+  mint:      '#16A34A', lime:      '#16A34A', brown:     '#D97706',
+  sky:       '#0284C7', white:     '#FFFFFF', lightGray: '#F9FAFB',
+  darkGray:  '#4B5563', orange:    '#F59E0B', red:       '#DC2626',
 };
 
 const BASE = '/api/v1/printing-assets';
@@ -41,7 +41,7 @@ const ToastContainer = ({ toasts, onClose }) => (
       const bg = t.type === 'error' ? G.red : t.type === 'warning' ? G.orange : G.forest;
       const Icon = t.type === 'error' ? AlertTriangle : CheckCircle;
       return (
-        <div key={t.id} style={{
+        <div key={t.id} className={'fpm-toast' + (t.type === 'error' ? ' error' : t.type === 'warning' ? ' warn' : ' success')} style={{
           pointerEvents: 'all', background: bg, color: '#fff',
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
           border: `2px solid ${G.dark}`, minWidth: 280, maxWidth: 380,
@@ -73,6 +73,7 @@ function useToast() {
 // ─── FLAT BUTTON ─────────────────────────────────────────────────────────────
 const FlatBtn = ({ children, onClick, color = G.emerald, icon: Icon, disabled, small, type = 'button' }) => (
   <button
+    className="fpm-btn"
     type={type}
     onClick={onClick}
     disabled={disabled}
@@ -165,72 +166,200 @@ const FinancePrintingMachines = () => {
   };
 
   return (
-    <div style={{
+    <div className="fpm-page" style={{
       background: '#FFFFFF', minHeight: '100vh', width: '100%',
       fontFamily: "'Inter','Segoe UI',sans-serif", boxSizing: 'border-box',
     }}>
 
       <style>{`
-        @keyframes fpm-spin { 100% { transform: rotate(360deg); } }
+        :root, .fpm-page {
+          --color-primary: #2563EB;
+          --color-primary-hover: #1D4ED8;
+          --color-gold: #F59E0B;
+          --color-gold-text: #1F2937;
+        }
+        .fpm-page, .fpm-page *, .fpm-page *::before, .fpm-page *::after { box-sizing: border-box; }
+        .fpm-page { max-width: 1600px; margin: 0 auto; width: 100%; padding: 0; }
         .fpm-spin { animation: fpm-spin 1s linear infinite; }
-        * { box-sizing: border-box; }
+        @keyframes fpm-spin { 100% { transform: rotate(360deg); } }
 
+        /* ── Page shell — end-to-end within layout margins ── */
+        .fpm-content { padding: 0 !important; }
+
+        /* ── Header ── */
+        .fpm-header-icon { border-radius: 10px; transition: transform 0.15s ease; }
+        .fpm-header-icon svg { display: block; }
+        .fpm-header-title { font-size: 28px !important; font-weight: 600 !important; letter-spacing: -0.5px; }
+        .fpm-header-sub { font-size: 14px !important; }
+
+        /* ── Buttons (FlatBtn → .fpm-btn) — gold hover on every button ── */
+        .fpm-btn, .fpm-btn-ghost, .fpm-action-btn {
+          min-height: 36px !important;
+          border-radius: 8px !important;
+          font-weight: 500 !important;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+        }
+        .fpm-btn:hover, .fpm-btn-ghost:hover, .fpm-action-btn:hover { background: var(--color-gold) !important; border-color: var(--color-gold) !important; color: var(--color-gold-text) !important; }
+        .fpm-btn:disabled, .fpm-btn-ghost:disabled, .fpm-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── KPI stat cards ── */
         .fpm-kpi-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 16px;
           margin-bottom: 20px;
         }
         .fpm-kpi-card {
-          background: #fff;
-          border: 2px solid #1B5E20;
-          padding: 18px 20px;
-          transition: background 0.2s;
+          border-radius: 10px !important;
+          border: 1px solid #E5E7EB !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+          transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease !important;
         }
-        .fpm-kpi-card:hover { background: #F1F8E9; }
+        .fpm-kpi-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; background: #F9FAFB !important; }
+        .fpm-kpi-card > div:first-child > div { border-radius: 8px !important; border: none !important; }
+        .fpm-kpi-card > div:first-child > span { font-size: 12px !important; font-weight: 600 !important; }
+        .fpm-kpi-card > div:nth-child(2) { font-size: 28px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+        .fpm-kpi-card > div:last-child { border-radius: 3px; }
 
-        .fpm-table-row { transition: background 0.15s; }
-        .fpm-table-row:hover { background: #E8F5E9 !important; }
+        /* ── States ── */
+        .fpm-loading, .fpm-empty { min-height: 220px; }
+        .fpm-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        .fpm-empty { border-radius: 10px !important; }
 
-        .fpm-action-btn {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border: 2px solid #1B5E20;
-          font-weight: 800; font-size: 12px; cursor: pointer;
-          text-transform: uppercase; transition: background 0.2s;
-          font-family: inherit; color: #fff;
+        /* ── Info banner ── */
+        .fpm-banner { border-radius: 10px !important; }
+
+        /* ── Tables (rule 9) ── */
+        .fpm-table-scroll { border-radius: 10px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .fpm-table { font-size: 14px !important; min-width: 1000px; }
+        .fpm-thead { background: #F9FAFB !important; }
+        .fpm-thead .fpm-th, .fpm-thead th {
+          background: #F9FAFB !important;
+          color: #6B7280 !important;
+          font-weight: 600 !important;
+          font-size: 12px !important;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          padding: 14px 16px !important;
+          border: none !important;
+          border-bottom: 1px solid #E5E7EB !important;
           white-space: nowrap;
         }
+        .fpm-table tbody tr { background: #fff !important; transition: background 0.15s ease; }
+        .fpm-table tbody tr:hover { background: #F9FAFB !important; }
+        .fpm-table tbody td {
+          padding: 13px 16px !important;
+          border: none !important;
+          border-bottom: 1px solid #F3F4F6 !important;
+          vertical-align: middle;
+        }
+        .fpm-table td:nth-child(7), .fpm-table th:nth-child(7) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+        .fpm-table tbody td:nth-child(2) { font-weight: 600; }
 
-        @media (max-width: 1100px) { .fpm-kpi-grid { grid-template-columns: repeat(2,1fr); } }
-        @media (max-width: 600px)  { .fpm-kpi-grid { grid-template-columns: 1fr; } }
+        /* Table footer */
+        .fpm-table tfoot tr { background: #F9FAFB !important; }
+        .fpm-table tfoot td {
+          background: #F9FAFB !important;
+          border: none !important;
+          border-top: 1px solid #E5E7EB !important;
+          color: #4B5563 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .fpm-table tfoot td:nth-child(7) { text-align: right; color: #111827 !important; font-size: 15px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+
+        /* ── Status chips / pending badge ── */
+        .fpm-status, .fpm-pending {
+          border-radius: 999px !important;
+          border: none !important;
+          padding: 2px 10px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+        }
+
+        /* ── Modal ── */
+        .fpm-overlay { background: rgba(0,0,0,0.4) !important; animation: fpm-fade 0.2s ease; }
+        .fpm-modal { border-radius: 12px !important; border-width: 1px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.25); animation: fpm-modal-in 0.2s ease; }
+        .fpm-modal-head { border-radius: 11px 11px 0 0; }
+        .fpm-modal-close { border-radius: 6px; transition: background 0.15s ease, color 0.15s ease; }
+        .fpm-modal-close:hover { background: var(--color-gold) !important; color: var(--color-gold-text) !important; }
+        .fpm-modal-asset { border-radius: 8px !important; }
+        .fpm-modal-note { border-radius: 8px !important; }
+        .fpm-label { font-size: 12px !important; }
+        .fpm-input-group { border-radius: 8px !important; overflow: hidden; transition: box-shadow 0.15s ease; }
+        .fpm-input-group:focus-within { box-shadow: 0 0 0 3px rgba(37,99,235,0.10); }
+        .fpm-input-lg { min-height: 36px !important; }
+        .fpm-modal-actions { gap: 12px !important; }
+        .fpm-btn-ghost {
+          background: #fff !important;
+          border: 1px solid #E5E7EB !important;
+          color: #111827 !important;
+          padding: 0 16px !important;
+          text-transform: uppercase;
+        }
+
+        /* ── Toasts ── */
+        .fpm-toast {
+          background: #FFFFFF !important;
+          color: #111827 !important;
+          border: 1px solid #E5E7EB !important;
+          border-left: 4px solid #16A34A !important;
+          border-radius: 8px !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          animation: fpm-slidein 0.25s ease;
+        }
+        .fpm-toast.success { border-left-color: #16A34A !important; }
+        .fpm-toast.error   { border-left-color: #DC2626 !important; }
+        .fpm-toast.warn    { border-left-color: #D97706 !important; }
+        .fpm-toast button { color: #6B7280 !important; }
+        .fpm-toast button:hover { color: #111827 !important; }
+
+        /* ── Animations ── */
+        @keyframes fpm-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fpm-modal-in { from { opacity: 0; transform: translateY(-12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes fpm-slidein { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+          .fpm-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .fpm-header { flex-direction: column; align-items: flex-start; }
+          .fpm-btn, .fpm-btn-ghost, .fpm-action-btn { min-height: 44px !important; }
+        }
+        @media (max-width: 600px) {
+          .fpm-kpi-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       <ToastContainer toasts={toasts} onClose={remove} />
 
       {/* ── CONTENT WRAPPER – no top gap ── */}
-      <div style={{ padding: '20px 24px' }}>
+      <div className="fpm-content" style={{ padding: '20px 24px' }}>
 
         {/* ── PAGE HEADER ── */}
-        <div style={{
+        <div className="fpm-header" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexWrap: 'wrap', gap: 14, marginBottom: 20,
           paddingBottom: 14, borderBottom: `2px solid ${G.dark}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ background: G.forest, padding: '10px 12px', border: `2px solid ${G.dark}`, display: 'flex' }}>
+            <div className="fpm-header-icon" style={{ background: G.forest, padding: '10px 12px', border: `2px solid ${G.dark}`, display: 'flex' }}>
               <Printer size={22} color="#fff" />
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: G.dark, letterSpacing: -0.5 }}>
+              <div className="fpm-header-title" style={{ fontSize: 22, fontWeight: 900, color: G.dark, letterSpacing: -0.5 }}>
                 Printing Asset Appraisals
               </div>
-              <div style={{ fontSize: 13, color: G.darkGray, marginTop: 2, fontWeight: 500 }}>
+              <div className="fpm-header-sub" style={{ fontSize: 13, color: G.darkGray, marginTop: 2, fontWeight: 500 }}>
                 Finance Dashboard · Machine Valuation &amp; Asset Ledger
               </div>
             </div>
           </div>
-          <FlatBtn icon={RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
-            {loading ? 'Loading…' : 'Refresh Ledger'}
+          <FlatBtn icon={loading ? null : RefreshCw} color={G.emerald} onClick={load} disabled={loading}>
+            {loading ? <SegmentedSpinner size={14} /> : 'Refresh Ledger'}
           </FlatBtn>
         </div>
 
@@ -260,8 +389,8 @@ const FinancePrintingMachines = () => {
         </div>
 
         {/* ── INFO STRIP ── */}
-        <div style={{
-          background: '#E3F2FD', border: `2px solid ${G.sky}`, borderLeft: `6px solid ${G.sky}`,
+        <div className="fpm-banner" style={{
+          background: '#E0F2FE', border: `1px solid ${G.sky}`, borderLeft: `4px solid ${G.sky}`,
           padding: '11px 16px', display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20,
         }}>
           <Info size={16} color={G.sky} style={{ flexShrink: 0 }} />
@@ -272,14 +401,14 @@ const FinancePrintingMachines = () => {
 
         {/* ── TABLE ── */}
         {loading && machines.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px', color: G.forest, fontWeight: 800, fontSize: 18 }}>
+          <div className="fpm-loading" style={{ textAlign: 'center', padding: '80px 24px', color: G.forest, fontWeight: 800, fontSize: 18 }}>
             <SegmentedSpinner size={32} />
-            Loading Ledger…
+            <span>Loading Ledger…</span>
           </div>
         ) : machines.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '70px 40px', background: G.lightGray, border: `2px dashed ${G.sage}` }}>
+          <div className="fpm-empty" style={{ textAlign: 'center', padding: '70px 40px', background: G.lightGray, border: `2px dashed ${G.sage}` }}>
             <Printer size={56} color={G.sage} style={{ marginBottom: 16, display: 'block', margin: '0 auto 14px' }} />
-            <div style={{ fontSize: 20, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            <div className="fpm-empty-title" style={{ fontSize: 20, fontWeight: 900, color: G.dark, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
               No Assets Registered
             </div>
             <p style={{ color: G.olive, fontSize: 14, margin: 0 }}>
@@ -287,12 +416,12 @@ const FinancePrintingMachines = () => {
             </p>
           </div>
         ) : (
-          <div style={{ border: `2px solid ${G.dark}`, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 1000 }}>
+          <div className="fpm-table-scroll" style={{ border: `2px solid ${G.dark}`, overflowX: 'auto' }}>
+            <table className="fpm-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 1000 }}>
               <thead>
-                <tr style={{ background: G.dark }}>
+                <tr className="fpm-thead" style={{ background: G.dark }}>
                   {['#', 'Machine', 'Model / Serial', 'Registered By', 'Status', 'Condition Notes', 'Book Value (ETB)', 'Action'].map((h, hi) => (
-                    <th key={h} style={{
+                    <th key={h} className="fpm-th" style={{
                       padding: '15px 18px', fontWeight: 900, textTransform: 'uppercase',
                       letterSpacing: 1, fontSize: 11, color: '#fff',
                       border: `1px solid ${G.forest}`,
@@ -335,7 +464,7 @@ const FinancePrintingMachines = () => {
 
                       {/* Status */}
                       <td style={{ padding: '13px 18px', verticalAlign: 'middle', whiteSpace: 'nowrap', border: `1px solid ${G.sage}` }}>
-                        <span style={{
+                        <span className="fpm-status" style={{
                           background: statusColor(m.status), color: '#fff',
                           padding: '4px 10px', fontSize: 11, fontWeight: 800,
                           border: `2px solid ${G.dark}`, display: 'inline-block',
@@ -356,7 +485,7 @@ const FinancePrintingMachines = () => {
                             {parseFloat(m.internal_value).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </div>
                         ) : (
-                          <span style={{
+                          <span className="fpm-pending" style={{
                             background: '#FFF3E0', color: G.brown, padding: '4px 10px',
                             fontSize: 11, fontWeight: 800, border: `2px solid ${G.orange}`, display: 'inline-block',
                           }}>
@@ -383,7 +512,7 @@ const FinancePrintingMachines = () => {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ background: G.dark }}>
+                <tr className="fpm-tfoot" style={{ background: G.dark }}>
                   <td colSpan={6} style={{ padding: '15px 18px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: '#fff', border: `1px solid ${G.forest}` }}>
                     Total Asset Value — {machines.length} Machine{machines.length !== 1 ? 's' : ''}
                   </td>
@@ -400,18 +529,18 @@ const FinancePrintingMachines = () => {
 
       {/* ── VALUATION MODAL ── */}
       {editMachine && (
-        <div style={{
+        <div className="fpm-overlay" style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 2000, padding: 20,
         }}>
-          <div style={{
+          <div className="fpm-modal" style={{
             background: '#fff', width: '100%', maxWidth: 440,
             maxHeight: '90vh', overflowY: 'auto',
             border: `3px solid ${G.dark}`,
           }}>
             {/* Modal Header */}
-            <div style={{
+            <div className="fpm-modal-head" style={{
               background: G.dark, color: '#fff',
               padding: '18px 22px', display: 'flex',
               justifyContent: 'space-between', alignItems: 'center',
@@ -422,6 +551,7 @@ const FinancePrintingMachines = () => {
                 <span style={{ fontSize: 18, fontWeight: 900 }}>Appraise Asset Value</span>
               </div>
               <button
+                className="fpm-modal-close"
                 onClick={() => setEditMachine(null)}
                 style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}
               >
@@ -429,9 +559,9 @@ const FinancePrintingMachines = () => {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateValue} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <form onSubmit={handleUpdateValue} className="fpm-modal-body" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
               {/* Asset Info */}
-              <div style={{ background: G.lightGray, padding: 14, borderLeft: `4px solid ${G.emerald}` }}>
+              <div className="fpm-modal-asset" style={{ background: G.lightGray, padding: 14, borderLeft: `4px solid ${G.emerald}` }}>
                 <div style={{ fontSize: 11, color: G.olive, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Asset</div>
                 <div style={{ fontSize: 17, color: G.dark, fontWeight: 900, marginTop: 4 }}>{editMachine.machine_name}</div>
                 <div style={{ fontSize: 13, color: G.darkGray, marginTop: 2 }}>ID: {editMachine.machine_id}</div>
@@ -447,16 +577,17 @@ const FinancePrintingMachines = () => {
 
               {/* Value Input */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.darkGray, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <label className="fpm-label" style={{ display: 'block', fontSize: 12, fontWeight: 800, color: G.darkGray, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Internal Book Value (ETB)
                 </label>
-                <div style={{ display: 'flex', alignItems: 'stretch', border: `2px solid ${G.dark}` }}>
-                  <div style={{
+                <div className="fpm-input-group" style={{ display: 'flex', alignItems: 'stretch', border: `2px solid ${G.dark}` }}>
+                  <div className="fpm-input-prefix" style={{
                     padding: '12px 14px', background: G.dark, color: '#fff',
                     fontWeight: 900, fontSize: 14, borderRight: `2px solid ${G.forest}`,
                     display: 'flex', alignItems: 'center',
                   }}>ETB</div>
                   <input
+                    className="fpm-input-lg"
                     type="number" step="0.01" min="0" autoFocus required
                     value={newValue}
                     onChange={e => setNewValue(e.target.value)}
@@ -472,14 +603,15 @@ const FinancePrintingMachines = () => {
 
               {/* Condition notes display */}
               {editMachine.condition_notes && (
-                <div style={{ background: '#FFF8E1', padding: 12, border: `2px solid ${G.orange}`, fontSize: 13, color: G.darkGray }}>
+                <div className="fpm-modal-note" style={{ background: '#FFF8E1', padding: 12, border: `2px solid ${G.orange}`, fontSize: 13, color: G.darkGray }}>
                   <strong style={{ color: G.brown }}>Condition Note:</strong> {editMachine.condition_notes}
                 </div>
               )}
 
               {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 6 }}>
+              <div className="fpm-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 6 }}>
                 <button
+                  className="fpm-btn-ghost"
                   type="button"
                   onClick={() => setEditMachine(null)}
                   style={{
