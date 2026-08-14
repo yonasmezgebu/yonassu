@@ -9,11 +9,11 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 // ─── PALETTE ────────────────────────────────────────────────────────────────
 const G = {
-  forest:    '#228B22', dark:      '#1B5E20', emerald:   '#2E8B57',
-  leaf:      '#4CAF50', sage:      '#A5D6A7', olive:     '#6B8E23',
-  mint:      '#98FF98', lime:      '#8BC34A', brown:     '#8D6E63',
-  sky:       '#87CEEB', white:     '#FFFFFF', lightGray: '#F5F5F5',
-  darkGray:  '#424242', orange:    '#FF9800', red:       '#F44336',
+  dark:      '#2563EB', forest:    '#16A34A', emerald:   '#16A34A',
+  leaf:      '#16A34A', sage:      '#E5E7EB', olive:     '#D97706',
+  mint:      '#16A34A', lime:      '#16A34A', brown:     '#D97706',
+  sky:       '#0284C7', white:     '#FFFFFF', lightGray: '#F9FAFB',
+  darkGray:  '#4B5563', orange:    '#F59E0B', red:       '#DC2626',
 };
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ const ToastContainer = ({ toasts, remove }) => (
       const bg   = t.type === 'error' ? G.red : t.type === 'warn' ? G.orange : G.forest;
       const Icon = t.type === 'error' ? AlertTriangle : t.type === 'warn' ? Info : CheckCircle;
       return (
-        <div key={t.id} style={{
+        <div key={t.id} className={'psa-toast' + (t.type === 'error' ? ' error' : t.type === 'warn' ? ' warn' : ' success')} style={{
           pointerEvents: 'all', background: bg, color: '#fff',
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
           minWidth: 280, maxWidth: 380, border: `2px solid ${G.dark}`,
@@ -66,6 +66,7 @@ function useToast() {
 // ─── FLAT BUTTON ─────────────────────────────────────────────────────────────
 const FlatBtn = ({ children, onClick, color = G.emerald, icon: Icon, disabled, small }) => (
   <button
+    className="psa-btn"
     onClick={onClick}
     disabled={disabled}
     style={{
@@ -96,6 +97,7 @@ const FlatBtn = ({ children, onClick, color = G.emerald, icon: Icon, disabled, s
 // ─── STAT CARD ───────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color, Icon, sub }) => (
   <div
+    className="psa-stat"
     style={{
       background: '#fff', border: `2px solid ${G.dark}`,
       padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 8,
@@ -127,7 +129,7 @@ const PharmacyStoreTab = ({ items, loading, reload }) => {
   return (
     <div>
       {/* Info + Controls Strip */}
-      <div style={{
+      <div className="psa-toolbar" style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         flexWrap: 'wrap', gap: 12, marginBottom: 18,
         padding: '12px 18px', background: G.lightGray,
@@ -152,20 +154,21 @@ const PharmacyStoreTab = ({ items, loading, reload }) => {
       </div>
 
       {loading && items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>
-          Loading Store Inventory…
+        <div className="psa-loading" style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>
+          <SegmentedSpinner size={24} />
+          <span>Loading Store Inventory…</span>
         </div>
       ) : items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
+        <div className="psa-empty" style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
           No items found in the Medical Store.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
+        <div className="psa-table-scroll" style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
+          <table className="psa-table psa-store" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
             <thead>
-              <tr style={{ background: G.dark }}>
+              <tr className="psa-thead" style={{ background: G.dark }}>
                 {['Drug ID', 'Name', 'Category', 'Unit', 'Price (ETB)', 'Store Stock Qty', 'Total Value (ETB)'].map(h => (
-                  <th key={h} style={{
+                  <th key={h} className="psa-th" style={{
                     padding: '14px 16px', textAlign: 'left', fontWeight: 900,
                     textTransform: 'uppercase', fontSize: 11, letterSpacing: 1,
                     whiteSpace: 'nowrap', color: '#fff', border: `1px solid ${G.forest}`,
@@ -178,7 +181,7 @@ const PharmacyStoreTab = ({ items, loading, reload }) => {
                 const totalVal = (parseFloat(m.stock_quantity) || 0) * (parseFloat(m.unit_price) || 0);
                 const isLow = m.stock_quantity <= m.min_level;
                 return (
-                  <tr key={m.id}
+                  <tr key={m.id} className="psa-row"
                     style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `1px solid ${G.sage}`, transition: 'background .15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#e8f5e9'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f4fbf4'}
@@ -200,7 +203,7 @@ const PharmacyStoreTab = ({ items, loading, reload }) => {
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: G.dark }}>
+              <tr className="psa-tfoot" style={{ background: G.dark }}>
                 <td colSpan={6} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: '#fff', border: `1px solid ${G.forest}` }}>
                   Total Lines in Store — {items.length} Item{items.length !== 1 ? 's' : ''}
                 </td>
@@ -223,7 +226,7 @@ const PharmacyStockTab = ({ drugs, loading, reload }) => {
   return (
     <div>
       {/* Info + Controls Strip */}
-      <div style={{
+      <div className="psa-toolbar" style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         flexWrap: 'wrap', gap: 12, marginBottom: 18,
         padding: '12px 18px', background: G.lightGray,
@@ -248,20 +251,21 @@ const PharmacyStockTab = ({ drugs, loading, reload }) => {
       </div>
 
       {loading && drugs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>
-          Loading pharmacy stock…
+        <div className="psa-loading" style={{ textAlign: 'center', padding: 60, color: G.olive, fontWeight: 800, fontSize: 16 }}>
+          <SegmentedSpinner size={24} />
+          <span>Loading pharmacy stock…</span>
         </div>
       ) : drugs.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
+        <div className="psa-empty" style={{ textAlign: 'center', padding: 60, color: G.darkGray, fontWeight: 700, fontSize: 15, border: `2px dashed ${G.sage}`, background: G.lightGray }}>
           No drugs found in Pharmacy inventory.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 }}>
+        <div className="psa-table-scroll" style={{ overflowX: 'auto', border: `2px solid ${G.dark}` }}>
+          <table className="psa-table psa-stock" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 900 }}>
             <thead>
-              <tr style={{ background: G.dark }}>
+              <tr className="psa-thead" style={{ background: G.dark }}>
                 {['Drug ID', 'Name', 'Strength', 'Category', 'Unit', 'Price (ETB)', 'Stock Qty', 'Total Value (ETB)'].map(h => (
-                  <th key={h} style={{
+                  <th key={h} className="psa-th" style={{
                     padding: '14px 16px', textAlign: 'left', fontWeight: 900,
                     textTransform: 'uppercase', fontSize: 11, letterSpacing: 1,
                     whiteSpace: 'nowrap', color: '#fff', border: `1px solid ${G.forest}`,
@@ -274,7 +278,7 @@ const PharmacyStockTab = ({ drugs, loading, reload }) => {
                 const totalVal = (parseFloat(d.quantity) || 0) * (parseFloat(d.unit_price) || 0);
                 const isLow = d.quantity <= d.reorder_level;
                 return (
-                  <tr key={d.inventory_id}
+                  <tr key={d.inventory_id} className="psa-row"
                     style={{ background: i % 2 === 0 ? '#fff' : '#f4fbf4', borderBottom: `1px solid ${G.sage}`, transition: 'background .15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#e8f5e9'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f4fbf4'}
@@ -297,7 +301,7 @@ const PharmacyStockTab = ({ drugs, loading, reload }) => {
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: G.dark }}>
+              <tr className="psa-tfoot" style={{ background: G.dark }}>
                 <td colSpan={7} style={{ padding: '14px 16px', fontWeight: 900, textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: '#fff', border: `1px solid ${G.forest}` }}>
                   Total Pharmacy Inventory Value — {drugs.length} Item{drugs.length !== 1 ? 's' : ''}
                 </td>
@@ -360,85 +364,212 @@ const FinancePharmacyAssets = () => {
   ];
 
   return (
-    <div style={{
+    <div className="psa-page" style={{
       background: '#FFFFFF', minHeight: '100vh', width: '100%',
       fontFamily: "'Inter','Segoe UI',sans-serif", boxSizing: 'border-box',
     }}>
 
       <style>{`
-        @keyframes psa-spin { 100% { transform: rotate(360deg); } }
+        :root, .psa-page {
+          --color-primary: #2563EB;
+          --color-primary-hover: #1D4ED8;
+          --color-gold: #F59E0B;
+          --color-gold-text: #1F2937;
+        }
+        .psa-page, .psa-page *, .psa-page *::before, .psa-page *::after { box-sizing: border-box; }
+        .psa-page { max-width: 1600px; margin: 0 auto; width: 100%; padding: 0; }
         .psa-spin { animation: psa-spin 1s linear infinite; }
-        * { box-sizing: border-box; }
+        @keyframes psa-spin { 100% { transform: rotate(360deg); } }
 
+        /* ── Page shell — end-to-end within layout margins ── */
+        .psa-content { padding: 0 !important; }
+
+        /* ── Header ── */
+        .psa-header-icon { border-radius: 10px; transition: transform 0.15s ease; }
+        .psa-header-icon svg { display: block; }
+        .psa-header-title { font-size: 28px !important; font-weight: 600 !important; letter-spacing: -0.5px; }
+        .psa-header-sub { font-size: 14px !important; }
+
+        /* ── Buttons (FlatBtn → .psa-btn) — gold hover on every button ── */
+        .psa-btn {
+          min-height: 36px !important;
+          border-radius: 8px !important;
+          font-weight: 500 !important;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease !important;
+        }
+        .psa-btn:hover { background: var(--color-gold) !important; border-color: var(--color-gold) !important; color: var(--color-gold-text) !important; }
+        .psa-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── KPI stat cards ── */
         .psa-kpi-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 16px;
           margin-bottom: 20px;
         }
-        .psa-tab-row {
-          display: flex;
-          gap: 0;
-          margin-bottom: 20px;
+        .psa-stat {
+          border-radius: 10px !important;
+          border: 1px solid #E5E7EB !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+          transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.15s ease !important;
         }
+        .psa-stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; background: #F9FAFB !important; }
+        .psa-stat > div:first-child > div { border-radius: 8px !important; border: none !important; }
+        .psa-stat > div:nth-child(2) { font-size: 28px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+        .psa-stat > div:nth-child(3) { font-weight: 600 !important; }
+        .psa-stat > div:last-child { border-radius: 3px; }
+
+        /* ── States ── */
+        .psa-loading, .psa-empty { min-height: 200px; }
+        .psa-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        .psa-empty { border-radius: 10px !important; }
+
+        /* ── Info banner ── */
+        .psa-banner { border-radius: 10px !important; }
+
+        /* ── Tabs ── */
+        .psa-tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .psa-tab-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 14px 20px;
-          border: 2px solid #1B5E20;
-          font-weight: 900;
-          font-size: 14px;
+          flex: 1 1 220px;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          padding: 12px 20px;
+          border: 1px solid #E5E7EB !important;
+          border-radius: 8px !important;
+          font-weight: 600; font-size: 14px;
+          color: #4B5563;
           cursor: pointer;
           text-transform: uppercase;
-          letter-spacing: 1px;
-          transition: background 0.2s, color 0.2s;
+          letter-spacing: 0.03em;
           font-family: inherit;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        .psa-tab-btn:first-child { border-right: none; }
+        .psa-tab-btn.active {
+          background: var(--color-primary) !important;
+          border-color: var(--color-primary) !important;
+          color: #fff !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .psa-tab-btn:not(.active):hover { background: var(--color-gold) !important; border-color: var(--color-gold) !important; color: var(--color-gold-text) !important; }
 
-        @media (max-width: 900px) { .psa-kpi-grid { grid-template-columns: 1fr 1fr; } }
+        /* ── Panel ── */
+        .psa-panel { border-radius: 10px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .psa-panel-icon { border-radius: 8px !important; }
+        .psa-panel-icon svg { display: block; }
+        .psa-panel-title { font-size: 16px !important; font-weight: 600 !important; }
+        .psa-panel-sub { font-size: 12px !important; }
+
+        /* ── Tables (rule 9) ── */
+        .psa-table-scroll { border-radius: 10px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .psa-table { font-size: 14px !important; min-width: 800px; }
+        .psa-thead { background: #F9FAFB !important; }
+        .psa-thead .psa-th, .psa-thead th {
+          background: #F9FAFB !important;
+          color: #6B7280 !important;
+          font-weight: 600 !important;
+          font-size: 12px !important;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          padding: 12px 16px !important;
+          border: none !important;
+          border-bottom: 1px solid #E5E7EB !important;
+          white-space: nowrap;
+        }
+        .psa-table tbody tr { background: #fff !important; transition: background 0.15s ease; }
+        .psa-table tbody tr:hover { background: #F9FAFB !important; }
+        .psa-table tbody td {
+          padding: 12px 16px !important;
+          border: none !important;
+          border-bottom: 1px solid #F3F4F6 !important;
+          vertical-align: middle;
+        }
+        /* Amounts right-aligned tabular-nums */
+        .psa-store td:nth-child(5), .psa-store td:nth-child(6), .psa-store td:nth-child(7),
+        .psa-stock td:nth-child(6), .psa-stock td:nth-child(7), .psa-stock td:nth-child(8) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+        .psa-store .psa-th:nth-child(5), .psa-store .psa-th:nth-child(6), .psa-store .psa-th:nth-child(7),
+        .psa-stock .psa-th:nth-child(6), .psa-stock .psa-th:nth-child(7), .psa-stock .psa-th:nth-child(8) { text-align: right !important; }
+        .psa-table tbody td:nth-child(2) { font-weight: 600; }
+
+        /* Table footer */
+        .psa-table tfoot tr { background: #F9FAFB !important; }
+        .psa-table tfoot td {
+          background: #F9FAFB !important;
+          border: none !important;
+          border-top: 1px solid #E5E7EB !important;
+          color: #4B5563 !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .psa-table tfoot td:nth-child(2) { text-align: right; color: #111827 !important; font-size: 15px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+
+        /* ── Toasts ── */
+        .psa-toast {
+          background: #FFFFFF !important;
+          color: #111827 !important;
+          border: 1px solid #E5E7EB !important;
+          border-left: 4px solid #16A34A !important;
+          border-radius: 8px !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          animation: psa-slidein 0.25s ease;
+        }
+        .psa-toast.success { border-left-color: #16A34A !important; }
+        .psa-toast.error   { border-left-color: #DC2626 !important; }
+        .psa-toast.warn    { border-left-color: #D97706 !important; }
+        .psa-toast button { color: #6B7280 !important; }
+        .psa-toast button:hover { color: #111827 !important; }
+
+        /* ── Animations ── */
+        @keyframes psa-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes psa-slidein { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+          .psa-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .psa-header { flex-direction: column; align-items: flex-start; }
+          .psa-tab-row { flex-direction: column; }
+          .psa-tab-btn { flex: 1 1 100%; min-height: 44px; }
+          .psa-btn { min-height: 44px !important; }
+        }
         @media (max-width: 600px) {
           .psa-kpi-grid { grid-template-columns: 1fr; }
-          .psa-tab-row { flex-direction: column; }
-          .psa-tab-btn:first-child { border-right: 2px solid #1B5E20; border-bottom: none; }
         }
       `}</style>
 
       <ToastContainer toasts={toasts} remove={remove} />
 
       {/* ── CONTENT WRAPPER ── */}
-      <div style={{ padding: '20px 24px' }}>
+      <div className="psa-content" style={{ padding: '20px 24px' }}>
 
         {/* ── PAGE HEADER ── */}
-        <div style={{
+        <div className="psa-header" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexWrap: 'wrap', gap: 14, marginBottom: 20,
           paddingBottom: 14, borderBottom: `2px solid ${G.dark}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ background: G.forest, padding: '10px 12px', border: `2px solid ${G.dark}`, display: 'flex' }}>
+            <div className="psa-header-icon" style={{ background: G.forest, padding: '10px 12px', border: `2px solid ${G.dark}`, display: 'flex' }}>
               <Pill size={22} color="#fff" />
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: G.dark, letterSpacing: -0.5 }}>
+              <div className="psa-header-title" style={{ fontSize: 22, fontWeight: 900, color: G.dark, letterSpacing: -0.5 }}>
                 Pharmacy Store &amp; Stock Valuation
               </div>
-              <div style={{ fontSize: 13, color: G.darkGray, marginTop: 2, fontWeight: 500 }}>
+              <div className="psa-header-sub" style={{ fontSize: 13, color: G.darkGray, marginTop: 2, fontWeight: 500 }}>
                 Evaluate exact stock quantities and values in the Medical Store and Active Pharmacy shelves.
               </div>
             </div>
           </div>
-          <FlatBtn icon={RefreshCw} color={G.emerald} onClick={loadData} disabled={loading}>
-            {loading ? 'Loading…' : 'Refresh Data'}
+          <FlatBtn icon={loading ? null : RefreshCw} color={G.emerald} onClick={loadData} disabled={loading}>
+            {loading ? <SegmentedSpinner size={14} /> : 'Refresh Data'}
           </FlatBtn>
         </div>
 
         {/* ── KPI CARDS ── */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 36, color: G.olive, fontWeight: 800, fontSize: 15 }}>
+          <div className="psa-loading" style={{ textAlign: 'center', padding: 36, color: G.olive, fontWeight: 800, fontSize: 15 }}>
             <SegmentedSpinner size={28} />
             Loading stats…
           </div>
@@ -451,8 +582,8 @@ const FinancePharmacyAssets = () => {
         )}
 
         {/* ── INFO STRIP ── */}
-        <div style={{
-          background: '#E3F2FD', border: `2px solid ${G.sky}`, borderLeft: `6px solid ${G.sky}`,
+        <div className="psa-banner" style={{
+          background: '#E0F2FE', border: `1px solid ${G.sky}`, borderLeft: `4px solid ${G.sky}`,
           padding: '11px 16px', display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20,
         }}>
           <Info size={16} color={G.sky} style={{ flexShrink: 0 }} />
@@ -469,7 +600,7 @@ const FinancePharmacyAssets = () => {
             return (
               <button
                 key={t.id}
-                className="psa-tab-btn"
+                className={'psa-tab-btn' + (active ? ' active' : '')}
                 onClick={() => setTab(t.id)}
                 style={{
                   background: active ? G.dark : '#fff',
@@ -488,18 +619,18 @@ const FinancePharmacyAssets = () => {
         </div>
 
         {/* ── TAB CONTENT PANEL ── */}
-        <div style={{ background: '#fff', border: `2px solid ${G.dark}`, padding: '22px' }}>
+        <div className="psa-panel" style={{ background: '#fff', border: `2px solid ${G.dark}`, padding: '22px' }}>
 
           {/* Sub-header (small label only — not a bold full-width color block, rule 16) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, paddingBottom: 12, borderBottom: `2px solid ${G.sage}` }}>
-            <div style={{ background: tab === 'store' ? G.forest : G.brown, padding: 8, border: `2px solid ${G.dark}`, display: 'flex' }}>
+          <div className="psa-panel-head" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, paddingBottom: 12, borderBottom: `2px solid ${G.sage}` }}>
+            <div className="psa-panel-icon" style={{ background: tab === 'store' ? G.forest : G.brown, padding: 8, border: `2px solid ${G.dark}`, display: 'flex' }}>
               {tab === 'store' ? <Warehouse size={18} color="#fff" /> : <Store size={18} color="#fff" />}
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>
+              <div className="psa-panel-title" style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>
                 {tab === 'store' ? 'Medical Store Evaluation' : 'Pharmacy Stock Evaluation'}
               </div>
-              <div style={{ fontSize: 11, color: G.olive, fontWeight: 700, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              <div className="psa-panel-sub" style={{ fontSize: 11, color: G.olive, fontWeight: 700, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8 }}>
                 {tab === 'store' ? 'Backend Store Inventory' : 'Front Pharmacy Inventory'}
               </div>
             </div>
