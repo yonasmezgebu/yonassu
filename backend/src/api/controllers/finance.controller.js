@@ -159,6 +159,8 @@ exports.createExpense = catchAsync(async (req, res) => {
   }
   await audit('EXPENSE_CREATED', userId, {
     ip,
+    resourceId: expenseId,
+    afterState: { categoryId, amount, description, requiresApproval },
     details: { categoryId, amount, description, requiresApproval }
   });
   res.status(201).json({
@@ -204,6 +206,14 @@ exports.updateExpense = catchAsync(async (req, res) => {
     .update(updateData);
   await audit('EXPENSE_UPDATED', userId, {
     ip,
+    resourceId: id,
+    beforeState: {
+      category_id: expense.category_id, amount: expense.amount,
+      date: expense.date, description: expense.description,
+      payment_method_id: expense.payment_method_id,
+      reference_number: expense.reference_number
+    },
+    afterState: updateData,
     details: { updates: Object.keys(updateData) }
   });
   res.json({
@@ -258,6 +268,12 @@ exports.deleteExpense = catchAsync(async (req, res) => {
     });
   await audit('EXPENSE_DELETED', userId, {
     ip,
+    resourceId: id,
+    beforeState: {
+      amount: expense.amount, description: expense.description,
+      category_id: expense.category_id, date: expense.date
+    },
+    afterState: { deleted_at: true },
     details: { amount: expense.amount, description: expense.description }
   });
   res.json({
@@ -293,6 +309,12 @@ exports.approveExpense = catchAsync(async (req, res) => {
       });
   await audit('EXPENSE_REJECTED', userId, {
     ip,
+    resourceId: id,
+    beforeState: {
+      amount: expense.amount, category: expense.category_name,
+      description: expense.description
+    },
+    afterState: { rejected: true, rejection_reason: rejectionReason, approved_at: null },
     details: { reason: rejectionReason }
   });
     const creator = await db('users').where('id', expense.entered_by).first();
@@ -322,6 +344,12 @@ exports.approveExpense = catchAsync(async (req, res) => {
     });
   await audit('EXPENSE_APPROVED', userId, {
     ip,
+    resourceId: id,
+    beforeState: {
+      amount: expense.amount, category: expense.category_name,
+      description: expense.description, approved_at: expense.approved_at
+    },
+    afterState: { approved: true, approved_by: userId, approved_at: new Date().toISOString() },
     details: { amount: expense.amount, category: expense.category_name }
   });
   const creator = await db('users').where('id', expense.entered_by).first();
@@ -566,6 +594,18 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
   });
   await audit('PO_PAYMENT_PROCESSED', userId, {
     ip,
+    resourceId: poId,
+    beforeState: {
+      poNumber: purchaseOrder.po_number,
+      paid_amount: purchaseOrder.paid_amount,
+      total_amount: purchaseOrder.total_amount
+    },
+    afterState: {
+      poNumber: purchaseOrder.po_number,
+      paid_amount: Number(purchaseOrder.paid_amount) + Number(amount),
+      total_amount: purchaseOrder.total_amount,
+      amount_paid_now: amount
+    },
     details: { amount, poNumber: purchaseOrder.po_number }
   });
   try {
@@ -647,6 +687,22 @@ exports.processInvoicePayment = catchAsync(async (req, res) => {
   });
   await audit('INVOICE_PAYMENT_PROCESSED', userId, {
     ip,
+    resourceId: saleId,
+    beforeState: {
+      invoice_number: sale.invoice_number,
+      amount_paid: sale.amount_paid,
+      total_amount: sale.total_amount,
+      customer_name: sale.customer_name,
+      current_balance: sale.current_balance
+    },
+    afterState: {
+      invoice_number: sale.invoice_number,
+      amount_paid: Number(sale.amount_paid) + Number(amount),
+      total_amount: sale.total_amount,
+      customer_name: sale.customer_name,
+      current_balance: newBalance,
+      amount_paid_now: amount
+    },
     details: { amount, customerId: sale.customer_id, customerName: sale.customer_name }
   });
   try {
@@ -1001,6 +1057,11 @@ exports.createBankTransaction = catchAsync(async (req, res) => {
   const result = await financeService.createBankTransaction(req.body, req.user.id);
   await audit('BANK_TRANSACTION_CREATED', req.user.id, {
     ip: req.ip,
+    resourceId: result.id,
+    afterState: {
+      id: result.id, paymentId: result.paymentId,
+      reference: result.reference, amount: req.body.amount, bankCode: req.body.bankCode
+    },
     details: { reference: result.reference, amount: req.body.amount, bankCode: req.body.bankCode }
   });
   res.status(201).json({
