@@ -987,23 +987,6 @@ exports.unassignDelegatedAdmin = catchAsync(async (req, res) => {
 });
 
 /* ════════════════════════════════════════════
-   D11 — TENANT MGMT
-   ════════════════════════════════════════════ */
-exports.getTenants = catchAsync(async (req, res) => {
-  const data = await adminService.getTenants();
-  res.json({ status: 'success', data });
-});
-exports.createTenant = catchAsync(async (req, res) => {
-  const data = await adminService.createTenant(req.body);
-  await audit('TENANT_CREATED', req.user.id, { ip: req.ip, details: { name: req.body.name } });
-  res.json({ status: 'success', data });
-});
-exports.getTenantAudit = catchAsync(async (req, res) => {
-  const data = await adminService.getTenantAudit(req.params.id);
-  res.json({ status: 'success', data });
-});
-
-/* ════════════════════════════════════════════
    D12 — COMPLIANCE EVIDENCE
    ════════════════════════════════════════════ */
 exports.getEvidenceList = catchAsync(async (req, res) => {
@@ -1083,29 +1066,6 @@ exports.remediatePrivilegeCreep = catchAsync(async (req, res) => {
   const { roleId } = req.body;
   const data = await adminService.remediatePrivilegeCreep(req.params.userId, roleId);
   await audit('PRIVILEGE_CREEP_REMEDIATED', req.user.id, { ip: req.ip, details: { userId: req.params.userId, roleId } });
-  res.json({ status: 'success', data });
-});
-
-/* ════════════════════════════════════════════
-   D16 — API KEYS
-   ════════════════════════════════════════════ */
-exports.getApiKeys = catchAsync(async (req, res) => {
-  const data = await adminService.getApiKeys();
-  res.json({ status: 'success', data });
-});
-exports.createApiKey = catchAsync(async (req, res) => {
-  const data = await adminService.createApiKey(req.body);
-  await audit('API_KEY_CREATED', req.user.id, { ip: req.ip, details: { name: req.body.name } });
-  res.json({ status: 'success', data });
-});
-exports.revokeApiKey = catchAsync(async (req, res) => {
-  const data = await adminService.revokeApiKey(req.params.id);
-  await audit('API_KEY_REVOKED', req.user.id, { ip: req.ip, details: { id: req.params.id } });
-  res.json({ status: 'success', data });
-});
-exports.rotateApiKey = catchAsync(async (req, res) => {
-  const data = await adminService.rotateApiKey(req.params.id);
-  await audit('API_KEY_ROTATED', req.user.id, { ip: req.ip, details: { id: req.params.id } });
   res.json({ status: 'success', data });
 });
 
