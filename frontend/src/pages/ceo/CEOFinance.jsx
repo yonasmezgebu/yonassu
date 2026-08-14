@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DollarSign, Download, CheckCircle, XCircle, FileText,
   ArrowDownRight, ArrowUpRight, Banknote, Eye, ChevronDown,
@@ -12,6 +13,534 @@ import {
 import api from '../../services/apiClient';
 import { formatCurrency } from '../../utils/formatters';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import styles from '../finance/FinanceHome.module.css';
+
+/* ─── Enterprise CSS Design System (25-Rule Pass) ─── */
+const FinanceGlobalStyles = () => (
+  <style>{`
+    :root {
+      --cfin-primary: #2563EB;
+      --cfin-primary-hover: #1D4ED8;
+      --cfin-bg-page: #F5F6FA;
+      --cfin-bg-card: #FFFFFF;
+      --cfin-border: #E5E7EB;
+      --cfin-text-primary: #111827;
+      --cfin-text-secondary: #6B7280;
+      --cfin-text-muted: #9CA3AF;
+      --cfin-success: #16A34A;
+      --cfin-success-bg: #DCFCE7;
+      --cfin-danger: #DC2626;
+      --cfin-danger-bg: #FEE2E2;
+      --cfin-warning: #D97706;
+      --cfin-warning-bg: #FEF3C7;
+      --cfin-info: #0284C7;
+      --cfin-info-bg: #E0F2FE;
+      --cfin-font: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    }
+
+    /* ── Page Wrapper ── */
+    .cfin-page-wrapper {
+      background: var(--cfin-bg-page);
+      min-height: calc(100vh - 60px);
+      font-family: var(--cfin-font);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--cfin-text-primary);
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .cfin-page-inner {
+      max-width: 1536px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* ── Header ── */
+    .cfin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 28px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cfin-page-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 4px;
+      color: var(--cfin-text-primary);
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cfin-page-icon {
+      background: var(--cfin-primary);
+      padding: 10px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cfin-page-subtitle {
+      color: var(--cfin-text-secondary);
+      margin: 0;
+      font-size: 14px;
+    }
+
+    /* ── Section Title ── */
+    .cfin-section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--cfin-text-primary);
+      margin: 0 0 16px;
+      line-height: 1.3;
+    }
+    .cfin-sub-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cfin-sub-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--cfin-text-primary);
+      margin: 0 0 4px;
+      line-height: 1.3;
+    }
+    .cfin-sub-subtitle {
+      color: var(--cfin-text-secondary);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    /* ── Tabs ── */
+    .cfin-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 4px;
+    }
+    .cfin-tab {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 150ms ease-in-out;
+      border: 1px solid var(--cfin-border);
+      background: var(--cfin-bg-card);
+      color: var(--cfin-text-secondary);
+      white-space: nowrap;
+      scroll-snap-align: start;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .cfin-tab:hover {
+      background: #F9FAFB;
+      color: var(--cfin-primary);
+      border-color: var(--cfin-primary);
+    }
+    .cfin-tab.active {
+      background: var(--cfin-primary);
+      color: #FFFFFF;
+      border-color: var(--cfin-primary);
+      font-weight: 600;
+    }
+
+    /* ── Buttons ── */
+    .cfin-btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      transition: all 150ms ease-in-out;
+      font-family: var(--cfin-font);
+    }
+    .cfin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .cfin-btn-primary {
+      background: var(--cfin-primary);
+      color: #FFFFFF;
+      border-color: var(--cfin-primary);
+    }
+    .cfin-btn-primary:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+    .cfin-btn-secondary {
+      background: var(--cfin-bg-card);
+      color: var(--cfin-text-secondary);
+      border-color: var(--cfin-border);
+    }
+    .cfin-btn-secondary:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+    .cfin-btn-danger {
+      background: var(--cfin-danger-bg);
+      color: var(--cfin-danger);
+      border-color: #fca5a5;
+    }
+    .cfin-btn-danger:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+    .cfin-btn-success {
+      background: var(--cfin-success);
+      color: #FFFFFF;
+      border-color: var(--cfin-success);
+    }
+    .cfin-btn-success:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+    .cfin-btn-ghost {
+      background: transparent;
+      color: var(--cfin-text-secondary);
+      border-color: var(--cfin-border);
+    }
+    .cfin-btn-ghost:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+
+    /* ── Cards ── */
+    .cfin-card {
+      background: var(--cfin-bg-card);
+      border: 1px solid var(--cfin-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: all 150ms ease-in-out;
+    }
+    .cfin-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
+    }
+
+    /* ── PCV Card (approval items) ── */
+    .cfin-pcv-card {
+      background: var(--cfin-bg-card);
+      border-radius: 10px;
+      border: 1px solid var(--cfin-border);
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      overflow: hidden;
+      transition: all 150ms ease-in-out;
+    }
+    .cfin-pcv-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .cfin-pcv-card.expanded {
+      border-color: var(--cfin-warning);
+      box-shadow: 0 4px 16px rgba(217,119,6,.15);
+    }
+    .cfin-pcv-row {
+      display: flex;
+      align-items: center;
+      padding: 18px 24px;
+      gap: 16px;
+    }
+    .cfin-pcv-icon {
+      flex-shrink: 0;
+      background: var(--cfin-warning-bg);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #fde68a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cfin-pcv-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    /* ── Badges ── */
+    .cfin-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .cfin-badge-warning { background: var(--cfin-warning-bg); color: var(--cfin-warning); }
+    .cfin-badge-success { background: var(--cfin-success-bg); color: var(--cfin-success); }
+    .cfin-badge-danger  { background: var(--cfin-danger-bg);  color: var(--cfin-danger); }
+    .cfin-badge-info    { background: var(--cfin-info-bg);    color: var(--cfin-info); }
+    .cfin-badge-muted   { background: #F3F4F6; color: var(--cfin-text-secondary); }
+
+    /* ── Tables ── */
+    .cfin-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--cfin-border);
+    }
+    .cfin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 600px;
+    }
+    .cfin-table th {
+      background: #F9FAFB;
+      padding: 12px 16px;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--cfin-text-secondary);
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--cfin-border);
+      text-align: left;
+    }
+    .cfin-table th.num { text-align: right; }
+    .cfin-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--cfin-border);
+      color: var(--cfin-text-primary);
+      transition: background 150ms ease-in-out;
+      height: 48px;
+    }
+    .cfin-table tr:last-child td { border-bottom: none; }
+    .cfin-table tr:hover td { background: #F9FAFB; }
+    .cfin-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Toast ── */
+    .cfin-toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      padding: 14px 20px 14px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      border-left: 4px solid;
+      min-width: 280px;
+      animation: cfin-slide-in 200ms ease-out;
+      font-family: var(--cfin-font);
+    }
+    .cfin-toast-success {
+      background: #f0fdf4;
+      color: #15803d;
+      border-left-color: var(--cfin-success);
+    }
+    .cfin-toast-error {
+      background: #fef2f2;
+      color: #991b1b;
+      border-left-color: var(--cfin-danger);
+    }
+    @keyframes cfin-slide-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Modal ── */
+    .cfin-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cfin-modal {
+      background: var(--cfin-bg-card);
+      border-radius: 12px;
+      padding: 32px;
+      width: 480px;
+      max-width: calc(100vw - 32px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .cfin-modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--cfin-text-primary);
+      margin: 0 0 8px;
+    }
+    .cfin-modal-body {
+      color: var(--cfin-text-secondary);
+      font-size: 14px;
+      margin: 0 0 20px;
+    }
+    .cfin-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* ── Empty State ── */
+    .cfin-empty {
+      text-align: center;
+      padding: 64px 32px;
+      background: var(--cfin-bg-card);
+      border-radius: 10px;
+      border: 1px solid var(--cfin-border);
+    }
+    .cfin-empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--cfin-text-primary);
+      margin: 12px 0 8px;
+    }
+    .cfin-empty-sub {
+      color: var(--cfin-text-secondary);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    /* ── PCV Detail Panel ── */
+    .cfin-detail-panel {
+      background: #F9FAFB;
+      border-top: 1px solid var(--cfin-border);
+      padding: 24px;
+    }
+    .cfin-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .cfin-detail-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--cfin-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+    }
+    .cfin-detail-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cfin-text-primary);
+    }
+    .cfin-paid-to-box {
+      background: var(--cfin-warning-bg);
+      border: 1px dashed #fde68a;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .cfin-sig-box {
+      display: flex;
+      gap: 16px;
+    }
+
+    /* ── Inputs ── */
+    .cfin-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--cfin-border);
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      font-family: var(--cfin-font);
+      transition: border 150ms, box-shadow 150ms;
+      min-height: 100px;
+    }
+    .cfin-textarea:focus {
+      border-color: var(--cfin-primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .cfin-textarea.danger { border-color: #fca5a5; }
+
+    /* ── KPI override (view-only context) ── */
+    .ceo-view-only * { cursor: default !important; }
+    .ceo-view-only [class*="breakdownRow"]:hover,
+    .ceo-view-only [class*="summaryRow"]:hover,
+    .ceo-view-only [class*="ledgerRow"]:hover,
+    .ceo-view-only [class*="qaTile"]:hover {
+      transform: none !important;
+      box-shadow: none !important;
+      background: inherit !important;
+      opacity: 1 !important;
+    }
+    
+    .ceo-view-only [class*="kpiCard"]:hover {
+      transform: none !important;
+      box-shadow: none !important;
+      border-color: var(--cfin-border) !important;
+    }
+    .ceo-view-only [class*="kpiCardHero"]:hover {
+      background: var(--cfin-primary) !important;
+      border-color: var(--cfin-primary) !important;
+    }
+
+    /* ── Responsiveness ── */
+    @media (max-width: 1024px) {
+      .cfin-page-inner { padding: 16px; }
+      .cfin-page-wrapper { padding: 6px; }
+      .cfin-detail-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .cfin-page-wrapper { padding: 4px; }
+      .cfin-page-inner { padding: 12px; }
+      .cfin-page-title { font-size: 24px; }
+      .cfin-header { flex-direction: column; align-items: flex-start; }
+      .cfin-sub-header { flex-direction: column; align-items: flex-start; }
+      .cfin-pcv-row { flex-direction: column; align-items: flex-start; }
+      .cfin-pcv-actions { width: 100%; }
+      .cfin-pcv-actions .cfin-btn { flex: 1; justify-content: center; }
+      .cfin-detail-grid { grid-template-columns: 1fr 1fr; }
+      .cfin-modal-actions { flex-direction: column; }
+      .cfin-modal-actions .cfin-btn { width: 100%; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .cfin-detail-grid { grid-template-columns: 1fr; }
+      .cfin-sig-box { flex-direction: column; }
+      .cfin-tabs { flex-wrap: nowrap; }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  `}</style>
+);
+
+/* ─── Color Palette ────────────────────────── */
+const G = {
+  forest: '#059669', dark: '#111827', emerald: '#059669', leaf: '#10B981',
+  sage: '#A7F3D0', olive: '#6B7280', lime: '#84CC16', brown: '#92400E',
+  sky: '#0891B2', white: '#FFFFFF', light: '#F9FAFB', darkGray: '#374151',
+  orange: '#D97706', red: '#DC2626', purple: '#7C3AED', blue: '#2563EB'
+};
+
+const fmtShort = (n) => {
+  const v = Number(n || 0);
+  if (v >= 1000000) return 'ETB ' + (v / 1000000).toFixed(1) + 'M';
+  if (v >= 1000) return 'ETB ' + (v / 1000).toFixed(1) + 'K';
+  return 'ETB ' + v.toFixed(2);
+};
+
+const CategoryBar = ({ value, max, color }) => (
+  <div className={styles.catBar}>
+    <div className={styles.catBarFill} style={{ background: color, width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%` }} />
+  </div>
+);
 
 /* ─────────────────────────────── helpers ─────────────────────────────── */
 const fmt = val =>
@@ -126,12 +655,52 @@ const CEOFinance = () => {
   const [funds,       setFunds]       = useState([]);
   const [fundsLoading,setFundsLoading]= useState(false);
 
+  /* ── Real Finance Data States ── */
+  const [cashbook, setCashbook]   = useState([]);
+  const [crvs,     setCrvs]       = useState([]);
+  const [pvs,      setPvs]        = useState([]);
+  const [banks,    setBanks]      = useState([]);
+  const [bankSummary, setBankSummary] = useState(null);
+  const [recons,   setRecons]     = useState([]);
+  const [receivables, setReceivables] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeString, setTimeString] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadRealFinance = async () => {
+    setRefreshing(true);
+    setFinLoading(true);
+    try {
+      const [cbRes, crvRes, pvRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
+        api.get('/finance-cash/cashbook'),
+        api.get('/finance-cash/crv'),
+        api.get('/finance-cash/pv'),
+        api.get('/finance-bank'),
+        api.get('/finance-bank/cashbook/summary'),
+        api.get('/finance-bank/reconciliations'),
+        api.get('/finance-receivables/book'),
+      ]);
+      if (cbRes.status === 'fulfilled')      setCashbook(cbRes.value?.data || []);
+      if (crvRes.status === 'fulfilled')     setCrvs(crvRes.value?.data || []);
+      if (pvRes.status === 'fulfilled')      setPvs(pvRes.value?.data || []);
+      if (bankRes.status === 'fulfilled')    setBanks(bankRes.value?.data || []);
+      if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data || null);
+      if (reconRes.status === 'fulfilled')   setRecons(reconRes.value?.data || []);
+      if (rcvRes.status === 'fulfilled')     setReceivables(rcvRes.value?.data || []);
+    } catch (err) { }
+    setRefreshing(false);
+    setFinLoading(false);
+  };
+
   /* ── fetch overview ── */
   useEffect(() => {
-    api.get('/ceo/finance-overview')
-      .then(res => setFinData(res.data))
-      .catch(() => setFinData(null))
-      .finally(() => setFinLoading(false));
+    loadRealFinance();
     loadPcvs();
   }, []);
 
@@ -226,11 +795,10 @@ const CEOFinance = () => {
     finally { setActionLoading(null); }
   };
 
+  const nav = useNavigate();
+
   const tabs = [
-    { id: 'Overview',       label: '📊 Overview' },
-    { id: 'PCV Approvals',  label: `💵 Petty Cash${pcvs.length > 0 ? ` (${pcvs.length})` : ''}` },
-    { id: 'Fund Requests',  label: '📋 Fund Requests' },
-    { id: 'Payroll Status', label: `👥 Payroll${payrollQueue.filter(q => q.payment_status === 'Pending Payment').length > 0 ? ` (${payrollQueue.filter(q => q.payment_status === 'Pending Payment').length})` : ''}` },
+    { id: 'Overview',          label: '📊 Overview' },
   ];
 
   const card = (sx = {}) => ({
@@ -241,288 +809,304 @@ const CEOFinance = () => {
   const th = { padding: '11px 14px', textAlign: 'left', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' };
   const td = { padding: '13px 14px', borderBottom: '1px solid #f1f5f9', color: '#334155', fontSize: 13 };
 
-  return (
-    <div style={{ padding: 28, background: '#f0f4f8', minHeight: '100vh', fontFamily: "'Inter', system-ui, sans-serif" }}>
+  /* ── Derived values ── */
+  const cbEntries   = Array.isArray(cashbook) ? cashbook : [];
+  const crvList     = Array.isArray(crvs)     ? crvs     : [];
+  const pvList      = Array.isArray(pvs)      ? pvs      : [];
+  const pcvList     = Array.isArray(pcvs)     ? pcvs     : [];
+  const rcvList     = Array.isArray(receivables) ? receivables : [];
+  const bankList    = Array.isArray(banks)    ? banks    : [];
+  const reconList   = Array.isArray(recons)   ? recons   : [];
 
+  const totalReceipts  = cbEntries.reduce((s, e) => s + parseFloat(e.receipts || 0), 0);
+  const totalPayments  = cbEntries.reduce((s, e) => s + parseFloat(e.payments || 0), 0);
+  const cashBalance    = totalReceipts - totalPayments;
+  const crvTotal = crvList.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
+  const pvTotal  = pvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  const pcvTotal = pcvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  const bankBalance = bankSummary ? parseFloat(bankSummary.total_balance || bankSummary.balance || 0) : bankList.reduce((s, b) => s + parseFloat(b.balance || b.current_balance || 0), 0);
+  
+  const totalReceivable    = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
+  const settledReceivable  = rcvList.reduce((s, r) => s + parseFloat(r.paid_amount  || r.settled || 0), 0);
+  const outstandingBalance = totalReceivable - settledReceivable;
+  const unreconCount = reconList.filter(r => r.status !== 'reconciled' && r.status !== 'completed').length;
+  
+  const recentCB = [...cbEntries].reverse().slice(0, 6);
+  const txBreakdown = [
+    { name: 'Cash Receipts (CRV)', count: crvList.length, amount: crvTotal, color: G.forest },
+    { name: 'Payments (PV)',        count: pvList.length,  amount: pvTotal,  color: G.orange },
+    { name: 'Petty Cash (PCV)',     count: pcvList.length, amount: pcvTotal, color: G.purple },
+  ].filter(b => b.count > 0);
+  const maxBreakdownAmt = Math.max(...txBreakdown.map(b => b.amount), 1);
+
+  return (
+    <div className="cfin-page-wrapper">
+      <FinanceGlobalStyles />
+
+      <div className="cfin-page-inner">
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999, background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4', border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#bbf7d0'}`, color: toast.type === 'error' ? '#991b1b' : '#15803d', padding: '14px 20px', borderRadius: 10, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}>
+        <div className={`cfin-toast ${toast.type === 'error' ? 'cfin-toast-error' : 'cfin-toast-success'}`}>
           {toast.msg}
         </div>
       )}
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+      <div className="cfin-header">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 4px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', padding: 10, borderRadius: 12, display: 'flex', boxShadow: '0 4px 10px rgba(139,92,246,.3)' }}>
+          <h1 className="cfin-page-title">
+            <span className="cfin-page-icon">
               <DollarSign color="white" size={24} />
             </span>
             Finance Command Center
           </h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: 14 }}>Live P&L, cash flow, receivables, payables & tax obligations</p>
+          <p className="cfin-page-subtitle">Live P&L, cash flow, receivables, payables &amp; tax obligations</p>
         </div>
-        <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, fontWeight: 600, color: '#334155', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <button onClick={() => window.print()} className="cfin-btn cfin-btn-secondary">
           <Download size={16} /> Export PDF
         </button>
       </div>
 
       {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
+      <div className="cfin-tabs">
         {tabs.map(t => (
           <button key={t.id}
-            onClick={() => { setActiveTab(t.id); if (t.id === 'Payroll Status') fetchPayrollQueue(); if (t.id === 'Fund Requests') fetchFunds(); }}
-            style={{ padding: '10px 20px', borderRadius: 99, fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all .2s', background: activeTab === t.id ? '#0f172a' : 'white', color: activeTab === t.id ? 'white' : '#64748b', border: `1px solid ${activeTab === t.id ? '#0f172a' : '#e2e8f0'}`, boxShadow: activeTab === t.id ? '0 4px 12px rgba(15,23,42,.15)' : 'none' }}>
+            className={`cfin-tab${activeTab === t.id ? ' active' : ''}`}
+            onClick={() => setActiveTab(t.id)}>
             {t.label}
           </button>
         ))}
       </div>
 
+      
       {/* ══════════════════ OVERVIEW TAB ══════════════════ */}
       {activeTab === 'Overview' && (
-        <>
-          {finLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 16, color: '#64748b' }}>
-              <div style={{ width: 40, height: 40, border: '4px solid #e2e8f0', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
-              <p>Loading Financial Intelligence…</p>
+        <div style={{ background: 'transparent' }}>
+          {/* Header */}
+          <div className="cfin-sub-header">
+            <div>
+              <h2 className="cfin-sub-title">Real-Time Finance Overview</h2>
+              <p className="cfin-sub-subtitle">Synced directly from the central ledger · {timeString}</p>
             </div>
-          ) : !finData ? (
-            <div style={{ background: '#fee2e2', borderRadius: 16, padding: 32, color: '#b91c1c', fontWeight: 700 }}>Failed to load finance data.</div>
-          ) : (
-            <>
-              {/* KPI Row 1 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20, marginBottom: 24 }}>
-                <KPICard label="Month Revenue"   value={fmt(finData.monthRevenue)} sub="All departments combined"    icon={TrendingUp}    gradient="linear-gradient(135deg,#1d4ed8,#3b82f6)" />
-                <KPICard label="Month Expenses"  value={fmt(finData.monthExp)}     sub="Approved expenses this month" icon={TrendingDown}  gradient="linear-gradient(135deg,#b45309,#f59e0b)" />
-                <KPICard label={finData.netProfit >= 0 ? 'Net Profit' : 'Net Loss'} value={fmt(Math.abs(finData.netProfit))} sub="Revenue minus expenses" icon={DollarSign} gradient={finData.netProfit >= 0 ? 'linear-gradient(135deg,#065f46,#10b981)' : 'linear-gradient(135deg,#be123c,#f43f5e)'} />
-                <KPICard label="Pending Approvals" value={finData.pendingExpenses.count} sub={`${fmt(finData.pendingExpenses.total)} awaiting`} icon={Clock} gradient="linear-gradient(135deg,#4338ca,#6366f1)" />
+            <button onClick={loadRealFinance} disabled={refreshing} className="cfin-btn cfin-btn-secondary">
+              {refreshing ? <SegmentedSpinner size={16} /> : <RefreshCw size={16} />}
+              Refresh Data
+            </button>
+          </div>
+
+          {/* View-only wrapper — disables all cursor:pointer / hover nav from finance CSS classes */}
+          <div style={{ cursor: 'default' }} className="ceo-view-only">
+          {/* ROW 1: KPIs */}
+          <div className={styles.kpiGrid}>
+            <div className={`${styles.kpiCard} ${styles.kpiCardHero}`}>
+              <div className={styles.kpiTop}>
+                <span className={styles.kpiLabel}>Cash Book Balance</span>
+                <span className={styles.kpiIconHero}>📓</span>
               </div>
-
-              {/* KPI Row 2 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20, marginBottom: 24 }}>
-                <KPICard label="Total Receivables" value={fmt(finData.totalReceivable)} sub="Customers owe us"         icon={ArrowUpRight}   gradient="linear-gradient(135deg,#0f766e,#14b8a6)" />
-                <KPICard label="Total Payables"    value={fmt(finData.totalPayable)}    sub="We owe to suppliers"      icon={ArrowDownRight}  gradient="linear-gradient(135deg,#9d174d,#ec4899)" />
-                <KPICard label="Cash In (Month)"   value={fmt(finData.cashInMonth)}     sub="Payments received"        icon={Landmark}        gradient="linear-gradient(135deg,#1e3a5f,#2563eb)" />
-                <KPICard label="Tax Obligations"   value={fmt(finData.totalTaxOwed)}    sub={`VAT + WHT (YTD)`}        icon={ShieldCheck}     gradient="linear-gradient(135deg,#713f12,#d97706)" />
+              <div className={styles.kpiHeroValue}>{fmtShort(cashBalance)}</div>
+              <div className={styles.kpiHeroMeta}>
+                <span>In: {fmtShort(totalReceipts)}</span>
+                <span>Out: {fmtShort(totalPayments)}</span>
               </div>
+              <div className={styles.kpiHeroFoot}>
+                {cbEntries.length} verified ledger entries
+              </div>
+            </div>
 
-              {/* Charts Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className={styles.kpiCard}>
+              <div className={styles.kpiTop}>
+                <span className={styles.kpiLabel}>CRV Income</span>
+                <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}>📥</span>
+              </div>
+              <div className={styles.kpiValue} style={{ color: G.forest }}>{fmtShort(crvTotal)}</div>
+              <div className={styles.kpiMeta}>{crvList.length} receipts</div>
+              <div className={styles.kpiSub}>Verified cash received</div>
+            </div>
 
-                {/* Revenue/Expense/Profit Trend */}
-                <div style={card()}>
-                  <h3 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <TrendingUp size={18} /> 6-Month P&amp;L Trend
-                  </h3>
-                  <div style={{ height: 300 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={finData.revenueTrends} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}    />
-                          </linearGradient>
-                          <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#f43f5e" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}   />
-                          </linearGradient>
-                          <linearGradient id="gPro" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}   />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <Tooltip formatter={v => fmt(v)} />
-                        <Legend />
-                        <Area type="monotone" dataKey="Revenue"  stroke="#3b82f6" fill="url(#gRev)" strokeWidth={2} />
-                        <Area type="monotone" dataKey="Expenses" stroke="#f43f5e" fill="url(#gExp)" strokeWidth={2} />
-                        <Area type="monotone" dataKey="Profit"   stroke="#10b981" fill="url(#gPro)" strokeWidth={2} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+            <div className={styles.kpiCard}>
+              <div className={styles.kpiTop}>
+                <span className={styles.kpiLabel}>PV Payments</span>
+                <span className={styles.kpiIcon} style={{ background: 'var(--color-warning-bg)' }}>📤</span>
+              </div>
+              <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(pvTotal)}</div>
+              <div className={styles.kpiMeta}>{pvList.length} vouchers</div>
+              <div className={styles.kpiSub}>Verified cash paid out</div>
+            </div>
 
-                {/* Expense by Category */}
-                <div style={card()}>
-                  <h3 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <TrendingDown size={18} /> Expenses by Category
-                  </h3>
-                  {finData.expByCategory?.length === 0
-                    ? <p style={{ color: '#94a3b8', textAlign: 'center', paddingTop: 80 }}>No expenses this month.</p>
-                    : (
-                    <div style={{ height: 300 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={finData.expByCategory} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                          <XAxis type="number" tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
-                          <YAxis type="category" dataKey="category" width={90} tick={{ fontSize: 11 }} />
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                          <Tooltip formatter={v => fmt(v)} />
-                          <Bar dataKey="total" name="Amount" radius={[0, 4, 4, 0]}>
-                            {finData.expByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+            <div className={styles.kpiCard}>
+              <div className={styles.kpiTop}>
+                <span className={styles.kpiLabel}>Bank Balance</span>
+                <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}>🏦</span>
+              </div>
+              <div className={styles.kpiValue} style={{ color: G.blue }}>{fmtShort(bankBalance)}</div>
+              <div className={styles.kpiMeta}>{bankList.length} account{bankList.length !== 1 ? 's' : ''}</div>
+              <div className={styles.kpiSub}>Total bank liquidity</div>
+            </div>
+          </div>
+
+          {/* ROW 2: BREAKDOWN + LEDGER */}
+          <div className={styles.grid2}>
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.cardTitleIcon}>📊</span>
+                <h3 className={styles.cardTitle}>Transaction Breakdown</h3>
+                <span className={styles.cardSub}>Cash Book summary</span>
+              </div>
+              <div className={styles.miniGrid}>
+                {[
+                  { label: 'CB Entries',    val: cbEntries.length,  icon: '📓', c: G.forest },
+                  { label: 'Receivables',   val: rcvList.length,    icon: '📋', c: G.orange },
+                  { label: 'Unrecon.',      val: unreconCount,      icon: '⚖️', c: unreconCount > 0 ? G.red : G.emerald },
+                  { label: 'Petty Cash',    val: pcvList.length,    icon: '💰', c: G.purple },
+                ].map(k => (
+                  <div key={k.label} className={styles.miniTile}>
+                    <div className={styles.miniTileTop}>
+                      <span className={styles.miniTileIcon}>{k.icon}</span>
+                      <span className={styles.miniTileLabel}>{k.label}</span>
                     </div>
-                  )}
-                </div>
+                    <div className={styles.miniTileValue} style={{ color: k.c }}>{k.val}</div>
+                  </div>
+                ))}
               </div>
-
-              {/* Receivables / Payables / Tax row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24 }}>
-
-                {/* Receivables */}
-                <div style={card()}>
-                  <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ArrowUpRight size={18} color="#10b981" /> Top Receivables
-                  </h3>
-                  {finData.receivableRows?.length === 0
-                    ? <p style={{ color: '#94a3b8', textAlign: 'center' }}>All customers paid!</p>
-                    : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><th style={th}>Customer</th><th style={{ ...th, textAlign: 'right' }}>Owed</th></tr></thead>
-                      <tbody>
-                        {finData.receivableRows.slice(0, 8).map((r, i) => (
-                          <tr key={i}>
-                            <td style={td}><span style={{ fontWeight: 700 }}>{r.name}</span><br /><span style={{ fontSize: 11, color: '#94a3b8' }}>{r.phone || ''}</span></td>
-                            <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#059669' }}>{fmt(r.current_balance)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+              <div className={styles.listHeader}>
+                <span>Document Type</span>
+                <span />
+                <span style={{ textAlign: 'right' }}>Amount (ETB)</span>
+              </div>
+              {txBreakdown.length === 0 ? (
+                <div className={styles.empty}>No transaction data yet</div>
+              ) : txBreakdown.map((row) => (
+                <div key={row.name} className={styles.breakdownRow}>
+                  <div className={styles.catNameWrap}>
+                    <span className={styles.dot} style={{ background: row.color }} />
+                    <span className={styles.catName}>{row.name}</span>
+                  </div>
+                  <CategoryBar value={row.amount} max={maxBreakdownAmt} color={row.color} />
+                  <span className={styles.catAmount} style={{ color: row.color }}>{fmtShort(row.amount)}</span>
                 </div>
+              ))}
+            </div>
 
-                {/* Payables */}
-                <div style={card()}>
-                  <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ArrowDownRight size={18} color="#f43f5e" /> Supplier Payables
-                  </h3>
-                  {finData.payableRows?.length === 0
-                    ? <p style={{ color: '#94a3b8', textAlign: 'center' }}>No outstanding payables!</p>
-                    : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><th style={th}>Supplier</th><th style={{ ...th, textAlign: 'right' }}>Owed</th></tr></thead>
-                      <tbody>
-                        {finData.payableRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={td}><span style={{ fontWeight: 700 }}>{r.supplier_name || 'Unknown'}</span><br /><span style={{ fontSize: 11, color: '#94a3b8' }}>{r.po_count} POs</span></td>
-                            <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{fmt(r.owed)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-
-                {/* Tax obligations */}
-                <div style={card()}>
-                  <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ShieldCheck size={18} color="#d97706" /> Tax Obligations (YTD)
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-                    {[
-                      { label: 'VAT Collected',       value: finData.vatOwed,         color: '#3b82f6' },
-                      { label: 'Withholding Tax',     value: finData.withholdingOwed, color: '#f59e0b' },
-                      { label: 'Total Tax Obligation',value: finData.totalTaxOwed,    color: '#8b5cf6', bold: true },
-                    ].map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: 10, borderLeft: `4px solid ${item.color}` }}>
-                        <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>{item.label}</span>
-                        <span style={{ fontSize: 15, fontWeight: item.bold ? 800 : 700, color: item.color }}>{fmt(item.value)}</span>
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.cardTitleIcon}>📜</span>
+                <h3 className={styles.cardTitle}>Recent Ledger Entries</h3>
+              </div>
+              {recentCB.length === 0 ? (
+                <div className={styles.empty}>No entries yet</div>
+              ) : (
+                <div className={styles.ledgerList}>
+                  {recentCB.map((entry, i) => {
+                    const isReceipt = parseFloat(entry.receipts || 0) > 0;
+                    const c   = isReceipt ? G.forest : G.orange;
+                    const icon = isReceipt ? '📥' : '📤';
+                    const amt  = isReceipt ? entry.receipts : entry.payments;
+                    return (
+                      <div key={entry.id || i} className={styles.ledgerRow}>
+                        <span className={styles.ledgerIcon} style={{ background: isReceipt ? 'var(--color-success-bg)' : 'var(--color-warning-bg)' }}>{icon}</span>
+                        <div className={styles.ledgerMain}>
+                          <div className={styles.ledgerTitle}>
+                            {entry.reference && <span className={styles.ledgerRef}>{entry.reference}</span>}
+                            {entry.description || entry.type || 'Entry'}
+                          </div>
+                          <div className={styles.ledgerDate}>{entry.date ? new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}</div>
+                        </div>
+                        <span className={styles.ledgerAmount} style={{ color: c }}>{fmtShort(amt)}</span>
                       </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 16, padding: '10px 14px', background: '#fefce8', borderRadius: 10, border: '1px solid #fde047', fontSize: 12, color: '#92400e' }}>
-                    ⚠️ Consult your tax advisor to confirm filing deadlines.
-                  </div>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
 
-              {/* Recent Transactions ledger */}
-              <div style={card()}>
-                <h3 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileText size={18} /> Recent Transactions Ledger
-                </h3>
-                {finData.recentTransactions?.length === 0
-                  ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: 24 }}>No transactions recorded yet.</p>
-                  : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th style={th}>#</th>
-                        <th style={th}>Type</th>
-                        <th style={th}>Department / Category</th>
-                        <th style={th}>By</th>
-                        <th style={th}>Date</th>
-                        <th style={{ ...th, textAlign: 'right' }}>Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {finData.recentTransactions.map((t, i) => (
-                        <tr key={i} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                          <td style={td}>{i + 1}</td>
-                          <td style={td}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: t.direction === 'Income' ? '#059669' : '#dc2626', fontWeight: 700 }}>
-                              {t.direction === 'Income' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                              {t.direction}
-                            </span>
-                          </td>
-                          <td style={td}>{t.dept || '—'}</td>
-                          <td style={td}>{t.by || '—'}</td>
-                          <td style={td}>{fmtDate(t.date)}</td>
-                          <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: t.direction === 'Income' ? '#059669' : '#dc2626' }}>
-                            {t.direction === 'Income' ? '+' : '-'}{fmt(t.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+          {/* ROW 3: RECEIVABLES + RECONCILIATION */}
+          <div className={styles.grid3} style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className={styles.card}>
+              <h3 className={styles.cardTitleNoIcon}>📋 Receivable Book</h3>
+              <div className={styles.cardLabel}>Outstanding Balances</div>
+              <div className={styles.summaryList}>
+                {[
+                  { label: 'Total Invoiced',   val: fmt(totalReceivable),    icon: '📄', bg: 'var(--color-info-bg)', c: G.blue },
+                  { label: 'Amount Settled',   val: fmt(settledReceivable),  icon: '✅', bg: 'var(--color-success-bg)', c: G.forest },
+                  { label: 'Outstanding',      val: fmt(outstandingBalance), icon: '⏳', bg: outstandingBalance > 0 ? 'var(--color-danger-bg)' : 'var(--color-success-bg)', c: outstandingBalance > 0 ? G.red : G.forest },
+                ].map(row => (
+                  <div key={row.label} className={styles.summaryRow}>
+                    <span className={styles.summaryIcon} style={{ background: row.bg }}>{row.icon}</span>
+                    <div className={styles.summaryMain}>
+                      <div className={styles.summaryLabel}>{row.label}</div>
+                      <div className={styles.summaryValue} style={{ color: row.c }}>{row.val}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </>
-          )}
-        </>
+              <div className={styles.summaryCount}>{rcvList.length} receivable books</div>
+            </div>
+
+            <div className={styles.card}>
+              <h3 className={styles.cardTitleNoIcon}>⚖️ Bank Reconciliation</h3>
+              <div className={styles.cardLabel}>Accounts Status</div>
+              <div className={styles.summaryList}>
+                {[
+                  { label: 'Bank Accounts',    val: `${bankList.length} accounts`,      icon: '🏦', bg: 'var(--color-info-bg)', c: G.blue },
+                  { label: 'Bank Balance',     val: fmtShort(bankBalance),              icon: '💳', bg: 'var(--color-success-bg)', c: G.forest },
+                  { label: 'Unreconciled',     val: `${unreconCount} pending`,          icon: unreconCount > 0 ? '⚠️' : '✅', bg: unreconCount > 0 ? 'var(--color-danger-bg)' : 'var(--color-success-bg)', c: unreconCount > 0 ? G.red : G.forest },
+                ].map(row => (
+                  <div key={row.label} className={styles.summaryRow}>
+                    <span className={styles.summaryIcon} style={{ background: row.bg }}>{row.icon}</span>
+                    <div className={styles.summaryMain}>
+                      <div className={styles.summaryLabel}>{row.label}</div>
+                      <div className={styles.summaryValue} style={{ color: row.c }}>{row.val}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.summaryCount}>{reconList.length} reconciliation records</div>
+            </div>
+          </div>
+          </div>{/* end ceo-view-only */}
+        </div>
       )}
 
       {/* ══════════════ PCV APPROVALS TAB ══════════════ */}
       {activeTab === 'PCV Approvals' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}><Banknote size={22} color="#eab308" /> Pending Petty Cash Vouchers</h2>
-            <button onClick={loadPcvs} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}><RefreshCw size={14} /> Refresh</button>
+          <div className="cfin-sub-header">
+            <h2 className="cfin-sub-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Banknote size={20} color="var(--cfin-warning)" /> Pending Petty Cash Vouchers</h2>
+            <button onClick={loadPcvs} className="cfin-btn cfin-btn-secondary"><RefreshCw size={14} /> Refresh</button>
           </div>
           {loadingPcvs ? (
-            <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}><SegmentedSpinner size={32} /><div>Loading pending PCVs...</div></div>
+            <div className="cfin-empty"><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: 'var(--cfin-text-muted)' }}>Loading pending PCVs...</div></div>
           ) : pcvs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 80, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
-              <CheckCircle size={48} color="#22c55e" style={{ marginBottom: 16 }} />
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>All Clear!</h3>
-              <p style={{ color: '#64748b', margin: 0 }}>No PCV vouchers are awaiting your approval.</p>
+            <div className="cfin-empty">
+              <CheckCircle size={40} color="var(--cfin-success)" />
+              <h3 className="cfin-empty-title">All Clear!</h3>
+              <p className="cfin-empty-sub">No PCV vouchers are awaiting your approval.</p>
             </div>
+
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {pcvs.map(pcv => (
-                <div key={pcv.id} style={{ background: 'white', borderRadius: 16, border: `2px solid ${expandedPcv === pcv.id ? '#eab308' : '#e2e8f0'}`, boxShadow: expandedPcv === pcv.id ? '0 8px 20px rgba(234,179,8,.12)' : '0 2px 6px rgba(0,0,0,.04)', overflow: 'hidden', transition: 'all .2s' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '18px 24px', gap: 16 }}>
-                    <div style={{ flexShrink: 0, background: '#fefce8', padding: 12, borderRadius: 12, border: '1px solid #fde047' }}><Banknote size={24} color="#eab308" /></div>
+                <div key={pcv.id} className={`cfin-pcv-card${expandedPcv === pcv.id ? ' expanded' : ''}`}>
+                  <div className="cfin-pcv-row">
+                    <div className="cfin-pcv-icon"><Banknote size={22} color="var(--cfin-warning)" /></div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 16, color: '#0f172a' }}>{pcv.pcv_number}</span>
-                        <span style={{ background: '#fef9c3', color: '#a16207', padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Awaiting CEO</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: 'var(--cfin-text-primary)' }}>{pcv.pcv_number}</span>
+                        <span className="cfin-badge cfin-badge-warning">Awaiting CEO</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#64748b' }}>
-                        <span><b style={{ color: '#0f172a' }}>To:</b> {pcv.paid_to}</span>
+                      <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--cfin-text-secondary)', flexWrap: 'wrap' }}>
+                        <span><b style={{ color: 'var(--cfin-text-primary)' }}>To:</b> {pcv.paid_to}</span>
                         <span>·</span><span>{new Date(pcv.date).toLocaleDateString('en-GB')}</span>
-                        <span>·</span><span style={{ fontWeight: 800, color: '#a16207' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span>·</span><span style={{ fontWeight: 700, color: 'var(--cfin-warning)' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button onClick={() => setExpandedPcv(expandedPcv === pcv.id ? null : pcv.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#475569' }}>
+                    <div className="cfin-pcv-actions">
+                      <button onClick={() => setExpandedPcv(expandedPcv === pcv.id ? null : pcv.id)} className="cfin-btn cfin-btn-ghost">
                         <Eye size={14} /> {expandedPcv === pcv.id ? 'Hide' : 'View'} {expandedPcv === pcv.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
-                      <button onClick={() => setRejectTarget(pcv)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#dc2626' }}><XCircle size={14} /> Reject</button>
-                      <button onClick={() => handleApprovePcv(pcv)} disabled={actionLoading === pcv.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,.3)', opacity: actionLoading === pcv.id ? 0.7 : 1 }}>
+                      <button onClick={() => setRejectTarget(pcv)} className="cfin-btn cfin-btn-danger"><XCircle size={14} /> Reject</button>
+                      <button onClick={() => handleApprovePcv(pcv)} disabled={actionLoading === pcv.id} className="cfin-btn cfin-btn-success">
                         {actionLoading === pcv.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
                       </button>
                     </div>
@@ -538,17 +1122,17 @@ const CEOFinance = () => {
       {/* ══════════════ FUND REQUESTS TAB ══════════════ */}
       {activeTab === 'Fund Requests' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}><FileText size={22} color="#3b82f6" /> Pending Income Submissions</h2>
-            <button onClick={fetchFunds} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}><RefreshCw size={14} /> Refresh</button>
+          <div className="cfin-sub-header">
+            <h2 className="cfin-sub-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><FileText size={20} color="var(--cfin-primary)" /> Pending Income Submissions</h2>
+            <button onClick={fetchFunds} className="cfin-btn cfin-btn-secondary"><RefreshCw size={14} /> Refresh</button>
           </div>
           {fundsLoading ? (
-            <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}><SegmentedSpinner size={32} /></div>
+            <div className="cfin-empty"><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: 'var(--cfin-text-muted)' }}>Loading...</div></div>
           ) : funds.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 80, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
-              <CheckCircle size={48} color="#22c55e" style={{ marginBottom: 16 }} />
-              <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>No Pending Fund Requests</h3>
-              <p style={{ color: '#64748b', margin: 0 }}>All income submissions have been processed.</p>
+            <div className="cfin-empty">
+              <CheckCircle size={40} color="var(--cfin-success)" />
+              <h3 className="cfin-empty-title">No Pending Fund Requests</h3>
+              <p className="cfin-empty-sub">All income submissions have been processed.</p>
             </div>
           ) : (
             <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
@@ -577,17 +1161,17 @@ const CEOFinance = () => {
       {/* ══════════════ PAYROLL STATUS TAB ══════════════ */}
       {activeTab === 'Payroll Status' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}><Users size={22} color="#16a34a" /> Payroll Payment Status</h2>
-            <button onClick={fetchPayrollQueue} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}><RefreshCw size={14} /> Refresh</button>
+          <div className="cfin-sub-header">
+            <h2 className="cfin-sub-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Users size={20} color="var(--cfin-success)" /> Payroll Payment Status</h2>
+            <button onClick={fetchPayrollQueue} className="cfin-btn cfin-btn-secondary"><RefreshCw size={14} /> Refresh</button>
           </div>
           {payrollLoading ? (
-            <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: '#94a3b8' }}>Loading payroll status...</div></div>
+            <div className="cfin-empty"><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: 'var(--cfin-text-muted)' }}>Loading payroll status...</div></div>
           ) : payrollQueue.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 16, border: '1px solid #e2e8f0' }}>
-              <CheckCircle size={48} color="#22c55e" style={{ marginBottom: 16 }} />
-              <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>No Payrolls Found</h3>
-              <p style={{ color: '#64748b', margin: 0 }}>Approved payrolls will appear here once HR submits them.</p>
+            <div className="cfin-empty">
+              <CheckCircle size={40} color="var(--cfin-success)" />
+              <h3 className="cfin-empty-title">No Payrolls Found</h3>
+              <p className="cfin-empty-sub">Approved payrolls will appear here once HR submits them.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -684,22 +1268,27 @@ const CEOFinance = () => {
 
       {/* Reject PCV Modal */}
       {rejectTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 32, width: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800 }}>Reject PCV</h3>
-            <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13 }}>You are rejecting <b style={{ color: '#dc2626' }}>{rejectTarget.pcv_number}</b>.</p>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Reason for rejection..." rows={4} style={{ width: '100%', padding: '12px 14px', border: '2px solid #fca5a5', borderRadius: 10, boxSizing: 'border-box', fontSize: 14, outline: 'none', resize: 'vertical', fontFamily: 'Inter, sans-serif' }} />
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} style={{ padding: '10px 20px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleRejectPcv} disabled={!rejectReason.trim() || actionLoading === rejectTarget.id} style={{ padding: '10px 20px', background: !rejectReason.trim() ? '#fca5a5' : '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: !rejectReason.trim() ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject
+        <div className="cfin-modal-overlay">
+          <div className="cfin-modal">
+            <h3 className="cfin-modal-title">Reject PCV</h3>
+            <p className="cfin-modal-body">You are rejecting <b style={{ color: 'var(--cfin-danger)' }}>{rejectTarget.pcv_number}</b>. Please provide a reason.</p>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="Reason for rejection (required)..."
+              rows={4}
+              className="cfin-textarea danger"
+            />
+            <div className="cfin-modal-actions">
+              <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="cfin-btn cfin-btn-ghost">Cancel</button>
+              <button onClick={handleRejectPcv} disabled={!rejectReason.trim() || actionLoading === rejectTarget.id} className="cfin-btn cfin-btn-danger">
+                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject PCV
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>{/* end cfin-page-inner */}
     </div>
   );
 };
