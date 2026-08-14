@@ -27,7 +27,6 @@ import CEOPharmacyHub from './CEOPharmacyHub';
 import CEOPharmacySales from './CEOPharmacySales';
 import CEOStoreRequisitions from './CEOStoreRequisitions';
 import CEOProcurementDecisions from '../procurement/CEOProcurementDecisions';
-import CEODirectDelivery from './CEODirectDelivery';
 import CEOTenderManager from './CEOTenderManager';
 import CEOPrinting from './CEOPrinting';
 import CEOAgriAndCarRental from './CEOAgriAndCarRental';
@@ -37,7 +36,6 @@ import CEOPayrollApproval from './CEOPayrollApproval';
 
 // Approval & Report Modules
 import CEOApprovalsHub from './CEOApprovalsHub';
-import CEOPendingApprovals from './CEOPendingApprovals';
 import CEOApprovedApprovals from './CEOApprovedApprovals';
 import CEORejectedApprovals from './CEORejectedApprovals';
 import CEOExecutiveReport from './CEOExecutiveReport';
@@ -46,7 +44,7 @@ import CEOSalesReport from './CEOSalesReport';
 import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
 import CEOStoreApprovals from './CEOStoreApprovals';
-import CentralAuditLog from '../admin/CentralAuditLog';
+import CEOAuditLog from './CEOAuditLog';
 
 import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
@@ -112,10 +110,11 @@ const CEODashboard = () => {
         { label: 'Sales Report',      path: '/ceo/reports/sales',      icon: 'trending-up' },
         { label: 'Inventory Report',  path: '/ceo/reports/inventory',  icon: 'package' },
         { label: 'HR Report',         path: '/ceo/reports/hr',         icon: 'users' },
-        { label: 'Audit Report',      path: '/ceo/reports/audit',      icon: 'clipboard' },
       ] },
     { type: 'divider' },
     { label: 'Setting Contact', icon: 'settings', children: [{ label: 'Chat', path: '/ceo/chat', icon: 'message-circle', color: '#6B8E23' }] },
+    { type: 'divider' },
+    { label: 'Audit Log', path: '/ceo/audit-logs', icon: 'shield', color: '#3b82f6' },
   ];
 
   return (
@@ -139,6 +138,7 @@ const CEODashboard = () => {
             <Route path="employee-approvals" element={<HREmployeesPending />} />
             <Route path="salary-approval" element={<CEOPayrollApproval />} />
             <Route path="store-approvals" element={<CEOStoreApprovals />} />
+            <Route path="finance-approvals" element={<CEOFinanceApprovals />} />
 
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
@@ -148,7 +148,6 @@ const CEODashboard = () => {
             <Route path="pharmacy" element={<CEOPharmacySales />} />
 
             <Route path="procurement-decisions" element={<CEOProcurementDecisions />} />
-            <Route path="direct-delivery" element={<CEODirectDelivery />} />
             <Route path="store-requisitions" element={<CEOStoreRequisitions />} />
             
             <Route path="tenders" element={<CEOTenderManager />} />
@@ -157,7 +156,10 @@ const CEODashboard = () => {
             <Route path="agri-and-car-rental" element={<CEOAgriAndCarRental />} />
 
             {/* Approval Lists */}
-            <Route path="approvals/pending" element={<CEOPendingApprovals />} />
+            <Route path="approvals/tenders" element={<CEOTenderManager isApprovalMode={true} />} />
+            <Route path="approvals/printing" element={<CEOPrinting isApprovalMode={true} />} />
+            <Route path="approvals/agri-and-car-rental" element={<CEOAgriAndCarRental isApprovalMode={true} />} />
+            
             <Route path="store-adjustments" element={<Navigate to="/ceo/pharmacy-hub?tab=adjustments" replace />} />
             <Route path="store-counts" element={<Navigate to="/ceo/pharmacy-hub?tab=counts" replace />} />
             <Route path="store-update-approvals" element={<Navigate to="/ceo/store-approvals" replace />} />
@@ -170,7 +172,7 @@ const CEODashboard = () => {
             <Route path="reports/sales" element={<CEOSalesReport />} />
             <Route path="reports/inventory" element={<CEOInventoryReportFull />} />
             <Route path="reports/hr" element={<CEOHRReport />} />
-            <Route path="reports/audit" element={<CentralAuditLog />} />
+            <Route path="audit-logs" element={<CEOAuditLog />} />
 
             {/* Legacy compatibility */}
             <Route path="reports"   element={<ExecutiveReports />} />
