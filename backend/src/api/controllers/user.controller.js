@@ -38,7 +38,8 @@ exports.getAllUsers = catchAsync(async (req, res) => {
       'users.created_at',
       'users.must_change_password',
       'users.two_factor_enabled',
-      'users.is_employee'
+      'users.is_employee',
+      'users.profile_photo'
     )
     .whereNull('users.deleted_at');
   if (search) {
