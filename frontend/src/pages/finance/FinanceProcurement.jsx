@@ -4,7 +4,6 @@ import {
   FileText, X, Leaf, TrendingUp, Package, ChevronDown, AlertCircle,
   Eye, Printer, Award, RefreshCw
 } from 'lucide-react';
-import { financeState } from '../../utils/financeTransactionService';
 import api from '../../services/apiClient';
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
@@ -86,6 +85,7 @@ const FinanceProcurement = () => {
   const [activeTab, setActiveTab]       = useState('internal');
   const [fundRequests, setFundRequests] = useState([]);
   const [payments, setPayments]         = useState([]);
+  const [internalList, setInternalList] = useState([]);
   const [loading, setLoading]           = useState(false);
   const [viewFundRequest, setViewFundRequest] = useState(null);
   const { toasts, push, remove }        = useToast();
@@ -93,12 +93,61 @@ const FinanceProcurement = () => {
   const fetchPublicData = async () => {
     setLoading(true);
     try {
-      const [fundRes, payRes] = await Promise.all([
+      const [fundRes, payRes, reqRes, frRes, tenRes, rcpRes] = await Promise.all([
         api.get('/public-procurement/fund-requests'),
         api.get('/public-procurement/payments'),
+        api.get('/procurement/requests'),
+        api.get('/procurement/fund-requests'),
+        api.get('/procurement/tenders'),
+        api.get('/procurement/receipts'),
       ]);
       setFundRequests(Array.isArray(fundRes?.data ?? fundRes) ? (fundRes?.data ?? fundRes) : []);
       setPayments(Array.isArray(payRes?.data ?? payRes) ? (payRes?.data ?? payRes) : []);
+
+      const requests = Array.isArray(reqRes?.data?.data ?? reqRes?.data) ? (reqRes?.data?.data ?? reqRes?.data) : [];
+      const fundRequestsInternal = Array.isArray(frRes?.data?.data ?? frRes?.data) ? (frRes?.data?.data ?? frRes?.data) : [];
+      const tenders = Array.isArray(tenRes?.data?.data ?? tenRes?.data) ? (tenRes?.data?.data ?? tenRes?.data) : [];
+      const receipts = Array.isArray(rcpRes?.data?.data ?? rcpRes?.data) ? (rcpRes?.data?.data ?? rcpRes?.data) : [];
+
+      const unified = [
+        ...requests.map(r => ({
+          id: r.pr_no || `PR-${r.id}`,
+          type: 'Requisition',
+          date: r.created_at,
+          dept: r.requested_by_name || '—',
+          item: r.drug_name,
+          amount: r.estimated_total,
+          status: r.status,
+        })),
+        ...fundRequestsInternal.map(r => ({
+          id: `FR-${r.id}`,
+          type: 'Fund Request',
+          date: r.created_at,
+          dept: r.pr_no ? `PR ${r.pr_no}` : '—',
+          item: r.drug_name || '',
+          amount: r.total_amount,
+          status: r.status,
+        })),
+        ...tenders.map(t => ({
+          id: t.tender_no || `TND-${t.id}`,
+          type: 'Purchase Order',
+          date: t.created_at,
+          dept: t.supplier_name || t.pr_no || '—',
+          item: t.drug_name || '',
+          amount: t.budget_estimate,
+          status: t.status || 'Sent',
+        })),
+        ...receipts.map(r => ({
+          id: r.receipt_no || `RCP-${r.id}`,
+          type: 'Goods Received Note',
+          date: r.received_at || r.created_at,
+          dept: r.drug_name || r.pr_no || '—',
+          item: r.pr_no ? `PR ${r.pr_no}` : '',
+          amount: null,
+          status: 'Received',
+        })),
+      ];
+      setInternalList(unified);
     } catch (err) {
       push('Failed to load procurement data.', 'error');
     } finally {
@@ -128,11 +177,11 @@ const FinanceProcurement = () => {
     }
   };
 
-  const procurements = financeState.procurements || [];
+  const procurements = internalList || [];
   const filteredProcurements = procurements.filter(p => {
     if (filter === 'All') return true;
     if (filter === 'Pending') return p.status?.includes('Pending');
-    if (filter === 'Approved') return ['Approved','Received','Sent'].includes(p.status);
+    if (filter === 'Approved') return ['Approved','Received','Sent','APPROVED','FUND_APPROVED'].includes(p.status);
     return p.type === filter;
   });
 
@@ -313,14 +362,14 @@ const FinanceProcurement = () => {
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{ padding: '3px 8px', background: C.mint, color: C.darkGreen, fontSize: 11, fontWeight: 700, border: `1px solid ${C.sage}` }}>{p.type}</span>
                       </td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray }}>{p.requestDate || p.poDate || p.grnDate}</td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray, fontWeight: 600 }}>{p.department || p.supplier}</td>
+                      <td style={{ padding: '12px 16px', color: C.darkGray }}>{p.date ? new Date(p.date).toLocaleDateString('en-CA') : '—'}</td>
+                      <td style={{ padding: '12px 16px', color: C.darkGray, fontWeight: 600 }}>{p.dept || '—'}</td>
                       <td style={{ padding: '12px 16px', color: C.darkGray, fontSize: 12 }}>
                         {p.item && <span>Item: {p.item}</span>}
                         {p.poReference && <span>Ref: {p.poReference}</span>}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: C.darkGreen }}>
-                        {(p.requestedAmount || p.totalAmount) ? (p.requestedAmount || p.totalAmount).toLocaleString() : '—'}
+                        {p.amount != null ? Number(p.amount).toLocaleString() : '—'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
