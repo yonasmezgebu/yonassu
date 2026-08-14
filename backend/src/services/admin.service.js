@@ -842,24 +842,6 @@ const unassignDelegatedAdmin = async (nodeId, adminId) => {
 };
 
 /* ════════════════════════════════════════════
-   D11 — TENANT MANAGEMENT
-   ════════════════════════════════════════════ */
-const getTenants = async () => {
-  return await db('tenants').select('*').orderBy('name');
-};
-const createTenant = async (data) => {
-  const { insertId } = await db('tenants').insert({ ...data, status: 'active', created_at: db.fn.now() });
-  return { id: insertId, ...data, status: 'active' };
-};
-const getTenantAudit = async (id) => {
-  return await db('audit_logs').where('resource', 'tenant').where('resource_id', id.toString())
-    .leftJoin('users', 'audit_logs.user_id', 'users.id')
-    .select('audit_logs.*', 'users.full_name')
-    .orderBy('audit_logs.created_at', 'desc')
-    .limit(50);
-};
-
-/* ════════════════════════════════════════════
    D12 — COMPLIANCE EVIDENCE
    ════════════════════════════════════════════ */
 const getEvidenceList = async () => {
@@ -967,33 +949,6 @@ const getRoleAccumulation = async () => {
 const remediatePrivilegeCreep = async (userId, roleId) => {
   await db('user_roles').where({ user_id: userId, role_id: roleId }).del();
   return { userId, removedRoleId: roleId };
-};
-
-/* ════════════════════════════════════════════
-   D16 — API ACCESS KEYS
-   ════════════════════════════════════════════ */
-const getApiKeys = async () => {
-  return await db('api_keys')
-    .select('id', 'name', 'description', 'scopes', 'ip_restriction', 'expiration_date', 'created_at', 'last_used', 'is_active')
-    .orderBy('created_at', 'desc');
-};
-const createApiKey = async (data) => {
-  const key = 'ems_' + require('crypto').randomBytes(24).toString('hex');
-  const keyHash = require('crypto').createHash('sha256').update(key).digest('hex');
-  const { insertId } = await db('api_keys').insert({
-    ...data, key_hash: keyHash, is_active: true, created_at: db.fn.now()
-  });
-  return { id: insertId, key, message: 'Save this API key — it will not be shown again' };
-};
-const revokeApiKey = async (id) => {
-  await db('api_keys').where('id', id).update({ is_active: false, revoked_at: db.fn.now() });
-  return { id, status: 'revoked' };
-};
-const rotateApiKey = async (id) => {
-  const key = 'ems_' + require('crypto').randomBytes(24).toString('hex');
-  const keyHash = require('crypto').createHash('sha256').update(key).digest('hex');
-  await db('api_keys').where('id', id).update({ key_hash: keyHash, rotated_at: db.fn.now() });
-  return { id, key, message: 'Save this new API key' };
 };
 
 const getSystemHealth = async () => {
@@ -1118,10 +1073,6 @@ module.exports = {
   createDelegatedNode,
   assignDelegatedAdmin,
   unassignDelegatedAdmin,
-  /* D11 — Tenants */
-  getTenants,
-  createTenant,
-  getTenantAudit,
   /* D12 — Compliance Evidence */
   getEvidenceList,
   generateEvidence,
@@ -1140,9 +1091,4 @@ module.exports = {
   getDidDoAnalysis,
   getRoleAccumulation,
   remediatePrivilegeCreep,
-  /* D16 — API Keys */
-  getApiKeys,
-  createApiKey,
-  revokeApiKey,
-  rotateApiKey
 };
