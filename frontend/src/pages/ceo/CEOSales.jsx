@@ -45,7 +45,7 @@ const GlobalStyles = () => (
       line-height: 1.5;
       padding: 24px;
       margin: 0 auto;
-      max-width: 1600px;
+      max-width: 1536px;
       box-sizing: border-box;
       border-radius: 12px;
     }
@@ -74,7 +74,7 @@ const GlobalStyles = () => (
     }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: var(--color-primary); color: #FFF; }
-    .btn-primary:hover:not(:disabled) { background: #FFD700; color: #000; border-color: #FFD700; }
+    .btn-primary:hover:not(:disabled) { background: #FFD700; color: #111827; border-color: #FFD700; }
     
     /* Cards */
     .d-card-static {
@@ -84,6 +84,11 @@ const GlobalStyles = () => (
       border-radius: 10px;
       padding: 24px;
       box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: all 150ms ease-in-out;
+    }
+    .d-card-static:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
     }
 
     /* Grid Layouts */
@@ -96,6 +101,12 @@ const GlobalStyles = () => (
       padding: 12px 16px; border-radius: 8px; gap: 16px;
       background: var(--color-bg-card); border: 1px solid var(--color-border);
       margin-bottom: 8px;
+      transition: all 150ms ease-in-out;
+    }
+    .cat-row:hover {
+      box-shadow: 0 2px 6px rgba(0,0,0,.04);
+      transform: translateY(-1px);
+      background: #F9FAFB;
     }
 
     /* Tables */
@@ -104,7 +115,7 @@ const GlobalStyles = () => (
     th { background: #F9FAFB; padding: 12px 16px; text-transform: uppercase; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); letter-spacing: 0.03em; border-bottom: 1px solid var(--color-border); }
     td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); transition: background 150ms ease-in-out; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #F9FAFB; }
+    tr:hover td { background: #F9FAFB; cursor: default; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     th.num { text-align: right; }
     
