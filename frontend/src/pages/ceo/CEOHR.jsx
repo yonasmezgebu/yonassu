@@ -22,6 +22,7 @@ const CategoryBar = ({ value, max, color }) => (
 
 const GlobalStyles = () => (
   <style>{`
+    /* ─────────── Design Tokens (25-Rule Pass) ─────────── */
     :root {
       --color-primary: #2563EB;
       --color-primary-hover: #1D4ED8;
@@ -41,113 +42,300 @@ const GlobalStyles = () => (
       --color-info-bg: #E0F2FE;
       --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
     }
-    
+
+    /* Rule 2: Typography */
+    h1, h2, h3, h4, h5, h6 { line-height: 1.3; margin: 0; font-family: var(--font-family); }
+
+    /* Rule 17-18: Page Wrapper with safe edge margins */
     @keyframes phFadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    
     .hr-page-wrapper {
-      padding: 10px; /* Safe edge margin desktop */
+      padding: 10px;
       min-height: calc(100vh - 60px);
       box-sizing: border-box;
       background: var(--color-bg-page);
       font-family: var(--font-family);
-      animation: phFadeUp 0.35s ease;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--color-text-primary);
+      animation: phFadeUp 0.3s ease;
     }
-    
+    /* Rule 19: Max content width centered */
     .hr-page-content {
       background: var(--color-bg-page);
       padding: 24px;
       margin: 0 auto;
       max-width: 1536px;
-      line-height: 1.5;
-      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    /* Rule 1-2: Page header */
+    .hr-page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hr-page-title {
+      font-size: 28px;
+      font-weight: 700;
       color: var(--color-text-primary);
+      margin: 0;
+      line-height: 1.3;
+    }
+    .hr-page-time {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+      margin: 0;
+      text-align: center;
     }
 
-    h1, h2, h3, h4, h5, h6 { 
-      line-height: 1.3; 
-      margin: 0; 
-    }
-
+    /* Rule 7: Buttons */
     .hr-btn {
-      border-radius: 8px; height: 36px; padding: 0 16px; font-weight: 500; font-size: 14px;
-      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      border: 1px solid var(--color-border); transition: all 150ms ease-in-out;
-      background: #FFF; color: var(--color-text-primary);
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      transition: all 150ms ease-in-out;
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      font-family: var(--font-family);
+      white-space: nowrap;
     }
     .hr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .hr-btn:hover:not(:disabled) { 
-      background: #FFD700; color: #000; border-color: #FFD700; 
-      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234,179,8,0.3); 
+    .hr-btn:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234,179,8,0.25);
     }
-    
-    .hr-btn-primary { 
-      background: var(--color-primary); color: #FFF; border-color: transparent; 
+    .hr-btn-primary {
+      background: var(--color-primary);
+      color: #FFF;
+      border-color: var(--color-primary);
     }
-    .hr-btn-primary:hover:not(:disabled) { 
-      background: #FFD700; color: #000; border-color: #FFD700; 
-      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(234,179,8,0.3); 
+    .hr-btn-primary:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234,179,8,0.25);
     }
-    
+    .hr-btn-danger {
+      background: var(--color-danger-bg);
+      color: var(--color-danger);
+      border-color: #fca5a5;
+    }
+    .hr-btn-danger:hover:not(:disabled) {
+      background: #FFD700;
+      color: #111827;
+      border-color: #FFD700;
+    }
+
+    /* Rule 6: Cards */
     .hr-card {
-      background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px;
-      padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease-in-out; cursor: default;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      transition: box-shadow 150ms ease-in-out, transform 150ms ease-in-out;
     }
     .hr-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      transform: translateY(-1px);
     }
-    
+
+    /* Rule 2: Section title */
+    .hr-section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin: 0;
+    }
+    .hr-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    /* Rule 9: List rows / table-like rows */
     .hr-alert-row {
-      display: flex; align-items: center; gap: 16px; padding: 16px;
-      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
-      cursor: default; margin-bottom: 16px; transition: all 150ms ease-in-out;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--color-bg-card);
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      transition: all 150ms ease-in-out;
     }
-    
+    .hr-alert-row:hover {
+      background: #F9FAFB;
+      box-shadow: 0 2px 6px rgba(0,0,0,.04);
+      transform: translateY(-1px);
+    }
+
     .hr-cat-row {
-      display: grid; grid-template-columns: 180px 1fr 80px 80px; gap: 16px; align-items: center;
-      padding: 12px 16px; border-bottom: 1px solid var(--color-border); 
-      cursor: default; transition: all 150ms ease-in-out;
+      display: grid;
+      grid-template-columns: 180px 1fr 80px 80px;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      transition: background 150ms ease-in-out;
     }
-    .hr-cat-row:last-child {
-      border-bottom: none;
-    }
-    
+    .hr-cat-row:last-child { border-bottom: none; }
+    .hr-cat-row:hover { background: #F9FAFB; }
+
     .hr-top-row {
-      display: flex; align-items: center; gap: 16px; padding: 12px 16px;
-      background: var(--color-bg-card); border-radius: 8px; border: 1px solid var(--color-border);
-      margin-bottom: 8px; cursor: default; transition: all 150ms ease-in-out;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      background: var(--color-bg-card);
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      margin-bottom: 8px;
+      transition: all 150ms ease-in-out;
+      min-height: 48px;
     }
-    
-    .hr-alert-row:hover, .hr-cat-row:hover, .hr-top-row:hover {
-      background: #F9FAFB; 
-      box-shadow: inset 2px 0 0 var(--color-primary);
+    .hr-top-row:hover {
+      background: #F9FAFB;
+      box-shadow: inset 3px 0 0 var(--color-primary);
     }
-    
+
+    /* Rule 8: Badges */
+    .hr-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .hr-badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+    .hr-badge-success { background: var(--color-success-bg); color: var(--color-success); }
+    .hr-badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger); }
+    .hr-badge-info    { background: var(--color-info-bg);    color: var(--color-info); }
+
+    /* Rule 2: Labels */
+    .label-header {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      line-height: 1.3;
+    }
+
+    /* Rule 5: Grids */
     .hr-grid-kpi  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
     .hr-grid-main { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; }
     .hr-grid-bot  { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
     .hr-sub-kpis  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    
-    .label-header {
-      font-size: 14px; font-weight: 500; color: var(--color-text-muted); 
-      text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.3;
+
+    /* Rule 13: Error / empty states */
+    .hr-error-box {
+      background: var(--color-danger-bg);
+      border: 1px solid var(--color-danger);
+      border-left: 4px solid var(--color-danger);
+      border-radius: 10px;
+      padding: 24px;
+      color: var(--color-danger);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .hr-loading-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 50vh;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .hr-loading-txt {
+      color: var(--color-text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      margin: 0;
     }
 
+    /* Sub-KPI mini card */
+    .hr-mini-kpi {
+      background: var(--color-bg-page);
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      transition: all 150ms ease-in-out;
+    }
+    .hr-mini-kpi:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.06);
+      transform: translateY(-1px);
+    }
+
+    /* Leave row */
+    .hr-leave-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 12px;
+      border-top: 1px solid var(--color-border);
+      transition: background 150ms ease-in-out;
+    }
+    .hr-leave-row:hover { background: #F9FAFB; }
+
+    /* Table header strip */
+    .hr-table-head {
+      display: grid;
+      grid-template-columns: 180px 1fr 80px 80px;
+      gap: 16px;
+      padding: 12px 16px;
+      background: #F9FAFB;
+      border-bottom: 1px solid var(--color-border);
+      border-radius: 8px 8px 0 0;
+    }
+
+    /* Rule 14: Responsive */
     @media (max-width: 1024px) {
       .hr-page-wrapper { padding: 6px; }
       .hr-page-content { padding: 16px; }
       .hr-grid-kpi { grid-template-columns: repeat(2, 1fr); }
-      .hr-grid-main, .hr-grid-bot { grid-template-columns: 1fr; }
+      .hr-grid-main { grid-template-columns: 1fr; }
+      .hr-grid-bot  { grid-template-columns: 1fr; }
       .hr-sub-kpis { grid-template-columns: repeat(2, 1fr); }
+      .hr-page-header { flex-direction: column; align-items: flex-start; }
+      .hr-page-time { text-align: left; }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 768px) {
       .hr-page-wrapper { padding: 4px; }
       .hr-page-content { padding: 12px; }
+      .hr-page-title { font-size: 24px; }
+      .hr-grid-kpi { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .hr-sub-kpis { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .hr-table-head { grid-template-columns: 120px 1fr 60px 60px; gap: 8px; padding: 10px 12px; }
+    }
+    @media (max-width: 480px) {
       .hr-grid-kpi { grid-template-columns: 1fr; }
       .hr-sub-kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-      .hr-cat-row { grid-template-columns: 120px 1fr 60px 60px; gap: 8px; padding: 12px 8px; }
+      .hr-cat-row { grid-template-columns: 110px 1fr 56px 56px; gap: 8px; padding: 12px 8px; }
+      .hr-table-head { grid-template-columns: 110px 1fr 56px 56px; gap: 8px; }
+      .hr-btn { min-height: 44px; }
     }
   `}</style>
 );
@@ -201,40 +389,32 @@ export default function CEOHR() {
         <GlobalStyles />
 
         {/* HEADER */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: 32, gap: 16 }}>
-          <div style={{ justifySelf: 'start' }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-              🌿 Welcome, {firstName}!
-            </h1>
-          </div>
-          <div style={{ justifySelf: 'center' }}>
-            <p style={{ fontSize: 16, color: 'var(--color-text-secondary)', fontWeight: 500, margin: 0 }}>
-              Universal HR Hub · It&apos;s {timeString}
-            </p>
-          </div>
-          <div style={{ justifySelf: 'end' }}>
+        <div className="hr-page-header">
+          <h1 className="hr-page-title">🌿 Welcome, {firstName}!</h1>
+          <p className="hr-page-time">Universal HR Hub · It&apos;s {timeString}</p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={load} className="hr-btn hr-btn-primary" disabled={refreshing}>
               {refreshing && <SegmentedSpinner size={16} />}
-              <span>SYNC</span>
+              <span>SYNC DATA</span>
             </button>
           </div>
         </div>
 
         {/* LOADING */}
         {refreshing && !data && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', flexDirection: 'column', gap: 16 }}>
+          <div className="hr-loading-box">
             <SegmentedSpinner size={40} color="var(--color-primary)" />
-            <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: 16, fontWeight: 500 }}>Loading Workforce Data…</p>
+            <p className="hr-loading-txt">Loading Workforce Data…</p>
           </div>
         )}
 
         {/* ERROR */}
         {error && (
-          <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', borderRadius: 10, padding: 24, color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 32 }}>⚠</span>
+          <div className="hr-error-box">
+            <span style={{ fontSize: 32, flexShrink: 0 }}>⚠</span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 4 }}>Failed to load HR data</div>
-              <div style={{ fontSize: 16, opacity: 0.9 }}>{error}</div>
+              <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Failed to load HR data</div>
+              <div style={{ fontSize: 14, opacity: 0.9 }}>{error}</div>
               <button onClick={load} className="hr-btn" style={{ marginTop: 12 }}>Retry</button>
             </div>
           </div>
@@ -300,10 +480,10 @@ export default function CEOHR() {
 
               {/* Dept Breakdown */}
               <div className="hr-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 24 }}>🏢</span>
-                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Department Headcount</h2>
-                  <span style={{ marginLeft: 'auto', fontSize: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Across {totalDepts} depts</span>
+                <div className="hr-section-header">
+                  <span style={{ fontSize: 22 }}>🏢</span>
+                  <h2 className="hr-section-title">Department Headcount</h2>
+                  <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Across {totalDepts} depts</span>
                 </div>
                 <div className="hr-sub-kpis">
                   {[
@@ -312,14 +492,14 @@ export default function CEOHR() {
                     { label: 'On Leave',        val: onLeaveCount, icon: '🌴', c: G.sky    },
                     { label: 'Leave Requests',  val: pendingCount, icon: '⏳', c: G.purple },
                   ].map(k => (
-                    <div key={k.label} style={{ background: 'var(--color-bg-page)', borderRadius: 8, padding: '16px', border: `1px solid ${k.c}30` }}>
+                    <div key={k.label} className="hr-mini-kpi" style={{ border: `1px solid ${k.c}28` }}>
                       <div style={{ fontSize: 20, marginBottom: 8 }}>{k.icon}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: k.c }}>{k.val}</div>
-                      <div className="label-header" style={{ marginTop: 6, fontSize: 12 }}>{k.label}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: k.c, lineHeight: 1 }}>{k.val}</div>
+                      <div className="label-header" style={{ marginTop: 6 }}>{k.label}</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr 80px 80px', gap: 16, padding: '12px 16px', background: '#F9FAFB', borderBottom: '1px solid var(--color-border)', borderRadius: '8px 8px 0 0' }}>
+                <div className="hr-table-head">
                   {['Department', '', 'Count', '%'].map((h, i) => (
                     <div key={i} className="label-header" style={{ textAlign: (h === 'Count' || h === '%') ? 'right' : 'left' }}>{h}</div>
                   ))}
@@ -345,9 +525,9 @@ export default function CEOHR() {
 
               {/* Recent Hires */}
               <div className="hr-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 24 }}>🚀</span>
-                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Recent Hires</h2>
+                <div className="hr-section-header">
+                  <span style={{ fontSize: 22 }}>🚀</span>
+                  <h2 className="hr-section-title">Recent Hires</h2>
                 </div>
                 {recentHires.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>
@@ -375,9 +555,9 @@ export default function CEOHR() {
 
               {/* Alerts */}
               <div className="hr-card">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 24 }}>⚠</span>
-                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-primary)' }}>Attention Required</h2>
+                <div className="hr-section-header">
+                  <span style={{ fontSize: 22 }}>⚠️</span>
+                  <h2 className="hr-section-title">Attention Required</h2>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -397,12 +577,12 @@ export default function CEOHR() {
 
                 {pendingLeaves.length > 0 && (
                   <div style={{ marginTop: 24 }}>
-                    <div className="label-header" style={{ marginBottom: 16 }}>Recent Leaves</div>
+                    <div className="label-header" style={{ marginBottom: 12 }}>Recent Leaves</div>
                     {pendingLeaves.slice(0, 3).map((item, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 12px', borderTop: '1px solid var(--color-border)', transition: 'all 150ms ease' }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning)', minWidth: 32 }}>{item.name}</span>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.type || 'Leave Request'}</span>
-                        <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                      <div key={i} className="hr-leave-row">
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning)', minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.type || 'Leave Request'}</span>
+                        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
                           {item.start_date ? new Date(item.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                         </span>
                       </div>
