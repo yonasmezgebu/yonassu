@@ -8,6 +8,7 @@ import FinancePV from './FinancePV';
 import FinancePCV from './FinancePCV';
 import FinancePendingPCVs from './FinancePendingPCVs';
 import FinanceCashBook from './FinanceCashBook';
+import FinanceCRV from './FinanceCRV';
 import FinanceBankAccounts from './FinanceBankAccounts';
 import FinancePayrollPayment from './FinancePayrollPayment';
 
@@ -45,6 +46,7 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
+        { label: 'Receipts (CRV)',          path: '/finance/crv',            icon: 'shopping-cart', color: '#10b981' },
         { label: 'General Payments',      path: '/finance/pv',              icon: 'shopping-cart', color: '#f59e0b' },
         { label: 'Petty Cash',   path: '/finance/pcv',             icon: 'wallet',        color: '#8b5cf6' },
         { label: 'Expense Book',         path: '/finance/cash-book',       icon: 'book',          color: '#06b6d4' },
@@ -53,6 +55,13 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Accounts and reconciliation', path: '/finance/bank-accounts', icon: 'building', color: '#3b82f6' },
     { type: 'divider' },
+    { label: 'Payables & Procurement', icon: 'file-text',
+      children: [
+        { label: 'Suppliers',          path: '/finance/suppliers',         icon: 'truck',        color: '#ea580c' },
+        { label: 'Supplier Bills',     path: '/finance/supplier-bills',    icon: 'file-text',    color: '#d97706' },
+        { label: 'Supplier Payments',  path: '/finance/supplier-payments', icon: 'credit-card',  color: '#b45309' },
+        { label: 'Procurement',        path: '/finance/procurement',       icon: 'package',      color: '#15803d' },
+      ] },
     { label: 'Revenue', icon: 'users',
       children: [
         { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
@@ -97,6 +106,7 @@ const FinanceDashboard = () => {
             {/* Cash Management */}
             <Route path="pv" element={<FinancePV />} />
             <Route path="pcv" element={<FinancePCV />} />
+            <Route path="crv" element={<FinanceCRV />} />
             <Route path="cash-book" element={<FinanceCashBook />} />
             <Route path="bank-accounts" element={<FinanceBankAccounts />} />
             <Route path="payroll-payment" element={<FinancePayrollPayment />} />
@@ -122,7 +132,7 @@ const FinanceDashboard = () => {
             <Route path="cash-flow" element={<FinanceCashFlow />} />
             <Route path="profit-loss" element={<FinanceProfitLoss />} />
             <Route path="balance-sheet" element={<FinanceBalanceSheet />} />
-            <Route path="audit-log" element={<CentralAuditLog />} />
+            <Route path="audit-log" element={<CentralAuditLog mode="finance" />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
