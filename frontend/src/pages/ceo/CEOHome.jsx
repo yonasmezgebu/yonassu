@@ -2,98 +2,179 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-/* ─── Color Palette ─────────────────────────────────────────────────────── */
-const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
-  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
-  orange: '#FF9800', red: '#F44336', purple: '#7C3AED', blue: '#3b82f6'
-};
-
-const COLORS_ARR = [G.forest, G.orange, G.sky, G.purple, G.emerald, G.brown, G.blue];
-
-/* ─── Global Animations ─────────────────────────────────────────────────── */
+/* ─── Global Styles (Enterprise UI System) ──────────────────────────────── */
 const GlobalStyles = () => (
   <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
-
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
-
-    .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
     }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
 
-    .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    .ceo-dashboard-wrapper {
+      padding: 24px;
+      min-height: calc(100vh - 60px);
+      box-sizing: border-box;
+      background: var(--color-bg-page);
+      font-family: var(--font-family);
+      color: var(--color-text-primary);
     }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
+    
+    .ceo-dashboard-container {
+      max-width: 1536px;
+      margin: 0 auto;
     }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
+
+    .ceo-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: all 150ms ease-in-out;
+    }
+    .ceo-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+    .ceo-card.clickable {
+      cursor: pointer;
+    }
+
+    .ceo-btn {
+      border-radius: 8px;
+      height: 36px;
+      padding: 0 16px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      transition: all 150ms ease-in-out;
+    }
+    .ceo-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ceo-btn:hover:not(:disabled) {
+      background: #FFD700;
+      color: #000;
+      border-color: #FFD700;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255,215,0,0.3);
+    }
+    .ceo-btn-primary {
+      background: var(--color-primary);
+      color: #FFFFFF;
+      border-color: var(--color-primary);
+    }
+
+    .ceo-page-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: var(--color-text-primary);
+    }
+    .ceo-section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: var(--color-text-primary);
+    }
+    .ceo-label-header {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .ceo-body-text {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+
+    .ceo-grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .ceo-grid-main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .ceo-list-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      transition: all 150ms ease-in-out;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    .ceo-list-row:last-child {
+      border-bottom: none;
+    }
+    .ceo-list-row:hover {
+      background: var(--color-bg-page);
+    }
+    
+    .ceo-badge {
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    @media (max-width: 1024px) {
+      .ceo-dashboard-wrapper { padding: 16px; }
+      .ceo-grid-main { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .ceo-dashboard-wrapper { padding: 12px; }
+      .ceo-grid-kpi { grid-template-columns: 1fr; }
+      .ceo-list-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .ceo-badge { align-self: flex-start; }
+    }
   `}</style>
 );
 
-const DecorPlants = () => (
-  <>
-    <GlobalStyles />
-    {[
-      { e:'🍃', sz:55, op:0.22, top:'1%',    left:'0.5%'  },
-      { e:'🌿', sz:48, op:0.18, top:'0%',    right:'0.5%' },
-      { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
-      { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
-    ].map((p,i) => (
-      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation:`floatLeaf ${9+i*1.5}s ease-in-out infinite`, animationDelay:`${i*1.2}s`, zIndex:0 }}>{p.e}</span>
-    ))}
-  </>
-);
+const mockBarData = [
+  { name: 'Sales', value: 85 },
+  { name: 'Purchases', value: 42 },
+  { name: 'Finance', value: 100 },
+  { name: 'HR', value: 95 },
+  { name: 'Inventory', value: 65 }
+];
+
+const mockPieData = [
+  { name: 'Active', value: 75, color: '#16A34A' },
+  { name: 'Pending', value: 15, color: '#D97706' },
+  { name: 'Issues', value: 10, color: '#DC2626' }
+];
 
 const CEOHome = () => {
   const navigate = useNavigate();
@@ -121,178 +202,143 @@ const CEOHome = () => {
   const firstName = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || 'Executive';
 
   return (
-    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif", overflowX: 'hidden' }}>
-      <DecorPlants />
-      {/* ── HEADER ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
-        <div style={{ justifySelf: 'start' }}>
-          <h1 className="artistic-3d-title">
-            Welcome! &nbsp;<span className="blink-star">🌿</span>
-          </h1>
-        </div>
-        <div style={{ justifySelf: 'center' }}>
-          <p className="artistic-3d-subtitle">
-            EXECUTIVE COMMAND CENTER · IT'S {timeString}
-          </p>
-        </div>
-        <div style={{ justifySelf: 'end' }}>
-                              <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+    <div className="ceo-dashboard-wrapper">
+      <GlobalStyles />
+      <div className="ceo-dashboard-container">
+        
+        {/* HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h1 className="ceo-page-title">Command Center</h1>
+            <p className="ceo-body-text" style={{ margin: 0 }}>Welcome back, {firstName} · {timeString}</p>
+          </div>
+          <button onClick={load} className="ceo-btn ceo-btn-primary" disabled={refreshing}>
+            {refreshing ? <SegmentedSpinner size={16} color="#FFF" /> : <span style={{ fontSize: 16 }}>↻</span>}
+            <span>Sync Dashboard</span>
           </button>
         </div>
-      </div>
 
-      {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
+        {/* 1. NUMBER REPRESENTATION (KPI HERO CARDS) */}
+        <div className="ceo-grid-kpi">
+          <div className="ceo-card clickable" onClick={() => nav('/ceo/reports/executive')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <span className="ceo-label-header">System Access</span>
+              <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 6, color: 'var(--color-success)' }}>
+                <span style={{ fontSize: 18 }}>🛡️</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1, marginBottom: 8 }}>Full</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Executive overview active</div>
+          </div>
 
-        {/* Executive Overview Hero */}
-        <div className="d-card" onClick={() => nav('/ceo/reports/executive')}
-          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', cursor: 'pointer', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>⭐</span>
+          <div className="ceo-card clickable" onClick={() => nav('/ceo/approvals')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <span className="ceo-label-header">Pending Approvals</span>
+              <div style={{ background: 'var(--color-warning-bg)', borderRadius: 8, padding: 6, color: 'var(--color-warning)' }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1, marginBottom: 8 }}>12</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Awaiting review</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Executive Overview</div>
-          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
-            Active
+
+          <div className="ceo-card clickable" onClick={() => nav('/ceo/finance')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <span className="ceo-label-header">Finance Health</span>
+              <div style={{ background: 'var(--color-info-bg)', borderRadius: 8, padding: 6, color: 'var(--color-info)' }}>
+                <span style={{ fontSize: 18 }}>💰</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1, marginBottom: 8 }}>Stable</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Live financial summary</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>👋</span> Hello, {firstName} - Full system access granted
+
+          <div className="ceo-card clickable" onClick={() => nav('/ceo/hr')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <span className="ceo-label-header">Workforce</span>
+              <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 6, color: 'var(--color-success)' }}>
+                <span style={{ fontSize: 18 }}>👥</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1, marginBottom: 8 }}>98%</div>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Attendance rate today</div>
           </div>
         </div>
 
-        <div className="d-card" style={{ animationDelay: '0.1s' }} onClick={() => nav('/ceo/approvals/pending')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.orange, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Pending</span>
-            <div style={{ background: '#FFF4EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>⚠️</span></div>
+        {/* GRAPHS AND CHARTS */}
+        <div className="ceo-grid-main">
+          {/* 2. GRAPH REPRESENTATION (Bar Chart) */}
+          <div className="ceo-card">
+            <h2 className="ceo-section-title">Module Activity Level</h2>
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                  <Tooltip 
+                    cursor={{ fill: '#F5F6FA' }}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="value" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>0</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Awaiting approval</div>
+
+          {/* 3. CHART REPRESENTATION (Donut Chart) */}
+          <div className="ceo-card">
+            <h2 className="ceo-section-title">System Status Overview</h2>
+            <div style={{ height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={mockPieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
+                    {mockPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+                {mockPieData.map((entry, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: entry.color }} />
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{entry.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="d-card" style={{ animationDelay: '0.15s' }} onClick={() => nav('/ceo/reports/executive')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Reports</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>📊</span></div>
-          </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>Active</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Executive reports</div>
-        </div>
-
-        <div className="d-card" style={{ animationDelay: '0.2s' }} onClick={() => nav('/ceo/finance')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.purple, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Finance</span>
-            <div style={{ background: '#F3E5F5', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>💰</span></div>
-          </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>Live</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Financial summary</div>
-        </div>
-      </div>
-
-      {/* ── ROW 2: MODULE ACCESS + RECENT ACTIVITY ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
-
-        {/* Module Access Breakdown */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🔐</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Module Access Breakdown</span>
-          </div>
+        {/* QUICK ACTIONS & ALERTS */}
+        <div className="ceo-grid-main" style={{ gridTemplateColumns: '1fr 1fr' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 100px 80px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
-            {['Module', '', 'Status', 'Access'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
-            ))}
-          </div>
-          
-          {[
-            { name: 'Sales & CRV', pct: 100, path: '/ceo/sales' },
-            { name: 'Purchase & PV', pct: 100, path: '/ceo/purchase' },
-            { name: 'HR Records', pct: 100, path: '/ceo/hr' },
-            { name: 'Finance (All)', pct: 100, path: '/ceo/finance' },
-            { name: 'Inventory M19', pct: 100, path: '/ceo/inventory' }
-          ].map((row, i) => {
-            const c = COLORS_ARR[i % COLORS_ARR.length];
-            return (
-              <div key={row.name} className="cat-row" style={{ gridTemplateColumns: '150px 1fr 100px 80px' }} onClick={() => nav(row.path)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark }}>{row.name}</span>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: c, width: '100%' }} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: G.dark }}>Active</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: G.emerald, textAlign: 'right' }}>Full</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Stamp Access */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>✅</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Digital Stamp Rules</span>
-            </div>
-            <div style={{ padding: '10px 0', color: G.olive, fontSize: 13, lineHeight: 1.8 }}>
-              <div style={{ fontWeight: 'bold', color: G.forest, marginBottom: 8 }}>FULL STAMP PERMISSION</div>
-              • Can approve/reject ALL requests<br/>
-              • Can approve/reject ALL fund requests<br/>
-              • Can confirm direct deliveries<br/>
-              • Can review tender bids
+          {/* Quick Operations */}
+          <div className="ceo-card">
+            <h2 className="ceo-section-title">Quick Operations</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+              {[
+                { label: 'Sales Module',      path: '/ceo/sales' },
+                { label: 'Purchase Module',   path: '/ceo/purchase' },
+                { label: 'Finance Module',    path: '/ceo/finance' },
+                { label: 'HR Module',         path: '/ceo/hr' },
+                { label: 'Printing Module',   path: '/ceo/printing' },
+                { label: 'Car Rental Module', path: '/ceo/car-rental' },
+                { label: 'Tenders Module',    path: '/ceo/tender-full' },
+                { label: 'Executive Reports', path: '/ceo/reports' }
+              ].map(action => (
+                <button key={action.label} className="ceo-btn" onClick={() => nav(action.path)} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                  {action.label}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
 
-        {/* CEO Alerts */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Action Required</div>
-          {[
-            { label: `Pending Approvals`, sub: `Connect to API`, icon: '⏳', bg: '#EFF6FF', c: '#3b82f6', path: '/ceo/approvals/pending' },
-            { label: `Direct Deliveries`, sub: `Awaiting review`, icon: '🚚', bg: '#FFFBEB', c: '#f59e0b', path: '/ceo/direct-delivery' }
-          ].map(row => (
-            <div key={row.label} className="alert-row" style={{ '--row-c': row.c }} onClick={() => nav(row.path)}>
-              <div style={{ background: row.bg, padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{row.icon}</span></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{row.label}</div>
-                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{row.sub}</div>
-              </div>
-              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
-            </div>
-          ))}
         </div>
 
-        {/* Quick Actions */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-            {[
-              { label: 'Sales',      sub: 'Module', icon: '💰', bg: '#E6F2EB', color: G.forest,  href: '/ceo/sales' },
-              { label: 'Purchase',   sub: 'Module', icon: '🛒', bg: '#E8F9F1', color: G.emerald, href: '/ceo/purchase' },
-              { label: 'Finance',    sub: 'Module', icon: '🏦', bg: '#F1F8E9', color: G.olive,   href: '/ceo/finance' },
-              { label: 'HR',         sub: 'Module', icon: '👥', bg: '#FFF3E0', color: G.orange,  href: '/ceo/hr' },
-              { label: 'Printing',   sub: 'Module', icon: '🖨️', bg: '#E1F5FE', color: G.sky,     href: '/ceo/printing' },
-              { label: 'Car Rental', sub: 'Module', icon: '🚗', bg: '#F3E5F5', color: G.purple,  href: '/ceo/car-rental' },
-              { label: 'Tenders',    sub: 'Module', icon: '⚖️', bg: '#EFEBE9', color: G.brown,   href: '/ceo/tender-full' },
-              { label: 'Reports',    sub: 'Module', icon: '📊', bg: '#E6F2EB', color: G.forest,  href: '/ceo/reports' }
-            ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => nav(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
-                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize:22 }}>{a.icon}</span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
