@@ -6,9 +6,7 @@ import UserManagement from './UserManagement';
 import SystemSettings from './SystemSettings';
 import CentralAuditLog from './CentralAuditLog';
 import BackupManagement from './BackupManagement';
-import TenantManagement from './TenantManagement';
 import DisasterRecovery from './DisasterRecovery';
-import ApiKeyManagement from './ApiKeyManagement';
 import ContactMessagesManager from './ContactMessagesManager';
 import AlertCenter from './AlertCenter';
 import ManagerChat from '../../components/ManagerChat';
@@ -19,9 +17,7 @@ const AdminDashboard = () => {
     { label: 'Overview',       path: '/admin/overview',       icon: 'home' },
     { type: 'divider' },
     { label: 'Users',          path: '/admin/users',          icon: 'users' },
-    { label: 'API Keys',       path: '/admin/api-keys',       icon: 'key' },
     { type: 'divider' },
-    { label: 'Tenants',        path: '/admin/tenants',        icon: 'database' },
     { label: 'Audit Logs',     path: '/admin/audit',          icon: 'clipboard' },
     { label: 'Alert Center',   path: '/admin/alerts',         icon: 'bell' },
     { label: 'Backups',        path: '/admin/backups',        icon: 'hard-drive' },
@@ -41,9 +37,7 @@ const AdminDashboard = () => {
           <Routes>
             <Route path="overview" element={<AdminHome />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="tenants" element={<TenantManagement />} />
             <Route path="dr" element={<DisasterRecovery />} />
-            <Route path="api-keys" element={<ApiKeyManagement />} />
             <Route path="alerts" element={<AlertCenter />} />
             <Route path="audit" element={<CentralAuditLog />} />
             <Route path="contact-messages" element={<ContactMessagesManager />} />
