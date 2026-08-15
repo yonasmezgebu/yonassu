@@ -1,43 +1,71 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { UserCheck, DollarSign, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { UserCheck, DollarSign, ArrowLeft } from 'lucide-react';
 
-const CEOApprovalNav = () => {
+/**
+ * mode = 'employee' → shows Employee Approval tab only
+ * mode = 'salary'   → shows Salary Approval tab only
+ * (default)         → shows both (fallback, not used currently)
+ */
+const CEOApprovalNav = ({ mode }) => {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const isFund = location.pathname.includes('/tenders') && location.search.includes('Fund Requests');
+  const allLinks = {
+    employee: { label: 'Employee Approval', path: '/ceo/employee-approvals', icon: <UserCheck size={16} /> },
+    salary:   { label: 'Salary Approval',   path: '/ceo/salary-approval',    icon: <DollarSign size={16} /> },
+  };
 
-  const links = [
-    { label: 'Employee Approval', path: '/ceo/employee-approvals', icon: <UserCheck size={16} /> },
-    { label: 'Salary Approval', path: '/ceo/salary-approval', icon: <DollarSign size={16} /> },
-    { label: 'Fund Approvals', path: '/ceo/tenders?tab=Fund Requests', icon: <FileText size={16} />, isActive: isFund }
-  ];
+  const visibleLinks = mode ? [allLinks[mode]] : Object.values(allLinks);
 
   return (
-    <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#fff', padding: '10px 16px', borderRadius: '8px', border: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
-      {links.map((lnk, idx) => {
-        const active = lnk.isActive !== undefined ? lnk.isActive : location.pathname === lnk.path;
-        return (
-          <button
-            key={idx}
-            onClick={() => navigate(lnk.path)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-              border: active ? '1px solid #2563EB' : '1px solid #E5E7EB',
-              background: active ? '#EFF6FF' : '#F9FAFB',
-              color: active ? '#1E40AF' : '#4B5563',
-              fontWeight: 500, fontSize: '13px',
-              transition: 'all 0.15s'
-            }}
-          >
+    <>
+      <style>{`
+        .approval-topbar {
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 20px; background: #fff;
+          padding: 10px 16px; border-radius: 8px;
+          border: 1px solid #E5E7EB; flex-wrap: wrap;
+        }
+        .approval-back-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 6px 14px; border-radius: 6px; cursor: pointer;
+          font-weight: 500; font-size: 13px;
+          border: 1px solid #E5E7EB; background: #F9FAFB; color: #4B5563;
+          transition: all 0.15s ease-in-out;
+        }
+        .approval-back-btn:hover {
+          background: #F59E0B; color: #FFFFFF; border-color: #F59E0B;
+          transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        }
+        .approval-divider {
+          width: 1px; height: 24px; background: #E5E7EB; margin: 0 4px;
+        }
+        .nav-tab-active {
+          display: flex; align-items: center; gap: 6px;
+          padding: 6px 14px; border-radius: 6px;
+          font-weight: 600; font-size: 13px;
+          border: 1px solid #2563EB; background: #EFF6FF; color: #1E40AF;
+          cursor: default;
+        }
+      `}</style>
+      <div className="approval-topbar">
+        {/* Back button */}
+        <button className="approval-back-btn" onClick={() => navigate('/ceo/approvals')}>
+          <ArrowLeft size={14} /> Back to Approvals Hub
+        </button>
+
+        <div className="approval-divider" />
+
+        {/* Active page tab (read-only indicator) */}
+        {visibleLinks.map(lnk => (
+          <span key={lnk.path} className="nav-tab-active">
             {lnk.icon} {lnk.label}
-          </button>
-        );
-      })}
-    </div>
+          </span>
+        ))}
+      </div>
+    </>
   );
 };
 
 export default CEOApprovalNav;
+
