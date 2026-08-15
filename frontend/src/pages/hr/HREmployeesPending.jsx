@@ -17,6 +17,69 @@ const buildFileUrl = (path) => {
   return `/${clean}`;
 };
 
+const GlobalStyles = () => (
+  <style>{`
+    :root {
+      --color-primary:#2563EB; --color-primary-hover:#1D4ED8;
+      --color-bg-page:#F5F6FA; --color-bg-card:#FFFFFF; --color-border:#E5E7EB;
+      --color-text-primary:#111827; --color-text-secondary:#6B7280; --color-text-muted:#9CA3AF;
+      --color-success:#16A34A; --color-success-bg:#DCFCE7;
+      --color-danger:#DC2626; --color-danger-bg:#FEE2E2;
+      --color-warning:#D97706; --color-warning-bg:#FEF3C7;
+      --color-info:#0284C7; --color-info-bg:#E0F2FE;
+      --color-gold:#F59E0B;
+    }
+    .page-container { padding: 24px; background: var(--color-bg-page); min-height: 100vh; font-family: 'Inter', Segoe UI, Roboto, sans-serif; color: var(--color-text-primary); }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0; color: var(--color-text-primary); line-height: 1.3; display: flex; align-items: center; gap: 8px; }
+    .page-subtitle { color: var(--color-text-secondary); margin: 4px 0 0; font-size: 14px; font-weight: 400; line-height: 1.5; }
+    
+    .card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease; margin-bottom: 20px; }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    
+    .btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 150ms ease-in-out; border: 1px solid transparent; outline: none; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-primary { background: var(--color-success); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--color-gold); color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    
+    .btn-danger { background: var(--color-danger); color: white; }
+    .btn-danger:hover:not(:disabled) { background: var(--color-gold); color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    
+    .btn-ghost { background: var(--color-bg-page); border: 1px solid var(--color-border); color: var(--color-text-secondary); }
+    .btn-ghost:hover:not(:disabled) { background: var(--color-gold); color: white; border-color: var(--color-gold); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+    .btn-outline-danger { background: var(--color-danger-bg); border: 1px solid var(--color-danger); color: var(--color-danger); }
+    .btn-outline-danger:hover:not(:disabled) { background: var(--color-gold); color: white; border-color: var(--color-gold); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+    .btn-outline-success { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success); }
+    .btn-outline-success:hover:not(:disabled) { background: var(--color-gold); color: white; border-color: var(--color-gold); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    
+    .table-container { width: 100%; overflow-x: auto; min-width: 700px; background: var(--color-bg-card); border-radius: 10px; border: 1px solid var(--color-border); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .table-container:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { background: #F9FAFB; padding: 12px 16px; color: var(--color-text-muted); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 2px solid var(--color-border); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); }
+    tr { transition: background 150ms ease; }
+    tbody tr:hover { background: #F9FAFB; }
+    
+    .badge { display: inline-flex; align-items: center; justify-content: center; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+    
+    .input-field { height: 36px; border-radius: 8px; border: 1px solid var(--color-border); padding: 0 12px; outline: none; transition: all 150ms ease; font-size: 14px; background: var(--color-bg-card); color: var(--color-text-primary); }
+    .input-field:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    
+    .modal-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { background: var(--color-bg-card); padding: 32px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    
+    @media (max-width: 1024px) {
+      .page-container { padding: 16px; }
+    }
+    @media (max-width: 768px) {
+      .page-container { padding: 12px; }
+    }
+  `}</style>
+);
+
 const HREmployeesPending = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,8 +144,9 @@ const HREmployeesPending = () => {
   const isCeo = location.pathname.includes('/ceo/');
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      {isCeo && <CEOApprovalNav />}
+    <div className="page-container">
+      <GlobalStyles />
+      {isCeo && <CEOApprovalNav mode="employee" />}
 
       {/* ── LIGHTBOX POPUP ── */}
       {lightbox && (
@@ -130,14 +194,14 @@ const HREmployeesPending = () => {
             <div style={{ display: 'flex', gap: 12 }}>
               <button 
                 onClick={() => setConfirmApproveId(null)}
-                style={{ flex: 1, padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, color: '#475569' }}
+                className="btn btn-ghost" style={{ flex: 1 }}
               >
                 Cancel
               </button>
               <button 
                 onClick={() => handleApprove(confirmApproveId)}
                 disabled={approving}
-                style={{ flex: 1, padding: '10px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: approving ? 'not-allowed' : 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: approving ? 0.75 : 1 }}
+                className="btn btn-primary" style={{ flex: 1 }}
               >
                 {approving
                   ? <><SegmentedSpinner size={16} color="#fff" trackColor="rgba(255,255,255,0.3)" speed={1.2} /> Approving…</>
@@ -150,15 +214,15 @@ const HREmployeesPending = () => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a' }}>
+          <h1 className="page-title">
             <UserCheck color="#10b981" size={28}/> EMPLOYEE REGISTRATIONS AWAITING APPROVAL
           </h1>
-          <p style={{ color: '#64748b', margin: 0, marginTop: 4 }}>Review all newly registered employees before HR finalizes their profile</p>
+          <p className="page-subtitle">Review all newly registered employees before HR finalizes their profile</p>
         </div>
       </div>
 
       {/* FILTERS */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', alignItems: 'center' }}>
+      <div className="card" style={{ display: 'flex', gap: 16, marginBottom: 24, alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, background: '#f1f5f9', padding: '8px 12px', borderRadius: 6 }}>
           <Search size={16} color="#64748b" />
           <input 
@@ -166,7 +230,7 @@ const HREmployeesPending = () => {
             placeholder="Search by name or ID..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: 14 }}
+            className="input-field" style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
           />
         </div>
         <div style={{ color: '#64748b', fontSize: 14, fontWeight: 'bold' }}>
@@ -175,7 +239,7 @@ const HREmployeesPending = () => {
       </div>
 
       {/* MAIN TABLE */}
-      <div style={{ background: 'white', padding: 16, borderRadius: 8, border: '1px solid #e2e8f0', overflowX: 'auto' }}>
+      <div className="table-container">
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Loading pending registrations...</div>
         ) : (
@@ -211,13 +275,13 @@ const HREmployeesPending = () => {
                             setExpandedId(expandedId === emp.employee_id ? null : emp.employee_id);
                             if (rejectingId === emp.employee_id) setRejectingId(null);
                           }}
-                          style={{ padding: '8px 12px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                          className="btn btn-ghost"
                         >
                           <Eye size={16}/> {expandedId === emp.employee_id ? 'Hide Details' : 'Details'}
                         </button>
                         <button 
                           onClick={() => setConfirmApproveId(emp.employee_id)}
-                          style={{ padding: '8px 12px', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                          className="btn btn-outline-success"
                         >
                           <CheckCircle size={16}/> Approve
                         </button>
@@ -226,7 +290,7 @@ const HREmployeesPending = () => {
                             setRejectingId(rejectingId === emp.employee_id ? null : emp.employee_id);
                             if (expandedId === emp.employee_id) setExpandedId(null);
                           }}
-                          style={{ padding: '8px 12px', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                          className="btn btn-outline-danger"
                         >
                           <XCircle size={16}/> {rejectingId === emp.employee_id ? 'Cancel' : 'Reject'}
                         </button>
@@ -245,12 +309,12 @@ const HREmployeesPending = () => {
                             value={rejectReason} 
                             onChange={e => setRejectReason(e.target.value)} 
                             placeholder="e.g. Incomplete information, salary exceeds band..."
-                            style={{ flex: 1, padding: '8px 12px', border: '1px solid #fca5a5', borderRadius: 6, outline: 'none' }}
+                            className="input-field" style={{ flex: 1 }}
                             autoFocus
                           />
                           <button 
                             onClick={() => handleReject(emp.employee_id)}
-                            style={{ padding: '8px 16px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+                            className="btn btn-danger"
                           >
                             Confirm Rejection
                           </button>
