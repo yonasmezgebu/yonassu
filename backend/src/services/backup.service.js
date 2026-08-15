@@ -67,6 +67,7 @@ const createBackup = async () => {
       fs.unlinkSync(tempSqlPath);
     }
     await cleanupOldBackups();
+    await setBackupStatus('success');
     await sendBackupNotification(true, filename, fileSize, cloudUploadResult);
     logger.info(`Backup completed: ${filename} (${formatBytes(fileSize)})`);
     return {
@@ -79,8 +80,20 @@ const createBackup = async () => {
     };
   } catch (error) {
     logger.error('Backup failed:', error.message);
+    await setBackupStatus('failed');
     await sendBackupNotification(false, null, null, null, error.message);
     throw new Error(`Backup failed: ${error.message}`);
+  }
+};
+const setBackupStatus = async (status) => {
+  try {
+    await db('settings').insert({
+      setting_key: 'last_backup_status',
+      setting_value: status,
+      category: 'Backup'
+    }).onConflict('setting_key').merge();
+  } catch (error) {
+    logger.error('Failed to update backup status setting:', error.message);
   }
 };
 const compressBackup = (sourcePath, destPath) => {
