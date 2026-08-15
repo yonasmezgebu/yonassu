@@ -45,6 +45,7 @@ import CEOInventoryReportFull from './CEOInventoryReportFull';
 import CEOHRReport from './CEOHRReport';
 import CEOStoreApprovals from './CEOStoreApprovals';
 import CEOAuditLog from './CEOAuditLog';
+import CEOVatConfig from './CEOVatConfig';
 
 import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
@@ -97,7 +98,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981' },
+        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals'] },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
       ]
@@ -112,7 +113,10 @@ const CEODashboard = () => {
         { label: 'HR Report',         path: '/ceo/reports/hr',         icon: 'users' },
       ] },
     { type: 'divider' },
-    { label: 'Setting Contact', icon: 'settings', children: [{ label: 'Chat', path: '/ceo/chat', icon: 'message-circle', color: '#6B8E23' }] },
+    { label: 'Setting', icon: 'settings', children: [
+        { label: 'Chat', path: '/ceo/chat', icon: 'message-circle', color: '#6B8E23' },
+        { label: 'VAT Configuration', path: '/ceo/vat-config', icon: 'percent', color: '#2563EB' },
+    ] },
     { type: 'divider' },
     { label: 'Audit Log', path: '/ceo/audit-logs', icon: 'shield', color: '#3b82f6' },
   ];
@@ -185,6 +189,7 @@ const CEODashboard = () => {
             <Route path="budget-workflow" element={<CEOPurchaseWorkflow />} />
 
             <Route path="chat" element={<ManagerChat />} />
+            <Route path="vat-config" element={<CEOVatConfig />} />
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
