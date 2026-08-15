@@ -152,6 +152,7 @@ const adminTierPermissions = {
   'L1 System Administrator': [
     'admin:system', 'admin:health', 'admin:backup', 'admin:database', 'admin:maintenance',
     'admin:service-accounts', 'admin:dr',
+    'admin:alerts',
     'admin:field-security', 'admin:data-scopes', 'admin:sod-config'
   ],
   'L2 Security Administrator': [
