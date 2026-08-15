@@ -4,6 +4,7 @@ const AppError = require('../utils/AppError');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+const os = require('os');
 const getAuditLogs = async (filters) => {
   const {
     page = 1,
@@ -896,7 +897,110 @@ const getDRStatus = async () => {
     lastSync: new Date(Date.now() - 120000).toISOString(),
     drSite: 'Standby Region'
   };
-  return { config, lastTest: lastTest || null };
+
+  let dbConnected = false;
+  let tableCount = 0;
+  let totalSizeBytes = 0;
+  const connections = { current: null, max: null };
+  try {
+    await db.raw('SELECT 1');
+    dbConnected = true;
+    const tables = await db.raw("SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = DATABASE()");
+    tableCount = parseInt(tables[0][0].count) || 0;
+    const sizeRow = await db.raw("SELECT SUM(data_length + index_length) AS size FROM information_schema.tables WHERE table_schema = DATABASE()");
+    totalSizeBytes = parseInt(sizeRow[0][0].size) || 0;
+    const status = await db.raw('SHOW STATUS LIKE "Threads_connected"');
+    const variables = await db.raw('SHOW VARIABLES LIKE "max_connections"');
+    connections.current = parseInt(status[0][0].Value) || 0;
+    connections.max = parseInt(variables[0][0].Value) || null;
+  } catch (e) { /* database unreachable — keep defaults */ }
+
+  const backupDir = process.env.BACKUP_PATH || './backups';
+  const backupFiles = [];
+  try {
+    if (fs.existsSync(backupDir)) {
+      for (const file of fs.readdirSync(backupDir)) {
+        if (file.endsWith('.sql.gz') || file.endsWith('.sql') || file.endsWith('.zip')) {
+          const stats = fs.statSync(path.join(backupDir, file));
+          backupFiles.push({
+            filename: file,
+            size: stats.size,
+            created: stats.mtime,
+            type: file.endsWith('.gz') ? 'gzip' : (file.endsWith('.zip') ? 'zip' : 'sql')
+          });
+        }
+      }
+    }
+  } catch (e) { /* backup dir unavailable — keep defaults */ }
+  backupFiles.sort((a, b) => b.created - a.created);
+
+  let lastBackupStatus = null;
+  try {
+    const s = await db('settings').where('setting_key', 'last_backup_status').first();
+    lastBackupStatus = s ? s.setting_value : null;
+  } catch (e) { /* skip */ }
+
+  const now = Date.now();
+  let lastBackupAgeHours = null;
+  if (backupFiles.length > 0) {
+    lastBackupAgeHours = Math.max(0, Math.floor((now - new Date(backupFiles[0].created).getTime()) / 3600000));
+  }
+
+  const totalBackupSize = backupFiles.reduce((sum, b) => sum + b.size, 0);
+  const cloudUploadEnabled = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_BUCKET_NAME);
+
+  const backupStatus = !dbConnected ? 'critical'
+    : (lastBackupStatus === 'failed' ? 'critical'
+      : (backupFiles.length === 0 ? 'never'
+        : (lastBackupAgeHours > 48 ? 'critical'
+          : (lastBackupAgeHours > 24 ? 'warning' : 'ok'))));
+
+  const memTotal = os.totalmem();
+  const memUsed = memTotal - os.freemem();
+
+  return {
+    config,
+    lastTest,
+    database: {
+      connected: dbConnected,
+      totalSize: totalSizeBytes,
+      totalSizeFormatted: formatBytes(totalSizeBytes),
+      tableCount,
+      connections
+    },
+    server: {
+      hostname: os.hostname(),
+      uptime: process.uptime(),
+      uptimeFormatted: formatUptime(process.uptime()),
+      memoryUsagePercent: memTotal ? parseFloat(((memUsed / memTotal) * 100).toFixed(1)) : 0,
+      memoryUsageFormatted: `${formatBytes(memUsed)} / ${formatBytes(memTotal)}`
+    },
+    backup: {
+      status: backupStatus,
+      lastBackupStatus,
+      lastBackup: backupFiles.length > 0 ? backupFiles[0] : null,
+      lastBackupAgeHours,
+      totalBackups: backupFiles.length,
+      totalSizeFormatted: formatBytes(totalBackupSize),
+      retentionDays: parseInt(process.env.BACKUP_RETENTION_DAYS || '30', 10),
+      backupPath: backupDir,
+      cloudUploadEnabled,
+      integrityOk: backupFiles.length > 0
+    },
+    drill: {
+      copies: backupFiles.length,
+      twoLocations: cloudUploadEnabled,
+      offSite: cloudUploadEnabled
+    }
+  };
+};
+const formatUptime = (seconds) => {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 };
 const initiateDRTest = async () => {
   const { insertId } = await db('dr_tests').insert({ status: 'in_progress', created_at: db.fn.now() });
