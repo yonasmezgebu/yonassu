@@ -9,22 +9,81 @@ import {
 
 // ─── Color Palette ────────────────────────────────────────────────────────────
 const C = {
-  forestGreen:  '#228B22',
-  darkGreen:    '#1B5E20',
-  emerald:      '#2E8B57',
-  leafGreen:    '#4CAF50',
-  sage:         '#A5D6A7',
-  olive:        '#6B8E23',
-  mint:         '#E8F5E9',
-  lime:         '#8BC34A',
-  earthBrown:   '#8D6E63',
-  skyBlue:      '#87CEEB',
-  white:        '#FFFFFF',
-  lightGray:    '#F5F5F5',
-  darkGray:     '#424242',
-  orange:       '#FF9800',
-  red:          '#F44336',
+  forestGreen:  'var(--color-primary)',
+  darkGreen:    'var(--color-text-primary)',
+  emerald:      'var(--color-primary)',
+  leafGreen:    'var(--color-primary-hover)',
+  sage:         'var(--color-border)',
+  olive:        'var(--color-text-secondary)',
+  mint:         'var(--color-bg-page)',
+  lime:         'var(--color-success)',
+  earthBrown:   'var(--color-text-secondary)',
+  skyBlue:      'var(--color-info)',
+  white:        'var(--color-bg-card)',
+  lightGray:    'var(--color-bg-page)',
+  darkGray:     'var(--color-text-primary)',
+  orange:       'var(--color-warning)',
+  red:          'var(--color-danger)',
 };
+
+const GlobalStyles = () => (
+  <style>{`
+    :root {
+      --color-primary:#2563EB; --color-primary-hover:#1D4ED8;
+      --color-bg-page:#F5F6FA; --color-bg-card:#FFFFFF; --color-border:#E5E7EB;
+      --color-text-primary:#111827; --color-text-secondary:#6B7280; --color-text-muted:#9CA3AF;
+      --color-success:#16A34A; --color-success-bg:#DCFCE7;
+      --color-danger:#DC2626; --color-danger-bg:#FEE2E2;
+      --color-warning:#D97706; --color-warning-bg:#FEF3C7;
+      --color-info:#0284C7; --color-info-bg:#E0F2FE;
+      --color-gold:#F59E0B;
+    }
+    
+    .ceo-tender-page {
+      padding: 24px; background: var(--color-bg-page); min-height: 100vh; font-family: 'Inter', Segoe UI, Roboto, sans-serif; color: var(--color-text-primary);
+    }
+
+    .ceo-tender-page .card {
+      background: var(--color-bg-card) !important;
+      border: 1px solid var(--color-border) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06) !important;
+      transition: all 150ms ease !important;
+    }
+    .ceo-tender-page .card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    .ceo-tender-page button {
+      transition: all 150ms ease-in-out !important;
+      border-radius: 8px !important;
+    }
+    
+    .ceo-tender-page button:hover:not(:disabled) {
+      background: var(--color-gold) !important;
+      color: #FFFFFF !important;
+      border-color: var(--color-gold) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+    }
+    
+    .ceo-tender-page table { border-collapse: collapse; text-align: left; font-size: 14px; width: 100%; }
+    .ceo-tender-page th { background: #F9FAFB !important; padding: 12px 16px !important; color: #000000 !important; font-size: 12px !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.03em; border-bottom: 2px solid var(--color-border) !important; }
+    .ceo-tender-page td { padding: 14px 16px !important; border-bottom: 1px solid var(--color-border) !important; color: var(--color-text-primary) !important; }
+    .ceo-tender-page tr { transition: background 150ms ease; }
+    .ceo-tender-page tbody tr:hover { background: #F9FAFB !important; }
+    
+    @media (max-width: 1024px) {
+      .ceo-tender-page { padding: 16px; }
+    }
+    @media (max-width: 768px) {
+      .ceo-tender-page { padding: 12px; }
+      .ceo-tender-page .table-wrapper { overflow-x: auto; min-width: 700px; }
+    }
+  `}</style>
+);
+
 
 const CEOTenderManager = ({ isApprovalMode = false }) => {
   const location = useLocation();
@@ -339,7 +398,8 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
   );
 
   return (
-    <div style={{ background: C.lightGray, minHeight: '100vh', fontFamily: "'Inter', sans-serif", width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="ceo-tender-page">
+      <GlobalStyles />
       
       {/* Detail Modal */}
       {detailModalBidCeo && (
@@ -370,40 +430,40 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
 
       {/* ── Page Header ── */}
       {isApprovalMode && (
-        <div style={{ background: '#1a2e1a', padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.sage}` }}>
+        <div style={{ background: 'var(--color-text-primary)', padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid var(--color-border)` }}>
           <button
             onClick={() => navigate('/ceo/approvals')}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'transparent', border: `1px solid ${C.sage}`,
-              color: C.sage, padding: '6px 14px', cursor: 'pointer',
+              background: 'transparent', border: `1px solid var(--color-border)`,
+              color: 'var(--color-text-secondary)', padding: '6px 14px', cursor: 'pointer',
               fontWeight: 700, fontSize: 13, borderRadius: 4,
               transition: 'all 0.15s ease'
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.sage; e.currentTarget.style.color = C.darkGreen; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.sage; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#FFFFFF'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
           >
             ← Back to Approvals Hub
           </button>
-          <span style={{ color: C.sage, fontSize: 12, opacity: 0.7 }}>Administration / Approvals Hub / Tender Approvals</span>
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, opacity: 0.7 }}>Administration / Approvals Hub / Tender Approvals</span>
         </div>
       )}
-      <div style={{ background: C.darkGreen, padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, padding: '20px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ background: C.forestGreen, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-primary)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Leaf size={28} color={C.white} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.white, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#000000', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
               {isApprovalMode ? 'CEO TENDER & FUND APPROVALS' : 'CEO TENDER & BID MANAGEMENT'}
             </h1>
-            <p style={{ margin: 0, fontSize: 13, color: C.sage, marginTop: 4 }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#000000', marginTop: 4, fontWeight: 700 }}>
               {isApprovalMode ? 'Review pending public bids and fund requests requiring CEO approval' : 'Monitor open bids, awarded contracts, and procurement requests'}
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => { fetchTenders(); fetchSalesTenders(); fetchFundRequests(); }} style={{ padding: '10px 16px', background: C.forestGreen, color: C.white, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => { fetchTenders(); fetchSalesTenders(); fetchFundRequests(); }} style={{ padding: '0 16px', height: '36px', background: C.forestGreen, color: C.white, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={15} /> Refresh
           </button>
         </div>
@@ -426,7 +486,7 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
               { label: 'Awaiting CEO Decision', value: awaitingCount, icon: <Clock size={24} color={C.orange} />, accent: C.orange },
               { label: 'Awarded', value: combinedTenders.filter(t => t.status === 'awarded').length, icon: <CheckCircle size={24} color={C.emerald} />, accent: C.emerald },
             ].map(s => (
-              <div key={s.label} style={{ background: C.white, border: `1px solid ${C.sage}`, borderLeft: `5px solid ${s.accent}`, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div key={s.label} className="card" style={{ borderLeft: `5px solid ${s.accent}`, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{ width: 48, height: 48, background: `${s.accent}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {s.icon}
                 </div>
@@ -481,7 +541,7 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
         {/* ── TAB CONTENT: FUND REQUESTS ── */}
         {activeTab === 'Fund Requests' && (
           <div style={{ background: C.white, border: `1px solid ${C.sage}` }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-wrapper" style={{ overflowX: 'auto', background: 'var(--color-bg-card)', borderRadius: '10px', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead style={{ background: C.darkGreen }}>
                   <tr>
@@ -516,7 +576,7 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
                           {new Date(req.created_at).toLocaleDateString()}
                         </td>
                         <td style={{ padding: '14px 16px' }}>
-                          <button onClick={() => setViewFundRequest(req)} style={{ padding: '8px 16px', background: C.emerald, color: C.white, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <button onClick={() => setViewFundRequest(req)} style={{ padding: '0 16px', height: '36px', background: C.emerald, color: C.white, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <Eye size={14} /> View
                           </button>
                         </td>
@@ -532,7 +592,7 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
         {/* ── TAB CONTENT: PROCUREMENT TENDERS (All other tabs) ── */}
         {(activeTab !== 'Fund Requests' && activeTab !== 'Sales Bids') && (
           <div style={{ background: C.white, border: `1px solid ${C.sage}` }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-wrapper" style={{ overflowX: 'auto', background: 'var(--color-bg-card)', borderRadius: '10px', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
                 <thead style={{ background: C.darkGreen }}>
                   <tr>
