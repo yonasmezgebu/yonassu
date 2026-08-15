@@ -304,6 +304,19 @@ const adminService = {
   },
   updateSocialLinks: async (links) => {
     return await apiClient.put('/admin/social-links', { links });
+  },
+  /* Alert Center */
+  getAlerts: async (params = {}) => {
+    return await apiClient.get('/admin/alerts', { params });
+  },
+  getUnreadAlertCount: async () => {
+    return await apiClient.get('/admin/alerts/unread-count');
+  },
+  markAlertRead: async (id) => {
+    return await apiClient.post(`/admin/alerts/${id}/read`);
+  },
+  markAlertResolved: async (id) => {
+    return await apiClient.post(`/admin/alerts/${id}/resolve`);
   }
 };
 export default adminService;
