@@ -137,7 +137,7 @@ const SystemSettings = () => {
             </div>
             <div className={styles.field}>
               <label>Backup Retention (days)</label>
-              <input type="number" min={7} max={365} value={settings.backup_retention_days || 30} onChange={(e) => set('backup_retention_days', e.target.value)} />
+              <input type="number" value={settings.backup_retention_days || 30} onChange={(e) => set('backup_retention_days', e.target.value)} />
               <span className={styles.hint}>Backup files older than this are automatically deleted.</span>
             </div>
             <div className={styles.field}>
@@ -154,17 +154,17 @@ const SystemSettings = () => {
             <h3>Security Settings</h3>
             <div className={styles.field}>
               <label>Session Timeout (Minutes)</label>
-              <input type="number" min={5} max={480} value={settings.session_timeout_minutes || 30} onChange={(e) => set('session_timeout_minutes', e.target.value)} />
+              <input type="number" value={settings.session_timeout_minutes || 30} onChange={(e) => set('session_timeout_minutes', e.target.value)} />
               <span className={styles.hint}>Users are automatically logged out after this period of inactivity.</span>
             </div>
             <div className={styles.field}>
               <label>Max Login Attempts</label>
-              <input type="number" min={3} max={20} value={settings.max_failed_attempts || 5} onChange={(e) => set('max_failed_attempts', e.target.value)} />
+              <input type="number" value={settings.max_failed_attempts || 5} onChange={(e) => set('max_failed_attempts', e.target.value)} />
               <span className={styles.hint}>Account is temporarily locked after this many consecutive failed logins.</span>
             </div>
             <div className={styles.field}>
               <label>Password Expiry (Days)</label>
-              <input type="number" min={30} max={365} value={settings.password_expiry_days || 90} onChange={(e) => set('password_expiry_days', e.target.value)} />
+              <input type="number" value={settings.password_expiry_days || 90} onChange={(e) => set('password_expiry_days', e.target.value)} />
               <span className={styles.hint}>Users must change their password after this many days.</span>
             </div>
             <div className={styles.field}>
@@ -184,7 +184,7 @@ const SystemSettings = () => {
               <div className={styles.field} key={link.platform}>
                 <label style={{ textTransform: 'capitalize' }}>{link.platform}</label>
                 <input 
-                  type="url" 
+                  type="text" 
                   value={link.url || ''} 
                   onChange={(e) => handleSocialChange(link.platform, 'url', e.target.value)} 
                   placeholder={`https://${link.platform}.com/...`} 
