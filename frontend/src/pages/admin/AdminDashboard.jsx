@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import adminService from '../../services/adminService';
 import AdminHome from './AdminHome';
 import UserManagement from './UserManagement';
 import SystemSettings from './SystemSettings';
@@ -13,13 +14,29 @@ import ManagerChat from '../../components/ManagerChat';
 import styles from './AdminDashboard.module.css';
 
 const AdminDashboard = () => {
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    const fetchUnread = async () => {
+      try {
+        const res = await adminService.getUnreadAlertCount();
+        setUnreadAlerts(res.data?.data?.unread || 0);
+      } catch (err) {
+        /* sidebar badge is best-effort */
+      }
+    };
+    fetchUnread();
+    timer = setInterval(fetchUnread, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const menuItems = [
     { label: 'Overview',       path: '/admin/overview',       icon: 'home' },
     { type: 'divider' },
     { label: 'Users',          path: '/admin/users',          icon: 'users' },
     { type: 'divider' },
-    { label: 'Audit Logs',     path: '/admin/audit',          icon: 'clipboard' },
-    { label: 'Alert Center',   path: '/admin/alerts',         icon: 'bell' },
+    { label: 'Alert Center',   path: '/admin/alerts',         icon: 'bell', badge: unreadAlerts },
     { label: 'Backups',        path: '/admin/backups',        icon: 'hard-drive' },
     { label: 'Disaster Recovery', path: '/admin/dr',          icon: 'shield' },
     { label: 'Settings',       path: '/admin/settings',       icon: 'sliders' },
@@ -28,6 +45,8 @@ const AdminDashboard = () => {
       { label: 'Contact Messages', path: '/admin/contact-messages', icon: 'inbox' },
       { label: 'Chat', path: '/admin/chat', icon: 'message-square', color: '#6B8E23' }
     ] },
+    { type: 'divider' },
+    { label: 'Audit Logs',     path: '/admin/audit',          icon: 'clipboard' },
   ];
 
   return (
