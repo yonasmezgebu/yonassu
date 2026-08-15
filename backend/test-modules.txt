@@ -1,0 +1,13 @@
+[
+  "HR",
+  "Admin",
+  "General",
+  "Store",
+  "Sales",
+  "Pharmacy",
+  "Printing",
+  "Inventory",
+  "Pharmacy Store",
+  "CEO",
+  "Car Rental"
+]
