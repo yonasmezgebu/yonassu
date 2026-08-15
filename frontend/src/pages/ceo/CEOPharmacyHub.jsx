@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Clipboard, Truck, CheckSquare, Package, Sliders, ClipboardCheck,
   CheckCircle, XCircle, RefreshCw, ChevronDown, ChevronUp,
-  X, Send, FileText
+  X, Send, FileText, ArrowLeft
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import { getPendingUpdateRequests, approveUpdateRequest, rejectUpdateRequest } from '../../utils/storeApi';
@@ -61,6 +61,32 @@ const GlobalStyles = () => (
       line-height: 1.5;
       color: var(--color-text-primary);
       animation: phFadeUp 0.3s ease;
+    }
+
+    /* Back Button */
+    .ph-back-bar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px; background: #FFFFFF;
+      padding: 10px 16px; border-radius: 8px;
+      border: 1px solid var(--color-border);
+    }
+    .ph-back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 500;
+      border: 1px solid var(--color-border); background: #F9FAFB; color: var(--color-text-secondary);
+      font-family: inherit; transition: all 150ms ease-in-out;
+    }
+    .ph-back-btn:hover {
+      background: #F59E0B; color: #FFFFFF; border-color: #F59E0B;
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .ph-back-divider { width: 1px; height: 24px; background: var(--color-border); }
+    .ph-back-label {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      border: 1px solid var(--color-primary); background: #EFF6FF; color: #1E40AF;
     }
 
     .ph-page-content {
@@ -636,389 +662,6 @@ const TabStockUpdates = ({ toast }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   TAB 5 — AUDIT LOG (Historical Records)
-═══════════════════════════════════════════════════════════ */
-const TabAuditLog = () => {
-  const [category, setCategory] = useState('all');
-  const [status, setStatus] = useState('All');
-  const [time, setTime] = useState('All');
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const parseJSON = (str) => {
-    if (!str) return {};
-    if (typeof str === 'object') return str;
-    try { return JSON.parse(str); } catch { return {}; }
-  };
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      let rows = [];
-
-      const fetchEndpoint = async (cat, endpoint) => {
-        try {
-          const res = await apiClient.get(endpoint);
-          const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.data?.data) ? res.data.data : []);
-          return raw.map(r => ({ ...r, _cat: cat }));
-        } catch { return []; }
-      };
-
-      if (category === 'all') {
-        const results = await Promise.all([
-          fetchEndpoint('procurement', '/procurement/requests?status=All'),
-          fetchEndpoint('delivery', '/store-inventory/deliveries'),
-          fetchEndpoint('updates', '/store-inventory/update-requests/pending?status=All'),
-          fetchEndpoint('adjustments', '/store-inventory/adjustments/pending?status=All'),
-          fetchEndpoint('counts', '/store-inventory/counts/pending?status=All')
-        ]);
-        rows = results.flat();
-      } else {
-        let endpoint = '';
-        if (category === 'procurement') endpoint = '/procurement/requests?status=All';
-        if (category === 'delivery') endpoint = '/store-inventory/deliveries';
-        if (category === 'updates') endpoint = '/store-inventory/update-requests/pending?status=All';
-        if (category === 'adjustments') endpoint = '/store-inventory/adjustments/pending?status=All';
-        if (category === 'counts') endpoint = '/store-inventory/counts/pending?status=All';
-        rows = await fetchEndpoint(category, endpoint);
-      }
-      
-      let filtered = rows;
-      if (status !== 'All') {
-        const sMatch = status.toUpperCase();
-        filtered = filtered.filter(r => {
-          const rs = (r.status || '').toUpperCase();
-          if (sMatch === 'APPROVED') return rs.includes('APPROVED') || rs === 'COMPLETED' || rs === 'RECEIVED';
-          if (sMatch === 'REJECTED') return rs.includes('REJECTED');
-          return rs === sMatch;
-        });
-      }
-
-      if (time !== 'All') {
-        const now = new Date();
-        filtered = filtered.filter(r => {
-          const dateStr = r.updated_at || r.created_at || r.delivery_date || r.count_date;
-          if (!dateStr) return false;
-          const d = new Date(dateStr);
-          const diffMs = now - d;
-          const diffDays = diffMs / (1000 * 60 * 60 * 24);
-          if (time === 'Week') return diffDays <= 7;
-          if (time === 'Month') return diffDays <= 30;
-          if (time === 'Quarter') return diffDays <= 90;
-          if (time === 'Year') return diffDays <= 365;
-          return true;
-        });
-      }
-
-      filtered.sort((a, b) => {
-        const d1 = new Date(b.updated_at || b.created_at || b.delivery_date || b.count_date || 0);
-        const d2 = new Date(a.updated_at || a.created_at || a.delivery_date || a.count_date || 0);
-        return d1 - d2;
-      });
-
-      setData(filtered);
-    } catch {
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [category, status, time]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert("Please allow popups to print the report.");
-      return;
-    }
-
-    const headers = renderTableHeaders();
-    let rowsHtml = '';
-    
-    data.forEach(r => {
-      const cat = category === 'all' ? r._cat : category;
-      const u = getUnifiedRowData(r, cat);
-      const s = r.status || 'UNKNOWN';
-      const sColor = s.toUpperCase().includes('APPROVED') || s.toUpperCase() === 'COMPLETED' || s.toUpperCase() === 'RECEIVED' ? '#059669' : (s.toUpperCase().includes('REJECTED') ? '#DC2626' : '#D97706');
-      
-      let rowCells = '';
-      if (category === 'all') {
-        rowCells = `<td style="font-weight:800; color:#065F46;">${u.mod}</td><td>${u.id}</td><td>${u.details}</td><td style="font-weight:700;">${u.qty}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      } else if (category === 'procurement') {
-        rowCells = `<td>${u.id}</td><td>${u.details}</td><td>${r.requested_by_name || r.requestedBy || '—'}</td><td style="font-weight:700;">${u.qty}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      } else if (category === 'delivery') {
-        rowCells = `<td>${u.id}</td><td>${u.details}</td><td>${u.qty}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      } else if (category === 'updates') {
-        rowCells = `<td>${u.id}</td><td>${u.details}</td><td>${r.update_type || '—'}</td><td>${u.qty}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      } else if (category === 'adjustments') {
-        rowCells = `<td>${u.id}</td><td>${u.details}</td><td>${r.action || '—'}</td><td>${r.quantity || '—'}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      } else if (category === 'counts') {
-        rowCells = `<td>${u.id}</td><td>${r.counted_by || '—'}</td><td>${u.qty}</td><td style="color:${sColor}; font-weight:800;">${u.s}</td><td>${u.date}</td>`;
-      }
-      
-      rowsHtml += `<tr>${rowCells}</tr>`;
-    });
-
-    const reportTitle = category === 'all' ? 'FULL AUDIT LOG REPORT' : `${cats.find(c => c.id === category)?.label.toUpperCase()} REPORT`;
-
-    const H = (t) => `<${t}>`; // helper so OXC does not see raw closing tags
-    const CH = (t) => `</${t}>`;
-    const html = [
-      '<!DOCTYPE html>',
-      H('html lang="en"'),
-        H('head'),
-          H('meta charset="UTF-8"'),
-          H('title') + 'Print Report - SUTANA EMS' + CH('title'),
-          H('style'),
-            "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');",
-            'body { font-family: Inter, sans-serif; padding: 40px; color: #111827; background: #fff; }',
-            '.header { text-align: center; margin-bottom: 40px; border-bottom: 4px solid #065F46; padding-bottom: 20px; }',
-            '.header h1 { margin: 0; font-size: 28px; font-weight: 800; color: #065F46; letter-spacing: 1px; text-transform: uppercase; }',
-            '.header p { margin: 8px 0 0; font-size: 14px; color: #4B5563; font-weight: 600; }',
-            '.meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 1px solid #E5E7EB; padding-bottom: 12px; }',
-            'table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; margin-bottom: 40px; }',
-            'th { background: #F3F4F6; padding: 14px; border-bottom: 3px solid #111827; color: #111827; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }',
-            'td { padding: 12px 14px; border-bottom: 1px solid #D1D5DB; vertical-align: middle; color: #374151; }',
-            'tr:nth-child(even) td { background-color: #F9FAFB; }',
-            '.footer { text-align: center; font-size: 11px; color: #9CA3AF; margin-top: 50px; border-top: 1px solid #E5E7EB; padding-top: 20px; }',
-            '@media print { body { padding: 0; } @page { margin: 1cm; size: auto; } }',
-          CH('style'),
-        CH('head'),
-        H('body'),
-          H('div class="header"') + H('h1') + '🌿 SUTANA EMS' + CH('h1') + H('p') + reportTitle + CH('p') + CH('div'),
-          H('div class="meta"') +
-            H('span') + H('strong') + 'FILTERS:' + CH('strong') + ' ' + filteredLabel(status, time) + CH('span') +
-            H('span') + H('strong') + 'GENERATED:' + CH('strong') + ' ' + new Date().toLocaleString() + CH('span') +
-            H('span') + H('strong') + 'TOTAL RECORDS:' + CH('strong') + ' ' + data.length + CH('span') +
-          CH('div'),
-          H('table'),
-            H('thead') + H('tr') + headers.map(h => H('th') + h + CH('th')).join('') + CH('tr') + CH('thead'),
-            H('tbody') + (rowsHtml || H('tr') + '<td colspan="6" style="text-align:center;padding:20px;font-weight:600;">No records found.</td>' + CH('tr')) + CH('tbody'),
-          CH('table'),
-          H('div class="footer"') + 'SUTANA Enterprise Management System &mdash; System Generated Document' + CH('div'),
-          H('script') + 'window.onload=function(){setTimeout(function(){window.print();window.close();},300);}' + CH('script'),
-        CH('body'),
-      CH('html'),
-    ].join('\n');
-
-
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-  };
-
-  const cats = [
-    { id: 'procurement', label: 'Procurement' },
-    { id: 'delivery', label: 'Delivery' },
-    { id: 'updates', label: 'Stock Updates' },
-    { id: 'adjustments', label: 'Adjustments' },
-    { id: 'counts', label: 'Physical Counts' },
-    { id: 'all', label: 'ALL' }
-  ];
-
-  const filteredLabel = (s, t) => {
-    return `[${s === 'All' ? 'ALL' : s.toUpperCase()} / ${t === 'All' ? 'ALL TIME' : t.toUpperCase()}]`;
-  };
-
-  const renderTableHeaders = () => {
-    if (category === 'all') return ['Module', 'ID / Ref', 'Details', 'Action / Qty', 'Status', 'Date'];
-    if (category === 'procurement') return ['Reference', 'Item / Purpose', 'Requested By', 'Amount', 'Status', 'Date'];
-    if (category === 'delivery') return ['Delivery No', 'Supplier', 'Quantity', 'Status', 'Date'];
-    if (category === 'updates') return ['Update ID', 'Drug', 'Type', 'Qty', 'Status', 'Date'];
-    if (category === 'adjustments') return ['Adjustment ID', 'Drug', 'Action', 'Qty', 'Status', 'Date'];
-    if (category === 'counts') return ['Count No', 'Counted By', 'Remarks', 'Status', 'Date'];
-    return [];
-  };
-
-  const getUnifiedRowData = (r, cat) => {
-    const oldData = parseJSON(r.old_data);
-    const newData = parseJSON(r.new_data);
-    
-    let mod = ''; let id = ''; let details = ''; let qty = '';
-    
-    if (cat === 'procurement') {
-      mod = 'Procurement';
-      id = r.reference_number || `#${r.id}`;
-      details = r.item_name || r.purpose || '—';
-      qty = r.amount ? `ETB ${parseFloat(r.amount).toLocaleString()}` : (r.estimated_cost ? `ETB ${parseFloat(r.estimated_cost).toLocaleString()}` : '—');
-    } else if (cat === 'delivery') {
-      mod = 'Delivery';
-      id = r.delivery_no || `#${r.id}`;
-      details = r.supplier_name || '—';
-      qty = r.quantity || r.quantity_summary || '—';
-    } else if (cat === 'updates') {
-      mod = 'Stock Update';
-      id = r.id;
-      details = r.medicine_name || r.drug_name || oldData.drug_name || newData.drug_name || '—';
-      qty = `${r.update_type || 'Update'} (${oldData.quantity || 0} → ${newData.quantity ?? (r.new_quantity ?? 0)})`;
-    } else if (cat === 'adjustments') {
-      mod = 'Adjustment';
-      id = r.id;
-      details = r.drug_name || r.medicine_name || r.item_name || '—';
-      qty = `${r.action || '—'} (${r.quantity || '—'})`;
-    } else if (cat === 'counts') {
-      mod = 'Physical Count';
-      id = r.count_no || `#${r.id}`;
-      details = `Counted by ${r.counted_by || '—'}`;
-      qty = r.remarks || '—';
-    }
-    
-    const dateStr = r.updated_at || r.created_at || r.delivery_date || r.count_date;
-    const date = dateStr ? new Date(dateStr).toLocaleDateString() : '—';
-    const s = r.status || 'UNKNOWN';
-
-    return { mod, id, details, qty, date, s };
-  };
-
-  const renderTableRow = (r) => {
-    const cat = category === 'all' ? r._cat : category;
-    const u = getUnifiedRowData(r, cat);
-
-    if (category === 'all') return (
-      <tr key={`${cat}-${r.id}`}>
-        <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{u.mod}</td>
-        <td>{u.id}</td>
-        <td>{u.details}</td>
-        <td>{u.qty}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-
-    if (category === 'procurement') return (
-      <tr key={r.id}>
-        <td>{u.id}</td>
-        <td>{u.details}</td>
-        <td>{r.requested_by_name || r.requestedBy || '—'}</td>
-        <td style={{ fontWeight: 700 }}>{u.qty}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-    if (category === 'delivery') return (
-      <tr key={r.id}>
-        <td>{u.id}</td>
-        <td>{u.details}</td>
-        <td>{u.qty}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-    if (category === 'updates') return (
-      <tr key={r.id}>
-        <td>{u.id}</td>
-        <td>{u.details}</td>
-        <td>{r.update_type || '—'}</td>
-        <td>{u.qty}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-    if (category === 'adjustments') return (
-      <tr key={r.id}>
-        <td>{u.id}</td>
-        <td>{u.details}</td>
-        <td>{r.action || '—'}</td>
-        <td>{r.quantity || '—'}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-    if (category === 'counts') return (
-      <tr key={r.id}>
-        <td>{u.id}</td>
-        <td>{r.counted_by || '—'}</td>
-        <td>{u.qty}</td>
-        <td><Badge status={u.s} /></td>
-        <td>{u.date}</td>
-      </tr>
-    );
-  };
-
-  return (
-    <div style={{ padding: '24px 30px' }}>
-      <div className="ph-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {cats.map(c => (
-              <FilterBtn key={c.id} active={category === c.id} onClick={() => setCategory(c.id)}>{c.label}</FilterBtn>
-            ))}
-          </div>
-          <Btn onClick={handlePrint} style={{ padding: '8px 16px', fontSize: 12 }}>
-            <FileText size={14} /> Print Log
-          </Btn>
-        </div>
-
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginRight: 4 }}>STATUS:</span>
-            {['Approved', 'Rejected', 'All'].map(s => (
-              <button
-                key={s} onClick={() => setStatus(s)}
-                style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${status === s ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  background: status === s ? 'var(--color-primary)' : 'var(--color-bg-card)', color: status === s ? 'var(--color-bg-card)' : 'var(--color-text-secondary)',
-                  cursor: 'pointer', borderRadius: 4
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginRight: 4 }}>TIME:</span>
-            {['Week', 'Month', 'Quarter', 'Year', 'All'].map(t => (
-              <button
-                key={t} onClick={() => setTime(t)}
-                style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700, border: `1px solid ${time === t ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  background: time === t ? 'var(--color-primary)' : 'var(--color-bg-card)', color: time === t ? 'var(--color-bg-card)' : 'var(--color-text-secondary)',
-                  cursor: 'pointer', borderRadius: 4
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="print-area" style={{ background: 'var(--color-bg-card)', border: `1px solid ${'var(--color-border)'}`, borderRadius: 8, padding: '24px' }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>
-          {category === 'all' ? 'FULL AUDIT LOG' : cats.find(c => c.id === category)?.label.toUpperCase() + ' LOG'} 
-          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500, marginLeft: 8 }}>— {filteredLabel(status, time)}</span>
-        </h2>
-        
-        {loading ? <Spinner /> : data.length === 0 ? <Empty icon={FileText} message="No records match your filters." /> : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="audit-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
-              <thead>
-                <tr>
-                  {renderTableHeaders().map(h => (
-                    <th key={h} style={{ padding: '12px 14px', borderBottom: `2px solid ${'var(--color-primary)'}`, color: 'var(--color-primary)', fontWeight: 800 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((r, i) => {
-                    const row = renderTableRow(r);
-                    if (!row) return null;
-                    return React.cloneElement(row, {
-                      key: `${r.id || i}-${i}`,
-                      style: { borderBottom: `1px solid ${'var(--color-border)'}`, background: i % 2 === 0 ? 'var(--color-bg-page)' : 'var(--color-bg-card)' }
-                    });
-                  })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-/* ═══════════════════════════════════════════════════════════
 /* ═══════════════════════════════════════════════════════════
    TAB 6 — STORE ADJUSTMENTS
 ═══════════════════════════════════════════════════════════ */
@@ -1247,11 +890,11 @@ const TABS = [
   { id: 'updates',      label: 'Stock Updates',  icon: CheckSquare,    component: TabStockUpdates },
   { id: 'adjustments',  label: 'Adjustments',    icon: Sliders,        component: TabAdjustments },
   { id: 'counts',       label: 'Physical Count', icon: ClipboardCheck, component: TabPhysicalCount },
-  { id: 'audit_log',    label: 'Audit Log',      icon: FileText,       component: TabAuditLog },
 ];
 
 const CEOPharmacyHub = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('procurement');
   const [toastMsg, setToastMsg] = useState(null);
 
@@ -1277,6 +920,17 @@ const CEOPharmacyHub = () => {
     <div className="ph-page-wrapper">
       <div className="ph-page-content">
       <GlobalStyles />
+
+      {/* ── Back Bar ── */}
+      <div className="ph-back-bar">
+        <button className="ph-back-btn" onClick={() => navigate('/ceo/approvals')}>
+          <ArrowLeft size={14} /> Back to Approvals Hub
+        </button>
+        <div className="ph-back-divider" />
+        <span className="ph-back-label">
+          <Package size={15} /> Pharmacy Hub
+        </span>
+      </div>
 
       {/* Header */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
