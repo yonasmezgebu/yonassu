@@ -101,5 +101,6 @@ router.use('/printing-settings', require('./printingSettings.routes'));
 router.use('/hr-settings', require('./hrSettings.routes'));
 router.use('/manager-chat', require('./managerChat.routes'));
 router.use('/audit-logs', require('./centralAudit.routes'));
+router.use('/vat-config', require('./vatConfig.routes'));
 
 module.exports = router;
