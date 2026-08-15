@@ -19,6 +19,55 @@ const StatusBadge = ({ status }) => {
   return <span style={{ display:'inline-flex', alignItems:'center', padding:'3px 10px', borderRadius:4, fontSize:12, fontWeight:600, background:s.bg, color:s.color }}>{status}</span>;
 };
 
+const GlobalStyles = () => (
+  <style>{`
+    :root {
+      --color-primary:#2563EB; --color-primary-hover:#1D4ED8;
+      --color-bg-page:#F5F6FA; --color-bg-card:#FFFFFF; --color-border:#E5E7EB;
+      --color-text-primary:#111827; --color-text-secondary:#6B7280; --color-text-muted:#9CA3AF;
+      --color-success:#16A34A; --color-success-bg:#DCFCE7;
+      --color-danger:#DC2626; --color-danger-bg:#FEE2E2;
+      --color-warning:#D97706; --color-warning-bg:#FEF3C7;
+      --color-info:#0284C7; --color-info-bg:#E0F2FE;
+      --color-gold:#F59E0B;
+    }
+    .page-container { padding: 24px; background: var(--color-bg-page); min-height: 100vh; font-family: 'Inter', Segoe UI, Roboto, sans-serif; color: var(--color-text-primary); }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0; color: var(--color-text-primary); line-height: 1.3; }
+    .page-subtitle { color: var(--color-text-secondary); margin: 4px 0 0; font-size: 14px; font-weight: 400; line-height: 1.5; }
+    
+    .card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: all 150ms ease; margin-bottom: 20px; overflow: hidden; }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    
+    .btn { height: 36px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 150ms ease-in-out; border: 1px solid transparent; outline: none; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-primary { background: var(--color-success); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--color-gold); color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    
+    .btn-danger { background: var(--color-danger); color: white; }
+    .btn-danger:hover:not(:disabled) { background: var(--color-gold); color: white; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    
+    .btn-ghost { background: var(--color-bg-page); border: 1px solid var(--color-border); color: var(--color-text-secondary); }
+    .btn-ghost:hover:not(:disabled) { background: var(--color-gold); color: white; border-color: var(--color-gold); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+    .table-container { width: 100%; overflow-x: auto; min-width: 700px; background: var(--color-bg-card); border-radius: 10px; border: 1px solid var(--color-border); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .table-container:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { background: #F9FAFB; padding: 12px 16px; color: var(--color-text-muted); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 2px solid var(--color-border); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-primary); }
+    tr { transition: background 150ms ease; }
+    tbody tr:hover { background: #F9FAFB; }
+    
+    @media (max-width: 1024px) {
+      .page-container { padding: 16px; }
+    }
+    @media (max-width: 768px) {
+      .page-container { padding: 12px; }
+    }
+  `}</style>
+);
+
 const CEOPayrollApproval = () => {
   const [payrolls, setPayrolls]           = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -75,8 +124,9 @@ const CEOPayrollApproval = () => {
   const totalNetPending = pending.reduce((s,p)=>s+parseFloat(p.company_net_pay||0),0);
 
   return (
-    <div style={{ fontFamily:"'Inter','Segoe UI',sans-serif", color:'#111827' }}>
-      <CEOApprovalNav />
+    <div className="page-container">
+      <GlobalStyles />
+      <CEOApprovalNav mode="salary" />
 
       {toast && (
         <div style={{ position:'fixed', top:20, right:24, zIndex:9999, background:toast.type==='success'?'#16A34A':'#DC2626', color:'#fff', padding:'12px 20px', borderRadius:8, fontSize:14, fontWeight:500, boxShadow:'0 4px 16px rgba(0,0,0,0.15)', display:'flex', alignItems:'center', gap:8 }}>
@@ -86,10 +136,10 @@ const CEOPayrollApproval = () => {
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
         <div>
-          <h1 style={{ fontSize:24, fontWeight:700, margin:0 }}>Salary Approvals</h1>
-          <p style={{ color:'#6B7280', fontSize:14, margin:'4px 0 0' }}>Review and approve monthly payroll submissions from HR</p>
+          <h1 className="page-title">Salary Approvals</h1>
+          <p className="page-subtitle">Review and approve monthly payroll submissions from HR</p>
         </div>
-        <button onClick={fetchPayrolls} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+        <button onClick={fetchPayrolls} className="btn btn-ghost" style={{ height: 32 }}>
           <RefreshCw size={14}/> Refresh
         </button>
       </div>
@@ -129,7 +179,7 @@ const CEOPayrollApproval = () => {
             const d = detail[key];
             const isPending = p.approval_status==='Pending CEO Approval';
             return (
-              <div key={key} style={{ background:'#fff', border:'1px solid #E5E7EB', borderRadius:10, overflow:'hidden', boxShadow:isPending?'0 0 0 2px #FEF3C7':'none' }}>
+              <div key={key} className="card" style={{ padding: 0, overflow: 'hidden', boxShadow:isPending?'0 0 0 2px #FEF3C7':'none' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 20px', flexWrap:'wrap' }}>
                   <div style={{ flex:'1 1 160px' }}>
                     <div style={{ fontWeight:700, fontSize:15 }}>{monthName(p.month_number)} {p.year_number}</div>
@@ -142,11 +192,11 @@ const CEOPayrollApproval = () => {
                   <div style={{ flex:'1 1 120px', textAlign:'center' }}><StatusBadge status={p.approval_status}/></div>
                   {isPending && (
                     <div style={{ display:'flex', gap:8 }}>
-                      <button onClick={()=>setActionModal({payroll:p,type:'approve'})} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#16A34A', color:'#fff', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}><CheckCircle size={14}/> Approve</button>
-                      <button onClick={()=>setActionModal({payroll:p,type:'reject'})} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', background:'#DC2626', color:'#fff', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}><XCircle size={14}/> Reject</button>
+                      <button onClick={()=>setActionModal({payroll:p,type:'approve'})} className="btn btn-primary"><CheckCircle size={14}/> Approve</button>
+                      <button onClick={()=>setActionModal({payroll:p,type:'reject'})} className="btn btn-danger"><XCircle size={14}/> Reject</button>
                     </div>
                   )}
-                  <button onClick={()=>loadDetail(p)} style={{ background:'none', border:'1px solid #E5E7EB', borderRadius:6, padding:'6px 10px', cursor:'pointer', color:'#6B7280', display:'flex', alignItems:'center', gap:4 }}>
+                  <button onClick={()=>loadDetail(p)} className="btn btn-ghost" style={{ padding:'6px 10px' }}>
                     {isExpanded?<ChevronUp size={16}/>:<ChevronDown size={16}/>}
                     <span style={{ fontSize:12 }}>Details</span>
                   </button>
