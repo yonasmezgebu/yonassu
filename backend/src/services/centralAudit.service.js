@@ -92,8 +92,6 @@ const dedupKey = (userId, action, details) =>
 const captureLegacy = async (action, userId, details = {}) => {
   try {
     if (details.centralAudit === false) return;
-    // Auth events (login/logout/password) are not dashboard activity — skip them.
-    if (/^(LOGIN|LOGOUT)/.test(String(action || '').toUpperCase())) return;
     if (!(await ensureCentralTable())) return;
     const fprint = dedupKey(userId, action, details);
     const now = Date.now();
@@ -228,15 +226,19 @@ const getLogs = async (user, filters = {}) => {
     q = q.where('user_id', user.id);
   }
 
-  // Auth events (login/logout) are not dashboard activity — never show them.
-  q = q.where('action', 'not like', 'LOGIN%')
-      .where('action', 'not like', 'LOGOUT%')
-      .where('action', 'not like', 'Register%')
-      .where('action', 'not like', 'REGISTER%');
+  // Auth events (login/logout/password) are only visible to Super Admin / CEO.
+  // Regular employees and module staff will never see them because their
+  // queries are already scoped to their own user ID or module.
+  // (No global filter needed — access is already restricted above.)
 
   // Optional filters
-  if (filters.module)  q = q.where('module', filters.module);
-  if (filters.action)  q = q.where('action', 'like', `%${filters.action}%`);
+  if (filters.module) {
+    q = q.where((builder) => {
+      builder.where('module', filters.module)
+             .orWhere('department', filters.module);
+    });
+  }
+  if (filters.action)  q = q.where('action', filters.action);
   if (filters.search) {
     q = q.where((builder) => {
       builder
