@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, query, param, header } = require('express-validator');
 const AdminController = require('../controllers/admin.controller');
+const AlertsController = require('../controllers/alerts.controller');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const { limiters } = require('../../config/rateLimit');
@@ -19,7 +20,7 @@ const auditLogValidation = [
 const updateSettingsValidation = [
   body('settings').isArray().withMessage('Settings must be an array'),
   body('settings.*.key').notEmpty().withMessage('Setting key is required'),
-  body('settings.*.value').notEmpty().withMessage('Setting value is required')
+  body('settings.*.value').optional({ checkFalsy: false })
 ];
 
 /* ════════════════════════════════════════════════
@@ -307,14 +308,33 @@ router.get('/database/status', authenticate, authorize(['admin:database']), Admi
 router.get(
   '/alerts',
   authenticate,
-  authorize(['admin:dashboard']),
-  AdminController.getAlerts
+  authorize(['admin:alerts']),
+  query('status').optional().isIn(['UNREAD', 'READ', 'RESOLVED']),
+  query('module').optional().isString(),
+  validate,
+  AlertsController.getAlerts
+);
+router.get(
+  '/alerts/unread-count',
+  authenticate,
+  authorize(['admin:alerts']),
+  AlertsController.getUnreadAlertCount
 );
 router.post(
-  '/alerts/:alertId/dismiss',
+  '/alerts/:id/read',
   authenticate,
-  authorize(['admin:dashboard']),
-  AdminController.dismissAlert
+  authorize(['admin:alerts']),
+  param('id').isUUID(),
+  validate,
+  AlertsController.markAlertRead
+);
+router.post(
+  '/alerts/:id/resolve',
+  authenticate,
+  authorize(['admin:alerts']),
+  param('id').isUUID(),
+  validate,
+  AlertsController.markAlertResolved
 );
 
 // ── Social Links ──────────────────────────────────────────────
