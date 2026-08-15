@@ -3,6 +3,8 @@ const { audit } = require('../../config/logger');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const adminService = require('../../services/admin.service');
+const { sendNotification } = require('../../services/notification.service');
+const alertsService = require('../../services/alerts.service');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
@@ -440,6 +442,19 @@ exports.createBackup = catchAsync(async (req, res) => {
     details: { type: 'manual', initiatedBy: userId, filename }
   });
 
+  await db('settings').insert({
+    setting_key: 'last_backup_status',
+    setting_value: 'success',
+    category: 'Backup'
+  }).onConflict('setting_key').merge();
+
+  await sendNotification('Admin', null, {
+    title: 'Manual Backup Created',
+    message: `A manual database backup was created (${filename}).`,
+    type: 'general',
+    link: '/admin/dr'
+  });
+
   res.json({
     status: 'success',
     message: 'Backup completed successfully.'
@@ -456,6 +471,12 @@ exports.restoreBackup = catchAsync(async (req, res) => {
   await audit('BACKUP_RESTORE_INITIATED', null, {
     ip,
     details: { backupId, initiatedBy: userId }
+  });
+  await sendNotification('Admin', null, {
+    title: 'Backup Restore Initiated',
+    message: `A restore from backup "${backupId}" was initiated. Verify data integrity after it completes.`,
+    type: 'general',
+    link: '/admin/dr'
   });
   res.json({
     status: 'success',
@@ -1011,6 +1032,7 @@ exports.getVendorAccessList = catchAsync(async (req, res) => {
   const data = await adminService.getVendorAccessList();
   res.json({ status: 'success', data });
 });
+
 exports.onboardVendor = catchAsync(async (req, res) => {
   const data = await adminService.onboardVendor(req.body);
   await audit('VENDOR_ONBOARDED', req.user.id, { ip: req.ip, details: { vendorName: req.body.vendorName } });
@@ -1038,12 +1060,38 @@ exports.getDRStatus = catchAsync(async (req, res) => {
 exports.initiateDRTest = catchAsync(async (req, res) => {
   const data = await adminService.initiateDRTest();
   await audit('DR_TEST_INITIATED', req.user.id, { ip: req.ip });
+  await alertsService.createAlert({
+    type: 'INFO',
+    module: 'System',
+    title: 'Recovery Test Started',
+    message: 'A disaster recovery test (restore rehearsal) was started. Complete it to verify your backup is restorable.',
+    fingerprint: 'dr-test-started',
+  });
+  await sendNotification('Admin', null, {
+    title: 'Recovery Test Started',
+    message: 'A disaster recovery test was started. Complete it with the result to keep the 3-2-1 plan verified.',
+    type: 'general',
+    link: '/admin/dr'
+  });
   res.json({ status: 'success', data });
 });
 exports.completeDRTest = catchAsync(async (req, res) => {
   const { result, notes } = req.body;
   const data = await adminService.completeDRTest(req.params.id, result, notes);
   await audit('DR_TEST_COMPLETED', req.user.id, { ip: req.ip, details: { id: req.params.id, result } });
+  await alertsService.createAlert({
+    type: 'INFO',
+    module: 'System',
+    title: 'Recovery Test Completed',
+    message: `The recovery test finished with result "${result}". ${result === 'passed' ? 'Backup restore rehearsal verified successfully.' : 'The test failed — review the restore procedure before relying on backups.'}${notes ? ` Notes: ${notes}` : ''}`,
+    fingerprint: `dr-test-completed-${req.params.id}`,
+  });
+  await sendNotification('Admin', null, {
+    title: `Recovery Test ${result === 'passed' ? 'Passed' : 'Failed'}`,
+    message: result === 'passed' ? 'The disaster recovery test passed — your backup is restorable.' : 'The disaster recovery test failed — review the restore procedure.',
+    type: 'general',
+    link: '/admin/dr'
+  });
   res.json({ status: 'success', data });
 });
 
@@ -1112,139 +1160,25 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// ── Alerts ────────────────────────────────────────────────────
-exports.getAlerts = catchAsync(async (req, res) => {
-  const userId = req.user.id;
-
-  // Fetch dismissed alert IDs for this user
-  const dismissedSetting = await db('settings').where('setting_key', 'dismissed_alerts').first();
-  const dismissedIds = dismissedSetting ? JSON.parse(dismissedSetting.setting_value || '[]') : [];
-  let dismissedByUser = [];
-  try {
-    const userSetting = await db('settings').where('setting_key', `dismissed_alerts_${userId}`).first();
-    if (userSetting) dismissedByUser = JSON.parse(userSetting.setting_value || '[]');
-  } catch { dismissedByUser = []; }
-
-  const allDismissed = [...new Set([...dismissedIds, ...dismissedByUser])];
-
-  // Critical: security events
-  const bruteForceLogs = await db('audit_logs')
-    .where('action', 'UNAUTHORIZED_ACCESS_ATTEMPT')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 24 HOUR)'))
-    .count('id as count').first();
-
-  const failedLoginsToday = await db('audit_logs')
-    .where('action', 'LOGIN_FAILED')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 1 HOUR)'))
-    .select('user_id', db.raw('COUNT(*) as attempts'))
-    .groupBy('user_id')
-    .having('attempts', '>=', 5);
-
-  // Critical: backup failures
-  const backupSetting = await db('settings').where('setting_key', 'last_backup_status').first();
-  const lastBackupFailed = backupSetting && backupSetting.setting_value === 'failed';
-
-  // Warning: system health
-  const totalMem = os.totalmem();
-  const freeMem = os.freemem();
-  const memUsage = ((totalMem - freeMem) / totalMem) * 100;
-  const loadAvg = os.loadavg();
-  const cpuUsage = loadAvg[0] * 100 / os.cpus().length;
-
-  // Warning: low stock
-  const lowStock = await getLowStockCount();
-
-  // Warning: slow queries
-  const slowQueries = await db('audit_logs')
-    .where('action', 'SLOW_QUERY')
-    .where('created_at', '>=', db.raw('DATE_SUB(NOW(), INTERVAL 1 HOUR)'))
-    .count('id as count').first();
-
-  // Build alerts
-  const alerts = [];
-  let alertId = 0;
-
-  const makeAlert = (severity, category, title, description, actionLabel, actionType) => {
-    alertId++;
-    if (allDismissed.includes(alertId)) return null;
-    return { id: alertId, severity, category, title, description, timestamp: new Date().toISOString(), actionLabel, actionType, dismissed: false };
-  };
-
-  // Critical alerts
-  const bf = parseInt(bruteForceLogs?.count || 0);
-  if (bf > 0) {
-    const a = makeAlert('critical', 'security', 'Unauthorized Access Attempts', `${bf} unauthorized access attempts detected in the last 24 hours. Possible brute force attack.`, 'Investigate', 'investigate');
-    if (a) alerts.push(a);
-  }
-  if (failedLoginsToday.length > 0) {
-    const a = makeAlert('critical', 'security', 'Multiple Failed Logins', `${failedLoginsToday.length} user(s) had 5+ failed login attempts in the last hour. Possible brute force attack.`, 'Review Users', 'review_users');
-    if (a) alerts.push(a);
-  }
-  if (lastBackupFailed) {
-    const a = makeAlert('critical', 'backup', 'Backup Job Failed', 'The most recent scheduled backup job failed or returned an error. Data may be at risk.', 'Run Backup Now', 'run_backup');
-    if (a) alerts.push(a);
-  }
-
-  // Warning alerts
-  if (cpuUsage > 80) {
-    const a = makeAlert('warning', 'system', 'High CPU Usage', `CPU usage is at ${cpuUsage.toFixed(1)}% sustained for more than 10 minutes.`, 'View Health', 'view_health');
-    if (a) alerts.push(a);
-  }
-  if (memUsage > 85) {
-    const a = makeAlert('warning', 'system', 'High Memory Usage', `Memory usage is at ${memUsage.toFixed(1)}%. System may become unstable.`, 'View Health', 'view_health');
-    if (a) alerts.push(a);
-  }
-  if (lowStock > 10) {
-    const a = makeAlert('warning', 'inventory', 'Low Stock Alert', `${lowStock} products are below their reorder level. Inventory needs attention.`, 'View Inventory', 'view_inventory');
-    if (a) alerts.push(a);
-  }
-  const sq = parseInt(slowQueries?.count || 0);
-  if (sq > 0) {
-    const a = makeAlert('warning', 'system', 'Slow Database Queries', `${sq} slow queries detected in the last hour. Database performance may be degraded.`, 'View Health', 'view_health');
-    if (a) alerts.push(a);
-  }
-
-  // Info alerts
-  const newUsersToday = await db('users')
-    .whereRaw('DATE(created_at) = CURDATE()')
-    .count('id as count').first();
-  const nu = parseInt(newUsersToday?.count || 0);
-  if (nu > 0) {
-    const a = makeAlert('info', 'user', 'New Users Created', `${nu} new user(s) created today.`, 'View Users', 'view_users');
-    if (a) alerts.push(a);
-  }
-
-  res.json({ status: 'success', data: { alerts, total: alerts.length } });
-});
-
-exports.dismissAlert = catchAsync(async (req, res) => {
-  const userId = req.user.id;
-  const alertId = parseInt(req.params.alertId);
-  const ip = req.ip;
-
-  let dismissed = [];
-  try {
-    const existing = await db('settings').where('setting_key', `dismissed_alerts_${userId}`).first();
-    if (existing) dismissed = JSON.parse(existing.setting_value || '[]');
-  } catch { dismissed = []; }
-
-  if (!dismissed.includes(alertId)) dismissed.push(alertId);
-
-  const existing = await db('settings').where('setting_key', `dismissed_alerts_${userId}`).first();
-  if (existing) {
-    await db('settings').where('setting_key', `dismissed_alerts_${userId}`).update({ setting_value: JSON.stringify(dismissed), updated_at: db.fn.now() });
-  } else {
-    await db('settings').insert({ setting_key: `dismissed_alerts_${userId}`, setting_value: JSON.stringify(dismissed), category: 'Alerts', created_at: db.fn.now(), updated_at: db.fn.now() });
-  }
-
-  await audit('ALERT_DISMISSED', null, { ip, details: { alertId } });
-  res.json({ status: 'success', message: 'Alert dismissed' });
-});
-
 // ── Social Links ──────────────────────────────────────────────
 exports.getSocialLinks = catchAsync(async (req, res) => {
-  const links = await db('social_links').where('is_active', true);
-  res.json({ status: 'success', data: links });
+  try {
+    // Try the dedicated social_links table first
+    const tableExists = await db.schema.hasTable('social_links');
+    if (tableExists) {
+      const links = await db('social_links').orderBy('platform', 'asc');
+      return res.json({ status: 'success', data: links });
+    }
+  } catch (_) { /* fall through */ }
+
+  // Fallback: read from settings table (JSON blob stored under 'social_links' key)
+  try {
+    const setting = await db('settings').where('setting_key', 'social_links').first();
+    const links = setting ? JSON.parse(setting.setting_value) : [];
+    return res.json({ status: 'success', data: links });
+  } catch (_) {
+    return res.json({ status: 'success', data: [] });
+  }
 });
 
 exports.updateSocialLinks = catchAsync(async (req, res) => {
@@ -1253,20 +1187,50 @@ exports.updateSocialLinks = catchAsync(async (req, res) => {
     return res.status(400).json({ status: 'error', message: 'Links must be an array' });
   }
 
-  await db.transaction(async (trx) => {
-    for (const link of links) {
-      if (!link.platform) continue;
-      await trx('social_links')
-        .where('platform', link.platform)
-        .update({
-          url: link.url,
-          is_active: link.is_active !== undefined ? link.is_active : true,
-          updated_at: db.fn.now()
-        });
-    }
-  });
+  const tableExists = await db.schema.hasTable('social_links').catch(() => false);
 
-  await audit('SOCIAL_LINKS_UPDATED', req.user.id, { ip: req.ip });
-  const updatedLinks = await db('social_links').where('is_active', true);
-  res.json({ status: 'success', message: 'Social links updated', data: updatedLinks });
+  if (tableExists) {
+    // Update rows in the dedicated table
+    await db.transaction(async (trx) => {
+      for (const link of links) {
+        if (!link.platform) continue;
+        const exists = await trx('social_links').where('platform', link.platform).first();
+        if (exists) {
+          await trx('social_links').where('platform', link.platform).update({
+            url: link.url || '',
+            is_active: link.is_active !== undefined ? link.is_active : true,
+            updated_at: db.fn.now()
+          });
+        } else {
+          await trx('social_links').insert({
+            platform: link.platform,
+            url: link.url || '',
+            is_active: link.is_active !== undefined ? link.is_active : true,
+            created_at: db.fn.now(),
+            updated_at: db.fn.now()
+          });
+        }
+      }
+    });
+  } else {
+    // Fallback: store as JSON blob in settings table
+    const existing = await db('settings').where('setting_key', 'social_links').first();
+    if (existing) {
+      await db('settings').where('setting_key', 'social_links').update({
+        setting_value: JSON.stringify(links),
+        updated_at: db.fn.now()
+      });
+    } else {
+      await db('settings').insert({
+        setting_key: 'social_links',
+        setting_value: JSON.stringify(links),
+        category: 'Social',
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+    }
+  }
+
+  try { await audit('SOCIAL_LINKS_UPDATED', req.user?.id, { ip: req.ip }); } catch (_) {}
+  res.json({ status: 'success', message: 'Social links updated', data: links });
 });
