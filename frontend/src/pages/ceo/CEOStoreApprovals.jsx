@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Check, X, Search, RefreshCw, ArrowRight, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Check, X, Search, RefreshCw, ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import apiClient from '../../services/apiClient';
 
@@ -22,6 +23,32 @@ const GlobalStyles = () => (
       border: 1px solid #E5E7EB;
       border-radius: 10px;
       box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    /* Back Button */
+    .csa-back-bar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px; background: #FFFFFF;
+      padding: 10px 16px; border-radius: 8px;
+      border: 1px solid #E5E7EB;
+    }
+    .csa-back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 500;
+      border: 1px solid #E5E7EB; background: #F9FAFB; color: #4B5563;
+      font-family: inherit; transition: all 150ms ease-in-out;
+    }
+    .csa-back-btn:hover {
+      background: #F59E0B; color: #FFFFFF; border-color: #F59E0B;
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .csa-back-divider { width: 1px; height: 24px; background: #E5E7EB; }
+    .csa-back-label {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      border: 1px solid #2563EB; background: #EFF6FF; color: #1E40AF;
     }
 
     .csa-btn {
@@ -131,6 +158,7 @@ const CEOStoreApprovals = () => {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvingId, setApprovingId] = useState(null);
@@ -200,6 +228,17 @@ const CEOStoreApprovals = () => {
   return (
     <div className="csa-page">
       <GlobalStyles />
+
+      {/* ── Back Bar ── */}
+      <div className="csa-back-bar">
+        <button className="csa-back-btn" onClick={() => navigate('/ceo/approvals')}>
+          <ArrowLeft size={14} /> Back to Approvals Hub
+        </button>
+        <div className="csa-back-divider" />
+        <span className="csa-back-label">
+          <Package size={15} /> Store Approvals
+        </span>
+      </div>
 
       {/* ── Page Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
