@@ -36,8 +36,8 @@ const IGNORE_KEYS = new Set([
   'password', 'currentPassword', 'newPassword', 'two_factor_secret', 'token',
 ]);
 
-const actionTone = (action = '') => {
-  const a = action.toLowerCase();
+const actionTone = (action) => {
+  const a = (action || '').toLowerCase();
   if (/created|added|registered|recorded|set$|opened|posted/.test(a)) return 'create';
   if (/updated|changed|toggled|adjusted|extended|modified|renewed|emailed/.test(a)) return 'update';
   if (/deleted|cancelled|rejected|disqualified|voided|removed|retracted|archived|terminated/.test(a)) return 'delete';
