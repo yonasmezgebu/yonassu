@@ -1177,7 +1177,16 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                 title={!isSidebarOpen ? item.label : ''}
               >
                 <span className="nav-icon">{ICONS[item.icon] || ICONS.default}</span>
-                <span>{item.label}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {/* Generic badge on a top-level menu item */}
+                {item.badge > 0 && (
+                  <span style={{
+                    background: '#f97316', color: '#fff', borderRadius: '9999px',
+                    fontSize: '10px', fontWeight: 800, minWidth: 18, height: 18,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', flexShrink: 0
+                  }}>{item.badge > 99 ? '99+' : item.badge}</span>
+                )}
               </button>
             );
           })}
