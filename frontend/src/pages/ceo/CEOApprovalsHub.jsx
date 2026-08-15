@@ -36,70 +36,98 @@ const GlobalStyles = () => (
     }
     
     .ceo-hub-container {
-      max-width: 1536px;
+      max-width: 1024px; /* Narrower max-width for list view readability */
       margin: 0 auto;
     }
 
+    .ceo-hub-header {
+      margin-bottom: 32px;
+    }
+
     .ceo-hub-title {
-      font-size: 28px;
-      font-weight: 700;
+      font-size: 26px;
+      font-weight: 800;
       margin: 0 0 8px 0;
       color: var(--color-text-primary);
+      letter-spacing: -0.02em;
     }
 
     .ceo-hub-subtitle {
-      font-size: 16px;
+      font-size: 14px;
       color: var(--color-text-secondary);
       line-height: 1.5;
       margin: 0;
     }
 
-    .ceo-hub-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      margin-top: 32px;
+    .ceo-hub-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .ceo-hub-card {
+    .ceo-hub-row {
       background: var(--color-bg-card);
       border: 1px solid var(--color-border);
       border-radius: 10px;
-      padding: 24px;
+      padding: 16px 24px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       transition: all 150ms ease-in-out;
       cursor: pointer;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 20px;
       position: relative;
       text-align: left;
       width: 100%;
     }
     
-    .ceo-hub-card:hover {
+    .ceo-hub-row:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       transform: translateY(-1px);
+      background: #F9FAFB;
+      border-color: var(--color-text-muted);
     }
 
-    .ceo-hub-card-title {
+    .ceo-hub-icon-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .ceo-hub-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ceo-hub-row-title {
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--color-text-primary);
-      margin: 0 0 8px 0;
+      margin: 0 0 4px 0;
     }
 
-    .ceo-hub-card-desc {
+    .ceo-hub-row-desc {
       font-size: 14px;
       color: var(--color-text-secondary);
       line-height: 1.5;
       margin: 0;
-      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ceo-hub-meta {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-shrink: 0;
     }
 
     .ceo-hub-badge {
-      position: absolute;
-      top: 16px;
-      right: 16px;
       background: var(--color-danger);
       color: #FFFFFF;
       border-radius: 9999px;
@@ -109,26 +137,37 @@ const GlobalStyles = () => (
       align-items: center;
       justify-content: center;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       padding: 0 8px;
+      box-shadow: 0 2px 4px rgba(220,38,38,0.2);
     }
 
-    .ceo-hub-footer {
+    .ceo-hub-status {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid var(--color-border);
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
     }
 
-    @media (max-width: 1024px) {
+    @media (max-width: 768px) {
       .ceo-hub-wrapper { padding: 16px; }
-    }
-    @media (max-width: 480px) {
-      .ceo-hub-wrapper { padding: 12px; }
-      .ceo-hub-grid { grid-template-columns: 1fr; gap: 16px; }
+      .ceo-hub-row {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px;
+        gap: 12px;
+      }
+      .ceo-hub-row-desc {
+        white-space: normal;
+      }
+      .ceo-hub-meta {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 8px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-border);
+      }
     }
   `}</style>
 );
@@ -177,15 +216,15 @@ const CEOApprovalsHub = () => {
       icon: <FileText size={24} />,
       bg: 'var(--color-warning-bg)',
       color: 'var(--color-warning)',
-      path: '/ceo/tenders?tab=Fund Requests',
+      path: '/ceo/approvals/tenders?tab=Fund Requests',
       count: null
     },
     {
       title: 'Store Approvals',
       description: 'Review and approve pending inventory update requests from the General Store.',
       icon: <Package size={24} />,
-      bg: '#fff7ed', // specific orange bg
-      color: '#f97316',
+      bg: '#FFF7ED',
+      color: '#F97316',
       path: '/ceo/store-approvals',
       count: storeCount
     },
@@ -202,8 +241,8 @@ const CEOApprovalsHub = () => {
       title: 'Tender Approvals',
       description: 'Review and approve pending tenders, bids, and large fund requests.',
       icon: <Award size={24} />,
-      bg: '#ecfccb', // lime bg
-      color: '#84cc16',
+      bg: '#ECFCCB',
+      color: '#84CC16',
       path: '/ceo/approvals/tenders',
       count: null
     },
@@ -220,8 +259,8 @@ const CEOApprovalsHub = () => {
       title: 'Printing Approvals',
       description: 'Review and approve internal printing, publishing, and branding requests.',
       icon: <Printer size={24} />,
-      bg: '#f3e8ff', // purple bg
-      color: '#a855f7',
+      bg: '#F3E8FF',
+      color: '#A855F7',
       path: '/ceo/approvals/printing',
       count: null
     }
@@ -233,70 +272,55 @@ const CEOApprovalsHub = () => {
       <div className="ceo-hub-container">
         
         {/* Header */}
-        <div style={{ marginBottom: 32 }}>
+        <div className="ceo-hub-header">
           <h1 className="ceo-hub-title">Approvals Hub</h1>
           <p className="ceo-hub-subtitle">
             Select an approval category below to review pending requests.
           </p>
         </div>
 
-        {/* Cards Grid */}
-        <div className="ceo-hub-grid">
+        {/* List View */}
+        <div className="ceo-hub-list">
           {approvalLinks.map((link, idx) => (
             <button
               key={idx}
               onClick={() => navigate(link.path)}
-              className="ceo-hub-card"
-              style={{ borderTop: `3px solid ${link.color}`, background: 'var(--color-bg-card)' }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = link.color;
-                e.currentTarget.style.boxShadow = `0 8px 24px ${link.color}22`;
-                e.currentTarget.style.backgroundColor = 'var(--color-bg-page)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'var(--color-border)';
-                e.currentTarget.style.borderTopColor = link.color;
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-                e.currentTarget.style.backgroundColor = 'var(--color-bg-card)';
-              }}
+              className="ceo-hub-row"
+              style={{ borderLeft: `4px solid ${link.color}` }}
             >
-              {/* Pending count badge */}
-              {link.count !== null && link.count > 0 && (
-                <div className="ceo-hub-badge">
-                  {link.count}
-                </div>
-              )}
-
               {/* Icon */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 48, height: 48, borderRadius: 10,
-                background: link.bg, color: link.color, marginBottom: 16
-              }}>
+              <div className="ceo-hub-icon-wrap" style={{ background: link.bg, color: link.color }}>
                 {link.icon}
               </div>
 
-              {/* Title */}
-              <h3 className="ceo-hub-card-title">
-                {link.title}
-              </h3>
+              {/* Text Content */}
+              <div className="ceo-hub-content">
+                <h3 className="ceo-hub-row-title">
+                  {link.title}
+                </h3>
+                <p className="ceo-hub-row-desc">
+                  {link.description}
+                </p>
+              </div>
 
-              {/* Description */}
-              <p className="ceo-hub-card-desc">
-                {link.description}
-              </p>
-
-              {/* Footer */}
-              <div className="ceo-hub-footer">
+              {/* Meta & Status */}
+              <div className="ceo-hub-meta">
+                {link.count !== null && link.count > 0 && (
+                  <div className="ceo-hub-badge">
+                    {link.count}
+                  </div>
+                )}
+                
                 {link.count !== null ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: link.count > 0 ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 600 }}>
+                  <span className="ceo-hub-status" style={{ color: link.count > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
                     <Clock size={14} />
-                    {link.count === null ? '...' : link.count === 0 ? 'All clear' : `${link.count} waiting`}
+                    {link.count === 0 ? 'All clear' : `${link.count} waiting`}
                   </span>
                 ) : (
-                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Click to review</span>
+                  <span className="ceo-hub-status" style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                    Review <ChevronRight size={16} />
+                  </span>
                 )}
-                <ChevronRight size={18} color={link.color} />
               </div>
             </button>
           ))}
