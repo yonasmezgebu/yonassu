@@ -10,6 +10,8 @@ const ApprovalController = require('../controllers/approval.controller');
 const CloseProcessController = require('../controllers/close-process.controller');
 const ReportSubmissionController = require('../controllers/reportSubmission.controller');
 const TaxService = require('../../services/tax.service');
+const FinanceReceiptsDashboard = require('../controllers/financeReceiptsDashboard.controller');
+const InvoiceDocumentService = require('../../services/invoiceDocument.service');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize, authorizeRoles } = require('../middleware/auth.middleware');
 const { uploads, handleUploadError } = require('../../config/multer');
@@ -229,6 +231,37 @@ router.post('/tax/declare/:expenseId', authenticate, authorize(['tax:declare']),
   const declaration = await TaxService.generateERCADeclaration(req.params.expenseId);
   res.json({ status: 'success', data: declaration });
 }));
+
+// ================================================================
+// INVOICES & RECEIPTS DASHBOARD (all modules + 2 tenders)
+// ================================================================
+router.get('/receipts-dashboard', authenticate, authorizeRoles('finance'),
+  query('startDate').optional().isISO8601(), query('endDate').optional().isISO8601(), validate,
+  FinanceReceiptsDashboard.getDashboard);
+
+// ================================================================
+// SALES INVOICES & RECEIPTS DOCUMENTS (linked Sale→Invoice→Payment→Receipt)
+// ================================================================
+router.get('/receipts-dashboard/documents', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+  try {
+    const data = await InvoiceDocumentService.buildDocuments();
+    res.json({ status: 'success', data });
+  } catch (error) { next(error); }
+});
+
+router.get('/company-info', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+  try {
+    const company = await InvoiceDocumentService.getCompanyInfo();
+    res.json({ status: 'success', data: { company } });
+  } catch (error) { next(error); }
+});
+
+router.put('/company-info', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+  try {
+    const company = await InvoiceDocumentService.saveCompanyInfo(req.body, req.user.id);
+    res.json({ status: 'success', data: { company } });
+  } catch (error) { next(error); }
+});
 
 module.exports = router;
 
