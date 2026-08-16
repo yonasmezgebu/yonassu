@@ -1,615 +1,560 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  BarChart2, Download, CheckCircle, Clock, Wallet, Banknote,
-  FileText, X, Leaf, TrendingUp, Package, ChevronDown, AlertCircle,
-  Eye, Printer, Award, RefreshCw
-} from 'lucide-react';
-import api from '../../services/apiClient';
+import React, { useState, useEffect } from 'react';
+import { Truck, CheckCircle, Search, DollarSign, Package } from 'lucide-react';
+import apiClient from '../../services/apiClient';
 
-// ─── Color Palette ────────────────────────────────────────────────────────────
-const C = {
-  forestGreen:  '#228B22',
-  darkGreen:    '#1B5E20',
-  emerald:      '#2E8B57',
-  leafGreen:    '#4CAF50',
-  sage:         '#A5D6A7',
-  olive:        '#6B8E23',
-  mint:         '#E8F5E9',
-  lime:         '#8BC34A',
-  earthBrown:   '#8D6E63',
-  skyBlue:      '#87CEEB',
-  white:        '#FFFFFF',
-  lightGray:    '#F5F5F5',
-  darkGray:     '#424242',
-  orange:       '#FF9800',
-  red:          '#F44336',
-};
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    :root {
+      --color-primary: #2563EB;
+      --color-primary-hover: #1D4ED8;
+      --color-bg-page: #F5F6FA;
+      --color-bg-card: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6B7280;
+      --color-text-muted: #9CA3AF;
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-info: #0284C7;
+      --color-info-bg: #E0F2FE;
+      --font-family: 'Inter', 'Segoe UI', Roboto, -apple-system, sans-serif;
+    }
 
-// ─── In-App Toast ─────────────────────────────────────────────────────────────
-let _toastId = 0;
-const useToast = () => {
-  const [toasts, setToasts] = useState([]);
-  const push = useCallback((msg, type = 'success') => {
-    const id = ++_toastId;
-    setToasts(prev => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
-  }, []);
-  const remove = id => setToasts(prev => prev.filter(t => t.id !== id));
-  return { toasts, push, remove };
-};
+    .fin-gen-wrapper {
+      padding: 24px;
+      min-height: calc(100vh - 60px);
+      box-sizing: border-box;
+      background: var(--color-bg-page);
+      font-family: var(--font-family);
+      color: var(--color-text-primary);
+      width: 100%;
+    }
+    
+    .fin-gen-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-const Badge = ({ status }) => {
-  const map = {
-    APPROVED:         { bg: '#FFF3E0', color: C.orange,     label: 'Approved' },
-    READY_FOR_PAYMENT:{ bg: '#E8F5E9', color: C.forestGreen, label: 'Ready for Payment' },
-    PAID:             { bg: '#E8F5E9', color: C.darkGreen,   label: 'Paid' },
-    PENDING:          { bg: '#FFF9C4', color: C.olive,       label: 'Pending' },
-    REJECTED:         { bg: '#FFEBEE', color: C.red,         label: 'Rejected' },
-  };
-  const s = map[status] || { bg: C.lightGray, color: C.darkGray, label: status };
-  return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', fontSize: 11,
-      fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
-      background: s.bg, color: s.color, border: `1px solid ${s.color}33`,
-    }}>
-      {s.label}
-    </span>
-  );
-};
+    .fin-gen-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
 
-// ─── Summary Card ─────────────────────────────────────────────────────────────
-const SummaryCard = ({ label, value, icon, accent }) => (
-  <div style={{
-    background: C.white, borderLeft: `4px solid ${accent}`,
-    border: `1px solid ${C.sage}`, borderLeft: `5px solid ${accent}`,
-    padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16,
-  }}>
-    <div style={{
-      width: 48, height: 48, background: `${accent}18`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      {icon}
-    </div>
-    <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.darkGray, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: C.darkGreen }}>{value}</div>
-    </div>
-  </div>
+    .fin-gen-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      color: var(--color-text-primary);
+      line-height: 1.3;
+    }
+
+    .fin-gen-subtitle {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .fin-gen-tabs {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .fin-gen-tab {
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .fin-gen-tab:hover {
+      color: var(--color-text-primary);
+    }
+    .fin-gen-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .fin-gen-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: all 150ms ease-in-out;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .fin-gen-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+
+    .fin-gen-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .fin-gen-item-name {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .fin-gen-cost {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-success);
+      white-space: nowrap;
+    }
+
+    .fin-gen-badge {
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--color-bg-page);
+      padding: 2px 10px;
+      border-radius: 4px;
+      color: var(--color-text-secondary);
+      display: inline-block;
+    }
+
+    .fin-gen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      background: #F9FAFB;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+    }
+
+    .fin-gen-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+    }
+
+    .fin-gen-value {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      line-height: 1.5;
+    }
+
+    .fin-gen-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms ease-in-out;
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+    }
+    
+    .fin-gen-btn:hover:not(:disabled) {
+      background: #F59E0B;
+      color: #111827;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      transform: translateY(-1px);
+      border-color: transparent;
+    }
+    
+    .fin-gen-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .fin-input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      font-size: 14px;
+      transition: all 150ms ease;
+      box-sizing: border-box;
+      font-family: var(--font-family);
+    }
+
+    .fin-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    /* Segmented Spinner */
+    .segmented-spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px dashed var(--color-primary);
+      border-radius: 50%;
+      animation: spin 1.5s linear infinite;
+      margin: 0 auto 16px auto;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    @media (max-width: 1024px) { .fin-gen-wrapper { padding: 16px; } }
+    @media (max-width: 768px) { 
+      .fin-gen-wrapper { padding: 12px; } 
+      .fin-gen-card { padding: 20px; }
+      .fin-gen-header { flex-direction: column; align-items: flex-start; }
+      .fin-gen-card-header { flex-direction: column; gap: 8px; }
+      .fin-gen-tabs { overflow-x: auto; white-space: nowrap; }
+    }
+  `}</style>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 const FinanceProcurement = () => {
-  const [filter, setFilter]             = useState('All');
-  const [activeTab, setActiveTab]       = useState('internal');
   const [fundRequests, setFundRequests] = useState([]);
-  const [payments, setPayments]         = useState([]);
-  const [internalList, setInternalList] = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [viewFundRequest, setViewFundRequest] = useState(null);
-  const { toasts, push, remove }        = useToast();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pending-check'); // 'pending-check', 'pending-payment', 'history'
 
-  const fetchPublicData = async () => {
-    setLoading(true);
+  // Pay Modal
+  const [modal, setModal] = useState({ open: false, request: null });
+  const [viewModal, setViewModal] = useState({ open: false, request: null });
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [payModal, setPayModal] = useState({ open: false, request: null });
+  const [payAmount, setPayAmount] = useState('');
+  const [payNotes, setPayNotes] = useState('');
+  const [paying, setPaying] = useState(false);
+
+  const fetchRequests = async () => {
     try {
-      const [fundRes, payRes, reqRes, frRes, tenRes, rcpRes] = await Promise.all([
-        api.get('/public-procurement/fund-requests'),
-        api.get('/public-procurement/payments'),
-        api.get('/procurement/requests'),
-        api.get('/procurement/fund-requests'),
-        api.get('/procurement/tenders'),
-        api.get('/procurement/receipts'),
+      setLoading(true);
+      const [fundRes, payRes] = await Promise.all([
+        apiClient.get('/public-procurement/fund-requests').catch(() => ({ data: [] })),
+        apiClient.get('/public-procurement/payments').catch(() => ({ data: [] }))
       ]);
-      setFundRequests(Array.isArray(fundRes?.data ?? fundRes) ? (fundRes?.data ?? fundRes) : []);
-      setPayments(Array.isArray(payRes?.data ?? payRes) ? (payRes?.data ?? payRes) : []);
-
-      const requests = Array.isArray(reqRes?.data?.data ?? reqRes?.data) ? (reqRes?.data?.data ?? reqRes?.data) : [];
-      const fundRequestsInternal = Array.isArray(frRes?.data?.data ?? frRes?.data) ? (frRes?.data?.data ?? frRes?.data) : [];
-      const tenders = Array.isArray(tenRes?.data?.data ?? tenRes?.data) ? (tenRes?.data?.data ?? tenRes?.data) : [];
-      const receipts = Array.isArray(rcpRes?.data?.data ?? rcpRes?.data) ? (rcpRes?.data?.data ?? rcpRes?.data) : [];
-
-      const unified = [
-        ...requests.map(r => ({
-          id: r.pr_no || `PR-${r.id}`,
-          type: 'Requisition',
-          date: r.created_at,
-          dept: r.requested_by_name || '—',
-          item: r.drug_name,
-          amount: r.estimated_total,
-          status: r.status,
-        })),
-        ...fundRequestsInternal.map(r => ({
-          id: `FR-${r.id}`,
-          type: 'Fund Request',
-          date: r.created_at,
-          dept: r.pr_no ? `PR ${r.pr_no}` : '—',
-          item: r.drug_name || '',
-          amount: r.total_amount,
-          status: r.status,
-        })),
-        ...tenders.map(t => ({
-          id: t.tender_no || `TND-${t.id}`,
-          type: 'Purchase Order',
-          date: t.created_at,
-          dept: t.supplier_name || t.pr_no || '—',
-          item: t.drug_name || '',
-          amount: t.budget_estimate,
-          status: t.status || 'Sent',
-        })),
-        ...receipts.map(r => ({
-          id: r.receipt_no || `RCP-${r.id}`,
-          type: 'Goods Received Note',
-          date: r.received_at || r.created_at,
-          dept: r.drug_name || r.pr_no || '—',
-          item: r.pr_no ? `PR ${r.pr_no}` : '',
-          amount: null,
-          status: 'Received',
-        })),
-      ];
-      setInternalList(unified);
-    } catch (err) {
-      push('Failed to load procurement data.', 'error');
+      setFundRequests(Array.isArray(fundRes?.data?.data ?? fundRes?.data) ? (fundRes?.data?.data ?? fundRes?.data) : []);
+      setPayments(Array.isArray(payRes?.data?.data ?? payRes?.data) ? (payRes?.data?.data ?? payRes?.data) : []);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchPublicData(); }, []);
+  useEffect(() => { fetchRequests(); }, []);
 
-  const handleVerifyBudget = async (id) => {
+  const pendingCheck = fundRequests.filter(r => r.status === 'PENDING_CEO_APPROVAL');
+  const pendingPayment = fundRequests.filter(r => r.status === 'APPROVED' || r.status === 'READY_FOR_PAYMENT');
+  const history = payments;
+
+  const handlePay = async () => {
+    if (!payModal.request) return;
+    setPaying(true);
     try {
-      await api.put(`/public-procurement/fund-requests/${id}/verify`);
-      push('Budget verified — marked as Ready for Payment.');
-      fetchPublicData();
-    } catch (err) {
-      push('Error verifying budget: ' + (err?.response?.data?.message || err.message), 'error');
+      await apiClient.post('/public-procurement/payments', {
+        fundRequestId: payModal.request.id,
+        amount: Number(payAmount),
+        notes: payNotes
+      });
+      fetchRequests();
+      setPayModal({ open: false, request: null });
+      setPayAmount('');
+      setPayNotes('');
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || 'Failed to execute payment.');
+    } finally {
+      setPaying(false);
     }
   };
-
-  const handleCreatePayment = async (id) => {
-    try {
-      await api.post('/public-procurement/payments', { fundRequestId: id });
-      push('Payment created successfully.');
-      fetchPublicData();
-    } catch (err) {
-      push('Error creating payment: ' + (err?.response?.data?.message || err.message), 'error');
-    }
-  };
-
-  const procurements = internalList || [];
-  const filteredProcurements = procurements.filter(p => {
-    if (filter === 'All') return true;
-    if (filter === 'Pending') return p.status?.includes('Pending');
-    if (filter === 'Approved') return ['Approved','Received','Sent','APPROVED','FUND_APPROVED'].includes(p.status);
-    return p.type === filter;
-  });
-
-  // Summary stats
-  const totalFunds    = fundRequests.reduce((s, r) => s + Number(r.total_amount || 0), 0);
-  const readyCount    = fundRequests.filter(r => r.status === 'READY_FOR_PAYMENT').length;
-  const totalPayments = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-
-  const TABS = [
-    { id: 'internal',        label: 'Internal Procurement',   icon: <FileText size={15} /> },
-    { id: 'public_funds',    label: 'Public Fund Requests',   icon: <Wallet size={15} /> },
-    { id: 'public_payments', label: 'Public Payments',        icon: <Banknote size={15} /> },
-  ];
-
-  const FILTERS = ['All','Pending','Approved','Requisition','Fund Request','Purchase Order','Goods Received Note'];
 
   return (
-    <div style={{ background: C.lightGray, minHeight: '100vh', fontFamily: "'Inter','Segoe UI',sans-serif", width: '100%' }}>
-
-      {/* ── Toast Container ─────────────────────────────────────────────────── */}
-      <div style={{ position: 'fixed', top: 80, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 340 }}>
-        {toasts.map(t => (
-          <div key={t.id} style={{
-            background: t.type === 'error' ? '#FFEBEE' : '#E8F5E9',
-            color:      t.type === 'error' ? C.red        : C.darkGreen,
-            border:     `1px solid ${t.type === 'error' ? C.red : C.leafGreen}`,
-            padding: '12px 16px', fontSize: 13, fontWeight: 600,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {t.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-              {t.msg}
-            </span>
-            <button onClick={() => remove(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div style={{ background: C.darkGreen, padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: C.forestGreen, padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Leaf size={22} color={C.white} />
-          </div>
+    <div className="fin-gen-wrapper">
+      <GlobalStyles />
+      <div className="fin-gen-container">
+        
+        <div className="fin-gen-header">
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.white, letterSpacing: '0.3px' }}>
-              PROCUREMENT FINANCE
-            </h1>
-            <p style={{ margin: 0, fontSize: 12, color: C.sage, marginTop: 2 }}>
-              Financial oversight of procurement flows & public tender bids
-            </p>
+            <h1 className="fin-gen-title">Drug & Stock Procurement Finance</h1>
+            <p className="fin-gen-subtitle">Manage fund checks and execute final payments for pharmacy and stock procurement.</p>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => fetchPublicData()}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: C.forestGreen, color: C.white, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-          >
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'transparent', color: C.sage, border: `1px solid ${C.emerald}`, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-          >
-            <Download size={14} /> Export
+          <button onClick={fetchRequests} className="fin-gen-btn">
+            <Search size={16} /> Refresh
           </button>
         </div>
-      </div>
 
-      <div style={{ padding: '24px 32px' }}>
-
-        {/* ── Summary Cards ───────────────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-          <SummaryCard label="Total Fund Requests" value={`ETB ${totalFunds.toLocaleString()}`} icon={<Wallet size={22} color={C.forestGreen} />} accent={C.forestGreen} />
-          <SummaryCard label="Ready for Payment" value={readyCount} icon={<CheckCircle size={22} color={C.emerald} />} accent={C.emerald} />
-          <SummaryCard label="Total Payments Made" value={`ETB ${totalPayments.toLocaleString()}`} icon={<TrendingUp size={22} color={C.olive} />} accent={C.olive} />
-          <SummaryCard label="Internal Procurement" value={procurements.length} icon={<Package size={22} color={C.earthBrown} />} accent={C.earthBrown} />
+        <div className="fin-gen-tabs">
+          <button className={`fin-gen-tab ${activeTab === 'pending-check' ? 'active' : ''}`} onClick={() => setActiveTab('pending-check')}>
+            Pending Fund Check ({pendingCheck.length})
+          </button>
+          <button className={`fin-gen-tab ${activeTab === 'pending-payment' ? 'active' : ''}`} onClick={() => setActiveTab('pending-payment')}>
+            Pending Payment ({pendingPayment.length})
+          </button>
+          <button className={`fin-gen-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+            History ({history.length})
+          </button>
         </div>
 
-        {/* ── Budget Utilization Bars ─────────────────────────────────────── */}
-        <div style={{ background: C.white, border: `1px solid ${C.sage}`, borderTop: `4px solid ${C.forestGreen}`, padding: '20px 24px', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.darkGreen, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BarChart2 size={16} color={C.forestGreen} /> Budget Utilization
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-muted)' }}>
+            <div className="segmented-spinner" />
+            Loading...
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-            {[
-              { department: 'Pharmacy',    allocated: 500000, spent: 345000 },
-              { department: 'Laboratory',  allocated: 300000, spent: 120000 },
-              { department: 'Admin',       allocated: 150000, spent: 145000 },
-            ].map(b => {
-              const pct = Math.min(100, (b.spent / b.allocated) * 100);
-              const over = pct >= 90;
-              return (
-                <div key={b.department} style={{ border: `1px solid ${C.sage}`, padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.darkGreen }}>{b.department}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: over ? C.red : C.forestGreen }}>{pct.toFixed(0)}%</span>
+        ) : (
+          <div>
+            {/* PENDING CHECK */}
+            {activeTab === 'pending-check' && pendingCheck.length === 0 && (
+              <div style={{ padding: '48px', background: 'var(--color-bg-card)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+                <DollarSign size={48} style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
+                <p style={{ margin: 0, fontSize: '16px' }}>No requests pending CEO fund approval.</p>
+              </div>
+            )}
+            {activeTab === 'pending-check' && pendingCheck.map(req => (
+              <div key={req.id} className="fin-gen-card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
+                <div className="fin-gen-card-header">
+                  <div>
+                    <h3 className="fin-gen-item-name">{req.request_code}</h3>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <div className="fin-gen-badge">Tender: {req.tender_no}</div>
+                      <span style={{ fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '9999px', background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
+                        ⏳ Waiting for CEO Approval
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ width: '100%', height: 8, background: C.mint, marginBottom: 10 }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: over ? C.red : C.forestGreen, transition: 'width 0.4s' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                    <span style={{ color: C.darkGray }}>Spent: <strong>ETB {b.spent.toLocaleString()}</strong></span>
-                    <span style={{ color: over ? C.red : C.emerald, fontWeight: 700 }}>
-                      Rem: ETB {(b.allocated - b.spent).toLocaleString()}
-                    </span>
+                  <div className="fin-gen-cost">
+                    {req.total_amount ? `${Number(req.total_amount).toLocaleString()} ETB` : 'Cost TBD'}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: `2px solid ${C.sage}` }}>
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '11px 22px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                fontSize: 13, display: 'flex', alignItems: 'center', gap: 7,
-                background: activeTab === tab.id ? C.forestGreen : 'transparent',
-                color:      activeTab === tab.id ? C.white       : C.darkGray,
-                borderBottom: activeTab === tab.id ? `3px solid ${C.darkGreen}` : '3px solid transparent',
-                marginBottom: -2, transition: 'background 0.15s, color 0.15s',
-              }}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
+                <div className="fin-gen-grid">
+                  <div><span className="fin-gen-label">PR No</span><div className="fin-gen-value">{req.pr_no}</div></div>
+                  <div><span className="fin-gen-label">Requested By</span><div className="fin-gen-value">{req.requested_by_name}</div></div>
+                  <div><span className="fin-gen-label">Requested At</span><div className="fin-gen-value">{new Date(req.created_at).toLocaleString()}</div></div>
+                </div>
+              </div>
+            ))}
 
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB 1 — INTERNAL PROCUREMENT
-        ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'internal' && (
-          <div style={{ background: C.white, border: `1px solid ${C.sage}` }}>
-            {/* Filter Bar */}
-            <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.sage}`, display: 'flex', flexWrap: 'wrap', gap: 8, background: C.mint }}>
-              {FILTERS.map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  style={{
-                    padding: '5px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                    border: `2px solid ${filter === f ? C.forestGreen : C.sage}`,
-                    background: filter === f ? C.forestGreen : C.white,
-                    color: filter === f ? C.white : C.darkGray,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+            {/* PENDING PAYMENT */}
+            {activeTab === 'pending-payment' && pendingPayment.length === 0 && (
+              <div style={{ padding: '48px', background: 'var(--color-bg-card)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+                <DollarSign size={48} style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
+                <p style={{ margin: 0, fontSize: '16px' }}>No requests ready for payment.</p>
+              </div>
+            )}
+            {activeTab === 'pending-payment' && pendingPayment.map(req => (
+              <div key={req.id} className="fin-gen-card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
+                <div className="fin-gen-card-header">
+                  <div>
+                    <h3 className="fin-gen-item-name">{req.request_code}</h3>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <div className="fin-gen-badge">Tender: {req.tender_no}</div>
+                      <span style={{ fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '9999px', background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
+                        ⏳ Ready to Pay
+                      </span>
+                    </div>
+                  </div>
+                  <div className="fin-gen-cost">
+                    {req.total_amount ? `${Number(req.total_amount).toLocaleString()} ETB` : 'Cost TBD'}
+                  </div>
+                </div>
 
-            {/* Table */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: C.darkGreen }}>
-                    {['Reference ID', 'Type', 'Date', 'Dept / Supplier', 'Details', 'Amount (ETB)', 'Status'].map((col, i) => (
-                      <th key={col} style={{
-                        padding: '12px 16px', textAlign: i >= 5 ? 'right' : 'left',
-                        color: C.white, fontWeight: 700, fontSize: 12,
-                        textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
-                      }}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProcurements.map((p, idx) => (
-                    <tr key={p.id} style={{ borderBottom: `1px solid ${C.sage}`, background: idx % 2 === 0 ? C.white : C.mint }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: C.darkGreen }}>{p.id}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '3px 8px', background: C.mint, color: C.darkGreen, fontSize: 11, fontWeight: 700, border: `1px solid ${C.sage}` }}>{p.type}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray }}>{p.date ? new Date(p.date).toLocaleDateString('en-CA') : '—'}</td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray, fontWeight: 600 }}>{p.dept || '—'}</td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray, fontSize: 12 }}>
-                        {p.item && <span>Item: {p.item}</span>}
-                        {p.poReference && <span>Ref: {p.poReference}</span>}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: C.darkGreen }}>
-                        {p.amount != null ? Number(p.amount).toLocaleString() : '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          padding: '3px 10px', fontSize: 11, fontWeight: 700,
-                          background: p.status?.includes('Pending') ? '#FFF3E0' : '#E8F5E9',
-                          color:      p.status?.includes('Pending') ? C.orange  : C.forestGreen,
-                          border: `1px solid ${p.status?.includes('Pending') ? C.orange : C.leafGreen}33`,
-                        }}>
-                          {p.status?.includes('Pending') ? <Clock size={11} /> : <CheckCircle size={11} />}
-                          {p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredProcurements.length === 0 && (
+                <div className="fin-gen-grid">
+                  <div><span className="fin-gen-label">PR No</span><div className="fin-gen-value">{req.pr_no}</div></div>
+                  <div><span className="fin-gen-label">Requested By</span><div className="fin-gen-value">{req.requested_by_name}</div></div>
+                  <div><span className="fin-gen-label">Requested At</span><div className="fin-gen-value">{new Date(req.created_at).toLocaleString()}</div></div>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
+                  <button 
+                    onClick={() => { setPayModal({ open: true, request: req }); setPayAmount(req.total_amount || ''); setPayNotes(`TXN-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 9000 + 1000)}`); }}
+                    className="fin-gen-btn"
+                    style={{ background: 'var(--color-success)', color: '#fff', border: 'none', fontWeight: '600' }}
+                  >
+                    Execute Payment
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* HISTORY */}
+            {activeTab === 'history' && history.length === 0 && (
+              <div style={{ padding: '48px', background: 'var(--color-bg-card)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+                <Package size={48} style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
+                <p style={{ margin: 0, fontSize: '16px' }}>No payment history available.</p>
+              </div>
+            )}
+            {activeTab === 'history' && history.length > 0 && (
+              <div style={{ overflowX: 'auto', background: 'var(--color-bg-card)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#F9FAFB', borderBottom: '1px solid var(--color-border)' }}>
                     <tr>
-                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: C.earthBrown, fontWeight: 600 }}>
-                        No records found for this filter.
-                      </td>
+                      <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '500', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Payment No</th>
+                      <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '500', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tender No</th>
+                      <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '500', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Amount</th>
+                      <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '500', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Supplier</th>
+                      <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '500', color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB 2 — PUBLIC FUND REQUESTS
-        ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'public_funds' && (
-          <div style={{ background: C.white, border: `1px solid ${C.sage}` }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: C.darkGreen }}>
-                    {['Request No.', 'Total Amount (ETB)', 'Status', 'Date', 'Action'].map((col, i) => (
-                      <th key={col} style={{
-                        padding: '12px 16px', textAlign: i === 1 ? 'right' : 'left',
-                        color: C.white, fontWeight: 700, fontSize: 12,
-                        textTransform: 'uppercase', letterSpacing: '0.5px',
-                      }}>{col}</th>
+                  </thead>
+                  <tbody>
+                    {history.map(req => (
+                      <tr key={req.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '16px', fontSize: '14px', fontWeight: '500' }}>{req.payment_no}</td>
+                        <td style={{ padding: '16px', fontSize: '14px' }}>{req.tender_no}</td>
+                        <td style={{ padding: '16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-success)' }}>
+                          {req.amount ? `${Number(req.amount).toLocaleString()} ETB` : '—'}
+                        </td>
+                        <td style={{ padding: '16px', fontSize: '14px' }}>{req.supplier_name || 'N/A'}</td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => setViewModal({ open: true, request: req })}
+                            className="fin-gen-btn"
+                            style={{ background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', height: '30px', fontSize: '12px' }}
+                          >
+                            View Detail
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: C.earthBrown, fontWeight: 600 }}>Loading data…</td></tr>
-                  ) : fundRequests.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: C.earthBrown, fontWeight: 600 }}>No fund requests found.</td></tr>
-                  ) : fundRequests.map((req, idx) => (
-                    <tr key={req.id} style={{ borderBottom: `1px solid ${C.sage}`, background: idx % 2 === 0 ? C.white : C.mint }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: C.darkGreen }}>{req.request_code}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: C.forestGreen, textAlign: 'right' }}>
-                        {Number(req.total_amount).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <Badge status={req.status} />
-                      </td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray }}>
-                        {new Date(req.created_at).toLocaleDateString('en-CA')}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <button
-                          onClick={() => setViewFundRequest(req)}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: C.forestGreen, color: C.white, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
-                        >
-                          <Eye size={13} /> View Details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB 3 — PUBLIC PAYMENTS
-        ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'public_payments' && (
-          <div style={{ background: C.white, border: `1px solid ${C.sage}` }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: C.darkGreen }}>
-                    {['Receipt Code', 'Fund Request', 'Amount (ETB)', 'Status', 'Paid At'].map((col, i) => (
-                      <th key={col} style={{
-                        padding: '12px 16px', textAlign: i === 2 ? 'right' : 'left',
-                        color: C.white, fontWeight: 700, fontSize: 12,
-                        textTransform: 'uppercase', letterSpacing: '0.5px',
-                      }}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: C.earthBrown, fontWeight: 600 }}>Loading payments…</td></tr>
-                  ) : payments.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: C.earthBrown, fontWeight: 600 }}>No payments found.</td></tr>
-                  ) : payments.map((pay, idx) => (
-                    <tr key={pay.id} style={{ borderBottom: `1px solid ${C.sage}`, background: idx % 2 === 0 ? C.white : C.mint }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: C.darkGreen }}>{pay.receipt_code}</td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray }}>{pay.request_code}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: C.forestGreen, textAlign: 'right' }}>
-                        {Number(pay.amount).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <Badge status={pay.status || 'PAID'} />
-                      </td>
-                      <td style={{ padding: '12px 16px', color: C.darkGray }}>
-                        {new Date(pay.paid_at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          MODAL — Fund Request Details
-      ══════════════════════════════════════════════════════════════════════ */}
-      {viewFundRequest && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(27,94,32,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1050, overflowY: 'auto', padding: '40px 20px' }}>
-          <div style={{ background: C.white, width: '100%', maxWidth: 680, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }}>
+      {payModal.open && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700' }}>Execute Payment</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+              CEO approved this fund request. Enter the final paid amount and any transaction notes to issue payment.
+            </p>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label className="fin-gen-label" style={{ marginBottom: '8px' }}>Amount Paid (ETB) *</label>
+              <input 
+                type="number"
+                step="0.01"
+                value={payAmount} 
+                onChange={e => setPayAmount(e.target.value)} 
+                className="fin-input" 
+                placeholder="Actual amount transferred..." 
+              />
+            </div>
 
-            {/* Modal Header */}
-            <div style={{ background: C.darkGreen, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.white }}>Fund Request Details</h3>
-                <p style={{ margin: '3px 0 0', color: C.sage, fontSize: 12 }}>
-                  {viewFundRequest.request_code} &bull; {new Date(viewFundRequest.created_at).toLocaleDateString('en-CA')}
-                </p>
-              </div>
-              <button
-                onClick={() => setViewFundRequest(null)}
-                style={{ background: C.forestGreen, border: 'none', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            <div style={{ marginBottom: '20px' }}>
+              <label className="fin-gen-label" style={{ marginBottom: '8px' }}>Transaction Notes / Ref</label>
+              <textarea 
+                value={payNotes} 
+                onChange={e => setPayNotes(e.target.value)} 
+                rows={3} 
+                className="fin-input" 
+                placeholder="e.g. Bank Transfer Ref #123456" 
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button 
+                onClick={() => setPayModal({ open: false, request: null })}
+                disabled={paying}
+                className="fin-gen-btn"
+                style={{ background: 'transparent' }}
               >
-                <X size={16} color={C.white} />
+                Cancel
+              </button>
+              <button 
+                onClick={handlePay}
+                disabled={paying || !payAmount}
+                className="fin-gen-btn"
+                style={{ background: 'var(--color-success)', color: '#fff', border: 'none' }}
+              >
+                {paying ? 'Processing...' : 'Mark as Paid'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div style={{ padding: '24px' }}>
-              {/* Summary Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <div style={{ background: C.mint, border: `1px solid ${C.sage}`, padding: '16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.olive, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Total Amount Required</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: C.darkGreen }}>
-                    ETB {Number(viewFundRequest.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </div>
+      {/* VIEW DETAILS MODAL */}
+      {viewModal.open && viewModal.request && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '700px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+                  {viewModal.request.payment_no || viewModal.request.request_code}
+                </h3>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="fin-gen-badge">Tender: {viewModal.request.tender_no}</div>
+                  <span style={{
+                    fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: '9999px',
+                    background: 'var(--color-success-bg)',
+                    color: 'var(--color-success)'
+                  }}>
+                    ✅ Paid
+                  </span>
                 </div>
-                <div style={{ background: C.mint, border: `1px solid ${C.sage}`, padding: '16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.olive, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Status</div>
-                  <div style={{ marginTop: 4 }}><Badge status={viewFundRequest.status} /></div>
+              </div>
+              <div className="fin-gen-cost" style={{ fontSize: '24px' }}>
+                {viewModal.request.amount ? `${Number(viewModal.request.amount).toLocaleString()} ETB` : 'Cost TBD'}
+              </div>
+            </div>
+
+            <div className="fin-gen-grid" style={{ marginBottom: '24px' }}>
+              <div><span className="fin-gen-label">Supplier</span><div className="fin-gen-value">{viewModal.request.supplier_name || 'N/A'}</div></div>
+              <div><span className="fin-gen-label">Payment Method</span><div className="fin-gen-value">{viewModal.request.payment_method}</div></div>
+              <div><span className="fin-gen-label">Reference Note</span><div className="fin-gen-value">{viewModal.request.transaction_ref || viewModal.request.notes || '—'}</div></div>
+              <div>
+                <span className="fin-gen-label">Paid At</span>
+                <div className="fin-gen-value">
+                  {viewModal.request.created_at ? new Date(viewModal.request.created_at).toLocaleString() : '—'}
                 </div>
               </div>
+            </div>
 
-              {/* Included Tenders */}
-              <div style={{ fontSize: 13, fontWeight: 800, color: C.darkGreen, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Award size={15} color={C.forestGreen} /> Included Awarded Tenders
-              </div>
-
-              <div style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {viewFundRequest.items?.map(item => (
-                  <div key={item.id} style={{ border: `1px solid ${C.sage}`, background: C.white }}>
-                    {/* Tender Header */}
-                    <div style={{ padding: '12px 16px', background: C.mint, borderBottom: `1px solid ${C.sage}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 700, color: C.darkGreen, fontSize: 14 }}>{item.tender_title}</div>
-                        <div style={{ color: C.earthBrown, fontSize: 12, marginTop: 2 }}>
-                          Supplier: <strong style={{ color: C.darkGray }}>{item.supplier}</strong>
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 800, color: C.forestGreen, fontSize: 16 }}>
-                        ETB {Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-
-                    {/* Products Table */}
-                    {item.products && item.products.length > 0 ? (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead>
-                          <tr style={{ background: C.darkGreen }}>
-                            {['Item Name', 'Qty', 'Unit Price (ETB)', 'Total (ETB)'].map((h, i) => (
-                              <th key={h} style={{ padding: '8px 12px', textAlign: i >= 1 ? 'right' : 'left', color: C.white, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {item.products.map((prod, idx) => {
-                            const unitPrice   = prod.price_birr + (prod.price_cent / 100);
-                            const totalAmount = prod.total_birr + (prod.total_cent / 100);
-                            return (
-                              <tr key={idx} style={{ borderBottom: `1px solid ${C.sage}`, background: idx % 2 === 0 ? C.white : C.mint }}>
-                                <td style={{ padding: '8px 12px', color: C.darkGray, fontWeight: 500 }}>{prod.item_name}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'right', color: C.darkGray }}>{prod.quantity}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'right', color: C.darkGray }}>{Number(unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'right', color: C.darkGreen, fontWeight: 700 }}>{Number(totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr style={{ background: C.forestGreen }}>
-                            <td colSpan={3} style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: C.white, fontSize: 12 }}>SUBTOTAL</td>
-                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 800, color: C.white }}>
-                              {Number(item.products.reduce((a, p) => a + p.total_birr + (p.total_cent / 100), 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    ) : (
-                      <div style={{ padding: '14px 16px', fontSize: 12, color: C.earthBrown, fontStyle: 'italic' }}>No itemized products for this tender.</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Action Buttons */}
-              {viewFundRequest.status === 'APPROVED' && (
-                <button
-                  onClick={() => { handleVerifyBudget(viewFundRequest.id); setViewFundRequest(null); }}
-                  style={{ width: '100%', padding: '14px', background: C.forestGreen, color: C.white, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <CheckCircle size={16} /> Verify Budget &amp; Mark Ready for Payment
-                </button>
-              )}
-              {viewFundRequest.status === 'READY_FOR_PAYMENT' && (
-                <button
-                  onClick={() => { handleCreatePayment(viewFundRequest.id); setViewFundRequest(null); }}
-                  style={{ width: '100%', padding: '14px', background: C.emerald, color: C.white, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <Banknote size={16} /> Create Final Payment
-                </button>
-              )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+              <button 
+                onClick={() => setViewModal({ open: false, request: null })}
+                className="fin-gen-btn"
+                style={{ background: 'var(--color-bg-page)', border: '1px solid var(--color-border)' }}
+              >
+                Close Details
+              </button>
             </div>
           </div>
         </div>
