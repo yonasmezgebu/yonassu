@@ -38,6 +38,11 @@ const ACTION_FILTER_GROUPS = [
   { label: '💰 Payment Processed',    value: 'PAYMENT_PROCESSED' },
   { label: '📋 PO Created',           value: 'PO_CREATED' },
   { label: '✅ PO Approved',           value: 'PO_APPROVED' },
+  { label: '─── General Procurement ─', value: '__divider__', disabled: true },
+  { label: '🚛 Procurement Requested',  value: 'CREATE_GENERAL_PROCUREMENT' },
+  { label: '✅ CEO Approved Procurement',value: 'CEO_APPROVE_GENERAL_PROCUREMENT' },
+  { label: '⏸ CEO Put on Hold',        value: 'CEO_WAIT_GENERAL_PROCUREMENT' },
+  { label: '❌ CEO Rejected Procurement',value: 'CEO_REJECT_GENERAL_PROCUREMENT' },
 ];
 
 const CentralAuditLog = ({ fixedModule, mode }) => {
@@ -188,9 +193,15 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
     'ELEVATION_APPROVED':         '🔑 Privilege elevation approved',
     'ELEVATION_REVOKED':          '🔑 Privilege elevation revoked',
     'AUDIT_LOGS_EXPORTED':        '📋 Audit logs exported',
+    // ── General Procurement ──
+    'CREATE_GENERAL_PROCUREMENT':              '🚛 New general procurement request submitted (Agri & Car Rental)',
+    'CEO_APPROVE_GENERAL_PROCUREMENT':         '✅ CEO approved a general procurement request',
+    'CEO_REJECT_GENERAL_PROCUREMENT':          '❌ CEO rejected a general procurement request',
+    'CEO_WAIT_GENERAL_PROCUREMENT':            '⏸ CEO placed a general procurement request on hold',
   };
 
   const SUBJECT_NAMES = [
+    ['GENERAL_PROCUREMENT', 'general procurement request'],
     ['BANK_TRANSACTION', 'bank transfer'],
     ['STORE_TRANSFER',   'stock transfer'],
     ['PURCHASE_ORDER',   'purchase order'],
