@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import salesService from '../../services/salesService';
+import { loadVatSafe, calcCartVat, getVatForItem, fmtPct } from '../../services/vatService';
 import { useToast } from '../../components/Toast';
 import { playSound } from '../../services/notificationManager';
 import {
@@ -288,6 +289,11 @@ export default function RetailPOS() {
 
   const [financeAccounts, setFinanceAccounts] = useState([]);
 
+  // Central VAT configuration (read from the CEO Tax & VAT service)
+  const [vatCtx, setVatCtx] = useState(null);
+
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
+
   // POS State
   const [posStep, setPosStep] = useState(1);
   const [posCart, setPosCart] = useState(() => {
@@ -448,7 +454,10 @@ const addToCart = (item) => {
     setPosCart(posCart.map(c => c.id === id ? { ...c, qty: newQty } : c));
   };
 
-  const posCartTotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const rawPosTotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const posCalc = vatCtx ? calcCartVat(vatCtx, 'retail', posCart, 'price', 'qty') : { subtotal: rawPosTotal, vat: 0, total: rawPosTotal };
+  const posCartVat = posCalc.vat;
+  const posCartTotal = posCalc.total;
 
   const handleProcessPayment = async () => {
     if (posCart.length === 0) { showToast('Cart is empty', 'warning'); return; }
@@ -474,6 +483,8 @@ const addToCart = (item) => {
         customer_name: (activeOnlineOrder ? activeOnlineOrder.customer_name : payerName) || 'Walk-in Customer',
         customer_phone: payerPhone,
         items: posCart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, category: i.category })),
+        subtotal: rawPosTotal,
+        vat_amount: posCartVat,
         total_amount: posCartTotal,
         payment_method: posPaymentMethod,
         payment_amount: paymentAmount || posCartTotal,
@@ -532,6 +543,8 @@ const addToCart = (item) => {
         account_number: accountNumber,
         telbir_number: telbirNumber,
         txn_id: txnId,
+        subtotal: rawPosTotal,
+        vat_amount: posCartVat,
         total_amount: posCartTotal,
         items: posCart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, category: i.category })),
       };
@@ -604,9 +617,16 @@ const addToCart = (item) => {
 
         setOrderRequestId(null);
         
+        const saleSubtotal = saleItems.reduce((s, i) => s + (parseFloat(i.unit_price) * parseFloat(i.quantity || 1)), 0);
+        const saleVat = vatCtx
+          ? saleItems.reduce((s, i) => s + getVatForItem(vatCtx, 'retail', i.product_id, parseFloat(i.unit_price) * parseFloat(i.quantity || 1)).vat, 0)
+          : 0;
+
         setCompletedSale({
           invoice_number: invoiceNumber,
           total_amount: totalSrc,
+          subtotal: saleSubtotal,
+          vat_amount: saleVat,
           payment_method: paymentMethodSrc,
           recipient_name: payerNameSrc,
           items: saleItems.map(i => ({ name: i.product_name, quantity: i.quantity, price: i.unit_price }))
@@ -666,6 +686,8 @@ const addToCart = (item) => {
             <span>${(it.price * it.quantity).toFixed(2)} ETB</span>
           </div>`).join('')}
         <div class='divider'></div>
+        <div class='row'><span>Subtotal</span><span>${(completedSale.subtotal || 0).toFixed(2)} ETB</span></div>
+        <div class='row'><span>VAT</span><span>${(completedSale.vat_amount || 0).toFixed(2)} ETB</span></div>
         <div class='row total'><span>TOTAL</span><span>${completedSale.total_amount.toFixed(2)} ETB</span></div>
         <div class='footer'>Thank you for your purchase!</div>
       </body></html>
@@ -675,11 +697,15 @@ const addToCart = (item) => {
     win.print();
   };
 
-  const grandTotal = items.reduce((sum, row) => {
+  let rawGrand = 0, grandVat = 0;
+  items.forEach((row) => {
     const qty = parseFloat(row.quantity) || 0;
     const price = parseFloat(row.unit_price) || 0;
-    return sum + qty * price;
-  }, 0);
+    const r = getVatForItem(vatCtx, 'retail', row.product_id, qty * price);
+    rawGrand += r.sub;
+    grandVat += r.vat;
+  });
+  const grandTotal = rawGrand + grandVat;
 
   useEffect(() => { setPaymentAmount(grandTotal > 0 ? grandTotal.toFixed(2) : ''); }, [grandTotal]);
 
@@ -961,6 +987,9 @@ const addToCart = (item) => {
         quantity: parseFloat(row.quantity),
         unit_price: parseFloat(row.unit_price),
       })),
+      subtotal: rawGrand,
+      vat_amount: grandVat,
+      total_amount: grandTotal,
       payment: {
         method: paymentMethod,
         amount: parseFloat(paymentAmount) || grandTotal,
@@ -1319,7 +1348,10 @@ const addToCart = (item) => {
                 </div>
               ) : (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {pendingQueue.map((item) => (
+                  {pendingQueue.map((item) => {
+                    const lineSubtotal = (item.items || []).reduce((s, i) => s + (parseFloat(i.price || 0) * parseFloat(i.qty || 0)), 0);
+                    const lineVat = Math.max(0, (parseFloat(item.total) || 0) - lineSubtotal);
+                    return (
                     <div key={item.id} style={{ background: 'white', border: '1px solid #E5E7EB', borderTop: `4px solid ${item.status === 'rejected' ? 'var(--danger)' : item.status === 'approved' ? 'var(--success)' : 'var(--amber)'}`, overflow: 'hidden', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                       {/* Item header */}
                       <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E5E7EB' }}>
@@ -1361,9 +1393,19 @@ const addToCart = (item) => {
                             ))}
                           </tbody>
                         </table>
-                        <div style={{ background: '#FFFFFF', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid var(--primary)' }}>
-                          <span style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 16, color: '#111827' }}>Grand Total</span>
-                          <span style={{ fontWeight: 900, fontSize: 22, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{(item.total || 0).toLocaleString()} ETB</span>
+                        <div style={{ background: '#FFFFFF', padding: '16px 24px', borderTop: '2px solid var(--primary)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', fontSize: 13, color: '#6B7280' }}>
+                            <span>Subtotal</span>
+                            <span style={{ fontWeight: 700, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{lineSubtotal.toLocaleString()} ETB</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', fontSize: 13, color: '#6B7280' }}>
+                            <span>VAT Amount</span>
+                            <span style={{ fontWeight: 700, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{lineVat > 0 ? `${lineVat.toLocaleString()} ETB` : '—'}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 0', marginTop: 4, borderTop: '1px solid #E5E7EB' }}>
+                            <span style={{ textTransform: 'uppercase', fontWeight: 800, fontSize: 16, color: '#111827' }}>Grand Total</span>
+                            <span style={{ fontWeight: 900, fontSize: 22, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>{(item.total || 0).toLocaleString()} ETB</span>
+                          </div>
                         </div>
                       </div>
 
@@ -1471,7 +1513,7 @@ const addToCart = (item) => {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>
@@ -1986,10 +2028,16 @@ const addToCart = (item) => {
 
                       {/* Cart Total Bar */}
                       {posCart.length > 0 && (
-                        <div style={{ padding: '12px 16px', background: '#F9FAFB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E5E7EB' }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{posCart.length} item{posCart.length !== 1 ? 's' : ''}</span>
-                          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--header)', fontVariantNumeric: 'tabular-nums' }}>
-                            Total: <span style={{ color: 'var(--primary)' }}>{posCartTotal.toLocaleString()} ETB</span>
+                        <div style={{ padding: '12px 16px', background: '#F9FAFB', borderTop: '1px solid #E5E7EB' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>
+                            <span>{posCart.length} item{posCart.length !== 1 ? 's' : ''}</span>
+                            <span>VAT Amount: <span style={{ color: '#6B7280' }}>{posCartVat > 0 ? `${posCartVat.toFixed(2)} ETB` : '—'}</span></span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Total (incl. VAT)</span>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--header)', fontVariantNumeric: 'tabular-nums' }}>
+                              {posCartTotal.toLocaleString()} <span style={{ fontSize: 12, color: 'var(--primary)' }}>ETB</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2360,7 +2408,15 @@ const addToCart = (item) => {
                             </tbody>
                             <tfoot>
                               <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
-                                <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--header)', fontSize: 13 }}>Total</td>
+                                <td colSpan={2} style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>Subtotal</td>
+                                <td style={{ padding: '10px 12px', textAlign: 'right', color: '#6B7280', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{rawPosTotal.toLocaleString()} ETB</td>
+                              </tr>
+                              <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                                <td colSpan={2} style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12 }}>VAT Amount</td>
+                                <td style={{ padding: '10px 12px', textAlign: 'right', color: '#6B7280', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{posCartVat > 0 ? `${posCartVat.toFixed(2)} ETB` : '—'}</td>
+                              </tr>
+                              <tr style={{ borderTop: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+                                <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--header)', fontSize: 13 }}>Total (incl. VAT)</td>
                                 <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: 'var(--primary)', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{posCartTotal.toLocaleString()} ETB</td>
                               </tr>
                             </tfoot>
