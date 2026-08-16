@@ -31,6 +31,7 @@ import CEOTenderManager from './CEOTenderManager';
 import CEOPrinting from './CEOPrinting';
 import CEOAgriAndCarRental from './CEOAgriAndCarRental';
 import CEOApplicants from './CEOApplicants';
+import CEOGeneralProcurementPaymentApprovals from './CEOGeneralProcurementPaymentApprovals';
 import HREmployeesPending from '../hr/HREmployeesPending';
 import CEOPayrollApproval from './CEOPayrollApproval';
 
@@ -98,7 +99,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals'] },
+        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals', '/ceo/payment-approvals', '/ceo/procurement-decisions'] },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
       ]
@@ -143,6 +144,7 @@ const CEODashboard = () => {
             <Route path="salary-approval" element={<CEOPayrollApproval />} />
             <Route path="store-approvals" element={<CEOStoreApprovals />} />
             <Route path="finance-approvals" element={<CEOFinanceApprovals />} />
+            <Route path="payment-approvals" element={<CEOGeneralProcurementPaymentApprovals />} />
 
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
