@@ -3,6 +3,7 @@ const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const { generateOrderNumber } = require('../../utils/orderNumber');
 const { log } = require('../../services/salesAudit.service');
+const vatConfigService = require('../../services/vatConfig.service');
 
 const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 
@@ -92,7 +93,11 @@ exports.trackOrder = catchAsync(async (req, res) => {
 exports.getCart = catchAsync(async (req, res) => {
   const items = await getCartForUser(req.user.id);
   const subtotal = items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
-  const tax = subtotal * 0.15;
+  const vatCalc = await vatConfigService.computeVatForItems(
+    'retail',
+    items.map((i) => ({ itemId: i.product_id, amount: parseFloat(i.price) * i.quantity }))
+  );
+  const tax = vatCalc.vat;
   res.json({ status: 'success', data: { items, subtotal, tax, total: subtotal + tax } });
 });
 
@@ -144,10 +149,18 @@ exports.clearCart = catchAsync(async (req, res) => {
 });
 
 exports.placeOrder = catchAsync(async (req, res) => {
+  // Multipart duplicate fields arrive as arrays (multer) — normalize to scalar.
+  const scalar = (v) => (Array.isArray(v) ? v[v.length - 1] : v);
+  const body = Object.fromEntries(Object.entries(req.body || {}).map(([k, v]) => [k, scalar(v)]));
   const { delivery_type, delivery_address, delivery_fee = 0, notes,
-          customer_name, customer_phone, customer_email } = req.body;
+          customer_name, customer_phone, customer_email,
+          payment_method, payment_ref } = body;
   const cartItems = await getCartForUser(req.user.id);
   if (cartItems.length === 0) throw new AppError('Cart is empty', 400);
+
+  // Payment proof — either a payment reference (ID) or an uploaded screenshot
+  const resolvedPaymentRef = (payment_ref || '').toString().trim() || null;
+  const resolvedProofPath = req.file ? req.file.path : null;
 
   // Resolve customer info: prefer form fields, fall back to user profile
   const resolvedName  = customer_name  || req.user.full_name || req.user.fullName || null;
@@ -155,7 +168,11 @@ exports.placeOrder = catchAsync(async (req, res) => {
   const resolvedEmail = customer_email || req.user.email     || null;
 
   const subtotal = cartItems.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
-  const tax = subtotal * 0.15; // 15% VAT
+  const vatCalc = await vatConfigService.computeVatForItems(
+    'retail',
+    cartItems.map((i) => ({ itemId: i.product_id, amount: parseFloat(i.price) * i.quantity }))
+  );
+  const tax = vatCalc.vat;
   const total = subtotal + tax + parseFloat(delivery_fee);
 
   const result = await transaction(async (trx) => {
@@ -188,6 +205,9 @@ exports.placeOrder = catchAsync(async (req, res) => {
       customer_name:  resolvedName,
       customer_phone: resolvedPhone,
       customer_email: resolvedEmail,
+      payment_method: payment_method || null,
+      payment_ref: resolvedPaymentRef,
+      payment_proof_path: resolvedProofPath,
       created_at: db.fn.now(), updated_at: db.fn.now()
     });
 
@@ -255,23 +275,27 @@ exports.posCheckout = catchAsync(async (req, res) => {
   if (parseFloat(discount_percent) > 5) throw new AppError('Discounts above 5% require manager approval', 400);
 
   const result = await transaction(async (trx) => {
-    let total_amount = 0;
+    let subtotal = 0;
     const resolvedItems = [];
+    const vatLines = [];
 
     for (const item of items) {
       const product = await trx('retail_products').where({ id: item.product_id }).forUpdate().first();
       if (!product) throw new AppError(`Product ID ${item.product_id} not found`, 404);
       if (product.stock_quantity < item.quantity) throw new AppError(`Insufficient stock for "${product.name}"`, 400);
-      total_amount += product.price * item.quantity;
+      const lineAmt = product.price * item.quantity;
+      subtotal += lineAmt;
+      vatLines.push({ itemId: item.product_id, amount: lineAmt });
       resolvedItems.push({ product, quantity: item.quantity });
     }
 
-    const discountAmount = total_amount * (parseFloat(discount_percent) / 100);
-    const finalTotal = total_amount - discountAmount;
+    const vatCalc = await vatConfigService.computeVatForItems('retail', vatLines);
+    const discountAmount = subtotal * (parseFloat(discount_percent) / 100);
+    const finalTotal = subtotal + vatCalc.vat - discountAmount;
     const invoice_number = await generateOrderNumber('POS');
 
     const [txId] = await trx('retail_transactions').insert({
-      shift_id: shift.id, invoice_number, total_amount: finalTotal,
+      shift_id: shift.id, invoice_number, subtotal, total_amount: finalTotal,
       payment_method, payment_ref: payment_ref || null,
       discount_percent: parseFloat(discount_percent),
       discount_amount: discountAmount, customer_phone: customer_phone || null,
@@ -285,7 +309,7 @@ exports.posCheckout = catchAsync(async (req, res) => {
       if (!updated) throw new AppError(`Race condition for "${product.name}"`, 409);
     }
 
-    return { txId, invoice_number, total_amount: finalTotal, discount_amount: discountAmount, resolvedItems };
+    return { txId, invoice_number, subtotal, vat_amount: vatCalc.vat, total_amount: finalTotal, discount_amount: discountAmount, resolvedItems };
   });
 
   // Update shift totals
