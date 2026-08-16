@@ -4,6 +4,7 @@ import api from '../../services/apiClient';
 import { useAuth } from '../../hooks/useAuth';
 import SignatureCanvas from '../../components/SignatureCanvas';
 import { PublicNav } from './PublicNavFooter';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 import confetti from 'canvas-confetti';
 import tenderHero from '../../assets/hero-section/tender2.jpg';
 import clumpSound from '../../assets/notification/clump.mp3';
@@ -224,6 +225,8 @@ const PublicSmartTendersPage = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   // Procurement contact info derived from tenders (first tender with contact data set by Purchase team)
 
@@ -650,6 +653,35 @@ const PublicSmartTendersPage = () => {
                         })}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* VAT Summary (central CEO tax treatment per item) */}
+                  <div style={{ marginTop: '-16px', marginBottom: '32px', padding: '14px 18px', background: '#f8fafc', border: '1px solid #8D6E63', borderRadius: '10px' }}>
+                    {selectedTender.items?.map((item) => {
+                      const itemBid = bidItems[item.id] || {};
+                      const birr = parseInt(itemBid.priceBirr || 0, 10);
+                      const cent = parseInt(itemBid.priceCent || 0, 10);
+                      const unitPrice = (birr + cent / 100);
+                      const lineValue = unitPrice * parseFloat(item.quantity || 1);
+                      const v = getVatForItem(vatCtx, 'tender_buy', item.id != null ? item.id : null, lineValue);
+                      return (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0' }}>
+                          <span style={{ color: '#424242' }}>{item.object_type} — VAT ({fmtPct(v.rate)})</span>
+                          <span style={{ fontWeight: 700, color: '#1B5E20' }}>{v.vat.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
+                        </div>
+                      );
+                    })}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 800, borderTop: '1px solid #8D6E63', marginTop: 8, paddingTop: 8, color: '#424242' }}>
+                      <span>Grand Total (incl. VAT)</span>
+                      <span>{selectedTender.items?.reduce((sum, item) => {
+                        const itemBid = bidItems[item.id] || {};
+                        const birr = parseInt(itemBid.priceBirr || 0, 10);
+                        const cent = parseInt(itemBid.priceCent || 0, 10);
+                        const unitPrice = (birr + cent / 100);
+                        const lineValue = unitPrice * parseFloat(item.quantity || 1);
+                        return sum + getVatForItem(vatCtx, 'tender_buy', item.id != null ? item.id : null, lineValue).total;
+                      }, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
+                    </div>
                   </div>
 
                   {/* Terms & Conditions (Delivery & Payment) */}
