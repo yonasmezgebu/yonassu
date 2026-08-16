@@ -317,7 +317,7 @@ export default function PharmacySalesPOS() {
 
   const totals = vatCtx
     ? cart.reduce((acc, item) => {
-        const r = getVatForItem(vatCtx, 'pharmacy', item.drug_id, item.unit_price * item.quantity, (item.vat_rate || 0) / 100);
+        const r = getVatForItem(vatCtx, 'pharmacy', item.drug_id, item.unit_price * item.quantity);
         return { subtotal: acc.subtotal + r.sub, vat: acc.vat + r.vat, total: acc.total + r.total };
       }, { subtotal: 0, vat: 0, total: 0 })
     : cart.reduce((acc, item) => {
