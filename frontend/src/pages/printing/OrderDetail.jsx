@@ -248,8 +248,18 @@ const OrderDetail = () => {
                 <span className={styles.metricValue}>{formatCurrency(order.binding_cost)}</span>
               </div>
             </div>
+            <div className={styles.metricGrid}>
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>Subtotal</span>
+                <span className={styles.metricValue}>{formatCurrency(order.subtotal ?? (parseFloat(order.total_price || 0) - parseFloat(order.vat_amount || 0)))}</span>
+              </div>
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>VAT Amount</span>
+                <span className={styles.metricValue}>{formatCurrency(order.vat_amount || 0)}</span>
+              </div>
+            </div>
             <div className={styles.totalMetric} style={{ marginTop: '0.75rem' }}>
-              <span className={styles.metricLabel}>Total Price</span>
+              <span className={styles.metricLabel}>Total Price (incl. VAT)</span>
               <span className={styles.totalValue} style={{ color: '#059669' }}>
                 {formatCurrency(order.total_price)}
               </span>
