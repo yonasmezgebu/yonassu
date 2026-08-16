@@ -57,8 +57,19 @@ apiClient.interceptors.response.use(
         requestUrl.includes('/pharmacy/products') ||
         requestUrl.includes('/pharmacy/categories')
       );
-      if (isPublicApiCall) {
-        // Silently fail — public API, user not logged in, that's fine
+      // Protected page sections — a 401 here means the session is expired/invalid.
+      // On any public page (services, marketplace, tenders, etc.) a 401 simply means
+      // the endpoint needs login, so we must NOT bounce the visitor back to /login.
+      const PROTECTED_PREFIXES = [
+        '/admin', '/ceo', '/finance', '/sales', '/purchase',
+        '/pharmacy-store', '/general-store', '/printing-manager',
+        '/customer', '/pharmacy', '/pharmacy-worker', '/car-renting',
+        '/hr', '/board', '/employee', '/notifications', '/tenders/manage'
+      ];
+      const currentPath = window.location.pathname;
+      const isProtectedPage = PROTECTED_PREFIXES.some(p => currentPath === p || currentPath.startsWith(p));
+      if (isPublicApiCall || !isProtectedPage) {
+        // Silently fail — public API call or public page, user not logged in, that's fine
         return Promise.reject(new Error('Unauthenticated'));
       }
       localStorage.removeItem('token');
