@@ -63,7 +63,7 @@ const TabBtn = ({ active, onClick, icon, label, count }) => (
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, sub, color = '#3b82f6', icon }) => (
-  <div style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+  <div className="pst-card">
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <div>
         <p style={{ margin: '0 0 6px', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>{label}</p>
@@ -78,6 +78,111 @@ const StatCard = ({ label, value, sub, color = '#3b82f6', icon }) => (
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const PurchaseSmartTenders = () => {
+
+  // ─── STYLES ───────────────────────────────────────────
+  const customStyles = `
+    .pst-wrapper {
+      padding: 24px;
+      max-width: 1536px;
+      margin: 10px auto;
+      font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif !important;
+      color: var(--color-text-primary, #111827);
+      background-color: var(--color-bg-page, #F5F6FA) !important;
+      min-height: calc(100vh - 60px);
+    }
+    @media(max-width: 1024px) { .pst-wrapper { padding: 16px; margin: 6px auto; } }
+    @media(max-width: 768px) { .pst-wrapper { padding: 12px; margin: 4px auto; } }
+
+    /* Typography */
+    .pst-wrapper h2 { font-size: 28px !important; font-weight: 600 !important; color: #111827 !important; margin: 0 0 24px 0 !important; line-height: 1.3 !important; }
+    .pst-wrapper h3, .pst-wrapper h4 { font-size: 18px !important; font-weight: 600 !important; color: #111827 !important; margin: 0 0 16px 0 !important; line-height: 1.3 !important; }
+    .pst-wrapper p { font-size: 16px !important; font-weight: 400 !important; color: #6B7280 !important; line-height: 1.5 !important; }
+    .pst-wrapper label { font-size: 14px !important; font-weight: 500 !important; text-transform: uppercase; letter-spacing: 0.03em; color: #9CA3AF !important; }
+
+    /* Cards */
+    .pst-card {
+      background: #FFFFFF !important;
+      border-radius: 10px !important;
+      border: 1px solid #E5E7EB !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+      padding: 24px !important;
+      transition: all 150ms ease-in-out !important;
+      margin-bottom: 24px !important;
+    }
+    .pst-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Buttons */
+    .pst-wrapper button {
+      border-radius: 8px !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      transition: all 150ms ease-in-out !important;
+      cursor: pointer !important;
+    }
+    .pst-wrapper button:hover:not(:disabled) {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    .pst-wrapper button:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
+
+    /* Specific button overrides */
+    .pst-btn-gold { background: #D97706 !important; color: white !important; }
+    .pst-wrapper button[style*="background"]:hover:not(:disabled) {
+      /* Apply gold hover to buttons with inline backgrounds like #f1f5f9 or others if they aren't primary blue */
+      background: #D97706 !important;
+      color: white !important;
+    }
+    /* Exclude primary and danger buttons from turning gold on hover if we can */
+    .pst-wrapper button[style*="#3b82f6"]:hover:not(:disabled),
+    .pst-wrapper button[style*="2563eb"]:hover:not(:disabled) {
+      background: #1D4ED8 !important;
+      color: white !important;
+    }
+    .pst-wrapper button[style*="#ef4444"]:hover:not(:disabled),
+    .pst-wrapper button[style*="dc2626"]:hover:not(:disabled) {
+      background: #DC2626 !important;
+      color: white !important;
+    }
+
+    /* Tables */
+    .pst-wrapper table { border-collapse: collapse !important; font-size: 14px !important; width: 100% !important; min-width: 700px !important; }
+    .pst-wrapper th { background: #F9FAFB !important; text-transform: uppercase !important; font-size: 14px !important; font-weight: 500 !important; letter-spacing: 0.03em; color: #9CA3AF !important; padding: 12px 16px !important; border-bottom: 1px solid #E5E7EB !important; text-align: left !important; }
+    .pst-wrapper td { padding: 12px 16px !important; border-bottom: 1px solid #E5E7EB !important; color: #111827 !important; }
+    .pst-wrapper tr { transition: background 150ms ease-in-out !important; }
+    .pst-wrapper tr:hover td { background: #F9FAFB !important; }
+
+    /* Inputs */
+    .pst-wrapper input, .pst-wrapper select, .pst-wrapper textarea {
+      height: 36px !important;
+      border-radius: 8px !important;
+      border: 1px solid #E5E7EB !important;
+      padding: 0 12px !important;
+      font-size: 14px !important;
+      transition: all 150ms ease !important;
+      box-sizing: border-box !important;
+    }
+    .pst-wrapper input:focus, .pst-wrapper select:focus, .pst-wrapper textarea:focus {
+      outline: none !important; border-color: #2563EB !important; box-shadow: 0 0 0 3px rgba(37,99,235,.1) !important;
+    }
+
+    /* Segmented Spinner */
+    .segmented-spinner {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 4px solid transparent;
+      border-top-color: #2563EB;
+      border-right-color: #2563EB;
+      border-bottom-color: #E5E7EB;
+      border-left-color: #E5E7EB;
+      animation: spin 1s infinite cubic-bezier(0.5, 0, 0.5, 1);
+      margin: 48px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  `;
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('list');
 
@@ -114,6 +219,33 @@ const PurchaseSmartTenders = () => {
   ]);
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
+  const [gpRequestId, setGpRequestId] = useState(null);
+
+  // Auto-fill from GP if navigated with state
+  useEffect(() => {
+    if (location.state?.prefill) {
+      setNewTender({
+        title: location.state.prefill.title || '',
+        category: location.state.prefill.category || '',
+        description: location.state.prefill.description || '',
+        openingDate: '',
+        closingDate: ''
+      });
+      setTenderItems([{
+        id: Date.now(),
+        objectType: location.state.prefill.item_name || '',
+        unit: 'Pcs',
+        quantity: location.state.prefill.quantity || 1,
+        startPrice: location.state.prefill.starting_bid_price || ''
+      }]);
+      if (location.state.gpRequestId) {
+        setGpRequestId(location.state.gpRequestId);
+      }
+      setActiveTab('create');
+      // Clear state so reload doesn't trigger again
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Evaluate
   const [selectedTender, setSelectedTender] = useState(null);
@@ -191,7 +323,7 @@ const PurchaseSmartTenders = () => {
     e.preventDefault();
     setCreating(true);
     try {
-      await api.post('/public-tenders/internal', {
+      const res = await api.post('/public-tenders/internal', {
         ...newTender,
         items: tenderItems.map(i => ({
           objectType: i.objectType,
@@ -200,6 +332,19 @@ const PurchaseSmartTenders = () => {
           startPrice: parseFloat(i.startPrice || 0)
         }))
       });
+      
+      if (gpRequestId) {
+        const tenderRef = res.data?.data?.tenderNumber || res.data?.data?.tender_number || res.data?.tenderNumber || null;
+        if (tenderRef) {
+          try {
+            await api.put(`/general-procurement/requests/${gpRequestId}/complete-tender`, {
+              tender_reference: tenderRef
+            });
+          } catch (_) { /* ignore */ }
+        }
+        setGpRequestId(null);
+      }
+
       setCreateMsg('✅ Tender posted to public page!');
       setNewTender({ title: '', category: '', description: '', openingDate: '', closingDate: '' });
       setTenderItems([{ id: Date.now(), objectType: '', unit: '', quantity: 1 }]);
@@ -358,7 +503,9 @@ This is an official award notification from SUTANA's procurement system.
   const labelStyle = { display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '13px', color: '#334155' };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div className="pst-wrapper">
+      <style>{customStyles}</style>
+      <div style={{ padding: '24px', maxWidth: '1500px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
 
       {/* ── Header ── */}
       <div style={{ marginBottom: '28px' }}>
@@ -391,7 +538,7 @@ This is an official award notification from SUTANA's procurement system.
           TAB: TENDER LIST
       ══════════════════════════════════════════════════ */}
       {activeTab === 'list' && (
-        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div className="pst-card">
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>All Tenders</h2>
             <button onClick={() => setActiveTab('create')} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
@@ -399,7 +546,7 @@ This is an official award notification from SUTANA's procurement system.
             </button>
           </div>
           {loadingTenders ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Loading...</div>
+            <div className="segmented-spinner"></div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
               <thead>
@@ -459,19 +606,13 @@ This is an official award notification from SUTANA's procurement system.
           TAB: CREATE TENDER
       ══════════════════════════════════════════════════ */}
       {activeTab === 'create' && (
-        <div style={{ background: 'white', borderRadius: '14px', padding: '36px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0' }}>
+        <div className="pst-card">
           <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 8px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <PlusCircle size={20} color="#3b82f6" /> Post New Public Tender
           </h2>
           <p style={{ color: '#64748b', margin: '0 0 28px', fontSize: '14px' }}>
             Fill in the tender details. The tender will be immediately published to the public portal where suppliers can submit bids.
           </p>
-
-          {createMsg && (
-            <div style={{ padding: '14px 18px', background: '#dcfce7', color: '#166534', borderRadius: '8px', marginBottom: '24px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckCircle size={18} /> {createMsg}
-            </div>
-          )}
 
           <form onSubmit={handleCreateSubmit}>
             {/* Tender Info */}
@@ -582,7 +723,12 @@ This is an official award notification from SUTANA's procurement system.
               </div>
             </div>
 
-            <div style={{ textAlign: 'right', borderTop: '1px solid #f1f5f9', paddingTop: '24px' }}>
+            <div style={{ textAlign: 'right', borderTop: '1px solid #f1f5f9', paddingTop: '24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px' }}>
+              {createMsg && (
+                <div style={{ padding: '10px 16px', background: '#dcfce7', color: '#166534', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                  <CheckCircle size={16} /> {createMsg}
+                </div>
+              )}
               <button type="submit" disabled={creating}
                 style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '15px', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.7 : 1, boxShadow: '0 4px 12px rgba(99,102,241,0.35)' }}>
                 {creating ? '⏳ Posting...' : '🚀 Post Tender to Public Page'}
@@ -599,7 +745,7 @@ This is an official award notification from SUTANA's procurement system.
         <div style={{ display: 'grid', gridTemplateColumns: selectedTender ? '340px 1fr' : '1fr', gap: '24px', alignItems: 'start' }}>
 
           {/* Tender selector */}
-          <div style={{ background: 'white', borderRadius: '14px', padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0' }}>
+          <div className="pst-card">
             <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FileText size={16} color="#3b82f6" /> Select Tender
             </h3>
@@ -630,7 +776,7 @@ This is an official award notification from SUTANA's procurement system.
           {selectedTender && (
             <div>
               {/* Header */}
-              <div style={{ background: 'white', borderRadius: '14px', padding: '20px 24px', marginBottom: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div className="pst-card">
                 <div>
                   <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 700, fontFamily: 'monospace', marginBottom: '4px' }}>{selectedTender.tender_number || `TND-${selectedTender.id}`}</div>
                   <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{selectedTender.title}</h2>
@@ -671,7 +817,7 @@ This is an official award notification from SUTANA's procurement system.
               </div>
 
               {loadingBids ? (
-                <div style={{ background: 'white', borderRadius: '14px', padding: '60px', textAlign: 'center', color: '#94a3b8', border: '1px solid #e2e8f0' }}>Loading bids...</div>
+                <div className="segmented-spinner"></div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {bidsData.map(group => {
@@ -793,7 +939,7 @@ This is an official award notification from SUTANA's procurement system.
       ══════════════════════════════════════════════════ */}
       {activeTab === 'fund_requests' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="pst-card">
             <div>
               <h2 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Wallet size={20} color="#db2777" /> Fund Requests
@@ -905,7 +1051,7 @@ This is an official award notification from SUTANA's procurement system.
       ══════════════════════════════════════════════════ */}
 
       {activeTab === 'history' && (
-        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div className="pst-card">
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>Historical Archival &amp; Logs</h2>
             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>Completed and awarded tenders with full audit trail.</p>
@@ -1207,6 +1353,9 @@ Official award notification from SUTANA's procurement system.
         </div>
       </div>
     )}
+
+    </div>
+
 
     </div>
   );
