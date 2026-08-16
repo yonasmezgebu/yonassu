@@ -13,6 +13,7 @@ import PurchaseReturns from './PurchaseReturns';
 import PurchaseHistory from './PurchaseHistory';
 import PurchaseSmartTenders from './PurchaseSmartTenders';
 import PurchaseContact from './PurchaseContact';
+import PurchaseGeneralProcurements from './PurchaseGeneralProcurements';
 
 // 2. Supplier Management
 import PurchaseSupplierList from './PurchaseSupplierList';
@@ -55,6 +56,7 @@ const PurchaseDashboard = () => {
         { label: 'Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
         { label: 'Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
         { label: 'Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
+        { label: 'General Procurements',    path: '/purchase/general-procurements', icon: 'truck',   color: '#8b5cf6' },
       ]
     },
     { type: 'divider' },
@@ -93,6 +95,7 @@ const PurchaseDashboard = () => {
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
             <Route path="history" element={<PurchaseHistory />} />
+            <Route path="general-procurements" element={<PurchaseGeneralProcurements />} />
 
             {/* 2. Supplier Management */}
             <Route path="suppliers" element={<PurchaseSupplierList />} />
