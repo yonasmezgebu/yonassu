@@ -22,6 +22,7 @@ import RevenueReport from './manager/RevenueReport';
 import CarRentingStoreRequest from './manager/CarRentingStoreRequest';
 import OverdueNotifier from './manager/OverdueNotifier';
 import RentalContact from './manager/RentalContact';
+import ProcurementRequest from './manager/ProcurementRequest';
 
 const CarRentingDashboard = () => {
   const menuItems = [
@@ -33,6 +34,7 @@ const CarRentingDashboard = () => {
         { label: 'Rental Order',     path: '/car-renting/manager/orders',      icon: 'clipboard',   color: '#0ea5e9' },
         { label: 'Agri Rent Order',  path: '/car-renting/manager/agri-orders', icon: 'leaf',        color: '#22c55e' },
         { label: 'Store Request',    path: '/car-renting/manager/store-request', icon: 'package',     color: '#f59e0b' },
+        { label: 'Procurement Request', path: '/car-renting/manager/procurement-request', icon: 'file-plus', color: '#8b5cf6' }
       ]
     },
     { type: 'divider' },
@@ -85,6 +87,7 @@ const CarRentingDashboard = () => {
           <Route path="manager/agri-orders" element={<AgriRentOrders />} />
           <Route path="manager/agri-orders/new" element={<AgriRentCreateOrder />} />
           <Route path="manager/store-request" element={<CarRentingStoreRequest />} />
+          <Route path="manager/procurement-request" element={<ProcurementRequest />} />
 
           {/* Fleet */}
           <Route path="manager/fleet"         element={<FleetManager />} />
