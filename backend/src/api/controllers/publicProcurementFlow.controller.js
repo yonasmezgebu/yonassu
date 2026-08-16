@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
+const vatConfigService = require('../../services/vatConfig.service');
 
 // Helper to notify clients
 const notify = (req, title, message, link, type = 'info') => {
@@ -44,20 +45,27 @@ exports.createFundRequest = catchAsync(async (req, res) => {
   const bidItems = await db('public_bid_items').whereIn('public_bid_id', winningBidIds);
 
   let totalAmount = 0;
+  let totalVat = 0;
   const requestItems = [];
 
   for (const bid of winningBids) {
     const items = bidItems.filter(i => i.public_bid_id === bid.id);
     let amountForBid = 0;
+    let vatForBid = 0;
     for (const item of items) {
-      amountForBid += item.total_birr + (item.total_cent / 100);
+      const lineAmount = item.total_birr + (item.total_cent / 100);
+      amountForBid += lineAmount;
+      const vatCalc = await vatConfigService.computeVatForItem('tender_buy', item.public_tender_item_id || null, lineAmount);
+      vatForBid += parseFloat(vatCalc.vat.toFixed(2));
     }
     totalAmount += amountForBid;
-    
+    totalVat += vatForBid;
+
     requestItems.push({
       public_tender_id: bid.public_tender_id,
       public_bid_id: bid.id,
-      amount: amountForBid
+      amount: amountForBid,
+      vat_amount: parseFloat(vatForBid.toFixed(2))
     });
   }
 
@@ -68,7 +76,8 @@ exports.createFundRequest = catchAsync(async (req, res) => {
 
   const [fundRequestId] = await db('public_fund_requests').insert({
     request_code: reqCode,
-    total_amount: totalAmount,
+    total_amount: parseFloat((totalAmount + totalVat).toFixed(2)),
+    vat_amount: parseFloat(totalVat.toFixed(2)),
     created_by: req.user.id,
     status: 'PENDING_CEO'
   });
