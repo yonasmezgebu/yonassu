@@ -30,6 +30,7 @@ import FinanceBalanceSheet from './FinanceBalanceSheet';
 import FinanceEquity from './FinanceEquity';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
+import FinanceReceiptsDashboard from './FinanceReceiptsDashboard';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
@@ -58,6 +59,7 @@ const FinanceDashboard = () => {
     { label: 'Revenue', icon: 'users',
       children: [
         { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
+        { label: 'Invoices & Receipts (All Modules)', path: '/finance/receipts-dashboard', icon: 'receipt', color: '#2563eb' },
         { label: 'Revenue Book',             path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
         { label: 'Accounts Receivable',      path: '/finance/accounts-receivable', icon: 'users', color: '#3b82f6' },
         { label: 'Equity',                   path: '/finance/equity',         icon: 'pie-chart',   color: '#10b981' },
@@ -117,6 +119,7 @@ const FinanceDashboard = () => {
             
             {/* Live Income & Equity */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
+            <Route path="receipts-dashboard" element={<FinanceReceiptsDashboard />} />
             <Route path="equity" element={<FinanceEquity />} />
 
             {/* Reports */}
