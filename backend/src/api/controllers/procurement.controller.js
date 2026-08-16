@@ -3,6 +3,7 @@ const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
 const { hashPassword } = require('../../config/auth');
+const vatConfigService = require('../../services/vatConfig.service');
 
 function isNewDrug(pr) {
   return pr.request_type === 'NEW_DRUG' || pr.new_drug_flag === 'YES';
@@ -464,10 +465,17 @@ const procController = {
     const newTag = isNew ? ' 🆕 NEW DRUG' : '';
     const pr = await db('procurement_requests').where({ id: tender.procurement_request_id }).first();
     const awardedBid = await db('procurement_bids').where({ tender_id: tender.id, status: 'AWARDED' }).first();
+    const baseAmount = awardedBid && awardedBid.total_amount
+      ? parseFloat(awardedBid.total_amount)
+      : parseFloat(totalAmount || tender.budget_estimate || 0);
+    const vatCalc = await vatConfigService.computeVatForItem('tender_buy', awardedBid ? awardedBid.id : null, baseAmount);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const finalAmount = parseFloat((baseAmount + vatAmount).toFixed(2));
     await db('procurement_fund_requests').insert({
       tender_id: tender.id, tender_no: tender.tender_no,
       procurement_request_id: tender.procurement_request_id, pr_no: tender.pr_no,
-      total_amount: totalAmount || tender.budget_estimate,
+      total_amount: finalAmount,
+      vat_amount: vatAmount,
       requested_by: userId, requested_by_name: userName, notes,
       new_drug_flag: isNew ? 'YES' : 'NO',
       status: 'PENDING_CEO_APPROVAL'
