@@ -17,13 +17,11 @@ import FinanceOutstandingReceivables from './FinanceOutstandingReceivables';
 import FinanceAccountsReceivable from './FinanceAccountsReceivable';
 
 // Payables
-import FinanceSuppliers from './FinanceSuppliers';
-import FinanceSupplierBills from './FinanceSupplierBills';
-import FinanceSupplierPayments from './FinanceSupplierPayments';
 import FinanceLiabilities from './FinanceLiabilities';
 
 // Procurement
 import FinanceProcurement from './FinanceProcurement';
+import FinanceGeneralProcurement from './FinanceGeneralProcurement';
 
 // Reports
 import FinanceCashFlow from './FinanceCashFlow';
@@ -46,22 +44,17 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
-        { label: 'Receipts (CRV)',          path: '/finance/crv',            icon: 'shopping-cart', color: '#10b981' },
-        { label: 'General Payments',      path: '/finance/pv',              icon: 'shopping-cart', color: '#f59e0b' },
-        { label: 'Petty Cash',   path: '/finance/pcv',             icon: 'wallet',        color: '#8b5cf6' },
-        { label: 'Expense Book',         path: '/finance/cash-book',       icon: 'book',          color: '#06b6d4' },
-        { label: 'Liabillites&accounts payable', path: '/finance/liabilities', icon: 'alert-circle', color: '#eab308' },
+        { label: 'Receipts (CRV)',                path: '/finance/crv',                   icon: 'shopping-cart', color: '#10b981' },
+        { label: 'General Payments',              path: '/finance/pv',                    icon: 'shopping-cart', color: '#f59e0b' },
+        { label: 'Procurement (Drug/Stock)',       path: '/finance/procurement',           icon: 'package',       color: '#15803d' },
+        { label: 'General Procurement',           path: '/finance/general-procurement',   icon: 'truck',         color: '#047857' },
+        { label: 'Petty Cash',                    path: '/finance/pcv',                   icon: 'wallet',        color: '#8b5cf6' },
+        { label: 'Expense Book',                  path: '/finance/cash-book',             icon: 'book',          color: '#06b6d4' },
+        { label: 'Liabilities & Accounts Payable',path: '/finance/liabilities',           icon: 'alert-circle',  color: '#eab308' },
       ] },
     { type: 'divider' },
     { label: 'Accounts and reconciliation', path: '/finance/bank-accounts', icon: 'building', color: '#3b82f6' },
-    { type: 'divider' },
-    { label: 'Payables & Procurement', icon: 'file-text',
-      children: [
-        { label: 'Suppliers',          path: '/finance/suppliers',         icon: 'truck',        color: '#ea580c' },
-        { label: 'Supplier Bills',     path: '/finance/supplier-bills',    icon: 'file-text',    color: '#d97706' },
-        { label: 'Supplier Payments',  path: '/finance/supplier-payments', icon: 'credit-card',  color: '#b45309' },
-        { label: 'Procurement',        path: '/finance/procurement',       icon: 'package',      color: '#15803d' },
-      ] },
+
     { label: 'Revenue', icon: 'users',
       children: [
         { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
@@ -116,13 +109,11 @@ const FinanceDashboard = () => {
             <Route path="accounts-receivable" element={<FinanceAccountsReceivable />} />
 
             {/* Payables */}
-            <Route path="suppliers" element={<FinanceSuppliers />} />
-            <Route path="supplier-bills" element={<FinanceSupplierBills />} />
-            <Route path="supplier-payments" element={<FinanceSupplierPayments />} />
             <Route path="liabilities" element={<FinanceLiabilities />} />
 
             {/* Procurement */}
             <Route path="procurement" element={<FinanceProcurement />} />
+            <Route path="general-procurement" element={<FinanceGeneralProcurement />} />
             
             {/* Live Income & Equity */}
             <Route path="pharmacy-sales" element={<FinanceLiveIncome />} />
