@@ -6,6 +6,7 @@ import axios from '../../services/apiClient';
 import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2 } from 'lucide-react';
 import tractorService from '../../services/tractorService';
 import PrescriptionViewer from '../shared/PrescriptionViewer';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 import styles from './FarmingServicePage.module.css';
 import farmingHero from '../../assets/hero-section/farming.jpg';
 
@@ -70,6 +71,8 @@ const FarmingServicePage = () => {
   const [orderError, setOrderError] = useState('');
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [financeAccounts, setFinanceAccounts] = useState([]);
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   // ── Load finance accounts (same pattern as PharmacySalesForm) ─────────────
   const loadFinanceAccounts = async () => {
@@ -192,7 +195,9 @@ const FarmingServicePage = () => {
   })();
 
   const dailyRate = parseFloat(orderModal.tractor?.daily_rate || orderModal.tractor?.dailyRate || 0);
-  const totalAmount = dailyRate * totalDays;
+  const rentalSubtotal = dailyRate * totalDays;
+  const vatCalc = getVatForItem(vatCtx, 'agrirent', orderModal.tractor?.id, rentalSubtotal);
+  const totalAmount = rentalSubtotal + vatCalc.vat;
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
@@ -705,8 +710,9 @@ ${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94
                   </div>
                   {totalDays > 0 && (
                     <div className="psp-price-summary">
-                      <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {totalAmount.toLocaleString()}</span></div>
-                      <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED</span><span>ETB {totalAmount.toLocaleString()}</span></div>
+                      <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalSubtotal.toLocaleString()}</span></div>
+                      <div className="psp-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
+                      <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {totalAmount.toLocaleString()}</span></div>
                     </div>
                   )}
 
