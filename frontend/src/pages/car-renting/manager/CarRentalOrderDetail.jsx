@@ -6,7 +6,7 @@ import {
   ArrowLeft, Printer, RefreshCw, Car, User, Calendar,
   DollarSign, CheckCircle, Clock, XCircle, FileText,
   Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star,
-  MapPin, Key, Shield, Fuel, ToggleLeft
+  MapPin, Key, Shield, Fuel, ToggleLeft, Banknote
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
@@ -267,6 +267,8 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const totalDays  = parseInt(order.totalDays || order.days || 0);
   const dailyRate  = parseFloat(order.dailyRate || order.daily_rate || 0);
   const totalAmt   = parseFloat(order.totalAmount || order.total_amount || 0);
+  const vatAmt     = parseFloat(order.vatAmount || order.vat_amount || 0);
+  const subAmt     = parseFloat(order.subtotal) || Math.max(0, totalAmt - vatAmt - (parseFloat(order.securityDeposit || order.security_deposit || 0)));
   const carName    = order.carName || order.car?.brand ? `${order.car?.brand} ${order.car?.model}` : 'N/A';
   const carImgUrl  = getImgUrl(order.carImage || order.car?.images?.[0]);
 
@@ -388,6 +390,7 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
             {/* Key Stats */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <InfoCard label="Total Amount"   value={`ETB ${fmt(totalAmt)}`}     icon={<DollarSign size={11} />} accent={C.darkGreen} large />
+              <InfoCard label="VAT Amount"     value={`ETB ${fmt(vatAmt)}`}       icon={<Banknote size={11} />}  accent={C.earthBrown} />
               <InfoCard label="Rental Days"    value={`${totalDays} days`}         icon={<Calendar size={11} />}   accent={C.emerald} />
               <InfoCard label="Daily Rate"     value={`ETB ${fmt(dailyRate)} /day`} icon={<Star size={11} />}       accent={C.forestGreen} />
               <InfoCard label="Payment Method" value={order.paymentMethod}          icon={<Package size={11} />}    accent={C.earthBrown} />
@@ -459,8 +462,18 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
                   <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }}>{fmt(dailyRate)}</td>
                   <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(dailyRate * totalDays)}</td>
                 </tr>
+                <tr>
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>Subtotal</td>
+                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(subAmt)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>VAT Amount</td>
+                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(vatAmt)}</td>
+                </tr>
                 <tr style={{ background: C.lightSage }}>
-                  <td colSpan={3} style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 14, color: C.darkGreen }}>TOTAL AMOUNT DUE</td>
+                  <td colSpan={3} style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 14, color: C.darkGreen }}>TOTAL AMOUNT DUE (incl. VAT)</td>
                   <td style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 18, color: C.darkGreen }}>ETB {fmt(totalAmt)}</td>
                 </tr>
               </tbody>
