@@ -4,6 +4,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { audit } = require('../../utils/logger');
 const posService = require('../../services/pos.service');
+const vatConfigService = require('../../services/vatConfig.service');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const { sendEmail } = require('../../services/email.service');
 const { sendSMS } = require('../../services/sms.service');
@@ -713,10 +714,14 @@ exports.getSalesReports = catchAsync(async (req, res) => {
     .select(
       db.raw('COUNT(id) as total_transactions'),
       db.raw('COALESCE(SUM(total_amount), 0) as total_revenue'),
+      db.raw('COALESCE(SUM(tax_amount), 0) as total_vat'),
+      db.raw('COALESCE(SUM(subtotal), 0) as total_subtotal'),
       db.raw('COUNT(DISTINCT customer_id) as unique_customers')
     )
     .first();
   const totalRevenue = parseFloat(stats.total_revenue || 0);
+  const totalVat = parseFloat(stats.total_vat || 0);
+  const totalSubtotal = parseFloat(stats.total_subtotal || 0);
   const totalTransactions = parseInt(stats.total_transactions || 0);
   const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
   const uniqueCustomers = parseInt(stats.unique_customers || 0);
@@ -748,6 +753,8 @@ exports.getSalesReports = catchAsync(async (req, res) => {
     status: 'success',
     data: {
       totalRevenue,
+      totalVat,
+      totalSubtotal,
       totalTransactions,
       averageOrderValue,
       uniqueCustomers,
@@ -2356,6 +2363,16 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
     subtotal += (item.quantity || 0) * (item.unit_price || 0);
   }
 
+  // Central VAT — consistent with the cart/order pricing shown in the POS
+  const vatCalc = await vatConfigService.computeVatForItems(
+    'retail',
+    items
+      .filter((i) => i.product_id)
+      .map((i) => ({ itemId: i.product_id, amount: (i.quantity || 0) * (i.unit_price || 0) }))
+  );
+  const vatAmount = vatCalc.vat;
+  const totalAmount = subtotal + vatAmount;
+
   const invoiceNumber = await generateInvoiceNumber();
   let paymentMethodId = 1; // Default Cash
   if (payment?.method === 'BANK_TRANSFER') paymentMethodId = 3;
@@ -2391,9 +2408,10 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
     const [saleId] = await trx('pos_sales').insert({
       invoice_number: invoiceNumber,
       subtotal: subtotal,
-      total_amount: subtotal,
+      tax_amount: vatAmount,
+      total_amount: totalAmount,
       payment_method_id: paymentMethodId,
-      amount_paid: payment?.amount || subtotal,
+      amount_paid: payment?.amount || totalAmount,
       cashier_id: req.user.id,
       sale_date: db.fn.now(),
       status_id: completedStatus.id,
