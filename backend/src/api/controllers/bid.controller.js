@@ -3,6 +3,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const notificationRepository = require('../../repositories/notification.repository');
 const { log } = require('../../services/salesAudit.service');
+const vatConfigService = require('../../services/vatConfig.service');
 
 exports.submitBid = catchAsync(async (req, res) => {
   const { bid_price_per_unit, quantity_requested, proposed_pickup_date, notes, items,
@@ -20,7 +21,7 @@ exports.submitBid = catchAsync(async (req, res) => {
     try {
       const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
       qty = parsedItems.length;
-      total = parsedItems.reduce((acc, item) => acc + (parseFloat(item.bidPriceBirr || 0) + (parseFloat(item.bidPriceCent || 0) / 100)), 0);
+      total = parsedItems.reduce((acc, item) => acc + ((parseFloat(item.bidPriceBirr || 0) + (parseFloat(item.bidPriceCent || 0) / 100)) * parseFloat(item.quantity || 1)), 0);
     } catch (e) {
       // Ignore parse error
     }
@@ -33,11 +34,31 @@ exports.submitBid = catchAsync(async (req, res) => {
     total = parseFloat(bid_price_per_unit) * qty;
   }
 
+  // Central VAT — consistent with the "Grand Total (incl. VAT)" shown in the bid form
+  let vatAmount = 0;
+  if (isMulti && items && items !== 'null' && items !== '[]') {
+    try {
+      const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+      const lines = parsedItems.map((item) => ({
+        itemId: item.id != null ? item.id : null,
+        amount: (parseFloat(item.bidPriceBirr || 0) + (parseFloat(item.bidPriceCent || 0) / 100)) * parseFloat(item.quantity || 1)
+      })).filter((l) => l.amount > 0);
+      if (lines.length > 0) {
+        const calc = await vatConfigService.computeVatForItems('tender_sell', lines);
+        vatAmount = parseFloat(calc.vat.toFixed(2));
+      }
+    } catch (e) { /* fall back to standard rate below */ }
+  }
+  if (!isMulti || vatAmount === 0) {
+    const calc = await vatConfigService.computeVatForItem('tender_sell', tender.id, total);
+    vatAmount = parseFloat(calc.vat.toFixed(2));
+  }
+
   const existing = await db('bids').where({ tender_id: tender.id, customer_id: req.user.id }).first();
 
   if (existing) {
     await db('bids').where('id', existing.id).update({
-      bid_price_per_unit, quantity_requested: qty, total_bid_value: total,
+      bid_price_per_unit, quantity_requested: qty, total_bid_value: total, vat_amount: vatAmount,
       proposed_pickup_date: proposed_pickup_date || null,
       notes: notes || null, status: 'pending',
       items: items || null,
@@ -53,7 +74,7 @@ exports.submitBid = catchAsync(async (req, res) => {
 
   const [id] = await db('bids').insert({
     tender_id: tender.id, customer_id: req.user.id,
-    bid_price_per_unit, quantity_requested: qty, total_bid_value: total,
+    bid_price_per_unit, quantity_requested: qty, total_bid_value: total, vat_amount: vatAmount,
     proposed_pickup_date: proposed_pickup_date || null,
     notes: notes || null,
     items: items || null,
@@ -86,7 +107,7 @@ exports.updateMyBid = catchAsync(async (req, res) => {
     try {
       const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
       qty = parsedItems.length;
-      total = parsedItems.reduce((acc, item) => acc + (parseFloat(item.bidPriceBirr || 0) + (parseFloat(item.bidPriceCent || 0) / 100)), 0);
+      total = parsedItems.reduce((acc, item) => acc + ((parseFloat(item.bidPriceBirr || 0) + (parseFloat(item.bidPriceCent || 0) / 100)) * parseFloat(item.quantity || 1)), 0);
     } catch (e) {}
   } else if (bid_price_per_unit !== undefined) {
     if (parseFloat(bid_price_per_unit) < parseFloat(tender.starting_bid_price || 0)) {
