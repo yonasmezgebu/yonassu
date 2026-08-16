@@ -327,6 +327,11 @@ const PrintingOrders = () => {
                         <div style={{ fontWeight: 800, color: '#059669', fontSize: 14 }}>
                           {parseFloat(o.total_price || 0).toLocaleString()} ETB
                         </div>
+                        {o.vat_amount != null && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                            VAT: {parseFloat(o.vat_amount || 0).toLocaleString()} ETB
+                          </div>
+                        )}
                       </td>
 
                       {/* PAYMENT STATUS — most prominent */}
