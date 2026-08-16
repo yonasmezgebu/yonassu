@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from '../services/apiClient';
 import { X, Send, Paperclip, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 
-const DEPARTMENTS = ['General Inquiry', 'Sales', 'Support', 'Complaint', 'Partnership'];
+const DEPARTMENTS = ['Support', 'Complaint', 'Partnership'];
 
 const rippleKeyframes = `
 @keyframes contact-ripple {
@@ -13,7 +13,7 @@ const rippleKeyframes = `
 
 export default function ContactPopup() {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', subject: '', department: 'General Inquiry', message: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '', subject: '', department: 'Support', message: '' });
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -54,11 +54,23 @@ export default function ContactPopup() {
     setSubmitting(true);
     setServerError(null);
     try {
-      const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-      if (file) fd.append('attachment', file);
-      const res = await axios.post('/contact', fd);
-      if (res.status === 'success') setSubmitted(true);
+      if (form.department === 'Support') {
+        const fd = new FormData();
+        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+        if (file) fd.append('attachment', file);
+        const res = await axios.post('/contact', fd);
+        if (res.status === 'success') setSubmitted(true);
+      } else {
+        // Route Complaint and Partnership to HR Dashboard Contact
+        const payload = {
+          senderName: form.full_name,
+          senderEmail: form.email,
+          senderPhone: form.phone,
+          message: `[${form.department}] Subject: ${form.subject}\n\n${form.message}`
+        };
+        const res = await axios.post('/hr-settings/messages', payload);
+        if (res.status === 'success' || res.status === 201) setSubmitted(true);
+      }
     } catch (err) {
       setServerError(err.message || 'Failed to send. Please try again.');
     } finally { setSubmitting(false); }
@@ -98,7 +110,7 @@ export default function ContactPopup() {
         <button onClick={() => setOpen(o => !o)} onKeyDown={handleEsc} aria-label="Contact us"
           style={{
             position: 'relative', width: '100%', height: '100%', borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #1E3A5F, #10B981)',
+            background: '#059669',
             boxShadow: open ? '0 6px 25px rgba(0,0,0,0.35)' : '0 4px 15px rgba(0,0,0,0.2)',
             transform: open ? 'scale(1.1)' : 'scale(1)',
             transition: 'all 0.2s ease-in-out',
