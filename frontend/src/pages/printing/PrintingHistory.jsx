@@ -79,6 +79,7 @@ const buildPrintHTML = (orders, filterLabel) => {
           <div class="data-cell"><div class="label">Paper / Pages</div><div class="value">${order.paper_type || '—'} · ${order.pages_per_copy || '—'} pgs</div></div>
           <div class="data-cell"><div class="label">Color / Binding</div><div class="value">${order.color_printing ? 'Color' : 'B&W'} · ${order.binding_type || 'None'}</div></div>
           <div class="data-cell"><div class="label">Total Price</div><div class="value strong">ETB ${parseFloat(order.total_price || 0).toLocaleString()}</div></div>
+          <div class="data-cell"><div class="label">VAT Amount</div><div class="value">ETB ${parseFloat(order.vat_amount || 0).toLocaleString()}</div></div>
           <div class="data-cell"><div class="label">Completed Date</div><div class="value">${completedDate}</div></div>
         </div>
         ${instrHtml}
@@ -253,6 +254,7 @@ const PrintingHistory = () => {
                     ['Paper / Pages',  `${order.paper_type || '—'} · ${order.pages_per_copy || '—'} pgs`],
                     ['Color / Binding',`${order.color_printing ? 'Color' : 'B&W'} · ${order.binding_type || 'None'}`],
                     ['Total Price',    `ETB ${parseFloat(order.total_price || 0).toLocaleString()}`],
+                    ['VAT Amount',     `ETB ${parseFloat(order.vat_amount || 0).toLocaleString()}`],
                     ['Completed Date', order.completed_at ? new Date(order.completed_at).toLocaleString() : order.due_date ? new Date(order.due_date).toLocaleDateString() : '—'],
                   ].map(([label, val]) => (
                     <div key={label}>
