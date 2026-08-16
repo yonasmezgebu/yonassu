@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 import printingHero from '../../assets/hero-section/printing.jpg';
 import bookImg from '../../assets/printing/book.jpg';
 import moduleImg from '../../assets/printing/module.jpg';
@@ -519,17 +520,20 @@ const FAQS = [
 /* ═══════════════════════════════════════════════════════
    PRICE CALCULATOR
 ════════════════════════════════════════════════════════ */
-const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType }) => {
+const calcPrice = ({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx }) => {
   const basePrice = PAPER_TYPES.find(p => p.code === paperType)?.price ?? 0.50;
   const multiplier = colorPrinting ? 2.0 : 1.0;
   const pricePerUnit = pagesPerCopy * basePrice * multiplier;
   const bindingCost = (BINDING_TYPES.find(b => b.code === bindingType)?.price ?? 0) * quantity;
   const subtotal = pricePerUnit * quantity;
+  const r = getVatForItem(vatCtx, 'printing', null, subtotal + bindingCost);
   return {
     pricePerUnit: parseFloat(pricePerUnit.toFixed(2)),
     bindingCost: parseFloat(bindingCost.toFixed(2)),
     subtotal: parseFloat(subtotal.toFixed(2)),
-    totalPrice: parseFloat((subtotal + bindingCost).toFixed(2)),
+    vat: r.vat,
+    rate: r.rate,
+    totalPrice: parseFloat((subtotal + bindingCost + r.vat).toFixed(2)),
   };
 };
 
@@ -542,8 +546,10 @@ const LiveCalculator = ({ onClose }) => {
   const [quantity, setQuantity] = useState(1);
   const [colorPrinting, setColorPrinting] = useState(false);
   const [bindingType, setBindingType] = useState('None');
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
-  const pricing = calcPrice({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType });
+  const pricing = calcPrice({ paperType, pagesPerCopy, quantity, colorPrinting, bindingType, vatCtx });
 
   return (
     <div className="calc-overlay" onClick={onClose}>
@@ -596,12 +602,16 @@ const LiveCalculator = ({ onClose }) => {
             <span>Printing Cost:</span>
             <span>{pricing.subtotal.toFixed(2)} ETB</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 16, opacity: 0.85 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10, opacity: 0.85 }}>
             <span>Binding Cost:</span>
             <span>{pricing.bindingCost.toFixed(2)} ETB</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 16, opacity: 0.85 }}>
+            <span>VAT ({fmtPct(pricing.rate)}):</span>
+            <span>{pricing.vat.toFixed(2)} ETB</span>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 20, fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 16 }}>
-            <span>Total Estimate:</span>
+            <span>Total Estimate (incl. VAT):</span>
             <span>{pricing.totalPrice.toFixed(2)} ETB</span>
           </div>
         </div>
@@ -644,6 +654,8 @@ export default function PrintingServicePage() {
   const [submitSuccess, setSubmitSuccess]     = useState(false);
   const [orderResult, setOrderResult]         = useState(null);
   const [submitError, setSubmitError]         = useState('');
+  const [vatCtx, setVatCtx]                   = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   const fileRef = useRef(null);
 
@@ -670,7 +682,7 @@ export default function PrintingServicePage() {
   }, [location]);
 
   // Derived price
-  const pricing = calcPrice({ paperType, pagesPerCopy: parseInt(pagesPerCopy) || 1, quantity: parseInt(quantity) || 1, colorPrinting, bindingType });
+  const pricing = calcPrice({ paperType, pagesPerCopy: parseInt(pagesPerCopy) || 1, quantity: parseInt(quantity) || 1, colorPrinting, bindingType, vatCtx });
 
   // Today + 1 for min due date
   const tomorrow = new Date();
@@ -1260,8 +1272,12 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                         <span style={{ fontWeight: 700 }}>{pricing.bindingCost.toFixed(2)} ETB</span>
                       </div>
                     )}
+                    <div className="psp-price-row">
+                      <span>VAT ({fmtPct(pricing.rate)})</span>
+                      <span style={{ fontWeight: 700 }}>{pricing.vat.toFixed(2)} ETB</span>
+                    </div>
                     <div className="psp-price-row psp-price-total">
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>💰 Total Amount Due</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>💰 Total Amount Due (incl. VAT)</span>
                       <span>{pricing.totalPrice.toFixed(2)} ETB</span>
                     </div>
                   </div>
