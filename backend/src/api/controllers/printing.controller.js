@@ -4,6 +4,7 @@ const { db } = require('../../config/database');
 const { audit } = require('../../config/logger');
 const OrderModel = require('../../models/Order.model');
 const { generateOrderNumber } = require('../../utils/orderNumber');
+const vatConfigService = require('../../services/vatConfig.service');
 const deleteFile = (path) => console.log('Deleted file:', path);
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
@@ -14,6 +15,14 @@ const calculatePrintingPrice = (params) => {
     bindingType: params.bindingType
   });
   return model.calculatePrice();
+};
+// VAT-inclusive printing total, keyed by printing product type (code). Falls
+// back to the default standard rate when the type has no CEO tax mapping.
+const applyPrintingVat = async (productType, baseTotal) => {
+  const pt = await db('printing_product_types').where('code', productType).first();
+  const r = await vatConfigService.computeVatForItem('printing', pt ? pt.id : null, baseTotal);
+  const vat = parseFloat(r.vat.toFixed(2));
+  return { baseTotal, vat, total: baseTotal + vat };
 };
 exports.getAllOrders = catchAsync(async (req, res) => {
   const { page = 1, limit = 25, status, search, startDate, endDate } = req.query;
@@ -26,7 +35,7 @@ exports.getAllOrders = catchAsync(async (req, res) => {
       'po.id', 'po.order_number', 'po.total_price', 'po.quantity',
       'po.product_type', 'po.paper_type', 'po.color_printing', 'po.pages_per_copy',
       'po.due_date', 'po.binding_type', 'po.special_instructions',
-      'po.attachments',
+      'po.attachments', 'po.subtotal', 'po.vat_amount',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex',
       'c.name as customer_name', 'c.phone as customer_phone',
@@ -140,6 +149,7 @@ exports.createOrder = catchAsync(async (req, res) => {
     bindingType: bindingType || 'None'
   });
   const pricing = orderModel.calculatePrice();
+  const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
   const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
   const [orderId] = await db('printing_orders').insert({
@@ -156,7 +166,9 @@ exports.createOrder = catchAsync(async (req, res) => {
     due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
     price_per_unit: pricing.pricePerUnit,
     binding_cost: pricing.bindingCost,
-    total_price: pricing.totalPrice,
+    subtotal: pricing.subtotal,
+    vat_amount: vatPricing.vat,
+    total_price: vatPricing.total,
     status_id: initialStatus?.id || 1,
     payment_method: paymentMethod || null,
     payment_reference: paymentReference || null,
@@ -171,7 +183,7 @@ exports.createOrder = catchAsync(async (req, res) => {
     await db('finance_income_submissions').insert({
       department: 'Printing',
       submitted_by: req.user.full_name || req.user.name || 'Printing Cashier',
-      amount: pricing.totalPrice,
+      amount: vatPricing.total,
       reference_no: paymentReference,
       description: `Printing Order ${orderNumber} - ${customer?.name || 'Walk-in'}`,
       status: 'Pending',
@@ -705,7 +717,8 @@ exports.calculatePrice = catchAsync(async (req, res) => {
     pagesPerCopy,
     quantity,
     colorPrinting = false,
-    bindingType = 'None'
+    bindingType = 'None',
+    productType
   } = req.query;
   if (!paperType || !pagesPerCopy || !quantity) {
     throw new AppError('Missing required parameters: paperType, pagesPerCopy, quantity', 400);
@@ -717,6 +730,7 @@ exports.calculatePrice = catchAsync(async (req, res) => {
     bindingType,
     colorPrinting: colorPrinting === 'true'
   });
+  const vatPricing = await applyPrintingVat(productType || 'Book', priceCalculation.totalPrice);
   res.json({
     status: 'success',
     data: {
@@ -730,7 +744,8 @@ exports.calculatePrice = catchAsync(async (req, res) => {
       pricePerUnit: priceCalculation.pricePerUnit,
       bindingCost: priceCalculation.bindingCost,
       subtotal: priceCalculation.subtotal,
-      totalPrice: priceCalculation.totalPrice,
+      vatAmount: vatPricing.vat,
+      totalPrice: vatPricing.total,
       formula: {
         basePricePerPage: paperType === 'A4' ? 0.50 : paperType === 'A5' ? 0.75 : 1.00,
         colorMultiplier: colorPrinting === 'true' ? 2.0 : 1.0,
@@ -756,6 +771,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     bindingType: bindingType || 'None'
   });
   const pricing = orderModel.calculatePrice();
+  const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
   const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
 
@@ -806,7 +822,9 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
     price_per_unit: pricing.pricePerUnit,
     binding_cost: pricing.bindingCost,
-    total_price: pricing.totalPrice,
+    subtotal: pricing.subtotal,
+    vat_amount: vatPricing.vat,
+    total_price: vatPricing.total,
     status_id: initialStatus?.id || 1,
     payment_method: paymentMethod || null,
     payment_reference: paymentReference || null,
@@ -822,7 +840,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     await db('finance_income_submissions').insert({
       department: 'Printing',
       submitted_by: user.full_name || 'Customer Portal',
-      amount: pricing.totalPrice,
+      amount: vatPricing.total,
       reference_no: paymentReference,
       description: `Customer Printing Order ${orderNumber} - ${user.full_name || 'Customer'}`,
       status: 'Pending',
@@ -842,13 +860,13 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     details: {
       source: 'customer_portal',
       order_number: orderNumber,
-      total_price: pricing.totalPrice,
+      total_price: vatPricing.total,
       status: initialStatus?.status_code || 'in_queue'
     }
   });
   if (req.res) req.res.locals.__centralAudited = true;
 
-  res.status(201).json({ status: 'success', message: 'Order placed successfully', data: { orderId, orderNumber, totalPrice: pricing.totalPrice } });
+  res.status(201).json({ status: 'success', message: 'Order placed successfully', data: { orderId, orderNumber, totalPrice: vatPricing.total } });
 });
 
 exports.getCustomerOrders = catchAsync(async (req, res) => {
