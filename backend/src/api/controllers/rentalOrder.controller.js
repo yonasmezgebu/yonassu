@@ -7,6 +7,7 @@ const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
+const vatConfigService = require('../../services/vatConfig.service');
 
 // ── HELPER: Sync car rental payment to Finance Receivables ───────────────────────
 // Mirrors same logic as AgriRent syncToFinance
@@ -106,7 +107,9 @@ exports.createOrder = async (req, res, next) => {
 
     const rentalAmount = car.dailyRate * totalDays;
     const securityDeposit = 5000;
-    const totalAmount = rentalAmount + securityDeposit;
+    const vatCalc = await vatConfigService.computeVatForItem('car_rental', car.id, rentalAmount);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const totalAmount = rentalAmount + vatAmount + securityDeposit;
 
     const orderNumber = RentalOrder.generateOrderNumber();
 
@@ -125,6 +128,8 @@ exports.createOrder = async (req, res, next) => {
       daily_rate: car.dailyRate,
       rental_amount: rentalAmount,
       security_deposit: securityDeposit,
+      subtotal: rentalAmount,
+      vat_amount: vatAmount,
       total_amount: totalAmount,
       payment_method: data.paymentMethod || 'Cash',
       special_requests: data.specialRequests || '',
@@ -344,7 +349,9 @@ exports.createManualOrder = async (req, res) => {
 
     const rentalAmount  = dailyRate * totalDays;
     const securityDeposit = 0; // manager-created orders may not require deposit
-    const totalAmount   = rentalAmount + securityDeposit;
+    const vatCalc = await vatConfigService.computeVatForItem('car_rental', carId ? parseInt(carId) : null, rentalAmount);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const totalAmount   = rentalAmount + vatAmount + securityDeposit;
 
     const orderNumber = RentalOrder.generateOrderNumber();
 
@@ -362,6 +369,8 @@ exports.createManualOrder = async (req, res) => {
       daily_rate:       dailyRate,
       rental_amount:    rentalAmount,
       security_deposit: securityDeposit,
+      subtotal:         rentalAmount,
+      vat_amount:       vatAmount,
       total_amount:     totalAmount,
       pickup_location:  pickupLocation || null,
       special_requests: notes || null,
