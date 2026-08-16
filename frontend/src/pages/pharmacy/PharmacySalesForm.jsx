@@ -115,7 +115,7 @@ export default function PharmacySalesForm() {
 
   const posCartSubtotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const posCartVat = vatCtx
-    ? posCart.reduce((sum, item) => sum + getVatForItem(vatCtx, 'pharmacy', item.id, item.price * item.qty, item.vat_rate).vat, 0)
+    ? posCart.reduce((sum, item) => sum + getVatForItem(vatCtx, 'pharmacy', item.id, item.price * item.qty).vat, 0)
     : 0;
   const posCartTotal = posCartSubtotal + posCartVat;
 
@@ -255,7 +255,7 @@ export default function PharmacySalesForm() {
   const grandTotal = items.reduce((sum, row) => {
     const qty = parseFloat(row.quantity) || 0;
     const price = parseFloat(row.unit_price) || 0;
-    const r = vatCtx ? getVatForItem(vatCtx, 'pharmacy', row.drug_id, qty * price, row.vat_rate) : { vat: 0 };
+    const r = vatCtx ? getVatForItem(vatCtx, 'pharmacy', row.drug_id, qty * price) : { vat: 0 };
     return sum + (qty * price) + r.vat;
   }, 0);
 
