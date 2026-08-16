@@ -10,6 +10,7 @@ import {
   PartyPopper, Trophy, Sparkles, Gift, Rocket, Sparkle
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
@@ -504,6 +505,8 @@ export default () => {
   const [message, setMessage] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [itemBids, setItemBids] = useState({});
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   const [winner, setWinner] = useState(null);
 
@@ -868,6 +871,33 @@ export default () => {
                               })}
                             </tbody>
                           </table>
+                        </div>
+
+                        {/* VAT Summary (central CEO tax treatment per item) */}
+                        <div style={{ marginTop: 16, padding: '14px 18px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8 }}>
+                          {items.map((item, idx) => {
+                            const birr = parseFloat(itemBids[`birr_${idx}`] || 0);
+                            const cent = parseFloat(itemBids[`cent_${idx}`] || 0);
+                            const qty = parseFloat(item.quantity || 1);
+                            const unitBid = (birr || parseFloat(item.startPrice || 0)) + cent / 100;
+                            const v = getVatForItem(vatCtx, 'tender_sell', item.id != null ? item.id : idx, unitBid * qty);
+                            return (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0' }}>
+                                <span style={{ color: '#424242' }}>{item.objectType || item.object_type || `Item ${idx + 1}`} — VAT ({fmtPct(v.rate)})</span>
+                                <span style={{ fontWeight: 700, color: '#1B5E20' }}>{v.vat.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
+                              </div>
+                            );
+                          })}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 800, borderTop: '1px solid #D1D5DB', marginTop: 8, paddingTop: 8, color: '#424242' }}>
+                            <span>Grand Total (incl. VAT)</span>
+                            <span>{items.reduce((sum, item, idx) => {
+                              const birr = parseFloat(itemBids[`birr_${idx}`] || 0);
+                              const cent = parseFloat(itemBids[`cent_${idx}`] || 0);
+                              const qty = parseFloat(item.quantity || 1);
+                              const unitBid = (birr || parseFloat(item.startPrice || 0)) + cent / 100;
+                              return sum + getVatForItem(vatCtx, 'tender_sell', item.id != null ? item.id : idx, unitBid * qty).total;
+                            }, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETB</span>
+                          </div>
                         </div>
 
                         {isOpen && user && (
