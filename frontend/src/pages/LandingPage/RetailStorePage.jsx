@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../services/apiClient';
+import { loadVatSafe, getVatForItem } from '../../services/vatService';
 import { PublicNav } from './PublicNavFooter';
-import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCircle, Star, Zap, TrendingUp, ArrowRight, Truck, Phone, Mail, FileText, Shield, Info, CreditCard, Box, ChevronDown, ChevronUp, Clock, Banknote, User, LogIn, UserPlus, AlignLeft } from 'lucide-react';
+import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCircle, Star, Zap, TrendingUp, ArrowRight, Truck, Phone, Mail, FileText, Shield, Info, CreditCard, Box, ChevronDown, ChevronUp, Clock, Banknote, User, LogIn, UserPlus, AlignLeft, UploadCloud, AlertTriangle } from 'lucide-react';
 import retailStoreHero from '../../assets/hero-section/retail store.jpg';
 
 const STYLES = `
@@ -440,6 +441,8 @@ const RetailStorePage = () => {
 
   const [cartOpen, setCartOpen]         = useState(false);
   const [cartItems, setCartItems]       = useState([]);
+  const [vatCtx, setVatCtx]             = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
@@ -452,6 +455,36 @@ const RetailStorePage = () => {
     customer_email: '',
     customer_phone: '',
   });
+
+  // ── Payment proof (payment ID OR screenshot — at least one required) ──
+  const [paymentMethod, setPaymentMethod]    = useState('bank_transfer');
+  const [paymentRef, setPaymentRef]          = useState('');
+  const [paymentProofFile, setPaymentProofFile] = useState(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState('');
+  const [paymentError, setPaymentError]      = useState('');
+  const [formError, setFormError]            = useState('');
+  const paymentProofInputRef                 = useRef(null);
+  const submitErrorRef                       = useRef(null);
+
+  const scrollFormError = () => {
+    setTimeout(() => {
+      submitErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
+  const handlePaymentProofChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setPaymentProofFile(file);
+    setPaymentProofPreview(URL.createObjectURL(file));
+    setPaymentError('');
+    setFormError('');
+  };
+  const clearPaymentProof = () => {
+    setPaymentProofFile(null);
+    setPaymentProofPreview('');
+    if (paymentProofInputRef.current) paymentProofInputRef.current.value = '';
+  };
 
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -582,17 +615,50 @@ const RetailStorePage = () => {
 
   const placeOrder = async () => {
     if (cartItems.length === 0) return;
+    // Manual validation (form uses noValidate so the button always responds)
+    const missing = [];
+    if (!(orderForm.customer_name || '').trim()) missing.push('Full Name');
+    if (!(orderForm.customer_email || '').trim()) missing.push('Email');
+    if (!(orderForm.customer_phone || '').trim()) missing.push('Phone Number');
+    if (missing.length) {
+      setFormError(`Please fill in: ${missing.join(', ')}`);
+      scrollFormError();
+      return;
+    }
+    // Payment proof — at least one of Payment ID or Screenshot is required
+    const ref = paymentRef.trim();
+    if (!ref && !paymentProofFile) {
+      setPaymentError('Payment ID or Payment Screenshot is required — please provide at least one.');
+      setFormError('Payment ID or Payment Screenshot is required — please provide at least one.');
+      scrollFormError();
+      return;
+    }
     setPlacingOrder(true);
+    setPaymentError('');
+    setFormError('');
     try {
-      const res = await axios.post('/retail/orders/place', {
-        delivery_type: orderForm.delivery_address ? 'delivery' : 'pickup',
-        ...orderForm
+      const formData = new FormData();
+      Object.entries(orderForm).forEach(([k, v]) => {
+        if (k === 'delivery_type') return; // appended once below, computed from address
+        formData.append(k, v);
+      });
+      formData.append('delivery_type', orderForm.delivery_address ? 'delivery' : 'pickup');
+      formData.append('payment_method', paymentMethod);
+      formData.append('payment_ref', ref);
+      if (paymentProofFile) formData.append('payment_proof', paymentProofFile);
+
+      const res = await axios.post('/retail/orders/place', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       const invoice = res.data?.data?.invoice_number || res.data?.invoice_number || 'N/A';
       setOrderSuccess(invoice);
       setCartItems([]);
+      clearPaymentProof();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to place order');
+      const msg = err?.message || 'Failed to place order. Please try again.';
+      setFormError(msg);
+      scrollFormError();
+      alert(msg);
     } finally {
       setPlacingOrder(false);
     }
@@ -609,6 +675,13 @@ const RetailStorePage = () => {
 
   const cartCount = cartItems.reduce((a, b) => a + (b.quantity || 0), 0);
   const cartTotal = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  let cartVat = 0;
+  if (vatCtx) {
+    cartItems.forEach((item) => {
+      const r = getVatForItem(vatCtx, 'retail', item.product_id, parseFloat(item.price) * item.quantity);
+      cartVat += r.vat;
+    });
+  }
 
   const imgSrc = (url) => {
     if (!url) return null;
@@ -882,7 +955,7 @@ const RetailStorePage = () => {
 
             ) : (
               /* ── ORDER FORM ── */
-              <form onSubmit={e => { e.preventDefault(); placeOrder(); }}>
+              <form onSubmit={e => { e.preventDefault(); placeOrder(); }} noValidate>
                 <div className="rsp-modal-body">
 
                   {/* Customer Info (pre-filled, read-only) */}
@@ -986,6 +1059,87 @@ const RetailStorePage = () => {
                     />
                   </div>
 
+                  {/* Payment Proof — Payment ID OR Screenshot (at least one required) */}
+                  <div className="rsp-section-divider">
+                    <Banknote size={14} /> Payment Proof
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="rsp-form-group">
+                      <label className="rsp-form-label"><CreditCard size={14} /> Payment Method *</label>
+                      <select
+                        className="rsp-form-input"
+                        value={paymentMethod}
+                        onChange={e => setPaymentMethod(e.target.value)}
+                        style={{
+                          appearance: 'auto',
+                          height: 'auto',
+                          minHeight: 46,
+                          padding: '12px 16px',
+                          lineHeight: 1.4,
+                          color: '#0f172a',
+                          background: '#fff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="telebirr">Mobile Money (Telebirr)</option>
+                      </select>
+                    </div>
+                    <div className="rsp-form-group">
+                      <label className="rsp-form-label"><FileText size={14} /> Payment ID / Reference</label>
+                      <input
+                        type="text"
+                        className="rsp-form-input"
+                        placeholder="e.g. TRX-123456789"
+                        value={paymentRef}
+                        onChange={e => { setPaymentRef(e.target.value); if (paymentError) setPaymentError(''); setFormError(''); }}
+                      />
+                    </div>
+                  </div>
+                  <div className="rsp-form-group" style={{ marginTop: 10 }}>
+                    <label className="rsp-form-label">
+                      <UploadCloud size={14} /> Payment Screenshot
+                      <span> (Enter a Payment ID above OR upload a screenshot — at least one is required)</span>
+                    </label>
+                    <div
+                      onClick={() => paymentProofInputRef.current && paymentProofInputRef.current.click()}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        gap: 8, padding: '18px 12px', border: `2px dashed ${paymentProofFile ? '#0D7C66' : '#cbd5e1'}`,
+                        background: paymentProofFile ? '#f0fdf4' : '#f8fafc', borderRadius: 0, cursor: 'pointer',
+                        transition: 'border-color 0.15s ease', textAlign: 'center',
+                      }}
+                    >
+                      {paymentProofPreview ? (
+                        <img src={paymentProofPreview} alt="Payment proof" style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <>
+                          <UploadCloud size={28} color={paymentProofFile ? '#0D7C66' : '#94a3b8'} />
+                          <span style={{ fontSize: 12, color: '#64748b' }}>Click to upload JPG / PNG / PDF</span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      ref={paymentProofInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      style={{ display: 'none' }}
+                      onChange={handlePaymentProofChange}
+                    />
+                    {paymentProofFile && (
+                      <button
+                        type="button"
+                        onClick={clearPaymentProof}
+                        style={{ marginTop: 8, background: 'none', border: 'none', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit', padding: 0 }}
+                      >
+                        <X size={14} /> Remove screenshot
+                      </button>
+                    )}
+                    {paymentError && (
+                      <div style={{ color: '#dc2626', fontSize: 12, fontWeight: 600, marginTop: 6 }}>{paymentError}</div>
+                    )}
+                  </div>
+
                   {/* Price Summary */}
                   <div className="rsp-price-summary">
                     <div className="rsp-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
@@ -995,13 +1149,31 @@ const RetailStorePage = () => {
                       <span>Subtotal ({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
                       <span style={{ fontWeight: 700 }}>{cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                     </div>
+                    <div className="rsp-price-row">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Banknote size={14} /> VAT Amount</span>
+                      <span>{cartVat > 0 ? `${cartVat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` : '—'}</span>
+                    </div>
                     <div className="rsp-price-row rsp-price-total">
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>💰 Total Amount Due</span>
-                      <span>{cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Total Amount Due (incl. VAT)</span>
+                      <span>{(cartTotal + cartVat).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB</span>
                     </div>
                   </div>
 
                 </div>
+
+                {/* Error banner — always visible above the buttons */}
+                {formError && (
+                  <div
+                    ref={submitErrorRef}
+                    style={{
+                      margin: '0 28px 14px', padding: '12px 16px', background: '#fef2f2',
+                      border: '2px solid #dc2626', borderLeft: '6px solid #dc2626', color: '#b91c1c',
+                      fontWeight: 700, fontSize: '0.85rem', borderRadius: 0, display: 'flex', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    <AlertTriangle size={18} style={{ flexShrink: 0 }} /> {formError}
+                  </div>
+                )}
 
                 {/* Footer */}
                 <div className="rsp-modal-footer">
