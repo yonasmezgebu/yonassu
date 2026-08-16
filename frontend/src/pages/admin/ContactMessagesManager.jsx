@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../../services/apiClient';
-import { Search, Filter, Mail, CheckCircle, XCircle, Send, Download, Eye, MessageSquare, User, Calendar } from 'lucide-react';
+import { Search, Filter, Mail, CheckCircle, XCircle, Send, Download, Eye, EyeOff, MessageSquare, User, Calendar, CheckCheck, Trash2 } from 'lucide-react';
 import styles from './ContactMessagesManager.module.css';
 
 const STATUS_STYLES = {
@@ -56,6 +56,30 @@ export default function ContactMessagesManager() {
     if (!selected.length) return;
     try { const r = await axios.post('/contact/bulk', { ids: selected, action }); if (r.status === 'success') { setSelected([]); fetch(); } }
     catch (_) {}
+  };
+
+  const toggleStatus = async (msg) => {
+    const newStatus = msg.status === 'unread' ? 'read' : 'unread';
+    try { 
+      await axios.put(`/contact/${msg.id}/status`, { status: newStatus }); 
+      fetch(); 
+    } catch (_) {}
+  };
+
+  const deleteMessage = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this message?')) return;
+    try { 
+      await axios.delete(`/contact/${id}`); 
+      fetch(); 
+    } catch (_) {}
+  };
+
+  const markReplied = async (msg) => {
+    const newStatus = msg.status === 'replied' ? 'read' : 'replied';
+    try { 
+      await axios.put(`/contact/${msg.id}/status`, { status: newStatus }); 
+      fetch(); 
+    } catch (_) {}
   };
 
   const filtered = messages.filter(m => {
@@ -169,9 +193,20 @@ export default function ContactMessagesManager() {
                         <div className={styles.subjectCell} title={m.subject}>{m.subject}</div>
                       </td>
                       <td>
-                        <button onClick={() => viewDetail(m)} className={styles.actionBtn}>
-                          <Eye size={12} /> View
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => markReplied(m)} className={styles.actionBtn} title={m.status === 'replied' ? 'Unmark as replied' : 'Mark as replied'} style={{ color: m.status === 'replied' ? '#10B981' : 'inherit' }}>
+                            <CheckCheck size={14} />
+                          </button>
+                          <button onClick={() => toggleStatus(m)} className={styles.actionBtn} title={m.status === 'unread' ? 'Mark as read' : 'Mark as unread'} style={{ color: m.status === 'unread' ? '#3B82F6' : 'inherit' }}>
+                            {m.status === 'unread' ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </button>
+                          <button onClick={() => deleteMessage(m.id)} className={styles.actionBtn} title="Delete message" style={{ color: '#EF4444' }}>
+                            <Trash2 size={14} />
+                          </button>
+                          <button onClick={() => viewDetail(m)} className={styles.actionBtn} title="View detail">
+                            <MessageSquare size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
