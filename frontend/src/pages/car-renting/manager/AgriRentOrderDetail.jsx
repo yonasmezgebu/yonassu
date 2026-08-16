@@ -4,7 +4,7 @@ import authService from '../../../services/authService';
 import {
   ArrowLeft, Printer, RefreshCw, Tractor, User, Calendar,
   MapPin, DollarSign, CheckCircle, Clock, XCircle, FileText,
-  Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star
+  Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star, Banknote
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 
@@ -303,6 +303,8 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
   const dailyRate  = parseFloat(order.daily_rate || 0);
   const totalDays  = parseInt(order.total_days || 0);
   const totalAmount = parseFloat(order.total_amount || 0);
+  const vatAmt      = parseFloat(order.vat_amount || 0);
+  const subAmt      = parseFloat(order.subtotal) || Math.max(0, totalAmount - vatAmt);
   const isPaid     = ['Confirmed', 'PAID', 'PAYMENT_VERIFIED'].includes(order.payment_status);
 
   /* ── Action button component ── */
@@ -465,6 +467,7 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
             {/* Key Stats Grid */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <InfoCard label="Total Amount" value={`ETB ${fmt(totalAmount)}`} icon={<DollarSign size={11} />} accent={C.darkGreen} large />
+              <InfoCard label="VAT Amount" value={`ETB ${fmt(vatAmt)}`} icon={<Banknote size={11} />} accent={C.earthBrown} />
               <InfoCard label="Rental Days" value={`${totalDays} days`} icon={<Calendar size={11} />} accent={C.emerald} />
               <InfoCard label="Daily Rate" value={`ETB ${fmt(dailyRate)} / day`} icon={<Star size={11} />} accent={C.forestGreen} />
               <InfoCard label="Payment Method" value={order.payment_method} icon={<Package size={11} />} accent={C.earthBrown} />
@@ -549,9 +552,27 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
                     {fmt(dailyRate * totalDays)}
                   </td>
                 </tr>
+                <tr>
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>
+                    Subtotal
+                  </td>
+                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>
+                    {fmt(subAmt)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>
+                    VAT Amount
+                  </td>
+                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
+                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>
+                    {fmt(vatAmt)}
+                  </td>
+                </tr>
                 <tr style={{ background: C.lightSage }}>
                   <td colSpan={3} style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 14, color: C.darkGreen }}>
-                    TOTAL AMOUNT DUE
+                    TOTAL AMOUNT DUE (incl. VAT)
                   </td>
                   <td style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 18, color: C.darkGreen }}>
                     ETB {fmt(totalAmount)}
