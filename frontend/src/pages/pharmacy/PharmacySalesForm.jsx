@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import pharmacyService from '../../services/pharmacyService';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 import { useToast } from '../../components/Toast';
 import { playSound } from '../../services/notificationManager';
 import {
@@ -62,6 +63,10 @@ export default function PharmacySalesForm() {
 
   const [financeAccounts, setFinanceAccounts] = useState([]);
 
+  // Central VAT config (CEO Tax & VAT service)
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
+
   // POS State
   const [posStep, setPosStep] = useState(1);
   const [posCart, setPosCart] = useState([]);
@@ -108,7 +113,11 @@ export default function PharmacySalesForm() {
     }
   };
 
-  const posCartTotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const posCartSubtotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const posCartVat = vatCtx
+    ? posCart.reduce((sum, item) => sum + getVatForItem(vatCtx, 'pharmacy', item.id, item.price * item.qty, item.vat_rate).vat, 0)
+    : 0;
+  const posCartTotal = posCartSubtotal + posCartVat;
 
 
   const handleProcessPayment = async () => {
@@ -246,7 +255,8 @@ export default function PharmacySalesForm() {
   const grandTotal = items.reduce((sum, row) => {
     const qty = parseFloat(row.quantity) || 0;
     const price = parseFloat(row.unit_price) || 0;
-    return sum + qty * price;
+    const r = vatCtx ? getVatForItem(vatCtx, 'pharmacy', row.drug_id, qty * price, row.vat_rate) : { vat: 0 };
+    return sum + (qty * price) + r.vat;
   }, 0);
 
   useEffect(() => { setPaymentAmount(grandTotal > 0 ? grandTotal.toFixed(2) : ''); }, [grandTotal]);
@@ -818,6 +828,7 @@ export default function PharmacySalesForm() {
                          {posCart.length > 0 && (
                            <div className={styles.cartFooter}>
                              <button onClick={() => setPosCart([])} className={styles.btnDanger}><X size={16}/> Clear Cart</button>
+                             {posCartVat > 0 && <div className={styles.cartTotal} style={{ fontSize: 11, opacity: 0.85 }}>VAT (incl.): <span className={styles.cartTotalAmount}>{posCartVat.toFixed(2)} ETB</span></div>}
                              <div className={styles.cartTotal}>Total: <span className={styles.cartTotalAmount}>{posCartTotal.toFixed(2)} ETB</span></div>
                            </div>
                          )}
