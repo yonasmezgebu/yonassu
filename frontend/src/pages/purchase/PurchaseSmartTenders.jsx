@@ -538,7 +538,7 @@ This is an official award notification from SUTANA's procurement system.
           TAB: TENDER LIST
       ══════════════════════════════════════════════════ */}
       {activeTab === 'list' && (
-        <div className="pst-card">
+        <div className="pst-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>All Tenders</h2>
             <button onClick={() => setActiveTab('create')} style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
@@ -548,7 +548,8 @@ This is an official award notification from SUTANA's procurement system.
           {loadingTenders ? (
             <div className="segmented-spinner"></div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '800px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
                   {['Tender No.', 'Title', 'Category', 'Items', 'Bids', 'Opening', 'Closing', 'Status', 'Actions'].map(h => (
@@ -598,6 +599,7 @@ This is an official award notification from SUTANA's procurement system.
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}
