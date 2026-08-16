@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { loadVatSafe, getVatForItem } from '../../services/vatService';
 import './CustomerPharmacyPortal.css';
 
 const API = '/api/pharmacy-sales';
@@ -20,6 +21,10 @@ export default function CustomerCharmacyPortal() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Central VAT config (CEO Tax & VAT service)
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   // Auth
   const [loginForm, setLoginForm] = useState({ phone: '', password: '' });
@@ -204,7 +209,7 @@ export default function CustomerCharmacyPortal() {
 
   const cartTotals = cart.reduce((acc, item) => {
     const sub = item.unit_price * item.qty;
-    const vat = (sub * (item.vat_rate || 0)) / 100;
+    const vat = vatCtx ? getVatForItem(vatCtx, 'pharmacy', item.id, sub).vat : 0;
     return { subtotal: acc.subtotal + sub, vat: acc.vat + vat, total: acc.total + sub + vat };
   }, { subtotal: 0, vat: 0, total: 0 });
 
