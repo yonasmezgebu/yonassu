@@ -196,6 +196,8 @@ export default function SalesOverview() {
 
   const data = stats || {};
   const totalRevenue = parseFloat(data.totalRevenue) || 0;
+  const totalVat = parseFloat(data.totalVat) || 0;
+  const totalSubtotal = parseFloat(data.totalSubtotal) || 0;
   const totalOrders = parseInt(data.totalTransactions) || 0;
   const activeCustomers = parseInt(data.uniqueCustomers) || 0;
   const avgOrder = parseFloat(data.averageOrderValue) || 0;
@@ -228,6 +230,11 @@ export default function SalesOverview() {
           <div className="d-card" onClick={() => nav('/sales/pos')} style={{ background: 'var(--color-primary)', color: '#FFF' }}>
             <div style={{ fontSize: 13, fontWeight: 500, textTransform: 'uppercase', opacity: 0.8, marginBottom: 8 }}>Today's Revenue</div>
             <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, marginBottom: 8 }}>ETB {fmtInt(totalRevenue)}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.95, marginBottom: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <span>VAT: ETB {fmtInt(totalVat)}</span>
+              <span style={{ opacity: 0.6 }}>|</span>
+              <span>Net: ETB {fmtInt(totalSubtotal)}</span>
+            </div>
             <div style={{ fontSize: 14, opacity: 0.9 }}>Hello, {firstName} 👋</div>
           </div>
 
