@@ -227,6 +227,11 @@ const ProductionQueue = () => {
                         <div style={{ fontSize: 12, fontWeight: 800, color: '#059669', marginBottom: 10 }}>
                           {parseFloat(order.total_price || 0).toLocaleString()} ETB
                         </div>
+                        {order.vat_amount != null && (
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>
+                            VAT: {parseFloat(order.vat_amount || 0).toLocaleString()} ETB
+                          </div>
+                        )}
 
                         {/* Advance button */}
                         {nextStatus && (
