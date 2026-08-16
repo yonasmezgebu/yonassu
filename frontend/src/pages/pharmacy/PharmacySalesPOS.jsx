@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import cashOutSound from '../../assets/notification/cash_out.m4a';
 import successSound from '../../assets/notification/ready.m4a';
+import { loadVatSafe, getVatForItem } from '../../services/vatService';
 
 const API = '/api/pharmacy-sales';
 const fmt = (n) => `ETB ${parseFloat(n || 0).toLocaleString('en-ET', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -216,6 +217,8 @@ export default function PharmacySalesPOS() {
   // State
   const [view, setView] = useState('pos'); // pos | pending | sales | handover
   const [drugs, setDrugs] = useState([]);
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
   const [branches, setBranches] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [search, setSearch] = useState('');
@@ -312,11 +315,16 @@ export default function PharmacySalesPOS() {
 
   const removeItem = (drug_id) => setCart(c => c.filter(i => i.drug_id !== drug_id));
 
-  const totals = cart.reduce((acc, item) => {
-    const sub = item.unit_price * item.quantity;
-    const vat = (sub * item.vat_rate) / 100;
-    return { subtotal: acc.subtotal + sub, vat: acc.vat + vat, total: acc.total + sub + vat };
-  }, { subtotal: 0, vat: 0, total: 0 });
+  const totals = vatCtx
+    ? cart.reduce((acc, item) => {
+        const r = getVatForItem(vatCtx, 'pharmacy', item.drug_id, item.unit_price * item.quantity, (item.vat_rate || 0) / 100);
+        return { subtotal: acc.subtotal + r.sub, vat: acc.vat + r.vat, total: acc.total + r.total };
+      }, { subtotal: 0, vat: 0, total: 0 })
+    : cart.reduce((acc, item) => {
+        const sub = item.unit_price * item.quantity;
+        const vat = (sub * item.vat_rate) / 100;
+        return { subtotal: acc.subtotal + sub, vat: acc.vat + vat, total: acc.total + sub + vat };
+      }, { subtotal: 0, vat: 0, total: 0 });
 
   const needsRx = cart.some(i => i.requires_prescription);
 
