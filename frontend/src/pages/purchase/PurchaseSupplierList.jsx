@@ -10,131 +10,175 @@ import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  .psl-page { padding: 28px; background: #F5F5F5; min-height: 100vh; font-family: 'Inter', sans-serif; box-sizing: border-box; }
-  @media (max-width:768px){ .psl-page { padding: 16px; } }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+  /* Base page wrapper */
+  .psl-page {
+    padding: 24px;
+    background: #F5F6FA;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, sans-serif;
+    box-sizing: border-box;
+    color: #111827;
+    max-width: 1536px;
+    margin: 10px auto;
+  }
+  @media (max-width:1024px) { .psl-page { padding: 16px; margin: 6px auto; } }
+  @media (max-width:768px) { .psl-page { padding: 12px; margin: 4px auto; } }
+
+  /* Header */
   .psl-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-  .psl-title { font-size:2rem; font-weight:800; color:#1B5E20; margin:0; letter-spacing:-0.02em; }
-  .psl-sub { font-size:0.875rem; color:#6B8E23; margin:4px 0 0; font-weight:600; }
+  .psl-title { font-size:28px; font-weight:700; color:#111827; margin:0; line-height:1.3; }
+  .psl-sub { font-size:14px; color:#6B7280; margin:4px 0 0; font-weight:400; line-height:1.5; }
 
   /* Tabs */
-  .psl-tabs { display:flex; gap:4px; background:#fff; border:1px solid #E0E0E0; border-radius:12px; padding:5px; margin-bottom:24px; max-width:420px; }
-  .psl-tab { flex:1; padding:10px 16px; border:none; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s; background:transparent; color:#888; font-family:'Inter',sans-serif; }
-  .psl-tab.active { background:#1B5E20; color:#fff; box-shadow:0 2px 8px rgba(27,94,32,0.3); }
-  .psl-tab:not(.active):hover { background:#F1F8F1; color:#1B5E20; }
-  .psl-tab-count { background:rgba(255,255,255,0.25); border-radius:20px; padding:1px 7px; font-size:0.75rem; font-weight:700; }
-  .psl-tab:not(.active) .psl-tab-count { background:#E8F5E9; color:#1B5E20; }
+  .psl-tabs { display:flex; gap:8px; margin-bottom:24px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:4px; }
+  .psl-tab { padding:0 16px; border:1px solid transparent; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 150ms ease; background:#FFFFFF; color:#6B7280; border: 1px solid #E5E7EB; box-shadow: 0 1px 2px rgba(0,0,0,0.05); scroll-snap-align: start; white-space:nowrap; height: 36px;}
+  .psl-tab.active { background:#EFF6FF; color:#2563EB; border-color:#2563EB; box-shadow: 0 1px 3px rgba(37,99,235,0.1); }
+  .psl-tab:not(.active):hover { background:#F9FAFB; color:#111827; }
+  .psl-tab-count { background:#F3F4F6; border-radius:10px; padding:2px 8px; font-size:12px; font-weight:600; color:#6B7280; }
+  .psl-tab.active .psl-tab-count { background:#DBEAFE; color:#1D4ED8; }
 
-  /* Stats */
-  .psl-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:14px; margin-bottom:20px; }
-  .psl-stat { background:#fff; border:1px solid #E0E0E0; border-radius:12px; padding:18px 20px; }
-  .psl-stat-num { font-size:1.8rem; font-weight:800; color:#1B5E20; margin:0 0 4px; }
-  .psl-stat-label { font-size:0.72rem; font-weight:700; color:#6B8E23; text-transform:uppercase; letter-spacing:0.08em; }
+  /* Stats Cards */
+  .psl-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px; }
+  .psl-stat { background:#FFFFFF; border:1px solid #E5E7EB; border-radius:10px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 150ms ease; }
+  .psl-stat:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
+  .psl-stat-num { font-size:24px; font-weight:700; color:#111827; margin:0 0 4px; line-height:1.3; }
+  .psl-stat-label { font-size:13px; font-weight:500; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.03em; }
 
   /* Toolbar */
-  .psl-toolbar { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
-  .psl-search-wrap { position:relative; flex:1; min-width:200px; }
-  .psl-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#999; pointer-events:none; }
-  .psl-search { width:100%; box-sizing:border-box; padding:10px 12px 10px 38px; border:1px solid #8D6E63; border-radius:8px; font-size:0.875rem; font-family:'Inter',sans-serif; outline:none; transition:border-color 0.2s; }
-  .psl-search:focus { border-color:#2E8B57; box-shadow:0 0 0 3px rgba(46,139,87,0.1); }
-  .psl-select { padding:10px 12px; border:1px solid #8D6E63; border-radius:8px; font-size:0.875rem; font-family:'Inter',sans-serif; outline:none; color:#333; cursor:pointer; }
-  .psl-select:focus { border-color:#2E8B57; }
+  .psl-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  .psl-search-wrap { position:relative; flex:1; min-width:240px; }
+  .psl-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9CA3AF; pointer-events:none; }
+  .psl-search { width:100%; box-sizing:border-box; height:36px; padding:0 12px 0 36px; border:1px solid #E5E7EB; border-radius:8px; font-size:14px; outline:none; transition:border-color 150ms ease; }
+  .psl-search:focus { border-color:#2563EB; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+  .psl-select { height:36px; padding:0 32px 0 12px; border:1px solid #E5E7EB; border-radius:8px; font-size:14px; outline:none; color:#111827; cursor:pointer; background:#FFFFFF url('data:image/svg+xml;utf8,<svg fill="none" stroke="%236B7280" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>') no-repeat right 12px center/14px; appearance:none; transition: border-color 150ms ease;}
+  .psl-select:focus { border-color:#2563EB; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+  .psl-select:hover { background-color: #F9FAFB; }
 
-  /* Bulk bar */
-  .psl-bulk-bar { background:linear-gradient(135deg,#1B5E20,#2E8B57); border-radius:10px; padding:12px 20px; display:flex; align-items:center; gap:16px; margin-bottom:16px; color:#fff; flex-wrap:wrap; }
-  .psl-bulk-count { font-size:0.875rem; font-weight:700; flex:1; }
-  .psl-btn-gmail { background:#fff; color:#1B5E20; border:none; border-radius:8px; padding:9px 20px; font-weight:700; font-size:0.875rem; cursor:pointer; display:flex; align-items:center; gap:8px; font-family:'Inter',sans-serif; transition:transform 0.15s,box-shadow 0.15s; }
-  .psl-btn-gmail:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-  .psl-btn-deselect { background:rgba(255,255,255,0.15); color:#fff; border:1.5px solid rgba(255,255,255,0.3); border-radius:8px; padding:9px 16px; font-weight:600; font-size:0.85rem; cursor:pointer; font-family:'Inter',sans-serif; }
+  /* Bulk Action Bar */
+  .psl-bulk-bar { background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 20px; display:flex; align-items:center; gap:16px; margin-bottom:16px; color:#1D4ED8; flex-wrap:wrap; }
+  .psl-bulk-count { font-size:14px; font-weight:600; flex:1; margin:0; }
+  .psl-btn-gmail { background:#FFFFFF; color:#2563EB; border:1px solid #BFDBFE; border-radius:8px; height:36px; padding:0 16px; font-weight:500; font-size:14px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all 150ms ease; }
+  .psl-btn-gmail:hover { background:#D97706; color:#FFFFFF; border-color:#D97706; }
+  .psl-btn-deselect { background:transparent; color:#6B7280; border:1px solid #D1D5DB; border-radius:8px; height:36px; padding:0 16px; font-weight:500; font-size:14px; cursor:pointer; transition:all 150ms ease; }
+  .psl-btn-deselect:hover { background:#F3F4F6; color:#111827; }
+
+  /* Table Container (Card) */
+  .psl-card { background:#FFFFFF; border:1px solid #E5E7EB; border-radius:10px; overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:box-shadow 150ms ease, transform 150ms ease; }
+  .psl-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
 
   /* Table */
-  .psl-card { background:#fff; border:1px solid #E0E0E0; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
-  .psl-table { width:100%; border-collapse:collapse; font-size:0.875rem; }
-  .psl-table thead th { background:#F9FBF9; border-bottom:2px solid #E8F5E9; padding:12px 14px; text-align:left; font-size:0.72rem; font-weight:700; color:#6B8E23; text-transform:uppercase; letter-spacing:0.08em; white-space:nowrap; }
-  .psl-table tbody tr { border-bottom:1px solid #F5F5F5; transition:background 0.15s; }
-  .psl-table tbody tr:hover { background:#FAFFF9; }
-  .psl-table tbody tr.selected { background:#F1F8F1; }
-  .psl-table td { padding:12px 14px; vertical-align:middle; }
-  .psl-name { font-weight:700; color:#1B5E20; }
-  .psl-email { color:#0284c7; font-size:0.82rem; }
-  .psl-phone { color:#555; font-size:0.82rem; }
-  .psl-company { color:#555; font-size:0.82rem; }
-  .psl-cat-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.72rem; font-weight:700; background:#E8F5E9; color:#2E7D32; }
-  .psl-date { color:#999; font-size:0.78rem; }
-  .psl-checkbox { width:18px; height:18px; cursor:pointer; accent-color:#2E8B57; }
+  .psl-table { width:100%; border-collapse:collapse; font-size:14px; min-width: 900px;}
+  .psl-table th { background:#F9FAFB; border-bottom:1px solid #E5E7EB; padding:12px 16px; text-align:left; font-size:12px; font-weight:500; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; }
+  .psl-table td { padding:12px 16px; border-bottom:1px solid #E5E7EB; vertical-align:middle; color:#111827; }
+  .psl-table tbody tr { transition:background 150ms ease; }
+  .psl-table tbody tr:hover { background:#F9FAFB; }
+  .psl-table tbody tr.selected { background:#EFF6FF; }
+  .psl-table tbody tr:last-child td { border-bottom:none; }
+  .psl-name { font-weight:600; color:#111827; }
+  .psl-email { color:#2563EB; font-size:13px; text-decoration:none; transition:color 150ms ease; }
+  .psl-email:hover { color:#1D4ED8; text-decoration:underline; }
+  .psl-phone { color:#6B7280; font-size:13px; }
+  .psl-company { color:#6B7280; font-size:13px; }
+  .psl-cat-badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:12px; font-weight:500; background:#F3F4F6; color:#4B5563; }
+  .psl-date { color:#9CA3AF; font-size:13px; }
+  .psl-checkbox { width:16px; height:16px; cursor:pointer; accent-color:#2563EB; border-radius: 4px; border: 1px solid #D1D5DB; }
 
   /* Status badges */
-  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }
-  .badge-pending  { background:#FFF8E1; color:#F57F17; }
-  .badge-verified { background:#E3F2FD; color:#1565C0; }
-  .badge-active   { background:#E8F5E9; color:#2E7D32; }
-  .badge-rejected { background:#FFEBEE; color:#C62828; }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:9999px; font-size:12px; font-weight:500; }
+  .badge-pending  { background:#FEF3C7; color:#D97706; }
+  .badge-verified { background:#E0F2FE; color:#0284C7; }
+  .badge-active   { background:#DCFCE7; color:#16A34A; }
+  .badge-rejected { background:#FEE2E2; color:#DC2626; }
 
   /* Buttons */
-  .psl-btn { display:flex; align-items:center; gap:6px; padding:10px 16px; border-radius:8px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.2s; font-family:'Inter',sans-serif; border:none; }
-  .psl-btn-green  { background:#2E8B57; color:#fff; }
-  .psl-btn-green:hover  { background:#1B5E20; }
-  .psl-btn-outline { background:#fff; color:#555; border:1px solid #8D6E63; }
-  .psl-btn-outline:hover { background:#F5F5F5; }
-  .psl-btn-verify { background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff; }
-  .psl-btn-verify:hover { opacity:0.9; }
-  .psl-btn-sm { padding:6px 12px; font-size:0.78rem; }
+  .psl-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:0 16px; border-radius:8px; font-weight:500; font-size:14px; cursor:pointer; transition:all 150ms ease; border:none; outline:none; font-family:'Inter',sans-serif; }
+  .psl-btn:disabled { opacity:0.5; cursor:not-allowed; pointer-events:none; }
+  .psl-btn-sm { height:32px; padding:0 12px; font-size:13px; }
 
-  /* Empty */
-  .psl-empty { text-align:center; padding:60px 24px; color:#aaa; }
-  .psl-empty h3 { margin:16px 0 8px; color:#555; font-size:1.1rem; }
-  .psl-empty p { margin:0; font-size:0.875rem; }
+  /* Button Variants */
+  .psl-btn-green { background:#16A34A; color:#FFFFFF; }
+  .psl-btn-green:hover { background:#D97706; color:#FFFFFF; }
+  .psl-btn-outline { background:#FFFFFF; color:#6B7280; border:1px solid #E5E7EB; }
+  .psl-btn-outline:hover { background:#D97706; color:#FFFFFF; border-color:#D97706; }
+  .psl-btn-verify { background:#2563EB; color:#FFFFFF; }
+  .psl-btn-verify:hover { background:#D97706; color:#FFFFFF; }
 
-  /* Mobile */
-  @media (max-width:640px) {
+  /* Empty State */
+  .psl-empty { text-align:center; padding:60px 24px; color:#9CA3AF; }
+  .psl-empty h3 { margin:16px 0 8px; color:#111827; font-size:18px; font-weight:600; }
+  .psl-empty p { margin:0; font-size:14px; color:#6B7280; }
+
+  /* Mobile Cards View */
+  @media (max-width:768px) {
     .psl-table { display:none; }
-    .psl-mob-cards { display:flex !important; flex-direction:column; gap:12px; padding:12px; }
-    .psl-mob-card { background:#fff; border:1px solid #E0E0E0; border-radius:10px; padding:16px; }
-    .psl-mob-card h4 { margin:0 0 4px; color:#1B5E20; font-size:0.95rem; }
-    .psl-mob-card p { margin:0 0 4px; font-size:0.8rem; color:#555; }
+    .psl-mob-cards { display:flex !important; flex-direction:column; gap:16px; padding:16px; }
+    .psl-mob-card { background:#FFFFFF; border:1px solid #E5E7EB; border-radius:10px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:transform 150ms ease, box-shadow 150ms ease;}
+    .psl-mob-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .psl-mob-card h4 { margin:0 0 8px; color:#111827; font-size:16px; font-weight:600; }
+    .psl-mob-card p { margin:0 0 6px; font-size:14px; color:#6B7280; display:flex; align-items:center; gap: 6px;}
   }
-  @media (min-width:641px) { .psl-mob-cards { display:none; } }
+  @media (min-width:769px) { .psl-mob-cards { display:none; } }
 
-  /* Toast */
-  .psl-toast { position:fixed; bottom:24px; right:24px; z-index:99999; padding:14px 20px; border-radius:12px; font-size:0.875rem; font-weight:600; display:flex; align-items:center; gap:10px; box-shadow:0 8px 24px rgba(0,0,0,0.15); animation:psl-slide 0.3s ease; }
-  .psl-toast-success { background:#1B5E20; color:#fff; }
-  .psl-toast-error   { background:#C62828; color:#fff; }
-  @keyframes psl-slide { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-  @keyframes spin { to { transform:rotate(360deg); } }
+  /* Toast Notification */
+  .psl-toast { position:fixed; bottom:24px; right:24px; z-index:99999; padding:16px 20px; border-radius:10px; font-size:14px; font-weight:500; display:flex; align-items:center; gap:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); animation:psl-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1); background:#FFFFFF; color:#111827; border-left:4px solid transparent; }
+  .psl-toast-success { border-left-color:#16A34A; }
+  .psl-toast-error   { border-left-color:#DC2626; }
+  @keyframes psl-slide { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
   /* ── Verification Drawer ── */
-  .vd-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; display:flex; justify-content:flex-end; }
-  .vd-drawer { width:480px; max-width:100vw; background:#fff; height:100%; overflow-y:auto; box-shadow:-8px 0 32px rgba(0,0,0,0.18); display:flex; flex-direction:column; animation:vd-slide 0.28s cubic-bezier(.22,.61,.36,1); }
+  .vd-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; justify-content:flex-end; }
+  .vd-drawer { width:500px; max-width:100vw; background:#FFFFFF; height:100%; overflow-y:auto; box-shadow:-8px 0 32px rgba(0,0,0,0.1); display:flex; flex-direction:column; animation:vd-slide 0.3s cubic-bezier(0.16,1,0.3,1); }
   @keyframes vd-slide { from { transform:translateX(100%); } to { transform:translateX(0); } }
-  .vd-head { padding:24px; border-bottom:2px solid #E8F5E9; display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#fff; z-index:10; }
-  .vd-head h2 { margin:0; font-size:1.15rem; font-weight:800; color:#1B5E20; flex:1; }
-  .vd-close { background:none; border:none; cursor:pointer; color:#888; padding:4px; border-radius:8px; display:flex; }
-  .vd-close:hover { background:#F5F5F5; color:#333; }
-  .vd-supplier-bar { padding:16px 24px; background:#F9FBF9; border-bottom:1px solid #E8F5E9; display:flex; align-items:center; gap:14px; }
-  .vd-avatar { width:44px; height:44px; border-radius:50%; background:#1B5E20; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.05rem; flex-shrink:0; }
-  .vd-supplier-name { font-weight:700; color:#1B5E20; font-size:1rem; }
-  .vd-supplier-meta { font-size:0.8rem; color:#777; margin-top:2px; }
+  .vd-head { padding:24px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#FFFFFF; z-index:10; }
+  .vd-head h2 { margin:0; font-size:20px; font-weight:600; color:#111827; flex:1; }
+  .vd-close { background:transparent; border:none; cursor:pointer; color:#9CA3AF; padding:8px; border-radius:8px; display:flex; transition:all 150ms ease; }
+  .vd-close:hover { background:#F3F4F6; color:#111827; }
+
+  /* Supplier identity in Drawer */
+  .vd-supplier-bar { padding:20px 24px; background:#F9FAFB; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; gap:16px; }
+  .vd-avatar { width:48px; height:48px; border-radius:50%; background:#2563EB; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:18px; flex-shrink:0; }
+  .vd-supplier-name { font-weight:600; color:#111827; font-size:16px; margin-bottom:4px; }
+  .vd-supplier-meta { font-size:13px; color:#6B7280; }
   .vd-body { padding:24px; flex:1; }
-  .vd-section { margin-bottom:24px; }
-  .vd-section-title { font-size:0.72rem; font-weight:700; color:#6B8E23; text-transform:uppercase; letter-spacing:0.1em; margin:0 0 14px; display:flex; align-items:center; gap:8px; }
-  .vd-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .vd-field { display:flex; flex-direction:column; gap:5px; }
+
+  .vd-section { margin-bottom:32px; }
+  .vd-section-title { font-size:13px; font-weight:500; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.03em; margin:0 0 16px; display:flex; align-items:center; gap:8px; }
+
+  .vd-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .vd-field { display:flex; flex-direction:column; gap:6px; }
   .vd-field.full { grid-column:1/-1; }
-  .vd-label { font-size:0.75rem; font-weight:700; color:#555; }
-  .vd-input { padding:9px 12px; border:1px solid #ccc; border-radius:8px; font-size:0.875rem; font-family:'Inter',sans-serif; outline:none; transition:border-color 0.2s; }
-  .vd-input:focus { border-color:#1976D2; box-shadow:0 0 0 3px rgba(25,118,210,0.1); }
-  .vd-select { padding:9px 12px; border:1px solid #ccc; border-radius:8px; font-size:0.875rem; font-family:'Inter',sans-serif; outline:none; cursor:pointer; background:#fff; }
-  .vd-select:focus { border-color:#1976D2; }
-  .vd-footer { padding:20px 24px; border-top:1px solid #E8F5E9; display:flex; gap:10px; position:sticky; bottom:0; background:#fff; }
-  .vd-btn-verify { flex:1; background:linear-gradient(135deg,#1565C0,#1976D2); color:#fff; border:none; border-radius:10px; padding:13px; font-size:0.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'Inter',sans-serif; transition:opacity 0.2s; }
-  .vd-btn-verify:disabled { opacity:0.6; cursor:not-allowed; }
-  .vd-btn-cancel { background:#F5F5F5; color:#555; border:none; border-radius:10px; padding:13px 20px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
-  .vd-stage1 { background:#F9FBF9; border:1px solid #E8F5E9; border-radius:10px; padding:16px; margin-bottom:20px; }
-  .vd-stage1-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #F0F0F0; font-size:0.82rem; }
-  .vd-stage1-row:last-child { border:none; }
-  .vd-stage1-label { color:#888; font-weight:600; }
-  .vd-stage1-value { color:#333; font-weight:500; text-align:right; max-width:60%; word-break:break-word; }
+  .vd-label { font-size:13px; font-weight:500; color:#6B7280; display:flex; align-items:center; gap:6px;}
+  .vd-input, .vd-select { width:100%; box-sizing:border-box; height:36px; padding:0 12px; border:1px solid #E5E7EB; border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; outline:none; transition:border-color 150ms ease, box-shadow 150ms ease; background:#FFFFFF; color:#111827; }
+  .vd-input:focus, .vd-select:focus { border-color:#2563EB; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+  .vd-select { appearance:none; background-image:url('data:image/svg+xml;utf8,<svg fill="none" stroke="%236B7280" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>'); background-repeat:no-repeat; background-position:right 12px center; background-size:14px; padding-right:32px; cursor:pointer;}
+  .vd-select:hover { background-color: #F9FAFB; }
+
+  .vd-footer { padding:20px 24px; border-top:1px solid #E5E7EB; display:flex; justify-content:flex-end; gap:12px; position:sticky; bottom:0; background:#FFFFFF; z-index:10; }
+  .vd-btn-cancel { background:#FFFFFF; color:#6B7280; border:1px solid #E5E7EB; border-radius:8px; height:36px; padding:0 24px; font-size:14px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; transition:all 150ms ease; display:inline-flex; align-items:center; justify-content:center;}
+  .vd-btn-cancel:hover { background:#D97706; color:#FFFFFF; border-color:#D97706; }
+  .vd-btn-verify { background:#2563EB; color:#FFFFFF; border:none; border-radius:8px; height:36px; padding:0 24px; font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-family:'Inter',sans-serif; transition:all 150ms ease; flex:1; }
+  .vd-btn-verify:hover:not(:disabled) { background:#D97706; }
+  .vd-btn-verify:disabled { opacity:0.5; cursor:not-allowed; }
+
+  .vd-stage1 { background:#F9FAFB; border:1px solid #E5E7EB; border-radius:10px; padding:20px; margin-bottom:32px; }
+  .vd-stage1-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #E5E7EB; font-size:14px; }
+  .vd-stage1-row:last-child { border:none; padding-bottom:0; }
+  .vd-stage1-row:first-child { padding-top:0; }
+  .vd-stage1-label { color:#6B7280; font-weight:500; }
+  .vd-stage1-value { color:#111827; font-weight:500; text-align:right; max-width:60%; word-break:break-word; }
+
+  /* Centered Modal */
+  .psl-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+    display: flex; justify-content: center; align-items: center; padding: 20px;
+  }
+  .psl-modal-content {
+    background: #fff; width: 800px; max-width: 100%; border-radius: 12px;
+    display: flex; flex-direction: column; max-height: 90vh;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  }
 `;
 
 const COMPANY_NAME = 'SUTANA Trading PLC';
@@ -312,6 +356,12 @@ const PurchaseSupplierList = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const [showAddInternal, setShowAddInternal] = useState(false);
+  const [internalForm, setInternalForm] = useState({
+    full_name: '', email: '', phone: '', company_name: '', category: ''
+  });
+  const [savingInternal, setSavingInternal] = useState(false);
+
   const fetchSuppliers = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -319,19 +369,37 @@ const PurchaseSupplierList = () => {
       if (search) params.append('search', search);
       if (filterCategory) params.append('category', filterCategory);
       if (filterStatus) params.append('status', filterStatus);
+      if (activeTab === 'internal') params.append('source', 'Internal');
       const res = await apiClient.get(`/suppliers?${params.toString()}`);
       setSuppliers(res.data?.data || []);
-    } catch {
-      setError('Failed to load suppliers. Please try again.');
+    } catch (err) {
+      console.error('Fetch suppliers error:', err?.response?.data || err.message);
+      setError(err?.response?.data?.message || 'Failed to load suppliers. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [search, filterCategory, filterStatus]);
+  }, [search, filterCategory, filterStatus, activeTab]);
 
-  useEffect(() => { if (activeTab === 'registered') fetchSuppliers(); }, [activeTab, fetchSuppliers]);
+  useEffect(() => { fetchSuppliers(); }, [fetchSuppliers]);
 
   const toggleSelect = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleSelectAll = () => setSelected(selected.size === suppliers.length ? new Set() : new Set(suppliers.map(s => s.id)));
+
+  const handleAddInternal = async (e) => {
+    e.preventDefault();
+    setSavingInternal(true);
+    try {
+      const res = await apiClient.post('/suppliers/internal', internalForm);
+      showToast('Internal supplier registered successfully!');
+      setShowAddInternal(false);
+      setInternalForm({ full_name: '', email: '', phone: '', company_name: '', category: '' });
+      fetchSuppliers();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to register internal supplier', 'error');
+    } finally {
+      setSavingInternal(false);
+    }
+  };
 
   const handleEmailSelected = () => {
     const sel = suppliers.filter(s => selected.has(s.id));
@@ -406,165 +474,219 @@ const PurchaseSupplierList = () => {
 
         {/* Tabs */}
         <div className="psl-tabs">
-          <button className={`psl-tab ${activeTab==='registered'?'active':''}`} onClick={() => setActiveTab('registered')}>
-            <Truck size={15}/> Self-Registered <span className="psl-tab-count">{suppliers.length}</span>
+          <button className={`psl-tab ${activeTab==='registered'?'active':''}`} onClick={() => { setActiveTab('registered'); setSearch(''); }}>
+            <Truck size={15}/> Self-Registered
           </button>
-          <button className={`psl-tab ${activeTab==='internal'?'active':''}`} onClick={() => setActiveTab('internal')}>
+          <button className={`psl-tab ${activeTab==='internal'?'active':''}`} onClick={() => { setActiveTab('internal'); setSearch(''); }}>
             <Users size={15}/> Internal
           </button>
         </div>
 
-        {activeTab === 'registered' ? (
-          <>
-            {/* Stats */}
-            <div className="psl-stats">
-              <div className="psl-stat"><p className="psl-stat-num">{suppliers.length}</p><p className="psl-stat-label">Total</p></div>
-              <div className="psl-stat"><p className="psl-stat-num" style={{color:'#F57F17'}}>{pendingCount}</p><p className="psl-stat-label">Pending</p></div>
-              <div className="psl-stat"><p className="psl-stat-num" style={{color:'#1565C0'}}>{verifiedCount}</p><p className="psl-stat-label">Verified</p></div>
-              <div className="psl-stat"><p className="psl-stat-num" style={{color:'#2E7D32'}}>{activeCount}</p><p className="psl-stat-label">Active</p></div>
-            </div>
+        {/* Stats */}
+        <div className="psl-stats">
+          <div className="psl-stat"><p className="psl-stat-num">{suppliers.length}</p><p className="psl-stat-label">Total</p></div>
+          <div className="psl-stat"><p className="psl-stat-num" style={{color:'#D97706'}}>{pendingCount}</p><p className="psl-stat-label">Pending</p></div>
+          <div className="psl-stat"><p className="psl-stat-num" style={{color:'#0284C7'}}>{verifiedCount}</p><p className="psl-stat-label">Verified</p></div>
+          <div className="psl-stat"><p className="psl-stat-num" style={{color:'#16A34A'}}>{activeCount}</p><p className="psl-stat-label">Active</p></div>
+        </div>
 
-            {/* Toolbar */}
-            <div className="psl-toolbar">
-              <div className="psl-search-wrap">
-                <Search size={15} className="psl-search-icon"/>
-                <input className="psl-search" placeholder="Search by name, email, company, category..." value={search} onChange={e=>setSearch(e.target.value)}/>
-              </div>
-              <select className="psl-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}>
-                <option value="">All Categories</option>
-                {uniqueCategories.map(c=><option key={c} value={c}>{c}</option>)}
-              </select>
-              <select className="psl-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                <option value="">All Status</option>
-                <option>Pending</option>
-                <option>Verified</option>
-                <option>Active</option>
-                <option>Rejected</option>
-              </select>
-              <button className="psl-btn psl-btn-outline" onClick={fetchSuppliers} title="Refresh"><RefreshCw size={15}/></button>
-            </div>
+        {/* Toolbar */}
+        <div className="psl-toolbar">
+          <div className="psl-search-wrap">
+            <Search size={15} className="psl-search-icon"/>
+            <input className="psl-search" placeholder="Search by name, email, company, category..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          <select className="psl-select" value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}>
+            <option value="">All Categories</option>
+            {uniqueCategories.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="psl-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+            <option value="">All Status</option>
+            <option>Pending</option>
+            <option>Verified</option>
+            <option>Active</option>
+            <option>Rejected</option>
+          </select>
+          <button className="psl-btn psl-btn-outline" onClick={fetchSuppliers} title="Refresh"><RefreshCw size={15}/></button>
+          {activeTab === 'internal' && (
+            <button className="psl-btn psl-btn-green" onClick={() => setShowAddInternal(true)} style={{marginLeft: 'auto'}}>
+              <UserPlus size={15}/> Add Internal Supplier
+            </button>
+          )}
+        </div>
 
-            {/* Bulk bar */}
-            {selected.size > 0 && (
-              <div className="psl-bulk-bar">
-                <p className="psl-bulk-count"><CheckSquare size={16} style={{verticalAlign:'middle',marginRight:6}}/>{selected.size} selected</p>
-                <button className="psl-btn-gmail" onClick={handleEmailSelected}><Mail size={16}/> Email via Gmail</button>
-                <button className="psl-btn-deselect" onClick={()=>setSelected(new Set())}>Clear</button>
-              </div>
-            )}
-
-            {/* Table */}
-            <div className="psl-card">
-              {loading ? (
-                <div style={{display:'flex',justifyContent:'center',alignItems:'center',padding:60,gap:12,color:'#2E8B57'}}>
-                  <SegmentedSpinner size={28} /> <span style={{fontWeight:600}}>Loading suppliers...</span>
-                </div>
-              ) : error ? (
-                <div className="psl-empty">
-                  <AlertCircle size={40} color="#C62828"/><h3>Error</h3><p>{error}</p>
-                  <button className="psl-btn psl-btn-green" style={{margin:'16px auto 0',display:'inline-flex'}} onClick={fetchSuppliers}><RefreshCw size={14}/> Retry</button>
-                </div>
-              ) : suppliers.length === 0 ? (
-                <div className="psl-empty">
-                  <Truck size={48} color="#C8E6C9"/><h3>No Suppliers Yet</h3>
-                  <p>Customers who register as suppliers will appear here.</p>
-                </div>
-              ) : (
-                <>
-                  <table className="psl-table">
-                    <thead>
-                      <tr>
-                        <th style={{width:40}}>
-                          <input type="checkbox" className="psl-checkbox" checked={selected.size===suppliers.length && suppliers.length>0} onChange={toggleSelectAll}/>
-                        </th>
-                        <th>Supplier</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Company</th>
-                        <th>Category</th>
-                        <th>Status</th>
-                        <th>Registered</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {suppliers.map(s => (
-                        <tr key={s.id} className={selected.has(s.id)?'selected':''}>
-                          <td><input type="checkbox" className="psl-checkbox" checked={selected.has(s.id)} onChange={()=>toggleSelect(s.id)}/></td>
-                          <td className="psl-name">
-                            <div style={{display:'flex',alignItems:'center',gap:10}}>
-                              <div style={{width:32,height:32,borderRadius:'50%',background:'#1B5E20',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'bold',fontSize:'0.85rem',flexShrink:0}}>
-                                {s.full_name?.charAt(0)?.toUpperCase()}
-                              </div>
-                              <span>{s.full_name}</span>
-                            </div>
-                          </td>
-                          <td><a href={`mailto:${s.email}`} className="psl-email" style={{textDecoration:'none'}}>{s.email}</a></td>
-                          <td className="psl-phone">{s.phone||'—'}</td>
-                          <td className="psl-company">
-                            <span style={{display:'flex',alignItems:'center',gap:5}}>
-                              <Building2 size={13} color="#aaa"/>
-                              {s.company_name||<em style={{color:'#aaa'}}>Individual</em>}
-                            </span>
-                          </td>
-                          <td><span className="psl-cat-badge">{s.category}</span></td>
-                          <td>{statusBadge(s.status)}</td>
-                          <td className="psl-date">{fmtDate(s.created_at)}</td>
-                          <td>
-                            <div style={{display:'flex',gap:6}}>
-                              {(s.status === 'Pending') && (
-                                <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
-                                  <ShieldCheck size={13}/> Verify
-                                </button>
-                              )}
-                              {s.status === 'Verified' && (
-                                <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}>
-                                  <CheckCircle2 size={13}/> Activate
-                                </button>
-                              )}
-                              {(s.status === 'Active' || s.status === 'Rejected') && (
-                                <button className="psl-btn psl-btn-outline psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
-                                  <ShieldCheck size={13}/> View
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {/* Mobile cards */}
-                  <div className="psl-mob-cards">
-                    {suppliers.map(s => (
-                      <div key={s.id} className="psl-mob-card">
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                          <h4>{s.full_name}</h4>
-                          <input type="checkbox" className="psl-checkbox" checked={selected.has(s.id)} onChange={()=>toggleSelect(s.id)}/>
-                        </div>
-                        <p><Mail size={12} color="#6B8E23" style={{verticalAlign:'middle',marginRight:4}}/>{s.email}</p>
-                        <p><Phone size={12} color="#6B8E23" style={{verticalAlign:'middle',marginRight:4}}/>{s.phone||'—'}</p>
-                        <p><Tag size={12} color="#6B8E23" style={{verticalAlign:'middle',marginRight:4}}/>{s.category}</p>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
-                          {statusBadge(s.status)}
-                          {s.status==='Pending' && <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}><ShieldCheck size={12}/> Verify</button>}
-                          {s.status==='Verified' && <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}><CheckCircle2 size={12}/> Activate</button>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </>
-        ) : (
-          <div style={{background:'#fff',border:'1px solid #E0E0E0',borderRadius:12,padding:40,textAlign:'center',color:'#555'}}>
-            <Users size={48} color="#C8E6C9" style={{marginBottom:16}}/>
-            <h3 style={{color:'#1B5E20',margin:'0 0 8px'}}>Internal Procurement Suppliers</h3>
-            <p style={{margin:'0 0 20px',color:'#888'}}>View and manage internal suppliers for purchase orders and quotations.</p>
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="psl-bulk-bar">
+            <p className="psl-bulk-count"><CheckSquare size={16} style={{verticalAlign:'middle',marginRight:6}}/>{selected.size} selected</p>
+            <button className="psl-btn-gmail" onClick={handleEmailSelected}><Mail size={16}/> Email via Gmail</button>
+            <button className="psl-btn-deselect" onClick={()=>setSelected(new Set())}>Clear</button>
           </div>
         )}
+
+        {/* Table */}
+        <div className="psl-card">
+          {loading ? (
+            <div style={{display:'flex',justifyContent:'center',alignItems:'center',padding:60,gap:12,color:'#2563EB'}}>
+              <SegmentedSpinner size={28} /> <span style={{fontWeight:500}}>Loading suppliers...</span>
+            </div>
+          ) : error ? (
+            <div className="psl-empty">
+              <AlertCircle size={40} color="#DC2626"/><h3>Error</h3><p>{error}</p>
+              <button className="psl-btn psl-btn-green" style={{margin:'16px auto 0',display:'inline-flex'}} onClick={fetchSuppliers}><RefreshCw size={14}/> Retry</button>
+            </div>
+          ) : suppliers.length === 0 ? (
+            <div className="psl-empty">
+              <Truck size={48} color="#E5E7EB"/>
+              <h3>No {activeTab === 'internal' ? 'Internal' : 'Registered'} Suppliers Yet</h3>
+              <p>{activeTab === 'internal' ? 'Click "Add Internal Supplier" to create one.' : 'Customers who register as suppliers will appear here.'}</p>
+            </div>
+          ) : (
+            <>
+              <table className="psl-table">
+                <thead>
+                  <tr>
+                    <th style={{width:40}}>
+                      <input type="checkbox" className="psl-checkbox" checked={selected.size===suppliers.length && suppliers.length>0} onChange={toggleSelectAll}/>
+                    </th>
+                    <th>Supplier</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Company</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suppliers.map(s => (
+                    <tr key={s.id} className={selected.has(s.id)?'selected':''}>
+                      <td><input type="checkbox" className="psl-checkbox" checked={selected.has(s.id)} onChange={()=>toggleSelect(s.id)}/></td>
+                      <td className="psl-name">
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <div style={{width:32,height:32,borderRadius:'50%',background:'#2563EB',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'bold',fontSize:'13px',flexShrink:0}}>
+                            {s.full_name?.charAt(0)?.toUpperCase()}
+                          </div>
+                          <span>{s.full_name}</span>
+                        </div>
+                      </td>
+                      <td><a href={`mailto:${s.email}`} className="psl-email">{s.email || '—'}</a></td>
+                      <td className="psl-phone">{s.phone||'—'}</td>
+                      <td className="psl-company">
+                        <span style={{display:'flex',alignItems:'center',gap:5}}>
+                          <Building2 size={13} color="#9CA3AF"/>
+                          {s.company_name||<em style={{color:'#9CA3AF'}}>Individual</em>}
+                        </span>
+                      </td>
+                      <td><span className="psl-cat-badge">{s.category}</span></td>
+                      <td>{statusBadge(s.status)}</td>
+                      <td className="psl-date">{fmtDate(s.created_at)}</td>
+                      <td>
+                        <div style={{display:'flex',gap:6}}>
+                          {(s.status === 'Pending') && (
+                            <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
+                              <ShieldCheck size={13}/> Verify
+                            </button>
+                          )}
+                          {s.status === 'Verified' && (
+                            <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}>
+                              <CheckCircle2 size={13}/> Activate
+                            </button>
+                          )}
+                          {(s.status === 'Active' || s.status === 'Rejected') && (
+                            <button className="psl-btn psl-btn-outline psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
+                              <ShieldCheck size={13}/> View
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile cards */}
+              <div className="psl-mob-cards">
+                {suppliers.map(s => (
+                  <div key={s.id} className="psl-mob-card">
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <h4>{s.full_name}</h4>
+                      <input type="checkbox" className="psl-checkbox" checked={selected.has(s.id)} onChange={()=>toggleSelect(s.id)}/>
+                    </div>
+                    <p><Mail size={12} color="#6B7280" />{s.email || '—'}</p>
+                    <p><Phone size={12} color="#6B7280" />{s.phone||'—'}</p>
+                    <p><Tag size={12} color="#6B7280" />{s.category}</p>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
+                      {statusBadge(s.status)}
+                      {s.status==='Pending' && <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}><ShieldCheck size={12}/> Verify</button>}
+                      {s.status==='Verified' && <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}><CheckCircle2 size={12}/> Activate</button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Add Internal Supplier Modal */}
+      {showAddInternal && (
+        <div className="psl-modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddInternal(false)}>
+          <div className="psl-modal-content">
+            <div className="vd-head" style={{borderRadius: '12px 12px 0 0'}}>
+              <UserPlus size={22} color="#2563EB" />
+              <h2>Add Internal Supplier</h2>
+              <button className="vd-close" onClick={() => setShowAddInternal(false)}><X size={20}/></button>
+            </div>
+            <form onSubmit={handleAddInternal} style={{display:'flex', flexDirection:'column', flex: 1}}>
+              <div className="vd-body">
+                <div className="vd-section">
+                  <div className="vd-grid">
+                    <div className="vd-field full">
+                      <label className="vd-label">Full Name / Contact Person *</label>
+                      <input required className="vd-input" value={internalForm.full_name} onChange={e=>setInternalForm({...internalForm, full_name: e.target.value})} placeholder="e.g. Yonas Mezgebu" />
+                    </div>
+                    <div className="vd-field full">
+                      <label className="vd-label">Company Name (Optional)</label>
+                      <input className="vd-input" value={internalForm.company_name} onChange={e=>setInternalForm({...internalForm, company_name: e.target.value})} placeholder="e.g. Acme Corp" />
+                    </div>
+                    <div className="vd-field">
+                      <label className="vd-label">Email</label>
+                      <input type="email" className="vd-input" value={internalForm.email} onChange={e=>setInternalForm({...internalForm, email: e.target.value})} placeholder="supplier@example.com" />
+                    </div>
+                    <div className="vd-field">
+                      <label className="vd-label">Phone</label>
+                      <input type="tel" className="vd-input" value={internalForm.phone} onChange={e=>setInternalForm({...internalForm, phone: e.target.value})} placeholder="+251..." />
+                    </div>
+                    <div className="vd-field full">
+                      <label className="vd-label">Category *</label>
+                      <select required className="vd-select" value={internalForm.category} onChange={e=>setInternalForm({...internalForm, category: e.target.value})}>
+                        <option value="">Select Category...</option>
+                        <option>Agriculture</option>
+                        <option>Automotive</option>
+                        <option>Construction</option>
+                        <option>Electronics</option>
+                        <option>Pharmaceuticals</option>
+                        <option>Retail</option>
+                        <option>Services</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="vd-footer" style={{borderRadius: '0 0 12px 12px'}}>
+                <button type="button" className="vd-btn-cancel" onClick={() => setShowAddInternal(false)}>Cancel</button>
+                <button type="submit" className="vd-btn-verify" disabled={savingInternal}>
+                  {savingInternal ? <SegmentedSpinner size={16} /> : <UserPlus size={16}/>}
+                  {savingInternal ? 'Saving...' : 'Register Supplier'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`psl-toast psl-toast-${toast.type}`}>
