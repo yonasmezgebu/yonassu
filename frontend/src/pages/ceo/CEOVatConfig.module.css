@@ -414,6 +414,49 @@
 }
 .emptyStateError { color: var(--red); }
 
+/* ── Mapping catalog (grouped by module category) ───────── */
+.categoryList { padding: 20px 24px; }
+.mappingSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--blueBg);
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+.mappingSummary strong { color: var(--blue); font-size: 15px; }
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 14px 16px;
+  margin: 8px 0 0 0;
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.categoryBlock { margin: 12px 0 24px 0; }
+.categoryTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  padding: 8px 4px;
+}
+.categoryCount { color: var(--faint); font-size: 12px; }
+
 /* ── Timeline (history) ─────────────────────────────────── */
 .timeline { padding: 24px; display: flex; flex-direction: column; }
 .timelineItem {
