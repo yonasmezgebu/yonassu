@@ -85,23 +85,63 @@ async function ensureConfigTables() {
   }
 }
 
-/* ── ensure product tax mapping tables exist ─────────────────────────────────── */
+/* ── ensure product tax mapping tables exist (self-healing, generalized) ─────── */
+const MAPPING_SOURCES = [
+  'printing', 'pharmacy', 'car_rental', 'agrirent', 'retail', 'tender_sell', 'tender_buy',
+];
+
+async function ensureColumn(table, col, ddl) {
+  const rows = await db.raw(`SHOW COLUMNS FROM \`${table}\``);
+  const existing = new Set(rows[0].map((c) => c.Field));
+  if (!existing.has(col)) {
+    await db.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${ddl}`);
+  }
+}
+
 async function ensureMappingTables() {
   try {
     if (!(await db.schema.hasTable('product_tax_mappings'))) {
       await db.schema.createTable('product_tax_mappings', (t) => {
         t.increments('id').unsigned().primary();
-        t.integer('product_id').unsigned().notNullable();
+        t.string('source', 50).notNullable().defaultTo('retail');
+        t.bigInteger('item_id').unsigned().notNullable();
+        t.string('item_name', 255).nullable();
         t.integer('vat_config_id').unsigned().notNullable();
+        t.integer('product_id').unsigned().nullable(); // legacy
         t.integer('created_by').unsigned().nullable();
         t.timestamp('created_at').defaultTo(db.fn.now());
         t.timestamp('updated_at').defaultTo(db.fn.now());
-        t.unique(['product_id']);
+        t.unique(['source', 'item_id']);
       });
+    } else {
+      await ensureColumn('product_tax_mappings', 'source', "VARCHAR(50) NOT NULL DEFAULT 'retail'");
+      await ensureColumn('product_tax_mappings', 'item_id', 'BIGINT UNSIGNED NULL');
+      await ensureColumn('product_tax_mappings', 'item_name', 'VARCHAR(255) NULL');
+      // Legacy product_id is now optional
+      await db.raw('ALTER TABLE `product_tax_mappings` MODIFY `product_id` INT UNSIGNED NULL');
+      // Backfill legacy rows that only referenced products.id
+      await db.raw(
+        'UPDATE product_tax_mappings SET item_id = product_id, item_name = ' +
+        '(SELECT p.name FROM products p WHERE p.id = product_tax_mappings.product_id) ' +
+        'WHERE item_id IS NULL AND product_id IS NOT NULL'
+      );
+      // Swap the old UNIQUE(product_id) for UNIQUE(source, item_id)
+      try {
+        const oldIdx = await db.raw("SHOW INDEX FROM `product_tax_mappings` WHERE `Column_name` = 'product_id' AND `Non_unique` = 0");
+        if (oldIdx[0] && oldIdx[0].length) {
+          await db.raw(`ALTER TABLE \`product_tax_mappings\` DROP INDEX \`${oldIdx[0][0].Key_name}\``);
+        }
+        const newIdx = await db.raw("SHOW INDEX FROM `product_tax_mappings` WHERE `Column_name` = 'source' AND `Non_unique` = 0");
+        if (!newIdx[0] || !newIdx[0].length) {
+          await db.raw('ALTER TABLE `product_tax_mappings` ADD UNIQUE INDEX `uq_mapping_source_item` (`source`, `item_id`)');
+        }
+      } catch (_) { /* non-critical index migration */ }
     }
     if (!(await db.schema.hasTable('product_tax_mapping_history'))) {
       await db.schema.createTable('product_tax_mapping_history', (t) => {
         t.increments('id').unsigned().primary();
+        t.string('source', 50).nullable();
+        t.bigInteger('item_id').unsigned().nullable();
         t.integer('product_id').unsigned().nullable();
         t.string('product_name', 255).nullable();
         t.integer('old_vat_config_id').unsigned().nullable();
@@ -114,6 +154,9 @@ async function ensureMappingTables() {
         t.string('notes', 255).nullable();
         t.timestamp('created_at').defaultTo(db.fn.now());
       });
+    } else {
+      await ensureColumn('product_tax_mapping_history', 'source', 'VARCHAR(50) NULL');
+      await ensureColumn('product_tax_mapping_history', 'item_id', 'BIGINT UNSIGNED NULL');
     }
   } catch (e) {
     console.error('ensureMappingTables failed:', e.message);
@@ -341,26 +384,133 @@ const toggleActive = async (id, user) => {
 };
 
 /* ── Product / Service Tax Mapping ──────────────────────────────────────────── */
-const getMappings = async () => {
-  return db('product_tax_mappings as ptm')
-    .leftJoin('products as p', 'ptm.product_id', 'p.id')
+
+// Mapping is grouped by business module ("source"). Each source maps to the
+// products of that module. Tender has two sub-types: Compute & Sell (auction
+// sales) and Compute & Buy (procurement).
+const mappingBase = () =>
+  db('product_tax_mappings as ptm')
     .leftJoin('vat_configurations as vc', 'ptm.vat_config_id', 'vc.id')
     .select(
       'ptm.id',
-      'ptm.product_id',
-      'p.name as product_name',
-      'p.sku as product_sku',
-      'p.selling_price',
-      'p.is_active as product_active',
+      'ptm.source',
+      'ptm.item_id',
+      'ptm.item_name',
       'ptm.vat_config_id',
       'vc.name as tax_name',
       'vc.treatment',
       'vc.rate',
       'vc.is_active as treatment_active',
       'ptm.created_at'
-    )
-    .whereNull('p.deleted_at')
-    .orderBy('p.name', 'asc');
+    );
+
+const getMappings = async () => {
+  return mappingBase().orderBy('ptm.item_name', 'asc');
+};
+
+// Catalog items per source — each is the full list of products inside a module,
+// decorated with its current tax mapping if one exists.
+const sourceItems = {
+  printing: () =>
+    db('printing_product_types')
+      .select('id', 'name', 'code as sku', 'base_price_per_page as price')
+      .orderBy('name', 'asc'),
+  pharmacy: () =>
+    db('drugs')
+      .select('id', 'name', 'drug_code as sku', 'unit_price as price')
+      .orderBy('name', 'asc'),
+  car_rental: () =>
+    db('cars')
+      .select('id', 'name', db.raw('NULL as sku'), 'daily_rate as price')
+      .whereNull('deleted_at')
+      .orderBy('name', 'asc'),
+  agrirent: () =>
+    db('tractors')
+      .select('id', 'name', db.raw('NULL as sku'), 'daily_rate as price')
+      .whereNull('deleted_at')
+      .orderBy('name', 'asc'),
+  retail: () =>
+    db('retail_products')
+      .select('id', 'name', 'sku', 'price')
+      .orderBy('name', 'asc'),
+  tender_sell: async () => {
+    // Products sold through sales tenders — extracted from each tender's items JSON
+    const out = [];
+    const seen = new Set();
+    const tenders = await db('tenders').select('id', 'items');
+    for (const t of tenders) {
+      let arr;
+      try { arr = typeof t.items === 'string' ? JSON.parse(t.items) : t.items; } catch { continue; }
+      if (!Array.isArray(arr)) continue;
+      for (const it of arr) {
+        const id = it.id != null ? String(it.id) : `t${t.id}:${it.objectType || it.name || ''}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push({
+          id,
+          name: it.objectType || it.name || `Tender #${t.id} item`,
+          sku: it.unit || null,
+          price: it.startPrice != null ? parseFloat(it.startPrice) : null,
+        });
+      }
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  tender_buy: () =>
+    db('procurement_tenders')
+      .select('id', 'drug_name as name', 'tender_no as sku', 'quantity as price')
+      .orderBy('drug_name', 'asc'),
+};
+
+const getCatalog = async () => {
+  const mappings = await mappingBase();
+  const byKey = {};
+  mappings.forEach((m) => { byKey[`${m.source}:${m.item_id}`] = m; });
+
+  const decorate = (source, items) => items.map((it) => {
+    const m = byKey[`${source}:${it.id}`];
+    return {
+      id: it.id,
+      name: it.name,
+      sku: it.sku || null,
+      price: it.price != null ? it.price : null,
+      mapping: m
+        ? {
+            mapping_id: m.id,
+            vat_config_id: m.vat_config_id,
+            treatment: m.treatment,
+            rate: m.rate,
+            treatment_active: m.treatment_active,
+          }
+        : null,
+    };
+  });
+
+  const printing = await sourceItems.printing();
+  const pharmacy = await sourceItems.pharmacy();
+  const car_rental = await sourceItems.car_rental();
+  const agrirent = await sourceItems.agrirent();
+  const retail = await sourceItems.retail();
+  const tender_sell = await sourceItems.tender_sell();
+  const tender_buy = await sourceItems.tender_buy();
+
+  return {
+    categories: [
+      { key: 'printing', label: 'Commercial Printing', items: decorate('printing', printing) },
+      { key: 'pharmacy', label: 'Pharmacy & Health', items: decorate('pharmacy', pharmacy) },
+      { key: 'car_rental', label: 'Car Rental', items: decorate('car_rental', car_rental) },
+      { key: 'agrirent', label: 'AgriRent', items: decorate('agrirent', agrirent) },
+      { key: 'retail', label: 'Retail Store', items: decorate('retail', retail) },
+      {
+        key: 'tender',
+        label: 'Tender',
+        subsections: [
+          { key: 'tender_sell', label: 'Compute & Sell', items: decorate('tender_sell', tender_sell) },
+          { key: 'tender_buy', label: 'Compute & Buy', items: decorate('tender_buy', tender_buy) },
+        ],
+      },
+    ],
+  };
 };
 
 const getMappingProducts = async () => {
@@ -371,22 +521,29 @@ const getMappingProducts = async () => {
 };
 
 const upsertMapping = async (data, user) => {
-  const product = await db('products').where('id', data.product_id).whereNull('deleted_at').first();
-  if (!product) throw new Error('Product not found');
+  const source = data.source;
+  const itemId = String(data.item_id ?? '');
+  if (!MAPPING_SOURCES.includes(source)) throw new Error('Invalid mapping source');
+  if (!itemId) throw new Error('Missing item id');
 
   const treatment = await db('vat_configurations').where('id', data.vat_config_id).first();
   if (!treatment) throw new Error('Tax treatment not found');
 
-  const existing = await db('product_tax_mappings').where('product_id', data.product_id).first();
-  let mappingId = existing?.id;
+  const existing = await db('product_tax_mappings')
+    .where('source', source)
+    .where('item_id', itemId)
+    .first();
 
   const oldTreatment = existing
     ? (await db('vat_configurations').where('id', existing.vat_config_id).first())?.treatment || null
     : null;
 
+  const itemName = data.item_name || existing?.item_name || null;
+
   await db('product_tax_mapping_history').insert({
-    product_id: product.id,
-    product_name: product.name,
+    source,
+    item_id: itemId,
+    product_name: itemName,
     old_vat_config_id: existing ? existing.vat_config_id : null,
     old_treatment: oldTreatment,
     new_vat_config_id: treatment.id,
@@ -398,14 +555,18 @@ const upsertMapping = async (data, user) => {
     created_at: db.fn.now(),
   });
 
+  let mappingId = existing?.id;
   if (existing) {
     await db('product_tax_mappings')
       .where('id', existing.id)
-      .update({ vat_config_id: treatment.id, updated_at: db.fn.now() });
+      .update({ vat_config_id: treatment.id, item_name: itemName, updated_at: db.fn.now() });
   } else {
     const [id] = await db('product_tax_mappings').insert({
-      product_id: product.id,
+      source,
+      item_id: itemId,
+      item_name: itemName,
       vat_config_id: treatment.id,
+      product_id: null,
       created_by: user?.id || null,
       created_at: db.fn.now(),
       updated_at: db.fn.now(),
@@ -413,34 +574,23 @@ const upsertMapping = async (data, user) => {
     mappingId = id;
   }
 
-  return db('product_tax_mappings')
-    .leftJoin('products as p', 'product_tax_mappings.product_id', 'p.id')
-    .leftJoin('vat_configurations as vc', 'product_tax_mappings.vat_config_id', 'vc.id')
-    .select(
-      'product_tax_mappings.id',
-      'product_tax_mappings.product_id',
-      'p.name as product_name',
-      'p.sku as product_sku',
-      'product_tax_mappings.vat_config_id',
-      'vc.name as tax_name',
-      'vc.treatment',
-      'vc.rate'
-    )
-    .where('product_tax_mappings.id', mappingId)
-    .first();
+  return mappingBase().where('ptm.id', mappingId).first();
 };
 
 const removeMapping = async (id, user) => {
   const mapping = await db('product_tax_mappings').where('id', id).first();
   if (!mapping) throw new Error('Tax mapping not found');
 
-  const product = await db('products').where('id', mapping.product_id).whereNull('deleted_at').first();
+  const oldTreatment = mapping.vat_config_id
+    ? (await db('vat_configurations').where('id', mapping.vat_config_id).first())?.treatment || null
+    : null;
 
   await db('product_tax_mapping_history').insert({
-    product_id: mapping.product_id,
-    product_name: product?.name || null,
+    source: mapping.source,
+    item_id: mapping.item_id,
+    product_name: mapping.item_name || null,
     old_vat_config_id: mapping.vat_config_id,
-    old_treatment: null,
+    old_treatment: oldTreatment,
     new_vat_config_id: null,
     new_treatment: null,
     changed_by_id: user?.id || null,
@@ -458,6 +608,69 @@ const getMappingHistory = async () => {
   return db('product_tax_mapping_history').orderBy('created_at', 'desc').limit(200);
 };
 
+/* ── Shared VAT computation used by every module pricing form ───────────────── */
+// Unmapped items fall back to the current default standard VAT rate so totals
+// stay consistent with the frontend (vatService.getVatForItem).
+const DEFAULT_STANDARD_RATE = 0.15;
+
+// Active VAT configuration for a specific source+item, or null when unmapped.
+const effectiveRateFor = async (source, itemId) => {
+  if (itemId == null || itemId === '') return null;
+  const row = await db('product_tax_mappings as ptm')
+    .join('vat_configurations as vc', 'ptm.vat_config_id', 'vc.id')
+    .where({ 'ptm.source': source, 'ptm.item_id': String(itemId) })
+    .andWhere('vc.is_active', 1)
+    .select('vc.treatment', 'vc.rate')
+    .first();
+  if (!row) return null;
+  return { treatment: row.treatment, rate: parseFloat(row.rate) };
+};
+
+// Compute VAT for one line. `fallbackRate` (e.g. a product's own vat_rate) is
+// used only when the item has no CEO mapping; otherwise the currently active
+// standard VAT rate applies (hard-coded 0.15 only when no active standard
+// configuration exists at all).
+const computeVatForItem = async (source, itemId, amount, fallbackRate = null) => {
+  const amt = parseFloat(amount) || 0;
+  const eff = await effectiveRateFor(source, itemId);
+  let rate;
+  let treatment = 'standard';
+  if (eff) {
+    rate = eff.rate;
+    treatment = eff.treatment;
+  } else if (fallbackRate != null) {
+    rate = parseFloat(fallbackRate);
+  } else {
+    const std = await db('vat_configurations')
+      .where({ treatment: 'standard', is_active: 1 })
+      .orderBy('updated_at', 'desc')
+      .first();
+    rate = std ? parseFloat(std.rate) : DEFAULT_STANDARD_RATE;
+  }
+  const vat = amt * rate;
+  return {
+    mapped: !!eff,
+    treatment,
+    rate,
+    sub: amt,
+    vat,
+    total: amt + vat,
+  };
+};
+
+// Compute VAT for many lines at once and return aggregated totals.
+const computeVatForItems = async (source, lines, fallbackRate = null) => {
+  let subtotal = 0, vat = 0;
+  const rows = [];
+  for (const l of lines) {
+    const r = await computeVatForItem(source, l.itemId, l.amount, fallbackRate);
+    subtotal += r.sub;
+    vat += r.vat;
+    rows.push(r);
+  }
+  return { subtotal, vat, total: subtotal + vat, rows };
+};
+
 module.exports = {
   getAll,
   getById,
@@ -469,7 +682,11 @@ module.exports = {
   toggleActive,
   getMappings,
   getMappingProducts,
+  getCatalog,
   upsertMapping,
   removeMapping,
   getMappingHistory,
+  effectiveRateFor,
+  computeVatForItem,
+  computeVatForItems,
 };
