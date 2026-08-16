@@ -9,6 +9,7 @@ import api from '../../../services/apiClient';
 import authService from '../../../services/authService';
 import { PublicNav } from '../../LandingPage/PublicNavFooter';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import { loadVatSafe, getVatForItem } from '../../../services/vatService';
 import './AgriRentCreateOrder.css';
 
 /* ─────────────── COLOR TOKENS ─────────────── */
@@ -107,6 +108,11 @@ const AgriRentCreateOrder = () => {
     const dailyRate = tractor ? parseFloat(tractor.dailyRate || tractor.daily_rate || 0) : 0;
     setPricing({ days, dailyRate, total: days * dailyRate, tractorName: tractor?.name });
   }, [form.startDate, form.endDate, form.tractorId, tractors]);
+
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
+  const pricingVat = vatCtx && pricing ? getVatForItem(vatCtx, 'agrirent', parseInt(form.tractorId || 0), pricing.total).vat : 0;
+  const pricingTotal = pricing ? pricing.total + pricingVat : 0;
 
   const handleScreenshot = (e) => {
     const file = e.target.files[0];
@@ -320,7 +326,8 @@ const AgriRentCreateOrder = () => {
                   {[
                     { label: 'Daily Rate', value: `${pricing.dailyRate.toFixed(2)} ETB` },
                     { label: 'Total Days', value: `${pricing.days} days` },
-                    { label: 'Total Amount', value: `${pricing.total.toFixed(2)} ETB`, large: true },
+                    { label: 'VAT Amount', value: `${pricingVat.toFixed(2)} ETB` },
+                    { label: 'Total (incl. VAT)', value: `${pricingTotal.toFixed(2)} ETB`, large: true },
                   ].map(({ label, value, large }) => (
                     <div key={label}>
                       <div style={{ fontSize: 11, color: C.textSec, fontWeight: 600, marginBottom: 4 }}>{label}</div>
