@@ -21,7 +21,7 @@ router.put('/cart/item/:id', retailController.updateCartItem);
 router.delete('/cart/item/:id', retailController.removeCartItem);
 router.delete('/cart', retailController.clearCart);
 
-router.post('/orders/place', authenticate, retailController.placeOrder);
+router.post('/orders/place', authenticate, uploads.singlePaymentProof.single('payment_proof'), handleUploadError, retailController.placeOrder);
 router.get('/orders/my-orders', authenticate, retailController.getMyOrders);
 
 // ── Cashier (Admin, CEO) ───────────────────────────────────────
