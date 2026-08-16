@@ -211,6 +211,15 @@ const CEOApprovalsHub = () => {
       count: null
     },
     {
+      title: 'Final Payment Approvals',
+      description: 'Review and approve final fund releases (checked by Finance) for general procurements.',
+      icon: <DollarSign size={24} />,
+      bg: '#EDE9FE',
+      color: '#6D28D9',
+      path: '/ceo/payment-approvals',
+      count: null
+    },
+    {
       title: 'Fund Approvals (M9)',
       description: 'Review and approve pending fund requests and M9 tender requisitions.',
       icon: <FileText size={24} />,
