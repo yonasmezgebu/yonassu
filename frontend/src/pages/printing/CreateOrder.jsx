@@ -21,6 +21,8 @@ const CreateOrder = () => {
     specialInstructions: ''
   });
   const [priceEstimate, setPriceEstimate] = useState(0);
+  const [vatAmount, setVatAmount] = useState(0);
+  const [subtotal, setSubtotal] = useState(0);
   const [calculating, setCalculating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -43,6 +45,8 @@ const CreateOrder = () => {
         bindingType: formData.bindingType
       });
       setPriceEstimate(response.data?.data?.totalPrice || 0);
+      setVatAmount(response.data?.data?.vatAmount || 0);
+      setSubtotal(response.data?.data?.subtotal || 0);
     } catch (err) {
       console.error('Failed to calculate price:', err);
       // Fallback rough estimate if API fails
@@ -50,6 +54,8 @@ const CreateOrder = () => {
       if (formData.colorPrinting) base *= 3;
       if (formData.bindingType !== 'None') base += (50 * formData.quantity);
       setPriceEstimate(base);
+      setVatAmount(0);
+      setSubtotal(base);
     } finally {
       setCalculating(false);
     }
@@ -246,7 +252,20 @@ const CreateOrder = () => {
             </div>
             <div className={styles.divider}></div>
             <div className={styles.estimateTotal}>
-              <span>Estimated Cost</span>
+              <span>Subtotal</span>
+              <div className={styles.priceContainer}>
+                <span className={styles.priceValue}>{formatCurrency(subtotal)}</span>
+              </div>
+            </div>
+            <div className={styles.estimateTotal}>
+              <span>VAT Amount</span>
+              <div className={styles.priceContainer}>
+                <span className={styles.priceValue}>{formatCurrency(vatAmount)}</span>
+              </div>
+            </div>
+            <div className={styles.divider}></div>
+            <div className={styles.estimateTotal}>
+              <span>Estimated Cost (incl. VAT)</span>
               <div className={styles.priceContainer}>
                 {calculating ? (
                   <span className={styles.calculatingText}>Calculating...</span>
