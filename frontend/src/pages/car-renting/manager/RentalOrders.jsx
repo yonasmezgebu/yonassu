@@ -439,6 +439,9 @@ const RentalOrders = () => {
                     <div style={{ fontWeight: 900, color: C.forestGreen, fontSize: 15, marginBottom: 5 }}>
                       {parseFloat(order.totalAmount || order.total_amount || 0).toLocaleString()} ETB
                     </div>
+                    <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>
+                      VAT: {parseFloat(order.vatAmount || order.vat_amount || 0).toLocaleString()} ETB
+                    </div>
                     <div style={{ marginBottom: 4 }}>
                       <PayBadge status={order.paymentStatus || order.payment_status} />
                     </div>
