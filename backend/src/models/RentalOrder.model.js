@@ -14,6 +14,8 @@ class RentalOrder {
     this.totalDays = data.total_days || data.totalDays || 0;
     this.dailyRate = parseFloat(data.daily_rate || data.dailyRate || 0);
     this.rentalAmount = parseFloat(data.rental_amount || data.rentalAmount || 0);
+    this.subtotal = parseFloat(data.subtotal || data.subtotal || 0);
+    this.vatAmount = parseFloat(data.vat_amount || data.vatAmount || 0);
     this.securityDeposit = parseFloat(data.security_deposit || data.securityDeposit || 5000);
     this.totalAmount = parseFloat(data.total_amount || data.totalAmount || 0);
     this.paymentMethod = data.payment_method || data.paymentMethod || 'Cash';
@@ -72,6 +74,8 @@ class RentalOrder {
       totalDays: this.totalDays,
       dailyRate: this.dailyRate,
       rentalAmount: this.rentalAmount,
+      subtotal: this.subtotal,
+      vatAmount: this.vatAmount,
       securityDeposit: this.securityDeposit,
       totalAmount: this.totalAmount,
       paymentMethod: this.paymentMethod,
