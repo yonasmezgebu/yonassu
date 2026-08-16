@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
 const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
+const vatConfigService = require('../../services/vatConfig.service');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -284,13 +285,13 @@ exports.submitOnlineOrder = async (req, res) => {
         throw new Error(`Drug "${drug.name}" requires a prescription`);
 
       const unitPrice = parseFloat(drug.unit_price);
-      const vatRate = parseFloat(drug.vat_rate || 0);
       const lineSubtotal = parseFloat((unitPrice * item.quantity).toFixed(2));
-      const vatAmount = computeVat(lineSubtotal, vatRate);
+      const vatResult = await vatConfigService.computeVatForItem('pharmacy', item.drug_id, lineSubtotal, parseFloat(drug.vat_rate || 0));
+      const vatAmount = parseFloat(vatResult.vat.toFixed(2));
       const lineTotal = parseFloat((lineSubtotal + vatAmount).toFixed(2));
       subtotal += lineSubtotal;
       totalVat += vatAmount;
-      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: vatRate, vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
+      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: parseFloat(drug.vat_rate || 0), vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
     }
     const totalAmount = parseFloat((subtotal + totalVat).toFixed(2));
     const sale_code = generateCode('ORD');
@@ -424,13 +425,13 @@ exports.createSale = async (req, res) => {
     for (const item of items) {
       const drug = await trx('drugs').where('id', item.drug_id).first();
       const unitPrice = parseFloat(drug.unit_price);
-      const vatRate = parseFloat(drug.vat_rate || 0);
       const lineSubtotal = parseFloat((unitPrice * item.quantity).toFixed(2));
-      const vatAmount = computeVat(lineSubtotal, vatRate);
+      const vatResult = await vatConfigService.computeVatForItem('pharmacy', item.drug_id, lineSubtotal, parseFloat(drug.vat_rate || 0));
+      const vatAmount = parseFloat(vatResult.vat.toFixed(2));
       const lineTotal = parseFloat((lineSubtotal + vatAmount).toFixed(2));
       subtotal += lineSubtotal;
       totalVat += vatAmount;
-      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: vatRate, vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
+      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: parseFloat(drug.vat_rate || 0), vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
     }
     const totalAmount = parseFloat((subtotal + totalVat).toFixed(2));
     const sale_code = generateCode('SALE');
