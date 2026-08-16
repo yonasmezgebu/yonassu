@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const notificationRepository = require('../../repositories/notification.repository');
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
+const vatConfigService = require('../../services/vatConfig.service');
 
 // ── HELPER: Sync to Finance ───────────────────────────────────────────────────
 const syncToFinance = async (order, userId) => {
@@ -104,7 +105,9 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    const totalAmount = dailyRate * totalDays;
+    const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const totalAmount = dailyRate * totalDays + vatAmount;
     const orderNumber = generateOrderNumber();
 
     const [id] = await db('agrirent_orders').insert({
@@ -118,6 +121,8 @@ exports.createOrder = async (req, res) => {
       end_date: endDate,
       total_days: totalDays,
       daily_rate: dailyRate,
+      subtotal: dailyRate * totalDays,
+      vat_amount: vatAmount,
       total_amount: totalAmount,
       field_location: fieldLocation || null,
       field_size_hectares: fieldSizeHectares || null,
@@ -210,7 +215,9 @@ exports.createManualOrder = async (req, res) => {
       if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
     }
 
-    const totalAmount = dailyRate * totalDays;
+    const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const totalAmount = dailyRate * totalDays + vatAmount;
     const orderNumber = generateOrderNumber();
 
     const [id] = await db('agrirent_orders').insert({
@@ -223,6 +230,8 @@ exports.createManualOrder = async (req, res) => {
       end_date: endDate,
       total_days: totalDays,
       daily_rate: dailyRate,
+      subtotal: dailyRate * totalDays,
+      vat_amount: vatAmount,
       total_amount: totalAmount,
       field_location: fieldLocation || null,
       field_size_hectares: fieldSizeHectares || null,
