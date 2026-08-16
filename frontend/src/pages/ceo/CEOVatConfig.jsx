@@ -221,36 +221,80 @@ const HistoryPanel = ({ history, loading }) => {
 };
 
 /* ─── Mapping Modal ──────────────────────────────────────── */
-const MappingForm = ({ products, configs, initial, onSave, onCancel, saving }) => {
-  const [productId, setProductId] = useState(initial?.product_id ?? '');
-  const [vatConfigId, setVatConfigId] = useState(initial?.vat_config_id ?? '');
-  const [notes, setNotes] = useState('');
+const MappingForm = ({ catalog, configs, fixed, onSave, onCancel, saving }) => {
+  const [source, setSource]     = useState(fixed?.source || '');
+  const [itemId, setItemId]     = useState(fixed?.item ? String(fixed.item.id) : '');
+  const [vatConfigId, setVatConfigId] = useState(fixed?.item?.mapping?.vat_config_id ?? '');
+  const [notes, setNotes]       = useState('');
 
-  const mappedIds = new Set(products.filter((p) => p.mapped).map((p) => p.id));
+  const flatSources = [];
+  (catalog || []).forEach((cat) => {
+    if (cat.subsections) {
+      cat.subsections.forEach((s) => flatSources.push({ key: s.key, label: `${cat.label} — ${s.label}` }));
+    } else {
+      flatSources.push({ key: cat.key, label: cat.label });
+    }
+  });
+
+  const itemsFor = (src) => {
+    for (const cat of catalog || []) {
+      if (cat.subsections) {
+        const s = cat.subsections.find((x) => x.key === src);
+        if (s) return s.items;
+      } else if (cat.key === src) {
+        return cat.items;
+      }
+    }
+    return [];
+  };
+
+  const items = source ? itemsFor(source) : [];
 
   const submit = (e) => {
     e.preventDefault();
-    if (!productId || !vatConfigId) return;
-    onSave({ product_id: Number(productId), vat_config_id: Number(vatConfigId), notes });
+    if (!itemId || !vatConfigId) return;
+    const item = items.find((i) => String(i.id) === String(itemId)) || fixed?.item;
+    onSave({
+      source: fixed?.source || source,
+      item_id: itemId,
+      item_name: item?.name || '',
+      vat_config_id: Number(vatConfigId),
+      notes,
+    });
   };
 
   return (
     <form onSubmit={submit}>
-      <Field label="Product / Service">
-        <select
-          className={styles.input}
-          value={productId}
-          onChange={(e) => setProductId(e.target.value)}
-          disabled={!!initial}
-          required>
-          <option value="">Select a product...</option>
-          {products
-            .filter((p) => !p.mapped || p.id === initial?.product_id)
-            .map((p) => (
-              <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>
+      {!fixed && (
+        <Field label="Product Category">
+          <select
+            className={styles.input}
+            value={source}
+            onChange={(e) => { setSource(e.target.value); setItemId(''); }}
+            required>
+            <option value="">Select a category...</option>
+            {flatSources.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
             ))}
-        </select>
-      </Field>
+          </select>
+        </Field>
+      )}
+      {!fixed ? (
+        <Field label="Product / Service">
+          <select className={styles.input} value={itemId} onChange={(e) => setItemId(e.target.value)} required>
+            <option value="">Select a product...</option>
+            {items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}{i.mapping ? ` — currently ${i.mapping.treatment}` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <Field label="Product / Service">
+          <input className={styles.input} value={fixed.item.name} disabled readOnly />
+        </Field>
+      )}
       <Field label="Tax Treatment">
         <select className={styles.input} value={vatConfigId} onChange={(e) => setVatConfigId(e.target.value)} required>
           <option value="">Select a treatment...</option>
@@ -268,23 +312,77 @@ const MappingForm = ({ products, configs, initial, onSave, onCancel, saving }) =
         <button type="button" className={styles.btnGhost} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.btnPrimary} disabled={saving}>
           {saving ? <Spinner/> : <Check size={14}/>}
-          {initial ? 'Update Mapping' : 'Assign Treatment'}
+          Apply Treatment
         </button>
       </div>
     </form>
   );
 };
 
+/* ─── Category mapping table ─────────────────────────────── */
+const MappingTable = ({ title, source, items, onApply, onRemove, savingId, emptyNote }) => (
+  <div className={styles.categoryBlock}>
+    <div className={styles.categoryTitle}>
+      <span>{title}</span>
+      <span className={styles.categoryCount}>{items.length} item{items.length === 1 ? '' : 's'}</span>
+    </div>
+    {items.length === 0 ? (
+      <div className={styles.emptyState}><Package size={22}/><span>{emptyNote || 'No products in this category yet.'}</span></div>
+    ) : (
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Product / Service</th>
+              <th>Ref</th>
+              <th>Price</th>
+              <th>Applied Treatment</th>
+              <th>Rate</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it) => (
+              <tr key={`${source}:${it.id}`} className={styles.row}>
+                <td><strong className={styles.cellName}>{it.name}</strong></td>
+                <td className={styles.cellMuted}>{it.sku || '—'}</td>
+                <td className={styles.cellRate}>{it.price != null ? `ETB ${Number(it.price).toLocaleString()}` : '—'}</td>
+                <td>{it.mapping ? <TreatmentBadge treatment={it.mapping.treatment}/> : <span className={styles.cellMuted}>Not applied</span>}</td>
+                <td className={styles.cellRate}>{it.mapping ? fmtPct(it.mapping.rate) : '—'}</td>
+                <td>
+                  <div className={styles.rowActions}>
+                    <button className={styles.btnGhostSm} onClick={() => onApply(source, it)}>
+                      <Edit3 size={12}/> {it.mapping ? 'Change' : 'Apply'}
+                    </button>
+                    {it.mapping && (
+                      <button
+                        className={styles.btnGhostSm}
+                        onClick={() => onRemove(it.mapping.mapping_id, it.name)}
+                        disabled={savingId === it.mapping.mapping_id}
+                        title="Remove mapping">
+                        <Trash2 size={13}/>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+);
+
 /* ─── Main Component ─────────────────────────────────────── */
 const CEOVatConfig = () => {
   const [configs, setConfigs]       = useState([]);
   const [history, setHistory]       = useState([]);
-  const [mappings, setMappings]     = useState([]);
+  const [catalog, setCatalog]       = useState([]);
   const [mappingHistory, setMappingHistory] = useState([]);
-  const [productOptions, setProductOptions] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [histLoading, setHistLoading] = useState(false);
-  const [mapLoading, setMapLoading] = useState(true);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [error, setError]           = useState(null);
   const [toast, setToast]           = useState(null);
   const [modal, setModal]           = useState(null);
@@ -318,21 +416,14 @@ const CEOVatConfig = () => {
     } catch { /* silent */ } finally { setHistLoading(false); }
   }, []);
 
-  const fetchMappings = useCallback(async () => {
-    setMapLoading(true);
+  const fetchCatalog = useCallback(async () => {
+    setCatalogLoading(true);
     try {
-      const res = await apiClient.get('/vat-config/mappings/list');
-      const data = Array.isArray(res) ? res : (res?.data?.data ?? res?.data ?? []);
-      setMappings(Array.isArray(data) ? data : []);
-    } catch { /* silent */ } finally { setMapLoading(false); }
-  }, []);
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/vat-config/mappings/products');
-      const data = Array.isArray(res) ? res : (res?.data?.data ?? res?.data ?? []);
-      setProductOptions(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
+      const res = await apiClient.get('/vat-config/mappings/catalog');
+      const data = res?.data?.data ?? res?.data ?? res;
+      const cats = Array.isArray(data) ? data : (data?.categories || []);
+      setCatalog(Array.isArray(cats) ? cats : []);
+    } catch { /* silent */ } finally { setCatalogLoading(false); }
   }, []);
 
   const fetchMappingHistory = useCallback(async () => {
@@ -344,10 +435,10 @@ const CEOVatConfig = () => {
   }, []);
 
   useEffect(() => {
-    fetchConfigs(); fetchHistory(); fetchMappings(); fetchProducts(); fetchMappingHistory();
-  }, [fetchConfigs, fetchHistory, fetchMappings, fetchProducts, fetchMappingHistory]);
+    fetchConfigs(); fetchHistory(); fetchCatalog(); fetchMappingHistory();
+  }, [fetchConfigs, fetchHistory, fetchCatalog, fetchMappingHistory]);
 
-  const refreshAll = () => { fetchConfigs(); fetchHistory(); fetchMappings(); fetchMappingHistory(); };
+  const refreshAll = () => { fetchConfigs(); fetchHistory(); fetchCatalog(); fetchMappingHistory(); };
 
   /* ── Config actions ────────────────────────────────────── */
   const handleCreate = async (form) => {
@@ -410,10 +501,10 @@ const CEOVatConfig = () => {
     setSavingId('map');
     try {
       await apiClient.post('/vat-config/mappings', payload);
-      notify('Tax mapping saved and recorded.');
-      setMapModal(null); fetchMappings(); fetchMappingHistory(); fetchProducts();
+      notify('Tax treatment applied and recorded.');
+      setMapModal(null); fetchCatalog(); fetchMappingHistory();
     } catch (e) {
-      notify(e?.response?.data?.message || 'Failed to save mapping', 'error');
+      notify(e?.response?.data?.message || 'Failed to apply treatment', 'error');
     } finally { setSavingId(null); }
   };
 
@@ -422,10 +513,19 @@ const CEOVatConfig = () => {
     try {
       await apiClient.delete(`/vat-config/mappings/${id}`);
       notify('Tax mapping removed.');
-      fetchMappings(); fetchMappingHistory(); fetchProducts();
+      fetchCatalog(); fetchMappingHistory();
     } catch (e) {
       notify(e?.response?.data?.message || 'Failed to remove mapping', 'error');
     } finally { setSavingId(null); }
+  };
+
+  const handleApplyTreatment = (source, item) => {
+    setMapModal({ mode: 'apply', source, item });
+  };
+
+  const handleRemoveItemMapping = (id, name) => {
+    if (!window.confirm(`Remove the tax mapping for "${name}"?`)) return;
+    handleRemoveMapping(id);
   };
 
   /* ── Derived ───────────────────────────────────────────── */
@@ -438,15 +538,22 @@ const CEOVatConfig = () => {
     return c.name.toLowerCase().includes(q) || (c.treatment || '').toLowerCase().includes(q);
   });
 
-  const filteredMappings = mappings.filter((m) => {
-    const q = mapSearch.trim().toLowerCase();
-    if (!q) return true;
-    return (m.product_name || '').toLowerCase().includes(q) || (m.product_sku || '').toLowerCase().includes(q)
-      || (m.treatment || '').toLowerCase().includes(q);
+  const catalogCategories = Array.isArray(catalog) ? catalog : [];
+  const q = mapSearch.trim().toLowerCase();
+  const filteredCatalog = catalogCategories.map((cat) => {
+    const keep = (items) => !q ? items : items.filter((i) =>
+      (i.name || '').toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q));
+    if (cat.subsections) {
+      return { ...cat, subsections: cat.subsections.map((s) => ({ ...s, items: keep(s.items) })) };
+    }
+    return { ...cat, items: keep(cat.items) };
   });
 
-  const mappedProductIds = new Set(mappings.map((m) => m.product_id));
-  const productChoices = productOptions.map((p) => ({ ...p, mapped: mappedProductIds.has(p.id) }));
+  const sumMapped = (items) => items.filter((i) => i.mapping).length;
+  const mappedTotal = catalogCategories.reduce((acc, cat) => {
+    if (cat.subsections) return acc + cat.subsections.reduce((a, s) => a + sumMapped(s.items), 0);
+    return acc + sumMapped(cat.items);
+  }, 0);
 
   const TABS = [
     ['rates', 'VAT Rates & Treatments'],
@@ -649,7 +756,11 @@ const CEOVatConfig = () => {
           <div className={styles.cardHeader}>
             <div>
               <h2 className={styles.sectionTitle}>Product / Service Tax Mapping</h2>
-              <p className={styles.sectionSub}>Assign each product a tax treatment. The rate is always read from the central configuration.</p>
+              <p className={styles.sectionSub}>
+                Products are classified by module — Commercial Printing, Pharmacy &amp; Health, Car Rental, AgriRent,
+                Retail Store, and Tender (Compute &amp; Sell / Compute &amp; Buy). Apply a tax treatment to each product;
+                the rate is always read from the central configuration.
+              </p>
             </div>
             <div className={styles.cardHeaderActions}>
               <input
@@ -658,55 +769,50 @@ const CEOVatConfig = () => {
                 value={mapSearch}
                 onChange={(e) => setMapSearch(e.target.value)}
               />
-              <button className={styles.btnPrimary} onClick={() => setMapModal('new')}>
+              <button className={styles.btnPrimary} onClick={() => setMapModal({ mode: 'new' })}>
                 <Plus size={15}/> Assign Treatment
               </button>
             </div>
           </div>
 
-          {mapLoading ? (
-            <div className={styles.emptyState}><Spinner size={22}/><span>Loading mappings...</span></div>
-          ) : filteredMappings.length === 0 ? (
-            <div className={styles.emptyState}><Package size={26}/><span>No tax mappings yet. Assign a treatment to a product.</span></div>
+          {catalogLoading ? (
+            <div className={styles.emptyState}><Spinner size={22}/><span>Loading products by category...</span></div>
+          ) : filteredCatalog.length === 0 ? (
+            <div className={styles.emptyState}><Package size={26}/><span>No product categories available.</span></div>
           ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th>Price</th>
-                    <th>Treatment</th>
-                    <th>Rate</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMappings.map((m) => (
-                    <tr key={m.id} className={styles.row}>
-                      <td><strong className={styles.cellName}>{m.product_name}</strong></td>
-                      <td className={styles.cellMuted}>{m.product_sku || '—'}</td>
-                      <td className={styles.cellRate}>{m.selling_price != null ? `ETB ${Number(m.selling_price).toLocaleString()}` : '—'}</td>
-                      <td><TreatmentBadge treatment={m.treatment}/></td>
-                      <td className={styles.cellRate}>{fmtPct(m.rate)}</td>
-                      <td>
-                        <div className={styles.rowActions}>
-                          <button className={styles.btnGhostSm} onClick={() => setMapModal({ type: 'edit', mapping: m })}>
-                            <Edit3 size={12}/> Change
-                          </button>
-                          <button
-                            className={styles.btnGhostSm}
-                            onClick={() => handleRemoveMapping(m.id)}
-                            disabled={savingId === m.id}
-                            title="Remove mapping">
-                            <Trash2 size={13}/>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={styles.categoryList}>
+              <div className={styles.mappingSummary}>
+                <span><strong>{mappedTotal}</strong> of all products have a tax treatment applied</span>
+              </div>
+              {filteredCatalog.map((cat) => (
+                <div key={cat.key}>
+                  <div className={styles.categoryHeader}>
+                    <span>{cat.label}</span>
+                  </div>
+                  {cat.subsections ? (
+                    cat.subsections.map((s) => (
+                      <MappingTable
+                        key={s.key}
+                        title={`${s.label}`}
+                        source={s.key}
+                        items={s.items}
+                        onApply={handleApplyTreatment}
+                        onRemove={handleRemoveItemMapping}
+                        savingId={savingId}
+                      />
+                    ))
+                  ) : (
+                    <MappingTable
+                      title="All products"
+                      source={cat.key}
+                      items={cat.items}
+                      onApply={handleApplyTreatment}
+                      onRemove={handleRemoveItemMapping}
+                      savingId={savingId}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -794,13 +900,13 @@ const CEOVatConfig = () => {
       {/* ── Mapping Modal ───────────────────────────────── */}
       {mapModal && (
         <Modal
-          title={mapModal === 'new' ? 'Assign Tax Treatment' : `Change — ${mapModal.mapping.product_name}`}
-          subtitle="The mapping change is recorded in the mapping audit trail."
+          title={mapModal.mode === 'apply' ? `Apply Treatment — ${mapModal.item.name}` : 'Assign Tax Treatment'}
+          subtitle="Choose a category and product, then apply a tax treatment. The change is recorded in the mapping audit trail."
           onClose={() => setMapModal(null)}>
           <MappingForm
-            products={productChoices}
+            catalog={catalogCategories}
             configs={configs}
-            initial={mapModal === 'new' ? null : { product_id: mapModal.mapping.product_id, vat_config_id: mapModal.mapping.vat_config_id }}
+            fixed={mapModal.mode === 'apply' ? { source: mapModal.source, item: mapModal.item } : null}
             saving={savingId === 'map'}
             onCancel={() => setMapModal(null)}
             onSave={handleSaveMapping}
