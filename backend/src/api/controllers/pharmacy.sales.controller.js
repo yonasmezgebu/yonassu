@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
+const vatConfigService = require('../../services/vatConfig.service');
 
 function generateReceiptNo(last) {
   try {
@@ -66,7 +67,23 @@ const salesController = {
     const receiptNo = generateReceiptNo(lastReceipt);
 
     const totalProducts = items.reduce((s, i) => s + i.quantity, 0);
-    const totalAmount = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
+
+    // Central VAT — consistent with the cart/order pricing shown in the pharmacy POS
+    let subtotal = 0;
+    let vatAmount = 0;
+    const vatLineItems = [];
+    for (const it of items) {
+      const lineSubtotal = (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1);
+      subtotal += lineSubtotal;
+      let drug = null;
+      if (it.drug_id) drug = await db('pharmacy_medications').where({ id: it.drug_id }).first();
+      if (!drug && it.drug_name) drug = await db('pharmacy_medications').where({ name: it.drug_name }).first();
+      const vatResult = await vatConfigService.computeVatForItem('pharmacy', drug ? drug.id : null, lineSubtotal, parseFloat(drug ? drug.vat_rate : 0));
+      const lineVat = parseFloat(vatResult.vat.toFixed(2));
+      vatAmount += lineVat;
+      vatLineItems.push({ vat_amount: lineVat });
+    }
+    const totalAmount = parseFloat((subtotal + vatAmount).toFixed(2));
 
     const effectiveWorkerId = worker ? worker.id : null;
 
@@ -75,13 +92,14 @@ const salesController = {
         branch_id, worker_id: effectiveWorkerId, sale_type: sale_type || 'WALK-IN',
         recipient_name: payment.recipient_name || null,
         recipient_phone: payment.recipient_phone || null,
-        total_products: totalProducts, total_amount: totalAmount, receipt_no: receiptNo
+        total_products: totalProducts, subtotal, vat_amount: vatAmount, total_amount: totalAmount, receipt_no: receiptNo
       });
 
-      const saleItems = items.map(it => ({
+      const saleItems = items.map((it, idx) => ({
         sale_id: saleId, drug_name: it.drug_name,
         quantity: it.quantity, unit_price: it.unit_price,
-        total_price: it.unit_price * it.quantity
+        total_price: it.unit_price * it.quantity,
+        vat_amount: vatLineItems[idx] ? vatLineItems[idx].vat_amount : 0
       }));
       await trx('pharmacy_sale_items').insert(saleItems);
 
