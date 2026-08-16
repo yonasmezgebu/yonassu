@@ -3,14 +3,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 // 1. Sourcing & Procurement
-import PurchaseMarketResearch from './PurchaseMarketResearch';
 import PurchaseRequests from './PurchaseRequests';
 import PurchaseDrugTenders from './PurchaseDrugTenders';
 import PurchaseSupplierBids from './PurchaseSupplierBids';
 import PurchaseSupplierQuotations from './PurchaseSupplierQuotations';
 import PurchaseOrders from './PurchaseOrders';
 import PurchaseReturns from './PurchaseReturns';
-import PurchaseHistory from './PurchaseHistory';
 import PurchaseSmartTenders from './PurchaseSmartTenders';
 import PurchaseContact from './PurchaseContact';
 import PurchaseGeneralProcurements from './PurchaseGeneralProcurements';
@@ -47,15 +45,12 @@ import styles from './PurchaseDashboard.module.css';
 const PurchaseDashboard = () => {
   const menuItems = [
     { label: 'Dashboard', path: '/purchase/overview', icon: 'home' },
-    { label: 'Contact Settings', icon: 'phone', children: [ { label: 'Setting Contact', path: '/purchase/contact', icon: 'settings' }, { label: 'Chat', path: '/purchase/chat', icon: 'message-circle', color: '#6B8E23' } ] },
     { type: 'divider' },
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
-        { label: 'Market Research (M4)',    path: '/purchase/market-research', icon: 'search',       color: '#0284c7' },
         { label: 'Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
         { label: 'Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
         { label: 'Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
-        { label: 'Purchase Audit',          path: '/purchase/history',         icon: 'clock',        color: '#475569' },
         { label: 'General Procurements',    path: '/purchase/general-procurements', icon: 'truck',   color: '#8b5cf6' },
       ]
     },
@@ -75,6 +70,7 @@ const PurchaseDashboard = () => {
       ]
     },
     { type: 'divider' },
+    { label: 'Contact Settings', icon: 'phone', children: [ { label: 'Setting Contact', path: '/purchase/contact', icon: 'settings' }, { label: 'Chat', path: '/purchase/chat', icon: 'message-circle', color: '#6B8E23' } ] },
     { label: 'Audit Log', path: '/purchase/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
@@ -86,7 +82,6 @@ const PurchaseDashboard = () => {
             <Route path="overview" element={<PurchaseHome />} />
             
             {/* 1. Sourcing & Procurement */}
-            <Route path="market-research" element={<PurchaseMarketResearch />} />
             <Route path="requests" element={<PurchaseRequests />} />
             <Route path="smart-tenders" element={<PurchaseSmartTenders />} />
             <Route path="quotations" element={<PurchaseSupplierQuotations />} />
@@ -94,7 +89,6 @@ const PurchaseDashboard = () => {
             <Route path="chat" element={<ManagerChat />} />
             <Route path="orders" element={<PurchaseOrders />} />
             <Route path="returns" element={<PurchaseReturns />} />
-            <Route path="history" element={<PurchaseHistory />} />
             <Route path="general-procurements" element={<PurchaseGeneralProcurements />} />
 
             {/* 2. Supplier Management */}
