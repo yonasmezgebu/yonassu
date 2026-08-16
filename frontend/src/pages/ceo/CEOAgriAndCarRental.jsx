@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Car, Tractor, CheckCircle, Clock, Wrench, Activity, AlertCircle } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import CEOGeneralProcurementApprovals from './CEOGeneralProcurementApprovals';
 
 /* ─── Enterprise Global Styles ─── */
 const GlobalStyles = () => (
@@ -244,27 +245,18 @@ export default function CEOAgriAndCarRental({ isApprovalMode = false }) {
 
   if (isApprovalMode) {
     return (
-      <div className="car-page">
+      <div className="car-page" style={{ padding: 0 }}>
         <GlobalStyles />
         
         {/* Back bar */}
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '24px 24px 0 24px', background: '#F9FAFB' }}>
           <button onClick={() => navigate('/ceo/approvals')} className="car-btn car-btn-secondary">
             <ArrowLeft size={16} /> Back to Approvals Hub
           </button>
           <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Administration / Approvals Hub / Agri & Car Rental Approvals</span>
         </div>
         
-        <div style={{ marginBottom: 32 }}>
-          <h1 className="car-title">Agri & Car Rental Approvals</h1>
-          <p className="car-subtitle">Review agricultural equipment and vehicle requests</p>
-        </div>
-        
-        <div className="car-card" style={{ textAlign: 'center', padding: '64px 24px' }}>
-          <CheckCircle size={48} color="var(--color-success)" style={{ margin: '0 auto 16px', opacity: 0.2 }} />
-          <h2 style={{ fontSize: 18, color: 'var(--color-text-primary)', margin: '0 0 8px 0', fontWeight: 600 }}>No Pending Approvals</h2>
-          <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 14 }}>All requests are currently resolved.</p>
-        </div>
+        <CEOGeneralProcurementApprovals />
       </div>
     );
   }
