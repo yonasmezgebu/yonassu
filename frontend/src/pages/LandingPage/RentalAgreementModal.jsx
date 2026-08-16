@@ -4,6 +4,7 @@ import { X, Calendar, User, FileText, CreditCard, Car, Wallet, Upload, CheckCirc
 import carService from '../../services/carService';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 
 const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
   const navigate = useNavigate();
@@ -22,7 +23,9 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [successData, setSuccessData] = useState(null);
   const [financeAccounts, setFinanceAccounts] = useState([]);
-  
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
+
   const fileRef = useRef(null);
   const securityDeposit = 5000;
 
@@ -72,7 +75,8 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
 
   const dailyRate = parseFloat(car?.dailyRate || 0);
   const rentalTotal = dailyRate * totalDays;
-  const grandTotal = rentalTotal + securityDeposit;
+  const vatCalc = getVatForItem(vatCtx, 'car_rental', car?.id, rentalTotal);
+  const grandTotal = rentalTotal + vatCalc.vat + securityDeposit;
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
@@ -254,8 +258,9 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
               {totalDays > 0 && (
                 <div className="psp-price-summary">
                   <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalTotal.toLocaleString()}</span></div>
+                  <div className="psp-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
                   <div className="psp-price-row" style={{ color: '#047857' }}><span>Security Deposit (Refundable)</span><span>ETB {securityDeposit.toLocaleString()}</span></div>
-                  <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED</span><span>ETB {grandTotal.toLocaleString()}</span></div>
+                  <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {grandTotal.toLocaleString()}</span></div>
                 </div>
               )}
 
