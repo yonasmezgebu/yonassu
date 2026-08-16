@@ -32,7 +32,9 @@ router.get('/export/csv', authorizeRoles(['Admin']), contactController.exportCsv
 router.get('/:id', contactController.get);
 router.put('/:id/reply', contactController.reply);
 router.put('/:id/close', contactController.close);
+router.put('/:id/status', contactController.updateStatus);
 router.put('/:id/assign', authorizeRoles(['Admin']), contactController.assign);
 router.post('/bulk', authorizeRoles(['Admin']), contactController.bulkAction);
+router.delete('/:id', authorizeRoles(['Admin']), contactController.deleteMessage);
 
 module.exports = router;
