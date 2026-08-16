@@ -78,7 +78,7 @@ const salesController = {
       let drug = null;
       if (it.drug_id) drug = await db('pharmacy_medications').where({ id: it.drug_id }).first();
       if (!drug && it.drug_name) drug = await db('pharmacy_medications').where({ name: it.drug_name }).first();
-      const vatResult = await vatConfigService.computeVatForItem('pharmacy', drug ? drug.id : null, lineSubtotal, parseFloat(drug ? drug.vat_rate : 0));
+      const vatResult = await vatConfigService.computeVatForItem('pharmacy', drug ? drug.id : null, lineSubtotal);
       const lineVat = parseFloat(vatResult.vat.toFixed(2));
       vatAmount += lineVat;
       vatLineItems.push({ vat_amount: lineVat });
