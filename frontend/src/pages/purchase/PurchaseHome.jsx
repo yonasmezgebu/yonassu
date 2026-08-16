@@ -1,142 +1,325 @@
-import React from 'react';
-import { ShoppingCart, FileText, Clipboard, Inbox, Truck, CheckCircle, DollarSign, Wallet, RotateCcw, Users, Package, Clock, Sprout } from 'lucide-react';
-import { getPurchaseSummary } from '../../utils/purchaseTransactionService';
-import { financeState } from '../../utils/financeTransactionService';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, FileText, Clipboard, Inbox, Truck, DollarSign, Wallet, RotateCcw, Users, Clock, ArrowRight } from 'lucide-react';
 
-const QuickSummaryCard = ({ title, value, icon: Icon, color, bg }) => (
-  <div style={{ background: 'white', borderRadius: 12, padding: '18px 20px', border: `1px solid ${bg}`, display: 'flex', alignItems: 'center', gap: 14 }}>
-    <div style={{ background: bg, padding: 14, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <Icon size={24} color={color} />
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import apiClient from '../../services/apiClient';
+
+const STYLES = `
+  .sc-root {
+    width: 100%;
+    min-height: 100%;
+    background: #F5F6FA;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #111827;
+    box-sizing: border-box;
+    padding: 24px;
+  }
+
+
+  /* ── Header ── */
+  .sc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+  .sc-header-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+  }
+  .sc-header-sub {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0;
+  }
+
+  /* ── Header Context Tags ── */
+  .sc-header-tags {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .sc-tag {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 12px;
+  }
+  .sc-tag-blue { background: #EFF6FF; color: #1D4ED8; }
+  .sc-tag-green { background: #DCFCE7; color: #15803D; }
+
+  /* ── Grid Layouts ── */
+  .sc-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .sc-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 1400px) {
+    .sc-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 1100px) {
+    .sc-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .sc-kpi-grid, .sc-secondary-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 500px) {
+    .sc-kpi-grid, .sc-secondary-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── KPI Cards ── */
+  .sc-kpi-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid #E5E7EB;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .sc-kpi-card:hover {
+    border-color: #D97706;
+    box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.1), 0 2px 4px -1px rgba(217, 119, 6, 0.06);
+    transform: translateY(-2px);
+  }
+  .sc-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sc-kpi-content {
+    flex: 1;
+  }
+  .sc-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .sc-kpi-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+  }
+
+  /* ── Action Cards ── */
+  .sc-action-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sc-action-card:hover {
+    border-color: #D97706;
+    background: #FFFBEB;
+  }
+  .sc-action-card:hover .sc-action-arrow {
+    transform: translateX(4px);
+    color: #D97706;
+  }
+  .sc-action-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+  .sc-action-desc {
+    font-size: 13px;
+    color: #6B7280;
+  }
+  .sc-action-arrow {
+    color: #9CA3AF;
+    transition: all 0.2s ease;
+  }
+`;
+
+const KPI = ({ title, value, icon: Icon, color, bg, onClick }) => (
+  <div className="sc-kpi-card" onClick={onClick}>
+    <div className="sc-kpi-icon" style={{ background: bg }}>
+      <Icon size={22} color={color} />
     </div>
-    <div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 3 }}>{title}</div>
-      <div style={{ fontSize: 22, fontWeight: 'bold', color: '#0f172a' }}>{value}</div>
+    <div className="sc-kpi-content">
+      <div className="sc-kpi-label">{title}</div>
+      <div className="sc-kpi-value">{value}</div>
     </div>
   </div>
 );
 
 const PurchaseHome = () => {
-  const summary = getPurchaseSummary();
-  const totalSuppliers = financeState.suppliers.length;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Real Data States
+  const [totalSuppliers, setTotalSuppliers] = useState(0);
+  const [openTenders, setOpenTenders] = useState(0);
+  const [totalPOs, setTotalPOs] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [supplierBids, setSupplierBids] = useState(0);
+  const [pendingDeliveries, setPendingDeliveries] = useState(0);
+  const [receivedToday, setReceivedToday] = useState(0);
+  const [totalSpend, setTotalSpend] = useState(0);
+  const [budgetRemaining, setBudgetRemaining] = useState(0);
+  const [activeReturns, setActiveReturns] = useState(0);
+
+  useEffect(() => {
+    // Suppliers — response: { data: [...] }
+    apiClient.get('/suppliers')
+      .then(res => {
+        const data = res.data?.data;
+        if (Array.isArray(data)) setTotalSuppliers(data.length);
+      })
+      .catch(() => setTotalSuppliers(0));
+
+    // Open Tenders — response: { data: [...] }
+    apiClient.get('/tenders')
+      .then(res => {
+        const data = res.data?.data;
+        if (Array.isArray(data)) {
+          const openCount = data.filter(t => {
+            const s = t.status?.toLowerCase();
+            return s === 'published' || s === 'open';
+          }).length;
+          setOpenTenders(openCount);
+        }
+      })
+      .catch(() => setOpenTenders(0));
+
+    // Purchase Orders — response: { data: { orders: [...], pagination: {} } }
+    apiClient.get('/purchase/orders')
+      .then(res => {
+        const data = res.data?.data;
+        const orders = data?.orders ?? data;
+        setTotalPOs(Array.isArray(orders) ? orders.length : (data?.pagination?.total ?? 0));
+      })
+      .catch(() => setTotalPOs(0));
+
+    // Pending Requests — /procurement/requests returns { data: [...] }
+    apiClient.get('/procurement/requests')
+      .then(res => {
+        const data = res.data?.data;
+        if (Array.isArray(data)) {
+          const pending = data.filter(r => {
+            const s = r.status?.toUpperCase();
+            return s === 'PENDING' || s === 'SUBMITTED' || s === 'PENDING_CEO';
+          }).length;
+          setPendingRequests(pending);
+        }
+      })
+      .catch(() => setPendingRequests(0));
+
+    // Quotations — response: { data: [...] }
+    apiClient.get('/purchase/quotations')
+      .then(res => {
+        const data = res.data?.data;
+        if (Array.isArray(data)) setSupplierBids(data.length);
+      })
+      .catch(() => setSupplierBids(0));
+
+    // Statistics — response: { data: { totalSpendThisYear, pendingReceiving, ... } }
+    apiClient.get('/purchase/statistics')
+      .then(res => {
+        const data = res.data?.data;
+        if (data) {
+          setTotalSpend(parseFloat(data.totalSpendThisYear) || 0);
+          setPendingDeliveries(parseInt(data.pendingReceiving) || 0);
+        }
+      })
+      .catch(() => {
+        setTotalSpend(0);
+        setPendingDeliveries(0);
+      });
+
+    // Budget & Returns: no endpoint yet — show 0 (honest)
+    setBudgetRemaining(0);
+    setActiveReturns(0);
+    setReceivedToday(0);
+  }, []);
+
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
+  
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      {/* Header Context */}
-      <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
+    <div className="sc-root">
+      <style>{STYLES}</style>
 
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
-
-    .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
-
-    .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
-    }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
-  `}</style>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%' }}>
-        <div style={{ justifySelf: 'start' }}>
-          <h1 className="artistic-3d-title">
-            Welcome! &nbsp;<span className="blink-star">🌿</span>
-          </h1>
-        </div>
-        <div style={{ justifySelf: 'center' }}>
-          <div style={{ display: 'flex', gap: 16, color: '#64748b', fontSize: 14, fontWeight: 500, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span>Welcome, <strong>Abebe Kebede</strong></span>
-            <span>•</span>
-            <span>{dateStr}</span>
-          </div>
-        </div>
-        <div style={{ justifySelf: 'end' }}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <span style={{ color: '#0369a1', background: '#e0f2fe', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>Department: Purchase</span>
-            <span style={{ color: '#16a34a', background: '#dcfce7', padding: '2px 10px', borderRadius: 12, fontSize: 12 }}>18 Modules Active</span>
+      <div className="sc-header">
+        <div>
+          <h1 className="sc-header-title">Welcome back!</h1>
+          <p className="sc-header-sub">
+            <span style={{ fontWeight: 600, color: '#111827' }}>{user?.full_name || 'Abebe Kebede'}</span> • {dateStr}
+          </p>
+          <div className="sc-header-tags">
+             <span className="sc-tag sc-tag-blue">Department: Purchase</span>
+             <span className="sc-tag sc-tag-green">18 Modules Active</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Purchase Summary Widget — 10 KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 32 }}>
-        <QuickSummaryCard title="Total Suppliers" value={totalSuppliers} icon={Users} color="#1d4ed8" bg="#eff6ff" />
-        <QuickSummaryCard title="Total Purchase Orders" value={summary.totalPOs} icon={ShoppingCart} color="#8b5cf6" bg="#ede9fe" />
-        <QuickSummaryCard title="Pending Requests" value={summary.pendingRequests} icon={FileText} color="#3b82f6" bg="#eff6ff" />
-        <QuickSummaryCard title="Open Tenders" value={summary.openTenders} icon={Clipboard} color="#0891b2" bg="#cffafe" />
-        <QuickSummaryCard title="Supplier Bids" value={summary.supplierBids} icon={Inbox} color="#059669" bg="#dcfce7" />
+      {/* 10 KPIs exactly as original order */}
+      <div className="sc-kpi-grid">
+        <KPI title="Total Suppliers" value={totalSuppliers} icon={Users} color="#1d4ed8" bg="#eff6ff" onClick={() => navigate('/purchase/suppliers')} />
+        <KPI title="Total Purchase Orders" value={totalPOs} icon={ShoppingCart} color="#8b5cf6" bg="#ede9fe" onClick={() => navigate('/purchase/orders')} />
+        <KPI title="Pending Requests" value={pendingRequests} icon={FileText} color="#3b82f6" bg="#eff6ff" onClick={() => navigate('/purchase/requests')} />
+        <KPI title="Open Tenders" value={openTenders} icon={Clipboard} color="#0891b2" bg="#cffafe" onClick={() => navigate('/purchase/smart-tenders')} />
+        <KPI title="Supplier Bids" value={supplierBids} icon={Inbox} color="#059669" bg="#dcfce7" onClick={() => navigate('/purchase/quotations')} />
 
-        <QuickSummaryCard title="Pending Deliveries" value={summary.pendingDeliveries} icon={Clock} color="#d97706" bg="#fef3c7" />
-        <QuickSummaryCard title="Received Today" value={summary.receivedToday} icon={Truck} color="#06b6d4" bg="#cffafe" />
-        <QuickSummaryCard title="Total Spend (MTD)" value={`ETB ${summary.totalSpend.toLocaleString()}`} icon={DollarSign} color="#dc2626" bg="#fef2f2" />
-        <QuickSummaryCard title="Budget Remaining" value={`ETB ${summary.budgetRemaining.toLocaleString()}`} icon={Wallet} color="#16a34a" bg="#dcfce7" />
-        <QuickSummaryCard title="Active Returns" value={summary.returns} icon={RotateCcw} color="#ea580c" bg="#ffedd5" />
+        <KPI title="Pending Deliveries" value={pendingDeliveries} icon={Clock} color="#d97706" bg="#fef3c7" onClick={() => navigate('/purchase/reports/delivery')} />
+        <KPI title="Received Today" value={receivedToday} icon={Truck} color="#06b6d4" bg="#cffafe" onClick={() => navigate('/purchase/orders')} />
+        <KPI title="Total Spend (MTD)" value={`ETB ${totalSpend.toLocaleString()}`} icon={DollarSign} color="#dc2626" bg="#fef2f2" onClick={() => navigate('/purchase/reports/financial')} />
+        <KPI title="Budget Remaining" value={`ETB ${budgetRemaining.toLocaleString()}`} icon={Wallet} color="#16a34a" bg="#dcfce7" onClick={() => navigate('/purchase/reports/financial')} />
+        <KPI title="Active Returns" value={activeReturns} icon={RotateCcw} color="#ea580c" bg="#ffedd5" onClick={() => navigate('/purchase/returns')} />
       </div>
 
-      {/* Quick nav cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-        {[
-          { label: 'Supplier List', desc: `${totalSuppliers} suppliers registered`, color: '#1d4ed8', bg: '#eff6ff', path: '/purchase/suppliers' },
-          { label: 'Expiring Contracts', desc: 'Review contracts due for renewal', color: '#d97706', bg: '#fef3c7', path: '/purchase/contracts' },
-          { label: 'Stock Availability', desc: 'Check current inventory vs reorder levels', color: '#0891b2', bg: '#cffafe', path: '/purchase/stock-availability' },
-        ].map(c => (
-          <div key={c.label} style={{ background: 'white', borderRadius: 10, border: `1px solid ${c.bg}`, padding: '18px 20px', cursor: 'pointer' }}
-            onClick={() => window.location.hash = c.path}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: c.color, marginBottom: 4 }}>{c.label}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>{c.desc}</div>
+      <div className="sc-header" style={{ marginTop: '32px', marginBottom: '16px' }}>
+        <h2 className="sc-header-title" style={{ fontSize: '18px' }}>Quick Actions</h2>
+      </div>
+
+      <div className="sc-secondary-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <div className="sc-action-card" onClick={() => navigate('/purchase/suppliers')}>
+          <div>
+            <div className="sc-action-title">Supplier Directory</div>
+            <div className="sc-action-desc">Manage {totalSuppliers} registered suppliers</div>
           </div>
-        ))}
+          <ArrowRight className="sc-action-arrow" size={20} />
+        </div>
+        
+        <div className="sc-action-card" onClick={() => navigate('/purchase/requests')}>
+          <div>
+            <div className="sc-action-title">Purchase Requests</div>
+            <div className="sc-action-desc">Review {pendingRequests} pending requests</div>
+          </div>
+          <ArrowRight className="sc-action-arrow" size={20} />
+        </div>
       </div>
+
     </div>
   );
 };
