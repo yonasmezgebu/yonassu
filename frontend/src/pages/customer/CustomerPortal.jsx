@@ -77,8 +77,12 @@ const CustomerPortal = () => {
         <Route path="support"         element={<SupportTickets />} />
         <Route path="become-supplier" element={<CustomerBecomeSupplier />} />
 
-        {/* Catch-all */}
-        <Route path="*"               element={<Navigate to="dashboard" replace />} />
+        {/* Legacy aliases — old pages linked to /customer/orders* (always absolute so no path accumulation) */}
+        <Route path="orders"          element={<Navigate to="/customer/dashboard" replace />} />
+        <Route path="orders/*"        element={<Navigate to="/customer/dashboard" replace />} />
+
+        {/* Catch-all (absolute path — relative redirects here would append to the URL) */}
+        <Route path="*"               element={<Navigate to="/customer/dashboard" replace />} />
       </Routes>
     </DashboardLayout>
   );
