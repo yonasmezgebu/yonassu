@@ -104,10 +104,7 @@ const SystemSettings = () => {
           {/* General */}
           <div className={styles.settingsGroup}>
             <h3>General Settings</h3>
-            <div className={styles.field}>
-              <label>System Name</label>
-              <input type="text" value={settings.system_name || ''} onChange={(e) => set('system_name', e.target.value)} placeholder="e.g. SUTANA EMS" />
-            </div>
+
             <div className={styles.field}>
               <label>Currency Code</label>
               <input type="text" value={settings.currency || 'ETB'} onChange={(e) => set('currency', e.target.value)} placeholder="ETB" maxLength={5} />
@@ -162,11 +159,7 @@ const SystemSettings = () => {
               <input type="number" value={settings.max_failed_attempts || 5} onChange={(e) => set('max_failed_attempts', e.target.value)} />
               <span className={styles.hint}>Account is temporarily locked after this many consecutive failed logins.</span>
             </div>
-            <div className={styles.field}>
-              <label>Password Expiry (Days)</label>
-              <input type="number" value={settings.password_expiry_days || 90} onChange={(e) => set('password_expiry_days', e.target.value)} />
-              <span className={styles.hint}>Users must change their password after this many days.</span>
-            </div>
+
             <div className={styles.field}>
               <label>2FA Required</label>
               <select value={settings.two_factor_required ?? 'false'} onChange={(e) => set('two_factor_required', e.target.value)}>
