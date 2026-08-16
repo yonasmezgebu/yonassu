@@ -55,6 +55,11 @@ exports.getMappingProducts = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: products });
 });
 
+exports.getCatalog = catchAsync(async (req, res) => {
+  const catalog = await vatConfigService.getCatalog();
+  res.json({ status: 'success', data: catalog });
+});
+
 exports.upsertMapping = catchAsync(async (req, res) => {
   const mapping = await vatConfigService.upsertMapping(req.body, req.user);
   res.status(201).json({ status: 'success', data: mapping });
