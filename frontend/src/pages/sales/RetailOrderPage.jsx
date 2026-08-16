@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from '../../services/apiClient';
+import { loadVatSafe, getVatForItem } from '../../services/vatService';
 import {
   ShoppingCart, Search, Plus, Minus, Trash2, Package,
   CheckCircle, AlertCircle, CreditCard, Banknote, Receipt,
@@ -88,6 +89,14 @@ const ReceiptModal = ({ receipt, onClose }) => {
               <span>Discount</span><span>-{fmt(receipt.discount_amount)} ETB</span>
             </div>
           )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+            <span>Subtotal</span><span>{fmt(receipt.subtotal)} ETB</span>
+          </div>
+          {receipt.vat_amount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+              <span>VAT</span><span>{fmt(receipt.vat_amount)} ETB</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, color: '#059669' }}>
             <span>TOTAL</span><span>{fmt(receipt.total_amount)} ETB</span>
           </div>
@@ -125,6 +134,9 @@ const RetailOrderPage = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [checking, setChecking] = useState(false);
   const [receipt, setReceipt] = useState(null);
+
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   const notify = (msg, type = 'success') => setToast({ msg, type });
 
@@ -191,7 +203,14 @@ const RetailOrderPage = () => {
   /* totals */
   const subtotal = cart.reduce((s, c) => s + parseFloat(c.product.price || 0) * c.quantity, 0);
   const discountAmt = subtotal * (Math.min(parseFloat(discount) || 0, 5) / 100);
-  const total = subtotal - discountAmt;
+  let vatAmount = 0;
+  if (vatCtx) {
+    cart.forEach((c) => {
+      const r = getVatForItem(vatCtx, 'retail', c.product.id, parseFloat(c.product.price || 0) * c.quantity);
+      vatAmount += r.vat;
+    });
+  }
+  const total = subtotal - discountAmt + vatAmount;
 
   /* checkout */
   const handleCheckout = async () => {
@@ -212,6 +231,8 @@ const RetailOrderPage = () => {
       setReceipt({
         invoice_number: data.invoice_number,
         total_amount: data.total_amount,
+        subtotal,
+        vat_amount: vatAmount,
         discount_amount: discountAmt,
         payment_method: payMethod,
         payment_ref: payRef,
@@ -478,6 +499,9 @@ const RetailOrderPage = () => {
                   <span>Discount ({discount}%)</span><span>-{fmt(discountAmt)} ETB</span>
                 </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+                <span>VAT Amount</span><span>{vatAmount > 0 ? `${fmt(vatAmount)} ETB` : '—'}</span>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 800, color: '#059669', paddingTop: 8, borderTop: '1px solid #e2e8f0', marginTop: 4 }}>
                 <span>TOTAL</span><span>{fmt(total)} ETB</span>
               </div>
