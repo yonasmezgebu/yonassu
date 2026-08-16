@@ -563,6 +563,9 @@ const AgriRentOrders = () => {
                   <div style={{ fontWeight: 900, color: C.forestGreen, fontSize: 15, marginBottom: 5 }}>
                     {parseFloat(order.total_amount || 0).toLocaleString()} ETB
                   </div>
+                  <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>
+                    VAT: {parseFloat(order.vat_amount || 0).toLocaleString()} ETB
+                  </div>
                   <div style={{ marginBottom: 6 }}>
                     <PayBadge status={order.payment_status} />
                   </div>
