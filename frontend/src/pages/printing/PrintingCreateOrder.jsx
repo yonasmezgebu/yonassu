@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../services/apiClient';
+import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 
 const PRODUCT_TYPES = [
   { code: 'Book', name: 'Book Printing', desc: 'For scholars and researchers' },
@@ -33,6 +34,8 @@ const PrintingCreateOrder = () => {
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [vatCtx, setVatCtx] = useState(null);
+  useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
   useEffect(() => {
     const basePrice = PAPER_TYPES.find(p => p.code === form.paperType)?.price || 0.50;
@@ -41,8 +44,9 @@ const PrintingCreateOrder = () => {
     const bindingCost = BINDING_TYPES.find(b => b.code === form.bindingType)?.price || 0;
     const bindingTotal = bindingCost * form.quantity;
     const subtotal = pricePerUnit * form.quantity;
-    setPricing({ pricePerUnit, bindingCost: bindingTotal, subtotal, totalPrice: subtotal + bindingTotal });
-  }, [form.paperType, form.pagesPerCopy, form.quantity, form.colorPrinting, form.bindingType]);
+    const r = getVatForItem(vatCtx, 'printing', null, subtotal + bindingTotal);
+    setPricing({ pricePerUnit, bindingCost: bindingTotal, subtotal, rate: r.rate, vat: r.vat, totalPrice: subtotal + bindingTotal + r.vat });
+  }, [form.paperType, form.pagesPerCopy, form.quantity, form.colorPrinting, form.bindingType, vatCtx]);
 
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -189,6 +193,7 @@ const PrintingCreateOrder = () => {
               <div><span style={{ fontSize: 13, color: '#2E8B57', fontWeight: 600 }}>Price/Unit</span><div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20' }}>{pricing.pricePerUnit.toFixed(2)} ETB</div></div>
               <div><span style={{ fontSize: 13, color: '#2E8B57', fontWeight: 600 }}>Binding Cost</span><div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20' }}>{pricing.bindingCost.toFixed(2)} ETB</div></div>
               <div><span style={{ fontSize: 13, color: '#2E8B57', fontWeight: 600 }}>Subtotal</span><div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20' }}>{pricing.subtotal.toFixed(2)} ETB</div></div>
+              <div><span style={{ fontSize: 13, color: '#2E8B57', fontWeight: 600 }}>VAT ({fmtPct(pricing.rate)})</span><div style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20' }}>{pricing.vat.toFixed(2)} ETB</div></div>
               <div><span style={{ fontSize: 13, color: '#2E8B57', fontWeight: 600 }}>Total</span><div style={{ fontSize: 24, fontWeight: 900, color: '#228B22' }}>{pricing.totalPrice.toFixed(2)} ETB</div></div>
             </div>
           </div>
