@@ -187,6 +187,9 @@ const RentalPOS = () => {
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>
                     Total: {parseFloat(order.total_amount || order.rental_amount || 0).toLocaleString()} ETB
                   </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
+                    VAT: {parseFloat(order.vat_amount || 0).toLocaleString()} ETB
+                  </div>
 
                   {order.status === 'APPROVED' && (
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
