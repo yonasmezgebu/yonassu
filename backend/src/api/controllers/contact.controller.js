@@ -133,6 +133,22 @@ exports.exportCsv = catchAsync(async (req, res) => {
   res.send(header + rows);
 });
 
+exports.updateStatus = catchAsync(async (req, res) => {
+  const { status } = req.body;
+  if (!status) throw AppError.badRequest('Status is required');
+  const msg = await db('contact_messages').where('id', req.params.id).first();
+  if (!msg) throw AppError.notFound('Message not found');
+  await db('contact_messages').where('id', req.params.id).update({ status });
+  res.json({ status: 'success', message: 'Status updated' });
+});
+
+exports.deleteMessage = catchAsync(async (req, res) => {
+  const msg = await db('contact_messages').where('id', req.params.id).first();
+  if (!msg) throw AppError.notFound('Message not found');
+  await db('contact_messages').where('id', req.params.id).delete();
+  res.json({ status: 'success', message: 'Message deleted' });
+});
+
 function getDeptByRole(role) {
   const map = { 'Sales Manager': 'Sales', 'Customer Support Lead': 'Support', 'Business Development Manager': 'Partnership' };
   return map[role] || null;
