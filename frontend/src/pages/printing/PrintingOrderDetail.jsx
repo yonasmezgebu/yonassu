@@ -132,7 +132,8 @@ const PrintingOrderDetail = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
           <div><span style={{ fontSize: 12, color: '#64748b' }}>Price/Unit</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.price_per_unit || 0).toFixed(2)} ETB</div></div>
           <div><span style={{ fontSize: 12, color: '#64748b' }}>Binding Cost</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.binding_cost || 0).toFixed(2)} ETB</div></div>
-          <div><span style={{ fontSize: 12, color: '#64748b' }}>Total</span><div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
+          <div><span style={{ fontSize: 12, color: '#64748b' }}>VAT Amount</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.vat_amount || 0).toFixed(2)} ETB</div></div>
+          <div><span style={{ fontSize: 12, color: '#64748b' }}>Total (incl. VAT)</span><div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
         </div>
       </div>
 
