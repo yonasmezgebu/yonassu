@@ -77,6 +77,7 @@ const uploads = {
   singleOrderAttachment: createUploader('orders'),
   singleTaxDocument: createUploader('taxDocuments'),
   singleExpenseReceipt: createUploader('expenses'),
+  singlePaymentProof: createUploader('receipts'),
   singleProductImage: createUploader('products'),
   singleProfilePicture: createUploader('profile'),
   multipleOrderAttachments: createMultipleUploader('orders', 10),
