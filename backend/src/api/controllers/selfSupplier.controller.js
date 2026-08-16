@@ -59,7 +59,7 @@ exports.getMySupplierProfile = async (req, res) => {
     const userId = req.user.id;
     const supplier = await db('self_registered_suppliers')
       .leftJoin('users', 'self_registered_suppliers.user_id', 'users.id')
-      .select('self_registered_suppliers.*', 'users.profile_photo')
+      .select('self_registered_suppliers.*', 'users.profile_photo as user_profile_photo')
       .where({ 'self_registered_suppliers.user_id': userId })
       .first();
     return res.json({ status: 'success', data: supplier || null });
@@ -75,15 +75,25 @@ exports.getMySupplierProfile = async (req, res) => {
  */
 exports.getAllSuppliers = async (req, res) => {
   try {
-    const { category, status, search } = req.query;
+    const { category, status, search, source } = req.query;
 
     let query = db('self_registered_suppliers')
       .leftJoin('users', 'self_registered_suppliers.user_id', 'users.id')
-      .select('self_registered_suppliers.*', 'users.profile_photo')
+      .select(
+        'self_registered_suppliers.*',
+        'users.profile_photo as user_profile_photo'
+      )
       .orderBy('self_registered_suppliers.created_at', 'desc');
 
     if (status) query = query.where('self_registered_suppliers.status', status);
     if (category) query = query.where('self_registered_suppliers.category', 'like', `%${category}%`);
+    
+    if (source === 'Internal') {
+      query = query.whereNull('self_registered_suppliers.user_id');
+    } else if (source === 'Registered') {
+      query = query.whereNotNull('self_registered_suppliers.user_id');
+    }
+
     if (search) {
       query = query.where(function () {
         this.where('self_registered_suppliers.full_name', 'like', `%${search}%`)
@@ -97,7 +107,7 @@ exports.getAllSuppliers = async (req, res) => {
     return res.json({ status: 'success', data: suppliers });
   } catch (error) {
     console.error('Error fetching all suppliers:', error);
-    res.status(500).json({ status: 'error', message: 'Internal server error' });
+    res.status(500).json({ status: 'error', message: error.message || 'Internal server error' });
   }
 };
 
@@ -155,5 +165,56 @@ exports.updateSupplierStatus = async (req, res) => {
   } catch (error) {
     console.error('Error updating supplier status:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /api/suppliers/internal
+ * Internal staff registers a supplier manually (no user account needed)
+ */
+exports.registerInternalSupplier = async (req, res) => {
+  try {
+    const {
+      full_name, email, phone, company_name, category, business_address, description,
+      tax_id, payment_terms, credit_limit, location_type,
+      bank_name, bank_account, bank_holder, website
+    } = req.body;
+
+    if (!full_name || !category) {
+      return res.status(400).json({ status: 'error', message: 'Full name and category are required.' });
+    }
+
+    const [id] = await db('self_registered_suppliers').insert({
+      user_id: null,
+      full_name,
+      email: email || null,
+      phone: phone || null,
+      company_name: company_name || null,
+      category,
+      business_address: business_address || null,
+      description: description || null,
+      tax_id: tax_id || null,
+      payment_terms: payment_terms || null,
+      credit_limit: credit_limit || null,
+      location_type: location_type || null,
+      bank_name: bank_name || null,
+      bank_account: bank_account || null,
+      bank_holder: bank_holder || null,
+      bank_account_number: bank_account || null,
+      bank_account_holder: bank_holder || null,
+      website: website || null,
+      status: 'Active',
+    });
+
+    const newSupplier = await db('self_registered_suppliers').where({ id }).first();
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Internal supplier registered successfully.',
+      data: newSupplier,
+    });
+  } catch (error) {
+    console.error('Error registering internal supplier:', error);
+    res.status(500).json({ status: 'error', message: error.message || 'Internal server error' });
   }
 };
