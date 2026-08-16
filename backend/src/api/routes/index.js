@@ -74,6 +74,7 @@ router.use('/store-inventory', storeInventoryRoutes);
 router.use('/board', boardRoutes);
 router.use('/erp', erpRoutes);
 router.use('/procurement', procurementRoutes);
+router.use('/general-procurement', require('./generalProcurement.routes'));
 router.use('/public-tenders', require('./publicTender.routes'));
 router.use('/procurement-settings', require('./procurementSettings.routes'));
 router.use('/sales-settings', require('./salesSettings.routes'));
