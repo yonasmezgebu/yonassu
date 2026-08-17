@@ -391,19 +391,35 @@ const tenderBuyDocuments = async () => {
 };
 
 /* ── Main: build all invoice + receipt documents ─────────────────────────── */
-const buildDocuments = async () => {
-  const [company, retail, pharmacy, printing, rental, agrirent, tenderSell, tenderBuy] = await Promise.all([
+// status: 'all' | 'unpaid' | 'paid' (default 'all')
+// customer: optional string to filter by customer name (case-insensitive)
+// sources: optional array of source keys to include (default all)
+const buildDocuments = async ({ status = 'all', customer = '', sources = null } = {}) => {
+  const buildFns = {
+    retail: retailDocuments,
+    pharmacy: pharmacyDocuments,
+    printing: printingDocuments,
+    car_rental: rentalDocuments,
+    agrirent: agrirentDocuments,
+    tender_sell: tenderSellDocuments,
+    tender_buy: tenderBuyDocuments
+  };
+  const keys = sources && sources.length ? sources : Object.keys(buildFns);
+  const [company, ...results] = await Promise.all([
     getCompanyInfo(),
-    retailDocuments(),
-    pharmacyDocuments(),
-    printingDocuments(),
-    rentalDocuments(),
-    agrirentDocuments(),
-    tenderSellDocuments(),
-    tenderBuyDocuments()
+    ...keys.map((k) => buildFns[k]())
   ]);
-  const documents = [...retail, ...pharmacy, ...printing, ...rental, ...agrirent, ...tenderSell, ...tenderBuy]
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  let documents = results.flat().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (customer) {
+    const q = customer.toLowerCase();
+    documents = documents.filter((d) => (d.customer || '').toLowerCase().includes(q));
+  }
+  if (status === 'unpaid') {
+    documents = documents.filter((d) => d.balance < -0.001);
+  } else if (status === 'paid') {
+    documents = documents.filter((d) => d.balance >= -0.001);
+  }
   return { company, documents };
 };
 
