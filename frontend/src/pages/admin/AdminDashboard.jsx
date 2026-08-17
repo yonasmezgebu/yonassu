@@ -10,6 +10,11 @@ import BackupManagement from './BackupManagement';
 import DisasterRecovery from './DisasterRecovery';
 import ContactMessagesManager from './ContactMessagesManager';
 import AlertCenter from './AlertCenter';
+import SystemJobs from './SystemJobs';
+import SystemHealth from './SystemHealth';
+import DataImportExport from './DataImportExport';
+import Maintenance from './Maintenance';
+import Integrations from './Integrations';
 import ManagerChat from '../../components/ManagerChat';
 import styles from './AdminDashboard.module.css';
 
@@ -37,9 +42,14 @@ const AdminDashboard = () => {
     { label: 'Users',          path: '/admin/users',          icon: 'users' },
     { type: 'divider' },
     { label: 'Alert Center',   path: '/admin/alerts',         icon: 'bell', badge: unreadAlerts },
+    { label: 'System Jobs',    path: '/admin/system-jobs',    icon: 'clock' },
+    { label: 'System Health',  path: '/admin/system-health',  icon: 'activity' },
+    { label: 'Import / Export', path: '/admin/import-export',  icon: 'upload-cloud' },
     { label: 'Backups',        path: '/admin/backups',        icon: 'hard-drive' },
     { label: 'Disaster Recovery', path: '/admin/dr',          icon: 'shield' },
+    { label: 'Maintenance',     path: '/admin/maintenance',    icon: 'tool' },
     { label: 'Settings',       path: '/admin/settings',       icon: 'sliders' },
+    { label: 'Integrations',   path: '/admin/integrations',   icon: 'git-branch' },
     { type: 'divider' },
     { label: 'Contact', icon: 'message-circle', children: [
       { label: 'Contact Messages', path: '/admin/contact-messages', icon: 'inbox' },
@@ -58,11 +68,16 @@ const AdminDashboard = () => {
             <Route path="users" element={<UserManagement />} />
             <Route path="dr" element={<DisasterRecovery />} />
             <Route path="alerts" element={<AlertCenter />} />
+            <Route path="system-jobs" element={<SystemJobs />} />
+            <Route path="system-health" element={<SystemHealth />} />
+            <Route path="import-export" element={<DataImportExport />} />
+            <Route path="maintenance" element={<Maintenance />} />
             <Route path="audit" element={<CentralAuditLog />} />
             <Route path="contact-messages" element={<ContactMessagesManager />} />
             <Route path="chat" element={<ManagerChat />} />
             <Route path="backups" element={<BackupManagement />} />
             <Route path="settings" element={<SystemSettings />} />
+            <Route path="integrations" element={<Integrations />} />
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
