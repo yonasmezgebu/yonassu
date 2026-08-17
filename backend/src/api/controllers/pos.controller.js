@@ -5,7 +5,7 @@ const AppError = require('../../utils/AppError');
 const { audit } = require('../../utils/logger');
 const posService = require('../../services/pos.service');
 const vatConfigService = require('../../services/vatConfig.service');
-const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
+const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 const { sendEmail } = require('../../services/email.service');
 const { sendSMS } = require('../../services/sms.service');
 const notificationRepository = require('../../repositories/notification.repository');
@@ -269,19 +269,34 @@ exports.checkout = catchAsync(async (req, res) => {
   if (!cart || cart.items.length === 0) {
     throw new AppError('Cart is empty', 400);
   }
-  let subtotal = 0;
-  for (const item of cart.items) {
-    subtotal += item.quantity * item.unitPrice;
-  }
-  const taxRate = 0.15;
+  const vatConfigService = require('../../services/vatConfig.service');
+  const vatLines = cart.items.map(item => ({ itemId: item.realId, amount: item.quantity * item.unitPrice }));
+  const vatResult = await vatConfigService.computeVatForItems('retail', vatLines);
+
+  let subtotal = vatResult.subtotal;
   let discountAmount = 0;
   if (cart.discount.type === 'percentage') {
     discountAmount = subtotal * (cart.discount.value / 100);
   } else if (cart.discount.type === 'fixed') {
     discountAmount = Math.min(cart.discount.value, subtotal);
   }
-  const taxAmount = (subtotal - discountAmount) * taxRate;
+
+  const discountFactor = subtotal > 0 ? (1 - (discountAmount / subtotal)) : 1;
+  const taxAmount = vatResult.vat * discountFactor;
   const totalAmount = subtotal - discountAmount + taxAmount;
+
+  // Invoice breakdown based on VAT result rows
+  let vat_standard = 0, vat_exempt = 0, vat_zero_rated = 0, std_rate = 0.15;
+  vatResult.rows.forEach(r => {
+    const scaledVat = r.vat * discountFactor;
+    if (r.treatment === 'standard') {
+      vat_standard += scaledVat;
+      std_rate = r.rate;
+    }
+    else if (r.treatment === 'exempt') vat_exempt += scaledVat;
+    else if (r.treatment === 'zero_rated') vat_zero_rated += scaledVat;
+  });
+
   if (paymentMethod === 'Cash' && amountPaid < totalAmount) {
     throw new AppError(`Amount paid (${amountPaid} ETB) is less than total (${totalAmount} ETB)`, 400);
   }
@@ -298,6 +313,9 @@ exports.checkout = catchAsync(async (req, res) => {
   }
   const changeAmount = paymentMethod === 'Cash' ? amountPaid - totalAmount : 0;
   let finalCustomerId = customerId;
+  let customerName = customer?.name || null;
+  let customerTin = customer?.tin || null; // Assume might be passed
+
   if (!finalCustomerId && customer && customer.name) {
     let phone = (customer.phone || '').replace(/[^0-9]/g, '');
     if (phone.length > 10) phone = phone.slice(phone.length - 10);
@@ -307,19 +325,28 @@ exports.checkout = catchAsync(async (req, res) => {
       : null;
     if (existing) {
       finalCustomerId = existing.id;
+      customerName = existing.name;
+      customerTin = existing.tin || null;
     } else {
       const [newCustomerId] = await db('customers').insert({
         name: customer.name,
         phone: phone || customer.phone || null,
         email: customer.email || null,
+        tin: customer.tin || null,
         customer_type_id: 5, 
         created_by: userId,
         created_at: db.fn.now()
       });
       finalCustomerId = newCustomerId;
     }
+  } else if (finalCustomerId && !customerName) {
+    const exCust = await db('customers').where('id', finalCustomerId).first();
+    if(exCust){ customerName = exCust.name; customerTin = exCust.tin || null; }
   }
+
   const invoiceNumber = await generateInvoiceNumber();
+  const receiptNumber = paymentMethod !== 'Credit' ? await generateReceiptNumber() : null;
+
   const saleStatusCode = paymentMethod === 'Credit' ? 'pending_payment' : 'completed';
   let completedStatus = await db('sale_statuses').where('status_code', saleStatusCode).first();
   if (!completedStatus) {
@@ -329,6 +356,8 @@ exports.checkout = catchAsync(async (req, res) => {
   if (!paymentMethodRecord) {
     throw new AppError(`Payment method '${paymentMethod}' is not configured in the database`, 400);
   }
+  const cashierRow = await db('users').where('id', userId).select('full_name').first();
+
   const result = await transaction(async (trx) => {
     const [saleId] = await trx('pos_sales').insert({
       invoice_number: invoiceNumber,
@@ -349,6 +378,60 @@ exports.checkout = catchAsync(async (req, res) => {
       order_id: null,
       notes: notes || null
     });
+
+    // Create the invoice
+    const invoiceId = 'INV-' + saleId + '-' + Date.now().toString().slice(-4);
+    await trx('sales_invoices').insert({
+      id: invoiceId,
+      invoice_no: invoiceNumber,
+      source: 'pos',
+      sale_id: saleId,
+      customer_name: customerName,
+      customer_tin: customerTin,
+      subtotal,
+      vat_standard,
+      vat_standard_rate: std_rate,
+      vat_exempt,
+      vat_zero_rated,
+      vat_total: taxAmount,
+      total_amount: totalAmount,
+      status: 'active',
+      created_by_name: cashierRow ? cashierRow.full_name : 'Unknown Cashier',
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
+    for (let i=0; i<cart.items.length; i++) {
+      const item = cart.items[i];
+      const r = vatResult.rows[i];
+      await trx('sales_invoice_items').insert({
+        invoice_id: invoiceId,
+        item_id: item.realId,
+        name: item.productName,
+        qty: item.quantity,
+        unit_price: item.unitPrice,
+        treatment: r.treatment,
+        rate: r.rate,
+        vat_amount: r.vat * discountFactor,
+        subtotal: r.sub * discountFactor,
+        total: (r.sub + r.vat) * discountFactor
+      });
+    }
+
+    if (receiptNumber) {
+      await trx('sales_receipts').insert({
+        id: 'REC-' + saleId + '-' + Date.now().toString().slice(-4),
+        receipt_no: receiptNumber,
+        invoice_id: invoiceId,
+        amount_paid: paymentMethod === 'Credit' ? 0 : amountPaid,
+        payment_method: paymentMethod,
+        payment_reference: paymentReference || null,
+        received_by_name: cashierRow ? cashierRow.full_name : 'Unknown Cashier',
+        status: 'active',
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+    }
     if (paymentMethod === 'Credit' && finalCustomerId) {
       await trx('customers')
         .where('id', finalCustomerId)
