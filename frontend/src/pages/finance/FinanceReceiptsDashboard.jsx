@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import { amountInWordsBirr } from '../../utils/amountInWords';
@@ -209,6 +210,14 @@ const FinanceReceiptsDashboard = () => {
   const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
+
+  useEffect(() => {
+    setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
+  }, [location.pathname]);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -236,19 +245,29 @@ const FinanceReceiptsDashboard = () => {
 
   const saveCompany = async () => {
     setSavingCompany(true);
+    setSaveMsg('');
+    setSaveError('');
     try {
       const res = await api.put('/finance/company-info', companyDraft);
-      const c = res?.data?.company || {};
+      // apiClient interceptor returns response.data, so res = { status, data: { company } }
+      const c = res?.data?.company || res?.company || {};
       setCompany(c);
       setCompanyDraft(c);
+      setSaveMsg('✓ Company info saved successfully');
+      setTimeout(() => setSaveMsg(''), 4000);
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to save company info');
+      setSaveError('✗ ' + (err?.message || 'Failed to save company info'));
+      setTimeout(() => setSaveError(''), 5000);
     }
     setSavingCompany(false);
   };
 
-  const summary = agg?.summary || {};
-  const generatedAt = agg?.generatedAt ? new Date(agg.generatedAt) : null;
+  const receivableDocs = docs.filter((d) => d.balance < -0.001);
+  const paidDocs = docs.filter((d) => d.balance >= -0.001);
+  const activeDocs = activeTab === 'receivable' ? receivableDocs : paidDocs;
+
+  const receivableValue = receivableDocs.reduce((s, d) => s + Math.abs(d.balance), 0);
+  const paidValue = paidDocs.reduce((s, d) => s + d.total, 0);
 
   return (
     <div className={styles.page}>
@@ -259,8 +278,7 @@ const FinanceReceiptsDashboard = () => {
             Invoices & Receipts <span className={styles.welcomeEmoji}>🧾</span>
           </h1>
           <p className={styles.pageSubtitle}>
-            Sales → Invoice → Payment → Receipt · All modules (Online + Walk-in) · 2 Tenders · Only paid/completed
-            {generatedAt && <> · Updated {generatedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</>}
+            Auto-generated: Order → Invoice → Payment → Receipt · All modules + 2 tenders · No manual form filling
           </p>
         </div>
         <button onClick={load} className={styles.syncBtn} disabled={refreshing}>
@@ -273,61 +291,69 @@ const FinanceReceiptsDashboard = () => {
 
       {/* ── ROW 1: KPI HERO CARDS ── */}
       <div className={styles.kpiGrid}>
-        <div className={styles.kpiCard}>
+        <div className={`${styles.kpiCard} ${activeTab === 'receivable' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Total Invoices</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}>📄</span>
+            <span className={styles.kpiLabel}>Receivable Invoices</span>
+            <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}>📄</span>
           </div>
-          <div className={styles.kpiValue} style={{ color: G.blue }}>{Number(summary.totalInvoices || 0).toLocaleString()}</div>
-          <div className={styles.kpiMeta}>Orders issued across all modules</div>
-          <div className={styles.kpiSub}>Retail · Pharmacy · Printing · Rental · AgriRent · Tenders</div>
+          <div className={styles.kpiValue} style={{ color: '#B45309' }}>{receivableDocs.length}</div>
+          <div className={styles.kpiMeta}>Unpaid / outstanding orders</div>
+          <div className={styles.kpiSub}>Awaiting full payment</div>
         </div>
 
-        <div className={styles.kpiCard}>
+        <div className={`${styles.kpiCard} ${activeTab === 'receipts' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Total Receipts</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}>🧾</span>
+            <span className={styles.kpiLabel}>Receipts (Paid)</span>
+            <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}>✅</span>
           </div>
-          <div className={styles.kpiValue} style={{ color: G.forest }}>{Number(summary.totalReceipts || 0).toLocaleString()}</div>
-          <div className={styles.kpiMeta}>Payments received</div>
-          <div className={styles.kpiSub}>Paid / verified / confirmed</div>
+          <div className={styles.kpiValue} style={{ color: G.forest }}>{paidDocs.length}</div>
+          <div className={styles.kpiMeta}>Fully paid orders</div>
+          <div className={styles.kpiSub}>Invoice → Payment confirmed</div>
         </div>
 
         <div className={`${styles.kpiCard} ${styles.kpiCardHero}`}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Total Price Value</span>
+            <span className={styles.kpiLabel}>Outstanding Balance</span>
             <span className={styles.kpiIconHero}>💰</span>
           </div>
-          <div className={styles.kpiHeroValue}>{fmt(summary.totalValue)}</div>
+          <div className={styles.kpiHeroValue}>{fmt(receivableValue)}</div>
           <div className={styles.kpiHeroMeta}>
-            <span>{fmtShort(summary.totalValue)}</span>
-            <span>{Number(summary.totalInvoices || 0)} invoices</span>
+            <span>{fmtShort(receivableValue)}</span>
+            <span>{receivableDocs.length} invoices</span>
           </div>
-          <div className={styles.kpiHeroFoot}>Sum of all paid/completed values</div>
+          <div className={styles.kpiHeroFoot}>Total unpaid across all modules</div>
         </div>
 
         <div className={styles.kpiCard}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Online vs Walk-in</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-warning-bg)' }}>🌐</span>
+            <span className={styles.kpiLabel}>Total Value Collected</span>
+            <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}>🏦</span>
           </div>
-          <div className={styles.channelRow}>
-            <span className={styles.channelDot} style={{ background: G.sky }} />
-            <span className={styles.channelLabel}>Online</span>
-            <span className={styles.channelVal}>{fmtShort(summary.online?.value || 0)}</span>
-            <span className={styles.channelCount}>{Number(summary.online?.invoices || 0)} invoices</span>
-          </div>
-          <div className={styles.channelRow}>
-            <span className={styles.channelDot} style={{ background: G.orange }} />
-            <span className={styles.channelLabel}>Walk-in</span>
-            <span className={styles.channelVal}>{fmtShort(summary.walkIn?.value || 0)}</span>
-            <span className={styles.channelCount}>{Number(summary.walkIn?.invoices || 0)} invoices</span>
-          </div>
-          <div className={styles.kpiSub}>Channel split where recorded (Retail, Pharmacy, AgriRent)</div>
+          <div className={styles.kpiValue} style={{ color: G.blue }}>{fmt(paidValue)}</div>
+          <div className={styles.kpiMeta}>Revenue received to date</div>
+          <div className={styles.kpiSub}>{paidDocs.length} confirmed receipts</div>
         </div>
       </div>
 
-      {/* ── ROW 2: COMPANY PROFILE + DOCUMENTS ── */}
+      {/* ── ROW 2: TABS ── */}
+      <div className={styles.tabBar}>
+        <button
+          className={`${styles.tabBtn} ${activeTab === 'receivable' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('receivable')}
+        >
+          📄 Receivable Invoices
+          <span className={styles.tabBadge} style={{ background: '#FEF3C7', color: '#92400E' }}>{receivableDocs.length}</span>
+        </button>
+        <button
+          className={`${styles.tabBtn} ${activeTab === 'receipts' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('receipts')}
+        >
+          ✅ Receipts (Paid)
+          <span className={styles.tabBadge} style={{ background: '#DCFCE7', color: '#166534' }}>{paidDocs.length}</span>
+        </button>
+      </div>
+
+      {/* ── ROW 3: COMPANY PROFILE ── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitleIcon}>🏢</span>
@@ -352,24 +378,38 @@ const FinanceReceiptsDashboard = () => {
             </div>
           ))}
           <div className={styles.companyField} style={{ alignSelf: 'flex-end' }}>
-            <button className={styles.saveBtn} onClick={saveCompany} disabled={savingCompany}>
-              {savingCompany ? 'Saving…' : 'Save'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <button className={styles.saveBtn} onClick={saveCompany} disabled={savingCompany}>
+                {savingCompany ? 'Saving…' : 'Save'}
+              </button>
+              {saveMsg && (
+                <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {saveMsg}
+                </span>
+              )}
+              {saveError && (
+                <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {saveError}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── ROW 3: DOCUMENT LIST ── */}
+      {/* ── ROW 4: DOCUMENT LIST ── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitleIcon}>📊</span>
-          <h3 className={styles.cardTitle}>Sales Invoices & Receipts</h3>
-          <span className={styles.cardSub}>{docs.length} documents · click to view</span>
+          <span className={styles.cardTitleIcon}>{activeTab === 'receivable' ? '📄' : '✅'}</span>
+          <h3 className={styles.cardTitle}>
+            {activeTab === 'receivable' ? 'Receivable Invoices — awaiting full payment' : 'Receipts — payment confirmed'}
+          </h3>
+          <span className={styles.cardSub}>{activeDocs.length} documents · click row to view</span>
         </div>
 
         <div className={styles.table}>
           <div className={styles.tHead}>
-            <span>Module / Document</span>
+            <span>Module</span>
             <span style={{ textAlign: 'center' }}>Invoice No</span>
             <span style={{ textAlign: 'center' }}>Receipt No</span>
             <span style={{ textAlign: 'center' }}>Date</span>
@@ -378,9 +418,13 @@ const FinanceReceiptsDashboard = () => {
             <span style={{ textAlign: 'right' }}>Balance</span>
           </div>
 
-          {docs.length === 0 ? (
-            <div className={styles.empty}>No paid/completed documents yet — connect to backend</div>
-          ) : docs.map((d) => (
+          {activeDocs.length === 0 ? (
+            <div className={styles.empty}>
+              {activeTab === 'receivable'
+                ? 'No outstanding invoices — all orders fully paid!'
+                : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
+            </div>
+          ) : activeDocs.map((d) => (
             <div key={d.id} className={styles.tRow} onClick={() => setSelected(d)}>
               <span className={styles.moduleName}>
                 <span className={styles.moduleIcon} style={{ background: (d.color || G.darkGray) + '1A', color: d.color }}>{d.icon}</span>
@@ -391,16 +435,18 @@ const FinanceReceiptsDashboard = () => {
               <span className={styles.num} style={{ textAlign: 'center' }}>{fmtDate(d.date)}</span>
               <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(d.total)}</span>
               <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(d.amountPaid)}</span>
-              <span className={styles.num} style={{ textAlign: 'right', color: d.balance !== 0 ? G.orange : 'inherit' }}>{fmt(d.balance)}</span>
+              <span className={styles.num} style={{ textAlign: 'right', color: d.balance < -0.001 ? '#DC2626' : G.forest, fontWeight: d.balance < -0.001 ? 700 : 400 }}>
+                {fmt(Math.abs(d.balance))}
+                {d.balance < -0.001 ? ' owed' : ' ✓'}
+              </span>
             </div>
           ))}
         </div>
 
         <div className={styles.note}>
-          Every sale produces one linked Sales Invoice (sale details + per-item tax treatment) and one Sales Receipt
-          (proof of payment against that invoice): Sale ID → Invoice ID → Payment ID → Receipt ID — no double counting.
-          VAT is shown per item using the applicable treatment (Standard / Exempt / Zero-rated) from the tax configuration,
-          never a hard-coded 15% for every item.
+          {activeTab === 'receivable'
+            ? 'Every order placed in any module auto-generates a Sales Invoice. The invoice shows per-item tax treatment (Standard / Exempt / Zero-rated) from the CEO-configured tax mappings. Once payment is confirmed, the invoice moves to Receipts and the balance becomes zero.'
+            : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Invoice ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the invoice; it never recalculates the sale.'}
         </div>
       </div>
 
