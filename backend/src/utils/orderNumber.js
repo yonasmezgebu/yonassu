@@ -33,13 +33,13 @@ const generateOrderNumber = async (prefix = 'PRT') => {
 const generateInvoiceNumber = async () => {
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  const lastInvoice = await db('pos_sales')
-    .where('invoice_number', 'like', `INV-${dateStr}-%`)
-    .orderBy('invoice_number', 'desc')
+  const lastInvoice = await db('sales_invoices')
+    .where('invoice_no', 'like', `INV-${dateStr}-%`)
+    .orderBy('invoice_no', 'desc')
     .first();
   let counter = 1;
   if (lastInvoice) {
-    const parts = lastInvoice.invoice_number.split('-');
+    const parts = lastInvoice.invoice_no.split('-');
     const lastSeq = parseInt(parts[parts.length - 1]);
     if (!isNaN(lastSeq)) counter = lastSeq + 1;
   }
@@ -66,7 +66,20 @@ const generateQuoteNumber = async () => {
   return generateOrderNumber('QT');
 };
 const generateReceiptNumber = async () => {
-  return generateOrderNumber('RCP');
+  const date = new Date();
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const lastReceipt = await db('sales_receipts')
+    .where('receipt_no', 'like', `RCP-${dateStr}-%`)
+    .orderBy('receipt_no', 'desc')
+    .first();
+  let counter = 1;
+  if (lastReceipt) {
+    const parts = lastReceipt.receipt_no.split('-');
+    const lastSeq = parseInt(parts[parts.length - 1]);
+    if (!isNaN(lastSeq)) counter = lastSeq + 1;
+  }
+  const sequence = counter.toString().padStart(4, '0');
+  return `RCP-${dateStr}-${sequence}`;
 };
 const generateTaxReceiptNumber = async () => {
   const date = new Date();
