@@ -91,6 +91,52 @@
   margin-bottom: 16px;
 }
 
+/* ── Tab bar ── */
+.tabBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+}
+.tabBtn:hover {
+  border-color: #9CA3AF;
+  color: var(--color-text-primary);
+}
+.tabBtnActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+.tabBtnActive:hover {
+  background: #1D4ED8;
+}
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -107,6 +153,11 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+.kpiCardActive {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .kpiCardHero {
   background: var(--color-primary);
