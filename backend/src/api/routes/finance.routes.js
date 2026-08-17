@@ -235,37 +235,52 @@ router.post('/tax/declare/:expenseId', authenticate, authorize(['tax:declare']),
 // ================================================================
 // INVOICES & RECEIPTS DASHBOARD (all modules + 2 tenders)
 // ================================================================
-router.get('/receipts-dashboard', authenticate, authorizeRoles('finance'),
+router.get('/receipts-dashboard', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']),
   query('startDate').optional().isISO8601(), query('endDate').optional().isISO8601(), validate,
   FinanceReceiptsDashboard.getDashboard);
 
 // ================================================================
 // SALES INVOICES & RECEIPTS DOCUMENTS (linked Sale→Invoice→Payment→Receipt)
 // ================================================================
-router.get('/receipts-dashboard/documents', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+router.get('/receipts-dashboard/documents', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']), async (req, res, next) => {
   try {
-    const data = await InvoiceDocumentService.buildDocuments();
+    const { status = 'all', customer = '', source = '' } = req.query;
+    const sources = source ? source.split(',').map(s => s.trim()).filter(Boolean) : null;
+    const data = await InvoiceDocumentService.buildDocuments({ status, customer, sources });
     res.json({ status: 'success', data });
   } catch (error) { next(error); }
 });
 
-router.get('/company-info', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+// ================================================================
+// CUSTOMER PORTAL: documents filtered by logged-in customer
+// ================================================================
+router.get('/customer-documents', authenticate, async (req, res, next) => {
+  try {
+    const { status = 'all', source = '' } = req.query;
+    const customerName = req.user.full_name || req.user.fullName || req.user.name || req.user.email || '';
+    const sources = source ? source.split(',').map(s => s.trim()).filter(Boolean) : null;
+    const data = await InvoiceDocumentService.buildDocuments({ status, customer: customerName, sources });
+    res.json({ status: 'success', data });
+  } catch (error) { next(error); }
+});
+
+router.get('/company-info', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO', 'Purchase', 'Purchase Manager', 'Sales Manager', 'Sales/Cashier', 'Cashier']), async (req, res, next) => {
   try {
     const company = await InvoiceDocumentService.getCompanyInfo();
     res.json({ status: 'success', data: { company } });
   } catch (error) { next(error); }
 });
 
-router.put('/company-info', authenticate, authorizeRoles('finance'), async (req, res, next) => {
+router.put('/company-info', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO']), async (req, res, next) => {
   try {
     const company = await InvoiceDocumentService.saveCompanyInfo(req.body, req.user.id);
     res.json({ status: 'success', data: { company } });
   } catch (error) { next(error); }
 });
 
-module.exports = router;
-
 // --- Cash Handovers (Unified) ---
 router.get('/cash-handovers', authenticate, authorizeRoles(['Finance', 'Admin', 'CEO']), FinanceController.getCashHandovers);
 router.post('/cash-handovers/:id/approve', authenticate, authorizeRoles(['CEO']), FinanceController.approveCashHandover);
 router.post('/cash-handovers/:id/reject', authenticate, authorizeRoles(['CEO']), FinanceController.rejectCashHandover);
+
+module.exports = router;
