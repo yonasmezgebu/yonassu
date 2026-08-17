@@ -6,179 +6,151 @@ import { useAuth } from '../../hooks/useAuth';
 import apiClient from '../../services/apiClient';
 
 const STYLES = `
-  .sc-root {
+  .dashboard-root {
     width: 100%;
-    min-height: 100%;
-    background: #F5F6FA;
+    min-height: 100vh;
+    background: #F4F5F7;
     font-family: 'Inter', system-ui, sans-serif;
-    color: #111827;
+    color: #172B4D;
+    padding: 32px;
     box-sizing: border-box;
-    padding: 24px;
   }
-
-
-  /* ── Header ── */
-  .sc-header {
+  
+  .dashboard-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 24px;
+    align-items: center;
+    margin-bottom: 32px;
   }
-  .sc-header-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 4px 0;
+  
+  .dashboard-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
     letter-spacing: -0.01em;
+    color: #091E42;
   }
-  .sc-header-sub {
+  
+  .dashboard-subtitle {
     font-size: 14px;
-    color: #6B7280;
+    color: #5E6C84;
     margin: 0;
   }
-
-  /* ── Header Context Tags ── */
-  .sc-header-tags {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-    flex-wrap: wrap;
+  
+  .section-container {
+    margin-bottom: 40px;
   }
-  .sc-tag {
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: 12px;
+  
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #5E6C84;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #DFE1E6;
+    padding-bottom: 8px;
   }
-  .sc-tag-blue { background: #EFF6FF; color: #1D4ED8; }
-  .sc-tag-green { background: #DCFCE7; color: #15803D; }
-
-  /* ── Grid Layouts ── */
-  .sc-kpi-grid {
+  
+  .grid-layout {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
   }
-  .sc-secondary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-bottom: 24px;
+  
+  @media (max-width: 1200px) {
+    .grid-layout { grid-template-columns: repeat(3, 1fr); }
   }
-
-  @media (max-width: 1400px) {
-    .sc-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .grid-layout { grid-template-columns: repeat(2, 1fr); }
   }
-  @media (max-width: 1100px) {
-    .sc-kpi-grid { grid-template-columns: repeat(3, 1fr); }
-  }
-  @media (max-width: 768px) {
-    .sc-kpi-grid, .sc-secondary-grid { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 500px) {
-    .sc-kpi-grid, .sc-secondary-grid { grid-template-columns: 1fr; }
+  @media (max-width: 600px) {
+    .grid-layout { grid-template-columns: 1fr; }
   }
 
-  /* ── KPI Cards ── */
-  .sc-kpi-card {
+  .kpi-card {
     background: #FFFFFF;
-    border-radius: 10px;
-    padding: 18px 20px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    border: 1px solid #E5E7EB;
-    transition: all 0.2s ease;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 2px rgba(9, 30, 66, 0.1), 0 0 1px rgba(9, 30, 66, 0.1);
     cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
-  .sc-kpi-card:hover {
+  
+  .kpi-card:hover {
     border-color: #D97706;
-    box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.1), 0 2px 4px -1px rgba(217, 119, 6, 0.06);
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
     transform: translateY(-2px);
   }
-  .sc-kpi-icon {
-    width: 44px;
-    height: 44px;
+  
+  .kpi-card:hover::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #D97706;
+  }
+
+  .kpi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .kpi-title {
+    font-size: 14px;
+    color: #42526E;
+    font-weight: 500;
+  }
+  
+  .kpi-icon-wrapper {
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-  }
-  .sc-kpi-content {
-    flex: 1;
-  }
-  .sc-kpi-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 4px;
-  }
-  .sc-kpi-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #111827;
-    line-height: 1.2;
   }
 
-  /* ── Action Cards ── */
-  .sc-action-card {
-    background: #FFFFFF;
-    border-radius: 10px;
-    padding: 20px;
-    border: 1px solid #E5E7EB;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .sc-action-card:hover {
-    border-color: #D97706;
-    background: #FFFBEB;
-  }
-  .sc-action-card:hover .sc-action-arrow {
-    transform: translateX(4px);
-    color: #D97706;
-  }
-  .sc-action-title {
-    font-size: 15px;
+  .kpi-value {
+    font-size: 32px;
     font-weight: 600;
-    color: #111827;
-    margin-bottom: 4px;
+    color: #172B4D;
+    line-height: 1.1;
+    margin-bottom: 8px;
   }
-  .sc-action-desc {
+  
+  .kpi-footer {
     font-size: 13px;
-    color: #6B7280;
-  }
-  .sc-action-arrow {
-    color: #9CA3AF;
-    transition: all 0.2s ease;
+    color: #6B778C;
   }
 `;
 
-const KPI = ({ title, value, icon: Icon, color, bg, onClick }) => (
-  <div className="sc-kpi-card" onClick={onClick}>
-    <div className="sc-kpi-icon" style={{ background: bg }}>
-      <Icon size={22} color={color} />
+const KPI = ({ title, value, footer, icon: Icon, color, bg, onClick }) => (
+  <div className="kpi-card" onClick={onClick}>
+    <div className="kpi-header">
+      <div className="kpi-title">{title}</div>
+      <div className="kpi-icon-wrapper" style={{ backgroundColor: bg, color: color }}>
+        <Icon size={20} />
+      </div>
     </div>
-    <div className="sc-kpi-content">
-      <div className="sc-kpi-label">{title}</div>
-      <div className="sc-kpi-value">{value}</div>
-    </div>
+    <div className="kpi-value">{value}</div>
+    {footer && <div className="kpi-footer">{footer}</div>}
   </div>
 );
 
 const PurchaseHome = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
-  
-  // Real Data States
+  const navigate = useNavigate();
+
   const [totalSuppliers, setTotalSuppliers] = useState(0);
   const [openTenders, setOpenTenders] = useState(0);
   const [totalPOs, setTotalPOs] = useState(0);
@@ -191,40 +163,32 @@ const PurchaseHome = () => {
   const [activeReturns, setActiveReturns] = useState(0);
 
   useEffect(() => {
-    // Suppliers — response: { data: [...] }
-    apiClient.get('/suppliers')
-      .then(res => {
+    apiClient.get('/suppliers').then(res => {
         const data = res.data?.data;
         if (Array.isArray(data)) setTotalSuppliers(data.length);
-      })
-      .catch(() => setTotalSuppliers(0));
+      }).catch(() => setTotalSuppliers(0));
 
-    // Open Tenders — response: { data: [...] }
-    apiClient.get('/tenders')
-      .then(res => {
-        const data = res.data?.data;
-        if (Array.isArray(data)) {
-          const openCount = data.filter(t => {
-            const s = t.status?.toLowerCase();
-            return s === 'published' || s === 'open';
-          }).length;
-          setOpenTenders(openCount);
-        }
-      })
-      .catch(() => setOpenTenders(0));
+    Promise.all([
+      apiClient.get('/tenders').catch(() => ({ data: { data: [] } })),
+      apiClient.get('/public-tenders/internal').catch(() => ({ data: { data: [] } }))
+    ]).then(([res1, res2]) => {
+      const tenders1 = Array.isArray(res1.data?.data) ? res1.data.data : [];
+      const tenders2 = Array.isArray(res2.data?.data) ? res2.data.data : [];
+      const allTenders = [...tenders1, ...tenders2];
+      const openCount = allTenders.filter(t => {
+        const s = t.status?.toLowerCase();
+        return s === 'published' || s === 'open';
+      }).length;
+      setOpenTenders(openCount);
+    }).catch(() => setOpenTenders(0));
 
-    // Purchase Orders — response: { data: { orders: [...], pagination: {} } }
-    apiClient.get('/purchase/orders')
-      .then(res => {
+    apiClient.get('/purchase/orders').then(res => {
         const data = res.data?.data;
         const orders = data?.orders ?? data;
         setTotalPOs(Array.isArray(orders) ? orders.length : (data?.pagination?.total ?? 0));
-      })
-      .catch(() => setTotalPOs(0));
+      }).catch(() => setTotalPOs(0));
 
-    // Pending Requests — /procurement/requests returns { data: [...] }
-    apiClient.get('/procurement/requests')
-      .then(res => {
+    apiClient.get('/procurement/requests').then(res => {
         const data = res.data?.data;
         if (Array.isArray(data)) {
           const pending = data.filter(r => {
@@ -233,90 +197,70 @@ const PurchaseHome = () => {
           }).length;
           setPendingRequests(pending);
         }
-      })
-      .catch(() => setPendingRequests(0));
+      }).catch(() => setPendingRequests(0));
 
-    // Quotations — response: { data: [...] }
-    apiClient.get('/purchase/quotations')
-      .then(res => {
+    apiClient.get('/purchase/quotations').then(res => {
         const data = res.data?.data;
         if (Array.isArray(data)) setSupplierBids(data.length);
-      })
-      .catch(() => setSupplierBids(0));
+      }).catch(() => setSupplierBids(0));
 
-    // Statistics — response: { data: { totalSpendThisYear, pendingReceiving, ... } }
-    apiClient.get('/purchase/statistics')
-      .then(res => {
+    apiClient.get('/purchase/statistics').then(res => {
         const data = res.data?.data;
         if (data) {
           setTotalSpend(parseFloat(data.totalSpendThisYear) || 0);
           setPendingDeliveries(parseInt(data.pendingReceiving) || 0);
         }
-      })
-      .catch(() => {
+      }).catch(() => {
         setTotalSpend(0);
         setPendingDeliveries(0);
       });
 
-    // Budget & Returns: no endpoint yet — show 0 (honest)
     setBudgetRemaining(0);
     setActiveReturns(0);
     setReceivedToday(0);
   }, []);
 
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  
+  const userName = user?.full_name || user?.username || 'User';
+
   return (
-    <div className="sc-root">
+    <div className="dashboard-root">
       <style>{STYLES}</style>
 
-      <div className="sc-header">
+      <div className="dashboard-header">
         <div>
-          <h1 className="sc-header-title">Welcome back!</h1>
-          <p className="sc-header-sub">
-            <span style={{ fontWeight: 600, color: '#111827' }}>{user?.full_name || 'Abebe Kebede'}</span> • {dateStr}
+          <h1 className="dashboard-title">Procurement Overview</h1>
+          <p className="dashboard-subtitle">
+            Welcome back, <strong>{userName}</strong> • {dateStr}
           </p>
-          <div className="sc-header-tags">
-             <span className="sc-tag sc-tag-blue">Department: Purchase</span>
-             <span className="sc-tag sc-tag-green">18 Modules Active</span>
-          </div>
         </div>
       </div>
 
-      {/* 10 KPIs exactly as original order */}
-      <div className="sc-kpi-grid">
-        <KPI title="Total Suppliers" value={totalSuppliers} icon={Users} color="#1d4ed8" bg="#eff6ff" onClick={() => navigate('/purchase/suppliers')} />
-        <KPI title="Total Purchase Orders" value={totalPOs} icon={ShoppingCart} color="#8b5cf6" bg="#ede9fe" onClick={() => navigate('/purchase/orders')} />
-        <KPI title="Pending Requests" value={pendingRequests} icon={FileText} color="#3b82f6" bg="#eff6ff" onClick={() => navigate('/purchase/requests')} />
-        <KPI title="Open Tenders" value={openTenders} icon={Clipboard} color="#0891b2" bg="#cffafe" onClick={() => navigate('/purchase/smart-tenders')} />
-        <KPI title="Supplier Bids" value={supplierBids} icon={Inbox} color="#059669" bg="#dcfce7" onClick={() => navigate('/purchase/quotations')} />
-
-        <KPI title="Pending Deliveries" value={pendingDeliveries} icon={Clock} color="#d97706" bg="#fef3c7" onClick={() => navigate('/purchase/reports/delivery')} />
-        <KPI title="Received Today" value={receivedToday} icon={Truck} color="#06b6d4" bg="#cffafe" onClick={() => navigate('/purchase/orders')} />
-        <KPI title="Total Spend (MTD)" value={`ETB ${totalSpend.toLocaleString()}`} icon={DollarSign} color="#dc2626" bg="#fef2f2" onClick={() => navigate('/purchase/reports/financial')} />
-        <KPI title="Budget Remaining" value={`ETB ${budgetRemaining.toLocaleString()}`} icon={Wallet} color="#16a34a" bg="#dcfce7" onClick={() => navigate('/purchase/reports/financial')} />
-        <KPI title="Active Returns" value={activeReturns} icon={RotateCcw} color="#ea580c" bg="#ffedd5" onClick={() => navigate('/purchase/returns')} />
-      </div>
-
-      <div className="sc-header" style={{ marginTop: '32px', marginBottom: '16px' }}>
-        <h2 className="sc-header-title" style={{ fontSize: '18px' }}>Quick Actions</h2>
-      </div>
-
-      <div className="sc-secondary-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-        <div className="sc-action-card" onClick={() => navigate('/purchase/suppliers')}>
-          <div>
-            <div className="sc-action-title">Supplier Directory</div>
-            <div className="sc-action-desc">Manage {totalSuppliers} registered suppliers</div>
-          </div>
-          <ArrowRight className="sc-action-arrow" size={20} />
+      <div className="section-container">
+        <div className="section-title">Sourcing & Tenders</div>
+        <div className="grid-layout">
+          <KPI title="Pending Requests" value={pendingRequests} footer="Awaiting review" icon={FileText} color="#0052CC" bg="#DEEBFF" onClick={() => navigate('/purchase/requests')} />
+          <KPI title="Open Tenders" value={openTenders} footer="Published & Open for bids" icon={Clipboard} color="#008DA6" bg="#E6FCFF" onClick={() => navigate('/purchase/smart-tenders')} />
+          <KPI title="Supplier Bids" value={supplierBids} footer="Quotations received" icon={Inbox} color="#006644" bg="#E3FCEF" onClick={() => navigate('/purchase/quotations')} />
+          <KPI title="Total Suppliers" value={totalSuppliers} footer="Registered in directory" icon={Users} color="#403294" bg="#EAE6FF" onClick={() => navigate('/purchase/suppliers')} />
         </div>
-        
-        <div className="sc-action-card" onClick={() => navigate('/purchase/requests')}>
-          <div>
-            <div className="sc-action-title">Purchase Requests</div>
-            <div className="sc-action-desc">Review {pendingRequests} pending requests</div>
-          </div>
-          <ArrowRight className="sc-action-arrow" size={20} />
+      </div>
+
+      <div className="section-container">
+        <div className="section-title">Orders & Logistics</div>
+        <div className="grid-layout">
+          <KPI title="Purchase Orders" value={totalPOs} footer="Total orders created" icon={ShoppingCart} color="#0052CC" bg="#DEEBFF" onClick={() => navigate('/purchase/orders')} />
+          <KPI title="Pending Deliveries" value={pendingDeliveries} footer="Awaiting fulfillment" icon={Clock} color="#FF8B00" bg="#FFFAE6" onClick={() => navigate('/purchase/reports/delivery')} />
+          <KPI title="Received Today" value={receivedToday} footer="Inward shipments" icon={Truck} color="#008DA6" bg="#E6FCFF" onClick={() => navigate('/purchase/orders')} />
+          <KPI title="Active Returns" value={activeReturns} footer="Processing RMA" icon={RotateCcw} color="#DE350B" bg="#FFEBE6" onClick={() => navigate('/purchase/returns')} />
+        </div>
+      </div>
+
+      <div className="section-container">
+        <div className="section-title">Financial Overview</div>
+        <div className="grid-layout">
+          <KPI title="Total Spend" value={`ETB ${totalSpend.toLocaleString()}`} footer="Year to date" icon={DollarSign} color="#DE350B" bg="#FFEBE6" onClick={() => navigate('/purchase/reports/financial')} />
+          <KPI title="Budget Remaining" value={`ETB ${budgetRemaining.toLocaleString()}`} footer="Current fiscal year" icon={Wallet} color="#006644" bg="#E3FCEF" onClick={() => navigate('/purchase/reports/financial')} />
         </div>
       </div>
 
