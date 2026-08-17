@@ -317,6 +317,140 @@ const adminService = {
   },
   markAlertResolved: async (id) => {
     return await apiClient.post(`/admin/alerts/${id}/resolve`);
+  },
+  /* System Jobs */
+  getSystemJobs: async (params = {}) => {
+    return await apiClient.get('/admin/system-jobs', { params });
+  },
+  getSystemJobById: async (id) => {
+    return await apiClient.get(`/admin/system-jobs/${id}`);
+  },
+  retrySystemJob: async (id) => {
+    return await apiClient.post(`/admin/system-jobs/${id}/retry`);
+  },
+  pauseSystemJob: async (id) => {
+    return await apiClient.post(`/admin/system-jobs/${id}/pause`);
+  },
+  resumeSystemJob: async (id) => {
+    return await apiClient.post(`/admin/system-jobs/${id}/resume`);
+  },
+  getSystemJobHistory: async (id, params = {}) => {
+    return await apiClient.get(`/admin/system-jobs/${id}/history`, { params });
+  },
+  updateSystemJobSchedule: async (id, schedule) => {
+    return await apiClient.put(`/admin/system-jobs/${id}/schedule`, { schedule });
+  },
+  /* Data Import / Export */
+  importData: async (dataType, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dataType', dataType);
+    return await apiClient.post('/admin/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  validateImportFile: async (dataType, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dataType', dataType);
+    return await apiClient.post('/admin/import/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  previewImport: async (jobId) => {
+    return await apiClient.get(`/admin/import/${jobId}/preview`);
+  },
+  confirmImport: async (jobId) => {
+    return await apiClient.post(`/admin/import/${jobId}/confirm`);
+  },
+  getImportHistory: async (params = {}) => {
+    return await apiClient.get('/admin/import/history', { params });
+  },
+  getImportJobById: async (id) => {
+    return await apiClient.get(`/admin/import/history/${id}`);
+  },
+  exportData: async (dataType, format = 'excel', params = {}) => {
+    return await apiClient.get(`/admin/export/${dataType}`, {
+      params: { format, ...params },
+      responseType: 'blob',
+    });
+  },
+  getExportPermissions: async () => {
+    return await apiClient.get('/admin/export/permissions');
+  },
+  /* Maintenance */
+  getMaintenanceTasks: async () => {
+    return await apiClient.get('/admin/maintenance/tasks');
+  },
+  runDatabaseMaintenance: async () => {
+    return await apiClient.post('/admin/maintenance/database');
+  },
+  runStorageCleanup: async () => {
+    return await apiClient.post('/admin/maintenance/storage/cleanup');
+  },
+  getStorageUsage: async () => {
+    return await apiClient.get('/admin/maintenance/storage');
+  },
+  clearCache: async () => {
+    return await apiClient.post('/admin/maintenance/cache/clear');
+  },
+  getCacheStatus: async () => {
+    return await apiClient.get('/admin/maintenance/cache');
+  },
+  getLogManagement: async () => {
+    return await apiClient.get('/admin/maintenance/logs');
+  },
+  pruneLogs: async (olderThanDays) => {
+    return await apiClient.post('/admin/maintenance/logs/prune', { olderThanDays });
+  },
+  runDataIntegrityCheck: async () => {
+    return await apiClient.post('/admin/maintenance/integrity');
+  },
+  runSystemDiagnostics: async () => {
+    return await apiClient.post('/admin/maintenance/diagnostics');
+  },
+  getArchiveRules: async () => {
+    return await apiClient.get('/admin/maintenance/archive/rules');
+  },
+  runArchive: async (dataType, olderThanDays) => {
+    return await apiClient.post('/admin/maintenance/archive', { dataType, olderThanDays });
+  },
+  getSystemUpdates: async () => {
+    return await apiClient.get('/admin/maintenance/updates');
+  },
+  applySystemUpdate: async (updateId) => {
+    return await apiClient.post(`/admin/maintenance/updates/${updateId}/apply`);
+  },
+  restartService: async (serviceName) => {
+    return await apiClient.post('/admin/maintenance/restart', { service: serviceName });
+  },
+  /* Integrations */
+  getIntegrations: async () => {
+    return await apiClient.get('/admin/integrations');
+  },
+  getIntegrationById: async (id) => {
+    return await apiClient.get(`/admin/integrations/${id}`);
+  },
+  connectIntegration: async (id, credentials) => {
+    return await apiClient.post(`/admin/integrations/${id}/connect`, credentials);
+  },
+  disconnectIntegration: async (id) => {
+    return await apiClient.post(`/admin/integrations/${id}/disconnect`);
+  },
+  updateIntegrationConfig: async (id, config) => {
+    return await apiClient.put(`/admin/integrations/${id}/config`, config);
+  },
+  testIntegration: async (id, payload) => {
+    return await apiClient.post(`/admin/integrations/${id}/test`, payload);
+  },
+  toggleIntegration: async (id, enabled) => {
+    return await apiClient.patch(`/admin/integrations/${id}/toggle`, { enabled });
+  },
+  getIntegrationSyncHistory: async (id, params = {}) => {
+    return await apiClient.get(`/admin/integrations/${id}/history`, { params });
+  },
+  retryIntegrationSync: async (id, syncId) => {
+    return await apiClient.post(`/admin/integrations/${id}/history/${syncId}/retry`);
   }
 };
 export default adminService;
