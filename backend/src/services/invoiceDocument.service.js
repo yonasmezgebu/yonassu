@@ -130,64 +130,58 @@ const findUser = async (id) => {
 // 1. Retail & POS (pos_sales completed + retail_transactions)
 const retailDocuments = async () => {
   const docs = [];
-  const completed = await db('sale_statuses').where('status_code', 'completed').first();
-  if (completed) {
-    const sales = await db('pos_sales')
-      .where({ 'pos_sales.status_id': completed.id }).whereNull('pos_sales.deleted_at')
-      .leftJoin('users as u', 'pos_sales.cashier_id', 'u.id')
-      .select('pos_sales.*', 'u.full_name as seller_name')
-      .orderBy('pos_sales.sale_date', 'desc');
-    for (const s of sales) {
-      const raw = await db('pos_items')
-        .where('sale_id', s.id)
-        .leftJoin('products as p', 'pos_items.product_id', 'p.id')
-        .select('pos_items.*', 'p.name as product_name');
-      const lines = raw.length
-        ? raw.map((it) => ({
-            itemId: it.product_id,
-            name: it.product_name || 'Product',
-            qty: asNum(it.quantity) || 1,
-            unitPrice: asNum(it.unit_price) || 0,
-            amount: asNum(it.subtotal) || asNum(it.unit_price) * (asNum(it.quantity) || 1)
-          }))
-        : [{ itemId: null, name: 'POS Sale', qty: 1, unitPrice: asNum(s.total_amount), amount: asNum(s.total_amount) }];
-      const pm = await db('payment_methods').where('id', s.payment_method_id).first();
-      docs.push(await computeDocument({
-        source: 'retail', sourceLabel: 'Retail & POS', icon: '🛒', color: '#2563EB',
-        saleId: s.id, invoiceNo: s.invoice_number, date: s.sale_date,
-        customer: s.notes ? s.notes.replace('Recipient: ', '') : '',
-        paymentMethod: pm ? pm.name : 'Cash',
-        amountPaid: asNum(s.amount_paid) || asNum(s.total_amount),
-        seller: s.seller_name || '', receivedBy: s.seller_name || '',
-        lines, reference: s.payment_reference, description: 'Retail & POS sale'
-      }));
-    }
-  }
+  const invoices = await db('sales_invoices')
+    .where('source', 'retail')
+    .andWhereNot('status', 'cancelled')
+    .orderBy('created_at', 'desc');
 
-  const txs = await db('retail_transactions').orderBy('created_at', 'desc').select('*');
-  for (const t of txs) {
-    const raw = await db('retail_transaction_items')
-      .where('transaction_id', t.id)
-      .leftJoin('products as p', 'retail_transaction_items.product_id', 'p.id')
-      .select('retail_transaction_items.*', 'p.name as product_name');
-    const lines = raw.length
-      ? raw.map((it) => ({
-          itemId: it.product_id,
-          name: it.product_name || 'Product',
-          qty: asNum(it.quantity) || 1,
-          unitPrice: asNum(it.unit_price) || 0,
-          amount: asNum(it.line_total) || asNum(it.unit_price) * (asNum(it.quantity) || 1)
-        }))
-      : [{ itemId: null, name: 'Retail Sale', qty: 1, unitPrice: asNum(t.total_amount), amount: asNum(t.total_amount) }];
-    docs.push(await computeDocument({
-      source: 'retail', sourceLabel: 'Retail & POS', icon: '🛒', color: '#2563EB',
-      saleId: t.id, invoiceNo: t.invoice_number, date: t.created_at,
-      customer: t.customer_phone ? 'Customer ' + t.customer_phone : '',
-      paymentMethod: t.payment_method || 'Cash',
-      amountPaid: asNum(t.total_amount),
-      seller: t.received_by || '', receivedBy: t.received_by || '',
-      lines, reference: t.payment_ref, description: 'Retail sale'
+  for (const inv of invoices) {
+    const items = await db('sales_invoice_items').where('invoice_id', inv.id);
+    const receipt = await db('sales_receipts').where('invoice_id', inv.id).andWhereNot('status', 'cancelled').first();
+
+    const lines = items.map(it => ({
+      itemId: it.item_id,
+      name: it.name,
+      qty: it.qty,
+      unitPrice: asNum(it.unit_price),
+      rate: asNum(it.rate),
+      treatment: it.treatment,
+      vat: asNum(it.vat_amount),
+      amount: asNum(it.total)
     }));
+
+    const amountPaid = receipt ? asNum(receipt.amount_paid) : 0;
+    const total = asNum(inv.total_amount);
+    const balance = round2(amountPaid - total);
+
+    docs.push({
+      id: inv.id,
+      source: inv.source,
+      sourceLabel: 'Retail & POS',
+      icon: '🛒',
+      color: '#2563EB',
+      saleId: inv.sale_id,
+      invoiceNo: inv.invoice_no,
+      receiptNo: receipt ? receipt.receipt_no : null,
+      date: inv.created_at,
+      customer: inv.customer_name || 'Walk-in Customer',
+      customerTin: inv.customer_tin || '',
+      paymentMethod: receipt ? (receipt.payment_method || 'Cash') : 'Pending',
+      amountPaid: amountPaid,
+      total: total,
+      balance: balance,
+      subtotal: asNum(inv.subtotal),
+      vatStandard: asNum(inv.vat_standard),
+      vatStandardRate: asNum(inv.vat_standard_rate) || 0.15,
+      vatExempt: asNum(inv.vat_exempt),
+      vatZeroRated: asNum(inv.vat_zero_rated),
+      vatTotal: asNum(inv.vat_total),
+      items: lines,
+      seller: inv.created_by_name || '',
+      receivedBy: receipt ? (receipt.received_by_name || inv.created_by_name || '') : '',
+      reference: receipt ? receipt.payment_reference : null,
+      description: 'Retail & POS sale'
+    });
   }
   return docs;
 };
