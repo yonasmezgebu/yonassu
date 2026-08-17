@@ -1,7 +1,7 @@
 const { db, transaction } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
-const { generateOrderNumber } = require('../../utils/orderNumber');
+const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
 
@@ -172,6 +172,14 @@ exports.placeOrder = catchAsync(async (req, res) => {
     'retail',
     cartItems.map((i) => ({ itemId: i.product_id, amount: parseFloat(i.price) * i.quantity }))
   );
+  
+  let vat_standard = 0, vat_exempt = 0, vat_zero_rated = 0, std_rate = 0.15;
+  vatCalc.rows.forEach(r => {
+    if (r.treatment === 'standard') { vat_standard += r.vat; std_rate = r.rate; }
+    else if (r.treatment === 'exempt') vat_exempt += r.vat;
+    else if (r.treatment === 'zero_rated') vat_zero_rated += r.vat;
+  });
+
   const tax = vatCalc.vat;
   const total = subtotal + tax + parseFloat(delivery_fee);
 
@@ -194,11 +202,14 @@ exports.placeOrder = catchAsync(async (req, res) => {
       // If stock_quantity is NULL, treat as unlimited — no deduction needed
     }
 
-    const invoice_number = await generateOrderNumber('RET');
+    const invoice_number = await generateInvoiceNumber(); // Use INV- prefix for invoices, or we can use order_number for retail_orders, but prompt asks for "invoice" 
+    const retail_order_number = await generateOrderNumber('RET');
+    const isPaid = payment_method && payment_ref;
+
     const [orderId] = await trx('retail_orders').insert({
       customer_id: req.user.id,
-      invoice_number, subtotal, tax, delivery_fee, total_amount: total,
-      status: 'PROCESSING', payment_status: 'AWAITING_PAYMENT',
+      invoice_number: retail_order_number, subtotal, tax, delivery_fee, total_amount: total,
+      status: 'PROCESSING', payment_status: isPaid ? 'CONFIRMED' : 'AWAITING_PAYMENT',
       delivery_type: delivery_type || 'pickup',
       delivery_address: delivery_address || null,
       notes: notes || null,
@@ -218,8 +229,82 @@ exports.placeOrder = catchAsync(async (req, res) => {
       });
     }
 
+    const invoiceId = 'INV-' + orderId + '-' + Date.now().toString().slice(-4);
+    await trx('sales_invoices').insert({
+      id: invoiceId,
+      invoice_no: invoice_number,
+      source: 'retail',
+      sale_id: orderId,
+      customer_name: resolvedName,
+      customer_tin: null, // Usually not provided in retail
+      subtotal,
+      vat_standard,
+      vat_standard_rate: std_rate,
+      vat_exempt,
+      vat_zero_rated,
+      vat_total: tax,
+      total_amount: total, // For retail, invoice amount matches total (including delivery? wait, delivery fee might not be in vatCalc. If we want it in invoice, we should add it to subtotal. The user's spec didn't mention delivery fee, so we leave it in retail_orders only, but the total on invoice should match. Let's make subtotal = subtotal + delivery_fee, and zero-rate the delivery fee)
+      status: 'active',
+      created_by_name: req.user.full_name || req.user.fullName || 'System',
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
+    for (let i = 0; i < cartItems.length; i++) {
+      const item = cartItems[i];
+      const r = vatCalc.rows[i];
+      await trx('sales_invoice_items').insert({
+        invoice_id: invoiceId,
+        item_id: item.product_id,
+        name: item.name,
+        qty: item.quantity,
+        unit_price: item.price,
+        treatment: r.treatment,
+        rate: r.rate,
+        vat_amount: r.vat,
+        subtotal: r.sub,
+        total: r.sub + r.vat
+      });
+    }
+    
+    if (parseFloat(delivery_fee) > 0) {
+      await trx('sales_invoice_items').insert({
+        invoice_id: invoiceId,
+        item_id: 0,
+        name: 'Delivery Fee',
+        qty: 1,
+        unit_price: delivery_fee,
+        treatment: 'zero_rated',
+        rate: 0,
+        vat_amount: 0,
+        subtotal: delivery_fee,
+        total: delivery_fee
+      });
+      // also update invoice subtotal
+      await trx('sales_invoices').where('id', invoiceId).update({
+        subtotal: db.raw('subtotal + ?', [delivery_fee]),
+        vat_zero_rated: db.raw('vat_zero_rated + ?', [0])
+      });
+    }
+
+    if (isPaid) {
+      const receipt_no = await generateReceiptNumber();
+      await trx('sales_receipts').insert({
+        id: 'REC-' + orderId + '-' + Date.now().toString().slice(-4),
+        receipt_no,
+        invoice_id: invoiceId,
+        amount_paid: total,
+        payment_method: payment_method,
+        payment_reference: resolvedPaymentRef,
+        received_by_name: 'Online Payment',
+        status: 'active',
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      });
+    }
+
     await trx('retail_cart_items').where({ user_id: req.user.id }).delete();
-    return { orderId, invoice_number, total_amount: total };
+    return { orderId, invoice_number: retail_order_number, total_amount: total };
   });
 
   res.status(201).json({ status: 'success', message: 'Order placed!', data: result });
@@ -790,6 +875,16 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   if (!allowed.includes(status)) throw new AppError(`Invalid status. Must be one of: ${allowed.join(', ')}`, 400);
   const updated = await db('retail_orders').where({ id }).update({ status, updated_at: db.fn.now() });
   if (!updated) throw new AppError('Order not found', 404);
+  
+  if (status === 'CANCELLED') {
+    // Cancel invoice and receipt
+    const inv = await db('sales_invoices').where({ sale_id: id, source: 'retail' }).first();
+    if (inv) {
+      await db('sales_invoices').where({ id: inv.id }).update({ status: 'cancelled' });
+      await db('sales_receipts').where({ invoice_id: inv.id }).update({ status: 'cancelled' });
+    }
+  }
+  
   const order = await db('retail_orders').where({ id }).first();
   log(req, 'Order Status Updated', `Order #${id}`, order, { ...order, status });
   res.json({ status: 'success', message: 'Order status updated' });
