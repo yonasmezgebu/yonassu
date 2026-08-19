@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { body, query } = require('express-validator');
+const { body, query, param } = require('express-validator');
 const CEODashboardController = require('../controllers/ceo.controller');
 const HRController = require('../controllers/hr.controller');
 const BoardController = require('../controllers/board.controller');
@@ -363,5 +363,15 @@ router.patch('/employee-registrations/:id/reject',     authenticate, authorize([
 router.get('/store-updates/pending',          authenticate, authorize(['ceo:dashboard']), CEODashboardController.getPendingStoreUpdates);
 router.patch('/store-updates/:id/approve',    authenticate, authorize(['ceo:dashboard']), CEODashboardController.approveStoreUpdate);
 router.patch('/store-updates/:id/reject',     authenticate, authorize(['ceo:dashboard']), CEODashboardController.rejectStoreUpdate);
+
+// ── Danger Zone (Admin → CEO approval for database reset) ──────────────────────────────────
+const DangerZoneController = require('../controllers/dangerZone.controller');
+router.get('/danger-zone/requests',          authenticate, authorize(['ceo:dashboard']), DangerZoneController.listRequests);
+router.post('/danger-zone/requests/:id/approve', authenticate, authorize(['ceo:dashboard']),
+  param('id').isInt(), validate, DangerZoneController.approveRequest
+);
+router.post('/danger-zone/requests/:id/reject', authenticate, authorize(['ceo:dashboard']),
+  param('id').isInt(), body('reason').isString(), validate, DangerZoneController.rejectRequest
+);
 
 module.exports = router;
