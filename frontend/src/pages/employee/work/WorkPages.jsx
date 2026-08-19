@@ -97,98 +97,150 @@ export const SubmitWork = () => {
 // --- 4.8 Daily Report ---
 export const DailyReport = () => {
   const [history, setHistory] = useState([]);
-  const today = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
-    report_date: today,
-    tasks_completed_count: 0,
-    tasks_in_progress_count: 0,
-    issues_challenges: '',
-    planned_tomorrow: '',
-    additional_notes: ''
+    report_text: '',
+    document_name: '',
+    document_url: '' // Will simulate file upload
   });
-  const [isEditingExisting, setIsEditingExisting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
-    const fetch = () => {
-      const reports = employeePortalState.getDailyReports(SESSION_EMPLOYEE_ID);
-      setHistory(reports);
-      
-      const todayReport = reports.find(r => r.report_date === today);
-      if (todayReport) {
-        setIsEditingExisting(true);
-        setFormData(todayReport);
-      } else {
-        setIsEditingExisting(false);
-        // Pre-compute defaults
-        const summary = employeePortalState.getDashboardSummary(SESSION_EMPLOYEE_ID);
-        setFormData(prev => ({ ...prev, tasks_completed_count: summary.tasksCompletedToday, tasks_in_progress_count: summary.tasksPending }));
-      }
-    };
-    fetch();
-    return employeePortalState.subscribe(fetch);
+    fetchHistory();
   }, []);
 
-  const handleSubmit = (e) => {
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/employee-reports/my', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      // Simulate file upload by setting a fake URL and name
+      setFormData(prev => ({
+        ...prev,
+        document_name: file.name,
+        document_url: `/uploads/reports/${file.name}`
+      }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    employeePortalState.submitDailyReport(SESSION_EMPLOYEE_ID, formData);
+    setSubmitting(true);
+    try {
+      // Fetch user profile to get department
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      let dept = 'general';
+      if (user.role) {
+        if (user.role.toLowerCase().includes('pharmacy')) dept = 'pharmacy';
+        else if (user.role.toLowerCase().includes('sales')) dept = 'sales';
+        else if (user.role.toLowerCase().includes('print')) dept = 'printing';
+        else if (user.role.toLowerCase().includes('car')) dept = 'car_rental';
+        else if (user.role.toLowerCase().includes('purchase')) dept = 'purchase';
+      }
+
+      const res = await fetch('http://localhost:5000/api/employee-reports', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          department: dept
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to submit report');
+      
+      setFormData({ report_text: '', document_name: '', document_url: '' });
+      setSelectedFile(null);
+      fetchHistory();
+      alert('Report submitted successfully to your manager!');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="Daily Report" description="Submit your end-of-day summary." />
+      <PageHeader title="Submit Report" description="Submit your daily report or task report to your manager." />
 
       <div style={{ display: 'flex', gap: '32px' }}>
         <div style={{ flex: 1, backgroundColor: 'white', padding: '32px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-          {isEditingExisting && (
-            <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertCircle size={16} /> You have already submitted a report for today. Submitting again will update your existing report.
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Date</label>
-                <input type="date" required disabled value={formData.report_date} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Tasks Completed</label>
-                <input type="number" required value={formData.tasks_completed_count} onChange={e => setFormData({...formData, tasks_completed_count: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Tasks In Progress</label>
-                <input type="number" required value={formData.tasks_in_progress_count} onChange={e => setFormData({...formData, tasks_in_progress_count: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-              </div>
+            
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Report Text</label>
+              <textarea 
+                required 
+                rows="6" 
+                value={formData.report_text} 
+                onChange={e => setFormData({...formData, report_text: e.target.value})} 
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: '14px' }} 
+                placeholder="Write your report or summarize your completed tasks here..."
+              />
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Issues or Challenges</label>
-              <textarea rows="3" value={formData.issues_challenges} onChange={e => setFormData({...formData, issues_challenges: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Attach Document (Optional)</label>
+              <div style={{ padding: '24px', border: '2px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', backgroundColor: '#f8fafc', position: 'relative' }}>
+                <input 
+                  type="file" 
+                  onChange={handleFileChange} 
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} 
+                />
+                <FileText size={28} style={{ marginBottom: '8px', color: '#94a3b8' }} />
+                <div style={{ color: '#475569', fontWeight: '600' }}>
+                  {selectedFile ? selectedFile.name : 'Click or drag a document here to upload'}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Planned for Tomorrow</label>
-              <textarea rows="3" value={formData.planned_tomorrow} onChange={e => setFormData({...formData, planned_tomorrow: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
-            </div>
-
-            <button type="submit" style={{ padding: '12px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <FileText size={18} /> {isEditingExisting ? 'Update Report' : 'Submit Report'}
+            <button disabled={submitting} type="submit" style={{ padding: '14px 24px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: submitting ? 0.7 : 1 }}>
+              <Send size={18} /> {submitting ? 'Submitting...' : 'Submit Report'}
             </button>
           </form>
         </div>
 
-        <div style={{ width: '350px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 16px' }}>Past Reports</h3>
+        <div style={{ width: '400px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: '0 0 16px' }}>My Previous Reports</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {history.map(h => (
-              <div key={h.id} style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '14px' }}>
+            {history.length === 0 ? (
+              <p style={{ color: '#94a3b8', fontSize: '14px' }}>No reports submitted yet.</p>
+            ) : history.map(h => (
+              <div key={h.id} style={{ backgroundColor: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '700', color: '#0f172a' }}>{h.report_date}</span>
-                  <span style={{ color: '#64748b', fontSize: '12px' }}>{h.submitted_at ? new Date(h.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '14px' }}>
+                    {new Date(h.created_at).toLocaleDateString()}
+                  </span>
+                  <span style={{ color: '#64748b', fontSize: '12px' }}>
+                    {new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <div style={{ color: '#475569', fontSize: '13px' }}>
-                  Completed: {h.tasks_completed_count} | In Progress: {h.tasks_in_progress_count}
+                <div style={{ color: '#475569', fontSize: '13px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {h.report_text}
                 </div>
+                {h.document_name && (
+                  <div style={{ marginTop: '10px', fontSize: '12px', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
+                    <FileText size={14} /> {h.document_name}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -198,55 +250,4 @@ export const DailyReport = () => {
   );
 };
 
-// --- 4.10 Work History ---
-export const WorkHistory = () => {
-  const [history, setHistory] = useState([]);
 
-  useEffect(() => {
-    const fetch = () => setHistory(employeePortalState.getWorkHistory(SESSION_EMPLOYEE_ID));
-    fetch();
-    return employeePortalState.subscribe(fetch);
-  }, []);
-
-  return (
-    <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
-      <PageHeader title="Work History" description="Ledger of past submissions and their approval status." />
-      
-      <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '13px' }}>
-              <th style={{ padding: '16px 24px' }}>Submission #</th>
-              <th>Task ID</th>
-              <th>Date Submitted</th>
-              <th>Status</th>
-              <th>Feedback</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map(h => (
-              <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '16px 24px', fontWeight: '600', color: '#0f172a' }}>{h.submission_number}</td>
-                <td style={{ color: '#475569', fontSize: '14px' }}>{h.task_id}</td>
-                <td style={{ color: '#64748b', fontSize: '13px' }}>{new Date(h.submitted_at).toLocaleString()}</td>
-                <td>
-                  <span style={{ 
-                    padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase',
-                    backgroundColor: h.status === 'approved' ? '#ecfdf5' : (h.status === 'rejected' ? '#fef2f2' : '#f8fafc'),
-                    color: h.status === 'approved' ? '#10b981' : (h.status === 'rejected' ? '#ef4444' : '#64748b')
-                  }}>
-                    {h.status.replace('_', ' ')}
-                  </span>
-                </td>
-                <td style={{ color: '#475569', fontSize: '13px', maxWidth: '300px' }}>{h.feedback || '-'}</td>
-              </tr>
-            ))}
-            {history.length === 0 && (
-              <tr><td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No work history found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
