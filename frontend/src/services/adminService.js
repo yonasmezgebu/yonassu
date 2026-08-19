@@ -451,6 +451,17 @@ const adminService = {
   },
   retryIntegrationSync: async (id, syncId) => {
     return await apiClient.post(`/admin/integrations/${id}/history/${syncId}/retry`);
+  },
+
+  // ── Danger Zone (database reset, CEO approved) ──
+  getDangerZoneOverview: async () => {
+    return await apiClient.get('/admin/danger-zone/overview');
+  },
+  getDangerZoneRequests: async (params = {}) => {
+    return await apiClient.get('/admin/danger-zone/requests', { params });
+  },
+  requestDangerZoneReset: async (payload) => {
+    return await apiClient.post('/admin/danger-zone/request', payload);
   }
 };
 export default adminService;
