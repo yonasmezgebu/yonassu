@@ -250,8 +250,16 @@ const CEOAuditLog = () => {
                                 
                                 if (changedKeys.length === 0) {
                                   return (
-                                    <div style={{ background: C.white, padding: 16, borderRadius: 8, border: `1px solid ${C.border}`, color: C.gray, fontSize: 12, textAlign: 'center' }}>
-                                      No field values changed in this update.
+                                    <div style={{ background: C.white, padding: 16, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, textAlign: 'center' }}>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray, marginBottom: 6 }}>
+                                        {log.action.replace(/_/g, ' ')}{log.record_identifier ? ` — ${log.record_identifier}` : ''} by {log.user_name} ({log.role})
+                                      </div>
+                                      <div style={{ color: C.gray, marginBottom: nObj ? 10 : 0 }}>
+                                        This action was logged with identical before/after values, so no field-level differences were captured. The recorded state is below.
+                                      </div>
+                                      {nObj && (
+                                        <pre style={{ margin: 0, fontSize: 12, color: C.darkGray, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', textAlign: 'left', background: '#F8FAFC', border: `1px solid ${C.border}`, borderRadius: 6, padding: 10 }}>{safeParse(nObj)}</pre>
+                                      )}
                                     </div>
                                   );
                                 }
