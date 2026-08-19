@@ -32,6 +32,7 @@ const UserManagement = () => {
   // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageInput, setPageInput] = useState('');
 
   // Feedback
   const [toast, setToast] = useState(null);
@@ -54,7 +55,7 @@ const UserManagement = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (params = {}) => {
     setLoading(true);
     try {
       const response = await adminService.getUsers({
@@ -63,7 +64,8 @@ const UserManagement = () => {
         statusId: statusFilter,
         page,
         limit: 10,
-        includeDeleted: showDeleted
+        includeDeleted: showDeleted,
+        ...params
       });
       setUsers(response.data?.users || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
@@ -74,10 +76,30 @@ const UserManagement = () => {
     }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page === 1) {
+        fetchUsers({ page: 1 });
+      } else {
+        setPage(1);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(1);
     fetchUsers();
+  };
+
+  const goToPage = (e) => {
+    e.preventDefault();
+    const p = parseInt(pageInput, 10);
+    if (!Number.isNaN(p) && p >= 1 && p <= totalPages) {
+      setPage(p);
+    }
+    setPageInput('');
   };
 
   const handleStatusChange = (userId, newStatus) => {
@@ -361,6 +383,19 @@ const UserManagement = () => {
         <div className={styles.pagination}>
           <button className={styles.btnSecondary} disabled={page === 1} onClick={() => setPage(page - 1)}>Prev</button>
           <span>Page {page} of {totalPages}</span>
+          <form onSubmit={goToPage} className={styles.pageJump}>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={pageInput}
+              onChange={e => setPageInput(e.target.value)}
+              placeholder="Page #"
+              className={styles.pageInput}
+              title="Enter a page number and press Enter to jump"
+            />
+            <button type="submit" className={styles.btnSecondary} title="Go to page">Go</button>
+          </form>
           <button className={styles.btnSecondary} disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next</button>
         </div>
       )}
