@@ -51,6 +51,9 @@ const ACTION_FILTER_GROUPS = [
   { label: '🏢 Supplier Registered',  value: 'SUPPLIER_REGISTERED' },
   { label: '📢 Tender Published',     value: 'SMART_TENDER_PUBLISHED' },
   { label: '📄 Quotation Submitted',  value: 'SUPPLIER_QUOTATION_SUBMITTED' },
+  { label: '─── Employee Portal ───', value: '__divider__', disabled: true },
+  { label: '📋 Task Assigned',        value: 'EMPLOYEE_TASK_ASSIGNED' },
+  { label: '📝 Report Submitted',     value: 'EMPLOYEE_REPORT_SUBMITTED' },
 ];
 
 const CentralAuditLog = ({ fixedModule, mode }) => {
@@ -98,6 +101,7 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
   const [search, setSearch]           = useState('');
   const [moduleFilter, setModuleFilter] = useState(lockedModule);
   const [page, setPage]               = useState(1);
+  const [pageInput, setPageInput]     = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
 
   const [actionFilter, setActionFilter] = useState('');
@@ -126,6 +130,13 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
   }, [search, moduleFilter, actionFilter, page]);
 
   const toggleRow = (id) => setExpandedRow(prev => (prev === id ? null : id));
+
+  const goToPage = (e) => {
+    e.preventDefault();
+    const p = parseInt(pageInput, 10);
+    if (!Number.isNaN(p) && p >= 1) setPage(p);
+    setPageInput('');
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -221,6 +232,12 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
     'SUPPLIER_QUOTATION_SUBMITTED':            '📄 Supplier quotation received',
     'SUPPLIER_QUOTATION_REVIEWED':             '📄 Supplier quotation reviewed',
     'SUPPLIER_BID_SUBMITTED':                  '📄 Supplier bid submitted',
+    // ── Employee Portal ──
+    'EMPLOYEE_TASK_ASSIGNED':                  '📋 Task assigned to employee',
+    'EMPLOYEE_TASK_UPDATED':                   '📋 Employee task updated',
+    'EMPLOYEE_TASK_DELETED':                   '🗑️ Employee task deleted',
+    'EMPLOYEE_REPORT_SUBMITTED':               '📝 Employee daily report submitted',
+    'EMPLOYEE_PAYSLIP_VIEWED':                 '💵 Employee viewed payslip',
   };
 
   const SUBJECT_NAMES = [
@@ -320,7 +337,9 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                 ? 'Sales activity log — all sales module records plus your own actions.'
                 : isCarRental
                 ? 'Car & Agri Rental activity log — your department records only.'
-                : 'Append-only system record of all module activities.'}
+                : isSuperAdmin || isCEO
+                ? 'Append-only system record of all module activities.'
+                : 'Personal activity log — record of your actions.'}
             </p>
           </div>
 
@@ -477,8 +496,21 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                                 <td colSpan={isLocked ? 4 : 5}>
                                   {changedKeys.length === 0 ? (
                                     <div className={styles.diffBox} style={{ textAlign: 'center' }}>
-                                      <div className={styles.diffTitle}>Value Snapshot</div>
-                                      <pre className={styles.diffCode}>No field values changed in this update (recorded for reference only).</pre>
+                                      <div className={styles.diffTitle}>Update Recorded — No Field Changes</div>
+                                      <p className={styles.diffSummary}>
+                                        <strong>{describeAction(log.action, log.record_identifier)}</strong> by {log.user_name} ({log.role})
+                                        {log.module ? ` · Module: ${log.module}` : ''} · {formatDate(log.created_at)}.
+                                      </p>
+                                      <pre className={styles.diffCode}>
+                                        This action was logged with identical before/after values, so no field-level
+                                        differences were captured. The recorded state is shown below so you can review
+                                        exactly what was saved.
+                                      </pre>
+                                      {nObj && (
+                                        <pre className={styles.diffCode} style={{ textAlign: 'left', marginTop: 10, background: '#F8FAFC', border: '1px solid var(--color-border)', borderRadius: 6, padding: 10 }}>
+                                          {safeParse(nObj)}
+                                        </pre>
+                                      )}
                                     </div>
                                   ) : (
                                     <div className={styles.diffTableWrapper}>
@@ -572,6 +604,18 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                 >
                   Previous
                 </button>
+                <form onSubmit={goToPage} className={styles.pageJump}>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pageInput}
+                    onChange={e => setPageInput(e.target.value)}
+                    placeholder="Page #"
+                    className={styles.pageInput}
+                    title="Enter a page number and press Enter to jump"
+                  />
+                  <button type="submit" className={styles.pageBtn} title="Go to page">Go</button>
+                </form>
                 <button
                   className={styles.pageBtn}
                   disabled={logs.length < 50}
