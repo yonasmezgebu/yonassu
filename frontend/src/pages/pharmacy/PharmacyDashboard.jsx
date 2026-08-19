@@ -90,6 +90,10 @@ const PharmacyDashboard = () => {
         { label: 'Contact',         path: '/pharmacy/contact',        icon: 'phone',     color: '#10b981' },
         { label: 'Chat',            path: '/pharmacy/chat',           icon: 'message-circle', color: '#6B8E23' },
       ] },
+    { label: 'Employee', icon: 'briefcase',
+      children: [
+        { label: 'Tasks & Reports', path: '/pharmacy/tasks',          icon: 'check-square', color: '#16a34a' }
+      ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
       children: [
