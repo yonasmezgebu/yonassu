@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCheck, DollarSign, FileText, ChevronRight, Package, Clock, Truck, Printer, Award } from 'lucide-react';
+import { UserCheck, DollarSign, FileText, ChevronRight, Package, Clock, Truck, Printer, Award, AlertOctagon } from 'lucide-react';
 import apiClient from '../../services/apiClient';
+import ceoService from '../../services/ceoService';
 
 /* ─── Global Styles (Enterprise UI System) ──────────────────────────────── */
 const GlobalStyles = () => (
@@ -175,11 +176,21 @@ const GlobalStyles = () => (
 const CEOApprovalsHub = () => {
   const navigate = useNavigate();
   const [storeCount, setStoreCount] = useState(null);
+  const [dangerZoneCount, setDangerZoneCount] = useState(0);
 
   useEffect(() => {
     apiClient.get('/ceo/store-updates/pending')
       .then(res => setStoreCount(Array.isArray(res?.data?.updates) ? res.data.updates.length : 0))
       .catch(() => setStoreCount(0));
+  }, []);
+
+  useEffect(() => {
+    ceoService.getDangerZoneRequests()
+      .then(res => {
+        const reqs = Array.isArray(res?.data) ? res.data : [];
+        setDangerZoneCount(reqs.filter(r => r.status === 'PENDING').length);
+      })
+      .catch(() => setDangerZoneCount(0));
   }, []);
 
   const approvalLinks = [
@@ -272,6 +283,15 @@ const CEOApprovalsHub = () => {
       color: '#A855F7',
       path: '/ceo/approvals/printing',
       count: null
+    },
+    {
+      title: 'Danger Zone Reset',
+      description: 'Approve or reject full database reset requests submitted by the Admin.',
+      icon: <AlertOctagon size={24} />,
+      bg: 'var(--color-danger-bg)',
+      color: 'var(--color-danger)',
+      path: '/ceo/danger-zone',
+      count: dangerZoneCount
     }
   ];
 
