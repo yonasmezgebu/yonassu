@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, query, param, header } = require('express-validator');
 const AdminController = require('../controllers/admin.controller');
 const AlertsController = require('../controllers/alerts.controller');
+const IntegrationController = require('../controllers/integration.controller');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const { limiters } = require('../../config/rateLimit');
@@ -345,6 +346,27 @@ router.put(
   body('links').isArray(),
   validate,
   AdminController.updateSocialLinks
+);
+
+// ── Integrations ─────────────────────────────────────────────
+router.get('/integrations', authenticate, authorize(['admin:settings']), IntegrationController.listIntegrations);
+router.post('/integrations/:key/connect', authenticate, authorize(['admin:settings']), IntegrationController.connectIntegration);
+router.post('/integrations/:key/disconnect', authenticate, authorize(['admin:settings']), IntegrationController.disconnectIntegration);
+router.put('/integrations/:key/config', authenticate, authorize(['admin:settings']), IntegrationController.updateIntegrationConfig);
+router.post('/integrations/:key/test', authenticate, authorize(['admin:settings']), IntegrationController.testIntegration);
+router.patch('/integrations/:key/toggle', authenticate, authorize(['admin:settings']), IntegrationController.toggleIntegration);
+router.get('/integrations/:key/history', authenticate, authorize(['admin:settings']), IntegrationController.getIntegrationHistory);
+
+// ── Danger Zone (CEO-approved database reset) ─────────────────
+const DangerZoneController = require('../controllers/dangerZone.controller');
+router.get('/danger-zone/overview', authenticate, authorize(['admin:system']), DangerZoneController.getOverview);
+router.get('/danger-zone/requests', authenticate, authorize(['admin:system']),
+  query('status').optional().isIn(['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'FAILED']), validate,
+  DangerZoneController.listRequests
+);
+router.post('/danger-zone/request', authenticate, authorize(['admin:system']),
+  body('reason').isString(), body('confirmText').isString(), validate,
+  DangerZoneController.requestReset
 );
 
 module.exports = router;
