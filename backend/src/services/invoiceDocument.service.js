@@ -1,6 +1,7 @@
 const { db } = require('../config/database');
 const vatConfigService = require('./vatConfig.service');
 const SettingsRepository = require('../repositories/settings.repository');
+const { generateReceiptNumber } = require('../utils/orderNumber');
 
 const settingsRepo = new SettingsRepository();
 
@@ -127,11 +128,14 @@ const findUser = async (id) => {
 
 /* ── Source builders ─────────────────────────────────────────────────────── */
 
-// 1. Retail & POS (pos_sales completed + retail_transactions)
-const retailDocuments = async () => {
+// 1-4. Retail & POS, Pharmacy, Printing, Car Rental
+// All read from the persisted sales_invoices / sales_receipts tables so the
+// dashboard reflects exactly what the modules recorded (invoice at order time,
+// receipt when payment was verified).
+const invoiceDocumentsFromSalesInvoices = async ({ source, sourceLabel, icon, color, description }) => {
   const docs = [];
   const invoices = await db('sales_invoices')
-    .where('source', 'retail')
+    .where('source', source)
     .andWhereNot('status', 'cancelled')
     .orderBy('created_at', 'desc');
 
@@ -157,9 +161,9 @@ const retailDocuments = async () => {
     docs.push({
       id: inv.id,
       source: inv.source,
-      sourceLabel: 'Retail & POS',
-      icon: '🛒',
-      color: '#2563EB',
+      sourceLabel,
+      icon,
+      color,
       saleId: inv.sale_id,
       invoiceNo: inv.invoice_no,
       receiptNo: receipt ? receipt.receipt_no : null,
@@ -167,9 +171,9 @@ const retailDocuments = async () => {
       customer: inv.customer_name || 'Walk-in Customer',
       customerTin: inv.customer_tin || '',
       paymentMethod: receipt ? (receipt.payment_method || 'Cash') : 'Pending',
-      amountPaid: amountPaid,
-      total: total,
-      balance: balance,
+      amountPaid,
+      total,
+      balance,
       subtotal: asNum(inv.subtotal),
       vatStandard: asNum(inv.vat_standard),
       vatStandardRate: asNum(inv.vat_standard_rate) || 0.15,
@@ -180,100 +184,23 @@ const retailDocuments = async () => {
       seller: inv.created_by_name || '',
       receivedBy: receipt ? (receipt.received_by_name || inv.created_by_name || '') : '',
       reference: receipt ? receipt.payment_reference : null,
-      description: 'Retail & POS sale'
+      description
     });
   }
   return docs;
 };
 
-// 2. Pharmacy
-const pharmacyDocuments = async () => {
-  const docs = [];
-  const sales = await db('pharmacy_sales').whereNot('sale_type', 'RETURNED').orderBy('created_at', 'desc').select('*');
-  for (const s of sales) {
-    const raw = await db('pharmacy_sale_items').where('sale_id', s.id);
-    const payments = await db('pharmacy_payments').where('sale_id', s.id);
-    const amountPaid = payments.reduce((a, p) => a + asNum(p.amount), 0) || asNum(s.total_amount);
-    const lines = [];
-    for (const it of raw) {
-      const drug = await db('pharmacy_medications').where('name', it.drug_name).first();
-      lines.push({
-        itemId: drug ? drug.id : null,
-        name: it.drug_name,
-        qty: asNum(it.quantity) || 1,
-        unitPrice: asNum(it.unit_price) || 0,
-        amount: asNum(it.total_price) || asNum(it.unit_price) * (asNum(it.quantity) || 1)
-      });
-    }
-    if (!lines.length) {
-      lines.push({ itemId: null, name: 'Pharmacy Sale', qty: 1, unitPrice: asNum(s.total_amount), amount: asNum(s.total_amount) });
-    }
-    const pm = payments[0] || {};
-    docs.push(await computeDocument({
-      source: 'pharmacy', sourceLabel: 'Pharmacy', icon: '💊', color: '#059669',
-      saleId: s.id, invoiceNo: s.receipt_no, receiptNo: s.receipt_no,
-      date: s.created_at, customer: s.recipient_name || '',
-      paymentMethod: pm.payment_method || 'Cash',
-      amountPaid,
-      seller: pm.worker_name || '', receivedBy: pm.worker_name || '',
-      lines, description: 'Pharmacy sale'
-    }));
-  }
-  return docs;
-};
+const retailDocuments = () =>
+  invoiceDocumentsFromSalesInvoices({ source: 'retail', sourceLabel: 'Retail & POS', icon: '🛒', color: '#2563EB', description: 'Retail & POS sale' });
 
-// 3. Printing
-const printingDocuments = async () => {
-  const docs = [];
-  const orders = await db('printing_orders')
-    .whereNull('deleted_at').whereIn('payment_status', ['Confirmed', 'PAID']).whereNotIn('status_id', [9])
-    .orderBy('created_at', 'desc').select('*');
-  for (const o of orders) {
-    const pt = await db('printing_product_types').where('name', o.product_type).first();
-    const qty = asNum(o.quantity) || 1;
-    const unitPrice = asNum(o.price_per_unit) || 0;
-    const lineAmount = asNum(o.subtotal) || unitPrice * qty;
-    const lines = [{
-      itemId: pt ? pt.id : null,
-      name: `${o.product_type} (${o.paper_type}, ${o.pages_per_copy}pp, ${o.color_printing ? 'Color' : 'B&W'}, ${o.binding_type})`,
-      qty,
-      unitPrice,
-      amount: lineAmount
-    }];
-    docs.push(await computeDocument({
-      source: 'printing', sourceLabel: 'Printing', icon: '🖨️', color: '#D97706',
-      saleId: o.id, invoiceNo: o.order_number, date: o.created_at,
-      customer: '', paymentMethod: o.payment_method || 'Cash',
-      amountPaid: asNum(o.total_price),
-      seller: await findUser(o.created_by), receivedBy: await findUser(o.created_by),
-      lines, reference: o.payment_reference, description: 'Printing order'
-    }));
-  }
-  return docs;
-};
+const pharmacyDocuments = () =>
+  invoiceDocumentsFromSalesInvoices({ source: 'pharmacy', sourceLabel: 'Pharmacy', icon: '💊', color: '#059669', description: 'Pharmacy sale' });
 
-// 4. Car Rental
-const rentalDocuments = async () => {
-  const docs = [];
-  const rows = await db('rental_orders')
-    .whereNull('deleted_at').where('payment_status', 'PAID').whereNotIn('status', ['CANCELLED', 'ABANDONED', 'REJECTED'])
-    .orderBy('created_at', 'desc').select('*');
-  for (const r of rows) {
-    const days = asNum(r.total_days) || 1;
-    const unitPrice = asNum(r.daily_rate) || 0;
-    const rentalAmt = asNum(r.rental_amount) || unitPrice * days;
-    const lines = [{ itemId: r.car_id, name: 'Car Rental', qty: days, unitPrice, amount: rentalAmt }];
-    docs.push(await computeDocument({
-      source: 'car_rental', sourceLabel: 'Car Rental', icon: '🚗', color: '#7C3AED',
-      saleId: r.id, invoiceNo: r.order_number, date: r.created_at,
-      customer: r.customer_name || '', paymentMethod: r.payment_method || 'Cash',
-      amountPaid: asNum(r.total_amount),
-      seller: '', receivedBy: '',
-      lines, description: 'Car rental order'
-    }));
-  }
-  return docs;
-};
+const printingDocuments = () =>
+  invoiceDocumentsFromSalesInvoices({ source: 'printing', sourceLabel: 'Printing', icon: '🖨️', color: '#D97706', description: 'Printing order' });
+
+const rentalDocuments = () =>
+  invoiceDocumentsFromSalesInvoices({ source: 'car_rental', sourceLabel: 'Car Rental', icon: '🚗', color: '#7C3AED', description: 'Car rental order' });
 
 // 5. AgriRent
 const agrirentDocuments = async () => {
@@ -384,6 +311,123 @@ const tenderBuyDocuments = async () => {
   return docs;
 };
 
+/* ── Shared helpers: create sales_invoices + sales_receipts for any module ── */
+
+// Compute VAT for a set of invoice lines. Each line may carry an explicit
+// `rate`/`treatment` override (e.g. a module already computed its own VAT or a
+// zero-rated delivery fee); otherwise the central VAT service resolves it.
+const computeVatForLines = async (source, lines, fallbackRate = null) => {
+  let subtotal = 0, vat = 0;
+  const rows = [];
+  for (const l of lines) {
+    const amount = asNum(l.amount);
+    let r;
+    if (l.rate != null) {
+      const rate = parseFloat(l.rate);
+      const treatment = l.treatment || (rate === 0 ? 'zero_rated' : 'standard');
+      r = { treatment, rate, sub: amount, vat: amount * rate, total: amount + amount * rate };
+    } else {
+      r = await vatConfigService.computeVatForItem(source, l.itemId, amount, fallbackRate);
+    }
+    subtotal += r.sub;
+    vat += r.vat;
+    rows.push(r);
+  }
+  return { subtotal, vat, total: subtotal + vat, rows };
+};
+
+const createSalesInvoice = async (trx, { source, saleId, saleType, invoiceNo, date, customer, customerTin, lines, createdBy, fallbackRate }) => {
+  const { subtotal, vat, rows } = await computeVatForLines(source, lines, fallbackRate);
+
+  let vatStandard = 0, vatExempt = 0, vatZeroRated = 0, vatStandardRate = 0.15;
+  for (const r of rows) {
+    if (r.treatment === 'exempt') vatExempt += r.vat;
+    else if (r.treatment === 'zero_rated') vatZeroRated += r.vat;
+    else { vatStandard += r.vat; vatStandardRate = r.rate; }
+  }
+
+  const invoiceId = `${source}-${saleId}-${Date.now().toString().slice(-4)}`;
+  const total = round2(subtotal + vat);
+
+  const invoiceRow = {
+    id: invoiceId,
+    invoice_no: invoiceNo,
+    source,
+    sale_id: saleId,
+    customer_name: customer || 'Walk-in Customer',
+    customer_tin: customerTin || null,
+    subtotal: round2(subtotal),
+    vat_standard: round2(vatStandard),
+    vat_standard_rate: vatStandardRate,
+    vat_exempt: round2(vatExempt),
+    vat_zero_rated: round2(vatZeroRated),
+    vat_total: round2(vat),
+    total_amount: total,
+    status: 'active',
+    created_by_name: createdBy || 'System',
+    created_at: date || db.fn.now(),
+    updated_at: db.fn.now()
+  };
+  if (saleType) invoiceRow.sale_type = saleType;
+  await trx('sales_invoices').insert(invoiceRow);
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const r = rows[i];
+    await trx('sales_invoice_items').insert({
+      invoice_id: invoiceId,
+      item_id: l.itemId || 0,
+      name: l.name,
+      qty: l.qty || 1,
+      unit_price: round2(l.unitPrice),
+      treatment: r.treatment,
+      rate: r.rate,
+      vat_amount: round2(r.vat),
+      subtotal: round2(l.amount),
+      total: round2(l.amount + r.vat)
+    });
+  }
+
+  return { invoiceId, total };
+};
+
+// Idempotent wrappers used by the module controllers — safe to call even when
+// an invoice/receipt already exists for the same order.
+const findInvoiceForOrder = (trx, source, saleId) =>
+  trx('sales_invoices').where({ source, sale_id: saleId }).andWhereNot('status', 'cancelled').first();
+
+const recordInvoiceForOrder = async (trx, params) => {
+  const existing = await findInvoiceForOrder(trx, params.source, params.saleId);
+  if (existing) return { invoiceId: existing.id, total: asNum(existing.total_amount), existed: true };
+  return createSalesInvoice(trx, params);
+};
+
+const recordReceiptForOrder = async (trx, { invoiceId, amountPaid, paymentMethod, paymentReference, receivedBy }) => {
+  const existing = await trx('sales_receipts').where({ invoice_id: invoiceId }).andWhereNot('status', 'cancelled').first();
+  if (existing) return { receiptId: existing.id, receiptNo: existing.receipt_no, existed: true };
+  return createSalesReceipt(trx, { invoiceId, amountPaid, paymentMethod, paymentReference, receivedBy });
+};
+
+const createSalesReceipt = async (trx, { invoiceId, amountPaid, paymentMethod, paymentReference, receivedBy }) => {
+  const receiptId = `REC-${invoiceId}-${Date.now().toString().slice(-4)}`;
+  const receiptNo = await generateReceiptNumber();
+
+  await trx('sales_receipts').insert({
+    id: receiptId,
+    receipt_no: receiptNo,
+    invoice_id: invoiceId,
+    amount_paid: round2(amountPaid),
+    payment_method: paymentMethod || 'Cash',
+    payment_reference: paymentReference || null,
+    received_by_name: receivedBy || 'System',
+    status: 'active',
+    created_at: db.fn.now(),
+    updated_at: db.fn.now()
+  });
+
+  return { receiptId, receiptNo };
+};
+
 /* ── Main: build all invoice + receipt documents ─────────────────────────── */
 // status: 'all' | 'unpaid' | 'paid' (default 'all')
 // customer: optional string to filter by customer name (case-insensitive)
@@ -417,4 +461,13 @@ const buildDocuments = async ({ status = 'all', customer = '', sources = null } 
   return { company, documents };
 };
 
-module.exports = { getCompanyInfo, saveCompanyInfo, buildDocuments };
+module.exports = {
+  getCompanyInfo,
+  saveCompanyInfo,
+  buildDocuments,
+  createSalesInvoice,
+  createSalesReceipt,
+  recordInvoiceForOrder,
+  recordReceiptForOrder,
+  findInvoiceForOrder
+};
