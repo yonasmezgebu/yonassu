@@ -3,14 +3,22 @@ import { Link } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import { formatNumber, formatDate } from '../../utils/formatters';
 import styles from './AdminHome.module.css';
-
-const DIMENSIONS = [
-  { key: 'dr', label: 'Disaster Recovery', color: '#57534e', path: '/admin/dr' },
-];
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
   CartesianGrid, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+
+const DIMENSIONS = [
+  { key: 'alerts', label: 'Alert Center', color: '#DC2626', path: '/admin/alerts', icon: '\uD83D\uDD14' },
+  { key: 'system_jobs', label: 'System Jobs', color: '#0284C7', path: '/admin/system-jobs', icon: '\u23F0' },
+  { key: 'system_health', label: 'System Health', color: '#16A34A', path: '/admin/system-health', icon: '\uD83D\uDCCA' },
+  { key: 'import_export', label: 'Import / Export', color: '#7C3AED', path: '/admin/import-export', icon: '\u2B07\uFE0F' },
+  { key: 'backups', label: 'Backups', color: '#2563EB', path: '/admin/backups', icon: '\uD83D\uDCC1' },
+  { key: 'dr', label: 'Disaster Recovery', color: '#57534e', path: '/admin/dr', icon: '\uD83D\uDEE1\uFE0F' },
+  { key: 'maintenance', label: 'Maintenance', color: '#D97706', path: '/admin/maintenance', icon: '\uD83D\uDD27' },
+  { key: 'integrations', label: 'Integrations', color: '#059669', path: '/admin/integrations', icon: '\uD83D\uDD17' },
+  { key: 'settings', label: 'Settings', color: '#6B7280', path: '/admin/settings', icon: '\u2699\uFE0F' },
+];
 
 const AdminHome = () => {
   const [dashboardData, setDashboardData] = useState({});
@@ -19,17 +27,18 @@ const AdminHome = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [statsRes, healthRes, drRes] = await Promise.allSettled([
+        const [statsRes, healthRes, drRes, alertsRes] = await Promise.allSettled([
           adminService.getDashboardStats(),
           adminService.getSystemHealth(),
           adminService.getDRStatus(),
+          adminService.getUnreadAlertCount(),
         ]);
         setDashboardData({
-          stats: statsRes.value?.data,
-          health: healthRes.value?.data,
-          dr: drRes.value?.data,
+          stats: statsRes.status === 'fulfilled' ? statsRes.value?.data : null,
+          health: healthRes.status === 'fulfilled' ? healthRes.value?.data : null,
+          dr: drRes.status === 'fulfilled' ? drRes.value?.data : null,
+          unreadAlerts: alertsRes.status === 'fulfilled' ? alertsRes.value?.data?.data?.unread || 0 : 0,
         });
-
       } catch (error) {
         console.error('Failed to fetch admin stats:', error);
       } finally {
@@ -41,8 +50,18 @@ const AdminHome = () => {
 
   const dimStatuses = useMemo(() => {
     const d = dashboardData;
+    const drOk = d.dr?.lastTest?.status === 'passed';
+    const alertCount = d.unreadAlerts || 0;
     return {
-      dr: { status: d.dr?.lastTest?.status === 'passed' ? 'ok' : 'warning', count: d.dr?.lastTest ? 1 : 0 },
+      alerts: { status: alertCount > 0 ? 'warning' : 'ok', count: alertCount },
+      system_jobs: { status: 'ok', count: 0 },
+      system_health: { status: 'ok', count: 0 },
+      import_export: { status: 'ok', count: 0 },
+      backups: { status: 'ok', count: 0 },
+      dr: { status: drOk ? 'ok' : 'warning', count: d.dr?.lastTest ? 1 : 0 },
+      maintenance: { status: 'ok', count: 0 },
+      integrations: { status: 'ok', count: 0 },
+      settings: { status: 'ok', count: 0 },
     };
   }, [dashboardData]);
 
@@ -52,7 +71,7 @@ const AdminHome = () => {
   if (loading) return (
     <div className={styles.loading}>
       <div className="spinner-fiori" />
-      <span>Loading dashboard…</span>
+      <span>Loading dashboard...</span>
     </div>
   );
 
@@ -60,17 +79,19 @@ const AdminHome = () => {
   const userStats = stats?.userStats || {};
   const sysHealth = health || {};
   const graphs = stats?.graphs || {};
-
   const backup = stats?.backupStatus || {};
 
-  // Backup success ring
-  const bh = backup.backupHistory || dashboardData.stats?.graphs?.backupHistory || { successful: 0, total: 30 };
+  const bh = backup.backupHistory || graphs.backupHistory || { successful: 0, total: 30 };
   const backupPct = bh.total > 0 ? Math.round((bh.successful / bh.total) * 100) : 0;
   const backupColor = backupPct >= 97 ? '#10b981' : backupPct >= 90 ? '#f59e0b' : '#ef4444';
 
+  const cpuVal = Math.round(sysHealth.cpu?.usage || 0);
+  const memVal = Math.round(sysHealth.memory?.usage || 0);
+  const diskVal = Math.round(sysHealth.disk?.usage || sysHealth.storage?.value || 0);
+
   return (
     <div className={styles.root}>
-      {/* ── 4 KPI Cards ── */}
+      {/* ── KPI Cards ── */}
       <div className={styles.statGrid}>
         <div className={styles.statCard}>
           <div className={styles.statHeader}><span className={styles.statLabel}>Total Users</span></div>
@@ -92,15 +113,18 @@ const AdminHome = () => {
         </div>
         <div className={`${styles.statCard} ${styles.accentOrange}`}>
           <div className={styles.statContent}>
-            <h3>{dashboardData.tiers?.coverage ? Object.keys(dashboardData.tiers.coverage).length : 0}</h3>
-            <p>Admin Tiers</p>
+            <h3>{DIMENSIONS.length}</h3>
+            <p>Admin Modules</p>
           </div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statHeader}><span className={styles.statLabel}>Alerts Today</span></div>
-          <div className={styles.statValue}>{stats?.alertCountToday || 0}</div>
-          {(stats?.alertCountToday || 0) > 0 && (
+          <div className={styles.statHeader}><span className={styles.statLabel}>Unread Alerts</span></div>
+          <div className={styles.statValue}>{dashboardData.unreadAlerts || 0}</div>
+          {(dashboardData.unreadAlerts || 0) > 0 && (
             <span className={`${styles.statBadge} ${styles.badgeWarning}`}>Review required</span>
+          )}
+          {(dashboardData.unreadAlerts || 0) === 0 && (
+            <span className={`${styles.statBadge} ${styles.badgeUp}`}>All clear</span>
           )}
         </div>
         <div className={styles.statCard}>
@@ -108,7 +132,9 @@ const AdminHome = () => {
           <div className={styles.statValue}>
             {((stats?.pendingActions?.pendingOrders?.count || 0) + (stats?.pendingActions?.lowStockItems || 0))}
           </div>
-          <span className={`${styles.statBadge} ${styles.badgeDown}`}>Action needed</span>
+          {((stats?.pendingActions?.pendingOrders?.count || 0) + (stats?.pendingActions?.lowStockItems || 0)) > 0 && (
+            <span className={`${styles.statBadge} ${styles.badgeDown}`}>Action needed</span>
+          )}
         </div>
       </div>
 
@@ -122,8 +148,10 @@ const AdminHome = () => {
                 <Link to={dim.path} key={dim.key} className={`${styles.dimensionCard} ${dimStatusClass[s.status] || styles.dimInfoS}`}>
                   <div className={styles.dimIndicator} style={{ backgroundColor: dim.color }} />
                   <div className={styles.dimInfo}>
-                    <span className={styles.dimLabel}>{dim.label}</span>
-                    <span className={styles.dimCount}>{s.count}</span>
+                    <span className={styles.dimLabel}>{dim.icon} {dim.label}</span>
+                    <span className={styles.dimCount}>
+                      {s.count > 0 ? `${s.count} item${s.count !== 1 ? 's' : ''}` : 'Operational'}
+                    </span>
                   </div>
                 </Link>
               );
@@ -135,34 +163,43 @@ const AdminHome = () => {
           <h2>System Status</h2>
           <div className={styles.healthMetrics}>
             <div className={styles.healthBar}>
-              <label>CPU ({Math.round(sysHealth.cpu?.usage || 0)}%)</label>
+              <label>CPU ({cpuVal}%)</label>
               <div className={styles.progressBg}>
-                <div className={`${styles.progressFill} ${healthClass[sysHealth.cpu?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${sysHealth.cpu?.usage || 0}%` }} />
+                <div className={`${styles.progressFill} ${healthClass[sysHealth.cpu?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${cpuVal}%` }} />
               </div>
             </div>
             <div className={styles.healthBar}>
-              <label>Memory ({Math.round(sysHealth.memory?.usage || 0)}%)</label>
+              <label>Memory ({memVal}%)</label>
               <div className={styles.progressBg}>
-                <div className={`${styles.progressFill} ${healthClass[sysHealth.memory?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${sysHealth.memory?.usage || 0}%` }} />
+                <div className={`${styles.progressFill} ${healthClass[sysHealth.memory?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${memVal}%` }} />
               </div>
             </div>
             <div className={styles.healthBar}>
-              <label>Disk ({Math.round(sysHealth.disk?.usage || 0)}%)</label>
+              <label>Disk ({diskVal}%)</label>
               <div className={styles.progressBg}>
-                <div className={`${styles.progressFill} ${healthClass[sysHealth.disk?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${sysHealth.disk?.usage || 0}%` }} />
+                <div className={`${styles.progressFill} ${healthClass[sysHealth.disk?.status || 'healthy'] || styles.fillHealthy}`} style={{ width: `${diskVal}%` }} />
               </div>
             </div>
           </div>
-          <h3 className={styles.alertsTitle}>Access Alerts</h3>
+          <h3 className={styles.alertsTitle}>System Alerts</h3>
           <div className={styles.alertList}>
-            {dimStatuses.dr?.status === 'warning' && <div className={`${styles.alertItem} ${styles.alertWarning}`}>DR: No recent test passed</div>}
-            {dimStatuses.dr?.status === 'ok' && <div className={`${styles.alertItem} ${styles.alertOk}`}>System operations nominal</div>}
+            {(dashboardData.unreadAlerts || 0) > 0 && (
+              <Link to="/admin/alerts" className={`${styles.alertItem} ${styles.alertWarning}`}>
+                {dashboardData.unreadAlerts} unread alert{dashboardData.unreadAlerts !== 1 ? 's' : ''} — Review required
+              </Link>
+            )}
+            {dimStatuses.dr?.status === 'warning' && (
+              <Link to="/admin/dr" className={`${styles.alertItem} ${styles.alertWarning}`}>DR: No recent test passed</Link>
+            )}
+            {(dashboardData.unreadAlerts || 0) === 0 && dimStatuses.dr?.status === 'ok' && (
+              <div className={`${styles.alertItem} ${styles.alertOk}`}>All systems operational</div>
+            )}
           </div>
         </div>
       </div>
+
       {/* ── 6 Graphs ── */}
       <div className={styles.chartsGrid}>
-        {/* 1. System Uptime */}
         <div className="card">
           <h3 className={styles.graphTitle}>System Uptime</h3>
           <p className={styles.graphSub}>6-month availability trend</p>
@@ -181,15 +218,19 @@ const AdminHome = () => {
               </div>
               <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`${styles.statBadge} ${styles.badgeUp}`}>
-                  {graphs.uptimeHistory[graphs.uptimeHistory.length - 1]?.uptime.toFixed(1)}% &check; Good
+                  {graphs.uptimeHistory[graphs.uptimeHistory.length - 1]?.uptime.toFixed(1)}% &#x2713; Good
                 </span>
                 <span className={styles.graphTarget}>Target: 99%</span>
               </div>
             </>
           )}
+          {!graphs.uptimeHistory && (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+              No uptime data available yet.
+            </div>
+          )}
         </div>
 
-        {/* 2. Backup Success Rate */}
         <div className="card" style={{ textAlign: 'center' }}>
           <h3 className={styles.graphTitle} style={{ textAlign: 'left' }}>Backup Success Rate</h3>
           <p className={styles.graphSub} style={{ textAlign: 'left' }}>30-day rolling</p>
@@ -222,7 +263,6 @@ const AdminHome = () => {
           )}
         </div>
 
-        {/* 3. Intrusion Attempts */}
         <div className="card">
           <h3 className={styles.graphTitle}>Intrusion Attempts</h3>
           <p className={styles.graphSub}>Failed logins (last 7 days)</p>
@@ -249,7 +289,6 @@ const AdminHome = () => {
           </div>
         </div>
 
-        {/* 4. CPU & Memory Usage */}
         <div className="card">
           <h3 className={styles.graphTitle}>CPU &amp; Memory Usage</h3>
           <p className={styles.graphSub}>24-hour trend</p>
@@ -268,13 +307,12 @@ const AdminHome = () => {
             </div>
           )}
           <div className={styles.chartLegend}>
-            <span>CPU: <strong>{sysHealth.cpu?.usage?.toFixed(0) || 0}%</strong></span>
-            <span>RAM: <strong>{sysHealth.memory?.usage?.toFixed(0) || 0}%</strong></span>
-            <span>Disk: <strong>41%</strong></span>
+            <span>CPU: <strong>{cpuVal}%</strong></span>
+            <span>RAM: <strong>{memVal}%</strong></span>
+            <span>Disk: <strong>{diskVal}%</strong></span>
           </div>
         </div>
 
-        {/* 5. Patch Compliance */}
         <div className="card">
           <h3 className={styles.graphTitle}>Patch Compliance</h3>
           <p className={styles.graphSub}>Systems patch status</p>
@@ -303,9 +341,13 @@ const AdminHome = () => {
               </div>
             </>
           )}
+          {!graphs.patchCompliance && (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+              No patch data available yet.
+            </div>
+          )}
         </div>
 
-        {/* 6. Incident MTTR */}
         <div className="card">
           <h3 className={styles.graphTitle}>Incident MTTR</h3>
           <p className={styles.graphSub}>Mean time to resolution (6-month trend)</p>
@@ -324,39 +366,45 @@ const AdminHome = () => {
               </div>
               <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`${styles.statBadge} ${styles.badgeUp}`}>
-                  {graphs.mttrHistory[graphs.mttrHistory.length - 1]?.hours.toFixed(1)} hrs &check; Good
+                  {graphs.mttrHistory[graphs.mttrHistory.length - 1]?.hours.toFixed(1)} hrs &#x2713; Good
                 </span>
                 <span className={styles.graphTarget}>Target: &lt; 4 hrs</span>
               </div>
             </>
           )}
+          {!graphs.mttrHistory && (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+              No MTTR data available yet.
+            </div>
+          )}
         </div>
       </div>
 
       <div className={`${styles.widget} ${styles.quickAccess}`}>
-        <h2>Quick Access — Modules</h2>
+        <h2>Quick Access</h2>
         <div className={styles.quickLinks}>
           {DIMENSIONS.map(dim => (
             <Link key={dim.key} to={dim.path} className={styles.quickLink} style={{ borderLeftColor: dim.color }}>
-              <span>{dim.label}</span>
+              <span>{dim.icon} {dim.label}</span>
               <span className={styles.arrow}>&rarr;</span>
             </Link>
           ))}
         </div>
       </div>
+
       {/* ── System Health Row ── */}
-      <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card" style={{ marginBottom: 20, padding: 24 }}>
         <h3 className={styles.graphTitle}>System Health</h3>
         <div className={styles.healthGrid}>
           {[
-            { label: 'CPU Usage', value: sysHealth.cpu?.usage || 0, status: sysHealth.cpu?.status || 'healthy' },
-            { label: 'Memory Usage', value: sysHealth.memory?.usage || 0, status: sysHealth.memory?.status || 'healthy' },
-            { label: 'Disk Usage', value: sysHealth.disk?.usage || 41, status: 'healthy' }
+            { label: 'CPU Usage', value: cpuVal, status: sysHealth.cpu?.status || 'healthy' },
+            { label: 'Memory Usage', value: memVal, status: sysHealth.memory?.status || 'healthy' },
+            { label: 'Disk Usage', value: diskVal, status: sysHealth.disk?.status || 'healthy' }
           ].map(item => (
             <div key={item.label}>
               <div className={styles.progressRow}>
                 <span>{item.label}</span>
-                <span style={{ fontWeight: 600 }}>{item.value.toFixed(1)}%</span>
+                <span style={{ fontWeight: 600 }}>{item.value}%</span>
               </div>
               <div className={styles.progressTrack}>
                 <div className={styles.progressFillInline} style={{
@@ -370,10 +418,10 @@ const AdminHome = () => {
       </div>
 
       {/* ── Recent Audit Logs ── */}
-      <div className="card">
+      <div className="card" style={{ padding: 24 }}>
         <div className={styles.tableHeaderRow}>
           <h3 className={styles.sectionTitle}>Recent Audit Logs</h3>
-          <span className={styles.viewAll}>View All &rarr;</span>
+          <Link to="/admin/audit" className={styles.viewAll}>View All &rarr;</Link>
         </div>
         <div className={styles.tableScroll}>
           <table className={styles.auditTable}>
