@@ -15,6 +15,7 @@ import SystemHealth from './SystemHealth';
 import DataImportExport from './DataImportExport';
 import Maintenance from './Maintenance';
 import Integrations from './Integrations';
+import DangerZone from './DangerZone';
 import ManagerChat from '../../components/ManagerChat';
 import styles from './AdminDashboard.module.css';
 
@@ -51,6 +52,8 @@ const AdminDashboard = () => {
     { label: 'Settings',       path: '/admin/settings',       icon: 'sliders' },
     { label: 'Integrations',   path: '/admin/integrations',   icon: 'git-branch' },
     { type: 'divider' },
+    { label: 'Danger Zone',    path: '/admin/danger-zone',    icon: 'alert-octagon', color: '#DC2626' },
+    { type: 'divider' },
     { label: 'Contact', icon: 'message-circle', children: [
       { label: 'Contact Messages', path: '/admin/contact-messages', icon: 'inbox' },
       { label: 'Chat', path: '/admin/chat', icon: 'message-square', color: '#6B8E23' }
@@ -78,6 +81,7 @@ const AdminDashboard = () => {
             <Route path="backups" element={<BackupManagement />} />
             <Route path="settings" element={<SystemSettings />} />
             <Route path="integrations" element={<Integrations />} />
+            <Route path="danger-zone" element={<DangerZone />} />
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
         </div>
