@@ -103,5 +103,7 @@ router.use('/hr-settings', require('./hrSettings.routes'));
 router.use('/manager-chat', require('./managerChat.routes'));
 router.use('/audit-logs', require('./centralAudit.routes'));
 router.use('/vat-config', require('./vatConfig.routes'));
+router.use('/employee-tasks', require('./employeeTasks.routes'));
+router.use('/employee-reports', require('./employeeReports.routes'));
 
 module.exports = router;
