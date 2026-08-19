@@ -65,7 +65,9 @@ const AssignRolePanel = ({ user, createCustomRole, currentUserRoles, onClose, on
       if (createCustomRole) {
         // Load employees for the assignment dropdown
         const usersRes = await adminService.getUsers({ page: 1, limit: 100 });
-        const employees = (usersRes.data?.users || []).filter(u => u.is_employee);
+        const employees = (usersRes.data?.users || [])
+          .filter(u => u.is_employee)
+          .sort((a, b) => (a.full_name || a.fullName || '').localeCompare(b.full_name || b.fullName || '', undefined, { sensitivity: 'base' }));
         setAllUsers(employees);
       }
     } catch (err) {
