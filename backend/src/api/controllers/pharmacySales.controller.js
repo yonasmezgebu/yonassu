@@ -2,6 +2,8 @@ const { db } = require('../../config/database');
 const { v4: uuidv4 } = require('uuid');
 const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 const vatConfigService = require('../../services/vatConfig.service');
+const { generateInvoiceNumber } = require('../../utils/orderNumber');
+const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -291,7 +293,18 @@ exports.submitOnlineOrder = async (req, res) => {
       const lineTotal = parseFloat((lineSubtotal + vatAmount).toFixed(2));
       subtotal += lineSubtotal;
       totalVat += vatAmount;
-      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: parseFloat(drug.vat_rate || 0), vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
+      enrichedItems.push({
+        drug_id: item.drug_id,
+        name: drug.name,
+        unit_price: unitPrice,
+        quantity: item.quantity,
+        vat_rate: parseFloat(drug.vat_rate || 0),
+        vat_amount: vatAmount,
+        line_subtotal: lineSubtotal,
+        line_total: lineTotal,
+        rate: vatResult.rate,
+        treatment: vatResult.treatment
+      });
     }
     const totalAmount = parseFloat((subtotal + totalVat).toFixed(2));
     const sale_code = generateCode('ORD');
@@ -312,6 +325,27 @@ exports.submitOnlineOrder = async (req, res) => {
     for (const ei of enrichedItems) {
       await trx('sale_items').insert({ sale_id: saleId, ...ei });
     }
+
+    // Invoice is recorded immediately when the online order is placed.
+    const invNo = await generateInvoiceNumber();
+    await recordInvoiceForOrder(trx, {
+      source: 'pharmacy',
+      saleId,
+      saleType: 'online',
+      invoiceNo: invNo,
+      customer: req.customer?.name || null,
+      customerTin: null,
+      lines: enrichedItems.map((ei) => ({
+        itemId: ei.drug_id,
+        name: ei.name,
+        qty: ei.quantity,
+        unitPrice: ei.unit_price,
+        amount: ei.line_subtotal,
+        rate: ei.rate,
+        treatment: ei.treatment
+      })),
+      createdBy: req.customer?.name || 'Customer Portal'
+    });
 
     await trx.commit();
     return res.status(201).json({ success: true, data: { sale_id: saleId, sale_code, total_amount: totalAmount } });
@@ -387,6 +421,42 @@ exports.processPendingOrder = async (req, res) => {
 
     const [paymentId] = await trx('payments').insert(paymentData);
 
+    // Receipt is recorded once the online payment is verified/processed.
+    let workerRow = await trx('pharmacy_workers').where('id', worker_id).first();
+    if (!workerRow) workerRow = await trx('workers').where('id', worker_id).first();
+    const workerName = workerRow ? (workerRow.name || workerRow.full_name || workerRow.fullName || null) : null;
+    let invoice = await findInvoiceForOrder(trx, 'pharmacy', saleId);
+    if (!invoice) {
+      const backfillLines = items.map((it) => ({
+        itemId: it.drug_id,
+        name: `Drug #${it.drug_id}`,
+        qty: it.quantity,
+        unitPrice: it.unit_price,
+        amount: it.line_subtotal,
+        rate: parseFloat(it.vat_rate || 0) / 100,
+        treatment: parseFloat(it.vat_rate || 0) === 0 ? 'zero_rated' : 'standard'
+      }));
+      const invNo = await generateInvoiceNumber();
+      const created = await recordInvoiceForOrder(trx, {
+        source: 'pharmacy',
+        saleId,
+        saleType: 'online',
+        invoiceNo: invNo,
+        customer: null,
+        customerTin: null,
+        lines: backfillLines,
+        createdBy: workerName || 'Pharmacy Staff'
+      });
+      invoice = { id: created.invoiceId };
+    }
+    await recordReceiptForOrder(trx, {
+      invoiceId: invoice.id,
+      amountPaid: sale.total_amount,
+      paymentMethod: paymentData.method || 'CASH',
+      paymentReference: paymentData.reference || receipt_code,
+      receivedBy: workerName || 'Pharmacy Staff'
+    });
+
     // Update sale status
     await trx('sales').where('id', saleId).update({
       status: 'COMPLETED',
@@ -431,7 +501,18 @@ exports.createSale = async (req, res) => {
       const lineTotal = parseFloat((lineSubtotal + vatAmount).toFixed(2));
       subtotal += lineSubtotal;
       totalVat += vatAmount;
-      enrichedItems.push({ drug_id: item.drug_id, unit_price: unitPrice, quantity: item.quantity, vat_rate: parseFloat(drug.vat_rate || 0), vat_amount: vatAmount, line_subtotal: lineSubtotal, line_total: lineTotal });
+      enrichedItems.push({
+        drug_id: item.drug_id,
+        name: drug.name,
+        unit_price: unitPrice,
+        quantity: item.quantity,
+        vat_rate: parseFloat(drug.vat_rate || 0),
+        vat_amount: vatAmount,
+        line_subtotal: lineSubtotal,
+        line_total: lineTotal,
+        rate: vatResult.rate,
+        treatment: vatResult.treatment
+      });
     }
     const totalAmount = parseFloat((subtotal + totalVat).toFixed(2));
     const sale_code = generateCode('SALE');
@@ -470,6 +551,34 @@ exports.createSale = async (req, res) => {
     paymentData.verification_status = payment?.method === 'CASH' ? 'VERIFIED' : 'UNVERIFIED';
 
     const [paymentId] = await trx('payments').insert(paymentData);
+
+    // Invoice + receipt are recorded at sale time — payment is collected here.
+    const invNo = await generateInvoiceNumber();
+    const invRes = await recordInvoiceForOrder(trx, {
+      source: 'pharmacy',
+      saleId,
+      saleType: String(sale_type || 'WALK_IN').toUpperCase() === 'ONLINE' ? 'online' : 'walk_in',
+      invoiceNo: invNo,
+      customer: customer_id ? (await trx('customers').where('id', customer_id).first())?.name || null : null,
+      customerTin: null,
+      lines: enrichedItems.map((ei) => ({
+        itemId: ei.drug_id,
+        name: ei.name,
+        qty: ei.quantity,
+        unitPrice: ei.unit_price,
+        amount: ei.line_subtotal,
+        rate: ei.rate,
+        treatment: ei.treatment
+      })),
+      createdBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Staff'
+    });
+    await recordReceiptForOrder(trx, {
+      invoiceId: invRes.invoiceId,
+      amountPaid: totalAmount,
+      paymentMethod: paymentData.method || 'CASH',
+      paymentReference: paymentData.reference || receipt_code,
+      receivedBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Staff'
+    });
 
     await trx.commit();
 
