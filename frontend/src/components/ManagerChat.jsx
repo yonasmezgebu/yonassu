@@ -66,9 +66,19 @@ function SegmentedSpinner({ size = 18 }) {
 const Avatar = ({ name, role, size = 40, avatar = null, onlineAt = null }) => {
   const online = isOnline(onlineAt);
   const dotSize = Math.max(8, Math.round(size * 0.26));
-  const inner = avatar
-    ? (() => { const src = avatar.startsWith('http') ? avatar : `${BASE}/${avatar}`; return <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />; })()
-    : (() => { const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); return <div style={{ width: size, height: size, borderRadius: '50%', background: roleColor(role), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.35, flexShrink: 0, userSelect: 'none' }}>{initials}</div>; })();
+  const buildSrc = (av) => {
+    if (!av) return null;
+    if (av.startsWith('http://') || av.startsWith('https://')) return av;
+    const clean = av.replace(/^\/+/, '');
+    return `${BASE}/${clean}`;
+  };
+  const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const fallback = <div style={{ width: size, height: size, borderRadius: '50%', background: roleColor(role), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.35, flexShrink: 0, userSelect: 'none' }}>{initials}</div>;
+  const [imgError, setImgError] = React.useState(false);
+  const src = buildSrc(avatar);
+  const inner = (src && !imgError)
+    ? <img src={src} alt={name} onError={() => setImgError(true)} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+    : fallback;
   return (
     <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
       {inner}
@@ -862,10 +872,26 @@ export default function ManagerChat() {
   }, []);
 
   const fetchGroups = useCallback(async () => {
-    try { const r = await apiClient.get('/manager-chat/groups'); setGroups(r.data || []); } catch (_) {}
+    try {
+      const r = await apiClient.get('/manager-chat/groups');
+      const fresh = r.data || [];
+      setGroups(fresh);
+      // If currently viewing a group that no longer exists for this user, go back
+      setSelected(prev => {
+        if (prev?.type === 'group' && !fresh.find(g => g.id === prev.data.id)) {
+          return null;
+        }
+        return prev;
+      });
+    } catch (_) {}
   }, []);
 
   useEffect(() => { fetchUsers(); fetchGroups(); }, [fetchUsers, fetchGroups]);
+  // Poll groups every 15 s so membership changes (add/remove by CEO) are reflected automatically
+  useEffect(() => {
+    const iv = setInterval(fetchGroups, 15_000);
+    return () => clearInterval(iv);
+  }, [fetchGroups]);
   useEffect(() => { if (tab === 'groups') fetchGroups(); }, [tab, fetchGroups]);
 
   // ── Heartbeat: stamp my own last_seen_at while chat is open ──────────────
