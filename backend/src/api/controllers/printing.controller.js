@@ -3,8 +3,9 @@ const AppError = require('../../utils/appError');
 const { db } = require('../../config/database');
 const { audit } = require('../../config/logger');
 const OrderModel = require('../../models/Order.model');
-const { generateOrderNumber } = require('../../utils/orderNumber');
+const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const vatConfigService = require('../../services/vatConfig.service');
+const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 const deleteFile = (path) => console.log('Deleted file:', path);
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
@@ -23,6 +24,39 @@ const applyPrintingVat = async (productType, baseTotal) => {
   const r = await vatConfigService.computeVatForItem('printing', pt ? pt.id : null, baseTotal);
   const vat = parseFloat(r.vat.toFixed(2));
   return { baseTotal, vat, total: baseTotal + vat };
+};
+// Build invoice lines for a printing order using the already-computed pricing/VAT
+// so the invoice total always matches the order total (subtotal + binding + VAT).
+const buildPrintingInvoiceLines = async ({ productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing }) => {
+  const pt = await db('printing_product_types').where('code', productType || 'Book').first();
+  const qty = parseInt(quantity) || 1;
+  const base = parseFloat(pricing.subtotal) || 0;
+  const binding = parseFloat(pricing.bindingCost) || 0;
+  const taxable = parseFloat(pricing.totalPrice) || (base + binding);
+  const vatRate = taxable > 0 && parseFloat(vatPricing.vat) > 0 ? parseFloat((parseFloat(vatPricing.vat) / taxable).toFixed(4)) : 0;
+  const treatment = vatRate === 0 ? 'zero_rated' : 'standard';
+  const spec = `${productType || 'Book'} (${paperType || 'A4'}, ${parseInt(pagesPerCopy) || 1}pp, ${colorPrinting === true || colorPrinting === 'true' ? 'Color' : 'B&W'}, ${bindingType || 'None'})`;
+  const lines = [{
+    itemId: pt ? pt.id : null,
+    name: spec,
+    qty,
+    unitPrice: parseFloat(pricing.pricePerUnit) || 0,
+    amount: base,
+    rate: vatRate,
+    treatment
+  }];
+  if (binding > 0) {
+    lines.push({
+      itemId: pt ? pt.id : null,
+      name: `${bindingType || 'Binding'} (${spec})`,
+      qty,
+      unitPrice: parseFloat(binding) / qty,
+      amount: binding,
+      rate: vatRate,
+      treatment
+    });
+  }
+  return lines;
 };
 exports.getAllOrders = catchAsync(async (req, res) => {
   const { page = 1, limit = 25, status, search, startDate, endDate } = req.query;
@@ -152,30 +186,49 @@ exports.createOrder = catchAsync(async (req, res) => {
   const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
   const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
-  const [orderId] = await db('printing_orders').insert({
-    order_number: orderNumber,
-    customer_id: resolvedCustomerId,
-    customer_type_id: resolvedCustomerTypeId,
-    product_type: productType || 'Book',
-    paper_type: paperType || 'A4',
-    pages_per_copy: parseInt(pagesPerCopy) || 1,
-    color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
-    binding_type: bindingType || 'None',
-    quantity: parseInt(quantity) || 1,
-    special_instructions: specialInstructions || null,
-    due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
-    price_per_unit: pricing.pricePerUnit,
-    binding_cost: pricing.bindingCost,
-    subtotal: pricing.subtotal,
-    vat_amount: vatPricing.vat,
-    total_price: vatPricing.total,
-    status_id: initialStatus?.id || 1,
-    payment_method: paymentMethod || null,
-    payment_reference: paymentReference || null,
-    payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
-    created_by: userId,
-    created_at: db.fn.now(),
-    updated_at: db.fn.now()
+  const invoiceLines = await buildPrintingInvoiceLines({
+    productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
+  });
+  const [orderId] = await db.transaction(async (trx) => {
+    const [oid] = await trx('printing_orders').insert({
+      order_number: orderNumber,
+      customer_id: resolvedCustomerId,
+      customer_type_id: resolvedCustomerTypeId,
+      product_type: productType || 'Book',
+      paper_type: paperType || 'A4',
+      pages_per_copy: parseInt(pagesPerCopy) || 1,
+      color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
+      binding_type: bindingType || 'None',
+      quantity: parseInt(quantity) || 1,
+      special_instructions: specialInstructions || null,
+      due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
+      price_per_unit: pricing.pricePerUnit,
+      binding_cost: pricing.bindingCost,
+      subtotal: pricing.subtotal,
+      vat_amount: vatPricing.vat,
+      total_price: vatPricing.total,
+      status_id: initialStatus?.id || 1,
+      payment_method: paymentMethod || null,
+      payment_reference: paymentReference || null,
+      payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
+      created_by: userId,
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
+    // Invoice is recorded immediately when the order is placed.
+    const invNo = await generateInvoiceNumber();
+    await recordInvoiceForOrder(trx, {
+      source: 'printing',
+      saleId: oid,
+      saleType: 'walk_in',
+      invoiceNo: invNo,
+      customer: customer?.name || null,
+      customerTin: null,
+      lines: invoiceLines,
+      createdBy: req.user.full_name || req.user.fullName || 'Printing Cashier'
+    });
+    return oid;
   });
 
   // Automatically send to Finance Live Income for verification
@@ -382,6 +435,71 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   if (req.res) req.res.locals.__centralAudited = true;
   res.json({ status: 'success', message: 'Order status updated successfully', data: { statusCode: statusRow.status_code, statusName: statusRow.status_name } });
 });
+exports.verifyPayment = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await db('printing_orders').where('id', id).whereNull('deleted_at').first();
+  if (!order) throw new AppError('Order not found', 404);
+
+  if (['Confirmed', 'PAID'].includes(order.payment_status)) {
+    throw new AppError('Payment already confirmed for this order', 400);
+  }
+
+  await db.transaction(async (trx) => {
+    await trx('printing_orders').where('id', id).update({
+      payment_status: 'Confirmed',
+      updated_at: db.fn.now()
+    });
+
+    let invoice = await findInvoiceForOrder(trx, 'printing', id);
+    if (!invoice) {
+      // Back-fill the invoice for orders created before invoice recording existed.
+      const lines = await buildPrintingInvoiceLines({
+        productType: order.product_type,
+        paperType: order.paper_type,
+        pagesPerCopy: order.pages_per_copy,
+        colorPrinting: order.color_printing,
+        bindingType: order.binding_type,
+        quantity: order.quantity,
+        pricing: { pricePerUnit: order.price_per_unit, subtotal: order.subtotal, bindingCost: order.binding_cost },
+        vatPricing: { vat: order.vat_amount }
+      });
+      const invNo = await generateInvoiceNumber();
+      const created = await recordInvoiceForOrder(trx, {
+        source: 'printing',
+        saleId: id,
+        saleType: 'walk_in',
+        invoiceNo: invNo,
+        customer: null,
+        customerTin: null,
+        lines,
+        createdBy: req.user.full_name || req.user.fullName || 'Finance Officer'
+      });
+      invoice = { id: created.invoiceId };
+    }
+
+    await recordReceiptForOrder(trx, {
+      invoiceId: invoice.id,
+      amountPaid: parseFloat(order.total_price) || 0,
+      paymentMethod: order.payment_method || 'Cash',
+      paymentReference: order.payment_reference || null,
+      receivedBy: req.user.full_name || req.user.fullName || 'Finance Officer'
+    });
+  });
+
+  await audit('PRINTING_PAYMENT_VERIFIED', req.user.id, {
+    ip: req.ip,
+    resourceId: id,
+    details: {
+      order_number: order.order_number,
+      total_price: order.total_price,
+      payment_status: 'Confirmed'
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
+
+  res.json({ status: 'success', message: 'Payment verified and receipt recorded', data: { orderId: id, payment_status: 'Confirmed' } });
+});
+
 exports.uploadAttachments = catchAsync(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
@@ -808,31 +926,50 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
     attachmentsStr = JSON.stringify([newAttachment]);
   }
 
-  const [orderId] = await db('printing_orders').insert({
-    order_number: orderNumber,
-    customer_id: customerId,
-    customer_type_id: 1,
-    product_type: productType || 'Book',
-    paper_type: paperType || 'A4',
-    pages_per_copy: parseInt(pagesPerCopy) || 1,
-    color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
-    binding_type: bindingType || 'None',
-    quantity: parseInt(quantity) || 1,
-    special_instructions: specialInstructions || null,
-    due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
-    price_per_unit: pricing.pricePerUnit,
-    binding_cost: pricing.bindingCost,
-    subtotal: pricing.subtotal,
-    vat_amount: vatPricing.vat,
-    total_price: vatPricing.total,
-    status_id: initialStatus?.id || 1,
-    payment_method: paymentMethod || null,
-    payment_reference: paymentReference || null,
-    payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
-    attachments: attachmentsStr,
-    created_by: userId,
-    created_at: db.fn.now(),
-    updated_at: db.fn.now()
+  const invoiceLines = await buildPrintingInvoiceLines({
+    productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
+  });
+  const [orderId] = await db.transaction(async (trx) => {
+    const [oid] = await trx('printing_orders').insert({
+      order_number: orderNumber,
+      customer_id: customerId,
+      customer_type_id: 1,
+      product_type: productType || 'Book',
+      paper_type: paperType || 'A4',
+      pages_per_copy: parseInt(pagesPerCopy) || 1,
+      color_printing: colorPrinting === true || colorPrinting === 'true' ? 1 : 0,
+      binding_type: bindingType || 'None',
+      quantity: parseInt(quantity) || 1,
+      special_instructions: specialInstructions || null,
+      due_date: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : null,
+      price_per_unit: pricing.pricePerUnit,
+      binding_cost: pricing.bindingCost,
+      subtotal: pricing.subtotal,
+      vat_amount: vatPricing.vat,
+      total_price: vatPricing.total,
+      status_id: initialStatus?.id || 1,
+      payment_method: paymentMethod || null,
+      payment_reference: paymentReference || null,
+      payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
+      attachments: attachmentsStr,
+      created_by: userId,
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
+    // Invoice is recorded immediately when the online order is placed.
+    const invNo = await generateInvoiceNumber();
+    await recordInvoiceForOrder(trx, {
+      source: 'printing',
+      saleId: oid,
+      saleType: 'online',
+      invoiceNo: invNo,
+      customer: user?.full_name || user?.fullName || null,
+      customerTin: null,
+      lines: invoiceLines,
+      createdBy: user?.full_name || user?.fullName || 'Customer Portal'
+    });
+    return oid;
   });
 
   // Automatically send to Finance Live Income for verification
