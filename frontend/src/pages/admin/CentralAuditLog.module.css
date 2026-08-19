@@ -474,6 +474,33 @@
   cursor: not-allowed;
 }
 
+.pageJump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageInput {
+  width: 68px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  text-align: center;
+  outline: none;
+  transition: all 150ms ease-in-out;
+}
+.pageInput::placeholder { color: var(--color-text-muted); }
+.pageInput:hover { border-color: var(--color-text-muted); }
+.pageInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
 .loading {
   padding: 64px 24px;
   display: flex;
