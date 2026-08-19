@@ -1,0 +1,280 @@
+.root {
+  --red: #DC2626;
+  --red-dark: #991B1B;
+  --red-deep: #7F1D1D;
+  --green: #16A34A;
+
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100%;
+  font-family: Inter, "Segoe UI", Roboto, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  color: #1F2937;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7F1D1D, #B91C1C 55%, #DC2626);
+  color: #fff;
+}
+.pageTitle {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.pageSubtitle {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #FEE2E2;
+  max-width: 820px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.pendingSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+  font-size: 14.5px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px;
+  color: var(--red);
+  font-weight: 600;
+}
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px;
+  background: #fff;
+  border: 1px solid #F3D1D1;
+  border-radius: 14px;
+  color: #6B7280;
+  font-size: 15px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.requestCard {
+  background: #fff;
+  border: 1px solid #F3D1D1;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 10px rgba(127, 29, 29, 0.05);
+}
+.requestCardPending {
+  border-left: 5px solid var(--red);
+  background: #FFFCFC;
+}
+.reqHeader {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.reqIcon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #FEE2E2;
+  color: var(--red);
+}
+.reqInfo { flex: 1; min-width: 0; }
+.reqTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 16px;
+  font-weight: 700;
+}
+.reqMeta {
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 4px;
+}
+.reqReason {
+  font-size: 14px;
+  line-height: 1.55;
+  background: #FDF2F2;
+  border-left: 4px solid var(--red);
+  padding: 12px 14px;
+  border-radius: 0 10px 10px 0;
+  color: #374151;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stPending   { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.stApproved  { background: #DBEAFE; color: #1D4ED8; border: 1px solid #BFDBFE; }
+.stCompleted { background: #DCFCE7; color: #15803D; border: 1px solid #A7F3D0; }
+.stRejected  { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+.stFailed    { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+
+.rejectBox, .resultBox, .failBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+.rejectBox { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+.resultBox { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.failBox { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px dashed #F3D1D1;
+}
+.approveActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.approveBtn, .rejectBtn, .confirmRejectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.approveBtn {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+}
+.approveBtn:hover:not(:disabled) { background: var(--red-dark); }
+.approveBtn:active:not(:disabled) { transform: translateY(1px); }
+.rejectBtn {
+  background: #fff;
+  color: #B91C1C;
+  border: 1px solid #FECACA;
+}
+.rejectBtn:hover:not(:disabled) { background: #FEF2F2; }
+.approveBtn:disabled, .rejectBtn:disabled, .confirmRejectBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.rejectForm {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.input {
+  flex: 1;
+  min-width: 220px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid #F3D1D1;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.input:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
+.confirmRejectBtn {
+  background: #B91C1C;
+  color: #fff;
+}
+.confirmRejectBtn:hover:not(:disabled) { background: var(--red-dark); }
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #15803D;
+  font-size: 13.5px;
+}
+
+.toast {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 420px;
+  animation: toastIn 0.25s ease;
+}
+.toast button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.7;
+}
+.toast button:hover { opacity: 1; }
+.toastSuccess { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.toastError { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
