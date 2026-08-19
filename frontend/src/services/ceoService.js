@@ -188,6 +188,17 @@ const ceoService = {
   },
   getEmployeeMonthlyAttendance: async (employeeId, month) => {
     return await apiClient.get(`/ceo/employee-attendance/${employeeId}`, { params: { month } });
+  },
+
+  // ── Danger Zone (database reset approval) ──
+  getDangerZoneRequests: async (params = {}) => {
+    return await apiClient.get('/ceo/danger-zone/requests', { params });
+  },
+  approveDangerZoneReset: async (id) => {
+    return await apiClient.post(`/ceo/danger-zone/requests/${id}/approve`);
+  },
+  rejectDangerZoneReset: async (id, reason) => {
+    return await apiClient.post(`/ceo/danger-zone/requests/${id}/reject`, { reason });
   }
 };
 export default ceoService;
