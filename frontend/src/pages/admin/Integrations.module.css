@@ -240,30 +240,37 @@
   transform: translateX(20px);
 }
 
-/* ── Detail panel (overlay) ── */
+/* ── Detail panel (centered modal) ── */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: flex;
-  justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.3);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(2px);
-  animation: fadeIn 0.15s ease;
+  animation: fadeIn 0.2s ease;
 }
 .detailPanel {
-  width: 560px;
-  max-width: 95vw;
-  height: 100%;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  height: auto;
   background: var(--color-bg-card);
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideIn 0.2s ease;
+  animation: modalIn 0.35s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(-24px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 .detailHeader {
   display: flex;
