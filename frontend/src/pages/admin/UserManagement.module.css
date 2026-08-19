@@ -414,6 +414,34 @@
   color: var(--color-text-secondary, #6B7280);
 }
 
+.pageJump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageInput {
+  width: 68px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border, #E5E7EB);
+  border-radius: 8px;
+  background: var(--color-bg-card, #FFFFFF);
+  outline: none;
+  color: var(--color-text-primary, #111827);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: center;
+  transition: border-color var(--transition-fast, 150ms ease-in-out),
+              box-shadow var(--transition-fast, 150ms ease-in-out);
+}
+.pageInput::placeholder { color: var(--color-text-muted, #9CA3AF); }
+.pageInput:hover { border-color: var(--color-text-muted, #9CA3AF); }
+.pageInput:focus {
+  border-color: var(--color-primary, #2563EB);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 /* ── Toast (rule 13: colored left border + slide-in) ──────────────────────── */
 .toast {
   position: fixed;
