@@ -4,6 +4,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
+const { recordInvoiceForOrder, recordReceiptForOrder } = require('../../services/invoiceDocument.service');
 
 const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 
@@ -234,6 +235,7 @@ exports.placeOrder = catchAsync(async (req, res) => {
       id: invoiceId,
       invoice_no: invoice_number,
       source: 'retail',
+      sale_type: 'online',
       sale_id: orderId,
       customer_name: resolvedName,
       customer_tin: null, // Usually not provided in retail
@@ -394,7 +396,40 @@ exports.posCheckout = catchAsync(async (req, res) => {
       if (!updated) throw new AppError(`Race condition for "${product.name}"`, 409);
     }
 
-    return { txId, invoice_number, subtotal, vat_amount: vatCalc.vat, total_amount: finalTotal, discount_amount: discountAmount, resolvedItems };
+    // Invoice is recorded immediately when the sale is made; the receipt is
+    // recorded at the same time because payment is collected at the counter.
+    const invoiceLines = resolvedItems.map((ri, i) => ({
+      itemId: ri.product.id,
+      name: ri.product.name,
+      qty: ri.quantity,
+      unitPrice: ri.product.price,
+      amount: ri.product.price * ri.quantity,
+      rate: vatCalc.rows[i].rate,
+      treatment: vatCalc.rows[i].treatment
+    }));
+    if (discountAmount > 0) {
+      invoiceLines.push({ itemId: 0, name: 'Discount', qty: 1, unitPrice: -discountAmount, amount: -discountAmount, rate: 0, treatment: 'zero_rated' });
+    }
+    const invNo = await generateInvoiceNumber();
+    const invRes = await recordInvoiceForOrder(trx, {
+      source: 'retail',
+      saleId: txId,
+      saleType: 'walk_in',
+      invoiceNo: invNo,
+      customer: null,
+      customerTin: null,
+      lines: invoiceLines,
+      createdBy: req.user.full_name || req.user.fullName || 'POS Cashier'
+    });
+    await recordReceiptForOrder(trx, {
+      invoiceId: invRes.invoiceId,
+      amountPaid: finalTotal,
+      paymentMethod: payment_method,
+      paymentReference: payment_ref || null,
+      receivedBy: req.user.full_name || req.user.fullName || 'POS Cashier'
+    });
+
+    return { txId, invoice_number, invoice_no: invNo, subtotal, vat_amount: vatCalc.vat, total_amount: finalTotal, discount_amount: discountAmount, resolvedItems };
   });
 
   // Update shift totals
@@ -757,6 +792,39 @@ exports.checkoutDirect = catchAsync(async (req, res) => {
       });
       await trx('retail_products').where({ id: item.product_id }).decrement('stock_quantity', item.quantity);
     }
+
+    // Invoice + receipt are recorded at checkout (payment is collected here).
+    const vatCalc = await vatConfigService.computeVatForItems('retail', items.map((i) => ({ itemId: i.product_id, amount: i.line_total })));
+    const invoiceLines = items.map((i, idx) => ({
+      itemId: i.product_id,
+      name: i.name || i.product_name || `Product #${i.product_id}`,
+      qty: i.quantity,
+      unitPrice: i.unit_price,
+      amount: i.line_total,
+      rate: vatCalc.rows[idx].rate,
+      treatment: vatCalc.rows[idx].treatment
+    }));
+    if (discount) {
+      invoiceLines.push({ itemId: 0, name: 'Discount', qty: 1, unitPrice: -discount, amount: -discount, rate: 0, treatment: 'zero_rated' });
+    }
+    const invNo = await generateInvoiceNumber();
+    const invRes = await recordInvoiceForOrder(trx, {
+      source: 'retail',
+      saleId: transactionId,
+      saleType: String(sale_type || 'WALK-IN').toUpperCase() === 'ONLINE' ? 'online' : 'walk_in',
+      invoiceNo: invNo,
+      customer: sender_name || null,
+      customerTin: null,
+      lines: invoiceLines,
+      createdBy: received_by || req.user.full_name || req.user.fullName || 'Retail Cashier'
+    });
+    await recordReceiptForOrder(trx, {
+      invoiceId: invRes.invoiceId,
+      amountPaid: total_amount,
+      paymentMethod: payment_method,
+      paymentReference: transaction_id || null,
+      receivedBy: received_by || req.user.full_name || req.user.fullName || 'Retail Cashier'
+    });
   });
 
   log(req, 'Retail Sale Completed', `Retail Sale ${sale_no}`, null, {
