@@ -8,6 +8,8 @@ const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
+const { generateInvoiceNumber } = require('../../utils/orderNumber');
+const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 
 // ── HELPER: Sync car rental payment to Finance Receivables ───────────────────────
 // Mirrors same logic as AgriRent syncToFinance
@@ -137,6 +139,39 @@ exports.createOrder = async (req, res, next) => {
     };
 
     const newOrder = await rentalOrderRepository.create(orderData);
+
+    // Invoice is recorded immediately when the rental reservation is placed.
+    try {
+      const invNo = await generateInvoiceNumber();
+      await recordInvoiceForOrder(db, {
+        source: 'car_rental',
+        saleId: newOrder.id,
+        saleType: 'online',
+        invoiceNo: invNo,
+        customer: req.user.fullName || req.user.full_name || null,
+        customerTin: null,
+        lines: [{
+          itemId: car.id,
+          name: 'Car Rental',
+          qty: totalDays,
+          unitPrice: car.dailyRate,
+          amount: rentalAmount,
+          rate: vatCalc.rate,
+          treatment: vatCalc.treatment
+        }, {
+          itemId: 0,
+          name: 'Security Deposit',
+          qty: 1,
+          unitPrice: securityDeposit,
+          amount: securityDeposit,
+          rate: 0,
+          treatment: 'zero_rated'
+        }],
+        createdBy: req.user.fullName || req.user.full_name || 'Customer Portal'
+      });
+    } catch (err) {
+      logger.error('Failed to record car rental invoice:', err.message);
+    }
     
     // Also mark car as 'Booked' temporarily or let the manager do it upon approval. 
     // We'll leave the car as is until approved by the manager.
@@ -385,6 +420,31 @@ exports.createManualOrder = async (req, res) => {
       updated_at:       new Date()
     });
 
+    // Invoice is recorded immediately when the (manual/walk-in) order is placed.
+    try {
+      const invNo = await generateInvoiceNumber();
+      await recordInvoiceForOrder(db, {
+        source: 'car_rental',
+        saleId: orderId,
+        saleType: 'walk_in',
+        invoiceNo: invNo,
+        customer: customerName || null,
+        customerTin: null,
+        lines: [{
+          itemId: carId ? parseInt(carId) : 0,
+          name: carName || 'Car Rental',
+          qty: totalDays,
+          unitPrice: dailyRate,
+          amount: rentalAmount,
+          rate: vatCalc.rate,
+          treatment: vatCalc.treatment
+        }],
+        createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
+      });
+    } catch (err) {
+      logger.error('Failed to record manual car rental invoice:', err.message);
+    }
+
     // Auto-submit to Finance Live Income for payment verification
     try {
       await db('finance_income_submissions').insert({
@@ -585,6 +645,48 @@ exports.verifyPayment = async (req, res) => {
           req.user.id,
           verifiedAmount
         );
+      }
+
+      // ── Record the sales receipt for the verified payment ──
+      try {
+        let invoice = await findInvoiceForOrder(db, 'car_rental', order.id);
+        if (!invoice) {
+          const invNo = await generateInvoiceNumber();
+          const created = await recordInvoiceForOrder(db, {
+            source: 'car_rental',
+            saleId: order.id,
+            saleType: 'online',
+            invoiceNo: invNo,
+            customer: order.customerName || null,
+            customerTin: null,
+            lines: [{
+              itemId: order.carId || 0,
+              name: 'Car Rental',
+              qty: parseFloat(order.totalDays) || 1,
+              unitPrice: parseFloat(order.dailyRate) || 0,
+              amount: parseFloat(order.rentalAmount) || 0
+            }, {
+              itemId: 0,
+              name: 'Security Deposit',
+              qty: 1,
+              unitPrice: parseFloat(order.securityDeposit) || 0,
+              amount: parseFloat(order.securityDeposit) || 0,
+              rate: 0,
+              treatment: 'zero_rated'
+            }],
+            createdBy: req.user.fullName || req.user.full_name || 'Finance Officer'
+          });
+          invoice = { id: created.invoiceId };
+        }
+        await recordReceiptForOrder(db, {
+          invoiceId: invoice.id,
+          amountPaid: verifiedAmount,
+          paymentMethod: order.paymentMethod || order.payment_method || 'Cash',
+          paymentReference: referenceNumber || null,
+          receivedBy: req.user.fullName || req.user.full_name || 'Finance Officer'
+        });
+      } catch (err) {
+        logger.error('Failed to record car rental receipt:', err.message);
       }
     }
 
