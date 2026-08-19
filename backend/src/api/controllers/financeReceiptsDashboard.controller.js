@@ -25,71 +25,47 @@ const getDashboard = catchAsync(async (req, res) => {
     return q;
   };
 
-  // ── 1. Retail & POS (pos_sales completed + retail_transactions) ──
-  const retail = makeModule('retail', 'Retail & POS', '🛒', '#2563EB');
-  const completedSale = await db('sale_statuses').where('status_code', 'completed').first();
-  const posRows = completedSale
-    ? await inRange(db('pos_sales').where({ status_id: completedSale.id }).whereNull('deleted_at'), 'sale_date')
-        .select('total_amount', 'sale_type')
-    : [];
-  const retRows = await inRange(db('retail_transactions'), 'created_at').select('total_amount', 'sale_type');
-  const retailEntries = [
-    ...posRows.map((r) => ({ v: asNum(r.total_amount), online: String(r.sale_type).toLowerCase() === 'online' })),
-    ...retRows.map((r) => ({ v: asNum(r.total_amount), online: String(r.sale_type).toUpperCase() === 'ONLINE' }))
-  ];
-  retail.invoices = retailEntries.length;
-  retail.receipts = retailEntries.length;
-  retail.value = round2(retailEntries.reduce((s, e) => s + e.v, 0));
-  for (const e of retailEntries) {
-    if (e.online) { retail.online.invoices += 1; retail.online.value += e.v; }
-    else { retail.walkIn.invoices += 1; retail.walkIn.value += e.v; }
-  }
-  retail.online.value = round2(retail.online.value);
-  retail.walkIn.value = round2(retail.walkIn.value);
+  // Modules whose invoices/receipts are recorded in the shared
+  // sales_invoices / sales_receipts tables (invoice at order time, receipt at
+  // payment verification). Online vs walk-in comes from sales_invoices.sale_type.
+  const invoiceBuilder = async ({ source, sourceLabel, icon, color }) => {
+    const m = makeModule(source, sourceLabel, icon, color);
+    const invoices = await inRange(
+      db('sales_invoices').where('source', source).andWhereNot('status', 'cancelled'),
+      'created_at'
+    ).select('sale_type', 'total_amount');
+    m.invoices = invoices.length;
+    m.value = round2(invoices.reduce((s, r) => s + asNum(r.total_amount), 0));
+    for (const r of invoices) {
+      const isOnline = String(r.sale_type || '').toLowerCase() === 'online';
+      if (isOnline) { m.online.invoices += 1; m.online.value += asNum(r.total_amount); }
+      else { m.walkIn.invoices += 1; m.walkIn.value += asNum(r.total_amount); }
+    }
+    m.online.value = round2(m.online.value);
+    m.walkIn.value = round2(m.walkIn.value);
 
-  // ── 2. Pharmacy (sales excluding returns; payments = receipts) ──
-  const pharmacy = makeModule('pharmacy', 'Pharmacy', '💊', '#059669');
-  const phRows = await inRange(db('pharmacy_sales').whereNot('sale_type', 'RETURNED'), 'created_at').select('total_amount', 'sale_type');
-  const phPayments = await db('pharmacy_payments').whereIn('status', ['PAID', 'CASHOUT']).count({ n: '*' }).first();
-  pharmacy.invoices = phRows.length;
-  pharmacy.receipts = phPayments ? parseInt(phPayments.n || 0, 10) : 0;
-  pharmacy.value = round2(phRows.reduce((s, r) => s + asNum(r.total_amount), 0));
-  for (const r of phRows) {
-    const isOnline = String(r.sale_type).toUpperCase() === 'ONLINE';
-    const v = asNum(r.total_amount);
-    if (isOnline) { pharmacy.online.invoices += 1; pharmacy.online.value += v; }
-    else { pharmacy.walkIn.invoices += 1; pharmacy.walkIn.value += v; }
-  }
-  pharmacy.online.value = round2(pharmacy.online.value);
-  pharmacy.walkIn.value = round2(pharmacy.walkIn.value);
+    const receipts = await inRange(
+      db('sales_receipts as r')
+        .join('sales_invoices as i', 'r.invoice_id', 'i.id')
+        .where('i.source', source)
+        .andWhereNot('i.status', 'cancelled')
+        .andWhereNot('r.status', 'cancelled'),
+      'r.created_at'
+    ).count({ n: '*' }).first();
+    m.receipts = receipts ? parseInt(receipts.n || 0, 10) : 0;
+    return m;
+  };
 
-  // ── 3. Printing (payment confirmed) ──
-  const printing = makeModule('printing', 'Printing', '🖨️', '#D97706');
-  const printRows = await inRange(
-    db('printing_orders')
-      .whereNull('deleted_at')
-      .whereIn('payment_status', ['Confirmed', 'PAID'])
-      .whereNotIn('status_id', [9]),
-    'created_at'
-  ).select('total_price');
-  printing.invoices = printRows.length;
-  printing.receipts = printRows.length;
-  printing.value = round2(printRows.reduce((s, r) => s + asNum(r.total_price), 0));
+  // ── 1. Retail & POS ──
+  const retail = await invoiceBuilder({ source: 'retail', sourceLabel: 'Retail & POS', icon: '🛒', color: '#2563EB' });
+  // ── 2. Pharmacy ──
+  const pharmacy = await invoiceBuilder({ source: 'pharmacy', sourceLabel: 'Pharmacy', icon: '💊', color: '#059669' });
+  // ── 3. Printing ──
+  const printing = await invoiceBuilder({ source: 'printing', sourceLabel: 'Printing', icon: '🖨️', color: '#D97706' });
+  // ── 4. Car Rental ──
+  const rental = await invoiceBuilder({ source: 'car_rental', sourceLabel: 'Car Rental', icon: '🚗', color: '#7C3AED' });
 
-  // ── 4. Car Rental (paid, not cancelled/abandoned/rejected) ──
-  const rental = makeModule('rental', 'Car Rental', '🚗', '#7C3AED');
-  const rentRows = await inRange(
-    db('rental_orders')
-      .whereNull('deleted_at')
-      .where('payment_status', 'PAID')
-      .whereNotIn('status', ['CANCELLED', 'ABANDONED', 'REJECTED']),
-    'created_at'
-  ).select('total_amount');
-  rental.invoices = rentRows.length;
-  rental.receipts = rentRows.length;
-  rental.value = round2(rentRows.reduce((s, r) => s + asNum(r.total_amount), 0));
-
-  // ── 5. AgriRent (payment confirmed + completed) ──
+  // ── 5. AgriRent (kept on its own order table — outside the unified scope) ──
   const agrirent = makeModule('agrirent', 'AgriRent', '🚜', '#16A34A');
   const agriRows = await inRange(
     db('agrirent_orders')
