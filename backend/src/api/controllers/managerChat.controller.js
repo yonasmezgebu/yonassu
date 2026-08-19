@@ -2,6 +2,17 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 
+const SERVER_BASE = 'http://localhost:5000';
+
+// Normalise any avatar/profile_photo value to a full URL (or null)
+function normalizeAvatar(raw) {
+  if (!raw) return null;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  // strip accidental leading slash duplication then prepend base
+  const clean = raw.replace(/^\/+/, '');
+  return `${SERVER_BASE}/${clean}`;
+}
+
 // All users who can participate in manager chat
 const ALLOWED_ROLES = [
   'CEO', 'Admin', 'HR Manager', 'Car Rental Manager', 'Car Renting Manager',
@@ -42,7 +53,7 @@ exports.getManagerUsers = catchAsync(async (req, res) => {
         id: u.id,
         name: u.name,
         role: ALLOWED_SET.has(u.role) ? u.role : u.role,
-        avatar: u.avatar ? (u.avatar.startsWith('http') ? u.avatar : `http://localhost:5000/${u.avatar}`) : null,
+        avatar: normalizeAvatar(u.avatar),
         phone: u.phone,
         last_seen_at: u.last_seen_at || null
       });
@@ -178,7 +189,7 @@ exports.getAdminUsers = catchAsync(async (req, res) => {
         id: u.id,
         name: u.name,
         role: u.role,
-        avatar: u.avatar ? (u.avatar.startsWith('http') ? u.avatar : `http://localhost:5000/${u.avatar}`) : null,
+        avatar: normalizeAvatar(u.avatar),
         phone: u.phone,
         chat_enabled: Boolean(u.chat_enabled)
       });
@@ -219,7 +230,8 @@ exports.getUsers = catchAsync(async (req, res) => {
     .whereNot({ id: me })
     .select('id', 'full_name as name', 'role', 'profile_photo as avatar')
     .orderBy('full_name', 'asc');
-  res.json({ status: 'success', data: users });
+  const normalized = users.map(u => ({ ...u, avatar: normalizeAvatar(u.avatar) }));
+  res.json({ status: 'success', data: normalized });
 });
 
 exports.getUnreadCount = catchAsync(async (req, res) => {
@@ -261,7 +273,13 @@ exports.sendFile = catchAsync(async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 exports.getMyGroups = catchAsync(async (req, res) => {
+  const me = req.user.id;
   const rows = await db('manager_chat_groups as g')
+    .join('manager_chat_group_members as gm', 'gm.group_id', 'g.id')
+    .where('gm.user_id', me)
+    .where(function() {
+      this.where('gm.is_banned', false).orWhereNull('gm.is_banned');
+    })
     .select('g.id', 'g.name', 'g.description', 'g.profile_photo', 'g.created_by', 'g.created_at');
     
   for (const row of rows) {
@@ -326,7 +344,8 @@ exports.getGroupMessages = catchAsync(async (req, res) => {
   const me = req.user.id;
   const groupId = parseInt(req.params.groupId, 10);
   const membership = await db('manager_chat_group_members').where({ group_id: groupId, user_id: me }).first();
-  if (membership && membership.is_banned) throw AppError.forbidden('Banned from this group');
+  if (!membership) throw AppError.forbidden('You are not a member of this group');
+  if (membership.is_banned) throw AppError.forbidden('Banned from this group');
   const msgs = await db('manager_chat_group_messages as m')
     .join('users as u', 'u.id', 'm.sender_user_id')
     .where('m.group_id', groupId).where('m.deleted', false)
@@ -339,7 +358,8 @@ exports.sendGroupMessage = catchAsync(async (req, res) => {
   const me = req.user.id;
   const groupId = parseInt(req.params.groupId, 10);
   const membership = await db('manager_chat_group_members').where({ group_id: groupId, user_id: me }).first();
-  if (membership && membership.is_banned) throw AppError.forbidden('Not allowed');
+  if (!membership) throw AppError.forbidden('You are not a member of this group');
+  if (membership.is_banned) throw AppError.forbidden('Not allowed');
   const { message, replyToId } = req.body;
   const fileUrl  = req.file ? `/uploads/chat/${req.file.filename}` : null;
   const fileName = req.file ? req.file.originalname : null;
@@ -367,7 +387,12 @@ exports.getGroupMembers = catchAsync(async (req, res) => {
     .where('gm.group_id', groupId)
     .select('u.id','u.full_name as name','u.profile_photo as avatar','r.name as role','gm.is_banned','gm.joined_at');
   const seen = new Set(); const unique = [];
-  for (const m of members) { if (!seen.has(m.id)) { seen.add(m.id); unique.push(m); } }
+  for (const m of members) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      unique.push({ ...m, avatar: normalizeAvatar(m.avatar) });
+    }
+  }
   res.json({ status: 'success', data: unique });
 });
 
