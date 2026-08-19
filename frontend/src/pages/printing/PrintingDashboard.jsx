@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import PrintingHome from './PrintingHome';
+import PrintingTasks from './PrintingTasks';
 
 // Jobs (1-8)
 import PrintingNewJob from './PrintingNewJob';
@@ -41,6 +42,7 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Jobs', icon: 'printer',
       children: [
+        { label: 'Tasks',                  path: '/printing-manager/jobs/tasks',     icon: 'check-square', color: '#8b5cf6' },
         { label: 'Job Process',            path: '/printing-manager/jobs/queue',     icon: 'list',         color: '#228B22' },
         { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
         { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
@@ -77,6 +79,11 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Contact', icon: 'phone', children: [ { label: 'Setting Contact', path: '/printing-manager/contact', icon: 'settings' }, { label: 'Chat', path: '/printing-manager/chat', icon: 'message-circle', color: '#6B8E23' } ] },
     { type: 'divider' },
+    { label: 'Employee', icon: 'briefcase',
+      children: [
+        { label: 'Tasks & Reports', path: '/printing-manager/jobs/tasks', icon: 'check-square', color: '#16a34a' }
+      ] },
+    { type: 'divider' },
     { label: 'Audit Log', path: '/printing-manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
@@ -88,6 +95,7 @@ const PrintingDashboard = () => {
             <Route path="overview" element={<PrintingHome />} />
 
             {/* Jobs */}
+            <Route path="jobs/tasks" element={<PrintingTasks />} />
             <Route path="jobs/new" element={<PrintingNewJob />} />
             <Route path="jobs/queue" element={<PrintingQueue />} />
             <Route path="jobs/design" element={<PrintingDesign />} />
