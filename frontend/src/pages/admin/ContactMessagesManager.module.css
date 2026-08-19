@@ -600,6 +600,87 @@
 }
 
 /* ════════════════════════════════════════════════
+   MODAL FOOTER / CONFIRM MODAL
+════════════════════════════════════════════════ */
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  background: #F9FAFB;
+  border-radius: 0 0 12px 12px;
+}
+
+.cancelBtn {
+  height: 36px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.cancelBtn:hover { background: var(--color-bg-page); }
+
+.confirmModal { max-width: 420px; }
+
+.confirmBody { padding: 20px; }
+
+.confirmText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+.confirmDeleteBtn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+}
+.confirmDeleteBtn:hover { background: var(--color-danger-bg); }
+
+/* ════════════════════════════════════════════════
+   IN-APP TOAST
+════════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  animation: toastIn 200ms ease-out;
+  max-width: 420px;
+}
+.toastSuccess { background: var(--color-success); }
+.toastError   { background: var(--color-danger); }
+.toastIcon    { font-size: 16px; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ════════════════════════════════════════════════
    RESPONSIVE
 ════════════════════════════════════════════════ */
 @media (max-width: 768px) {
