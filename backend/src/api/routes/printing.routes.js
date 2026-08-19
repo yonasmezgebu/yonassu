@@ -180,6 +180,14 @@ router.put(
   PrintingController.updateOrderStatus
 );
 router.post(
+  '/orders/:id/verify-payment',
+  authenticate,
+  authorize(['orders:update', 'finance:manage']),
+  orderIdParamValidation,
+  validate,
+  PrintingController.verifyPayment
+);
+router.post(
   '/orders/:id/attachments',
   authenticate,
   authorize(['orders:update']),
