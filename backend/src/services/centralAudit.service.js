@@ -53,9 +53,20 @@ const mapModule = (action, details = {}) => {
   return 'General';
 };
 
-const IDENTIFIER_KEYS = ['id', 'reqNo', 'grnNo', 'issNo', 'name', 'email', 'orderId', 'employeeId', 'productId', 'vendorName', 'accountCode', 'tenderId', 'poId'];
+const IDENTIFIER_KEYS = ['title', 'id', 'reqNo', 'grnNo', 'issNo', 'name', 'email', 'orderId', 'employeeId', 'productId', 'vendorName', 'accountCode', 'tenderId', 'poId'];
 const pickIdentifier = (details = {}) => {
   if (details.recordIdentifier != null) return String(details.recordIdentifier);
+  
+  // Try to find a meaningful name before falling back to an ID
+  const statesToSearch = [details.afterState, details.beforeState, details.details, details.newValue, details.previousValue];
+  for (const obj of statesToSearch) {
+    if (obj && typeof obj === 'object') {
+      if (obj.title) return String(obj.title);
+      if (obj.name) return String(obj.name);
+      if (obj.employee_name) return String(obj.employee_name);
+    }
+  }
+
   if (details.resourceId != null) return String(details.resourceId);
   const d = details.details;
   if (d && typeof d === 'object') {
@@ -127,13 +138,23 @@ const captureLegacy = async (action, userId, details = {}) => {
       }
     }
     const resolvedIdentifier = pickIdentifier(details) || details.description || null;
+    
+    let finalAction = String(action || 'ACTION');
+    if (details.resource === 'employee-tasks') {
+      if (finalAction === 'CREATE') finalAction = 'EMPLOYEE_TASK_ASSIGNED';
+      if (finalAction === 'UPDATE') finalAction = 'EMPLOYEE_TASK_UPDATED';
+      if (finalAction === 'DELETE') finalAction = 'EMPLOYEE_TASK_DELETED';
+    } else if (details.resource === 'employee-reports') {
+      if (finalAction === 'CREATE') finalAction = 'EMPLOYEE_REPORT_SUBMITTED';
+    }
+
     await db('central_audit_logs').insert({
       user_id: userId || null,
       user_name: userName || 'System',
       role: role || 'Unknown',
       department: dept || 'General',
       module: mapModule(action, details),
-      action: String(action || 'ACTION'),
+      action: finalAction,
       record_identifier: resolvedIdentifier,
       previous_value: details.beforeState != null
         ? JSON.stringify(details.beforeState)
