@@ -32,7 +32,9 @@ const AUDIT_RESOURCES = [
   'tenders',
   'bids',
   'price-lists',
-  'shifts'
+  'shifts',
+  'employee-tasks',
+  'employee-reports'
 ];
 const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const MODULE_MAP = [
@@ -55,6 +57,8 @@ const MODULE_MAP = [
   ['/cars', 'Store'],
   ['/tractors', 'Store'],
   ['/rental', 'Store'],
+  ['/employee-tasks', 'Employee'],
+  ['/employee-reports', 'Employee'],
   ['/admin', 'Admin'],
   ['/users', 'Admin'],
   ['/auth', 'Admin'],
@@ -176,6 +180,12 @@ const captureBeforeState = async (req, resource, resourceId) => {
         break;
       case 'shifts':
         tableName = 'pos_shifts';
+        break;
+      case 'employee-tasks':
+        tableName = 'employee_tasks';
+        break;
+      case 'employee-reports':
+        tableName = 'employee_reports';
         break;
       default:
         return null;
