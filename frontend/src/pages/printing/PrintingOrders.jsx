@@ -70,6 +70,7 @@ const PrintingOrders = () => {
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
+  const [verifyingId, setVerifyingId] = useState(null);
   const [filter, setFilter] = useState({ status: '', paymentStatus: '', search: '', page: 1 });
 
   const load = useCallback(async (currentFilter) => {
@@ -98,6 +99,23 @@ const PrintingOrders = () => {
     const fresh = { ...filter, page: 1 };
     setFilter(fresh);
     load(fresh);
+  };
+
+  const verifyPayment = async (o) => {
+    if (!window.confirm(`Confirm payment for order ${o.order_number}? This will record the sales receipt.`)) return;
+    setVerifyingId(o.id);
+    try {
+      const res = await axios.post(`/printing/orders/${o.id}/verify-payment`);
+      if (res.status === 'success') {
+        load(filter);
+      } else {
+        alert(res.message || 'Failed to verify payment');
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to verify payment');
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   // Client-side filter for payment status
@@ -346,6 +364,20 @@ const PrintingOrders = () => {
                           <div style={{ fontSize: 10, color: '#c2410c', marginTop: 3, fontWeight: 700 }}>
                             ⚠ Not yet verified
                           </div>
+                        )}
+                        {isPendingPayment && (
+                          <button
+                            onClick={() => verifyPayment(o)}
+                            disabled={verifyingId === o.id}
+                            style={{
+                              marginTop: 6, padding: '4px 10px', borderRadius: 7,
+                              background: '#065f46', color: '#fff', border: 'none',
+                              fontSize: 10, fontWeight: 700, cursor: verifyingId === o.id ? 'default' : 'pointer',
+                              opacity: verifyingId === o.id ? 0.6 : 1
+                            }}
+                          >
+                            {verifyingId === o.id ? 'Verifying…' : '✓ Verify payment'}
+                          </button>
                         )}
                       </td>
 
