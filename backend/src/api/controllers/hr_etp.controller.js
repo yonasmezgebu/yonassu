@@ -1042,11 +1042,41 @@ exports.getEmployeeDocuments = catchAsync(async (req, res) => {
 });
 
 exports.getMyPayslips = catchAsync(async (req, res) => {
-  const empId = req.user.employee_id || req.user.id;
+  // Look up the employee record by user_id to get the EMP-XXXX id
+  const empRecord = await db('hr_employees').where('user_id', req.user.id).first();
+  const empId = empRecord ? empRecord.employee_id : null;
+
+  if (!empId) {
+    return res.json({ status: 'success', data: [] });
+  }
+
   const payslips = await db('payroll_salary_components')
-    .where('employee_id', empId)
-    .where('status', 'Paid')
+    .leftJoin('hr_employees', 'payroll_salary_components.employee_id', 'hr_employees.employee_id')
+    .leftJoin('departments', 'hr_employees.dept_id', 'departments.id')
+    .leftJoin('positions', 'hr_employees.position_id', 'positions.id')
+    .select(
+      'payroll_salary_components.*',
+      'hr_employees.full_name',
+      'departments.name as department_name',
+      'positions.title as position_title'
+    )
+    .where('payroll_salary_components.employee_id', empId)
+    // Return all statuses so employees can see Draft and Paid payslips
     .orderBy([{ column: 'year_number', order: 'desc' }, { column: 'month_number', order: 'desc' }]);
+
+  // Explicitly log the view action (GET requests are not caught by audit middleware)
+  try {
+    const centralAuditService = require('../../services/centralAudit.service');
+    await centralAuditService.captureLegacy('EMPLOYEE_PAYSLIP_VIEWED', req.user.id, {
+      centralAudit: true,
+      module: 'Employee',
+      ip: req.ip,
+      description: `Employee ${empRecord.full_name || empRecord.employee_id} viewed their payslips`
+    });
+  } catch (err) {
+    // Ignore audit log failure
+  }
+
   res.json({ status: 'success', data: payslips });
 });
 
@@ -1414,7 +1444,13 @@ exports.getMyAttendancePortal = catchAsync(async (req, res) => {
 });
 
 exports.getMyDocuments = catchAsync(async (req, res) => {
-  const empId = req.user.employee_id || req.user.id;
+  const empRecord = await db('hr_employees').where('user_id', req.user.id).first();
+  const empId = empRecord ? empRecord.employee_id : null;
+
+  if (!empId) {
+    return res.json({ status: 'success', data: [] });
+  }
+
   const docs = await db('hr_employee_documents')
     .where('employee_id', empId)
     .orderBy('upload_date', 'desc');
@@ -1422,10 +1458,15 @@ exports.getMyDocuments = catchAsync(async (req, res) => {
 });
 
 exports.getMyPayslips = catchAsync(async (req, res) => {
-  const empId = req.user.employee_id || req.user.id;
+  const empRecord = await db('hr_employees').where('user_id', req.user.id).first();
+  const empId = empRecord ? empRecord.employee_id : null;
+
+  if (!empId) {
+    return res.json({ status: 'success', data: [] });
+  }
+
   const payslips = await db('payroll_salary_components')
     .where('employee_id', empId)
-    .where('status', 'Paid')
     .orderBy([{ column: 'year_number', order: 'desc' }, { column: 'month_number', order: 'desc' }]);
   res.json({ status: 'success', data: payslips });
 });
