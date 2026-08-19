@@ -17,6 +17,7 @@ import SalesDailySummary from './SalesDailySummary';
 import CashierAuditLog from './CashierAuditLog';
 import TenderManagePage from '../admin/TenderManagePage';
 import SalesProductAdjust from './SalesProductAdjust';
+import SalesTasks from './SalesTasks';
 
 // We import these directly if needed
 // import ProcurementRequests from '../procurement/ProcurementRequests';
@@ -73,6 +74,7 @@ const SalesDashboard = () => {
     // ── Staff ──
     { label: 'Staff & Ops', icon: 'users',
       children: [
+        { label: 'Tasks',            path: '/sales/tasks',      icon: 'check-square', color: '#8b5cf6' },
         { label: 'Branches',         path: '/sales/branches',   icon: 'building', color: '#f59e0b' },
         { label: 'Bids',             path: '/sales/bids',       icon: 'award', color: '#059669' },
       ]
@@ -92,8 +94,9 @@ const SalesDashboard = () => {
     // ── Settings ──
     { label: 'Settings', icon: 'settings',
       children: [
-        { label: 'Contact Settings', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
+        { label: 'Staff & Roles', path: '/sales/staff', icon: 'users', color: '#10b981' },
         { label: 'Chat', path: '/sales/chat', icon: 'message-circle', color: '#6B8E23' },
+        { label: 'Contact', path: '/sales/contact', icon: 'phone', color: '#14b8a6' },
       ]
     },
     { type: 'divider' },
@@ -136,6 +139,7 @@ const SalesDashboard = () => {
             <Route path="store-inventory"  element={<RetailStoreInventory />} />
 
             {/* Staff */}
+            <Route path="tasks"      element={<SalesTasks />} />
             <Route path="branches"   element={<RetailBranches />} />
             <Route path="bids"       element={<TenderManagePage />} />
 
