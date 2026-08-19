@@ -1176,7 +1176,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                 onClick={() => handleNav(item)}
                 title={!isSidebarOpen ? item.label : ''}
               >
-                <span className="nav-icon">{ICONS[item.icon] || ICONS.default}</span>
+                <span className="nav-icon" style={item.color ? { color: item.color } : undefined}>{ICONS[item.icon] || ICONS.default}</span>
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {/* Generic badge on a top-level menu item */}
                 {item.badge > 0 && (
