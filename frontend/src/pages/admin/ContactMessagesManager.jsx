@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from '../../services/apiClient';
 import { Search, Filter, Mail, CheckCircle, XCircle, Send, Download, Eye, EyeOff, MessageSquare, User, Calendar, CheckCheck, Trash2 } from 'lucide-react';
 import styles from './ContactMessagesManager.module.css';
@@ -21,6 +21,15 @@ export default function ContactMessagesManager() {
   const [selected, setSelected] = useState([]);
   const [detail, setDetail] = useState(null);
   const [replyBody, setReplyBody] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  };
 
   const fetch = useCallback(async () => {
     try {
@@ -66,12 +75,18 @@ export default function ContactMessagesManager() {
     } catch (_) {}
   };
 
-  const deleteMessage = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) return;
-    try { 
-      await axios.delete(`/contact/${id}`); 
-      fetch(); 
-    } catch (_) {}
+  const requestDelete = (msg) => setConfirmDelete(msg);
+
+  const confirmDeleteNow = async () => {
+    if (!confirmDelete) return;
+    try {
+      await axios.delete(`/contact/${confirmDelete.id}`);
+      setConfirmDelete(null);
+      fetch();
+      showToast('Message deleted successfully.');
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Failed to delete message.', 'error');
+    }
   };
 
   const markReplied = async (msg) => {
@@ -200,7 +215,7 @@ export default function ContactMessagesManager() {
                           <button onClick={() => toggleStatus(m)} className={styles.actionBtn} title={m.status === 'unread' ? 'Mark as read' : 'Mark as unread'} style={{ color: m.status === 'unread' ? '#3B82F6' : 'inherit' }}>
                             {m.status === 'unread' ? <Eye size={14} /> : <EyeOff size={14} />}
                           </button>
-                          <button onClick={() => deleteMessage(m.id)} className={styles.actionBtn} title="Delete message" style={{ color: '#EF4444' }}>
+                          <button onClick={() => requestDelete(m)} className={styles.actionBtn} title="Delete message" style={{ color: '#EF4444' }}>
                             <Trash2 size={14} />
                           </button>
                           <button onClick={() => viewDetail(m)} className={styles.actionBtn} title="View detail">
@@ -302,6 +317,40 @@ export default function ContactMessagesManager() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── DELETE CONFIRMATION MODAL ── */}
+      {confirmDelete && (
+        <div className={styles.modalOverlay} onClick={e => { if (e.target === e.currentTarget) setConfirmDelete(null); }}>
+          <div className={`${styles.modal} ${styles.confirmModal}`}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Delete Message</h3>
+              <button onClick={() => setConfirmDelete(null)} className={styles.closeBtn}>
+                <XCircle size={18} />
+              </button>
+            </div>
+            <div className={styles.confirmBody}>
+              <p className={styles.confirmText}>
+                Are you sure you want to delete this message from <strong>{confirmDelete.full_name}</strong>?
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button onClick={() => setConfirmDelete(null)} className={styles.cancelBtn}>Cancel</button>
+              <button onClick={confirmDeleteNow} className={`${styles.bulkBtnDanger} ${styles.confirmDeleteBtn}`}>
+                <Trash2 size={14} /> Delete Message
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── IN-APP TOAST ── */}
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
+          <span className={styles.toastIcon}>{toast.type === 'error' ? '\u26A0' : '\u2713'}</span>
+          {toast.message}
         </div>
       )}
     </div>
