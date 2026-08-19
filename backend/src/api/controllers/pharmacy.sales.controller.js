@@ -3,6 +3,8 @@ const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
 const vatConfigService = require('../../services/vatConfig.service');
+const { generateInvoiceNumber } = require('../../utils/orderNumber');
+const { recordInvoiceForOrder, recordReceiptForOrder } = require('../../services/invoiceDocument.service');
 
 function generateReceiptNo(last) {
   try {
@@ -81,7 +83,7 @@ const salesController = {
       const vatResult = await vatConfigService.computeVatForItem('pharmacy', drug ? drug.id : null, lineSubtotal);
       const lineVat = parseFloat(vatResult.vat.toFixed(2));
       vatAmount += lineVat;
-      vatLineItems.push({ vat_amount: lineVat });
+      vatLineItems.push({ vat_amount: lineVat, rate: vatResult.rate, treatment: vatResult.treatment });
     }
     const totalAmount = parseFloat((subtotal + vatAmount).toFixed(2));
 
@@ -115,6 +117,35 @@ const salesController = {
         branch_name: payment.branch_name || branch.name,
         worker_name: payment.worker_name || (worker ? worker.name : 'N/A'),
         status: payment.status || 'PAID', receipt_no: receiptNo
+      });
+
+      // Invoice + receipt are recorded at sale time — payment is collected here.
+      const invoiceLines = items.map((it, idx) => ({
+        itemId: it.drug_id || 0,
+        name: it.drug_name,
+        qty: parseInt(it.quantity) || 1,
+        unitPrice: parseFloat(it.unit_price) || 0,
+        amount: (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1),
+        rate: vatLineItems[idx].rate,
+        treatment: vatLineItems[idx].treatment
+      }));
+      const invNo = await generateInvoiceNumber();
+      const invRes = await recordInvoiceForOrder(trx, {
+        source: 'pharmacy',
+        saleId,
+        saleType: String(sale_type || 'WALK-IN').toUpperCase() === 'ONLINE' ? 'online' : 'walk_in',
+        invoiceNo: invNo,
+        customer: payment.recipient_name || null,
+        customerTin: null,
+        lines: invoiceLines,
+        createdBy: worker ? worker.name : (payment.worker_name || 'Pharmacy Staff')
+      });
+      await recordReceiptForOrder(trx, {
+        invoiceId: invRes.invoiceId,
+        amountPaid: payment.amount || totalAmount,
+        paymentMethod: payment.method || 'CASH',
+        paymentReference: null,
+        receivedBy: payment.worker_name || (worker ? worker.name : 'Pharmacy Staff')
       });
 
       // Always deduct stock on every completed sale (online or walk-in)
