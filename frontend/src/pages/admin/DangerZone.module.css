@@ -289,15 +289,12 @@
 .colItem {
   break-inside: avoid;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   padding: 4px 6px;
   border-radius: 6px;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .colItem:hover { background: var(--dz-bg-page); }
 .colNum {
@@ -316,8 +313,33 @@
 }
 .colNumGreen { background: #16A34A; }
 .colNumRed { background: #DC2626; }
+.colName, .colNameWipe {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .colName { color: #15803D; }
 .colNameWipe { color: #B91C1C; }
+.clearBtn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: #FEE2E2;
+  color: #B91C1C;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.colItem:hover .clearBtn { opacity: 1; }
+.clearBtn:hover { background: #DC2626; color: #fff; }
+.clearBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 .protectNote, .wipeNote {
   margin: 0;
   font-size: 13.5px;
