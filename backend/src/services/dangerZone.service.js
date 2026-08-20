@@ -271,6 +271,36 @@ async function rejectRequest(id, { approvedBy, approvedByName, reason }) {
 
 // ── Execution ────────────────────────────────────────────────────────────
 
+// Clear the data inside a single table only (the table itself is NEVER dropped).
+async function clearTableData(tableName) {
+  const name = String(tableName || '').trim();
+  if (!/^[a-z0-9_]+$/.test(name)) {
+    const err = new Error('Invalid table name');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (PROTECTED_TABLES.has(name)) {
+    const err = new Error(`"${name}" is a protected system table and cannot be cleared`);
+    err.statusCode = 400;
+    throw err;
+  }
+  const trx = await db.transaction();
+  try {
+    await trx.raw('SET FOREIGN_KEY_CHECKS = 0');
+    const result = await trx(name).del();
+    const rowsDeleted = Number(result) || 0;
+    await trx.raw('SET FOREIGN_KEY_CHECKS = 1');
+    await trx.commit();
+    return { table: name, rowsDeleted };
+  } catch (error) {
+    try { await trx.raw('SET FOREIGN_KEY_CHECKS = 1'); } catch (_) {}
+    try { await trx.rollback(); } catch (_) {}
+    const err = new Error(`Failed to clear "${name}": ${error.message}`);
+    err.statusCode = 500;
+    throw err;
+  }
+}
+
 async function executeReset() {
   const trx = await db.transaction();
   const summary = { startedAt: new Date().toISOString(), tablesCleared: 0, rowsDeleted: 0, perTable: [], error: null };
@@ -325,4 +355,5 @@ module.exports = {
   listRequests,
   approveRequest,
   rejectRequest,
+  clearTableData,
 };
