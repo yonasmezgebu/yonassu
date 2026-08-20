@@ -42,6 +42,21 @@ exports.listRequests = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: requests });
 });
 
+exports.clearTable = catchAsync(async (req, res) => {
+  const { table } = req.body;
+  const result = await dangerZoneService.clearTableData(table);
+  await audit('DANGER_ZONE_TABLE_CLEARED', req.user.id, {
+    ip: req.ip,
+    resourceId: result.table,
+    details: { action: 'CLEAR_TABLE_DATA', table: result.table, rowsDeleted: result.rowsDeleted }
+  });
+  res.json({
+    status: 'success',
+    message: `Cleared ${result.rowsDeleted} row(s) from "${result.table}". The table itself was kept.`,
+    data: result
+  });
+});
+
 exports.approveRequest = catchAsync(async (req, res) => {
   const request = await dangerZoneService.approveRequest(req.params.id, {
     approvedBy: req.user.id,
