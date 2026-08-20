@@ -2,6 +2,35 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 
+// Ensure a user linked to an employee carries the standard "Employee" role
+// (Employee Dashboard access) and is flagged as an employee in the system.
+const ensureEmployeeRole = async (userId, assignedBy = null) => {
+  if (!userId) return;
+  const empRole = await db('roles').where('name', 'Employee').first();
+  if (!empRole) return;
+  const existing = await db('user_roles')
+    .where({ user_id: userId, role_id: empRole.id })
+    .first();
+  if (!existing) {
+    await db('user_roles').insert({
+      user_id: userId,
+      role_id: empRole.id,
+      assigned_by: assignedBy,
+      assigned_at: db.fn.now(),
+    });
+  }
+  await db('users').where('id', userId).update({ is_employee: true });
+};
+
+// Resolve the user account linked to an employee record and keep the
+// employee's personal_email aligned with the user's login email.
+const resolveLinkedUser = async ({ user_id, personal_email }) => {
+  let user = null;
+  if (user_id) user = await db('users').where('id', user_id).whereNull('deleted_at').first();
+  if (!user && personal_email) user = await db('users').where('email', personal_email.toLowerCase()).whereNull('deleted_at').first();
+  return user || null;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DEPARTMENTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,7 +84,9 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
   let q = db('hr_employees as e')
     .leftJoin('departments as d', 'e.dept_id', 'd.id')
     .leftJoin('roles as p', 'e.position_id', 'p.id')
-    .leftJoin('users as u', 'e.personal_email', 'u.email');
+    .leftJoin('users as u', function() {
+      this.on('e.user_id', 'u.id').orOn('e.personal_email', 'u.email');
+    });
 
   if (dept_id) q = q.where('e.dept_id', dept_id);
   if (status)  q = q.where('e.employment_status', status);
@@ -66,35 +97,55 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
 
   const hrEmployees = await q.select('e.*', 'd.name as dept_name', 'p.name as position_title', 'u.profile_photo as user_photo').orderBy('e.full_name');
   
+  // Dedupe — the user join may match both user_id and personal_email
+  const seenEmpIds = new Set();
+  const uniqueEmployees = [];
+  for (const emp of hrEmployees) {
+    if (seenEmpIds.has(emp.employee_id)) continue;
+    seenEmpIds.add(emp.employee_id);
+    uniqueEmployees.push(emp);
+  }
+
   // Tag them
-  const results = hrEmployees.map(emp => ({ ...emp, _source: 'hr_employees' }));
+  const results = uniqueEmployees.map(emp => ({ ...emp, _source: 'hr_employees' }));
 
   // ── 2. Fetch unregistered users from the users table ────────────────────
   if (!dept_id && !status) {
     const hrEmails = new Set(hrEmployees.map(e => e.personal_email).filter(Boolean));
-    const hrIds = new Set(hrEmployees.map(e => e.employee_id).filter(Boolean));
+    const hrUserIds = new Set(hrEmployees.map(e => e.user_id).filter(Boolean).map(id => String(id)));
     
     let uq = db('users');
     if (search) {
       uq = uq.where(function() {
         this.where('full_name', 'like', `%${search}%`)
-            .orWhere('username', 'like', `%${search}%`)
             .orWhere('email', 'like', `%${search}%`);
       });
     }
     
     const allUsers = await uq.select('*');
-    const unregistered = allUsers.filter(u => !hrEmails.has(u.email) && !hrIds.has(u.id));
+    const unregistered = allUsers.filter(u => !hrEmails.has(u.email) && !hrUserIds.has(String(u.id)));
+    
+    const unregisteredIds = unregistered.map(u => u.id);
+    const roleRows = unregisteredIds.length
+      ? await db('user_roles')
+          .leftJoin('roles', 'user_roles.role_id', 'roles.id')
+          .whereIn('user_roles.user_id', unregisteredIds)
+          .select('user_roles.user_id', 'roles.name')
+      : [];
+    const roleByUser = {};
+    for (const row of roleRows) {
+      if (row.name && !roleByUser[row.user_id]) roleByUser[row.user_id] = row.name;
+    }
     
     unregistered.forEach(u => {
       results.push({
         _source: 'users_table',
         employee_id: u.id,
-        full_name: u.full_name || u.username,
+        full_name: u.full_name,
         personal_email: u.email,
-        personal_phone: u.phone_number,
+        personal_phone: u.phone,
         dept_name: 'Unregistered',
-        position_title: u.role || 'N/A',
+        position_title: roleByUser[u.id] || 'N/A',
         employment_status: 'Pending Registration',
         user_photo: u.profile_photo,
         gender: '',
@@ -149,6 +200,12 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
   const count = await db('hr_employees').count('employee_id as c').first();
   const employee_id = `EMP-2026-${String(parseInt(count.c || 0) + 1).padStart(3, '0')}`;
 
+  // Keep the employee's email aligned with the linked user account and link by
+  // email when no explicit user_id is given, so HR and Admin stay consistent.
+  const linkedUser = await resolveLinkedUser({ user_id, personal_email });
+  const finalUserEmail = linkedUser ? linkedUser.email : (personal_email || `${employee_id}@sutana.com`);
+  const finalUserId = linkedUser ? linkedUser.id : (user_id || null);
+
   await db('hr_employees').insert({
     employee_id, full_name, national_id, gender,
     dept_id, position_id,
@@ -166,7 +223,7 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     weekly_off_days: 'Friday,Saturday',
     personal_phone: phone || req.body.personal_phone,
     physical_address: physical_address,
-    personal_email: personal_email || `${employee_id}@sutana.com`,
+    personal_email: finalUserEmail,
     employment_status: 'Inactive',
     registration_status: 'pending_approval',
     employment_type: req.body.employment_type || 'Permanent',
@@ -178,8 +235,10 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     // Education
     education_level, institution_name, field_of_study, graduation_year,
     // ID photos & Link
-    id_photo_front, id_photo_back, user_id: user_id || null
+    id_photo_front, id_photo_back, user_id: finalUserId
   });
+
+  if (finalUserId) await ensureEmployeeRole(finalUserId, req.user?.id);
 
   res.status(201).json({ status: 'success', data: { employee_id } });
 });
@@ -227,9 +286,26 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
     if (existingBank) throw new AppError('Bank account number is already registered to another employee', 400);
   }
 
+  // Keep email aligned with the linked user account and auto-assign the
+  // standard Employee role so the person always has Employee Dashboard access.
+  const currentEmp = await db('hr_employees').where('employee_id', id).first();
+  const targetUserId = updates.user_id !== undefined ? updates.user_id : currentEmp?.user_id;
+  const targetEmail = updates.personal_email !== undefined ? updates.personal_email : currentEmp?.personal_email;
+  const linkedUser = await resolveLinkedUser({ user_id: targetUserId, personal_email: targetEmail });
+  if (linkedUser) {
+    updates.personal_email = linkedUser.email;
+    updates.user_id = linkedUser.id;
+  } else if (targetUserId) {
+    // user_id no longer resolves (deleted user) — clear the dangling link
+    updates.user_id = null;
+  }
+
   if (Object.keys(updates).length === 0)
     return res.status(400).json({ status: 'fail', message: 'No fields to update' });
   await db('hr_employees').where('employee_id', id).update(updates);
+
+  if (updates.user_id) await ensureEmployeeRole(updates.user_id, req.user?.id);
+
   res.json({ status: 'success', message: 'Employee updated' });
 });
 
@@ -1556,6 +1632,16 @@ exports.completeRegistration = catchAsync(async (req, res) => {
     registration_status: 'completed',
     employment_status: 'Active',
   });
+
+  // Final HR step: make sure the linked user carries the standard Employee role
+  const linkedUser = await resolveLinkedUser({ user_id: emp.user_id, personal_email: emp.personal_email });
+  if (linkedUser) {
+    await ensureEmployeeRole(linkedUser.id, req.user?.id);
+    if (emp.personal_email !== linkedUser.email) {
+      await db('hr_employees').where('employee_id', id).update({ personal_email: linkedUser.email, user_id: linkedUser.id });
+    }
+  }
+
   res.json({ status: 'success', message: `${emp.full_name}'s registration is fully completed and active.` });
 });
 
