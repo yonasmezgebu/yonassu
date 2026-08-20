@@ -462,6 +462,9 @@ const adminService = {
   },
   requestDangerZoneReset: async (payload) => {
     return await apiClient.post('/admin/danger-zone/request', payload);
+  },
+  clearDangerZoneTable: async (table) => {
+    return await apiClient.post('/admin/danger-zone/clear-table', { table });
   }
 };
 export default adminService;
