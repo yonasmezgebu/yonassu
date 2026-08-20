@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown } from 'lucide-react';
+import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, Eraser } from 'lucide-react';
 import adminService from '../../services/adminService';
 import styles from './DangerZone.module.css';
 
@@ -25,6 +25,7 @@ const DangerZone = () => {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [showWipeable, setShowWipeable] = useState(false);
+  const [clearingTable, setClearingTable] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +67,20 @@ const DangerZone = () => {
 
   const requests = overview?.recentRequests || [];
   const pending = overview?.pendingRequest;
+
+  const handleClearTable = async (table) => {
+    if (!window.confirm(`Clear ALL data inside table "${table}"?\n\nThe table itself will NOT be dropped — only its rows are deleted.`)) return;
+    setClearingTable(table);
+    try {
+      const res = await adminService.clearDangerZoneTable(table);
+      setToast({ type: 'success', msg: res?.message || `Cleared "${table}".` });
+      await load();
+    } catch (err) {
+      setToast({ type: 'error', msg: err?.response?.data?.message || `Failed to clear "${table}".` });
+    } finally {
+      setClearingTable(null);
+    }
+  };
 
   return (
     <div className={styles.root}>
@@ -254,6 +269,7 @@ const DangerZone = () => {
             </div>
             <p className={styles.wipeNote}>
               The data inside these tables is deleted. The tables themselves remain with their structure intact.
+              Hover a row and click the eraser icon to clear just that single table's data.
             </p>
             <button
               className={styles.toggleBtn}
@@ -268,6 +284,14 @@ const DangerZone = () => {
                   <div key={t} className={styles.colItem}>
                     <span className={`${styles.colNum} ${styles.colNumRed}`}>{i + 1}</span>
                     <span className={styles.colNameWipe}>{t}</span>
+                    <button
+                      className={styles.clearBtn}
+                      title={`Clear all data inside "${t}" (table is kept)`}
+                      disabled={clearingTable === t}
+                      onClick={() => handleClearTable(t)}
+                    >
+                      {clearingTable === t ? <Loader2 className={styles.spin} size={13} /> : <Eraser size={13} />}
+                    </button>
                   </div>
                 ))}
               </div>
