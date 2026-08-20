@@ -146,6 +146,7 @@ const rolePermissions = {
   'Supplier': ['procurement:bids:create', 'procurement:bids:read'],
   'Finance Manager': ['payments:create', 'payments:read', 'payments:update', 'payments:approve', 'reports:read', 'reports:export', 'procurement:read', 'procurement:fund:create'],
   'Purchase Manager': ['suppliers:create', 'suppliers:read', 'suppliers:update', 'purchase_orders:create', 'purchase_orders:read', 'purchase_orders:update', 'purchase_orders:approve', 'orders:read', 'procurement:read', 'procurement:create', 'procurement:update'],
+  'Employee': ['portal:read', 'tasks:read', 'tasks:update', 'leave:create', 'leave:read', 'attendance:read'],
 };
 
 const adminTierPermissions = {
