@@ -24,9 +24,9 @@ const EmployeeTasksController = {
       tasksCompletedToday: completedToday,
       tasksPending: pending,
       tasksOverdue: overdue,
-      department: empRecord?.department_name || req.user.role || 'Unassigned',
+      department: empRecord?.department_name || 'Unassigned',
       manager: empRecord?.manager_name || 'System Admin',
-      todayAttendance: 'present', // simple default since attendance isn't fully built
+      todayAttendance: 'present',
       workDaysThisMonth: { worked: 14, total: 22 },
       leaveDaysTaken: 0,
       performanceScore: 'A'
@@ -45,7 +45,7 @@ const EmployeeTasksController = {
     }
     
     const tasks = await query;
-    res.json(tasks);
+    res.json({ status: 'success', data: tasks });
   }),
 
   // Manager creates task
@@ -58,8 +58,8 @@ const EmployeeTasksController = {
       return res.status(404).json({ message: 'Assigned user not found' });
     }
     
-    const assigned_to_name = assignedUser.full_name || assignedUser.fullName || assignedUser.username;
-    const assigned_by_name = req.user.full_name || req.user.fullName || req.user.username;
+    const assigned_to_name = assignedUser.full_name || assignedUser.email;
+    const assigned_by_name = req.user.full_name || req.user.email;
     
     const [id] = await db('employee_tasks').insert({
       title,
@@ -75,7 +75,7 @@ const EmployeeTasksController = {
     });
     
     const task = await db('employee_tasks').where({ id }).first();
-    res.status(201).json(task);
+    res.status(201).json({ status: 'success', data: task });
   }),
 
   // Employee updates status/progress
@@ -116,28 +116,76 @@ const EmployeeTasksController = {
       .where('department', dept)
       .orderBy('created_at', 'desc');
       
-    res.json(tasks);
+    res.json({ status: 'success', data: tasks });
   }),
 
   // Manager gets employees for department mapping
   getEmployeesByDept: catchAsync(async (req, res) => {
     const { department } = req.query;
-    
-    let roles = [];
-    if (department === 'pharmacy') roles = ['Pharmacy Worker', 'Pharmacy Manager'];
-    else if (department === 'sales') roles = ['Sales/Cashier', 'Sales Manager'];
-    else if (department === 'printing') roles = ['Printing Operator', 'Printing Supervisor'];
-    else if (department === 'car_rental') roles = ['Car Rental Agent', 'Car Rental Manager'];
-    else if (department === 'purchase') roles = ['Purchase Officer', 'Purchase Manager'];
-    
-    // Also include general admin roles
-    roles = [...roles, 'HR Manager', 'CEO', 'Admin'];
-    
-    const employees = await db('users')
-      .whereIn('role', roles)
-      .select('id', 'username', 'email', 'role', 'full_name', 'fullName', 'phone');
-      
-    res.json(employees);
+
+    // Determine the matching department name pattern in the departments table
+    const deptNameMap = {
+      sales:      'Sales',
+      pharmacy:   'Pharmacy',
+      printing:   'Printing',
+      car_rental: 'Car Renting',
+      agrirent:   'Farming',
+      farming:    'Farming',
+      purchase:   'Purchase',
+      store:      'Store'
+    };
+    const deptName = deptNameMap[department] || department;
+
+    // PRIMARY: HR module employees linked to users with completed registration
+    try {
+      const hrEmployees = await db('hr_employees')
+        .join('departments', 'hr_employees.dept_id', 'departments.id')
+        .join('users', 'hr_employees.user_id', 'users.id')
+        .where('departments.name', 'like', `%${deptName}%`)
+        .where('hr_employees.registration_status', 'completed')
+        .where('users.is_employee', true)
+        .whereNull('users.deleted_at')
+        .select(
+          'users.id',
+          'users.email',
+          'users.phone',
+          'users.full_name',
+          'hr_employees.full_name as hr_name',
+          'departments.name as department'
+        );
+
+      if (hrEmployees && hrEmployees.length > 0) {
+        const normalized = hrEmployees.map(emp => ({
+          id:        emp.id,
+          email:     emp.email,
+          phone:     emp.phone,
+          full_name: emp.hr_name || emp.full_name || emp.email,
+          department: emp.department,
+        }));
+        return res.json({ status: 'success', data: normalized });
+      }
+    } catch (err) {
+      console.warn('[getEmployeesByDept] HR join failed, falling back:', err.message);
+    }
+
+    // FALLBACK: if hr_employees has no completed records for this dept yet,
+    // return users in this department who have employee-level roles
+    const fallbackEmployeeRoleNames = [
+      'Sales/Cashier', 'Pharmacy Worker', 'Printing Operator',
+      'Car Rental Agent', 'Purchase Officer', 'Employee', 'Cashier', 'Accountant'
+    ];
+
+    const fallbackEmployees = await db('users')
+      .join('user_roles', 'users.id', 'user_roles.user_id')
+      .join('roles', 'user_roles.role_id', 'roles.id')
+      .leftJoin('departments', 'users.department_id', 'departments.id')
+      .where('departments.name', 'like', `%${deptName}%`)
+      .whereIn('roles.name', fallbackEmployeeRoleNames)
+      .whereNull('users.deleted_at')
+      .select('users.id', 'users.email', 'users.phone', 'users.full_name', 'departments.name as department')
+      .distinct('users.id');
+
+    res.json({ status: 'success', data: fallbackEmployees.map(e => ({ ...e, full_name: e.full_name || e.email })) });
   }),
 
   // Delete task
