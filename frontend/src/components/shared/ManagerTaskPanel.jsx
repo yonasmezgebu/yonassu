@@ -243,8 +243,10 @@ const ManagerTaskPanel = ({ department, title = 'Assign Employee Tasks' }) => {
                   <SelectInput label="Assign To *" value={form.assigned_to_user_id}
                     onChange={e => setForm(f => ({ ...f, assigned_to_user_id: e.target.value }))}>
                     <option value="">Select Employee...</option>
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.full_name || emp.fullName} ({emp.role})</option>
+                    {employees.length === 0 ? (
+                      <option disabled value="">No employees registered in HR yet</option>
+                    ) : employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.full_name || emp.email}</option>
                     ))}
                   </SelectInput>
                   <SelectInput label="Priority" value={form.priority}
