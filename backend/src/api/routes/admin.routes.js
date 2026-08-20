@@ -368,5 +368,9 @@ router.post('/danger-zone/request', authenticate, authorize(['admin:system']),
   body('reason').isString(), body('confirmText').isString(), validate,
   DangerZoneController.requestReset
 );
+router.post('/danger-zone/clear-table', authenticate, authorize(['admin:system']),
+  body('table').isString(), validate,
+  DangerZoneController.clearTable
+);
 
 module.exports = router;
