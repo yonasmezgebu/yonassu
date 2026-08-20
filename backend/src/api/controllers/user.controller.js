@@ -170,6 +170,19 @@ exports.createUser = catchAsync(async (req, res) => {
     ip,
     details: { fullName, email, phone, departmentId, roleIds }
   });
+  // Link to an existing HR employee record that matches this email, and flag
+  // the account as an employee when the Employee role is assigned
+  const empRole = await db('roles').where('name', 'Employee').first();
+  const hasEmpRole = roleIds && roleIds.some(r => String(r) === String(empRole?.id));
+  if (hasEmpRole) {
+    await db('users').where('id', result).update({ is_employee: true });
+  }
+  const hrEmp = await db('hr_employees')
+    .where('personal_email', email.toLowerCase())
+    .first();
+  if (hrEmp && !hrEmp.user_id) {
+    await db('hr_employees').where('employee_id', hrEmp.employee_id).update({ user_id: result });
+  }
   res.status(201).json({
     status: 'success',
     message: 'User created successfully.',
@@ -233,6 +246,25 @@ exports.updateUser = catchAsync(async (req, res) => {
       }
     }
   });
+  // Keep the linked HR employee's email aligned with this user account
+  const empRole = await db('roles').where('name', 'Employee').first();
+  const hasEmpRole = roleIds && roleIds.some(r => String(r) === String(empRole?.id));
+  if (email || hasEmpRole) {
+    const linkedEmp = await db('hr_employees')
+      .where(function() {
+        this.where('user_id', id).orWhere('personal_email', user.email || '');
+      })
+      .first();
+    if (linkedEmp) {
+      const empUpdates = {};
+      if (email && linkedEmp.personal_email !== email.toLowerCase()) empUpdates.personal_email = email.toLowerCase();
+      if (linkedEmp.user_id !== parseInt(id, 10)) empUpdates.user_id = parseInt(id, 10);
+      if (Object.keys(empUpdates).length) await db('hr_employees').where('employee_id', linkedEmp.employee_id).update(empUpdates);
+    }
+  }
+  if (empRole && hasEmpRole) {
+    await db('users').where('id', id).update({ is_employee: true });
+  }
   await audit('USER_UPDATED', adminId, {
     ip,
     details: { updates: Object.keys(updateData), roleChanged: !!roleIds }
