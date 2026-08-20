@@ -196,9 +196,9 @@ const AppRoutes = () => {
           </RoleBasedRoute>
         } />
         <Route path="/employee/*" element={
-          <PrivateRoute>
+          <RoleBasedRoute role={['Employee', 'Admin', 'CEO']}>
             <EmployeeDashboard />
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
         {}
         <Route path="/notifications" element={
