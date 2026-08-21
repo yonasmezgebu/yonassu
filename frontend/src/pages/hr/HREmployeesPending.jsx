@@ -5,6 +5,13 @@ import CEOApprovalNav from '../ceo/CEOApprovalNav';
 import { UserCheck, CheckCircle, XCircle, Search, Clock, Eye, ZoomIn, X } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
+// Derive the uploads root from the backend origin (same host as the API).
+// In dev Vite proxies /uploads → backend; in prod the API URL is already absolute.
+const BACKEND_ORIGIN = (() => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+  try { return new URL(apiUrl).origin; } catch { return 'http://localhost:5000'; }
+})();
+
 // Build the correct URL for a stored file path (e.g., "uploads\\hr\\id-photos\\file.jpg")
 const buildFileUrl = (path) => {
   if (!path) return null;
@@ -12,9 +19,9 @@ const buildFileUrl = (path) => {
   const normalized = path.replace(/\\/g, '/');
   // If already a full URL, return as-is
   if (normalized.startsWith('http')) return normalized;
-  // Strip any leading /api/v1 prefix that may have been incorrectly stored
-  const clean = normalized.replace(/^\/?(api\/v1\/)?/, '');
-  return `/${clean}`;
+  // Strip any accidental leading slash so we can safely prepend origin + /
+  const clean = normalized.replace(/^\/+/, '');
+  return `${BACKEND_ORIGIN}/${clean}`;
 };
 
 const GlobalStyles = () => (
