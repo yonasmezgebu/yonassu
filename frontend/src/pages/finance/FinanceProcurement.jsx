@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Truck, CheckCircle, Search, DollarSign, Package } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
@@ -243,10 +244,11 @@ const GlobalStyles = () => (
 );
 
 const FinanceProcurement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [fundRequests, setFundRequests] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pending-check'); // 'pending-check', 'pending-payment', 'history'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'pending-check'); // 'pending-check', 'pending-payment', 'history'
 
   // Pay Modal
   const [modal, setModal] = useState({ open: false, request: null });
@@ -317,13 +319,13 @@ const FinanceProcurement = () => {
         </div>
 
         <div className="fin-gen-tabs">
-          <button className={`fin-gen-tab ${activeTab === 'pending-check' ? 'active' : ''}`} onClick={() => setActiveTab('pending-check')}>
+          <button className={`fin-gen-tab ${activeTab === 'pending-check' ? 'active' : ''}`} onClick={() => { setActiveTab('pending-check'); setSearchParams({ tab: 'pending-check' }); }}>
             Pending Fund Check ({pendingCheck.length})
           </button>
-          <button className={`fin-gen-tab ${activeTab === 'pending-payment' ? 'active' : ''}`} onClick={() => setActiveTab('pending-payment')}>
+          <button className={`fin-gen-tab ${activeTab === 'pending-payment' ? 'active' : ''}`} onClick={() => { setActiveTab('pending-payment'); setSearchParams({ tab: 'pending-payment' }); }}>
             Pending Payment ({pendingPayment.length})
           </button>
-          <button className={`fin-gen-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+          <button className={`fin-gen-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => { setActiveTab('history'); setSearchParams({ tab: 'history' }); }}>
             History ({history.length})
           </button>
         </div>
