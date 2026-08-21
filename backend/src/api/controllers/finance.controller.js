@@ -1,6 +1,7 @@
 const { db, transaction } = require('../../config/database');
 const { audit } = require('../../config/logger');
 const { sendEmail } = require('../../services/email.service');
+const { sendCeoNotification } = require('../../services/notification.service');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const financeService = require('../../services/finance.service');
@@ -1145,6 +1146,14 @@ exports.approveCashHandover = catchAsync(async (req, res) => {
     created_at: new Date()
   });
 
+  await sendCeoNotification({
+    title: 'Cash Handover Approved',
+    message: `Cash handover of ${handover.total_amount} ETB from ${handover.from_user_id} approved.`,
+    type: 'general',
+    link: '/finance/cash-handovers',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
+
   res.status(200).json({ status: 'success', message: 'Handover approved successfully' });
 });
 
@@ -1174,6 +1183,14 @@ exports.rejectCashHandover = catchAsync(async (req, res) => {
     is_read: false,
     created_at: new Date()
   });
+
+  await sendCeoNotification({
+    title: 'Cash Handover Rejected',
+    message: `Cash handover of ${handover.total_amount} ETB rejected${reason ? ' - ' + reason : ''}.`,
+    type: 'general',
+    link: '/finance/cash-handovers',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
 
   res.status(200).json({ status: 'success', message: 'Handover rejected successfully' });
 });
