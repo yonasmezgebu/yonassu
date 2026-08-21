@@ -633,8 +633,7 @@ const FinanceBankAccounts = () => {
   };
 
   const sumCRV = reconItems.filter(i => i.type === 'CRV').reduce((s, i) => s + i.erp_amount, 0);
-  const sumPV  = reconItems.filter(i => i.type === 'PV').reduce((s, i) => s + i.erp_amount, 0);
-  const sumPCV = reconItems.filter(i => i.type === 'PCV').reduce((s, i) => s + i.erp_amount, 0);
+  const sumEV  = reconItems.filter(i => i.type === 'EV').reduce((s, i) => s + i.erp_amount, 0);
   const diffVal    = parseFloat(actualBalance||0) - reconErpBal;
   const matchedCnt = reconItems.filter(i => i.match_status === 'Matched').length;
 
@@ -683,8 +682,8 @@ const FinanceBankAccounts = () => {
               <div className="grid-3" style={{ marginBottom: 24 }}>
                 {[
                   { label: 'Cash Receipt (CRV)', val: summary.totalCRV, color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: '💰', sub: 'Total income from CRVs' },
-                  { label: 'Payment Voucher (PV)',  val: summary.totalPV,  color: 'var(--color-danger)', bg: 'var(--color-danger-bg)', icon: '💸', sub: 'Total PV payments' },
-                  { label: 'Petty Cash (PCV)',       val: summary.totalPCV, color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: '🪙', sub: 'Completed PCVs' },
+                  { label: 'Expense Voucher (EV)',  val: summary.totalEV,  color: 'var(--color-danger)', bg: 'var(--color-danger-bg)', icon: '🧾', sub: 'Total EV payments' },
+                  { label: 'Net Balance',            val: summary.netBalance, color: summary.netBalance >= 0 ? 'var(--color-success)' : 'var(--color-danger)', bg: 'var(--color-info-bg)', icon: '⚖️', sub: 'Receipts − payments' },
                 ].map(c => (
                   <div key={c.label} className="fba-card" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <div style={{ width: 48, height: 48, borderRadius: 8, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>{c.icon}</div>
@@ -762,7 +761,7 @@ const FinanceBankAccounts = () => {
                 {cashbook.slice(-25).reverse().map((row, i) => (
                   <tr key={i} className="fba-tr">
                     <td style={{ color: 'var(--color-text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>{fmtD(row.date)}</td>
-                    <td><Pill label={row.type} color={row.type==='CRV'?'var(--color-success)':row.type==='PV'?'var(--color-danger)':'var(--color-warning)'} bg={row.type==='CRV'?'var(--color-success-bg)':row.type==='PV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
+                    <td><Pill label={row.type} color={row.type==='CRV'?'var(--color-success)':'var(--color-danger)'} bg={row.type==='CRV'?'var(--color-success-bg)':'var(--color-danger-bg)'}/></td>
                     <td style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600 }}>{row.reference}</td>
                     <td style={{ color: 'var(--color-text-secondary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</td>
                     <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(row.receipts||0)>0 ? fmt(row.receipts) : '—'}</td>
@@ -1029,13 +1028,10 @@ const FinanceBankAccounts = () => {
                       <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>CRV:</span> <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>+ETB {fmt(sumCRV)}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)', borderRadius: 8, padding: '8px 16px', fontSize: 14 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-danger)' }}>PV:</span> <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>−ETB {fmt(sumPV)}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 16px', fontSize: 14 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-warning)' }}>PCV:</span> <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>−ETB {fmt(sumPCV)}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-danger)' }}>EV:</span> <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>−ETB {fmt(sumEV)}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-primary)', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 16px', fontSize: 14, color: 'white', fontWeight: 600 }}>
-                      Net: ETB {fmt(sumCRV - sumPV - sumPCV)}
+                      Net: ETB {fmt(sumCRV - sumEV)}
                     </div>
                   </div>
                 )}
@@ -1070,7 +1066,7 @@ const FinanceBankAccounts = () => {
                             <tr key={idx} className="fba-tr" style={{ background: it.match_status==='Matched' ? 'var(--color-success-bg)' : '#FFFFFF' }}>
                               <td style={{ color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', fontWeight: 500 }}>{fmtD(it.date)}</td>
                               <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-text-primary)' }}>{it.reference}</td>
-                              <td><Pill label={it.type} color={it.type==='CRV'?'var(--color-success)':it.type==='PV'?'var(--color-danger)':'var(--color-warning)'} bg={it.type==='CRV'?'var(--color-success-bg)':it.type==='PV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
+                              <td><Pill label={it.type} color={it.type==='CRV'?'var(--color-success)':it.type==='EV'?'var(--color-danger)':'var(--color-warning)'} bg={it.type==='CRV'?'var(--color-success-bg)':it.type==='EV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
                               <td style={{ color: 'var(--color-text-secondary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.description}</td>
                               <td style={{ fontWeight: 600, color: it.isReceipt?'var(--color-success)':'var(--color-danger)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{it.isReceipt?'+':'−'}{fmt(it.erp_amount)}</td>
                               <td style={{ width: 140 }}>
@@ -1278,7 +1274,7 @@ const FinanceBankAccounts = () => {
                               <tr key={i} className="fba-tr" style={{ background: it.match_status==='Matched' ? 'var(--color-success-bg)' : '#FFFFFF' }}>
                                 <td style={{ color: 'var(--color-text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>{fmtD(it.transaction_date)}</td>
                                 <td style={{ fontFamily: 'monospace', color: 'var(--color-text-primary)', fontWeight: 600 }}>{it.reference_no}</td>
-                                <td><Pill label={it.transaction_type} color={it.transaction_type==='CRV'?'var(--color-success)':it.transaction_type==='PV'?'var(--color-danger)':'var(--color-warning)'} bg={it.transaction_type==='CRV'?'var(--color-success-bg)':it.transaction_type==='PV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
+                                <td><Pill label={it.transaction_type} color={it.transaction_type==='CRV'?'var(--color-success)':it.transaction_type==='EV'?'var(--color-danger)':'var(--color-warning)'} bg={it.transaction_type==='CRV'?'var(--color-success-bg)':it.transaction_type==='EV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
                                 <td style={{ color: 'var(--color-text-secondary)', fontWeight: 500, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.description}</td>
                                 <td style={{ fontWeight: 600, color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(it.erp_amount)}</td>
                                 <td style={{ fontWeight: 600, color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{fmt(it.actual_amount)}</td>
@@ -1372,7 +1368,7 @@ const FinanceBankAccounts = () => {
                   {viewTx.map((tx, i) => (
                     <tr key={i} className="fba-tr">
                       <td style={{ color: 'var(--color-text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>{fmtD(tx.date)}</td>
-                      <td><Pill label={tx.type} color={tx.type==='CRV'?'var(--color-success)':tx.type==='PV'?'var(--color-danger)':'var(--color-warning)'} bg={tx.type==='CRV'?'var(--color-success-bg)':tx.type==='PV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
+                      <td><Pill label={tx.type} color={tx.type==='CRV'?'var(--color-success)':tx.type==='EV'?'var(--color-danger)':'var(--color-warning)'} bg={tx.type==='CRV'?'var(--color-success-bg)':tx.type==='EV'?'var(--color-danger-bg)':'var(--color-warning-bg)'}/></td>
                       <td style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600 }}>{tx.reference}</td>
                       <td style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{tx.description}</td>
                       <td style={{ color: 'var(--color-success)', fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(tx.receipts||0)>0 ? fmt(tx.receipts) : '—'}</td>
