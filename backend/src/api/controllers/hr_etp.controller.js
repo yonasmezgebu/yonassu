@@ -764,7 +764,36 @@ exports.calculatePayroll = catchAsync(async (req, res) => {
       calculated_date: db.fn.now(),
     };
     if (existing) await db('payroll_salary_components').where('component_id', existing.component_id).update(payrollData);
-    else await db('payroll_salary_components').insert(payrollData);
+    else {
+      await db('payroll_salary_components').insert(payrollData);
+
+      // First time this payslip exists → notify the employee immediately
+      if (emp.user_id) {
+        try {
+          const monthName = new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long' });
+          const notifMessage = `Your ${monthName} ${y} payslip is ready — Net ETB ${Number(net).toLocaleString()}`;
+          await db('notifications').insert({
+            user_id: emp.user_id,
+            title: 'Payslip Available',
+            message: notifMessage,
+            type: 'payslip',
+            link: '/employee/payslips',
+            is_read: false,
+            created_at: db.fn.now()
+          });
+          const io = req.app.get('io');
+          if (io) {
+            io.emit('employee-payslip', {
+              user_id: emp.user_id,
+              title: 'Payslip Available',
+              message: notifMessage,
+              type: 'payslip',
+              link: '/employee/payslips'
+            });
+          }
+        } catch (_) { /* notification errors must not block payroll */ }
+      }
+    }
 
     // Accumulate
     companyGross += gross; companyNet += net; companyOT += overtimePay;
@@ -1690,10 +1719,34 @@ exports.getMyPayslips = catchAsync(async (req, res) => {
     return res.json({ status: 'success', data: [] });
   }
 
+  // Full detail: payslip + employee profile (name, dept, position, payment info)
+  // Same source as HR employee list: departments.name, roles.name (position_id -> roles.id)
   const payslips = await db('payroll_salary_components')
-    .where('employee_id', empId)
+    .leftJoin('hr_employees', 'payroll_salary_components.employee_id', 'hr_employees.employee_id')
+    .leftJoin('departments', 'hr_employees.dept_id', 'departments.id')
+    .leftJoin('roles', 'hr_employees.position_id', 'roles.id')
+    .select(
+      'payroll_salary_components.*',
+      'hr_employees.full_name',
+      'hr_employees.payment_method',
+      'hr_employees.bank_name',
+      'hr_employees.bank_account_number',
+      'hr_employees.hire_date',
+      'departments.name as department_name',
+      'roles.name as position_title'
+    )
+    .where('payroll_salary_components.employee_id', empId)
     .orderBy([{ column: 'year_number', order: 'desc' }, { column: 'month_number', order: 'desc' }]);
-  res.json({ status: 'success', data: payslips });
+
+  // Fallbacks so the payslip never shows N/A
+  const enriched = payslips.map(p => ({
+    ...p,
+    full_name: p.full_name || empRecord?.full_name || 'Employee',
+    department_name: p.department_name || '—',
+    position_title: p.position_title || 'Staff Member',
+  }));
+
+  res.json({ status: 'success', data: enriched });
 });
 
 
