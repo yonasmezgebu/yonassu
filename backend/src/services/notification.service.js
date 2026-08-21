@@ -12,6 +12,12 @@ webpush.setVapidDetails(
 
 let ioInstance = null;
 
+const toIntOrNull = (v) => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) ? n : null;
+};
+
 const initWebSocket = (io) => {
   ioInstance = io;
   // basic auth check for socket would go here in a real app
@@ -59,7 +65,7 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
         title,
         message,
         link: link || null,
-        related_entity_id: related_entity_id || null,
+        related_entity_id: toIntOrNull(related_entity_id),
         is_read: false
       }));
       await db('notifications').insert(inserts);
@@ -72,7 +78,7 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
         title,
         message,
         link: link || null,
-        related_entity_id: related_entity_id || null,
+        related_entity_id: toIntOrNull(related_entity_id),
         is_read: false
       });
     }
@@ -120,7 +126,64 @@ const sendNotification = async (recipientRole, recipientId, notificationData) =>
   }
 };
 
+/**
+ * Sends a notification to the FINANCE role.
+ * Inserts a row into `notifications` (role_target = 'FINANCE', type = 'finance')
+ * and emits a `finance-cash` socket event so finance users get a live bell update.
+ * The finance role's allowed types include 'finance', so getMyNotificationsV2 returns it.
+ */
+const sendFinanceNotification = async ({ title, message, type = 'finance', link = null, related_entity_id = null }, io) => {
+  try {
+    const [id] = await db('notifications').insert({
+      user_id: null,
+      role_target: 'FINANCE',
+      type,
+      title,
+      message,
+      link: link || null,
+      related_entity_id: toIntOrNull(related_entity_id),
+      is_read: false
+    });
+    if (io) {
+      io.emit('finance-cash', { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+    }
+    return id;
+  } catch (err) {
+    console.error('Error sending finance notification:', err);
+    return null;
+  }
+};
+
+/**
+ * Sends a notification to the CEO role (visible to Admin/CEO at the bell).
+ * Inserts a row into `notifications` (role_target = 'CEO', type = 'general')
+ * and emits a `ceo-cash` socket event so the CEO gets a live bell update.
+ */
+const sendCeoNotification = async ({ title, message, type = 'general', link = null, related_entity_id = null }, io) => {
+  try {
+    const [id] = await db('notifications').insert({
+      user_id: null,
+      role_target: 'CEO',
+      type,
+      title,
+      message,
+      link: link || null,
+      related_entity_id: toIntOrNull(related_entity_id),
+      is_read: false
+    });
+    if (io) {
+      io.emit('ceo-cash', { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+    }
+    return id;
+  } catch (err) {
+    console.error('Error sending CEO notification:', err);
+    return null;
+  }
+};
+
 module.exports = {
   initWebSocket,
-  sendNotification
+  sendNotification,
+  sendFinanceNotification,
+  sendCeoNotification
 };
