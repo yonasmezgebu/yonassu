@@ -1100,11 +1100,10 @@ export default function PharmacySalesForm() {
                  <h2 className={styles.cardHeaderTitle}><List size={18} color="#2563EB"/> All Sales</h2>
               </div>
               <div className={styles.cardBody}>
-                 {sales.length === 0 ? (
+                 {sales.filter(s => !navSearch || s.receipt_no?.toLowerCase().includes(navSearch.toLowerCase()) || String(s.id).includes(navSearch) || s.branch_name?.toLowerCase().includes(navSearch.toLowerCase()) || s.worker_name?.toLowerCase().includes(navSearch.toLowerCase()) || s.recipient_name?.toLowerCase().includes(navSearch.toLowerCase())).length === 0 ? (
                    <div className={styles.emptyState}>
-                      <span className={styles.emptyEmoji}>📭</span>
-                      <h3 className={styles.emptyTitle}>No sales recorded</h3>
-                      <p className={styles.emptyText}>Sales data will appear here.</p>
+                      <span className={styles.emptyEmoji}>📋</span>
+                      <h3 className={styles.emptyTitle}>No sales match your search</h3>
                    </div>
                  ) : (
                    <div className={styles.tableWrap}>
@@ -1122,7 +1121,9 @@ export default function PharmacySalesForm() {
                           </tr>
                         </thead>
                         <tbody>
-                          {sales.map(sale => {
+                          {sales
+                            .filter(s => !navSearch || s.receipt_no?.toLowerCase().includes(navSearch.toLowerCase()) || String(s.id).includes(navSearch) || s.branch_name?.toLowerCase().includes(navSearch.toLowerCase()) || s.worker_name?.toLowerCase().includes(navSearch.toLowerCase()) || s.recipient_name?.toLowerCase().includes(navSearch.toLowerCase()))
+                            .map(sale => {
                             const resolvedBranch = sale.branch_name ||
                               branches.find(b => String(b.id) === String(sale.branch_id))?.name ||
                               (sale.branch_id ? `Branch #${sale.branch_id}` : '—');
@@ -1178,7 +1179,7 @@ export default function PharmacySalesForm() {
                        className={styles.btnSuccess}
                      >
                        <CheckCircle size={16} />
-                       {loading ? 'Submitting...' : 'Submit to Manager'}
+                       {loading ? 'Submitting...' : 'Submit to Finance'}
                      </button>
                    </div>
                  )}
@@ -1198,15 +1199,16 @@ export default function PharmacySalesForm() {
               <div className={styles.cardBody}>
                 {loadingPendingOrders ? (
                   <div className={styles.loadingCenter}><SegmentedSpinner size={24} /> Loading online orders...</div>
-                ) : pendingOrders.length === 0 ? (
+                ) : pendingOrders.filter(o => !navSearch || o.customer_name?.toLowerCase().includes(navSearch.toLowerCase()) || o.patient_name?.toLowerCase().includes(navSearch.toLowerCase()) || String(o.id).includes(navSearch) || o.sale_code?.toLowerCase().includes(navSearch.toLowerCase())).length === 0 ? (
                   <div className={styles.emptyState}>
-                    <span className={styles.emptyEmoji}>📭</span>
-                    <h3 className={styles.emptyTitle}>No pending orders</h3>
-                    <p className={styles.emptyText}>All online customer orders have been processed.</p>
+                    <span className={styles.emptyEmoji}>📦</span>
+                    <h3 className={styles.emptyTitle}>No pending orders match your search</h3>
                   </div>
                 ) : (
                   <div className={styles.ordersGrid}>
-                    {pendingOrders.map(order => (
+                    {pendingOrders
+                      .filter(o => !navSearch || o.customer_name?.toLowerCase().includes(navSearch.toLowerCase()) || o.patient_name?.toLowerCase().includes(navSearch.toLowerCase()) || String(o.id).includes(navSearch) || o.sale_code?.toLowerCase().includes(navSearch.toLowerCase()))
+                      .map(order => (
                       <div key={order.id} className={styles.orderCard}>
                         <div className={styles.orderCardTop}>
                           <span className={styles.orderCode}>{order.sale_code || `ORD-${order.id}`}</span>
@@ -1388,7 +1390,7 @@ export default function PharmacySalesForm() {
         </div>
       </div>
 
-      {/* Submit to Manager Confirmation Modal */}
+      {/* Submit to Finance Confirmation Modal */}
       {showSubmitConfirm && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
@@ -1403,7 +1405,7 @@ export default function PharmacySalesForm() {
               {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
             </p>
             <p className={styles.modalNote}>
-              This will be recorded in the audit log and sent to the Pharmacy Manager. The sales list will be cleared after submission.
+              This will be recorded in the audit log and sent to Finance. The sales list will be cleared after submission.
             </p>
             <div className={styles.modalBtns}>
               <button
@@ -1420,8 +1422,8 @@ export default function PharmacySalesForm() {
                     setLoading(true);
                     await apiClient.post('/pharmacy/sales/submit-daily', {});
                     setShowSubmitConfirm(false);
-                    submitNotification('Sales Submitted', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to the Pharmacy Manager.`);
-                    showToast('✅ Full day data submitted to Manager', 'success');
+                    submitNotification('Sales Submitted', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to Finance.`);
+                    showToast('✅ Full day data submitted to Finance', 'success');
                     loadSales();
                   } catch (err) {
                     setShowSubmitConfirm(false);
