@@ -3,6 +3,7 @@ const { db } = require('../../config/database');
 const rentalOrderRepository = require('../../repositories/rentalOrder.repository');
 const carRepository = require('../../repositories/car.repository');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendFinanceNotification } = require('../../services/notification.service');
 const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
@@ -322,6 +323,13 @@ exports.uploadPaymentProof = async (req, res) => {
         created_at: new Date(),
         updated_at: new Date()
       });
+      sendFinanceNotification({
+        title: 'New Income Submission',
+        message: `ETB ${Number(order.additionalOwed > 0 ? order.additionalOwed : order.totalAmount).toLocaleString()} Car Rental order income submitted for verification (Ref: CAR-PROOF-${order.orderNumber}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: order.orderNumber
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
     } catch (err) {
       logger.error('Failed to submit Car Rental proof to finance live income:', err.message);
     }
@@ -480,13 +488,13 @@ exports.createManualOrder = async (req, res) => {
     }
 
     // Notify Finance
-    try {
-      await notificationRepository.create({
-        roleTarget: 'Finance',
-        title: '🚗 New Car Rental — Payment Pending Verification',
-        message: `Order ${orderNumber} for ${customerName}. Amount: ETB ${totalAmount.toLocaleString()}. ${paymentReference ? 'Ref: ' + paymentReference : 'Screenshot uploaded.'}`
-      });
-    } catch (e) { /* non-fatal */ }
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${Number(totalAmount || 0).toLocaleString()} Car Rental order income submitted for verification (Ref: ${paymentReference || `CAR-${orderNumber}`}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: orderNumber
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
     carRentalAudit.log(req, 'Rental Order Created (Manual)', orderNumber, null, {
       order_number: orderNumber, car_id: carId ? parseInt(carId) : null, customer_name: customerName,
@@ -795,7 +803,9 @@ exports.approveCancellation = async (req, res) => {
       await notificationRepository.create({
         roleTarget: 'FINANCE',
         title: 'Refund Required',
-        message: `Order ${order.orderNumber} was cancelled and requires a refund of ${order.totalAmount}.`
+        message: `Order ${order.orderNumber} was cancelled and requires a refund of ${order.totalAmount}.`,
+        type: 'general',
+        link: '/finance/ev'
       });
     }
 
@@ -893,9 +903,11 @@ exports.approveExtension = async (req, res) => {
 
     // Notify finance
     await notificationRepository.create({
-      roleTarget: 'Finance',
+      roleTarget: 'FINANCE',
       title: 'Extension Fee Pending Verification',
-      message: `Order ${order.orderNumber} has an approved extension. Additional fee of ${extensionFee.toLocaleString()} ETB is pending payment from customer.`
+      message: `Order ${order.orderNumber} has an approved extension. Additional fee of ${extensionFee.toLocaleString()} ETB is pending payment from customer.`,
+      type: 'general',
+      link: '/finance/pharmacy-sales?tab=list'
     });
 
     res.status(200).json({ status: 'success', data: updated.toJSON() });
