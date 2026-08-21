@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import adminService from '../../services/adminService';
 import { formatDateTime } from '../../utils/formatters';
 import styles from './SystemJobs.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const PAGE_SIZE = 10;
 
@@ -59,6 +60,7 @@ const SystemJobs = () => {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
