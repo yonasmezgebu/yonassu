@@ -49,7 +49,6 @@ const PurchaseDashboard = () => {
     { type: 'divider' },
     { label: 'Sourcing & Procurement', icon: 'layers',
       children: [
-        { label: 'Tasks',                   path: '/purchase/tasks',           icon: 'check-square', color: '#8b5cf6' },
         { label: 'Purchase',                path: '/purchase/requests',        icon: 'shopping-cart', color: '#3b82f6' },
         { label: 'Tender & Bid',            path: '/purchase/smart-tenders',   icon: 'dollar-sign',  color: '#10b981' },
         { label: 'Quotation',               path: '/purchase/quotations',             icon: 'file',         color: '#22c55e' },
@@ -76,8 +75,10 @@ const PurchaseDashboard = () => {
     { type: 'divider' },
     { label: 'Employee', icon: 'briefcase',
       children: [
-        { label: 'Tasks & Reports', path: '/purchase/tasks', icon: 'check-square', color: '#16a34a' }
-      ] },
+        { label: 'Tasks', path: '/purchase/tasks', icon: 'check-square', color: '#16a34a' },
+        { label: 'Reports', path: '/purchase/tasks', icon: 'file-text', color: '#0ea5e9' }
+      ]
+    },
     { label: 'Audit Log', path: '/purchase/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
