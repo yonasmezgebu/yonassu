@@ -8,7 +8,6 @@ import { AttendancePage } from './attendance/AttendancePage';
 import ManagerChat from '../../components/ManagerChat';
 import { NotificationsInbox } from './communication/CommunicationPages';
 import EmployeePayslips from './EmployeePayslips';
-import CentralAuditLog from '../admin/CentralAuditLog';
 
 const EmployeePortalDashboard = () => {
   const menuItems = [
@@ -27,8 +26,6 @@ const EmployeePortalDashboard = () => {
         { label: 'Chat', path: '/employee/comm/chat', icon: 'message-square', color: '#6366f1' },
       ]
     },
-    { type: 'divider' },
-    { label: 'Audit Log', path: '/employee/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
 
   return (
@@ -52,7 +49,6 @@ const EmployeePortalDashboard = () => {
 
         {/* Communication */}
         <Route path="comm/chat"           element={<ManagerChat />} />
-        <Route path="audit-log"           element={<CentralAuditLog />} />
 
         <Route path="/"                   element={<Navigate to="overview" replace />} />
       </Routes>
