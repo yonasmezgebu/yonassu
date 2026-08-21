@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendFinanceNotification, sendCeoNotification } = require('../../services/notification.service');
 const { hashPassword } = require('../../config/auth');
 const vatConfigService = require('../../services/vatConfig.service');
 
@@ -198,6 +199,15 @@ const procController = {
           type: 'warning', link: `/purchase/market-tasks`
         });
       } catch (e) {}
+      try {
+        await sendCeoNotification({
+          title: `Request ${row.pr_no} - WAIT`,
+          message: `${prefix}${row.drug_name} - sent to market for document review.`,
+          type: 'general',
+          link: '/finance/procurement?tab=pending-check',
+          related_entity_id: row.id
+        }, req.app?.get('io'));
+      } catch (e) {}
       return res.json({ status: 'success', data: { id: row.id, pr_no: row.pr_no, decision: 'WAIT' } });
     }
 
@@ -224,6 +234,16 @@ const procController = {
         });
       } catch (e) {}
     }
+
+    try {
+      await sendCeoNotification({
+        title: decision === 'APPROVED' ? 'Request Approved' : 'Request Rejected',
+        message: `${row.pr_no} (${row.drug_name}) ${decision === 'APPROVED' ? 'approved for purchase' : 'rejected'}${ceoNotes ? ' - ' + ceoNotes : ''}.`,
+        type: 'general',
+        link: '/finance/procurement?tab=pending-check',
+        related_entity_id: row.id
+      }, req.app?.get('io'));
+    } catch (e) {}
     res.json({ status: 'success', data: { id: row.id, pr_no: row.pr_no, decision } });
   },
 
@@ -511,11 +531,13 @@ const procController = {
     if (decision === 'APPROVED') {
       await db('procurement_requests').where({ id: fr.procurement_request_id }).update({ status: 'FUND_APPROVED' });
       try {
-        await notificationRepository.create({
-          roleTarget: 'Finance', title: `💰 Funds Approved${newTag}`,
+        await sendFinanceNotification({
+          title: `💰 Funds Approved${newTag}`,
           message: `${isNew ? 'NEW DRUG: ' : ''}FR ${fr.id} for PR ${fr.pr_no} | Total: $${parseFloat(fr.total_amount).toFixed(2)}`,
-          type: 'success', link: `/finance/procurement-finance`
-        });
+          type: 'finance',
+          link: '/finance/procurement?tab=pending-payment',
+          related_entity_id: fr.id
+        }, req.app?.get('io'));
         await notificationRepository.create({
           roleTarget: 'Purchase Manager', title: `💰 Fund Request #FR-${fr.id} Approved${newTag}`,
           message: `${isNew ? 'NEW DRUG: ' : ''}Total: $${parseFloat(fr.total_amount).toFixed(2)}`,
