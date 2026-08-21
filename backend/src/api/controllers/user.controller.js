@@ -2,6 +2,7 @@ const { db, transaction } = require('../../config/database');
 const { hashPassword, generateTemporaryPassword, validatePasswordStrength, getPermissionsForRoles } = require('../../config/auth');
 const { audit } = require('../../config/logger');
 const { sendEmail } = require('../../services/email.service');
+const { sendNotification: sendUserNotification } = require('../../services/notification.service'); /* USER_NOTIF_IMPORT */
 const { sendSMS } = require('../../services/sms.service');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
@@ -271,19 +272,21 @@ exports.updateUser = catchAsync(async (req, res) => {
     await db('users').where('id', id).update({ is_employee: true });
   }
 
-  // If user has is_employee set OR got Employee role, ensure Employee role (id:23) is always assigned
-  const currentIsEmployee = updateData.is_employee !== undefined ? updateData.is_employee : user.is_employee;
-  if ((currentIsEmployee || hasEmpRole) && empRole) {
-    const exists = await db('user_roles').where({ user_id: id, role_id: empRole.id }).first();
-    if (!exists) {
-      await db('user_roles').insert({ user_id: id, role_id: empRole.id, assigned_by: adminId, assigned_at: db.fn.now() }).catch(() => {});
-    }
-    await db('users').where('id', id).update({ is_employee: true });
-  }
   await audit('USER_UPDATED', adminId, {
     ip,
     details: { updates: Object.keys(updateData), roleChanged: !!roleIds }
   });
+  /* USER_UPDATE_NOTIFY */
+  try {
+    if (parseInt(id) !== adminId) {
+      await sendUserNotification(null, parseInt(id), {
+        title: 'Your account was updated',
+        message: 'An administrator has updated your account' + (roleIds && roleIds.length ? ' and role assignment' : '') + '.',
+        type: 'account_update',
+        link: '/admin/users'
+      });
+    }
+  } catch (notifErr) { console.error('User update notification error:', notifErr); }
   res.json({
     status: 'success',
     message: 'User updated successfully'
@@ -448,31 +451,18 @@ exports.assignRoles = catchAsync(async (req, res) => {
     throw new AppError('You cannot assign roles to yourself.', 403);
   }
 
-  // 8. Prevent duplicate role assignment - NO, we want to allow UPDATING the branch/sub-role
-  const existingAssignment = await db('user_roles')
-    .where({ user_id: id, role_id: roleId })
-    .first();
-  if (existingAssignment) {
-    // Update existing assignment
-    await db('user_roles')
-      .where({ user_id: id, role_id: roleId })
-      .update({
-        branch_id: branchId || null,
-        sub_role: subRole || null,
-        assigned_by: adminId,
-        assigned_at: db.fn.now()
-      });
-  } else {
-    // Insert the new role assignment
-    await db('user_roles').insert({
-      user_id: id,
-      role_id: roleId,
-      branch_id: branchId || null,
-      sub_role: subRole || null,
-      assigned_by: adminId,
-      assigned_at: db.fn.now()
-    });
-  }
+  // 8. Enforce single role per user: Clear all existing roles before assigning the new one
+  await db('user_roles').where({ user_id: id }).delete();
+
+  // Insert the new role assignment
+  await db('user_roles').insert({
+    user_id: id,
+    role_id: roleId,
+    branch_id: branchId || null,
+    sub_role: subRole || null,
+    assigned_by: adminId,
+    assigned_at: db.fn.now()
+  });
 
   // 10. Audit trail
   await audit('ROLE_ASSIGNED', adminId, {
