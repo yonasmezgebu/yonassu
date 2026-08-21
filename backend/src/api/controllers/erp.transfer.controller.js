@@ -486,7 +486,7 @@ const erpController = {
     // Only show tenders and bids the CEO hasn't read yet
     const pendingTenders = await db('public_tenders').where('status', 'awaiting_ceo_approval').where('ceo_read', false);
     const recentBids = await db('public_bids').where('bid_status', 'pending').where('ceo_read', false);
-    const pendingPCVs = await db('finance_pcvs').where('status', 'pending_ceo').where('ceo_read', false);
+    const pendingEVs = await db('finance_evs').where('status', 'pending_ceo').where('ceo_read', false);
     const pendingStockUpdates = await db('stock_update_requests').where('status', 'PENDING');
     const pendingStockAdjustments = await db('stock_adjustments').where('status', 'PENDING');
     const pendingPhysicalCounts = await db('stock_counts').where('status', 'PENDING');
@@ -572,17 +572,17 @@ const erpController = {
         }))
       });
     }
-    if (pendingPCVs.length > 0) {
+    if (pendingEVs.length > 0) {
       items.push({ 
-        type: 'pcv_approval', 
-        count: pendingPCVs.length, 
-        label: `${pendingPCVs.length} Petty Cash Voucher(s) Pending`, 
+        type: 'ev_approval', 
+        count: pendingEVs.length, 
+        label: `${pendingEVs.length} Expense Voucher(s) Pending`, 
         link: '/ceo/finance',
-        details: pendingPCVs.map(p => ({ 
+        details: pendingEVs.map(p => ({ 
           id: p.id, 
-          title: `PCV ${p.pcv_number}`, 
+          title: `EV ${p.ev_number}`, 
           subtitle: `ETB ${parseFloat(p.amount).toLocaleString()} to ${p.paid_to}`,
-          type: 'pcv',
+          type: 'ev',
           link: '/ceo/finance'
         }))
       });
@@ -597,8 +597,8 @@ const erpController = {
         await db('public_tenders').where('id', id).update({ ceo_read: true });
       } else if (type === 'bid') {
         await db('public_bids').where('id', id).update({ ceo_read: true });
-      } else if (type === 'pcv') {
-        await db('finance_pcvs').where('id', id).update({ ceo_read: true });
+      } else if (type === 'ev') {
+        await db('finance_evs').where('id', id).update({ ceo_read: true });
       } else if (type === 'tender_all') {
         // Mark all pending tenders as read
         await db('public_tenders').where('status', 'awaiting_ceo_approval').update({ ceo_read: true });
