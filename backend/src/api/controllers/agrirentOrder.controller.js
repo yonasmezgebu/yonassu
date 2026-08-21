@@ -1,5 +1,6 @@
 const { db } = require('../../config/database');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendFinanceNotification } = require('../../services/notification.service');
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
@@ -159,6 +160,13 @@ exports.createOrder = async (req, res) => {
         created_at: new Date(),
         updated_at: new Date()
       });
+      sendFinanceNotification({
+        title: 'New Income Submission',
+        message: `ETB ${totalAmount.toLocaleString()} AgriRent order income submitted for verification (Ref: ${paymentReference || 'SCREENSHOT_UPLOADED'}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: id
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
     } catch (err) {
       logger.error('Failed to submit AgriRent to finance live income:', err.message);
     }
@@ -270,6 +278,13 @@ exports.createManualOrder = async (req, res) => {
           created_at: new Date(),
           updated_at: new Date()
         });
+        sendFinanceNotification({
+          title: 'New Income Submission',
+          message: `ETB ${totalAmount.toLocaleString()} AgriRent manual order income submitted for verification (Ref: ${paymentReference || 'SCREENSHOT_UPLOADED'}).`,
+          type: 'finance',
+          link: '/finance/pharmacy-sales?tab=list',
+          related_entity_id: id
+        }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
       } catch (err) {
         logger.error('Failed to submit manual AgriRent to finance live income:', err.message);
       }
