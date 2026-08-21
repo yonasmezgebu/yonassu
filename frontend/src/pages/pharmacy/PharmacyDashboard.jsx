@@ -54,6 +54,7 @@ import PharmacyHealthPublisher from './PharmacyHealthPublisher';
 import PharmacyStaff from './PharmacyStaff';
 import PharmacyDailySummary from './PharmacyDailySummary';
 import CentralAuditLog from '../admin/CentralAuditLog';
+import PharmacyManagerSales from './PharmacyManagerSales';
 
 const PharmacyDashboard = () => {
   const location = useLocation();
@@ -93,6 +94,11 @@ const PharmacyDashboard = () => {
     { label: 'Employee', icon: 'briefcase',
       children: [
         { label: 'Tasks & Reports', path: '/pharmacy/tasks',          icon: 'check-square', color: '#16a34a' }
+      ] },
+    { type: 'divider' },
+    { label: 'Sales', icon: 'shopping-cart',
+      children: [
+        { label: 'Worker Sales',  path: '/pharmacy/manager-sales', icon: 'dollar-sign', color: '#059669' },
       ] },
     { type: 'divider' },
     { label: 'Reports', icon: 'bar-chart',
@@ -177,6 +183,7 @@ const PharmacyDashboard = () => {
             <Route path="contact"       element={<PharmacyContact />} />
             <Route path="chat"          element={<ManagerChat />} />
             <Route path="audit-log"     element={<CentralAuditLog />} />
+            <Route path="manager-sales" element={<PharmacyManagerSales />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
