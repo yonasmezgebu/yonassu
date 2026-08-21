@@ -105,9 +105,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const load = async () => {
     try {
       const res = await notificationService.getMyNotificationsV2();
-      if (res?.status === 'success' && Array.isArray(res.data)) {
-        setItems(res.data.map(n => ({ ...n, isRead: n.is_read ?? n.isRead ?? false })));
-      }
+      // apiClient unwraps response.data, so getMyNotificationsV2 returns the array directly
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setItems(list.map(n => ({ ...n, isRead: n.is_read ?? n.isRead ?? false })));
     } catch (e) {
       console.error(e);
     }
@@ -150,15 +150,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const resolveLink = (link, isCeo) => {
     if (!link) return isCeo ? '/ceo/overview' : '/';
     
-    // 2. Finance Route Check
-    const financeMap = {
-      '/finance/crv': '/finance/crv',
-      '/finance/pv': '/finance/pv',
-      '/finance/pcv': '/finance/pcv',
-      '/finance/pending-pcvs': '/finance/pcv', // Fallback for old notifications
-      '/finance/cash-book': '/finance/cash-book',
-    };
-
+    // 2. Finance Route Check — all /finance routes exist; keep query strings so tab deep-links work
+    if (link.startsWith('/finance')) return link;
+    
     // Exact or prefix matches → map to working route
     const ceoMap = {
       '/ceo/pharmacy-approvals': '/ceo/pharmacy',
@@ -173,11 +167,6 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
       '/ceo/tenders': '/ceo/tenders',
       '/ceo/finance-approvals': '/ceo/finance-approvals',
     };
-    // Check prefix matches for finance map
-    for (const [prefix, target] of Object.entries(financeMap)) {
-      if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
-    }
-    
     // Check prefix matches for ceo map
     for (const [prefix, target] of Object.entries(ceoMap)) {
       if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
@@ -239,7 +228,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const ceoTotal = (ceoPending || []).reduce((s, i) => s + i.count, 0);
   const ceoNew = Math.max(0, ceoTotal - (ceoPendingSnapshot || 0));
   const notifCount = items.filter(i => !i.isRead).length;
-  const pcvUnread = (pcvNotifications || []).filter(n => !n.read).length;
+  const evUnread = (pcvNotifications || []).filter(n => !n.read).length;
   const totalBadge = (
     (ceoPending?.reduce((s, g) => s + (g.count || 0), 0) || 0) +
     (ceoFundRequestsPending || 0) +
@@ -252,7 +241,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     purchaseNewBids +
     (agriRentPending || 0) +
     notifCount +
-    pcvUnread +
+    evUnread +
     (chatUnread || 0)
   );
 
@@ -277,7 +266,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
       <button
         className="dash-notif-btn"
         title="Notifications"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen(o => { const next = !o; if (next) load(); return next; })}
         style={{ position: 'relative' }}
       >
         <Bell size={18} color="#047857" style={{ filter: 'drop-shadow(0 2px 4px rgba(4,120,87,0.35))' }} />
@@ -583,7 +572,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
               </div>
             )}
             {((ceoPending && ceoPending.length > 0) || pharmacyPending > 0) && items.filter(i => !i.isRead).length > 0 && <div style={{ borderTop: '1px solid #E5E7EB' }} />}
-            {/* PCV Notifications */}
+            {/* EV Notifications */}
             {pcvNotifications.filter(n => !n.read).map(n => (
               <div
                 key={n.id}
@@ -594,7 +583,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                   }
                   // Permanently mark read on server if it's a finance db notification
                   if (n.dbId) {
-                    apiClient.put(`/finance-cash/pcv/${n.dbId}/finance-read`).catch(()=>{});
+                    apiClient.put(`/finance-cash/ev/${n.dbId}/finance-read`).catch(()=>{});
                   }
                   if (n.link) navigate(n.link, { state: { bellTs: Date.now() } });
                 }}
@@ -654,14 +643,6 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
               </div>
             ) : null}
           </div>
-          {notifCount > 0 && (
-            <div style={{ padding: '10px 18px', borderTop: '1px solid #F3F4F6', textAlign: 'center' }}>
-              <button
-                onClick={() => { navigate(isCeoRoute ? '/ceo/flow1-transfers' : '/notifications'); setOpen(false); }}
-                  style={{ fontSize: '13px', color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
-                >View All Notifications →</button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -701,9 +682,10 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [ceoFundRequestsPending, setCeoFundRequestsPending] = useState(0);
   const [agriRentPending, setAgriRentPending] = useState(0);
   const [pageNotifs, setPageNotifs] = useState([]); // unread notifs for current page
-  const [pcvNotifications, setPcvNotifications] = useState([]); // PCV approval notifications
+  const [pcvNotifications, setPcvNotifications] = useState([]); // EV approval notifications
   const [photoUploading, setPhotoUploading] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
+  const [navSearchValue, setNavSearchValue] = useState('');
   const chatUnreadRef = useRef(0);
   const profileRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -800,6 +782,12 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     requestPermission();
   }, []);
 
+  // Clear the nav search bar whenever the user navigates to a different page
+  useEffect(() => {
+    setNavSearchValue('');
+    window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: '' }));
+  }, [location.pathname]);
+
   // Poll total unread chat messages and fire browser notifications
   useEffect(() => {
     const pollChat = async () => {
@@ -862,19 +850,29 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         // Dispatch event for PharmacySalesForm to update cart if open
         window.dispatchEvent(new CustomEvent('dashboardRefresh'));
       });
-      // PCV Approval Notifications
+      // Finance notifications (from any dashboard submitting to finance)
       socket.on('finance-cash', (data) => {
         const { title, message, type, link } = data || {};
-        const isCeo = location.pathname.startsWith('/ceo');
-        const isFinance = location.pathname.startsWith('/finance');
-        
-        // Target notifications correctly
-        const meantForCeo = link?.startsWith('/ceo');
         const meantForFinance = link?.startsWith('/finance');
 
-        if ((isCeo && meantForCeo) || (isFinance && meantForFinance)) {
+        // Always refresh the bell so the DB-backed notification appears (badge + list)
+        if (meantForFinance) {
           if (title) showToast(`${title}: ${message}`, type || 'info');
-          setPcvNotifications(prev => [{ id: Date.now(), title, message, link, type, read: false }, ...prev].slice(0, 10));
+          setNotifRefresh(n => n + 1);
+        }
+      });
+      // CEO notifications (CEO approves/rejects an action on finance pages)
+      socket.on('ceo-cash', (data) => {
+        const { title, message, type, link } = data || {};
+        const meantForCeo = !link || link?.startsWith('/finance') || link?.startsWith('/ceo');
+        if (meantForCeo) {
+          let isCeoUser = false;
+          try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []);
+            isCeoUser = roles.some(r => ['CEO', 'Admin'].includes(r));
+          } catch (_) {}
+          if (isCeoUser && title) showToast(`${title}: ${message}`, type || 'info');
           setNotifRefresh(n => n + 1);
         }
       });
@@ -909,17 +907,17 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     }
     
     if (isFinanceRoute) {
-      apiClient.get('/finance-cash/pcv/finance-notifications').then(res => {
-        const pcvs = res?.data || [];
+      apiClient.get('/finance-cash/ev/finance-notifications').then(res => {
+        const evs = res?.data || [];
         setPcvNotifications(prev => {
           // Merge with existing socket notifications to avoid duplicates
           const existingIds = prev.map(p => p.dbId).filter(Boolean);
-          const newNotifs = pcvs.filter(p => !existingIds.includes(p.id)).map(p => ({
+          const newNotifs = evs.filter(p => !existingIds.includes(p.id)).map(p => ({
             id: Date.now() + p.id,
             dbId: p.id,
-            title: p.status === 'approved_finance' ? '✅ PCV Approved' : '❌ PCV Rejected',
-            message: `PCV ${p.pcv_number} ${p.status === 'approved_finance' ? 'approved' : 'rejected'} by CEO.`,
-            link: '/finance/pcv',
+            title: p.status === 'approved_finance' ? '✅ Expense Voucher Approved' : '❌ Expense Voucher Rejected',
+            message: `EV ${p.ev_number} ${p.status === 'approved_finance' ? 'approved' : 'rejected'} by CEO.`,
+            link: '/finance/ev',
             type: p.status === 'approved_finance' ? 'success' : 'error',
             read: false
           }));
@@ -1235,7 +1233,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               <input 
                 type="text" 
                 placeholder="Search sales, medicines, orders..." 
-                onChange={(e) => window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: e.target.value }))}
+                value={navSearchValue}
+                onChange={(e) => {
+                  setNavSearchValue(e.target.value);
+                  window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: e.target.value }));
+                }}
                 style={{
                   width: '100%',
                   padding: '12px 20px 12px 46px',
