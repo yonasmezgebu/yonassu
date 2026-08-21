@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendFinanceNotification } = require('../../services/notification.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { generateInvoiceNumber } = require('../../utils/orderNumber');
 const { recordInvoiceForOrder, recordReceiptForOrder } = require('../../services/invoiceDocument.service');
@@ -177,14 +178,6 @@ const salesController = {
       return saleId;
     });
 
-    try {
-      await notificationRepository.create({
-        roleTarget: 'Pharmacy Manager', title: 'New Sale Created',
-        message: `New sale of ${totalAmount.toFixed(2)} ETB by ${worker ? worker.name : 'Staff'} at ${branch.name}`,
-        type: 'sale_created', link: `/pharmacy/sales`
-      });
-    } catch (e) {}
-
     res.status(HTTP_STATUS.CREATED).json({ status: 'success', data: { id: result, receipt_no: receiptNo } });
   },
 
@@ -268,6 +261,14 @@ const salesController = {
         description: `Daily Pharmacy Sales - ${totalTransactions} transactions`,
         status: 'Pending'
       });
+
+      sendFinanceNotification({
+        title: 'New Income Submission',
+        message: `ETB ${Number(totalAmount || 0).toLocaleString()} Pharmacy daily sales (${totalTransactions} txns) submitted for verification (Ref: ${refNo}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: refNo
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
     });
 
     res.json({
