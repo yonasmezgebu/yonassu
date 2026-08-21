@@ -3,48 +3,50 @@ const { catchAsync } = require('../../utils/catchAsync');
 const notificationRepository = require('../../repositories/notification.repository');
 
 // --- PARTNER'S NEW NOTIFICATION METHODS ---
-const ROLE_ALLOWED_TYPES = {
-  CEO: ['general', 'pharmacy', 'ceo', 'pos'],
-  MANAGER: ['general', 'pos'],
-  FINANCE: ['general', 'finance', 'farming', 'pos'],
-  FARMING: ['general', 'farming', 'pos'],
-  RENTAL: ['general', 'rental', 'pos'],
+// Strict per-dashboard scoping: each role only receives notifications that
+// belong to its own dashboard. No cross-department leakage.
+const resolveNotificationScope = (roles = []) => {
+  const lowerRoles = (roles || []).map(r => String(r).toLowerCase().trim());
+  // Real CEO: full decision desk (every notification addressed to the CEO office)
+  if (lowerRoles.some(r => r === 'ceo')) {
+    return { roleTarget: 'CEO', allowedTypes: null, requireLink: false };
+  }
+  // Admin (acting approver): ONLY actionable approval-flow results that carry a
+  // working deep-link (cash handover / EV / procurement / report decisions).
+  // Blocks departmental request spam (prescriptions, tenders, stock updates...).
+  if (lowerRoles.includes('admin')) {
+    return { roleTarget: 'CEO', allowedTypes: ['general'], requireLink: true };
+  }
+  if (lowerRoles.some(r => r.includes('pharmacy store keeper') || r.includes('general store keeper'))) {
+    return { roleTarget: 'Pharmacy Store Keeper', allowedTypes: null, requireLink: false };
+  }
+  if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
+    return { roleTarget: 'Pharmacy Manager', allowedTypes: null, requireLink: false };
+  }
+  if (lowerRoles.some(r => r.includes('market'))) {
+    return { roleTarget: 'MANAGER', allowedTypes: ['general'], requireLink: false };
+  }
+  if (lowerRoles.some(r => r.includes('farming'))) {
+    return { roleTarget: 'MANAGER', allowedTypes: ['general', 'farming'], requireLink: false };
+  }
+  if (lowerRoles.some(r => r.includes('renting') || r.includes('rental'))) {
+    return { roleTarget: 'MANAGER', allowedTypes: ['general'], requireLink: false };
+  }
+  if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
+    return { roleTarget: 'FINANCE', allowedTypes: ['general', 'finance'], requireLink: false };
+  }
+  if (lowerRoles.some(r => r.includes('hr'))) {
+    return { roleTarget: 'HR Manager', allowedTypes: null, requireLink: false };
+  }
+  return { roleTarget: 'CUSTOMER', allowedTypes: null, requireLink: false };
 };
 
 exports.getMyNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const roles = req.user.roles || [];
-    const lowerRoles = roles.map(r => r.toLowerCase().trim());
-    let roleTarget = 'CUSTOMER';
-    let allowedTypes = null;
-    if (lowerRoles.some(r => ['admin', 'ceo'].includes(r))) {
-      roleTarget = 'CEO';
-      allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('pharmacy store keeper') || r.includes('general store keeper'))) {
-      roleTarget = 'Pharmacy Store Keeper';
-      allowedTypes = null;
-    } else if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
-      roleTarget = 'Pharmacy Manager';
-      allowedTypes = null;
-    } else if (lowerRoles.some(r => r.includes('market'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('farming'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.FARMING;
-    } else if (lowerRoles.some(r => r.includes('renting') || r.includes('rental'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.RENTAL;
-    } else if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
-      roleTarget = 'FINANCE';
-      allowedTypes = ROLE_ALLOWED_TYPES.FINANCE;
-    } else if (lowerRoles.some(r => r.includes('hr'))) {
-      roleTarget = 'HR Manager';
-      allowedTypes = null;
-    }
+    const { roleTarget, allowedTypes, requireLink } = resolveNotificationScope(req.user.roles);
 
-    const notifications = await notificationRepository.getForUserOrRole(userId, roleTarget, allowedTypes);
+    const notifications = await notificationRepository.getForUserOrRole(userId, roleTarget, allowedTypes, requireLink);
     res.status(200).json({ status: 'success', data: notifications.map(n => n.toJSON()) });
   } catch (error) {
     console.error('Fetch notifications error:', error);
@@ -65,37 +67,9 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    const roles = req.user.roles || [];
-    const lowerRoles = roles.map(r => r.toLowerCase().trim());
-    let roleTarget = 'CUSTOMER';
-    let allowedTypes = null;
-    if (lowerRoles.some(r => ['admin', 'ceo'].includes(r))) {
-      roleTarget = 'CEO';
-      allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('pharmacy store keeper') || r.includes('general store keeper'))) {
-      roleTarget = 'Pharmacy Store Keeper';
-      allowedTypes = null;
-    } else if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
-      roleTarget = 'Pharmacy Manager';
-      allowedTypes = null;
-    } else if (lowerRoles.some(r => r.includes('market'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.CEO;
-    } else if (lowerRoles.some(r => r.includes('farming'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.FARMING;
-    } else if (lowerRoles.some(r => r.includes('renting') || r.includes('rental'))) {
-      roleTarget = 'MANAGER';
-      allowedTypes = ROLE_ALLOWED_TYPES.RENTAL;
-    } else if (lowerRoles.some(r => ['finance manager', 'finance officer', 'finance'].includes(r))) {
-      roleTarget = 'FINANCE';
-      allowedTypes = ROLE_ALLOWED_TYPES.FINANCE;
-    } else if (lowerRoles.some(r => r.includes('hr'))) {
-      roleTarget = 'HR Manager';
-      allowedTypes = null;
-    }
+    const { roleTarget, allowedTypes, requireLink } = resolveNotificationScope(req.user.roles);
 
-    await notificationRepository.markAllAsRead(userId, roleTarget, allowedTypes);
+    await notificationRepository.markAllAsRead(userId, roleTarget, allowedTypes, requireLink);
     res.status(200).json({ status: 'success' });
   } catch (error) {
     console.error('Mark all notifications read error:', error);
