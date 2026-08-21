@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { logAudit } = require('../../services/audit.service');
+const { sendFinanceNotification, sendCeoNotification } = require('../../services/notification.service');
 
 exports.createRequest = catchAsync(async (req, res) => {
   const { module, item_name, item_description, quantity, estimated_cost, urgency, justification, requester_signature } = req.body;
@@ -66,6 +67,14 @@ exports.decideRequest = catchAsync(async (req, res) => {
     userAgent: req.headers['user-agent']
   });
 
+  await sendCeoNotification({
+    title: decision === 'APPROVE' ? 'Procurement Request Approved' : (decision === 'REJECT' ? 'Procurement Request Rejected' : 'Procurement Request - Wait'),
+    message: `Request ${newRequest.request_code} (${newRequest.item_name}) ${decision === 'APPROVE' ? 'approved' : decision === 'REJECT' ? 'rejected' : 'placed on hold'}${reason ? ' - ' + reason : ''}.`,
+    type: 'general',
+    link: '/finance/general-procurement?tab=pending-payment',
+    related_entity_id: newRequest.id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
+
   res.json({ status: 'success', message: `Request ${newStatus}` });
 });
 
@@ -127,6 +136,15 @@ exports.requestPayment = catchAsync(async (req, res) => {
     ipAddress: req.ip,
     userAgent: req.headers['user-agent']
   });
+
+  // Notify Finance that a payment request is waiting
+  await sendFinanceNotification({
+    title: 'New Payment Request',
+    message: `Payment of ETB ${Number(requested_amount).toLocaleString()} requested for "${old.item_name}".`,
+    type: 'finance',
+    link: '/finance/general-procurement?tab=pending-payment',
+    related_entity_id: req.params.id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify Finance:', e));
 
   res.json({ status: 'success', message: 'Payment requested from Finance.' });
 });
