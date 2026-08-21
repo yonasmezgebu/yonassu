@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendFinanceNotification, sendCeoNotification } = require('../../services/notification.service');
 const Maintenance = require('../../models/Maintenance.model');
 const FuelService = require('../../models/FuelService.model');
 const carRentalAudit = require('../../services/carRentalAudit.service');
@@ -234,14 +235,24 @@ exports.ceoApproveMaintenance = catchAsync(async (req, res) => {
   carRentalAudit.log(req, 'Maintenance Approved by CEO', `MNT #${id}`, record, updated);
   
   try {
-      await notificationRepository.create({
-          roleTarget: 'Finance',
-          title: 'New Maintenance Approval Request',
-          message: `CEO approved maintenance for ${record.asset_name}. It now requires your financial approval.`,
-          type: 'approval',
-          link: '/finance/maintenance-approvals'
-      });
+      await sendFinanceNotification({
+          title: 'New EV Payment Pending',
+          message: `CEO approved maintenance for ${record.asset_name} (ETB ${(record.estimated_cost_cents/100).toLocaleString()}). Awaiting finance payment.`,
+          type: 'finance',
+          link: '/finance/ev?tab=pending',
+          related_entity_id: record.id
+      }, req.app?.get('io'));
   } catch(e) { console.error('Failed to notify Finance', e); }
+
+  try {
+    await sendCeoNotification({
+        title: 'Maintenance Approved',
+        message: `Maintenance for ${record.asset_name} (ETB ${(record.estimated_cost_cents/100).toLocaleString()}) approved and sent to Finance.`,
+        type: 'general',
+        link: '/finance/ev?tab=history',
+        related_entity_id: record.id
+    }, req.app?.get('io'));
+  } catch(e) { console.error('Failed to notify CEO', e); }
 
   res.json({ status: 'success', data: updated });
 });
@@ -296,18 +307,18 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
 
   const amountETB = parseFloat(amount) || parseFloat((record.estimated_cost_cents / 100).toFixed(2));
 
-  // Generate PV number from the finance_cash_pv table or payables
-  let pvNumber;
+  // Generate EV number from the finance_payables table
+  let evNumber;
   try {
     const row = await db('finance_payables').max('id as maxId').first();
     const next = (row?.maxId || 0) + 1;
-    pvNumber = `PV-MNT-${String(next).padStart(5, '0')}`;
-  } catch(e) { pvNumber = `PV-MNT-${record.id}-${Date.now()}`; }
+    evNumber = `EV-MNT-${String(next).padStart(5, '0')}`;
+  } catch(e) { evNumber = `EV-MNT-${record.id}-${Date.now()}`; }
 
-  // Record in finance_payables (Payables Book) with full PV details
+  // Record in finance_payables (Payables Book) with full EV details
   try {
     await db('finance_payables').insert({
-      pv_number:           pvNumber,
+      ev_number:           evNumber,
       date:                date || db.fn.now(),
       paid_to:             paidTo || record.asset_name,
       category:            `Fleet Maintenance - ${record.asset_type === 'tractor' ? 'AgriRent' : 'Car Rental'}`,
@@ -322,10 +333,10 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
     });
   } catch(e) { console.error('Failed to record payable:', e); }
 
-  // Also record in finance_pvs table for PV book (used by Reconciliation & Bank system)
+  // Also record in finance_evs table for the Expense Voucher book (used by Reconciliation & Bank system)
   try {
-    const pvData = {
-      pv_number:          pvNumber,
+    const evData = {
+      ev_number:          evNumber,
       date:               date || db.fn.now(),
       paid_to:            paidTo || record.asset_name,
       amount:             amountETB,
@@ -338,29 +349,32 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
       prepared_signature: preparedSignature || null,
       checked_signature:  checkedSignature || null,
       receiver_signature: receiverSignature || null,
+      status:             'completed',
+      source:             'car_rental',
+      source_id:          record.id,
     };
 
     if (paymentMethod === 'Bank' && bankDetails) {
-      pvData.bank_name = bankDetails.bankName;
-      pvData.account_holder = bankDetails.accountHolder;
-      pvData.account_number = bankDetails.accountNumber;
-      pvData.cheque_no = bankDetails.chequeNo;
+      evData.bank_name = bankDetails.bankName;
+      evData.account_holder = bankDetails.accountHolder;
+      evData.account_number = bankDetails.accountNumber;
+      evData.cheque_no = bankDetails.chequeNo;
     }
 
     if (paymentMethod === 'Telebirr' && telebirrDetails) {
-      pvData.telebirr_number = telebirrDetails.telebirrNumber;
-      pvData.telebirr_name = telebirrDetails.fullName;
+      evData.telebirr_number = telebirrDetails.telebirrNumber;
+      evData.telebirr_name = telebirrDetails.fullName;
     }
 
-    await db('finance_pvs').insert(pvData).catch(e => console.error('PV table insert failed (non-fatal):', e.message));
-  } catch(e) { console.error('finance_pvs insert error:', e); }
+    await db('finance_evs').insert(evData).catch(e => console.error('EV table insert failed (non-fatal):', e.message));
+  } catch(e) { console.error('finance_evs insert error:', e); }
 
   // Record in Cashbook (as payment) for accurate system balance and reconciliation
   try {
     await db('finance_cashbook').insert({
       date: date || db.fn.now(),
-      type: 'PV',
-      reference: pvNumber,
+      type: 'EV',
+      reference: evNumber,
       description: description || `Maintenance Payment: ${record.asset_name}`,
       receipts: 0,
       payments: amountETB
@@ -368,14 +382,14 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
   } catch (e) { console.error('finance_cashbook insert error:', e); }
 
   const updated = await Maintenance.updateStatus(id, 'PAYMENT_RELEASED');
-  carRentalAudit.log(req, 'Maintenance Payment Released', `MNT #${id}`, record, { ...updated, pvNumber, amountETB, paymentMethod });
+  carRentalAudit.log(req, 'Maintenance Payment Released', `MNT #${id}`, record, { ...updated, evNumber, amountETB, paymentMethod });
 
   // Notify Car/Tractor Manager
   try {
     await notificationRepository.create({
       roleTarget: 'Car Renting Manager',
       title: '✅ Maintenance Payment Released',
-      message: `Finance released payment (${pvNumber}) for "${record.asset_name}" — ETB ${amountETB.toLocaleString()}. Maintenance work can now proceed.`,
+      message: `Finance released payment (${evNumber}) for "${record.asset_name}" — ETB ${amountETB.toLocaleString()}. Maintenance work can now proceed.`,
       type: 'success',
       link: '/car-renting/manager/maintenance'
     });
@@ -385,14 +399,14 @@ exports.financePayMaintenance = catchAsync(async (req, res) => {
   try {
     await notificationRepository.create({
       roleTarget: 'CEO',
-      title: '✅ Maintenance PV Processed',
-      message: `Finance issued Payment Voucher ${pvNumber} for ETB ${amountETB.toLocaleString()} for "${record.asset_name}" maintenance. Recorded in Payables & PV books.`,
+      title: '✅ Maintenance EV Processed',
+      message: `Finance issued Expense Voucher ${evNumber} for ETB ${amountETB.toLocaleString()} for "${record.asset_name}" maintenance. Recorded in Payables & EV books.`,
       type: 'success',
       link: '/ceo/agri-and-car-rental'
     });
   } catch(e) { console.error('Failed to notify CEO', e); }
 
-  res.json({ status: 'success', data: { ...updated, pvNumber } });
+  res.json({ status: 'success', data: { ...updated, evNumber } });
 });
 
 exports.completeMaintenance = catchAsync(async (req, res) => {
@@ -567,14 +581,24 @@ exports.ceoApproveFuelService = catchAsync(async (req, res) => {
   carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Approved by CEO`, `FS #${id}`, record, updated);
   
   try {
-    await notificationRepository.create({
-      roleTarget: 'Finance',
-      title: `New ${record.request_type} Approval Request`,
-      message: `CEO approved ${record.request_type} for ${record.asset_name}. Needs financial approval.`,
-      type: 'approval',
-      link: '/finance/maintenance-approvals'
-    });
+    await sendFinanceNotification({
+      title: 'New EV Payment Pending',
+      message: `CEO approved ${record.request_type} for ${record.asset_name} (ETB ${(record.estimated_cost_cents/100).toLocaleString()}). Awaiting finance payment.`,
+      type: 'finance',
+      link: '/finance/ev?tab=pending',
+      related_entity_id: record.id
+    }, req.app?.get('io'));
   } catch(e) { console.error('Failed to notify Finance', e); }
+
+  try {
+    await sendCeoNotification({
+        title: `${record.request_type} Approved`,
+        message: `${record.request_type} for ${record.asset_name} (ETB ${(record.estimated_cost_cents/100).toLocaleString()}) approved and sent to Finance.`,
+        type: 'general',
+        link: '/finance/ev?tab=history',
+        related_entity_id: record.id
+    }, req.app?.get('io'));
+  } catch(e) { console.error('Failed to notify CEO', e); }
 
   res.json({ status: 'success', data: updated });
 });
@@ -626,16 +650,16 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
 
   const amountETB = parseFloat(amount) || parseFloat((record.estimated_cost_cents / 100).toFixed(2));
 
-  let pvNumber;
+  let evNumber;
   try {
     const row = await db('finance_payables').max('id as maxId').first();
     const next = (row?.maxId || 0) + 1;
-    pvNumber = `PV-FS-${String(next).padStart(5, '0')}`;
-  } catch(e) { pvNumber = `PV-FS-${record.id}-${Date.now()}`; }
+    evNumber = `EV-FS-${String(next).padStart(5, '0')}`;
+  } catch(e) { evNumber = `EV-FS-${record.id}-${Date.now()}`; }
 
   try {
     await db('finance_payables').insert({
-      pv_number:           pvNumber,
+      ev_number:           evNumber,
       date:                date || db.fn.now(),
       paid_to:             paidTo || record.asset_name,
       category:            `Fuel & Service - ${record.asset_type === 'tractor' ? 'AgriRent' : 'Car Rental'}`,
@@ -650,18 +674,50 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
     });
   } catch(e) { console.error('Failed to record payable:', e); }
 
+  // Record in finance_evs table (Expense Voucher book) for reconciliation
+  try {
+    const evData = {
+      ev_number:          evNumber,
+      date:               date || db.fn.now(),
+      paid_to:            paidTo || record.asset_name,
+      amount:             amountETB,
+      payment_method:     paymentMethod || 'Cash',
+      description:        description || `${record.request_type}: ${record.description}`,
+      reference_no:       referenceNo || `FS-${String(record.id).padStart(4, '0')}`,
+      prepared_by:        preparedBy || 'System',
+      checked_by:         checkedBy || null,
+      receiver_name:      receiverName || null,
+      prepared_signature: preparedSignature || null,
+      checked_signature:  checkedSignature || null,
+      receiver_signature: receiverSignature || null,
+      status:             'completed',
+      source:             'car_rental',
+      source_id:          record.id,
+    };
+
+    if (paymentMethod === 'Bank' && bankDetails) {
+      evData.bank_name = bankDetails.bankName;
+      evData.account_holder = bankDetails.accountHolder;
+      evData.account_number = bankDetails.accountNumber;
+      evData.cheque_no = bankDetails.chequeNo;
+    }
+
+    if (paymentMethod === 'Telebirr' && telebirrDetails) {
+      evData.telebirr_number = telebirrDetails.telebirrNumber;
+      evData.telebirr_name = telebirrDetails.fullName;
+    }
+
+    await db('finance_evs').insert(evData).catch(e => console.error('EV table insert failed (non-fatal):', e.message));
+  } catch(e) { console.error('finance_evs insert error:', e); }
+
   try {
     await db('finance_cashbook').insert({
-      date:               date || db.fn.now(),
-      reference_number:   pvNumber,
-      description:        description || `${record.request_type} Payment: ${record.asset_name}`,
-      cash_out:           amountETB,
-      cash_in:            0,
-      balance:            0, 
-      payment_method:     paymentMethod || 'Cash',
-      transaction_type:   'PV',
-      category:           `Fuel & Service - ${record.asset_type === 'tractor' ? 'AgriRent' : 'Car Rental'}`,
-      prepared_by:        preparedBy || 'System'
+      date:        date || db.fn.now(),
+      type:        'EV',
+      reference:   evNumber,
+      description: description || `${record.request_type} Payment: ${record.asset_name}`,
+      receipts:    0,
+      payments:    amountETB
     });
   } catch(e) { console.error('Failed to update cashbook:', e); }
 
@@ -673,19 +729,19 @@ exports.financePayFuelService = catchAsync(async (req, res) => {
   }
 
   const updated = await FuelService.updateStatus(id, 'PAYMENT_RELEASED');
-  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Payment Released`, `FS #${id}`, record, { ...updated, pvNumber, amountETB, paymentMethod });
+  carRentalAudit.log(req, `${record.request_type === 'Fuel' ? 'Fuel' : 'Service'} Payment Released`, `FS #${id}`, record, { ...updated, evNumber, amountETB, paymentMethod });
 
   try {
     await notificationRepository.create({
       roleTarget: 'Car Renting Manager',
       title: `${record.request_type} Payment Released`,
-      message: `Payment of ETB ${amountETB.toLocaleString()} released for ${record.asset_name}. PV: ${pvNumber}. ${detailsStr}`,
+      message: `Payment of ETB ${amountETB.toLocaleString()} released for ${record.asset_name}. EV: ${evNumber}. ${detailsStr}`,
       type: 'success',
       link: '/car-renting/manager/utilization'
     });
   } catch(e) {}
 
-  res.json({ status: 'success', data: updated, pvNumber });
+  res.json({ status: 'success', data: updated, evNumber });
 });
 
 exports.completeFuelService = catchAsync(async (req, res) => {
