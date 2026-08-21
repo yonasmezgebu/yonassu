@@ -7,8 +7,7 @@ exports.getAccounts = async (req, res) => {
     const accounts = await db('finance_accounts').orderBy('account_type').orderBy('account_name');
 
     const allCrvs = await db('finance_crvs');
-    const allPvs  = await db('finance_pvs');
-    const allPcvs = await db('finance_pcvs');
+    const allEvs  = await db('finance_evs');
 
     const enriched = accounts.map(acc => {
       let method = 'Cash';
@@ -16,18 +15,16 @@ exports.getAccounts = async (req, res) => {
       if (acc.account_type === 'Mobile Wallet') method = 'Telebirr';
 
       let acrvs = allCrvs.filter(r => (r.payment_method || '').includes(method));
-      let apvs  = allPvs.filter(r => (r.payment_method || '').includes(method));
-      let apcvs = allPcvs.filter(r => (r.payment_method || '').includes(method));
+      let aevs  = allEvs.filter(r => (r.payment_method || '').includes(method));
 
       if (acc.account_type === 'Bank' && acc.bank_provider) {
         const provider = acc.bank_provider.toLowerCase();
         acrvs = acrvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-        apvs  = apvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-        apcvs = apcvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
+        aevs  = aevs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
       }
 
       const totalIn = acrvs.reduce((s, r) => s + parseFloat(r.amount||0), 0);
-      const totalOut = apvs.reduce((s, r) => s + parseFloat(r.amount||0), 0) + apcvs.reduce((s, r) => s + parseFloat(r.amount||0), 0);
+      const totalOut = aevs.reduce((s, r) => s + parseFloat(r.amount||0), 0);
       
       const netBalance = parseFloat(acc.opening_balance || 0) + totalIn - totalOut;
 
@@ -38,8 +35,7 @@ exports.getAccounts = async (req, res) => {
     const cashbook = await db('finance_cashbook');
     const summary = {
       totalCRV:    cashbook.filter(cb => cb.type === 'CRV').reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
-      totalPV:     cashbook.filter(cb => cb.type === 'PV').reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
-      totalPCV:    cashbook.filter(cb => cb.type === 'PCV').reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
+      totalEV:     cashbook.filter(cb => cb.type === 'EV').reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
       totalIncome: cashbook.reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
       totalOut:    cashbook.reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
       netBalance:  cashbook.reduce((s, cb) => s + parseFloat(cb.receipts||0) - parseFloat(cb.payments||0), 0),
@@ -117,15 +113,14 @@ exports.getCashbookSummary = async (req, res) => {
     });
 
     const totalCRV = rows.filter(r => r.type === 'CRV').reduce((s, r) => s + parseFloat(r.receipts||0), 0);
-    const totalPV  = rows.filter(r => r.type === 'PV').reduce((s, r)  => s + parseFloat(r.payments||0), 0);
-    const totalPCV = rows.filter(r => r.type === 'PCV').reduce((s, r) => s + parseFloat(r.payments||0), 0);
+    const totalEV  = rows.filter(r => r.type === 'EV').reduce((s, r)  => s + parseFloat(r.payments||0), 0);
     const totalIncome = rows.reduce((s, r) => s + parseFloat(r.receipts||0), 0);
     const totalOut    = rows.reduce((s, r) => s + parseFloat(r.payments||0), 0);
 
     res.json({
       success: true,
       data: withBalance,
-      summary: { totalCRV, totalPV, totalPCV, totalIncome, totalOut, netBalance: totalIncome - totalOut }
+      summary: { totalCRV, totalEV, totalIncome, totalOut, netBalance: totalIncome - totalOut }
     });
   } catch (err) {
     console.error('getCashbookSummary error:', err);
@@ -147,21 +142,18 @@ exports.getAccountTransactions = async (req, res) => {
     if (acc.account_type === 'Mobile Wallet') method = 'Telebirr';
 
     let crvs = await db('finance_crvs').where('payment_method', 'like', `%${method}%`);
-    let pvs  = await db('finance_pvs').where('payment_method', 'like', `%${method}%`);
-    let pcvs = await db('finance_pcvs').where('payment_method', 'like', `%${method}%`);
+    let evs  = await db('finance_evs').where('payment_method', 'like', `%${method}%`);
 
     // Further filter by bank provider if it's a Bank account and provider is specified
     if (acc.account_type === 'Bank' && acc.bank_provider) {
       const provider = acc.bank_provider.toLowerCase();
       crvs = crvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-      pvs  = pvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-      pcvs = pcvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
+      evs  = evs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
     }
 
     const refs = [
       ...crvs.map(r => r.crv_number),
-      ...pvs.map(r => r.pv_number),
-      ...pcvs.map(r => r.pcv_number)
+      ...evs.map(r => r.ev_number)
     ];
 
     let q = db('finance_cashbook');
