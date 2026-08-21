@@ -562,16 +562,16 @@ const SigPreview = ({ label, name, sig }) => (
   </div>
 );
 
-const PCVDetailPanel = ({ pcv }) => {
-  const pm = pcv.payment_method;
+const EVDetailPanel = ({ ev }) => {
+  const pm = ev.payment_method;
   return (
     <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: 28 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
         {[
-          { label: 'Date',            value: new Date(pcv.date).toLocaleDateString('en-GB') },
-          { label: 'Amount',          value: `ETB ${parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
+          { label: 'Date',            value: new Date(ev.date).toLocaleDateString('en-GB') },
+          { label: 'Amount',          value: `ETB ${parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
           { label: 'Payment Method',  value: pm },
-          { label: 'Reference #',     value: pcv.reference_no || '—' },
+          { label: 'Reference #',     value: ev.reference_no || '—' },
         ].map(({ label, value }) => (
           <div key={label}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
@@ -581,17 +581,17 @@ const PCVDetailPanel = ({ pcv }) => {
       </div>
       <div style={{ background: '#fefce8', border: '1px dashed #fde047', borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#a16207', marginBottom: 4 }}>PAID TO</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#713f12', marginBottom: 6 }}>{pcv.paid_to}</div>
-        <div style={{ fontSize: 13, color: '#78350f' }}>{pcv.description}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#713f12', marginBottom: 6 }}>{ev.paid_to}</div>
+        <div style={{ fontSize: 13, color: '#78350f' }}>{ev.description}</div>
       </div>
       {pm === 'Bank' && (
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', marginBottom: 8 }}>Bank Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-            <div>Bank: <b>{pcv.bank_name}</b></div>
-            <div>A/C Name: <b>{pcv.account_holder}</b></div>
-            <div>A/C No: <b>{pcv.account_number}</b></div>
-            {pcv.cheque_no && <div>Cheque #: <b>{pcv.cheque_no}</b></div>}
+            <div>Bank: <b>{ev.bank_name}</b></div>
+            <div>A/C Name: <b>{ev.account_holder}</b></div>
+            <div>A/C No: <b>{ev.account_number}</b></div>
+            {ev.cheque_no && <div>Cheque #: <b>{ev.cheque_no}</b></div>}
           </div>
         </div>
       )}
@@ -599,15 +599,15 @@ const PCVDetailPanel = ({ pcv }) => {
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 18px', marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 8 }}>Telebirr Details</div>
           <div style={{ fontSize: 13 }}>
-            <div>Mobile: <b>{pcv.telebirr_number}</b></div>
-            <div>Name: <b>{pcv.telebirr_name}</b></div>
+            <div>Mobile: <b>{ev.telebirr_number}</b></div>
+            <div>Name: <b>{ev.telebirr_name}</b></div>
           </div>
         </div>
       )}
       <div style={{ display: 'flex', gap: 16 }}>
-        <SigPreview label="Prepared By"      name={pcv.prepared_by}  sig={pcv.prepared_signature} />
-        <SigPreview label="Checked By"       name={pcv.checked_by}   sig={pcv.checked_signature} />
-        <SigPreview label="Payee's Signature" name={pcv.receiver_name} sig={pcv.receiver_signature} />
+        <SigPreview label="Prepared By"      name={ev.prepared_by}  sig={ev.prepared_signature} />
+        <SigPreview label="Checked By"       name={ev.checked_by}   sig={ev.checked_signature} />
+        <SigPreview label="Payee's Signature" name={ev.receiver_name} sig={ev.receiver_signature} />
       </div>
     </div>
   );
@@ -635,8 +635,8 @@ const CEOFinance = () => {
   const [finData,     setFinData]     = useState(null);
   const [finLoading,  setFinLoading]  = useState(true);
 
-  // PCV
-  const [pcvs,         setPcvs]         = useState([]);
+  // EV (pending approvals)
+  const [pendingEvs,   setPendingEvs]   = useState([]);
   const [loadingPcvs,  setLoadingPcvs]  = useState(true);
   const [expandedPcv,  setExpandedPcv]  = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -658,7 +658,7 @@ const CEOFinance = () => {
   /* ── Real Finance Data States ── */
   const [cashbook, setCashbook]   = useState([]);
   const [crvs,     setCrvs]       = useState([]);
-  const [pvs,      setPvs]        = useState([]);
+  const [evs,      setEvs]        = useState([]);
   const [banks,    setBanks]      = useState([]);
   const [bankSummary, setBankSummary] = useState(null);
   const [recons,   setRecons]     = useState([]);
@@ -677,10 +677,10 @@ const CEOFinance = () => {
     setRefreshing(true);
     setFinLoading(true);
     try {
-      const [cbRes, crvRes, pvRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
         api.get('/finance-cash/cashbook'),
         api.get('/finance-cash/crv'),
-        api.get('/finance-cash/pv'),
+        api.get('/finance-cash/ev'),
         api.get('/finance-bank'),
         api.get('/finance-bank/cashbook/summary'),
         api.get('/finance-bank/reconciliations'),
@@ -688,7 +688,7 @@ const CEOFinance = () => {
       ]);
       if (cbRes.status === 'fulfilled')      setCashbook(cbRes.value?.data || []);
       if (crvRes.status === 'fulfilled')     setCrvs(crvRes.value?.data || []);
-      if (pvRes.status === 'fulfilled')      setPvs(pvRes.value?.data || []);
+      if (evRes.status === 'fulfilled')      setEvs(evRes.value?.data || []);
       if (bankRes.status === 'fulfilled')    setBanks(bankRes.value?.data || []);
       if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data || null);
       if (reconRes.status === 'fulfilled')   setRecons(reconRes.value?.data || []);
@@ -701,7 +701,7 @@ const CEOFinance = () => {
   /* ── fetch overview ── */
   useEffect(() => {
     loadRealFinance();
-    loadPcvs();
+    loadPendingEvs();
   }, []);
 
   /* ── fetch pending fund requests from finance income submissions ── */
@@ -762,36 +762,36 @@ const CEOFinance = () => {
 
   const payrollMonthName = m => new Date(2000, parseInt(m) - 1).toLocaleString('default', { month: 'long' });
 
-  /* ── PCV ── */
+  /* ── EV approvals ── */
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
-  const loadPcvs = async () => {
+  const loadPendingEvs = async () => {
     setLoadingPcvs(true);
     try {
-      const res = await api.get('/finance-cash/pcv/pending');
+      const res = await api.get('/finance-cash/ev/pending');
       const data = res?.data?.data || res?.data || [];
-      setPcvs(Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo') : []);
+      setPendingEvs(Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo') : []);
     } catch { } finally { setLoadingPcvs(false); }
   };
-  const handleApprovePcv = async (pcv) => {
-    setActionLoading(pcv.id);
+  const handleApproveEv = async (ev) => {
+    setActionLoading(ev.id);
     try {
-      await api.put(`/finance-cash/pcv/${pcv.id}/approve`);
-      showToast(`✅ ${pcv.pcv_number} approved!`, 'success');
-      loadPcvs();
-    } catch { showToast('Failed to approve PCV', 'error'); }
+      await api.put(`/finance-cash/ev/${ev.id}/approve`);
+      showToast(`✅ ${ev.ev_number} approved!`, 'success');
+      loadPendingEvs();
+    } catch { showToast('Failed to approve EV', 'error'); }
     finally { setActionLoading(null); }
   };
-  const handleRejectPcv = async () => {
+  const handleRejectEv = async () => {
     if (!rejectReason.trim()) return;
     setActionLoading(rejectTarget.id);
     try {
-      await api.put(`/finance-cash/pcv/${rejectTarget.id}/reject`, { reason: rejectReason });
-      showToast('PCV rejected.', 'error');
-      loadPcvs(); setRejectTarget(null); setRejectReason('');
-    } catch { showToast('Failed to reject PCV', 'error'); }
+      await api.put(`/finance-cash/ev/${rejectTarget.id}/reject`, { reason: rejectReason });
+      showToast('EV rejected.', 'error');
+      loadPendingEvs(); setRejectTarget(null); setRejectReason('');
+    } catch { showToast('Failed to reject EV', 'error'); }
     finally { setActionLoading(null); }
   };
 
@@ -812,8 +812,8 @@ const CEOFinance = () => {
   /* ── Derived values ── */
   const cbEntries   = Array.isArray(cashbook) ? cashbook : [];
   const crvList     = Array.isArray(crvs)     ? crvs     : [];
-  const pvList      = Array.isArray(pvs)      ? pvs      : [];
-  const pcvList     = Array.isArray(pcvs)     ? pcvs     : [];
+  const evList      = Array.isArray(evs)      ? evs      : [];
+  const pendingEvList = Array.isArray(pendingEvs) ? pendingEvs : [];
   const rcvList     = Array.isArray(receivables) ? receivables : [];
   const bankList    = Array.isArray(banks)    ? banks    : [];
   const reconList   = Array.isArray(recons)   ? recons   : [];
@@ -822,8 +822,7 @@ const CEOFinance = () => {
   const totalPayments  = cbEntries.reduce((s, e) => s + parseFloat(e.payments || 0), 0);
   const cashBalance    = totalReceipts - totalPayments;
   const crvTotal = crvList.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
-  const pvTotal  = pvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-  const pcvTotal = pcvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  const evTotal  = evList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
   const bankBalance = bankSummary ? parseFloat(bankSummary.total_balance || bankSummary.balance || 0) : bankList.reduce((s, b) => s + parseFloat(b.balance || b.current_balance || 0), 0);
   
   const totalReceivable    = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
@@ -834,8 +833,7 @@ const CEOFinance = () => {
   const recentCB = [...cbEntries].reverse().slice(0, 6);
   const txBreakdown = [
     { name: 'Cash Receipts (CRV)', count: crvList.length, amount: crvTotal, color: G.forest },
-    { name: 'Payments (PV)',        count: pvList.length,  amount: pvTotal,  color: G.orange },
-    { name: 'Petty Cash (PCV)',     count: pcvList.length, amount: pcvTotal, color: G.purple },
+    { name: 'Expense Vouchers (EV)', count: evList.length, amount: evTotal, color: G.orange },
   ].filter(b => b.count > 0);
   const maxBreakdownAmt = Math.max(...txBreakdown.map(b => b.amount), 1);
 
@@ -925,12 +923,12 @@ const CEOFinance = () => {
 
             <div className={styles.kpiCard}>
               <div className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>PV Payments</span>
+                <span className={styles.kpiLabel}>EV Payments</span>
                 <span className={styles.kpiIcon} style={{ background: 'var(--color-warning-bg)' }}>📤</span>
               </div>
-              <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(pvTotal)}</div>
-              <div className={styles.kpiMeta}>{pvList.length} vouchers</div>
-              <div className={styles.kpiSub}>Verified cash paid out</div>
+              <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(evTotal)}</div>
+              <div className={styles.kpiMeta}>{evList.length} vouchers</div>
+              <div className={styles.kpiSub}>Expense vouchers</div>
             </div>
 
             <div className={styles.kpiCard}>
@@ -957,7 +955,7 @@ const CEOFinance = () => {
                   { label: 'CB Entries',    val: cbEntries.length,  icon: '📓', c: G.forest },
                   { label: 'Receivables',   val: rcvList.length,    icon: '📋', c: G.orange },
                   { label: 'Unrecon.',      val: unreconCount,      icon: '⚖️', c: unreconCount > 0 ? G.red : G.emerald },
-                  { label: 'Petty Cash',    val: pcvList.length,    icon: '💰', c: G.purple },
+                  { label: 'Expense Vouchers', val: evList.length,    icon: '🧾', c: G.orange },
                 ].map(k => (
                   <div key={k.label} className={styles.miniTile}>
                     <div className={styles.miniTileTop}>
@@ -1068,50 +1066,50 @@ const CEOFinance = () => {
         </div>
       )}
 
-      {/* ══════════════ PCV APPROVALS TAB ══════════════ */}
-      {activeTab === 'PCV Approvals' && (
+      {/* ══════════════ EV APPROVALS TAB ══════════════ */}
+      {activeTab === 'EV Approvals' && (
         <div>
           <div className="cfin-sub-header">
-            <h2 className="cfin-sub-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Banknote size={20} color="var(--cfin-warning)" /> Pending Petty Cash Vouchers</h2>
-            <button onClick={loadPcvs} className="cfin-btn cfin-btn-secondary"><RefreshCw size={14} /> Refresh</button>
+            <h2 className="cfin-sub-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><FileText size={20} color="var(--cfin-warning)" /> Pending Expense Vouchers</h2>
+            <button onClick={loadPendingEvs} className="cfin-btn cfin-btn-secondary"><RefreshCw size={14} /> Refresh</button>
           </div>
           {loadingPcvs ? (
-            <div className="cfin-empty"><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: 'var(--cfin-text-muted)' }}>Loading pending PCVs...</div></div>
-          ) : pcvs.length === 0 ? (
+            <div className="cfin-empty"><SegmentedSpinner size={32} /><div style={{ marginTop: 12, color: 'var(--cfin-text-muted)' }}>Loading pending EVs...</div></div>
+          ) : pendingEvs.length === 0 ? (
             <div className="cfin-empty">
               <CheckCircle size={40} color="var(--cfin-success)" />
               <h3 className="cfin-empty-title">All Clear!</h3>
-              <p className="cfin-empty-sub">No PCV vouchers are awaiting your approval.</p>
+              <p className="cfin-empty-sub">No expense vouchers are awaiting your approval.</p>
             </div>
 
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {pcvs.map(pcv => (
-                <div key={pcv.id} className={`cfin-pcv-card${expandedPcv === pcv.id ? ' expanded' : ''}`}>
+              {pendingEvs.map(ev => (
+                <div key={ev.id} className={`cfin-pcv-card${expandedPcv === ev.id ? ' expanded' : ''}`}>
                   <div className="cfin-pcv-row">
                     <div className="cfin-pcv-icon"><Banknote size={22} color="var(--cfin-warning)" /></div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: 'var(--cfin-text-primary)' }}>{pcv.pcv_number}</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15, color: 'var(--cfin-text-primary)' }}>{ev.ev_number}</span>
                         <span className="cfin-badge cfin-badge-warning">Awaiting CEO</span>
                       </div>
                       <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--cfin-text-secondary)', flexWrap: 'wrap' }}>
-                        <span><b style={{ color: 'var(--cfin-text-primary)' }}>To:</b> {pcv.paid_to}</span>
-                        <span>·</span><span>{new Date(pcv.date).toLocaleDateString('en-GB')}</span>
-                        <span>·</span><span style={{ fontWeight: 700, color: 'var(--cfin-warning)' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span><b style={{ color: 'var(--cfin-text-primary)' }}>To:</b> {ev.paid_to}</span>
+                        <span>·</span><span>{new Date(ev.date).toLocaleDateString('en-GB')}</span>
+                        <span>·</span><span style={{ fontWeight: 700, color: 'var(--cfin-warning)' }}>ETB {parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
                     <div className="cfin-pcv-actions">
-                      <button onClick={() => setExpandedPcv(expandedPcv === pcv.id ? null : pcv.id)} className="cfin-btn cfin-btn-ghost">
-                        <Eye size={14} /> {expandedPcv === pcv.id ? 'Hide' : 'View'} {expandedPcv === pcv.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <button onClick={() => setExpandedPcv(expandedPcv === ev.id ? null : ev.id)} className="cfin-btn cfin-btn-ghost">
+                        <Eye size={14} /> {expandedPcv === ev.id ? 'Hide' : 'View'} {expandedPcv === ev.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
-                      <button onClick={() => setRejectTarget(pcv)} className="cfin-btn cfin-btn-danger"><XCircle size={14} /> Reject</button>
-                      <button onClick={() => handleApprovePcv(pcv)} disabled={actionLoading === pcv.id} className="cfin-btn cfin-btn-success">
-                        {actionLoading === pcv.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
+                      <button onClick={() => setRejectTarget(ev)} className="cfin-btn cfin-btn-danger"><XCircle size={14} /> Reject</button>
+                      <button onClick={() => handleApproveEv(ev)} disabled={actionLoading === ev.id} className="cfin-btn cfin-btn-success">
+                        {actionLoading === ev.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
                       </button>
                     </div>
                   </div>
-                  {expandedPcv === pcv.id && <PCVDetailPanel pcv={pcv} />}
+                  {expandedPcv === ev.id && <EVDetailPanel ev={ev} />}
                 </div>
               ))}
             </div>
@@ -1266,12 +1264,12 @@ const CEOFinance = () => {
         </div>
       )}
 
-      {/* Reject PCV Modal */}
+      {/* Reject EV Modal */}
       {rejectTarget && (
         <div className="cfin-modal-overlay">
           <div className="cfin-modal">
-            <h3 className="cfin-modal-title">Reject PCV</h3>
-            <p className="cfin-modal-body">You are rejecting <b style={{ color: 'var(--cfin-danger)' }}>{rejectTarget.pcv_number}</b>. Please provide a reason.</p>
+            <h3 className="cfin-modal-title">Reject EV</h3>
+            <p className="cfin-modal-body">You are rejecting <b style={{ color: 'var(--cfin-danger)' }}>{rejectTarget.ev_number}</b>. Please provide a reason.</p>
             <textarea
               value={rejectReason}
               onChange={e => setRejectReason(e.target.value)}
@@ -1281,8 +1279,8 @@ const CEOFinance = () => {
             />
             <div className="cfin-modal-actions">
               <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="cfin-btn cfin-btn-ghost">Cancel</button>
-              <button onClick={handleRejectPcv} disabled={!rejectReason.trim() || actionLoading === rejectTarget.id} className="cfin-btn cfin-btn-danger">
-                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject PCV
+              <button onClick={handleRejectEv} disabled={!rejectReason.trim() || actionLoading === rejectTarget.id} className="cfin-btn cfin-btn-danger">
+                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject EV
               </button>
             </div>
           </div>
