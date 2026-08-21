@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import auditService from '../../services/auditService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -28,35 +29,31 @@ const ACTION_FILTER_GROUPS = [
   { label: '─── Password ───',        value: '__divider__', disabled: true },
   { label: '🔒 Password Changed',     value: 'PASSWORD_CHANGED' },
   { label: '🔒 Force Password Reset', value: 'FORCE_PASSWORD_RESET' },
-  { label: '🔒 Password Reset Done',  value: 'PASSWORD_RESET_COMPLETED' },
-  { label: '─── System ───',          value: '__divider__', disabled: true },
-  { label: '⚙️ Settings Updated',     value: 'SETTINGS_UPDATED' },
-  { label: '⚙️ Backup Created',       value: 'BACKUP_CREATED' },
-  { label: '⚙️ Break-Glass Activated',value: 'BREAK_GLASS_ACTIVATED' },
-  { label: '─── Operations ───',      value: '__divider__', disabled: true },
-  { label: '📦 Stock Adjustment',     value: 'STOCK_ADJUST' },
-  { label: '💰 Payment Processed',    value: 'PAYMENT_PROCESSED' },
-  { label: '📋 PO Created',           value: 'PO_CREATED' },
-  { label: '✅ PO Approved',           value: 'PO_APPROVED' },
-  { label: '─── General Procurement ─', value: '__divider__', disabled: true },
-  { label: '🚛 Procurement Requested',  value: 'CREATE_GENERAL_PROCUREMENT' },
-  { label: '✅ CEO Approved Procurement',value: 'CEO_APPROVE_GENERAL_PROCUREMENT' },
-  { label: '⏸ CEO Put on Hold',        value: 'CEO_WAIT_GENERAL_PROCUREMENT' },
-  { label: '❌ CEO Rejected Procurement',value: 'CEO_REJECT_GENERAL_PROCUREMENT' },
-  { label: '─── Purchase & Sourcing ─', value: '__divider__', disabled: true },
-  { label: '📝 Purchase Request Created',value: 'PURCHASE_REQUEST_CREATED' },
-  { label: '📝 Purchase Request Approved',value:'PURCHASE_REQUEST_APPROVED' },
-  { label: '📋 PO Created',           value: 'PURCHASE_ORDER_CREATED' },
-  { label: '✅ PO Approved',          value: 'PURCHASE_ORDER_APPROVED' },
-  { label: '🏢 Supplier Registered',  value: 'SUPPLIER_REGISTERED' },
-  { label: '📢 Tender Published',     value: 'SMART_TENDER_PUBLISHED' },
-  { label: '📄 Quotation Submitted',  value: 'SUPPLIER_QUOTATION_SUBMITTED' },
-  { label: '─── Employee Portal ───', value: '__divider__', disabled: true },
+  { label: '─── System Configuration ─', value: '__divider__', disabled: true },
+  { label: '⚙️ Settings Updated',     value: 'SYSTEM_SETTINGS_UPDATED' },
+  { label: '⚙️ Feature Flag Toggled',  value: 'FEATURE_FLAG_TOGGLED' },
+  { label: '⚙️ Maintenance Enabled',   value: 'MAINTENANCE_MODE_ENABLED' },
+  { label: '⚙️ Maintenance Disabled',  value: 'MAINTENANCE_MODE_DISABLED' },
+  { label: '⚙️ Cache Cleared',         value: 'SYSTEM_CACHE_CLEARED' },
+  { label: '─── Pharmacy ───',        value: '__divider__', disabled: true },
+  { label: '💊 Medicine Added',       value: 'MEDICINE_ADDED' },
+  { label: '💊 Medicine Updated',     value: 'MEDICINE_UPDATED' },
+  { label: '💰 Sale Made',            value: 'SALE_MADE' },
+  { label: '💰 Pharmacy Sale',        value: 'PHARMACY_SALE' },
+  { label: '📦 Transfer Dispatched',  value: 'TRANSFER_DISPATCHED' },
+  { label: '📦 Stock Received',       value: 'STOCK_RECEIVED' },
+  { label: '📦 Shipment Arrived',     value: 'SHIPMENT_ARRIVED' },
+  { label: '─── Procurement & Inventory ─', value: '__divider__', disabled: true },
+  { label: '🛒 Purchase Order Issued', value: 'PURCHASE_ORDER_ISSUED' },
+  { label: '🛒 Inventory Adjusted',   value: 'INVENTORY_ADJUSTED' },
+  { label: '🛒 Supplier Added',       value: 'SUPPLIER_ADDED' },
+  { label: '─── HR & Employees ───',  value: '__divider__', disabled: true },
   { label: '📋 Task Assigned',        value: 'EMPLOYEE_TASK_ASSIGNED' },
   { label: '📝 Report Submitted',     value: 'EMPLOYEE_REPORT_SUBMITTED' },
 ];
 
 const CentralAuditLog = ({ fixedModule, mode }) => {
+  const location = useLocation();
   const { user } = useAuth();
 
   /* ── role helpers ── */
@@ -98,7 +95,7 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
 
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
+  const [search, setSearch]           = useState(() => location.state?.dashSearchTerm || '');
   const [moduleFilter, setModuleFilter] = useState(lockedModule);
   const [page, setPage]               = useState(1);
   const [pageInput, setPageInput]     = useState('');
@@ -128,6 +125,15 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
     const t = setTimeout(fetchLogs, 300);
     return () => clearTimeout(t);
   }, [search, moduleFilter, actionFilter, page]);
+
+  useEffect(() => {
+    const handleDashSearch = (e) => {
+      setSearch(e.detail || '');
+      setPage(1);
+    };
+    window.addEventListener('dashboardSearch', handleDashSearch);
+    return () => window.removeEventListener('dashboardSearch', handleDashSearch);
+  }, []);
 
   const toggleRow = (id) => setExpandedRow(prev => (prev === id ? null : id));
 
