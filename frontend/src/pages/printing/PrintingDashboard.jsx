@@ -42,7 +42,6 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Jobs', icon: 'printer',
       children: [
-        { label: 'Tasks',                  path: '/printing-manager/jobs/tasks',     icon: 'check-square', color: '#8b5cf6' },
         { label: 'Job Process',            path: '/printing-manager/jobs/queue',     icon: 'list',         color: '#228B22' },
         { label: 'Job History',            path: '/printing-manager/jobs/history',    icon: 'archive',      color: '#1B5E20' },
         { label: 'Redo Request',           path: '/printing-manager/prod/reprints',   icon: 'rotate-ccw',   color: '#6B8E23' },
@@ -81,8 +80,10 @@ const PrintingDashboard = () => {
     { type: 'divider' },
     { label: 'Employee', icon: 'briefcase',
       children: [
-        { label: 'Tasks & Reports', path: '/printing-manager/jobs/tasks', icon: 'check-square', color: '#16a34a' }
-      ] },
+        { label: 'Tasks', path: '/printing-manager/jobs/tasks', icon: 'check-square', color: '#16a34a' },
+        { label: 'Reports', path: '/printing-manager/jobs/tasks', icon: 'file-text', color: '#0ea5e9' }
+      ]
+    },
     { type: 'divider' },
     { label: 'Audit Log', path: '/printing-manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
