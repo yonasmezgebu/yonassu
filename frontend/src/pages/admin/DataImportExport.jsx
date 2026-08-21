@@ -54,6 +54,7 @@ const DataImportExport = () => {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
@@ -619,6 +620,7 @@ const HistoryPanel = ({ showToast }) => {
             <div className={styles.empty}>
               <div className={`${styles.emptyIcon} ${styles.emptyIconNeutral}`}>&#x1F4CB;</div>
               <p className={styles.emptyTitle}>No import history</p>
+import { playSound } from '../../services/notificationManager';
               <p className={styles.emptyText}>Completed imports will appear here.</p>
             </div>
           ) : (
