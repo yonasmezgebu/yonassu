@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  CreditCard, CheckCircle, Printer, DollarSign, User, FileText,
+  CreditCard, CheckCircle, Printer, DollarSign, User, FileText, History,
   Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2
 } from 'lucide-react';
 import api from '../../services/apiClient';
@@ -165,6 +165,92 @@ const PrintSigBlock = ({ label, name, sigImage }) => (
   </div>
 );
 
+/* ─── Normalize a CRV row (DB snake_case) into print view (camelCase) ── */
+const toPrintView = (c) => {
+  const bankDetails = c.bankDetails || (c.bank_name ? { bankName: c.bank_name, accountHolder: c.account_holder, accountNumber: c.account_number, chequeNo: c.cheque_no } : null);
+  const telebirrDetails = c.telebirrDetails || (c.telebirr_number ? { telebirrNumber: c.telebirr_number, fullName: c.telebirr_name } : null);
+  return {
+    crvNumber: c.crvNumber || c.crv_number,
+    date: c.date,
+    receivedFrom: c.receivedFrom || c.received_from,
+    amount: c.amount,
+    amountWords: c.amountWords || (c.amount != null ? `${parseFloat(c.amount).toLocaleString('en-US')} ETB Only` : ''),
+    paymentMethod: c.paymentMethod || c.payment_method,
+    description: c.description,
+    referenceNo: c.referenceNo || c.reference_no,
+    bankDetails,
+    telebirrDetails,
+    preparedBy: c.preparedBy || c.prepared_by,
+    checkedBy: c.checkedBy || c.checked_by,
+    receiverName: c.receiverName || c.receiver_name,
+    preparedSignature: c.preparedSignature || c.prepared_signature,
+    checkedSignature: c.checkedSignature || c.checked_signature,
+    receiverSignature: c.receiverSignature || c.receiver_signature,
+  };
+};
+
+/* ─── Printed CRV Document (shared by the create screen and history) ── */
+const CRVPrintView = ({ crv }) => (
+  <div className="print-only" style={{ display: 'none', padding: '36px 48px', background: 'white', fontFamily: "'Times New Roman', serif" }}>
+    <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 20 }}>
+      <h1 style={{ fontSize: 26, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 3 }}>Sutana Enterprise</h1>
+      <h2 style={{ fontSize: 16, margin: 0, fontWeight: 'normal', color: '#333' }}>OFFICIAL CASH RECEIPT VOUCHER (CRV)</h2>
+    </div>
+
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, fontSize: 13 }}>
+      <div>
+        <b>Receipt No:</b> <span style={{ fontFamily: 'monospace', fontSize: 15 }}>{crv.crvNumber}</span><br />
+        <b>Reference:</b> {crv.referenceNo || 'N/A'}
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <b>Date:</b> {new Date(crv.date).toLocaleDateString('en-GB')}<br />
+        <b>Payment Method:</b> {crv.paymentMethod}
+      </div>
+    </div>
+
+    <div style={{ lineHeight: 2.4, fontSize: 15, marginBottom: 24 }}>
+      <div><b>RECEIVED FROM:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 300 }}>{crv.receivedFrom}</span></div>
+      <div><b>THE SUM OF:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 340, fontStyle: 'italic' }}>{crv.amountWords}</span></div>
+      <div><b>BEING PAYMENT FOR:</b>&nbsp;<span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: 280 }}>{crv.description}</span></div>
+    </div>
+
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+      <div style={{ padding: '12px 24px', border: '2px solid #000', fontSize: 26, fontWeight: 'bold' }}>
+        ETB {parseFloat(crv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </div>
+
+      {crv.paymentMethod === 'Bank' && crv.bankDetails && (
+        <div style={{ padding: '12px 16px', border: '1px solid #555', fontSize: 13, minWidth: 240 }}>
+          <b>Bank Details:</b><br />
+          Bank: {crv.bankDetails.bankName}<br />
+          A/C Name: {crv.bankDetails.accountHolder}<br />
+          A/C No: {crv.bankDetails.accountNumber}
+          {crv.bankDetails.chequeNo && <><br />Cheque No: {crv.bankDetails.chequeNo}</>}
+        </div>
+      )}
+      {crv.paymentMethod === 'Telebirr' && crv.telebirrDetails && (
+        <div style={{ padding: '12px 16px', border: '1px solid #555', fontSize: 13, minWidth: 240 }}>
+          <b>Telebirr Details:</b><br />
+          Mobile: {crv.telebirrDetails.telebirrNumber}<br />
+          Name: {crv.telebirrDetails.fullName}
+        </div>
+      )}
+      {crv.paymentMethod === 'Cash' && (
+        <div style={{ padding: '12px 24px', border: '1px solid #555', fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
+          By Cash
+        </div>
+      )}
+    </div>
+
+    {/* Signature row */}
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 48 }}>
+      <PrintSigBlock label="Prepared By"          name={crv.preparedBy}   sigImage={crv.preparedSignature} />
+      <PrintSigBlock label="Checked By"           name={crv.checkedBy}    sigImage={crv.checkedSignature} />
+      <PrintSigBlock label="Receiver's Signature" name={crv.receiverName} sigImage={crv.receiverSignature} />
+    </div>
+  </div>
+);
+
 /* ─── Main CRV Form ───────────────────────────────────────────── */
 const FinanceCRV = () => {
   const [date, setDate]             = useState(new Date().toISOString().slice(0, 10));
@@ -195,6 +281,39 @@ const FinanceCRV = () => {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
 
+  /* ── Tabs + History ─────────────────────────────────────────── */
+  const [activeTab, setActiveTab]   = useState('form'); // 'form' | 'history'
+  const [crvList, setCrvList]       = useState([]);
+  const [crvLoading, setCrvLoading] = useState(false);
+  const [printTarget, setPrintTarget] = useState(null);
+
+  const loadHistory = useCallback(async () => {
+    setCrvLoading(true);
+    try {
+      const res = await api.get('/finance-cash/crv');
+      setCrvList(res?.data?.data || res?.data || []);
+    } catch {
+      setCrvList([]);
+    } finally {
+      setCrvLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'history') loadHistory();
+  }, [activeTab, loadHistory]);
+
+  useEffect(() => {
+    const onAfterPrint = () => setPrintTarget(null);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => window.removeEventListener('afterprint', onAfterPrint);
+  }, []);
+
+  const handlePrintReceipt = (crv) => {
+    setPrintTarget(toPrintView(crv));
+    setTimeout(() => window.print(), 150);
+  };
+
   const handleAmountChange = (e) => {
     setAmount(e.target.value);
     const v = parseFloat(e.target.value);
@@ -218,6 +337,7 @@ const FinanceCRV = () => {
       };
       const res = await api.post('/finance-cash/crv', payload);
       setSubmitted({ crvNumber: res.data?.data?.crvNumber, ...payload, amountWords });
+      loadHistory();
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to generate CRV');
     } finally {
@@ -247,11 +367,127 @@ const FinanceCRV = () => {
     }
   });
 
+  /* ─── Print CSS (shared) ─────────────────────────────────────── */
+  const printCss = `
+    @media print {
+      body * { visibility: hidden; }
+      .print-only, .print-only * { visibility: visible; }
+      .print-only { display: block !important; position: fixed; inset: 0; }
+      .no-print { display: none !important; }
+      @page { margin: 12mm; size: A4; }
+    }
+  `;
+
+  /* ─── Tab bar ────────────────────────────────────────────────── */
+  const tabBtnStyle = (active) => ({
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '13px 16px',
+    borderRadius: 10,
+    cursor: 'pointer',
+    fontWeight: 700,
+    fontSize: 14,
+    border: active ? '2px solid #22c55e' : '2px solid #e2e8f0',
+    background: active ? '#f0fdf4' : 'white',
+    color: active ? '#166534' : '#64748b',
+    transition: 'all .2s',
+  });
+
+  const renderTabBar = () => (
+    <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+      <button type="button" onClick={() => setActiveTab('form')} style={tabBtnStyle(activeTab === 'form')}>
+        <PenTool size={16} /> New Receipt
+      </button>
+      <button type="button" onClick={() => setActiveTab('history')} style={tabBtnStyle(activeTab === 'history')}>
+        <History size={16} /> Receipt History
+        {crvList.length > 0 && (
+          <span style={{ background: activeTab === 'history' ? '#dcfce7' : '#f1f5f9', color: activeTab === 'history' ? '#166534' : '#64748b', padding: '2px 8px', fontSize: 11, fontWeight: 800, borderRadius: 99 }}>
+            {crvList.length}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+
+  /* ─── History list ───────────────────────────────────────────── */
+  const renderHistory = () => (
+    <div style={{ maxWidth: 840, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <History size={18} color="#16a34a" /> Receipt History
+        </h3>
+        <button type="button" className="no-print" onClick={loadHistory} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: '1px solid #cbd5e1', borderRadius: 8, background: 'white', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <RefreshCw size={14} /> Refresh
+        </button>
+      </div>
+
+      {crvLoading ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}><SegmentedSpinner size={30} /></div>
+      ) : crvList.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+          <FileText size={40} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
+          No receipts recorded yet. Create one from the New Receipt tab.
+        </div>
+      ) : (
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,.05)' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <thead>
+                <tr>
+                  {['Receipt No', 'Date', 'Received From', 'Method', 'Amount', ''].map(h => (
+                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {crvList.map((crv, i) => (
+                  <tr key={crv.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontWeight: 700, color: '#047857', whiteSpace: 'nowrap' }}>{crv.crv_number}</td>
+                    <td style={{ padding: '13px 16px', color: '#475569', whiteSpace: 'nowrap', fontSize: 13 }}>{new Date(crv.date).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '13px 16px', color: '#334155', fontSize: 13 }}>{crv.received_from}</td>
+                    <td style={{ padding: '13px 16px', fontSize: 13 }}>
+                      <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: crv.payment_method === 'Bank' ? '#eff6ff' : crv.payment_method === 'Telebirr' ? '#fffbeb' : '#f0fdf4', color: crv.payment_method === 'Bank' ? '#1d4ed8' : crv.payment_method === 'Telebirr' ? '#b45309' : '#15803d' }}>{crv.payment_method}</span>
+                    </td>
+                    <td style={{ padding: '13px 16px', fontWeight: 700, color: '#059669', whiteSpace: 'nowrap' }}>ETB {parseFloat(crv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '13px 16px', textAlign: 'right' }}>
+                      <button type="button" className="no-print" onClick={() => handlePrintReceipt(crv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: '1px solid #86efac', borderRadius: 7, background: '#f0fdf4', color: '#15803d', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                        <Printer size={13} /> Print Receipt
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   /* ─── SUCCESS SCREEN ─── */
   if (submitted) {
     return (
       <div style={{ padding: 32, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
 
+        {/* Header + tabs */}
+        <div style={{ maxWidth: 840, margin: '0 auto 24px' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 12, color: '#0f172a' }}>
+            <span style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', padding: 10, borderRadius: 12, display: 'flex', boxShadow: '0 4px 10px rgba(34,197,94,.3)' }}>
+              <CreditCard color="white" size={22} />
+            </span>
+            Cash Receipt Voucher
+          </h1>
+          <p style={{ color: '#64748b', margin: '8px 0 0', fontSize: 14 }}>Record cash receipts and reprint any receipt from history.</p>
+          {renderTabBar()}
+        </div>
+
+        {activeTab === 'history' ? (
+          renderHistory()
+        ) : (
+        <>
         {/* Screen card */}
         <div className="no-print" style={{
           maxWidth: 560, background: 'white', borderRadius: 16,
@@ -308,8 +544,11 @@ const FinanceCRV = () => {
             </button>
           </div>
         </div>
+        </>
+        )}
 
-        {/* ─── PRINT VIEW ─── */}
+        {/* ─── PRINT VIEW (just-created) ─── */}
+        {activeTab !== 'history' && (
         <div className="print-only" style={{ display: 'none', padding: '36px 48px', background: 'white', fontFamily: "'Times New Roman', serif" }}>
           <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 16, marginBottom: 20 }}>
             <h1 style={{ fontSize: 26, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 3 }}>Sutana Enterprise</h1>
@@ -368,6 +607,7 @@ const FinanceCRV = () => {
             <PrintSigBlock label="Receiver's Signature" name={submitted.receiverName} sigImage={submitted.receiverSignature} />
           </div>
         </div>
+        )}
 
         <style>{`
           @media print {
@@ -378,6 +618,7 @@ const FinanceCRV = () => {
             @page { margin: 12mm; size: A4; }
           }
         `}</style>
+        {printTarget && <CRVPrintView crv={printTarget} />}
       </div>
     );
   }
@@ -395,8 +636,13 @@ const FinanceCRV = () => {
           Cash Receipt Voucher
         </h1>
         <p style={{ color: '#64748b', margin: '8px 0 0', fontSize: 14 }}>Fill all fields, draw and save each signature, then generate the CRV.</p>
+        {renderTabBar()}
       </div>
 
+      {activeTab === 'history' ? (
+        renderHistory()
+      ) : (
+      <>
       {error && (
         <div style={{ maxWidth: 840, margin: '0 auto 16px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '14px 18px', borderRadius: 10 }}>
           <b>Error:</b> {error}
@@ -543,8 +789,12 @@ const FinanceCRV = () => {
           {loading ? 'Processing...' : 'Generate Cash Receipt Voucher'}
         </button>
       </form>
+      </>
+      )}
 
+      {printTarget && <CRVPrintView crv={printTarget} />}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{printCss}</style>
     </div>
   );
 };
