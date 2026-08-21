@@ -264,6 +264,9 @@ const AddUserModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
               const deptId = Number(formData.departmentId);
               const filteredRoles = rolesList.filter(role => {
                 const name = role.name.toLowerCase();
+                // Always allow the universal "Employee" role for any department
+                if (name === 'employee') return true;
+                
                 switch (deptId) {
                   case 1: return name.includes('admin') || name.includes('hr manager');
                   case 2: return name.includes('ceo') || name.includes('board');
@@ -276,7 +279,6 @@ const AddUserModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
                   case 9: return name.includes('farm');
                   case 10: return name.includes('pharmacy');
                   case 11: return name.includes('car rent');
-                  case 12: return name === 'employee';
                   default: return true;
                 }
               });
