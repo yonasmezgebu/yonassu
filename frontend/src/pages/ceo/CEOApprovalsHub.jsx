@@ -213,8 +213,8 @@ const CEOApprovalsHub = () => {
       count: null
     },
     {
-      title: 'Finance Approvals (PCV)',
-      description: 'Review and approve or reject petty cash vouchers submitted by Finance.',
+      title: 'Finance Approvals (EV)',
+      description: 'Review and approve or reject expense vouchers submitted by Finance.',
       icon: <DollarSign size={24} />,
       bg: 'var(--color-danger-bg)',
       color: 'var(--color-danger)',
