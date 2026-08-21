@@ -246,23 +246,38 @@ exports.updateUser = catchAsync(async (req, res) => {
       }
     }
   });
-  // Keep the linked HR employee's email aligned with this user account
+  // Keep the linked HR employee's email + department aligned with this user account
+  // Also auto-flag is_employee when any employee-category role is assigned
   const empRole = await db('roles').where('name', 'Employee').first();
   const hasEmpRole = roleIds && roleIds.some(r => String(r) === String(empRole?.id));
-  if (email || hasEmpRole) {
-    const linkedEmp = await db('hr_employees')
-      .where(function() {
-        this.where('user_id', id).orWhere('personal_email', user.email || '');
-      })
-      .first();
-    if (linkedEmp) {
-      const empUpdates = {};
-      if (email && linkedEmp.personal_email !== email.toLowerCase()) empUpdates.personal_email = email.toLowerCase();
-      if (linkedEmp.user_id !== parseInt(id, 10)) empUpdates.user_id = parseInt(id, 10);
-      if (Object.keys(empUpdates).length) await db('hr_employees').where('employee_id', linkedEmp.employee_id).update(empUpdates);
-    }
+
+  // Find the linked HR employee by user_id OR old email
+  const linkedEmp = await db('hr_employees')
+    .where(function() {
+      this.where('user_id', id).orWhere('personal_email', user.email || '');
+    })
+    .first();
+
+  if (linkedEmp) {
+    const empUpdates = {};
+    if (email && linkedEmp.personal_email !== email.toLowerCase()) empUpdates.personal_email = email.toLowerCase();
+    if (linkedEmp.user_id !== parseInt(id, 10)) empUpdates.user_id = parseInt(id, 10);
+    if (departmentId && String(linkedEmp.dept_id) !== String(departmentId)) empUpdates.dept_id = String(departmentId);
+    if (Object.keys(empUpdates).length) await db('hr_employees').where('employee_id', linkedEmp.employee_id).update(empUpdates);
   }
+
+  // Auto-set is_employee flag when Employee role (or any dept-employee role) is included
   if (empRole && hasEmpRole) {
+    await db('users').where('id', id).update({ is_employee: true });
+  }
+
+  // If user has is_employee set OR got Employee role, ensure Employee role (id:23) is always assigned
+  const currentIsEmployee = updateData.is_employee !== undefined ? updateData.is_employee : user.is_employee;
+  if ((currentIsEmployee || hasEmpRole) && empRole) {
+    const exists = await db('user_roles').where({ user_id: id, role_id: empRole.id }).first();
+    if (!exists) {
+      await db('user_roles').insert({ user_id: id, role_id: empRole.id, assigned_by: adminId, assigned_at: db.fn.now() }).catch(() => {});
+    }
     await db('users').where('id', id).update({ is_employee: true });
   }
   await audit('USER_UPDATED', adminId, {
