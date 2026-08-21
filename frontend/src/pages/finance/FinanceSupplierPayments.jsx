@@ -75,9 +75,9 @@ const FinanceSupplierPayments = () => {
         telebirrDetails: paymentMethod === 'Telebirr' ? { telebirrNumber, fullName: telebirrName } : null,
       };
 
-      // 1) Create a real PV → recorded in finance_pvs + finance_cashbook
-      const res = await api.post('/finance-cash/pv', payload);
-      const pvNumber = res.data?.data?.pvNumber;
+      // 1) Create a real EV → recorded in finance_evs (approved & finalized later)
+      const res = await api.post('/finance-cash/ev', payload);
+      const evNumber = res.data?.data?.evNumber;
 
       // 2) Apply the payment to the supplier bill (persisted)
       if (bill?.id) {
@@ -87,7 +87,7 @@ const FinanceSupplierPayments = () => {
         });
       }
 
-      setSubmitted({ pvNumber, billRef, supplierName, date, amount: parseFloat(amountPaid), paymentMethod });
+      setSubmitted({ evNumber, billRef, supplierName, date, amount: parseFloat(amountPaid), paymentMethod });
       submitNotification(`💳 Payment Sent to ${supplierName}`);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Payment failed.');
@@ -123,17 +123,17 @@ const FinanceSupplierPayments = () => {
           <CheckCircle size={56} color="#f59e0b" style={{ margin: '0 auto 16px' }} />
           <h2 style={{ fontSize: 22, fontWeight: 'bold', color: '#b45309', margin: '0 0 8px' }}>Supplier Payment Sent</h2>
           <div style={{ background: '#fffbeb', padding: '16px', borderRadius: 8, margin: '20px 0', border: '1px solid #fde68a', textAlign: 'left' }}>
-            <div style={{ fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', color: '#d97706', marginBottom: 12 }}>PV #: {submitted.pvNumber}</div>
+            <div style={{ fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', color: '#d97706', marginBottom: 12 }}>EV #: {submitted.evNumber}</div>
             <div style={{ fontSize: 14, marginBottom: 4 }}>Date: <strong>{submitted.date}</strong></div>
             <div style={{ fontSize: 14, marginBottom: 4 }}>Supplier: <strong>{submitted.supplierName}</strong></div>
             <div style={{ fontSize: 14, marginBottom: 4 }}>Applied to Bill: <strong>{submitted.billRef}</strong></div>
             <div style={{ fontSize: 14, marginBottom: 4 }}>Amount Paid: <strong>{fmtETB(submitted.amount)}</strong></div>
             <div style={{ fontSize: 14, marginBottom: 4 }}>Method: <strong>{submitted.paymentMethod}</strong></div>
-            <div style={{ fontSize: 12, marginTop: 12, color: '#92400e' }}>* Payment recorded in the Payment Voucher (PV) and Cash Book — visible in Expense Book and Cash Flow reports.</div>
+            <div style={{ fontSize: 12, marginTop: 12, color: '#92400e' }}>* Payment recorded as an Expense Voucher (EV) — visible in Expense Book and Cash Flow reports once finalized.</div>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>
-              <Printer size={15} /> Print PV
+              <Printer size={15} /> Print EV
             </button>
             <button onClick={() => { setSubmitted(null); setAmountPaid(''); setBillRef(''); setBankName(''); setAccountHolder(''); setAccountNumber(''); setTelebirrNumber(''); setTelebirrName(''); load(); }} style={{ padding: '10px 24px', background: '#0f172a', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
               Record Another
@@ -150,7 +150,7 @@ const FinanceSupplierPayments = () => {
         <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#d97706' }}>
           <ShoppingCart color="#f59e0b" size={28} /> SUPPLIER PAYMENTS
         </h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Issue payments to suppliers via the central Payment Voucher (PV) system — recorded in the Cash Book.</p>
+        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Issue payments to suppliers via the central Expense Voucher (EV) system — recorded in the Cash Book once finalized.</p>
       </div>
 
       {error && (
@@ -232,7 +232,7 @@ const FinanceSupplierPayments = () => {
 
         <button type="submit" disabled={submitting} style={{ padding: '12px 32px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 15, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           {submitting && <Loader2 size={16} className="spin" />}
-          {submitting ? 'Processing...' : 'Send Payment & Generate PV'}
+          {submitting ? 'Processing...' : 'Send Payment & Generate EV'}
         </button>
       </form>
       <style>{`.spin{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}`}</style>
