@@ -4,6 +4,7 @@ const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 const vatConfigService = require('../../services/vatConfig.service');
 const { generateInvoiceNumber } = require('../../utils/orderNumber');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
+const { sendFinanceNotification } = require('../../services/notification.service');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -728,6 +729,13 @@ exports.submitDailyReport = async (req, res) => {
       status: 'PENDING_FINANCE',
     });
     logPharmacyAction(req, 'Daily Report Submitted', `Branch #${branch_id} - ${dateStr}`, null, { total_sales_count: agg.cnt, total_amount: agg.total }, 'Pharmacy Sales');
+    await sendFinanceNotification({
+      title: 'New Sales Report Pending',
+      message: `Daily sales report for ${dateStr} (ETB ${Number(agg.total || 0).toLocaleString()}, ${agg.cnt} sales) submitted for finance review.`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales',
+      related_entity_id: id
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify Finance:', e));
     return res.status(201).json({ success: true, data: { id, total_sales_count: agg.cnt, total_amount: agg.total } });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
