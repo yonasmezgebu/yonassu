@@ -4,9 +4,14 @@ const EmployeeTasksController = require('../controllers/employeeTasks.controller
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 
 const managerRoles = [
-  'CEO', 'Admin', 'Pharmacy Manager', 'Sales Manager', 
-  'Printing Supervisor', 'Car Rental Manager', 'Purchase Manager', 
-  'HR Manager', 'Finance Manager'
+  'CEO', 'Admin',
+  'Pharmacy Manager', 'Sales Manager',
+  'Printing Supervisor',
+  'Car Rental Manager', 'Car Renting Manager',   // both variants exist in DB
+  'Purchase Manager', 'Purchase',
+  'HR Manager',
+  'Finance Manager',
+  'General Store Keeper',
 ];
 
 router.get('/', authenticate, EmployeeTasksController.getTasks);
