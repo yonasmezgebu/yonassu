@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   TrendingUp, CheckCircle, Printer, DollarSign, User, FileText,
   Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool,
@@ -1102,8 +1103,15 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
 /* ═══════════════════════════════════════════════════════════════════ */
 const FinanceLiveIncome = () => {
   const { show, Toasts } = useToast();
-  const [view, setView] = useState('list');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [view, setView] = useState(() => (searchParams.get('tab') === 'form' ? 'form' : 'list'));
   const [detailId, setDetailId] = useState(null);
+
+  // Sync view from URL (?tab=) so bell notifications can deep-link to the pending list
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t === 'form' || t === 'list') setView(t);
+  }, [searchParams]);
 
   /* Form fields */
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -1314,13 +1322,13 @@ const FinanceLiveIncome = () => {
       </div>
       <div style={{ display: 'flex', background: 'var(--color-bg-page)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 4 }}>
         <button
-          onClick={() => setView('list')}
+          onClick={() => { setView('list'); setSearchParams({ tab: 'list' }); }}
           className={`fli-tab-btn${activeTab === 'list' ? ' active' : ''}`}
         >
           <List size={15} /> Pending Approvals
         </button>
         <button
-          onClick={() => setView('form')}
+          onClick={() => { setView('form'); setSearchParams({ tab: 'form' }); }}
           className={`fli-tab-btn${activeTab === 'form' ? ' active' : ''}`}
         >
           <TrendingUp size={15} /> Walk-In Submission
