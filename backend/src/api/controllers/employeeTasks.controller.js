@@ -73,7 +73,31 @@ const EmployeeTasksController = {
       due_date,
       status: 'pending'
     });
-    
+
+    // Notify the employee immediately (bell + realtime toast)
+    try {
+      const notifMessage = `New task from ${assigned_by_name}: ${title}${due_date ? ` (Due ${String(due_date).slice(0, 10)})` : ''}`;
+      await db('notifications').insert({
+        user_id: assigned_to_user_id,
+        title: 'New Task Assigned',
+        message: notifMessage,
+        type: 'task',
+        link: '/employee/tasks/mine',
+        is_read: false,
+        created_at: db.fn.now()
+      });
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('employee-task', {
+          user_id: assigned_to_user_id,
+          title: 'New Task Assigned',
+          message: notifMessage,
+          type: 'task',
+          link: '/employee/tasks/mine'
+        });
+      }
+    } catch (_) { /* notification errors must not block task creation */ }
+
     const task = await db('employee_tasks').where({ id }).first();
     res.status(201).json({ status: 'success', data: task });
   }),
