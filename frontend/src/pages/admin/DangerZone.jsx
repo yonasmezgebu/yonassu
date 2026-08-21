@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, Eraser } from 'lucide-react';
 import adminService from '../../services/adminService';
 import styles from './DangerZone.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const STATUS_META = {
   PENDING:   { label: 'Pending CEO Approval', cls: 'stPending' },
@@ -32,7 +33,7 @@ const DangerZone = () => {
       const res = await adminService.getDangerZoneOverview();
       setOverview(res?.data || null);
     } catch (err) {
-      setToast({ type: 'error', msg: err?.response?.data?.message || 'Failed to load danger zone data' });
+      playSound('error'); setToast({ type: 'error', msg: err?.response?.data?.message || 'Failed to load danger zone data' });
     } finally {
       setLoading(false);
     }
@@ -48,18 +49,18 @@ const DangerZone = () => {
   const handleRequest = async (e) => {
     e.preventDefault();
     if (confirmText !== 'RESET') {
-      setToast({ type: 'error', msg: 'You must type RESET to confirm this destructive action.' });
+      playSound('error'); setToast({ type: 'error', msg: 'You must type RESET to confirm this destructive action.' });
       return;
     }
     setSubmitting(true);
     try {
       await adminService.requestDangerZoneReset({ reason, confirmText });
-      setToast({ type: 'success', msg: 'Reset request submitted. Awaiting CEO approval.' });
+      playSound('success'); setToast({ type: 'success', msg: 'Reset request submitted. Awaiting CEO approval.' });
       setReason('');
       setConfirmText('');
       await load();
     } catch (err) {
-      setToast({ type: 'error', msg: err?.response?.data?.message || 'Failed to submit reset request.' });
+      playSound('error'); setToast({ type: 'error', msg: err?.response?.data?.message || 'Failed to submit reset request.' });
     } finally {
       setSubmitting(false);
     }
@@ -73,10 +74,10 @@ const DangerZone = () => {
     setClearingTable(table);
     try {
       const res = await adminService.clearDangerZoneTable(table);
-      setToast({ type: 'success', msg: res?.message || `Cleared "${table}".` });
+      playSound('success'); setToast({ type: 'success', msg: res?.message || `Cleared "${table}".` });
       await load();
     } catch (err) {
-      setToast({ type: 'error', msg: err?.response?.data?.message || `Failed to clear "${table}".` });
+      playSound('error'); setToast({ type: 'error', msg: err?.response?.data?.message || `Failed to clear "${table}".` });
     } finally {
       setClearingTable(null);
     }
