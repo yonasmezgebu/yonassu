@@ -4,6 +4,7 @@ const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { audit } = require('../../utils/logger');
 const posService = require('../../services/pos.service');
+const { sendFinanceNotification } = require('../../services/notification.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 const { sendEmail } = require('../../services/email.service');
@@ -2428,6 +2429,14 @@ exports.submitDaily = catchAsync(async (req, res) => {
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     });
+
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${Number(totalAmount || 0).toLocaleString()} Retail POS daily sales (${totalTransactions} txns) submitted for verification (Ref: ${refNo}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: refNo
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
   });
 
   res.json({
