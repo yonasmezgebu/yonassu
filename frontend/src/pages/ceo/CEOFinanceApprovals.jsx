@@ -228,29 +228,29 @@ const EmptyState = ({ icon: Icon, color, title, desc }) => (
 );
 
 /* ─── Detail Panels ──────────────────────────────────────────────────────── */
-const PCVDetailPanel = ({ pcv }) => {
-  const pm = pcv.payment_method;
+const EVDetailPanel = ({ ev }) => {
+  const pm = ev.payment_method;
   return (
     <div className="ceo-fin-detail-panel">
       <div className="ceo-fin-detail-grid">
-        <div><div className="ceo-fin-detail-label">Date</div><div className="ceo-fin-detail-val">{new Date(pcv.date).toLocaleDateString('en-GB')}</div></div>
-        <div><div className="ceo-fin-detail-label">Amount</div><div className="ceo-fin-detail-val">ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div></div>
+        <div><div className="ceo-fin-detail-label">Date</div><div className="ceo-fin-detail-val">{new Date(ev.date).toLocaleDateString('en-GB')}</div></div>
+        <div><div className="ceo-fin-detail-label">Amount</div><div className="ceo-fin-detail-val">ETB {parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div></div>
         <div><div className="ceo-fin-detail-label">Payment Method</div><div className="ceo-fin-detail-val">{pm}</div></div>
-        <div><div className="ceo-fin-detail-label">Reference #</div><div className="ceo-fin-detail-val">{pcv.reference_no || '—'}</div></div>
+        <div><div className="ceo-fin-detail-label">Reference #</div><div className="ceo-fin-detail-val">{ev.reference_no || '—'}</div></div>
       </div>
       <div className="ceo-fin-highlight-box">
         <div style={{ fontSize: 11, fontWeight: 700, color: '#A16207', marginBottom: 4 }}>PAID TO</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#713F12', marginBottom: 6 }}>{pcv.paid_to}</div>
-        <div style={{ fontSize: 13, color: '#78350F' }}>{pcv.description}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#713F12', marginBottom: 6 }}>{ev.paid_to}</div>
+        <div style={{ fontSize: 13, color: '#78350F' }}>{ev.description}</div>
       </div>
       {pm === 'Bank' && (
         <div className="ceo-fin-highlight-box blue">
           <div style={{ fontSize: 12, fontWeight: 700, color: '#1D4ED8', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Building size={14} /> Bank Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13, color: '#1E3A8A' }}>
-            <div>Bank: <b>{pcv.bank_name}</b></div>
-            <div>A/C Name: <b>{pcv.account_holder}</b></div>
-            <div>A/C No: <b>{pcv.account_number}</b></div>
-            {pcv.cheque_no && <div>Cheque #: <b>{pcv.cheque_no}</b></div>}
+            <div>Bank: <b>{ev.bank_name}</b></div>
+            <div>A/C Name: <b>{ev.account_holder}</b></div>
+            <div>A/C No: <b>{ev.account_number}</b></div>
+            {ev.cheque_no && <div>Cheque #: <b>{ev.cheque_no}</b></div>}
           </div>
         </div>
       )}
@@ -258,41 +258,19 @@ const PCVDetailPanel = ({ pcv }) => {
         <div className="ceo-fin-highlight-box" style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Smartphone size={14} /> Telebirr Details</div>
           <div style={{ fontSize: 13, color: '#92400E' }}>
-            <div>Mobile: <b>{pcv.telebirr_number}</b></div>
-            <div>Name: <b>{pcv.telebirr_name}</b></div>
+            <div>Mobile: <b>{ev.telebirr_number}</b></div>
+            <div>Name: <b>{ev.telebirr_name}</b></div>
           </div>
         </div>
       )}
       <div className="ceo-fin-sig-container">
-        <SigPreview label="Prepared By" name={pcv.prepared_by} sig={pcv.prepared_signature} />
-        <SigPreview label="Checked By" name={pcv.checked_by} sig={pcv.checked_signature} />
-        <SigPreview label="Payee's Signature" name={pcv.receiver_name} sig={pcv.receiver_signature} />
+        <SigPreview label="Prepared By" name={ev.prepared_by} sig={ev.prepared_signature} />
+        <SigPreview label="Checked By" name={ev.checked_by} sig={ev.checked_signature} />
+        <SigPreview label="Payee's Signature" name={ev.receiver_name} sig={ev.receiver_signature} />
       </div>
     </div>
   );
 };
-
-const PVDetailPanel = ({ pv }) => (
-  <div className="ceo-fin-detail-panel">
-    <div className="ceo-fin-detail-grid">
-      <div><div className="ceo-fin-detail-label">Date</div><div className="ceo-fin-detail-val">{new Date(pv.date).toLocaleDateString('en-GB')}</div></div>
-      <div><div className="ceo-fin-detail-label">Amount</div><div className="ceo-fin-detail-val">ETB {parseFloat(pv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div></div>
-      <div><div className="ceo-fin-detail-label">Payment Mode</div><div className="ceo-fin-detail-val">{pv.payment_mode || pv.payment_method || '—'}</div></div>
-      <div><div className="ceo-fin-detail-label">Cheque #</div><div className="ceo-fin-detail-val">{pv.cheque_no || '—'}</div></div>
-    </div>
-    <div className="ceo-fin-highlight-box blue">
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8', marginBottom: 4 }}>PAID TO</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#1E3A8A', marginBottom: 6 }}>{pv.paid_to}</div>
-      <div style={{ fontSize: 13, color: '#1E40AF' }}>{pv.amount_in_words}</div>
-      {pv.description && <div style={{ fontSize: 13, color: '#1E40AF', marginTop: 8 }}><strong>Purpose:</strong> {pv.description}</div>}
-    </div>
-    <div className="ceo-fin-sig-container">
-      <SigPreview label="Prepared By" name={pv.prepared_by} sig={pv.prepared_signature} />
-      <SigPreview label="Checked By" name={pv.checked_by} sig={pv.checked_signature} />
-      <SigPreview label="Approved By" name={pv.approved_by || pv.receiver_name} sig={pv.approved_signature || pv.receiver_signature} />
-    </div>
-  </div>
-);
 
 const CRVDetailPanel = ({ crv }) => (
   <div className="ceo-fin-detail-panel">
@@ -549,13 +527,12 @@ const SalaryPaymentSeen = () => {
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 const CEOFinanceApprovals = () => {
-  const [activeTab, setActiveTab] = useState('PCV');
+  const [activeTab, setActiveTab] = useState('EV');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const [pcvs, setPcvs] = useState([]);
-  const [pvs,  setPvs]  = useState([]);
+  const [evs,  setEvs]  = useState([]);
   const [crvs, setCrvs] = useState([]);
 
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -573,13 +550,10 @@ const CEOFinanceApprovals = () => {
     setLoading(true);
     setExpanded(null);
     try {
-      if (activeTab === 'PCV') {
-        const res = await api.get('/finance-cash/pcv/pending');
+      if (activeTab === 'EV') {
+        const res = await api.get('/finance-cash/ev/pending');
         const data = res?.data?.data || res?.data || [];
-        setPcvs(Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo') : []);
-      } else if (activeTab === 'PV') {
-        const res = await api.get('/finance-cash/pv');
-        setPvs(Array.isArray(res?.data) ? res.data : []);
+        setEvs(Array.isArray(data) ? data.filter(p => p.status === 'pending_ceo') : []);
       } else if (activeTab === 'CRV') {
         const res = await api.get('/finance-cash/crv');
         setCrvs(Array.isArray(res?.data) ? res.data : []);
@@ -594,39 +568,38 @@ const CEOFinanceApprovals = () => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleApprovePcv = async (pcv) => {
-    setActionLoading(pcv.id);
+  const handleApproveEv = async (ev) => {
+    setActionLoading(ev.id);
     try {
-      await api.put(`/finance-cash/pcv/${pcv.id}/approve`);
-      showToast(`✅ ${pcv.pcv_number} approved and sent to Finance!`, 'success');
+      await api.put(`/finance-cash/ev/${ev.id}/approve`);
+      showToast(`✅ ${ev.ev_number} approved and sent to Finance!`, 'success');
       setConfirmApproveTarget(null);
       loadData();
     } catch {
-      showToast('Failed to approve PCV', 'error');
+      showToast('Failed to approve EV', 'error');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleRejectPcv = async () => {
+  const handleRejectEv = async () => {
     if (!rejectReason.trim()) return;
     setActionLoading(rejectTarget.id);
     try {
-      await api.put(`/finance-cash/pcv/${rejectTarget.id}/reject`, { reason: rejectReason });
-      showToast('PCV rejected. Finance has been notified.', 'error');
+      await api.put(`/finance-cash/ev/${rejectTarget.id}/reject`, { reason: rejectReason });
+      showToast('EV rejected. Finance has been notified.', 'error');
       setRejectTarget(null);
       setRejectReason('');
       loadData();
     } catch {
-      showToast('Failed to reject PCV', 'error');
+      showToast('Failed to reject EV', 'error');
     } finally {
       setActionLoading(null);
     }
   };
 
   const TABS = [
-    { id: 'PCV',    label: 'Petty Cash Approval (PCV)',       icon: <Banknote size={15} /> },
-    { id: 'PV',     label: 'General Payment (PV)',             icon: <FileText size={15} /> },
+    { id: 'EV',    label: 'Expense Voucher Approval (EV)',   icon: <FileText size={15} /> },
     { id: 'CRV',    label: 'Cash Receipt Voucher (CRV)',       icon: <Download size={15} /> },
     { id: 'SALARY', label: 'Salary Payment Seen',             icon: <Users size={15} /> },
   ];
@@ -661,7 +634,7 @@ const CEOFinanceApprovals = () => {
               <div className="ceo-fin-title-icon"><Banknote color="white" size={22} /></div>
               Finance Approvals
             </h1>
-            <p className="ceo-fin-subtitle">Review petty cash requests, monitor payments, receipts, and salary disbursements.</p>
+            <p className="ceo-fin-subtitle">Review expense vouchers, monitor receipts, and salary disbursements.</p>
           </div>
           {activeTab !== 'SALARY' && (
             <button onClick={loadData} className="ceo-fin-btn ceo-fin-btn-ghost">
@@ -696,70 +669,40 @@ const CEOFinanceApprovals = () => {
           ) : (
             <div className="ceo-fin-list">
 
-              {/* ── PCV Tab ── */}
-              {activeTab === 'PCV' && (
-                pcvs.length === 0
-                  ? <EmptyState icon={CheckCircle} color="#16A34A" title="All Clear!" desc="No petty cash vouchers are awaiting your approval." />
-                  : pcvs.map(pcv => (
-                    <div key={pcv.id} className={`ceo-fin-card ${expanded === pcv.id ? 'expanded' : ''}`}>
+              {/* ── EV Tab (Expense Vouchers pending approval) ── */}
+              {activeTab === 'EV' && (
+                evs.length === 0
+                  ? <EmptyState icon={CheckCircle} color="#16A34A" title="All Clear!" desc="No expense vouchers are awaiting your approval." />
+                  : evs.map(ev => (
+                    <div key={ev.id} className={`ceo-fin-card ${expanded === ev.id ? 'expanded' : ''}`}>
                       <div className="ceo-fin-card-header">
-                        <div className="ceo-fin-icon-box icon-box-pcv"><Banknote size={22} /></div>
+                        <div className="ceo-fin-icon-box icon-box-pcv"><FileText size={22} /></div>
                         <div className="ceo-fin-card-content">
                           <div className="ceo-fin-card-title">
-                            {pcv.pcv_number}
-                            <StatusBadge status={pcv.status} />
+                            {ev.ev_number}
+                            <StatusBadge status={ev.status} />
                           </div>
                           <div className="ceo-fin-card-meta">
-                            <span><strong style={{ color: '#111827' }}>To:</strong> {pcv.paid_to}</span>
+                            <span><strong style={{ color: '#111827' }}>To:</strong> {ev.paid_to}</span>
                             <span>•</span>
-                            <span>{new Date(pcv.date).toLocaleDateString('en-GB')}</span>
+                            <span>{new Date(ev.date).toLocaleDateString('en-GB')}</span>
                             <span>•</span>
-                            <span style={{ fontWeight: 700, color: '#A16207' }}>ETB {parseFloat(pcv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span style={{ fontWeight: 700, color: '#A16207' }}>ETB {parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                         <div className="ceo-fin-actions">
-                          <button onClick={() => setExpanded(expanded === pcv.id ? null : pcv.id)} className="ceo-fin-btn ceo-fin-btn-ghost">
-                            <Eye size={14} /> {expanded === pcv.id ? 'Hide' : 'View'}
+                          <button onClick={() => setExpanded(expanded === ev.id ? null : ev.id)} className="ceo-fin-btn ceo-fin-btn-ghost">
+                            <Eye size={14} /> {expanded === ev.id ? 'Hide' : 'View'}
                           </button>
-                          <button onClick={() => setRejectTarget(pcv)} className="ceo-fin-btn ceo-fin-btn-danger">
+                          <button onClick={() => setRejectTarget(ev)} className="ceo-fin-btn ceo-fin-btn-danger">
                             <XCircle size={14} /> Reject
                           </button>
-                          <button onClick={() => setConfirmApproveTarget(pcv)} disabled={actionLoading === pcv.id} className="ceo-fin-btn ceo-fin-btn-success">
-                            {actionLoading === pcv.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
+                          <button onClick={() => setConfirmApproveTarget(ev)} disabled={actionLoading === ev.id} className="ceo-fin-btn ceo-fin-btn-success">
+                            {actionLoading === ev.id ? <SegmentedSpinner size={14} /> : <CheckCircle size={14} />} Approve
                           </button>
                         </div>
                       </div>
-                      {expanded === pcv.id && <PCVDetailPanel pcv={pcv} />}
-                    </div>
-                  ))
-              )}
-
-              {/* ── PV Tab (General Payment) ── */}
-              {activeTab === 'PV' && (
-                pvs.length === 0
-                  ? <EmptyState icon={FileText} color="#3B82F6" title="No Payment Vouchers" desc="No general payment vouchers have been recorded in Finance yet." />
-                  : pvs.map(pv => (
-                    <div key={pv.id} className={`ceo-fin-card ${expanded === pv.id ? 'expanded' : ''}`}
-                      style={{ borderColor: expanded === pv.id ? '#3B82F6' : '' }}>
-                      <div className="ceo-fin-card-header">
-                        <div className="ceo-fin-icon-box icon-box-pv"><FileText size={22} /></div>
-                        <div className="ceo-fin-card-content">
-                          <div className="ceo-fin-card-title">{pv.pv_number || `PV-${pv.id}`}</div>
-                          <div className="ceo-fin-card-meta">
-                            <span><strong style={{ color: '#111827' }}>Paid To:</strong> {pv.paid_to}</span>
-                            <span>•</span>
-                            <span>{new Date(pv.date).toLocaleDateString('en-GB')}</span>
-                            <span>•</span>
-                            <span style={{ fontWeight: 700, color: '#1D4ED8' }}>ETB {parseFloat(pv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        </div>
-                        <div className="ceo-fin-actions">
-                          <button onClick={() => setExpanded(expanded === pv.id ? null : pv.id)} className="ceo-fin-btn ceo-fin-btn-ghost">
-                            <Eye size={14} /> {expanded === pv.id ? 'Hide' : 'View'}
-                          </button>
-                        </div>
-                      </div>
-                      {expanded === pv.id && <PVDetailPanel pv={pv} />}
+                      {expanded === ev.id && <EVDetailPanel ev={ev} />}
                     </div>
                   ))
               )}
@@ -803,9 +746,9 @@ const CEOFinanceApprovals = () => {
       {rejectTarget && (
         <div className="ceo-fin-modal-overlay">
           <div className="ceo-fin-modal">
-            <h3 className="ceo-fin-title" style={{ fontSize: 20, marginBottom: 12 }}>Reject PCV</h3>
+            <h3 className="ceo-fin-title" style={{ fontSize: 20, marginBottom: 12 }}>Reject EV</h3>
             <p style={{ color: '#6B7280', fontSize: 14, marginBottom: 20 }}>
-              Rejecting <b style={{ color: '#DC2626' }}>{rejectTarget.pcv_number}</b>. Please provide a reason.
+              Rejecting <b style={{ color: '#DC2626' }}>{rejectTarget.ev_number}</b>. Please provide a reason.
             </p>
             <textarea
               value={rejectReason}
@@ -817,12 +760,12 @@ const CEOFinanceApprovals = () => {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
               <button onClick={() => { setRejectTarget(null); setRejectReason(''); }} className="ceo-fin-btn ceo-fin-btn-ghost">Cancel</button>
               <button
-                onClick={handleRejectPcv}
+                onClick={handleRejectEv}
                 disabled={!rejectReason.trim() || actionLoading === rejectTarget.id}
                 className="ceo-fin-btn ceo-fin-btn-danger"
                 style={{ opacity: !rejectReason.trim() ? 0.5 : 1, cursor: !rejectReason.trim() ? 'not-allowed' : 'pointer' }}
               >
-                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject PCV
+                {actionLoading === rejectTarget.id ? <SegmentedSpinner size={16} /> : <XCircle size={16} />} Reject EV
               </button>
             </div>
           </div>
@@ -838,11 +781,11 @@ const CEOFinanceApprovals = () => {
             </div>
             <h3 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 800 }}>Confirm Approval</h3>
             <p style={{ margin: '0 0 24px', color: '#6B7280', fontSize: 14, lineHeight: 1.5 }}>
-              Approve PCV <b>{confirmApproveTarget.pcv_number}</b>? This will forward it to Finance for payment.
+              Approve EV <b>{confirmApproveTarget.ev_number}</b>? This will forward it to Finance for payment.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={() => setConfirmApproveTarget(null)} className="ceo-fin-btn ceo-fin-btn-ghost" style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
-              <button onClick={() => handleApprovePcv(confirmApproveTarget)} className="ceo-fin-btn ceo-fin-btn-success" style={{ flex: 1, justifyContent: 'center' }}>
+              <button onClick={() => handleApproveEv(confirmApproveTarget)} className="ceo-fin-btn ceo-fin-btn-success" style={{ flex: 1, justifyContent: 'center' }}>
                 Confirm Approve
               </button>
             </div>
