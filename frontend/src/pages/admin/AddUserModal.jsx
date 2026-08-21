@@ -36,11 +36,11 @@ const AddUserModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
   useEffect(() => {
     if (initialData) {
       setFormData({
-        fullName: initialData.fullName || '',
+        fullName: initialData.full_name || initialData.fullName || '',
         email: initialData.email || '',
         phone: initialData.phone || '',
         departmentId: initialData.departmentId || '',
-        roleIds: initialData.roles ? initialData.roles.map(r => r.id || r) : [],
+        roleIds: initialData.roles && initialData.roles.length > 0 ? [initialData.roles[0].id || initialData.roles[0]] : [],
         is_employee: initialData.is_employee || false
       });
     } else {
