@@ -88,6 +88,12 @@ const PharmacyMedicines = () => {
   useEffect(() => { loadData(showHidden); }, [showHidden]);
 
   useEffect(() => {
+    const handleSearch = (e) => setSearch(e.detail || '');
+    window.addEventListener('dashboardSearch', handleSearch);
+    return () => window.removeEventListener('dashboardSearch', handleSearch);
+  }, []);
+
+  useEffect(() => {
     pharmacyService.getWorkerHideDrugSetting().then(res => setWorkerCanHide(res.data?.enabled)).catch(() => {});
   }, []);
 
