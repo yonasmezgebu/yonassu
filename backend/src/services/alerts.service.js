@@ -1,6 +1,11 @@
 const { db } = require('../config/database');
 const { randomUUID } = require('crypto');
 const os = require('os');
+let _sendNotification = null; /* ALERTS_NOTIF_IMPORT */
+function getSendNotification() {
+  if (!_sendNotification) { try { _sendNotification = require('./notification.service').sendNotification; } catch(e) {} }
+  return _sendNotification;
+}
 
 const TYPE_PRIORITY = { CRITICAL: 1, WARNING: 2, INFO: 3 };
 
@@ -71,6 +76,18 @@ const createAlert = async ({
       status: 'UNREAD',
       created_at: db.fn.now(),
     });
+    /* ALERTS_NOTIF_SEND */
+    try {
+      const sn = getSendNotification();
+      if (sn) {
+        await sn(targetRole || null, targetUserId || null, {
+          title: title,
+          message: message.length > 120 ? message.substring(0, 120) + '...' : message,
+          type: 'alert',
+          link: '/admin/alerts'
+        });
+      }
+    } catch (notifErr) { console.error('Alert notification error:', notifErr); }
     return true;
   } catch (e) {
     console.error('createAlert failed:', e.message);
