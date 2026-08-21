@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import apiClient from '../../services/apiClient';
 import { formatDate } from '../../utils/formatters';
@@ -6,6 +7,7 @@ import styles from './UserManagement.module.css';
 import AddUserModal from './AddUserModal';
 import AssignRolePanel from './AssignRolePanel';
 import Modal from '../../components/ui/Modal';
+import { playSound } from '../../services/notificationManager';
 
 const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 const resolvePhoto = (url) => {
@@ -16,6 +18,7 @@ const resolvePhoto = (url) => {
 };
 
 const UserManagement = () => {
+  const location = useLocation();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -24,7 +27,7 @@ const UserManagement = () => {
   const [currentUserRoles, setCurrentUserRoles] = useState([]);
 
   // Filters
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => location.state?.dashSearchTerm || '');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -51,6 +54,7 @@ const UserManagement = () => {
   }, [page, roleFilter, statusFilter, showDeleted]);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -93,6 +97,14 @@ const UserManagement = () => {
     fetchUsers();
   };
 
+  useEffect(() => {
+    const handleDashSearch = (e) => {
+      setSearch(e.detail || '');
+    };
+    window.addEventListener('dashboardSearch', handleDashSearch);
+    return () => window.removeEventListener('dashboardSearch', handleDashSearch);
+  }, []);
+
   const goToPage = (e) => {
     e.preventDefault();
     const p = parseInt(pageInput, 10);
@@ -102,18 +114,51 @@ const UserManagement = () => {
     setPageInput('');
   };
 
-  const handleStatusChange = (userId, newStatus) => {
-    const action = newStatus === 'inactive' ? 'deactivate' : 'restore';
+  const handleToggleActive = (userId, currentStatus) => {
+    const newStatusId = currentStatus.toLowerCase() === 'active' ? 2 : 1; // 1 = active, 2 = inactive
+    const action = newStatusId === 2 ? 'deactivate' : 'activate';
     setConfirmBox({
       message: `Are you sure you want to ${action} this user?`,
-      danger: newStatus === 'inactive',
+      danger: newStatusId === 2,
       onConfirm: async () => {
         try {
-          await adminService.updateUserStatus(userId, { status: newStatus });
-          showToast(newStatus === 'inactive' ? 'User deactivated.' : 'User restored.');
+          await adminService.updateUser(userId, { statusId: newStatusId });
+          showToast(`User ${action}d successfully.`);
           fetchUsers();
         } catch (error) {
-          showToast(error.response?.data?.message || 'Failed to update user status.', 'error');
+          showToast(error.response?.data?.message || `Failed to ${action} user.`, 'error');
+        }
+      }
+    });
+  };
+
+  const handleDelete = (userId) => {
+    setConfirmBox({
+      message: 'Are you sure you want to delete this user?',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await adminService.updateUserStatus(userId, { status: 'inactive' });
+          showToast('User deleted.');
+          fetchUsers();
+        } catch (error) {
+          showToast(error.response?.data?.message || 'Failed to delete user.', 'error');
+        }
+      }
+    });
+  };
+
+  const handleRestore = (userId) => {
+    setConfirmBox({
+      message: 'Are you sure you want to restore this deleted user?',
+      danger: false,
+      onConfirm: async () => {
+        try {
+          await adminService.updateUserStatus(userId, { status: 'active' });
+          showToast('User restored.');
+          fetchUsers();
+        } catch (error) {
+          showToast(error.response?.data?.message || 'Failed to restore user.', 'error');
         }
       }
     });
@@ -312,9 +357,29 @@ const UserManagement = () => {
                     </div>
                   </td>
                   <td>
-                    <span className={`${styles.badge} ${styles.statusBadge} ${styles[(user.status_name || user.status) === 'active' ? 'active' : 'inactive']}`}>
-                      {user.status_name || user.status}
-                    </span>
+                    <label
+                      className={styles.toggleSwitch}
+                      style={user.deleted_at ? { opacity: 0.45, pointerEvents: 'none' } : { cursor: 'pointer' }}
+                      title={user.deleted_at ? 'User is deleted' : ((user.status_name || user.status) === 'active' ? 'Click to deactivate' : 'Click to activate')}
+                      onClick={(e) => {
+                        if (user.deleted_at) return;
+                        e.preventDefault();
+                        const currentStatus = user.status_name || user.status;
+                        handleToggleActive(user.id, currentStatus);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className={styles.toggleInput}
+                        checked={(user.status_name || user.status) === 'active'}
+                        readOnly
+                        disabled={!!user.deleted_at}
+                      />
+                      <span className={styles.toggleSlider}></span>
+                      <span className={styles.toggleLabel}>
+                        {user.deleted_at ? 'deleted' : (user.status_name || user.status)}
+                      </span>
+                    </label>
                   </td>
                   <td style={{ color: '#6b7280', fontSize: '0.8rem' }}>{formatDate(user.lastLogin || user.last_login)}</td>
                   <td>
@@ -345,22 +410,28 @@ const UserManagement = () => {
                           <button className={styles.btnIcon} title="Edit Profile" onClick={() => { setSelectedUser(user); setShowAddModal(true); }}>
                             ✏️ Edit
                           </button>
-                          <button
-                            className={`${styles.btnIcon} ${styles.delete}`}
-                            title="Deactivate"
-                            onClick={() => handleStatusChange(user.id, 'inactive')}
-                          >
-                            🗑 Delete
-                          </button>
+                          {(isAdmin || isCEO) && (
+                            <button
+                              className={`${styles.btnIcon} ${styles.delete}`}
+                              title="Delete user"
+                              onClick={() => handleDelete(user.id)}
+                            >
+                              🗑 Delete
+                            </button>
+                          )}
                         </>
                       ) : (
-                        <button
-                          className={styles.btnSecondary}
-                          title="Restore"
-                          onClick={() => handleStatusChange(user.id, 'active')}
-                        >
-                          ↩ Restore
-                        </button>
+                        <>
+                          {(isAdmin || isCEO) && (
+                            <button
+                              className={styles.btnSecondary}
+                              title="Restore deleted user"
+                              onClick={() => handleRestore(user.id)}
+                            >
+                              ↩ Restore
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
