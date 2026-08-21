@@ -306,6 +306,68 @@
   display: block;
 }
 
+
+/* ── Status Toggle Switch ─────────────────────────────────────────────────── */
+.toggleSwitch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+}
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggleSlider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: var(--color-danger-bg, #FEE2E2);
+  border-radius: 9999px;
+  transition: background-color 0.3s ease;
+  border: 1px solid #FECACA;
+}
+.toggleSlider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: var(--color-danger, #DC2626);
+  border-radius: 50%;
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+.toggleInput:checked + .toggleSlider {
+  background-color: var(--color-success-bg, #DCFCE7);
+  border-color: #BBF7D0;
+}
+.toggleInput:checked + .toggleSlider::after {
+  transform: translateX(20px);
+  background-color: var(--color-success, #16A34A);
+}
+.toggleInput:disabled + .toggleSlider,
+.toggleInput:disabled ~ .toggleLabel {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.toggleLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6B7280);
+  text-transform: capitalize;
+  min-width: 60px;
+}
+.toggleInput:checked ~ .toggleLabel {
+  color: var(--color-success, #16A34A);
+}
+.toggleInput:not(:checked) ~ .toggleLabel {
+  color: var(--color-danger, #DC2626);
+}
+
 /* ── Badges (rule 8: full pill) ───────────────────────────────────────────── */
 .badge {
   display: inline-flex;
