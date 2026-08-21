@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, PlayCircle, CheckCircle, PlusCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../../../services/apiClient';
+import { playSound } from '../../../services/notificationManager';
 
 const PRIORITY_COLORS = {
   high: '#ef4444',
@@ -164,8 +165,10 @@ const TaskList = ({ title, description, filterStatus }) => {
       // Start task immediately
       try {
         await api.patch(`/employee-tasks/${task.id}/status`, { status: 'in_progress' });
+        playSound('info');
         fetchTasks();
       } catch (e) {
+        playSound('error');
         console.error('Failed to start task', e);
       }
     } else if (action === 'update') {
@@ -178,9 +181,11 @@ const TaskList = ({ title, description, filterStatus }) => {
   const handleSaveModal = async (taskId, status, progress_pct, notes) => {
     try {
       await api.patch(`/employee-tasks/${taskId}/status`, { status, progress_pct, notes });
+      playSound(status === 'completed' ? 'success' : 'info');
       setModalState({ open: false, task: null, completing: false });
       fetchTasks();
     } catch (e) {
+      playSound('error');
       console.error('Failed to save task update', e);
     }
   };
