@@ -765,7 +765,9 @@ exports.approvePurchaseOrder = catchAsync(async (req, res) => {
           await notificationRepository.create({
             roleTarget: 'FINANCE',
             title: 'Purchase Order Approved',
-            message: `PO ${purchaseOrder.po_number} was approved. Please prepare payment.`
+            message: `PO ${purchaseOrder.po_number} was approved. Please prepare payment.`,
+            type: 'general',
+            link: '/finance/procurement?tab=pending-payment'
           });
         }
       } else if (requester.email) {
