@@ -360,7 +360,6 @@ const DocumentModal = ({ doc, onClose }) => {
   if (!doc) return null;
   const printRef = useRef(null);
   const isCRV = doc.docType === 'CRV';
-  const isPCV = doc.docType === 'PCV';
 
   const handlePrint = () => {
     const content = printRef.current.innerHTML;
@@ -389,13 +388,13 @@ const DocumentModal = ({ doc, onClose }) => {
 
   const pm = doc.payment_method;
   const amt = parseFloat(doc.amount || 0);
-  const docNumber = isCRV ? doc.crv_number : (isPCV ? doc.pcv_number : doc.pv_number);
-  const docTitle = isCRV ? 'CASH RECEIPT VOUCHER' : (isPCV ? 'PETTY CASH VOUCHER' : 'PAYMENT VOUCHER');
+  const docNumber = isCRV ? doc.crv_number : doc.ev_number;
+  const docTitle = isCRV ? 'CASH RECEIPT VOUCHER' : 'EXPENSE VOUCHER';
   const partyLabel = isCRV ? 'RECEIVED FROM' : 'PAID TO';
   const partyName = isCRV ? doc.received_from : doc.paid_to;
 
-  const accentColor = isCRV ? 'var(--color-success)' : (isPCV ? 'var(--color-warning)' : 'var(--color-danger)');
-  const accentBg    = isCRV ? 'var(--color-success-bg)' : (isPCV ? 'var(--color-warning-bg)' : 'var(--color-danger-bg)');
+  const accentColor = isCRV ? 'var(--color-success)' : 'var(--color-danger)';
+  const accentBg    = isCRV ? 'var(--color-success-bg)' : 'var(--color-danger-bg)';
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -571,18 +570,15 @@ const FinanceCashBook = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true); setNotif(null);
     try {
-      const [cbRes, pvRes, pcvRes] = await Promise.all([
+      const [cbRes, evRes] = await Promise.all([
         api.get('/finance-cash/cashbook'),
-        api.get('/finance-cash/pv'),
-        api.get('/finance-cash/pcv'),
+        api.get('/finance-cash/ev'),
       ]);
       const cashbook = cbRes?.data || [];
-      const pvs      = pvRes?.data || [];
-      const pcvs     = pcvRes?.data || [];
+      const evs      = evRes?.data || [];
 
       const map = {};
-      (Array.isArray(pvs)  ? pvs  : []).forEach(p => { map[p.pv_number]  = { ...p, docType: 'PV'  }; });
-      (Array.isArray(pcvs) ? pcvs : []).forEach(p => { map[p.pcv_number] = { ...p, docType: 'PCV' }; });
+      (Array.isArray(evs) ? evs : []).forEach(e => { map[e.ev_number] = { ...e, docType: 'EV' }; });
 
       setEntries(Array.isArray(cashbook) ? cashbook : []);
       setRecordMap(map);
@@ -694,8 +690,7 @@ const FinanceCashBook = () => {
   const typeBadge = (type) => {
     const map = {
       CRV: { bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
-      PV:  { bg: 'var(--color-danger-bg)',  color: 'var(--color-danger)' },
-      PCV: { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
+      EV:  { bg: 'var(--color-danger-bg)',  color: 'var(--color-danger)' },
     };
     const s = map[type] || { bg: '#F3F4F6', color: 'var(--color-text-secondary)' };
     return {
@@ -790,8 +785,7 @@ const FinanceCashBook = () => {
             <select className="cb-select" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
               <option value="All">All Types</option>
               <option value="CRV">Cash Receipt (CRV)</option>
-              <option value="PV">Payment Voucher</option>
-              <option value="PCV">Petty Cash</option>
+              <option value="EV">Expense Voucher (EV)</option>
             </select>
           </div>
           <div>
@@ -830,7 +824,7 @@ const FinanceCashBook = () => {
                   <div style={{ fontWeight: 600, fontSize: 16 }}>{entries.length === 0 ? 'No transactions yet.' : 'No results match your filters.'}</div>
                 </td></tr>
               ) : paginated.map((entry) => {
-                const hasRecord = (entry.type === 'PV' || entry.type === 'PCV') && recordMap[entry.reference];
+                const hasRecord = entry.type === 'EV' && recordMap[entry.reference];
                 return (
                   <tr key={entry.id} className="cb-tr">
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
