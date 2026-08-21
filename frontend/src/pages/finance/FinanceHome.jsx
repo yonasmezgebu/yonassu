@@ -43,8 +43,7 @@ const FinanceHome = () => {
   /* ── Raw data from the same endpoints the real pages use ── */
   const [cashbook, setCashbook]   = useState([]);   // /finance-cash/cashbook → entries with receipts/payments/balance
   const [crvs,     setCrvs]       = useState([]);   // /finance-cash/crv
-  const [pvs,      setPvs]        = useState([]);   // /finance-cash/pv
-  const [pcvs,     setPcvs]       = useState([]);   // /finance-cash/pcv
+  const [evs,      setEvs]        = useState([]);   // /finance-cash/ev
   const [banks,    setBanks]      = useState([]);   // /finance-bank
   const [bankSummary, setBankSummary] = useState(null); // /finance-bank/cashbook/summary
   const [recons,   setRecons]     = useState([]);   // /finance-bank/reconciliations
@@ -63,11 +62,10 @@ const FinanceHome = () => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, pvRes, pcvRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
         api.get('/finance-cash/cashbook'),
         api.get('/finance-cash/crv'),
-        api.get('/finance-cash/pv'),
-        api.get('/finance-cash/pcv'),
+        api.get('/finance-cash/ev'),
         api.get('/finance-bank'),
         api.get('/finance-bank/cashbook/summary'),
         api.get('/finance-bank/reconciliations'),
@@ -75,8 +73,7 @@ const FinanceHome = () => {
       ]);
       if (cbRes.status === 'fulfilled')      setCashbook(cbRes.value?.data || []);
       if (crvRes.status === 'fulfilled')     setCrvs(crvRes.value?.data || []);
-      if (pvRes.status === 'fulfilled')      setPvs(pvRes.value?.data || []);
-      if (pcvRes.status === 'fulfilled')     setPcvs(pcvRes.value?.data || []);
+      if (evRes.status === 'fulfilled')      setEvs(evRes.value?.data || []);
       if (bankRes.status === 'fulfilled')    setBanks(bankRes.value?.data || []);
       if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data || null);
       if (reconRes.status === 'fulfilled')   setRecons(reconRes.value?.data || []);
@@ -94,8 +91,7 @@ const FinanceHome = () => {
   /* ── Derived values — same arithmetic the real pages use ── */
   const cbEntries   = Array.isArray(cashbook) ? cashbook : [];
   const crvList     = Array.isArray(crvs)     ? crvs     : [];
-  const pvList      = Array.isArray(pvs)      ? pvs      : [];
-  const pcvList     = Array.isArray(pcvs)     ? pcvs     : [];
+  const evList      = Array.isArray(evs)      ? evs      : [];
   const rcvList     = Array.isArray(receivables) ? receivables : [];
   const bankList    = Array.isArray(banks)    ? banks    : [];
   const reconList   = Array.isArray(recons)   ? recons   : [];
@@ -108,11 +104,8 @@ const FinanceHome = () => {
   // CRV — total income received
   const crvTotal = crvList.reduce((s, c) => s + parseFloat(c.amount || 0), 0);
 
-  // PV — total payments made
-  const pvTotal  = pvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-
-  // PCV — petty cash
-  const pcvTotal = pcvList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  // EV — expense vouchers
+  const evTotal  = evList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
 
   // Bank — total balance across all accounts
   const bankBalance = bankSummary
@@ -135,8 +128,7 @@ const FinanceHome = () => {
   // Transaction type breakdown for the breakdown card
   const txBreakdown = [
     { name: 'Cash Receipts (CRV)', count: crvList.length, amount: crvTotal, color: G.forest },
-    { name: 'Payments (PV)',        count: pvList.length,  amount: pvTotal,  color: G.orange },
-    { name: 'Petty Cash (PCV)',     count: pcvList.length, amount: pcvTotal, color: G.purple },
+    { name: 'Expense Vouchers (EV)', count: evList.length, amount: evTotal, color: G.orange },
   ].filter(b => b.count > 0);
   const maxBreakdownAmt = Math.max(...txBreakdown.map(b => b.amount), 1);
 
@@ -188,15 +180,15 @@ const FinanceHome = () => {
           <div className={styles.kpiSub}>Cash received</div>
         </div>
 
-        {/* Total PV Payments */}
-        <div className={styles.kpiCard} onClick={() => nav('/finance/pv')}>
+        {/* Total EV Payments */}
+        <div className={styles.kpiCard} onClick={() => nav('/finance/ev')}>
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>PV Payments</span>
+            <span className={styles.kpiLabel}>EV Payments</span>
             <span className={styles.kpiIcon} style={{ background: 'var(--color-warning-bg)' }}>📤</span>
           </div>
-          <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(pvTotal)}</div>
-          <div className={styles.kpiMeta}>{pvList.length} vouchers</div>
-          <div className={styles.kpiSub}>Cash paid out</div>
+          <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(evTotal)}</div>
+          <div className={styles.kpiMeta}>{evList.length} vouchers</div>
+          <div className={styles.kpiSub}>Expense vouchers</div>
         </div>
 
         {/* Bank Balance */}
@@ -228,7 +220,7 @@ const FinanceHome = () => {
               { label: 'CB Entries',    val: cbEntries.length,  icon: '📓', c: G.forest },
               { label: 'Receivables',   val: rcvList.length,    icon: '📋', c: G.orange },
               { label: 'Unrecon.',      val: unreconCount,      icon: '⚖️', c: unreconCount > 0 ? G.red : G.emerald },
-              { label: 'Petty Cash',    val: pcvList.length,    icon: '💰', c: G.purple },
+              { label: 'Expense Vouchers', val: evList.length,    icon: '🧾', c: G.orange },
             ].map(k => (
               <div key={k.label} className={styles.miniTile}>
                 <div className={styles.miniTileTop}>
@@ -352,8 +344,7 @@ const FinanceHome = () => {
           <div className={styles.qaGrid}>
             {[
               { label: 'CRV',         sub: 'Receipts',  icon: '💵', bg: 'var(--color-success-bg)', color: G.forest,  href: '/finance/crv' },
-              { label: 'PV',          sub: 'Payments',  icon: '💸', bg: 'var(--color-warning-bg)', color: G.orange,  href: '/finance/pv' },
-              { label: 'PCV',         sub: 'Petty Cash',icon: '💰', bg: 'var(--color-warning-bg)', color: G.orange,  href: '/finance/pcv' },
+              { label: 'EV',          sub: 'Vouchers',  icon: '🧾', bg: 'var(--color-warning-bg)', color: G.orange,  href: '/finance/ev' },
               { label: 'Cash Book',   sub: 'Ledger',    icon: '📓', bg: 'var(--color-info-bg)',    color: G.blue,    href: '/finance/cash-book' },
               { label: 'Bank',        sub: 'Accounts',  icon: '🏦', bg: 'var(--color-info-bg)',    color: G.blue,    href: '/finance/bank-accounts' },
               { label: 'Receivables', sub: 'Book',      icon: '📋', bg: '#F3E5F5',                 color: G.purple,  href: '/finance/outstanding-ar' },
