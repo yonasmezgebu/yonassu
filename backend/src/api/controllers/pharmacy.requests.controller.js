@@ -74,13 +74,14 @@ const requestsController = {
       });
     }
 
-    // Insert notification only for Admin/CEO users
+    // Insert notification only for pharmacy-side users (never Admin/CEO —
+    // prescriptions are fulfilled on pharmacy dashboards, not admin)
     try {
       const customerName = request.customer_name || 'A customer';
       const adminUsers = await db('users')
         .join('user_roles', 'users.id', 'user_roles.user_id')
         .join('roles', 'user_roles.role_id', 'roles.id')
-        .whereIn('roles.name', ['Admin', 'CEO', 'Pharmacy Worker', 'Sales/Cashier', 'Pharmacy Manager'])
+        .whereIn('roles.name', ['Pharmacy Worker', 'Sales/Cashier', 'Pharmacy Manager'])
         .select('users.id');
       const userIds = [...new Set(adminUsers.map(u => u.id))];
       for (const uid of userIds) {
