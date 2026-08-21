@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
+const { sendFinanceNotification } = require('../../services/notification.service');
 
 // ── GET all pending/all submissions ──────────────────────────────
 router.get('/live-income', authenticate, async (req, res) => {
@@ -323,6 +324,14 @@ router.post('/live-income', authenticate, async (req, res) => {
       manual_details: manual_details ? JSON.stringify(manual_details) : null
     });
 
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${Number(amount || 0).toLocaleString()} income recorded for ${department} (Ref: ${reference_no || `INC-${id}`}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: id
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+
     res.status(201).json({ success: true, message: 'Income submitted successfully', id });
   } catch (error) {
     console.error('Error submitting income:', error);
@@ -432,6 +441,13 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         }
       });
 
+      sendFinanceNotification({
+        title: 'Income Approved',
+        message: `Car Rental payment of ETB ${systemTotal.toFixed(2)} approved for Order ${order.order_number}.`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+
       return res.json({ success: true, message: 'Car Rental payment approved and order confirmed successfully.' });
     }
 
@@ -508,6 +524,13 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           manual_details: JSON.stringify({ cart_id: String(cart.id), cart_code: cart.cart_code })
         });
       });
+
+      sendFinanceNotification({
+        title: 'Income Approved',
+        message: `POS digital payment of ETB ${amount} verified for ${cart.customer_name || 'Walk-in'}.`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
       return res.json({ success: true, message: 'POS digital payment verified and sent to store for release.' });
     }
@@ -694,6 +717,14 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       }
     });
 
+    sendFinanceNotification({
+      title: 'Income Approved',
+      message: `ETB ${Number(systemTotal || 0).toLocaleString()} income approved for ${submission.department} (Ref: ${submission.reference_no || `INC-${submission.id}`}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: submission.id
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+
     res.json({
       success: true,
       message: 'Income approved and recorded to Receivables Book',
@@ -724,6 +755,12 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         finance_notes: reason,
         updated_at: knex.fn.now()
       });
+      sendFinanceNotification({
+        title: 'Income Rejected',
+        message: `Car Rental payment for Order ${order.order_number} rejected: ${reason}`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
       return res.json({ success: true, message: 'Payment rejected.' });
     }
 
@@ -735,6 +772,12 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         notes: `Finance Rejected: ${reason}`,
         updated_at: knex.fn.now()
       });
+      sendFinanceNotification({
+        title: 'Income Rejected',
+        message: `POS digital payment rejected: ${reason}`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
       return res.json({ success: true, message: 'POS Digital Payment rejected.' });
     }
 
@@ -746,6 +789,12 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         notes: reason,
         updated_at: knex.fn.now()
       });
+      sendFinanceNotification({
+        title: 'Income Rejected',
+        message: `AgriRent payment rejected: ${reason}`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
       return res.json({ success: true, message: 'Payment rejected.' });
     }
 
@@ -760,6 +809,13 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
       rejection_reason: reason,
       updated_at: knex.fn.now()
     });
+    sendFinanceNotification({
+      title: 'Income Rejected',
+      message: `ETB ${Number(submission.amount || 0).toLocaleString()} income for ${submission.department} rejected: ${reason}`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: submission.id
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
     res.json({ success: true, message: 'Submission rejected.' });
   } catch (error) {
     console.error('Error rejecting income submission:', error);
