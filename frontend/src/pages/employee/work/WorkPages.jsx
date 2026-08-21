@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { employeePortalState, SESSION_EMPLOYEE_ID } from '../../../utils/employeePortalState';
 import { Upload, FileText, Clock, Send, Archive, AlertCircle, CheckCircle } from 'lucide-react';
+import { playSound } from '../../../services/notificationManager';
 
 const PageHeader = ({ title, description }) => (
   <div style={{ marginBottom: '24px' }}>
@@ -35,10 +36,12 @@ export const SubmitWork = () => {
         ...formData,
         duration_value: Number(formData.duration_value)
       });
+      playSound('request');
       setFormData({ task_id: '', description: '', duration_value: '', duration_unit: 'hours', notes: '' });
       // Remove submitted task from dropdown
       setTasks(tasks.filter(t => t.id !== formData.task_id));
     } catch (err) {
+      playSound('error');
       alert(err.message);
     }
   };
@@ -166,11 +169,13 @@ export const DailyReport = () => {
 
       if (!res.ok) throw new Error('Failed to submit report');
       
+      playSound('success');
       setFormData({ report_text: '', document_name: '', document_url: '' });
       setSelectedFile(null);
       fetchHistory();
       alert('Report submitted successfully to your manager!');
     } catch (err) {
+      playSound('error');
       alert(err.message);
     } finally {
       setSubmitting(false);
