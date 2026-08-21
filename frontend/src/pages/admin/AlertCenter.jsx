@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import { formatDateTime } from '../../utils/formatters';
 import styles from './AlertCenter.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const PAGE_SIZE = 8;
 const TYPE_ORDER = { CRITICAL: 0, WARNING: 1, INFO: 2 };
@@ -18,21 +19,21 @@ const relativeTime = (date) => {
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return formatDateTime(date);
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 };
 
 const AlertCenter = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [moduleFilter, setModuleFilter] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => location.state?.dashSearchTerm || '');
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -40,6 +41,7 @@ const AlertCenter = () => {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
@@ -165,6 +167,14 @@ const AlertCenter = () => {
   const unread = alerts.filter((a) => a.status === 'UNREAD').length;
 
   const toggleType = (t) => setTypeFilter((prev) => (prev === t ? 'ALL' : t));
+
+  useEffect(() => {
+    const handleDashSearch = (e) => {
+      setSearch(e.detail || '');
+    };
+    window.addEventListener('dashboardSearch', handleDashSearch);
+    return () => window.removeEventListener('dashboardSearch', handleDashSearch);
+  }, []);
 
   const statCards = [
     { key: 'ALL', label: 'Total Alerts', count: alerts.length, tone: 'neutral' },
