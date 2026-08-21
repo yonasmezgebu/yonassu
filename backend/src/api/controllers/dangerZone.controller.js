@@ -2,6 +2,7 @@ const { audit } = require('../../config/logger');
 const AppError = require('../../utils/AppError');
 const { catchAsync } = require('../../utils/catchAsync');
 const dangerZoneService = require('../../services/dangerZone.service');
+const { sendNotification } = require('../../services/notification.service'); /* DZ_NOTIF_IMPORT */
 
 const userName = (req) => req.user?.full_name || req.user?.fullName || req.user?.email || 'Unknown';
 
@@ -62,6 +63,23 @@ exports.approveRequest = catchAsync(async (req, res) => {
     approvedBy: req.user.id,
     approvedByName: userName(req),
   });
+  /* DZ_APPROVE_NOTIFY */
+  try {
+    if (request.requested_by) {
+      await sendNotification(null, request.requested_by, {
+        title: 'Danger Zone Reset: APPROVED & EXECUTED',
+        message: 'CEO approved and executed your system reset. All data has been cleared.',
+        type: 'danger_zone',
+        link: '/admin/danger-zone'
+      });
+    }
+    await sendNotification('Super Admin', null, {
+      title: 'Danger Zone Reset Executed',
+      message: 'CEO approved and executed a full system data reset.',
+      type: 'danger_zone',
+      link: '/admin/danger-zone'
+    });
+  } catch (notifErr) { console.error('DZ approve notification error:', notifErr); }
   await audit('DANGER_ZONE_RESET_EXECUTED', req.user.id, {
     ip: req.ip,
     resourceId: request.id,
@@ -93,5 +111,16 @@ exports.rejectRequest = catchAsync(async (req, res) => {
     resourceId: request.id,
     details: { action: 'RESET_ALL_DATA', reason: String(reason).trim() }
   });
+  /* DZ_REJECT_NOTIFY */
+  try {
+    if (request.requested_by) {
+      await sendNotification(null, request.requested_by, {
+        title: 'Danger Zone Reset: REJECTED',
+        message: 'CEO rejected your danger zone reset request. Reason: ' + String(reason).trim(),
+        type: 'danger_zone',
+        link: '/admin/danger-zone'
+      });
+    }
+  } catch (notifErr) { console.error('DZ reject notification error:', notifErr); }
   res.json({ status: 'success', message: 'Reset request rejected.', data: request });
 });
