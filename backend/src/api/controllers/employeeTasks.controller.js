@@ -136,14 +136,17 @@ const EmployeeTasksController = {
     };
     const deptName = deptNameMap[department] || department;
 
-    // PRIMARY: HR module employees linked to users with completed registration
+    // PRIMARY: HR module employees linked to users with completed registration AND role = Employee
     try {
       const hrEmployees = await db('hr_employees')
         .join('departments', 'hr_employees.dept_id', 'departments.id')
         .join('users', 'hr_employees.user_id', 'users.id')
+        .join('user_roles', 'users.id', 'user_roles.user_id')
+        .join('roles', 'user_roles.role_id', 'roles.id')
         .where('departments.name', 'like', `%${deptName}%`)
         .where('hr_employees.registration_status', 'completed')
         .where('users.is_employee', true)
+        .where('roles.name', 'Employee')
         .whereNull('users.deleted_at')
         .select(
           'users.id',
@@ -152,40 +155,28 @@ const EmployeeTasksController = {
           'users.full_name',
           'hr_employees.full_name as hr_name',
           'departments.name as department'
+        )
+        .groupBy(
+          'users.id',
+          'users.email',
+          'users.phone',
+          'users.full_name',
+          'hr_employees.full_name',
+          'departments.name'
         );
 
-      if (hrEmployees && hrEmployees.length > 0) {
-        const normalized = hrEmployees.map(emp => ({
-          id:        emp.id,
-          email:     emp.email,
-          phone:     emp.phone,
-          full_name: emp.hr_name || emp.full_name || emp.email,
-          department: emp.department,
-        }));
-        return res.json({ status: 'success', data: normalized });
-      }
+      const normalized = hrEmployees.map(emp => ({
+        id:        emp.id,
+        email:     emp.email,
+        phone:     emp.phone,
+        full_name: emp.hr_name || emp.full_name || emp.email,
+        department: emp.department,
+      }));
+      return res.json({ status: 'success', data: normalized });
     } catch (err) {
-      console.warn('[getEmployeesByDept] HR join failed, falling back:', err.message);
+      console.warn('[getEmployeesByDept] Query failed:', err.message);
+      return res.status(500).json({ status: 'error', message: 'Failed to fetch employees' });
     }
-
-    // FALLBACK: if hr_employees has no completed records for this dept yet,
-    // return users in this department who have employee-level roles
-    const fallbackEmployeeRoleNames = [
-      'Sales/Cashier', 'Pharmacy Worker', 'Printing Operator',
-      'Car Rental Agent', 'Purchase Officer', 'Employee', 'Cashier', 'Accountant'
-    ];
-
-    const fallbackEmployees = await db('users')
-      .join('user_roles', 'users.id', 'user_roles.user_id')
-      .join('roles', 'user_roles.role_id', 'roles.id')
-      .leftJoin('departments', 'users.department_id', 'departments.id')
-      .where('departments.name', 'like', `%${deptName}%`)
-      .whereIn('roles.name', fallbackEmployeeRoleNames)
-      .whereNull('users.deleted_at')
-      .select('users.id', 'users.email', 'users.phone', 'users.full_name', 'departments.name as department')
-      .distinct('users.id');
-
-    res.json({ status: 'success', data: fallbackEmployees.map(e => ({ ...e, full_name: e.full_name || e.email })) });
   }),
 
   // Delete task
