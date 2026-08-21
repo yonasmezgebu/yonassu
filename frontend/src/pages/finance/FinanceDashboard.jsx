@@ -4,9 +4,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import FinanceHome from './FinanceHome';
 
 // Cash Management
-import FinancePV from './FinancePV';
-import FinancePCV from './FinancePCV';
-import FinancePendingPCVs from './FinancePendingPCVs';
+import FinanceEV from './FinanceEV';
 import FinanceCashBook from './FinanceCashBook';
 import FinanceCRV from './FinanceCRV';
 import FinanceBankAccounts from './FinanceBankAccounts';
@@ -31,6 +29,7 @@ import FinanceEquity from './FinanceEquity';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
 import FinanceReceiptsDashboard from './FinanceReceiptsDashboard';
+import CashHandovers from './CashHandovers';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
@@ -46,10 +45,9 @@ const FinanceDashboard = () => {
     { label: 'Expense', icon: 'wallet',
       children: [
         { label: 'Receipts (CRV)',                path: '/finance/crv',                   icon: 'shopping-cart', color: '#10b981' },
-        { label: 'General Payments',              path: '/finance/pv',                    icon: 'shopping-cart', color: '#f59e0b' },
+        { label: 'Expense Vouchers (EV)',         path: '/finance/ev',                    icon: 'file-text',     color: '#f59e0b' },
         { label: 'Procurement (Drug/Stock)',       path: '/finance/procurement',           icon: 'package',       color: '#15803d' },
         { label: 'General Procurement',           path: '/finance/general-procurement',   icon: 'truck',         color: '#047857' },
-        { label: 'Petty Cash',                    path: '/finance/pcv',                   icon: 'wallet',        color: '#8b5cf6' },
         { label: 'Expense Book',                  path: '/finance/cash-book',             icon: 'book',          color: '#06b6d4' },
         { label: 'Liabilities & Accounts Payable',path: '/finance/liabilities',           icon: 'alert-circle',  color: '#eab308' },
       ] },
@@ -100,9 +98,9 @@ const FinanceDashboard = () => {
             <Route path="tractor-assets" element={<FinanceTractorAssets />} />
 
             {/* Cash Management */}
-            <Route path="pv" element={<FinancePV />} />
-            <Route path="pcv" element={<FinancePCV />} />
+            <Route path="ev" element={<FinanceEV />} />
             <Route path="crv" element={<FinanceCRV />} />
+<Route path="cash-handovers" element={<CashHandovers />} />
             <Route path="cash-book" element={<FinanceCashBook />} />
             <Route path="bank-accounts" element={<FinanceBankAccounts />} />
             <Route path="payroll-payment" element={<FinancePayrollPayment />} />
