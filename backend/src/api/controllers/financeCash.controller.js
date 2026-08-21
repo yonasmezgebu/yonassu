@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
+const { sendCeoNotification } = require('../../services/notification.service');
 
 // Helper to notify clients (if needed)
 const notify = (req, title, message, link, type = 'info') => {
@@ -106,7 +107,7 @@ exports.getCRVById = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: crv });
 });
 
-exports.createPV = catchAsync(async (req, res) => {
+exports.createEV = catchAsync(async (req, res) => {
   const {
     date,
     paidTo,
@@ -125,16 +126,16 @@ exports.createPV = catchAsync(async (req, res) => {
   } = req.body;
 
   if (!date || !paidTo || !amount || !paymentMethod || !description) {
-    throw AppError.badRequest('Missing required PV fields');
+    throw AppError.badRequest('Missing required EV fields');
   }
 
-  // Generate PV Number
-  const lastPv = await db('finance_pvs').orderBy('id', 'desc').first();
-  const nextSeq = (lastPv?.id || 0) + 1;
-  const pvNumber = `PV-${new Date(date).getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
+  // Generate EV Number
+  const lastEv = await db('finance_evs').orderBy('id', 'desc').first();
+  const nextSeq = (lastEv?.id || 0) + 1;
+  const evNumber = `EV-${new Date(date).getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
 
-  const pvData = {
-    pv_number: pvNumber,
+  const evData = {
+    ev_number: evNumber,
     date,
     paid_to: paidTo,
     amount,
@@ -147,189 +148,117 @@ exports.createPV = catchAsync(async (req, res) => {
     prepared_signature: preparedSignature || null,
     checked_signature: checkedSignature || null,
     receiver_signature: receiverSignature || null,
-  };
-
-  if (paymentMethod === 'Bank' && bankDetails) {
-    pvData.bank_name = bankDetails.bankName;
-    pvData.account_holder = bankDetails.accountHolder;
-    pvData.account_number = bankDetails.accountNumber;
-    pvData.cheque_no = bankDetails.chequeNo;
-  }
-
-  if (paymentMethod === 'Telebirr' && telebirrDetails) {
-    pvData.telebirr_number = telebirrDetails.telebirrNumber;
-    pvData.telebirr_name = telebirrDetails.fullName;
-  }
-
-  const [pvId] = await db('finance_pvs').insert(pvData);
-
-  // Record in Cashbook (as payment)
-  await db('finance_cashbook').insert({
-    date,
-    type: 'PV',
-    reference: pvNumber,
-    description: `Paid to ${paidTo}: ${description}`,
-    receipts: 0,
-    payments: amount
-  });
-
-  notify(req, '💸 PV Created', `New Payment Voucher ${pvNumber} created`, '/finance/cash-book', 'info');
-
-  res.status(201).json({
-    status: 'success',
-    message: 'PV created successfully',
-    data: { id: pvId, pvNumber }
-  });
-});
-
-exports.getPVs = catchAsync(async (req, res) => {
-  const pvs = await db('finance_pvs').orderBy('id', 'desc');
-  res.json({ status: 'success', data: pvs });
-});
-
-exports.getPVById = catchAsync(async (req, res) => {
-  const pv = await db('finance_pvs').where({ id: req.params.id }).first();
-  if (!pv) throw AppError.notFound('PV not found');
-  res.json({ status: 'success', data: pv });
-});
-
-exports.createPCV = catchAsync(async (req, res) => {
-  const {
-    date,
-    paidTo,
-    amount,
-    paymentMethod,
-    description,
-    referenceNo,
-    bankDetails,
-    telebirrDetails,
-    preparedBy,
-    checkedBy,
-    receiverName,
-    preparedSignature,
-    checkedSignature,
-    receiverSignature
-  } = req.body;
-
-  if (!date || !paidTo || !amount || !description) {
-    throw AppError.badRequest('Missing required PCV fields');
-  }
-
-  // Generate PCV Number
-  const lastPcv = await db('finance_pcvs').orderBy('id', 'desc').first();
-  const nextSeq = (lastPcv?.id || 0) + 1;
-  const pcvNumber = `PCV-${new Date(date).getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
-
-  const pcvData = {
-    pcv_number: pcvNumber,
-    date,
-    paid_to: paidTo,
-    amount,
-    payment_method: paymentMethod || 'Cash',
-    description,
-    reference_no: referenceNo || null,
-    prepared_by: preparedBy || null,
-    checked_by: checkedBy || null,
-    receiver_name: receiverName || null,
-    prepared_signature: preparedSignature || null,
-    checked_signature: checkedSignature || null,
-    receiver_signature: receiverSignature || null,
     status: 'pending_ceo',
+    source: 'manual',
   };
 
   if (paymentMethod === 'Bank' && bankDetails) {
-    pcvData.bank_name = bankDetails.bankName;
-    pcvData.account_holder = bankDetails.accountHolder;
-    pcvData.account_number = bankDetails.accountNumber;
-    pcvData.cheque_no = bankDetails.chequeNo;
+    evData.bank_name = bankDetails.bankName;
+    evData.account_holder = bankDetails.accountHolder;
+    evData.account_number = bankDetails.accountNumber;
+    evData.cheque_no = bankDetails.chequeNo;
   }
 
   if (paymentMethod === 'Telebirr' && telebirrDetails) {
-    pcvData.telebirr_number = telebirrDetails.telebirrNumber;
-    pcvData.telebirr_name = telebirrDetails.fullName;
+    evData.telebirr_number = telebirrDetails.telebirrNumber;
+    evData.telebirr_name = telebirrDetails.fullName;
   }
 
-  const [pcvId] = await db('finance_pcvs').insert(pcvData);
+  const [evId] = await db('finance_evs').insert(evData);
 
-  notify(req, '💰 New PCV for Approval', `Petty Cash Voucher ${pcvNumber} is awaiting CEO approval.`, '/ceo/finance', 'warning');
+  notify(req, '💰 New Expense Voucher for Approval', `Expense Voucher ${evNumber} is awaiting CEO approval.`, '/ceo/finance', 'warning');
 
   res.status(201).json({
     status: 'success',
-    message: 'PCV sent to CEO for approval',
-    data: { id: pcvId, pcvNumber }
+    message: 'Expense voucher sent to CEO for approval',
+    data: { id: evId, evNumber }
   });
 });
 
-exports.getPCVs = catchAsync(async (req, res) => {
-  const pcvs = await db('finance_pcvs').orderBy('id', 'desc');
-  res.json({ status: 'success', data: pcvs });
+exports.getEVs = catchAsync(async (req, res) => {
+  const evs = await db('finance_evs').orderBy('id', 'desc');
+  res.json({ status: 'success', data: evs });
 });
 
-exports.getPendingPCVs = catchAsync(async (req, res) => {
-  const pcvs = await db('finance_pcvs').whereIn('status', ['pending_ceo', 'approved_finance', 'rejected', 'completed']).orderBy('id', 'desc');
-  res.json({ status: 'success', data: pcvs });
+exports.getPendingEVs = catchAsync(async (req, res) => {
+  const evs = await db('finance_evs').whereIn('status', ['pending_ceo', 'approved_finance', 'rejected', 'completed']).orderBy('id', 'desc');
+  res.json({ status: 'success', data: evs });
 });
 
 exports.getFinanceNotifications = catchAsync(async (req, res) => {
-  const pcvs = await db('finance_pcvs')
+  const evs = await db('finance_evs')
     .whereIn('status', ['approved_finance', 'rejected'])
     .where('finance_read', false)
     .orderBy('id', 'desc');
-  res.json({ status: 'success', data: pcvs });
+  res.json({ status: 'success', data: evs });
 });
 
 exports.markFinanceRead = catchAsync(async (req, res) => {
   const { id } = req.params;
-  await db('finance_pcvs').where({ id }).update({ finance_read: true });
+  await db('finance_evs').where({ id }).update({ finance_read: true });
   res.json({ status: 'success', message: 'Marked as read' });
 });
 
-exports.approvePCV = catchAsync(async (req, res) => {
+exports.approveEV = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const pcv = await db('finance_pcvs').where({ id }).first();
-  if (!pcv) throw AppError.notFound('PCV not found');
+  const ev = await db('finance_evs').where({ id }).first();
+  if (!ev) throw AppError.notFound('Expense voucher not found');
 
-  await db('finance_pcvs').where({ id }).update({ status: 'approved_finance' });
-  notify(req, '✅ PCV Approved', `PCV ${pcv.pcv_number} approved by CEO. Click to continue.`, '/finance/pcv', 'success');
+  await db('finance_evs').where({ id }).update({ status: 'approved_finance' });
+  notify(req, '✅ Expense Voucher Approved', `Expense Voucher ${ev.ev_number} approved by CEO. Click to continue.`, '/finance/ev', 'success');
+  await sendCeoNotification({
+    title: 'Expense Voucher Approved',
+    message: `Expense Voucher ${ev.ev_number} (ETB ${ev.amount}) approved.`,
+    type: 'general',
+    link: '/finance/ev?tab=history',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
 
-  res.json({ status: 'success', message: 'PCV approved successfully' });
+  res.json({ status: 'success', message: 'Expense voucher approved successfully' });
 });
 
-exports.rejectPCV = catchAsync(async (req, res) => {
+exports.rejectEV = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
-  const pcv = await db('finance_pcvs').where({ id }).first();
-  if (!pcv) throw AppError.notFound('PCV not found');
+  const ev = await db('finance_evs').where({ id }).first();
+  if (!ev) throw AppError.notFound('Expense voucher not found');
 
-  await db('finance_pcvs').where({ id }).update({ status: 'rejected', reject_reason: reason });
-  notify(req, '❌ PCV Rejected', `PCV ${pcv.pcv_number} was rejected by CEO.`, '/finance/pcv', 'error');
+  await db('finance_evs').where({ id }).update({ status: 'rejected', reject_reason: reason });
+  notify(req, '❌ Expense Voucher Rejected', `Expense Voucher ${ev.ev_number} was rejected by CEO.`, '/finance/ev', 'error');
+  await sendCeoNotification({
+    title: 'Expense Voucher Rejected',
+    message: `Expense Voucher ${ev.ev_number} (ETB ${ev.amount}) rejected${reason ? ' - ' + reason : ''}.`,
+    type: 'general',
+    link: '/finance/ev?tab=history',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
 
-  res.json({ status: 'success', message: 'PCV rejected successfully' });
+  res.json({ status: 'success', message: 'Expense voucher rejected successfully' });
 });
 
-exports.finalizePCV = catchAsync(async (req, res) => {
+exports.finalizeEV = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const pcv = await db('finance_pcvs').where({ id, status: 'approved_finance' }).first();
-  if (!pcv) throw AppError.badRequest('PCV not found or not approved');
+  const ev = await db('finance_evs').where({ id, status: 'approved_finance' }).first();
+  if (!ev) throw AppError.badRequest('Expense voucher not found or not approved');
 
-  await db('finance_pcvs').where({ id }).update({ status: 'completed' });
+  await db('finance_evs').where({ id }).update({ status: 'completed' });
 
-  // Record in Cashbook
+  // Record in Cashbook only when finalized (single consistent rule)
   await db('finance_cashbook').insert({
-    date: pcv.date,
-    type: 'PCV',
-    reference: pcv.pcv_number,
-    description: `Petty Cash to ${pcv.paid_to}: ${pcv.description}`,
+    date: ev.date,
+    type: 'EV',
+    reference: ev.ev_number,
+    description: `Paid to ${ev.paid_to}: ${ev.description}`,
     receipts: 0,
-    payments: pcv.amount
+    payments: ev.amount
   });
 
-  notify(req, '✅ PCV Completed', `PCV ${pcv.pcv_number} has been finalized and recorded in the cashbook by Finance.`, '/ceo/finance', 'success');
-  res.json({ status: 'success', message: 'PCV recorded in cashbook' });
+  notify(req, '✅ Expense Voucher Completed', `Expense Voucher ${ev.ev_number} has been finalized and recorded in the cashbook by Finance.`, '/ceo/finance', 'success');
+  res.json({ status: 'success', message: 'Expense voucher recorded in cashbook' });
 });
 
-exports.getPCVById = catchAsync(async (req, res) => {
-  const pcv = await db('finance_pcvs').where({ id: req.params.id }).first();
-  if (!pcv) throw AppError.notFound('PCV not found');
-  res.json({ status: 'success', data: pcv });
+exports.getEVById = catchAsync(async (req, res) => {
+  const ev = await db('finance_evs').where({ id: req.params.id }).first();
+  if (!ev) throw AppError.notFound('Expense voucher not found');
+  res.json({ status: 'success', data: ev });
 });
