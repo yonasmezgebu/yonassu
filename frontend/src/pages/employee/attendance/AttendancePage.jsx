@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { employeePortalState, SESSION_EMPLOYEE_ID } from '../../../utils/employeePortalState';
 import { Clock, Play, Square, Coffee, CheckCircle, AlertTriangle, CalendarDays } from 'lucide-react';
+import { playSound } from '../../../services/notificationManager';
 
 const PageHeader = ({ title, description }) => (
   <div style={{ marginBottom: '24px' }}>
@@ -42,13 +43,13 @@ export const AttendancePage = () => {
   }, []);
 
   const handleCheckIn = () => {
-    try { employeePortalState.checkIn(SESSION_EMPLOYEE_ID); } 
-    catch (e) { alert(e.message); }
+    try { employeePortalState.checkIn(SESSION_EMPLOYEE_ID); playSound('success'); }
+    catch (e) { playSound('error'); alert(e.message); }
   };
   
   const handleCheckOut = () => {
-    try { employeePortalState.checkOut(SESSION_EMPLOYEE_ID); } 
-    catch (e) { alert(e.message); }
+    try { employeePortalState.checkOut(SESSION_EMPLOYEE_ID); playSound('closed'); }
+    catch (e) { playSound('error'); alert(e.message); }
   };
 
   const handleBreak = () => {
@@ -56,15 +57,17 @@ export const AttendancePage = () => {
       const openBreak = record?.breaks.find(b => !b.end_at);
       if (openBreak) employeePortalState.endBreak(SESSION_EMPLOYEE_ID);
       else employeePortalState.startBreak(SESSION_EMPLOYEE_ID);
-    } catch (e) { alert(e.message); }
+      playSound('info');
+    } catch (e) { playSound('error'); alert(e.message); }
   };
 
   const submitLeave = (e) => {
     e.preventDefault();
     try {
       employeePortalState.requestLeave(SESSION_EMPLOYEE_ID, leaveForm);
+      playSound('request');
       setLeaveForm({ leave_type: 'annual', start_date: '', end_date: '', reason: '' });
-    } catch(e) { alert(e.message); }
+    } catch(e) { playSound('error'); alert(e.message); }
   };
 
   const isCheckedIn = record?.check_in_at && !record?.check_out_at;
