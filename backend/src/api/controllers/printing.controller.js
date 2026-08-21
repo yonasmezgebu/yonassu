@@ -6,6 +6,7 @@ const OrderModel = require('../../models/Order.model');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
+const { sendFinanceNotification } = require('../../services/notification.service');
 const deleteFile = (path) => console.log('Deleted file:', path);
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
@@ -248,6 +249,14 @@ exports.createOrder = catchAsync(async (req, res) => {
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     }).catch(err => console.error('Failed to submit to finance:', err.message));
+
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${vatPricing.total.toLocaleString()} Printing income submitted for verification (Ref: ${paymentReference}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: orderId
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
   }
 
   await audit('PRINTING_ORDER_CREATED', userId, {
@@ -989,6 +998,14 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     }).catch(err => console.error('Failed to submit to finance:', err.message));
+
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${vatPricing.total.toLocaleString()} Printing (customer portal) income submitted for verification (Ref: ${paymentReference}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: orderId
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
   }
 
   await audit('PRINTING_ORDER_CREATED', userId, {
