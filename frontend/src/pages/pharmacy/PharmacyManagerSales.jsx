@@ -178,6 +178,13 @@ export default function PharmacyManagerSales() {
 
   useEffect(() => { loadSales(); loadAudit(); }, [loadSales, loadAudit]);
 
+  // Sync with navbar search bar
+  useEffect(() => {
+    const handleNavSearch = (e) => setSearch(e.detail || '');
+    window.addEventListener('dashboardSearch', handleNavSearch);
+    return () => window.removeEventListener('dashboardSearch', handleNavSearch);
+  }, []);
+
   const q = search.toLowerCase();
   const filteredSales = sales.filter(s =>
     !q || (s.worker_name||'').toLowerCase().includes(q) ||
