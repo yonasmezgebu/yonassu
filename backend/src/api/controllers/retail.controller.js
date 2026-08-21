@@ -5,6 +5,7 @@ const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = re
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder } = require('../../services/invoiceDocument.service');
+const { sendFinanceNotification } = require('../../services/notification.service');
 
 const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 
@@ -884,6 +885,14 @@ exports.submitDailyRetail = catchAsync(async (req, res) => {
       status: 'Pending',
       description: `Retail daily sales submission — ${unsubmitted.length} transaction(s) on ${dateStr}`
     });
+
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${Number(totalAmount || 0).toLocaleString()} Retail daily sales (${unsubmitted.length} txns) submitted for verification (Ref: ${sub_no}).`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: sub_no
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
     // 3. Mark all as submitted and set submission_ref
     await trx('retail_transactions').where({ is_submitted: false }).update({ 
