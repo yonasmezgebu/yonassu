@@ -24,6 +24,18 @@ const LoginPage = () => {
     setError('');
     try {
       const user = await authService.login(formData);
+      const userRoles = user.roles?.map(r => r.toLowerCase()) || [];
+      const hasRole = (...roles) => roles.some(r => userRoles.includes(r.toLowerCase()));
+      const isOnlyEmployee = userRoles.length > 0 && userRoles.every(r =>
+        ['employee', 'customer'].includes(r)
+      );
+
+      // Pure employees are always sent to /employee — never redirect them elsewhere
+      if (isOnlyEmployee && hasRole('employee')) {
+        navigate('/employee');
+        return;
+      }
+
       const redirect = searchParams.get('redirect');
       if (redirect) {
         navigate(redirect);
@@ -36,23 +48,22 @@ const LoginPage = () => {
         return;
       }
 
-      const userRoles = user.roles?.map(r => r.toLowerCase()) || [];
-
-      if (userRoles.includes('admin')) navigate('/admin');
-      else if (userRoles.includes('ceo')) navigate('/ceo');
-      else if (userRoles.includes('finance manager') || userRoles.includes('finance')) navigate('/finance');
-      else if (userRoles.includes('purchase') || userRoles.includes('market team')) navigate('/purchase');
-      else if (userRoles.includes('pharmacy store keeper')) navigate('/pharmacy-store');
-      else if (userRoles.includes('general store keeper')) navigate('/general-store');
-      else if (userRoles.includes('sales/cashier') || userRoles.includes('pharmacy worker')) navigate('/pharmacy-worker');
-      else if (userRoles.includes('printing supervisor') || userRoles.includes('printing manager')) navigate('/printing-manager');
-      else if (userRoles.includes('pharmacy manager')) navigate('/pharmacy');
-      else if (userRoles.includes('car renting manager')) navigate('/car-renting');
-      else if (userRoles.includes('sales manager')) navigate('/sales/overview');
-      else if (userRoles.includes('hr manager')) navigate('/hr');
-      else if (userRoles.includes('board member')) navigate('/board');
-      else if (userRoles.includes('employee')) navigate('/employee');
-      else if (userRoles.includes('customer')) navigate('/customer');
+      // Route by role — isOnlyEmployee already handled above (returned early to /employee)
+      if (hasRole('admin')) navigate('/admin');
+      else if (hasRole('ceo')) navigate('/ceo');
+      else if (hasRole('finance manager', 'finance')) navigate('/finance');
+      else if (hasRole('purchase', 'market team')) navigate('/purchase');
+      else if (hasRole('pharmacy store keeper')) navigate('/pharmacy-store');
+      else if (hasRole('general store keeper')) navigate('/general-store');
+      else if (hasRole('sales/cashier', 'pharmacy worker')) navigate('/pharmacy-worker');
+      else if (hasRole('printing supervisor', 'printing manager')) navigate('/printing-manager');
+      else if (hasRole('pharmacy manager')) navigate('/pharmacy');
+      else if (hasRole('car renting manager')) navigate('/car-renting');
+      else if (hasRole('sales manager')) navigate('/sales/overview');
+      else if (hasRole('hr manager')) navigate('/hr');
+      else if (hasRole('board member')) navigate('/board');
+      else if (hasRole('employee')) navigate('/employee');
+      else if (hasRole('customer')) navigate('/customer');
       else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
