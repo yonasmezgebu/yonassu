@@ -42,7 +42,14 @@ export default function PharmacyWorkerPrescriptions() {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [navSearch, setNavSearch] = useState('');
   const prevCounts = useRef({ PENDING: 0, PREPARED: 0 });
+
+  useEffect(() => {
+    const handleSearch = (e) => setNavSearch(e.detail || '');
+    window.addEventListener('dashboardSearch', handleSearch);
+    return () => window.removeEventListener('dashboardSearch', handleSearch);
+  }, []);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -196,13 +203,13 @@ export default function PharmacyWorkerPrescriptions() {
 
               {/* Cards */}
               <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderTop: 'none', borderRadius: '0 0 12px 12px', minHeight: 200, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {columns[col.key].length === 0 ? (
+                {(columns[col.key] || []).filter(rx => !navSearch || (rx.patient_name || '').toLowerCase().includes(navSearch.toLowerCase()) || (rx.patient_phone || '').includes(navSearch) || String(rx.id).includes(navSearch)).length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: '#94a3b8' }}>
                     <ClipboardList size={36} color="#d1d5db" />
                     <p style={{ margin: '8px 0 0', fontSize: 12 }}>No {col.label.toLowerCase()} prescriptions</p>
                   </div>
                 ) : (
-                  columns[col.key].map(rx => (
+                  (columns[col.key] || []).filter(rx => !navSearch || (rx.patient_name || '').toLowerCase().includes(navSearch.toLowerCase()) || (rx.patient_phone || '').includes(navSearch) || String(rx.id).includes(navSearch)).map(rx => (
                     <PrescriptionCard
                       key={rx.id}
                       rx={rx}
