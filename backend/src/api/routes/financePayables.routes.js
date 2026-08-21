@@ -4,7 +4,7 @@ const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
 
 /* ── helpers ── */
-const generatePVNumber = async () => {
+const generateEVNumber = async () => {
   const row = await knex('finance_payables').max('id as maxId').first();
   const next = (row?.maxId || 0) + 1;
   return `PAY-${String(next).padStart(6, '0')}`;
@@ -28,11 +28,11 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Date, Paid To, and Amount are required.' });
     }
 
-    const pvNumber = await generatePVNumber();
+    const evNumber = await generateEVNumber();
     const amountNum = parseFloat(amount);
 
     const [id] = await knex('finance_payables').insert({
-      pv_number: pvNumber,
+      ev_number: evNumber,
       date,
       paid_to: paidTo,
       category: category || 'General',
@@ -57,7 +57,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Payment approved and recorded to Payables Book.',
-      data: { id, pvNumber },
+      data: { id, evNumber },
     });
   } catch (error) {
     console.error('Error creating payable:', error);
