@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from '../../services/apiClient';
 import { Search, Filter, Mail, CheckCircle, XCircle, Send, Download, Eye, EyeOff, MessageSquare, User, Calendar, CheckCheck, Trash2 } from 'lucide-react';
 import styles from './ContactMessagesManager.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const STATUS_STYLES = {
   unread:  { class: styles.statusunread,  icon: '🔵' },
@@ -26,6 +27,7 @@ export default function ContactMessagesManager() {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
