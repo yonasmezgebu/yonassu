@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import adminService from '../../services/adminService';
 import { formatDateTime } from '../../utils/formatters';
 import styles from './SystemHealth.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const FALLBACK_HEALTH = {
   server: { status: 'Online', label: 'Server Status' },
@@ -60,6 +61,7 @@ const SystemHealth = () => {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
