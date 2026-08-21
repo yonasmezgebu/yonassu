@@ -1,6 +1,7 @@
 const { db, transaction } = require('../config/database');
 const { audit } = require('../config/logger');
 const { sendEmail } = require('./email.service');
+const { sendCeoNotification } = require('./notification.service');
 const AppError = require('../utils/AppError');
 const ApprovalRepository = require('../repositories/approval.repository');
 const approvalRepo = new ApprovalRepository();
@@ -161,6 +162,15 @@ const processApprovalDecision = async (expenseId, userId, approved, comments) =>
         }
       }).catch(() => {});
     }
+  }
+  if (myPending.tier === 'ceo') {
+    await sendCeoNotification({
+      title: approved ? 'Expense Approved' : 'Expense Rejected',
+      message: `${expense.category_name} expense of ${expense.amount} ETB ${approved ? 'approved' : 'rejected'}${comments ? ' - ' + comments : ''}.`,
+      type: 'general',
+      link: '/ceo/expenses',
+      related_entity_id: expenseId
+    }).catch(e => console.error('Failed to notify CEO:', e.message));
   }
   return { approved };
 };
