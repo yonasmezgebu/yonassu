@@ -196,6 +196,17 @@ export default function PharmacyWorkerAuditLog() {
   const [activityFilter, setActivityFilter] = useState('ALL');
   const PAGE_SIZE = 30;
 
+  useEffect(() => {
+    const handleDashSearch = (e) => {
+      const q = e.detail || '';
+      setDraft(q);
+      setSearch(q);
+      setPage(1);
+    };
+    window.addEventListener('dashboardSearch', handleDashSearch);
+    return () => window.removeEventListener('dashboardSearch', handleDashSearch);
+  }, []);
+
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
