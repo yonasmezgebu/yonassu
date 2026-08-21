@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import notificationService from '../../services/notificationService';
 import apiClient from '../../services/apiClient';
-import { playSound, sendPushNotification, requestPermission } from '../../services/notificationManager';
+import { playSound, sendPushNotification, requestPermission, SOUND_FOR_TYPE } from '../../services/notificationManager';
+const soundNameForType = (t) => SOUND_FOR_TYPE[t] || 'info';
 import { io } from 'socket.io-client';
 import UserProfile from '../../pages/shared/UserProfile';
 import './DashboardLayout.css';
@@ -149,34 +150,71 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   // Maps known broken/non-existent notification links to real working routes
   const resolveLink = (link, isCeo) => {
     if (!link) return isCeo ? '/ceo/overview' : '/';
-    
-    // 2. Finance Route Check — all /finance routes exist; keep query strings so tab deep-links work
+
+    // Finance Route Check — all /finance routes exist; keep query strings so tab deep-links work
     if (link.startsWith('/finance')) return link;
-    
-    // Exact or prefix matches → map to working route
+
+    // Admin route map — notifications for admin sub-pages
+    const adminMap = {
+      '/admin/danger-zone':   '/admin/danger-zone',
+      '/admin/users':         '/admin/users',
+      '/admin/alerts':        '/admin/alerts',
+      '/admin/audit':         '/admin/audit',
+      '/admin/system-health': '/admin/system-health',
+      '/admin/maintenance':   '/admin/system-health',
+      '/admin/disaster':      '/admin/system-health',
+      '/admin/backups':       '/admin/backups',
+      '/admin/settings':      '/admin/settings',
+    };
+    for (const [prefix, target] of Object.entries(adminMap)) {
+      if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
+    }
+
+    // Pharmacy Manager route mappings
+    const pharmacyManagerMap = {
+      '/pharmacy/sales':             '/pharmacy/manager-sales',
+      '/pharmacy/worker-sales':      '/pharmacy/manager-sales',
+      '/pharmacy/audit':             '/pharmacy/manager-sales',
+      '/pharmacy/audit-trail':       '/pharmacy/manager-sales',
+      '/pharmacy/daily-submission':  '/pharmacy/manager-sales',
+      '/pharmacy/submissions':       '/pharmacy/manager-sales',
+      '/pharmacy/transfer':          '/pharmacy/pending-shipments',
+      '/pharmacy/shipments':         '/pharmacy/pending-shipments',
+      '/pharmacy/stock':             '/pharmacy/store-inventory',
+      '/pharmacy/inventory':         '/pharmacy/store-inventory',
+      '/pharmacy/medicines':         '/pharmacy/medicines',
+      '/pharmacy/products':          '/pharmacy/medicines',
+      '/pharmacy/prescriptions':     '/pharmacy/overview',
+      '/pharmacy/requests':          '/pharmacy/requests',
+      '/pharmacy-worker':            '/pharmacy/overview',
+    };
+    for (const [prefix, target] of Object.entries(pharmacyManagerMap)) {
+      if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
+    }
+
+    // Exact or prefix matches → map to working CEO route
     const ceoMap = {
       '/ceo/pharmacy-approvals': '/ceo/pharmacy',
       '/ceo/pharmacy-transfers': '/ceo/flow1-transfers',
-      '/ceo/pharmacy-reports': '/ceo/pharmacy',
-      '/ceo/expired-drugs': '/ceo/pharmacy',
-      '/ceo/tender-decisions': '/ceo/tender-full',
-      '/ceo/purchase-flow': '/ceo/flow2-purchase',
-      '/ceo/fund-requests': '/ceo/fund-approvals',
-      '/ceo/deliveries': '/ceo/direct-delivery',
-      '/ceo/manager-requests': '/ceo/manager-requests',
-      '/ceo/tenders': '/ceo/tenders',
-      '/ceo/finance-approvals': '/ceo/finance-approvals',
+      '/ceo/pharmacy-reports':   '/ceo/pharmacy',
+      '/ceo/expired-drugs':      '/ceo/pharmacy',
+      '/ceo/tender-decisions':   '/ceo/tender-full',
+      '/ceo/purchase-flow':      '/ceo/flow2-purchase',
+      '/ceo/fund-requests':      '/ceo/fund-approvals',
+      '/ceo/deliveries':         '/ceo/direct-delivery',
+      '/ceo/manager-requests':   '/ceo/manager-requests',
+      '/ceo/tenders':            '/ceo/tenders',
+      '/ceo/finance-approvals':  '/ceo/finance-approvals',
     };
-    // Check prefix matches for ceo map
     for (const [prefix, target] of Object.entries(ceoMap)) {
       if (link === prefix || link.startsWith(prefix + '/') || link.startsWith(prefix + '?')) return target;
     }
     // If CEO is browsing, trust any /ceo/ route
     if (isCeo && link.startsWith('/ceo/')) return link;
-    
+
     // If a non-CEO (like Purchase Manager) clicks a generic broadcast link meant for CEO:
     if (!isCeo && link.startsWith('/ceo/tenders')) return '/purchase/smart-tenders';
-    
+
     return link;
   };
 
@@ -686,6 +724,9 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   const [photoUploading, setPhotoUploading] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const [navSearchValue, setNavSearchValue] = useState('');
+  const [navSuggestions, setNavSuggestions] = useState([]);
+  const [showNavSuggestions, setShowNavSuggestions] = useState(false);
+  const [navSelectedIndex, setNavSelectedIndex] = useState(0);
   const chatUnreadRef = useRef(0);
   const profileRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -786,7 +827,251 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
   useEffect(() => {
     setNavSearchValue('');
     window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: '' }));
+    setShowNavSuggestions(false);
   }, [location.pathname]);
+
+  const [navSearchLoading, setNavSearchLoading] = useState(false);
+
+  useEffect(() => {
+    const isPharmacy = location.pathname.startsWith('/pharmacy');
+    const isAdminRoute = location.pathname.startsWith('/admin');
+    const isEmployeeRoute = location.pathname.startsWith('/employee');
+    if (!isPharmacy && !isAdminRoute && !isEmployeeRoute) return;
+
+    if (!navSearchValue.trim()) {
+      setNavSuggestions([]);
+      return;
+    }
+
+    let isMounted = true;
+    const q = navSearchValue.toLowerCase();
+    const isWorker = location.pathname.startsWith('/pharmacy-worker');
+
+    // INSTANT RESULTS: employee portal pages match locally with zero latency
+    let instantPageHits = [];
+    if (isEmployeeRoute) {
+      const empPages = [
+        { label: 'Dashboard',         path: '/employee/overview',          icon: '🏠', keywords: 'home overview dashboard start' },
+        { label: 'My Tasks',          path: '/employee/tasks/mine',        icon: '📋', keywords: 'tasks assigned work todo mine' },
+        { label: "Today's Tasks",     path: '/employee/tasks/today',       icon: '📅', keywords: 'today tasks due now' },
+        { label: 'In-Progress Tasks', path: '/employee/tasks/in-progress', icon: '⏳', keywords: 'progress working ongoing tasks' },
+        { label: 'Completed Tasks',   path: '/employee/tasks/completed',   icon: '✅', keywords: 'done completed finished tasks' },
+        { label: 'Submit Work',       path: '/employee/work/submit',       icon: '📤', keywords: 'submit work upload deliverable report' },
+        { label: 'Daily Report',      path: '/employee/work/daily-report', icon: '📝', keywords: 'daily report log eod summary' },
+        { label: 'My Payslips',       path: '/employee/payslips',          icon: '💵', keywords: 'payslip salary payroll pay wage money' },
+        { label: 'Attendance',        path: '/employee/attendance',        icon: '🕒', keywords: 'attendance clock present absent time schedule' },
+        { label: 'Chat',              path: '/employee/comm/chat',         icon: '💬', keywords: 'chat message manager communication talk' },
+      ];
+      instantPageHits = empPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Employee Portal`,
+        type: 'emp_page',
+        item: p
+      }));
+      setNavSuggestions(instantPageHits);
+      setNavSelectedIndex(0);
+    }
+
+    const fetchSearch = async () => {
+      try {
+        setNavSearchLoading(true);
+        const suggs = [];
+
+        if (isAdminRoute) {
+          // ── ADMIN: search users, audit logs, alerts ──
+          const [usersRes, auditRes, alertsRes] = await Promise.all([
+            apiClient.get('/users?limit=10&search=' + encodeURIComponent(q)).catch(() => ({ data: [] })),
+            apiClient.get('/admin/audit-logs?limit=5&search=' + encodeURIComponent(q)).catch(() => ({ data: [] })),
+            apiClient.get('/admin/alerts?limit=3').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+
+          // Users
+          const usersRaw = Array.isArray(usersRes.data?.users) ? usersRes.data.users : (Array.isArray(usersRes.data?.data) ? usersRes.data.data : []);
+          usersRaw.forEach(u => {
+             suggs.push({
+               title: u.full_name || u.fullName,
+               subtitle: `👤 User • ${u.email || u.phone}`,
+               type: 'admin_user',
+               item: u
+             });
+          });
+
+          // Audit Logs
+          const auditRaw = Array.isArray(auditRes.data?.logs) ? auditRes.data.logs : (Array.isArray(auditRes.data?.data) ? auditRes.data.data : []);
+          auditRaw.forEach(a => {
+             suggs.push({
+               title: a.user_name || 'System Action',
+               subtitle: `📋 ${(a.action || '').replace(/_/g, ' ')} • ${a.description || ''}`.slice(0, 60),
+               type: 'admin_audit',
+               item: a
+             });
+          });
+
+          // Alerts
+          const alertsRaw = Array.isArray(alertsRes.data?.alerts) ? alertsRes.data.alerts : (Array.isArray(alertsRes.data?.data) ? alertsRes.data.data : []);
+          alertsRaw.filter(al => (al.title || '').toLowerCase().includes(q) || (al.message || '').toLowerCase().includes(q)).slice(0, 3).forEach(al => {
+             suggs.push({
+               title: al.title || 'Alert',
+               subtitle: `⚠️ ${al.message || ''}`.slice(0, 60),
+               type: 'admin_alert',
+               item: al
+             });
+          });
+        } else if (isWorker) {
+          // ── PHARMACY WORKER: search products, online orders, prescriptions ──
+          const [prodRes, reqRes, rxRes] = await Promise.all([
+            apiClient.get('/pharmacy/products'),
+            apiClient.get('/pharmacy/requests/pending').catch(() => ({ data: [] })),
+            apiClient.get('/pharmacy/prescriptions?status=PENDING').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+
+          // Products
+          const products = Array.isArray(prodRes.data?.data) ? prodRes.data.data : Array.isArray(prodRes.data) ? prodRes.data : [];
+          products.filter(p => (p.name || '').toLowerCase().includes(q)).slice(0, 6).forEach(p => {
+            const stockVal = p.stock !== undefined ? p.stock : (p.quantity || 0);
+            const priceVal = p.price || p.selling_price || p.unit_price || 0;
+            suggs.push({
+              title: p.name,
+              subtitle: `💊 Medicine • ETB ${priceVal} • ${stockVal} in stock`,
+              type: 'product',
+              item: { ...p, price: priceVal, stock: stockVal }
+            });
+          });
+
+          // Online orders
+          const orders = Array.isArray(reqRes.data?.data) ? reqRes.data.data : Array.isArray(reqRes.data) ? reqRes.data : [];
+          orders.filter(o => (o.customer_name || '').toLowerCase().includes(q) || (o.sale_code || '').toLowerCase().includes(q)).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: o.customer_name || 'Online Order',
+              subtitle: `🛒 Order ${o.sale_code || o.id} • ETB ${o.total_amount}`,
+              type: 'online_order',
+              item: o
+            });
+          });
+
+          // Prescriptions
+          const rxs = Array.isArray(rxRes.data?.data) ? rxRes.data.data : Array.isArray(rxRes.data) ? rxRes.data : [];
+          rxs.filter(rx => (rx.patient_name || '').toLowerCase().includes(q) || (rx.patient_phone || '').includes(q)).slice(0, 3).forEach(rx => {
+            suggs.push({
+              title: rx.patient_name || 'Prescription',
+              subtitle: `📋 Prescription • Phone: ${rx.patient_phone || 'N/A'}`,
+              type: 'prescription',
+              item: rx
+            });
+          });
+
+        } else if (isEmployeeRoute) {
+          // ── EMPLOYEE: pages already shown instantly above; now live data ──
+          const suggs = [...instantPageHits];
+
+          const [taskRes, payRes] = await Promise.all([
+            apiClient.get('/employee-tasks').catch(() => ({ data: [] })),
+            apiClient.get('/hr/etp/my-payslips').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+
+          // Tasks (title / description / priority / id)
+          const tasks = Array.isArray(taskRes.data?.data) ? taskRes.data.data : (Array.isArray(taskRes.data) ? taskRes.data : []);
+          tasks.filter(t =>
+            (t.title || '').toLowerCase().includes(q) ||
+            (t.description || '').toLowerCase().includes(q) ||
+            (t.priority || '').toLowerCase().includes(q) ||
+            String(t.id) === q
+          ).slice(0, 5).forEach(t => {
+            suggs.push({
+              title: t.title,
+              subtitle: `📋 Task • ${(t.status || 'pending').replace(/_/g, ' ')}${t.due_date ? ` • Due ${String(t.due_date).slice(0, 10)}` : ''}`,
+              type: 'emp_task',
+              item: t
+            });
+          });
+
+          // Payslips (month/year/status)
+          const slips = Array.isArray(payRes.data?.data) ? payRes.data.data : (Array.isArray(payRes.data) ? payRes.data : []);
+          slips.filter(s => {
+            const label = `${s.month_number}/${s.year_number}`;
+            return label.includes(q) || (s.status || '').toLowerCase().includes(q);
+          }).slice(0, 4).forEach(s => {
+            suggs.push({
+              title: `Payslip ${s.month_number}/${s.year_number}`,
+              subtitle: `💵 Payslip • Net ETB ${Number(s.net_pay || 0).toLocaleString()} • ${s.status || ''}`,
+              type: 'emp_payslip',
+              item: s
+            });
+          });
+        } else {
+          // ── PHARMACY MANAGER: search products, sales records, audit trail ──
+          const [prodRes, salesRes, auditRes] = await Promise.all([
+            apiClient.get('/pharmacy/products'),
+            apiClient.get('/pharmacy/sales').catch(() => ({ data: [] })),
+            apiClient.get('/pharmacy/audit-trail').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+
+          // Products / Medicines
+          const products = Array.isArray(prodRes.data?.data) ? prodRes.data.data : Array.isArray(prodRes.data) ? prodRes.data : [];
+          products.filter(p => (p.name || '').toLowerCase().includes(q)).slice(0, 5).forEach(p => {
+            const stockVal = p.stock !== undefined ? p.stock : (p.quantity || 0);
+            const priceVal = p.price || p.selling_price || p.unit_price || 0;
+            suggs.push({
+              title: p.name,
+              subtitle: `💊 Medicine • ETB ${priceVal} • ${stockVal} in stock`,
+              type: 'product',
+              item: { ...p, price: priceVal, stock: stockVal }
+            });
+          });
+
+          // Sales records
+          const salesRaw = Array.isArray(salesRes.data?.sales) ? salesRes.data.sales : Array.isArray(salesRes.data) ? salesRes.data : [];
+          salesRaw.filter(s =>
+            (s.customer_name || '').toLowerCase().includes(q) ||
+            (s.worker_name || s.cashier_name || '').toLowerCase().includes(q) ||
+            (s.receipt_no || '').toLowerCase().includes(q) ||
+            String(s.id).includes(q)
+          ).slice(0, 4).forEach(s => {
+            suggs.push({
+              title: s.customer_name || `Sale #${s.id}`,
+              subtitle: `💰 Sale by ${s.worker_name || s.cashier_name || 'Staff'} • ETB ${parseFloat(s.total_amount || 0).toFixed(2)}`,
+              type: 'sale',
+              item: s
+            });
+          });
+
+          // Audit trail
+          const auditRaw = Array.isArray(auditRes.data) ? auditRes.data : [];
+          auditRaw.filter(e =>
+            (e.user_name || '').toLowerCase().includes(q) ||
+            (e.action || '').toLowerCase().includes(q) ||
+            (e.description || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(e => {
+            suggs.push({
+              title: e.user_name || 'Audit Entry',
+              subtitle: `📋 ${(e.action || '').replace(/_/g, ' ')} • ${e.description || ''}`.slice(0, 60),
+              type: 'audit',
+              item: e
+            });
+          });
+        }
+
+        setNavSuggestions(suggs);
+        setNavSelectedIndex(0);
+      } catch (err) {
+        console.error('Global search error:', err);
+      } finally {
+        if (isMounted) setNavSearchLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchSearch, 100);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [navSearchValue, location.pathname]);
 
   // Poll total unread chat messages and fire browser notifications
   useEffect(() => {
@@ -799,6 +1084,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
           : 0;
         if (count > chatUnreadRef.current && chatUnreadRef.current !== undefined) {
           const diff = count - chatUnreadRef.current;
+          playSound('received');
           // Browser push notification
           if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
             new Notification('💬 New Chat Message', {
@@ -831,19 +1117,45 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         timeout: 10000,
       });
       socketRef.current = socket;
+      // Role gating: only toast notifications that belong to THIS user's dashboard
+      let roleFlags = { pharm: false, store: false, fin: false, userId: null };
+      try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        const rl = (Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : [])).map(r => String(r).toLowerCase());
+        roleFlags.pharm = rl.some(r => r.includes('pharmacy') || r.includes('sales/cashier'));
+        roleFlags.store = rl.some(r => r.includes('store keeper'));
+        roleFlags.fin = rl.some(r => r.includes('finance'));
+        roleFlags.userId = u?.id ?? null;
+      } catch (_) {}
+      // Personal employee notifications (task assigned / payslip ready) — exact user match
+      const isForMe = (data) => data && roleFlags.userId != null && Number(data.user_id) === Number(roleFlags.userId);
+      socket.on('employee-task', (data) => {
+        if (!isForMe(data)) return;
+        playSound('info');
+        sendPushNotification(data.title || 'New Task Assigned', data.message || '', data.link || '');
+        if (data.title) showToast(`${data.title}: ${data.message}`, 'info');
+        setNotifRefresh(n => n + 1);
+      });
+      socket.on('employee-payslip', (data) => {
+        if (!isForMe(data)) return;
+        playSound('ready');
+        sendPushNotification(data.title || 'Payslip Available', data.message || '', data.link || '');
+        if (data.title) showToast(`${data.title}: ${data.message}`, 'success');
+        setNotifRefresh(n => n + 1);
+      });
       socket.on('pharmacy-transfer', (data) => {
         const { title, message, type, link } = data || {};
-        const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', sale_created: 'info', sales_report: 'info', report_rejected: 'info', expired_drug: 'info', prescription: 'info' };
-        const soundName = soundMap[type] || 'info';
-        playSound(soundName);
+        if (!(roleFlags.pharm || roleFlags.store)) return;
+        playSound(soundNameForType(type));
         sendPushNotification(title || 'Pharmacy Transfer', message || '', link || '');
         if (title) showToast(`${title}: ${message}`, type);
         setNotifRefresh(n => n + 1);
       });
       // Online Prescription Requests
       socket.on('new-prescription-request', (data) => {
+        if (!roleFlags.pharm) return;
         const { request_number, medication_name, quantity, customer_name } = data || {};
-        playSound('info');
+        playSound('request');
         sendPushNotification('New Online Order', `${customer_name} ordered ${medication_name} x${quantity}`, '/pharmacy-worker/sales');
         showToast(`New Online Order #${request_number}: ${customer_name} ordered ${medication_name}`, 'info');
         setNotifRefresh(n => n + 1);
@@ -853,10 +1165,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       // Finance notifications (from any dashboard submitting to finance)
       socket.on('finance-cash', (data) => {
         const { title, message, type, link } = data || {};
-        const meantForFinance = link?.startsWith('/finance');
+        const meantForFinance = roleFlags.fin && link?.startsWith('/finance');
 
         // Always refresh the bell so the DB-backed notification appears (badge + list)
         if (meantForFinance) {
+          playSound('request');
           if (title) showToast(`${title}: ${message}`, type || 'info');
           setNotifRefresh(n => n + 1);
         }
@@ -872,7 +1185,12 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
             const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []);
             isCeoUser = roles.some(r => ['CEO', 'Admin'].includes(r));
           } catch (_) {}
-          if (isCeoUser && title) showToast(`${title}: ${message}`, type || 'info');
+          if (isCeoUser && title) {
+            // decision-aware sound: approved / rejected / waited / confirmation
+            const t = String(title).toLowerCase();
+            playSound(t.includes('reject') ? 'rejected' : t.includes('wait') ? 'waited' : t.includes('approv') ? 'approved' : 'ceo_confirmation_needed');
+            showToast(`${title}: ${message}`, type || 'info');
+          }
           setNotifRefresh(n => n + 1);
         }
       });
@@ -1232,11 +1550,68 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               </span>
               <input 
                 type="text" 
-                placeholder="Search sales, medicines, orders..." 
+                placeholder={location.pathname.startsWith('/admin') ? 'Search users, logs, alerts...' : (location.pathname.startsWith('/pharmacy') ? 'Search sales, medicines, orders...' : (location.pathname.startsWith('/employee') ? 'Search tasks, payslips, pages...' : 'Search...'))} 
                 value={navSearchValue}
                 onChange={(e) => {
                   setNavSearchValue(e.target.value);
+                  setShowNavSuggestions(true);
                   window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: e.target.value }));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setNavSelectedIndex(prev => Math.min(prev + 1, navSuggestions.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setNavSelectedIndex(prev => Math.max(prev - 1, 0));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (navSuggestions.length > 0 && navSuggestions[navSelectedIndex]) {
+                      const sel = navSuggestions[navSelectedIndex];
+                      const isWorker = location.pathname.startsWith('/pharmacy-worker');
+                      const isManager = location.pathname.startsWith('/pharmacy') && !isWorker;
+                      if (isWorker) {
+                        if (location.pathname !== '/pharmacy-worker/sales') {
+                          navigate('/pharmacy-worker/sales', { state: { autoSelectSearchItem: sel } });
+                        } else {
+                          window.dispatchEvent(new CustomEvent('dashboardSearchSelect', { detail: sel }));
+                        }
+                      } else if (isManager) {
+                        if (sel.type === 'product') {
+                          navigate('/pharmacy/medicines', { state: { autoSelectSearchItem: sel } });
+                        } else if (sel.type === 'sale' || sel.type === 'audit') {
+                          navigate('/pharmacy/manager-sales', { state: { autoSelectSearchItem: sel } });
+                        } else {
+                          navigate('/pharmacy/manager-sales', { state: { autoSelectSearchItem: sel } });
+                        }
+                      } else if (location.pathname.startsWith('/admin')) {
+                        if (sel.type === 'admin_user') {
+                          navigate('/admin/users', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'admin_audit') {
+                          navigate('/admin/audit', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'admin_alert') {
+                          navigate('/admin/alerts', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/admin/overview');
+                        }
+                      } else if (location.pathname.startsWith('/employee')) {
+                        if (sel.type === 'emp_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'emp_task') {
+                          navigate('/employee/tasks/mine', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'emp_payslip') {
+                          navigate('/employee/payslips');
+                        } else {
+                          navigate('/employee/overview');
+                        }
+                      }
+                      setShowNavSuggestions(false);
+                      setNavSearchValue('');
+                      window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: '' }));
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowNavSuggestions(false);
+                  }
                 }}
                 style={{
                   width: '100%',
@@ -1259,8 +1634,77 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                   e.target.style.background = '#f8fafc';
                   e.target.style.borderColor = '#e2e8f0';
                   e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)';
+                  setTimeout(() => setShowNavSuggestions(false), 200);
                 }}
               />
+              {/* Dropdown */}
+              {showNavSuggestions && navSearchValue.trim() !== '' && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
+                  background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                  border: '1px solid #e2e8f0', zIndex: 100, maxHeight: '400px', overflowY: 'auto', padding: '8px 0'
+                }}>
+                  {navSuggestions.length === 0 ? (
+                    <div style={{ padding: '12px 20px', color: '#64748b', fontSize: '14px', textAlign: 'center' }}>No results found</div>
+                  ) : (
+                    navSuggestions.map((s, idx) => (
+                      <div 
+                        key={idx}
+                        style={{
+                          padding: '10px 20px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                          background: idx === navSelectedIndex ? '#f1f5f9' : 'transparent',
+                          borderLeft: idx === navSelectedIndex ? '3px solid #047857' : '3px solid transparent'
+                        }}
+                        onMouseEnter={() => setNavSelectedIndex(idx)}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // prevents input from losing focus immediately
+                          const isWorker = location.pathname.startsWith('/pharmacy-worker');
+                          const isManager = location.pathname.startsWith('/pharmacy') && !isWorker;
+                          if (isWorker) {
+                            if (location.pathname !== '/pharmacy-worker/sales') {
+                              navigate('/pharmacy-worker/sales', { state: { autoSelectSearchItem: s } });
+                            } else {
+                              window.dispatchEvent(new CustomEvent('dashboardSearchSelect', { detail: s }));
+                            }
+                          } else if (isManager) {
+                            if (s.type === 'product') {
+                              navigate('/pharmacy/medicines', { state: { autoSelectSearchItem: s } });
+                            } else {
+                              navigate('/pharmacy/manager-sales', { state: { autoSelectSearchItem: s } });
+                            }
+                          } else if (location.pathname.startsWith('/admin')) {
+                            if (s.type === 'admin_user') {
+                              navigate('/admin/users', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'admin_audit') {
+                              navigate('/admin/audit', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'admin_alert') {
+                              navigate('/admin/alerts', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/admin/overview');
+                            }
+                          } else if (location.pathname.startsWith('/employee')) {
+                            if (s.type === 'emp_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'emp_task') {
+                              navigate('/employee/tasks/mine', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'emp_payslip') {
+                              navigate('/employee/payslips');
+                            } else {
+                              navigate('/employee/overview');
+                            }
+                          }
+                          setShowNavSuggestions(false);
+                          setNavSearchValue('');
+                          window.dispatchEvent(new CustomEvent('dashboardSearch', { detail: '' }));
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>{s.title}</div>
+                        {s.subtitle && <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{s.subtitle}</div>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
