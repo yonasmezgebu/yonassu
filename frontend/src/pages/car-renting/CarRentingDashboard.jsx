@@ -32,7 +32,6 @@ const CarRentingDashboard = () => {
 
     { label: 'Operations', icon: 'shopping-cart',
       children: [
-        { label: 'Tasks',            path: '/car-renting/manager/tasks',      icon: 'check-square', color: '#8b5cf6' },
         { label: 'Rental Order',     path: '/car-renting/manager/orders',      icon: 'clipboard',   color: '#0ea5e9' },
         { label: 'Agri Rent Order',  path: '/car-renting/manager/agri-orders', icon: 'leaf',        color: '#22c55e' },
         { label: 'Store Request',    path: '/car-renting/manager/store-request', icon: 'package',     color: '#f59e0b' },
@@ -75,8 +74,10 @@ const CarRentingDashboard = () => {
     { type: 'divider' },
     { label: 'Employee', icon: 'briefcase',
       children: [
-        { label: 'Tasks & Reports', path: '/car-renting/manager/tasks', icon: 'check-square', color: '#16a34a' }
-      ] },
+        { label: 'Tasks', path: '/car-renting/manager/tasks', icon: 'check-square', color: '#16a34a' },
+        { label: 'Reports', path: '/car-renting/manager/tasks', icon: 'file-text', color: '#0ea5e9' }
+      ]
+    },
     { type: 'divider' },
     { label: 'Audit Log', path: '/car-renting/manager/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
