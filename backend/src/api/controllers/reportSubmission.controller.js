@@ -1,5 +1,6 @@
 const reportSubmissionService = require('../../services/reportSubmission.service');
 const { catchAsync } = require('../../utils/catchAsync');
+const { sendCeoNotification } = require('../../services/notification.service');
 
 exports.createDraft = catchAsync(async (req, res) => {
   const submission = await reportSubmissionService.createDraft(req.user.id, req.body);
@@ -34,6 +35,13 @@ exports.getPendingCEO = catchAsync(async (req, res) => {
 exports.ceoApprove = catchAsync(async (req, res) => {
   const { comment } = req.body;
   const submission = await reportSubmissionService.ceoApprove(req.params.id, req.user.id, comment);
+  await sendCeoNotification({
+    title: 'Report Approved',
+    message: `${submission.reportType || 'Report'} for ${submission.period || ''} approved by CEO.`,
+    type: 'general',
+    link: '/ceo/report-approvals',
+    related_entity_id: submission.id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
   res.json({ status: 'success', data: submission });
 });
 
@@ -51,6 +59,13 @@ exports.boardApprove = catchAsync(async (req, res) => {
 exports.reject = catchAsync(async (req, res) => {
   const { reason } = req.body;
   const submission = await reportSubmissionService.reject(req.params.id, req.user.id, reason);
+  await sendCeoNotification({
+    title: 'Report Rejected',
+    message: `${submission.reportType || 'Report'} for ${submission.period || ''} rejected${reason ? ' - ' + reason : ''}.`,
+    type: 'general',
+    link: '/ceo/report-approvals',
+    related_entity_id: submission.id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
   res.json({ status: 'success', data: submission });
 });
 
