@@ -2,6 +2,8 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 
+const bcrypt = require('bcryptjs');
+
 // Ensure a user linked to an employee carries the standard "Employee" role
 // (Employee Dashboard access) and is flagged as an employee in the system.
 const ensureEmployeeRole = async (userId, assignedBy = null) => {
@@ -22,13 +24,71 @@ const ensureEmployeeRole = async (userId, assignedBy = null) => {
   await db('users').where('id', userId).update({ is_employee: true });
 };
 
+// Ensure the specific position role is also assigned to the user
+const ensurePositionRole = async (userId, positionId, assignedBy = null) => {
+  if (!userId || !positionId) return;
+  const existing = await db('user_roles').where({ user_id: userId, role_id: positionId }).first();
+  if (!existing) {
+    await db('user_roles').insert({
+      user_id: userId,
+      role_id: positionId,
+      assigned_by: assignedBy,
+      assigned_at: db.fn.now(),
+    }).catch(() => {});
+  }
+};
+
 // Resolve the user account linked to an employee record and keep the
 // employee's personal_email aligned with the user's login email.
 const resolveLinkedUser = async ({ user_id, personal_email }) => {
   let user = null;
-  if (user_id) user = await db('users').where('id', user_id).whereNull('deleted_at').first();
-  if (!user && personal_email) user = await db('users').where('email', personal_email.toLowerCase()).whereNull('deleted_at').first();
+  if (user_id) user = await db('users').where('id', user_id).first();
+  if (!user && personal_email) user = await db('users').where('email', personal_email.toLowerCase()).first();
   return user || null;
+};
+
+// Sync HR employee details to the Users table (for login)
+const syncEmployeeToUser = async (empData, assignedBy = null) => {
+  if (!empData.personal_email) return null;
+  
+  let user = await resolveLinkedUser({ user_id: empData.user_id, personal_email: empData.personal_email });
+  
+  if (!user) {
+    // Create new login account for this employee
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    const [newUserId] = await db('users').insert({
+      email: empData.personal_email.toLowerCase(),
+      password: hashedPassword,
+      full_name: empData.full_name,
+      phone: empData.personal_phone || '0000000000',
+      department_id: empData.dept_id ? parseInt(empData.dept_id, 10) : null,
+      is_employee: true,
+      status_id: 1,
+      deleted_at: null
+    });
+    user = { id: newUserId, email: empData.personal_email.toLowerCase() };
+  } else {
+    // Update existing login account (and restore if deleted/inactive)
+    const userUpdates = {};
+    if (empData.dept_id !== undefined) userUpdates.department_id = empData.dept_id ? parseInt(empData.dept_id, 10) : null;
+    if (empData.full_name !== undefined) userUpdates.full_name = empData.full_name;
+    if (empData.personal_phone !== undefined && empData.personal_phone) userUpdates.phone = empData.personal_phone;
+    if (empData.personal_email !== undefined) userUpdates.email = empData.personal_email.toLowerCase();
+    
+    userUpdates.status_id = 1;
+    userUpdates.deleted_at = null;
+    
+    await db('users').where('id', user.id).update(userUpdates);
+  }
+
+  // Ensure they have the universal Employee role
+  await ensureEmployeeRole(user.id, assignedBy);
+  // Ensure they have their specific department/position role
+  if (empData.position_id) {
+    await ensurePositionRole(user.id, empData.position_id, assignedBy);
+  }
+  
+  return user.id;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +198,7 @@ exports.getETPEmployees = catchAsync(async (req, res) => {
     }
     
     unregistered.forEach(u => {
+      if (roleByUser[u.id] === 'Customer') return;
       results.push({
         _source: 'users_table',
         employee_id: u.id,
@@ -188,9 +249,13 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
   const field_of_study    = req.body.field_of_study || null;
   const graduation_year   = req.body.graduation_year || null;
 
-  // ID photo paths from multer (set by route middleware)
-  const id_photo_front = req.files?.id_photo_front?.[0]?.path || req.body.id_photo_front || null;
-  const id_photo_back  = req.files?.id_photo_back?.[0]?.path  || req.body.id_photo_back  || null;
+  // ID photo paths from multer (set by route middleware) — normalize to forward slashes for URL safety
+  const id_photo_front = req.files?.id_photo_front?.[0]?.path
+    ? req.files.id_photo_front[0].path.replace(/\\/g, '/')
+    : (req.body.id_photo_front || null);
+  const id_photo_back  = req.files?.id_photo_back?.[0]?.path
+    ? req.files.id_photo_back[0].path.replace(/\\/g, '/')
+    : (req.body.id_photo_back  || null);
 
   if (bank_account_number) {
     const existingBank = await db('hr_employees').where('bank_account_number', bank_account_number).first();
@@ -204,7 +269,16 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
   // email when no explicit user_id is given, so HR and Admin stay consistent.
   const linkedUser = await resolveLinkedUser({ user_id, personal_email });
   const finalUserEmail = linkedUser ? linkedUser.email : (personal_email || `${employee_id}@sutana.com`);
-  const finalUserId = linkedUser ? linkedUser.id : (user_id || null);
+  
+  // Force sync the user account
+  const syncedUserId = await syncEmployeeToUser({
+    user_id: linkedUser ? linkedUser.id : (user_id || null),
+    personal_email: finalUserEmail,
+    full_name,
+    personal_phone: phone || req.body.personal_phone,
+    dept_id,
+    position_id
+  }, req.user?.id);
 
   await db('hr_employees').insert({
     employee_id, full_name, national_id, gender,
@@ -235,10 +309,8 @@ exports.createETPEmployee = catchAsync(async (req, res) => {
     // Education
     education_level, institution_name, field_of_study, graduation_year,
     // ID photos & Link
-    id_photo_front, id_photo_back, user_id: finalUserId
+    id_photo_front, id_photo_back, user_id: syncedUserId
   });
-
-  if (finalUserId) await ensureEmployeeRole(finalUserId, req.user?.id);
 
   res.status(201).json({ status: 'success', data: { employee_id } });
 });
@@ -249,16 +321,16 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
   const nullableFields = ['date_of_birth', 'bank_account_number', 'bank_name', 'national_id',
     'physical_address', 'personal_email', 'emergency_contact_name', 'emergency_contact_phone',
     'document_path', 'housing_allowance', 'transport_allowance', 'overtime_rate',
-    'education_level', 'institution_name', 'field_of_study', 'graduation_year',
-    'id_photo_front', 'id_photo_back'];
+    'education_level', 'institution_name', 'field_of_study', 'graduation_year'];
   const fields = ['full_name', 'national_id', 'gender', 'dept_id', 'position_id',
     'base_salary', 'housing_allowance', 'transport_allowance', 'has_pc_access',
     'shift_start_time', 'shift_end_time', 'employment_status', 'employment_type',
     'personal_phone', 'physical_address', 'personal_email', 'overtime_rate', 'bank_name', 'bank_account_number', 'payment_method',
     'emergency_contact_name', 'emergency_contact_phone', 'date_of_birth', 'marital_status', 'document_path',
     'registration_status', 'hire_date',
-    'education_level', 'institution_name', 'field_of_study', 'graduation_year',
-    'id_photo_front', 'id_photo_back'];
+    'education_level', 'institution_name', 'field_of_study', 'graduation_year'];
+  // NOTE: id_photo_front / id_photo_back are intentionally excluded from the body loop —
+  // they are only updated when multer provides an actual uploaded file (see below).
   for (const f of fields) {
     if (req.body[f] !== undefined) {
       const val = typeof req.body[f] === 'string' ? req.body[f].trim() : req.body[f];
@@ -291,20 +363,97 @@ exports.updateETPEmployee = catchAsync(async (req, res) => {
   const currentEmp = await db('hr_employees').where('employee_id', id).first();
   const targetUserId = updates.user_id !== undefined ? updates.user_id : currentEmp?.user_id;
   const targetEmail = updates.personal_email !== undefined ? updates.personal_email : currentEmp?.personal_email;
-  const linkedUser = await resolveLinkedUser({ user_id: targetUserId, personal_email: targetEmail });
-  if (linkedUser) {
-    updates.personal_email = linkedUser.email;
-    updates.user_id = linkedUser.id;
-  } else if (targetUserId) {
-    // user_id no longer resolves (deleted user) — clear the dangling link
-    updates.user_id = null;
+  
+  // Force sync the user account
+  const syncedUserId = await syncEmployeeToUser({
+    user_id: targetUserId,
+    personal_email: targetEmail,
+    full_name: updates.full_name !== undefined ? updates.full_name : currentEmp?.full_name,
+    personal_phone: updates.personal_phone !== undefined ? updates.personal_phone : currentEmp?.personal_phone,
+    dept_id: updates.dept_id !== undefined ? updates.dept_id : currentEmp?.dept_id,
+    position_id: updates.position_id !== undefined ? updates.position_id : currentEmp?.position_id
+  }, req.user?.id);
+
+  if (syncedUserId) {
+    updates.user_id = syncedUserId;
+  } else if (targetUserId && !targetEmail) {
+    // If they had a user_id but somehow we didn't sync (no email?), keep it
+    updates.user_id = targetUserId;
   }
 
   if (Object.keys(updates).length === 0)
     return res.status(400).json({ status: 'fail', message: 'No fields to update' });
   await db('hr_employees').where('employee_id', id).update(updates);
 
-  if (updates.user_id) await ensureEmployeeRole(updates.user_id, req.user?.id);
+  // ── Notify Admin about the HR employee update ──────────────────────────────
+  try {
+    const updatedEmp = await db('hr_employees as e')
+      .leftJoin('departments as d', 'e.dept_id', 'd.id')
+      .leftJoin('roles as r', 'e.position_id', 'r.id')
+      .select('e.employee_id', 'e.full_name', 'e.personal_email', 'e.employment_status',
+              'e.registration_status', 'd.name as dept_name', 'r.name as position_title')
+      .where('e.employee_id', id)
+      .first();
+
+    // Build a human-readable summary of what changed
+    const changedFields = [];
+    if (updates.full_name)        changedFields.push(`Name → ${updates.full_name}`);
+    if (updates.personal_email)   changedFields.push(`Email → ${updates.personal_email}`);
+    if (updates.dept_id)          changedFields.push(`Department → ${updatedEmp?.dept_name || updates.dept_id}`);
+    if (updates.position_id)      changedFields.push(`Position → ${updatedEmp?.position_title || updates.position_id}`);
+    if (updates.base_salary)      changedFields.push(`Base Salary → ${updates.base_salary}`);
+    if (updates.employment_status) changedFields.push(`Status → ${updates.employment_status}`);
+    if (updates.registration_status) changedFields.push(`Registration → ${updates.registration_status}`);
+    if (updates.employment_type)  changedFields.push(`Employment Type → ${updates.employment_type}`);
+    if (updates.hire_date)        changedFields.push(`Hire Date → ${updates.hire_date}`);
+
+    const changedSummary = changedFields.length > 0 ? changedFields.join(', ') : 'Profile details updated';
+    const updatedByName  = req.user?.full_name || req.user?.email || 'HR';
+    const announcementTitle = `Employee Profile Updated: ${updatedEmp?.full_name || id}`;
+    const announcementBody  =
+      `HR has updated the profile of employee ${updatedEmp?.full_name || id} (${id}).\n\n` +
+      `Department: ${updatedEmp?.dept_name || '—'}\n` +
+      `Position: ${updatedEmp?.position_title || '—'}\n` +
+      `Email: ${updatedEmp?.personal_email || '—'}\n` +
+      `Employment Status: ${updatedEmp?.employment_status || '—'}\n` +
+      `Registration Status: ${updatedEmp?.registration_status || '—'}\n\n` +
+      `Changes: ${changedSummary}\n\n` +
+      `Updated by: ${updatedByName}`;
+
+    // 1. Create an HR announcement (visible in HR Announcements section)
+    await db('hr_announcements').insert({
+      title: announcementTitle,
+      body: announcementBody,
+      author_id: req.user?.id || null,
+      audience_scope: JSON.stringify({ roles: ['Admin', 'HR Manager'] }),
+      priority: 'Info',
+      status: 'Published',
+      publish_at: db.fn.now(),
+    });
+
+    // 2. Create in-app notifications for all Admin users
+    const admins = await db('users')
+      .join('user_roles', 'users.id', 'user_roles.user_id')
+      .join('roles', 'user_roles.role_id', 'roles.id')
+      .where('roles.name', 'Admin')
+      .whereNull('users.deleted_at')
+      .select('users.id');
+
+    for (const admin of admins) {
+      await db('notifications').insert({
+        user_id: admin.id,
+        title: announcementTitle,
+        message: `${changedSummary} — Updated by ${updatedByName}`,
+        type: 'hr_employee_update',
+        link: '/hr/employees',
+        is_read: false,
+        created_at: db.fn.now(),
+      });
+    }
+  } catch (notifErr) {
+    // Never let notification failure break the main update response
+    console.error('[HR Update Notify] Failed to send admin notification:', notifErr.message);
+  }
 
   res.json({ status: 'success', message: 'Employee updated' });
 });
