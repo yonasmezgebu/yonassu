@@ -49,6 +49,13 @@ export default function PharmacyWorkerPrescriptionHistory() {
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
+  // Sync navbar search bar with the local search state
+  useEffect(() => {
+    const handleSearch = (e) => setSearch(e.detail || '');
+    window.addEventListener('dashboardSearch', handleSearch);
+    return () => window.removeEventListener('dashboardSearch', handleSearch);
+  }, []);
+
   // Client-side filtering by search & dates
   const filtered = records.filter(rx => {
     const matchSearch = !search
