@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import adminService from '../../services/adminService';
 import { formatDateTime } from '../../utils/formatters';
 import styles from './DisasterRecovery.module.css';
+import { playSound } from '../../services/notificationManager';
 
 const PAGE_SIZE = 6;
 const TYPE_ORDER = { CRITICAL: 0, WARNING: 1, INFO: 2 };
@@ -58,6 +59,7 @@ const DisasterRecovery = () => {
   const toastTimer = useRef(null);
 
   const showToast = (message, type = 'success') => {
+    playSound(type === 'error' ? 'error' : 'success');
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 4000);
