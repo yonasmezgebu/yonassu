@@ -325,13 +325,32 @@ export default function PharmacySalesForm() {
   useEffect(() => {
     const handleSearch = (e) => setNavSearch(e.detail || '');
     const handleRefresh = () => handleRefreshAll();
+    
+    const handleSelect = (e) => {
+      const selected = e.detail;
+      if (!selected) return;
+      if (selected.type === 'product') {
+        setTab('walkin');
+        if (selected.item.stock > 0) {
+          addToCart(selected.item);
+          setShowCart(true);
+        } else {
+          alert('This item is out of stock.');
+        }
+      } else if (selected.type === 'online_order') {
+        setTab('online');
+      }
+    };
+
     window.addEventListener('dashboardSearch', handleSearch);
+    window.addEventListener('dashboardSearchSelect', handleSelect);
     window.addEventListener('dashboardRefresh', handleRefresh);
     return () => {
       window.removeEventListener('dashboardSearch', handleSearch);
+      window.removeEventListener('dashboardSearchSelect', handleSelect);
       window.removeEventListener('dashboardRefresh', handleRefresh);
     };
-  }, []);
+  }, [posCart]);
 
   const loadBranches = async () => {
     try { const res = await apiClient.get('/pharmacy/branches'); if (res.status === 'success') setBranches(res.data || []); } catch (e) { console.error(e); }
