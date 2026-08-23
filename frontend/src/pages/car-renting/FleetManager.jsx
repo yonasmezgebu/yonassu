@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Car, Edit2, Trash2,
   EyeOff, CheckCircle, AlertTriangle, AlertCircle,
@@ -123,6 +123,7 @@ const ConfirmModal = ({ open, title, message, danger, onConfirm, onCancel }) => 
 ══════════════════════════════════════════════════ */
 const FleetManager = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
