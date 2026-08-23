@@ -391,7 +391,7 @@ export default function CEOReport() {
           </Section>
 
           {/* ── 2. Manager Requests ── */}
-          <Section icon={ClipboardList} title="Manager Requests (Price / Qty Changes)" count={managerRequests.length}>
+          <Section icon={ClipboardList} title="Manager Requests (Cost Price / Qty Changes)" count={managerRequests.length}>
             {managerRequests.length === 0 ? (
               <div style={{ padding: '40px 24px', textAlign: 'center', color: '#64748b', fontWeight: 700 }}>No manager requests found.</div>
             ) : (
