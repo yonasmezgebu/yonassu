@@ -6,7 +6,6 @@ import {
   Package, AlertTriangle, XCircle, CheckCircle, Clock, ArrowLeft
 } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
-import infoSound from '../../assets/notification/info.mp3';
 import { useAuth } from '../../hooks/useAuth';
 import { WorkerAuthContext } from './PharmacyWorkerDashboard';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -137,8 +136,7 @@ const PharmacyMedicines = () => {
       await pharmacyService.hideProduct(hidingDrug.id, { reason: hideReason, hide_type: hideType });
       setDrugs(prev => prev.map(d => d.id === hidingDrug.id ? { ...d, isHidden: true, hideType, hideReason } : d));
       setMsg({ type: 'success', text: `${hidingDrug.name} hidden from public view` });
-      playSound();
-    } catch (e) {
+      } catch (e) {
       setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to hide drug' });
     } finally {
       setSaving(false);
@@ -153,8 +151,7 @@ const PharmacyMedicines = () => {
       await pharmacyService.restoreProduct(drug.id);
       setDrugs(prev => prev.map(d => d.id === drug.id ? { ...d, isHidden: false, hideType: '', hideReason: '' } : d));
       setMsg({ type: 'success', text: `${drug.name} restored to public view` });
-      playSound();
-    } catch (e) {
+      } catch (e) {
       setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to restore drug' });
     } finally {
       setSaving(false);
