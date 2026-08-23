@@ -138,7 +138,7 @@ const PharmacyDirectDeliveries = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="pso-label">Unit Price (ETB) <span style={{color: 'var(--color-danger)'}}>*</span></label>
+                    <label className="pso-label">Cost Price (ETB) <span style={{color: 'var(--color-danger)'}}>*</span></label>
                     <input className="pso-input" type="number" min="0" step="0.01" value={form.unitPrice} onChange={e => setForm(f => ({ ...f, unitPrice: e.target.value }))} placeholder="e.g. 25.50" required />
                   </div>
                   <div>
@@ -234,7 +234,7 @@ const PharmacyDirectDeliveries = () => {
                             <tr style={{ background: 'var(--color-bg-page)' }}>
                               <td colSpan={8} style={{ padding: '16px 24px' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                                  <div><strong style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Unit Price</strong> ETB {parseFloat(d.unit_price || 0).toLocaleString()}</div>
+                                  <div><strong style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Cost Price (Unit)</strong> ETB {parseFloat(d.unit_price || 0).toLocaleString()}</div>
                                   <div><strong style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Invoice No</strong> {d.invoice_no || '—'}</div>
                                   <div><strong style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>CEO Notes</strong> {d.ceo_notes || '—'}</div>
                                   <div><strong style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>Confirmed At</strong> {d.ceo_confirmed_at ? new Date(d.ceo_confirmed_at).toLocaleString() : '—'}</div>
