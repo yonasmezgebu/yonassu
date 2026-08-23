@@ -190,18 +190,28 @@ exports.decideRequest = async (req, res) => {
 
       try {
         if (decision === 'APPROVED') {
+          // Notify Store Keeper to ship
           await notificationService.sendNotification('Pharmacy Store Keeper', null, {
             type: 'REQUEST_APPROVED',
-            title: 'Transfer Approved',
-            message: `Request ${request.request_code} approved. Ready to ship.`,
+            title: '✅ Transfer Approved — Ship Now',
+            message: `Request ${request.request_code} approved. Please ship the items.`,
             related_entity_id: id,
             link: `/store/transfers/${id}`
           });
+          // Also notify the Pharmacy Manager who created the request
+          await notificationService.sendNotification('Pharmacy Manager', request.created_by, {
+            type: 'REQUEST_APPROVED',
+            title: '✅ Transfer Request Approved',
+            message: `Your request ${request.request_code} was approved by CEO. Stock will be shipped soon.`,
+            related_entity_id: id,
+            link: `/pharmacy/store-inventory`
+          });
         } else {
+          // Notify Pharmacy Manager of rejection
           await notificationService.sendNotification('Pharmacy Manager', request.created_by, {
             type: 'REQUEST_REJECTED',
-            title: 'Transfer Rejected',
-            message: `Request ${request.request_code} was rejected. Reason: ${reason}`,
+            title: '❌ Transfer Request Rejected',
+            message: `Your request ${request.request_code} was rejected. Reason: ${reason}`,
             related_entity_id: id,
             link: `/pharmacy/store-inventory`
           });
