@@ -3,6 +3,7 @@ const { db } = require('../../config/database');
 const rentalOrderRepository = require('../../repositories/rentalOrder.repository');
 const carRepository = require('../../repositories/car.repository');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendNotification } = require('../../services/notification.service');
 const { sendFinanceNotification } = require('../../services/notification.service');
 const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
@@ -177,6 +178,16 @@ exports.createOrder = async (req, res, next) => {
     // Also mark car as 'Booked' temporarily or let the manager do it upon approval. 
     // We'll leave the car as is until approved by the manager.
 
+    // Notify Car Renting Manager
+    try {
+      await sendNotification('Car Renting Manager', null, {
+        title: '🚗 New Online Order',
+        message: `New car rental order ${orderData.orderNumber} placed for ETB ${rentalAmount.toLocaleString()}.`,
+        type: 'info',
+        link: '/car-renting/orders'
+      });
+    } catch(e) {}
+    
     res.status(201).json({
       status: 'success',
       message: 'Rental reservation submitted successfully',
@@ -625,6 +636,17 @@ exports.verifyPayment = async (req, res) => {
         title: notificationTitle,
         message: notificationMessage
       });
+      // Notify manager that finance acted on the payment
+      try {
+        await sendNotification('Car Renting Manager', null, {
+          title: isVerified ? '✅ Payment Verified (Finance)' : '❌ Payment Rejected (Finance)',
+          message: isVerified 
+            ? `Finance verified payment for order ${order.orderNumber}`
+            : `Finance rejected payment for order ${order.orderNumber}`,
+          type: isVerified ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
+          link: '/car-renting/orders'
+        });
+      } catch(e) {}
     }
 
     // Record verified payment in bank_payments for reconciliation report
@@ -757,11 +779,7 @@ exports.cancelOrder = async (req, res) => {
         is_cancellation_requested: true,
         cancellation_reason: reason
       });
-      await notificationRepository.create({
-        roleTarget: 'MANAGER',
-        title: 'Cancellation Request',
-        message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`
-      });
+      await sendNotification('Car Renting Manager', null, { title: 'Cancellation Request', message: `Customer ${order.customerName} requested to cancel Order ${order.orderNumber}. Reason: ${reason}`, type: 'info', link: '/car-renting/orders' });
     }
 
     res.status(200).json({ status: 'success', data: updated.toJSON() });
@@ -842,11 +860,7 @@ exports.extendOrder = async (req, res) => {
 
     const extensionFee = days * order.dailyRate;
     
-    await notificationRepository.create({
-      roleTarget: 'MANAGER',
-      title: 'Extension Request',
-      message: `Customer ${order.customerId} requested a ${days}-day extension for Order ${order.orderNumber}.`
-    });
+    await sendNotification('Car Renting Manager', null, { title: 'Extension Request', message: `Customer ${order.customerId} requested a ${days}-day extension for Order ${order.orderNumber}.`, type: 'info', link: '/car-renting/orders' });
 
     res.status(200).json({ status: 'success', message: 'Extension requested successfully' });
   } catch (error) {
