@@ -261,7 +261,7 @@ const CEOPharmacySales = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 22 }}>
         <KPICard title="Total Medications" value={fmt(totalMedications)} sub="Active SKUs" icon={Pill} color={C.indigo} />
         <KPICard title="Total Stock Units" value={fmt(totalStockQuantity)} sub="Across all products" icon={Layers} color={C.emerald} />
-        <KPICard title="Total Stock Value" value={fmtETB(stockValue)} sub="Qty × unit price" icon={Package} color={C.forest} />
+        <KPICard title="Total Stock Value" value={fmtETB(stockValue)} sub="Qty × cost price" icon={Package} color={C.forest} />
         <KPICard title="Low Stock Alerts" value={lowStockCount} sub="Below reorder level" icon={AlertTriangle} color={lowStockCount > 0 ? C.error : C.emerald} />
       </div>
 
