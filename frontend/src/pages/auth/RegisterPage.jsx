@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import authService from '../../services/authService';
 import styles from './RegisterPage.module.css';
 
@@ -12,7 +12,7 @@ const RegisterPage = () => {
     email: '',
     phone: '',
     password: '',
-    role: 'Customer',
+    role: 'Customer',   // Always Customer — only customers can self-register
   });
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -46,14 +46,10 @@ const RegisterPage = () => {
     }
   };
 
-  const isEmployee = formData.role === 'Employee';
-
   return (
     <div className={styles.authContainer}>
 
-      {/* ════════════════════════════════════════
-          LEFT PANEL — Forest Green brand panel
-      ════════════════════════════════════════ */}
+      {/* LEFT PANEL */}
       <div className={styles.leftPanel}>
         <div className={styles.brandBlock}>
 
@@ -66,7 +62,7 @@ const RegisterPage = () => {
                 <path d="M16 10 C14 12 12 15 16 18 C20 15 18 12 16 10 Z"
                   fill="#ffffff"/>
                 <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle"
-                  fill="#ffffff" fontSize="10" fontWeight="800" fontFamily="Inter,sans-serif">
+                  fill="#ffffff" fontSize="10" fontWeight="800" fontFamily="system-ui,sans-serif">
                   S
                 </text>
               </svg>
@@ -92,25 +88,22 @@ const RegisterPage = () => {
             <ul className={styles.featureList}>
               <li><span className={styles.featureDot}></span>Track orders &amp; requests in real time</li>
               <li><span className={styles.featureDot}></span>Access all SUTANA services digitally</li>
-              <li><span className={styles.featureDot}></span>Secure, role-based account access</li>
+              <li><span className={styles.featureDot}></span>Secure, dedicated customer account</li>
               <li><span className={styles.featureDot}></span>24/7 enterprise support</li>
             </ul>
           </div>
         </div>
 
-        {/* Left panel footer */}
         <div className={styles.leftFooter}>
           <p>© 2024 SUTANA. All rights reserved.</p>
           <p>Enterprise Management System</p>
         </div>
       </div>
 
-      {/* ════════════════════════════════════════
-          RIGHT PANEL — White form panel
-      ════════════════════════════════════════ */}
+      {/* RIGHT PANEL */}
       <div className={styles.rightPanel}>
 
-        {/* Top bar strip — Rule 12: flush to top */}
+        {/* Top bar */}
         <div className={styles.rightTopBar}>
           <span className={styles.topBarBrand}>SUTANA Portal</span>
           <nav className={styles.topBarNav}>
@@ -119,23 +112,17 @@ const RegisterPage = () => {
           </nav>
         </div>
 
-        {/* Form area — Rule 13: proper padding, not touching top bar */}
+        {/* Form area */}
         <div className={styles.formArea}>
 
-          {/* Page title — Rule 16: plain text, NOT a bold color header container */}
+          {/* Page title */}
           <div className={styles.pageTitle}>
-            <h2>
-              {isEmployee ? 'Create Employee Account' : 'Create Customer Account'}
-            </h2>
-            <p>
-              {isEmployee
-                ? 'Register to access the employee self-service portal.'
-                : 'Join SUTANA — manage your orders, track status & more.'}
-            </p>
+            <h2>Create Customer Account</h2>
+            <p>Join SUTANA — manage your orders, track status &amp; more.</p>
             <div className={styles.titleAccent} />
           </div>
 
-          {/* ── In-App Error Notification (Rule 6: no browser alert) ── */}
+          {/* Error Notification */}
           {error && (
             <div className={`${styles.notification} ${styles.notificationError}`} role="status">
               <AlertCircle size={18} />
@@ -143,7 +130,7 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* ── In-App Success Notification (Rule 6: no browser alert) ── */}
+          {/* Success Notification */}
           {successMsg && (
             <div className={`${styles.notification} ${styles.notificationSuccess}`} role="status">
               <CheckCircle size={18} />
@@ -151,31 +138,17 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* ── Form card — Rule 3: sharp corners ── */}
+          {/* Form Card */}
           <div className={styles.formCard}>
+
+            {/* Customer-only badge */}
+            <div className={styles.accountTypeBadge}>
+              <span>🛍️</span> Customer Registration
+            </div>
+
             <form onSubmit={handleSubmit} className={styles.form} noValidate>
 
-              {/* Account Type toggle — Rule 1, 8: sharp buttons */}
               <div className={styles.formGrid}>
-                <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-                  <label>Account Type</label>
-                  <div className={styles.roleToggleGroup}>
-                    <button
-                      type="button"
-                      className={`${styles.roleBtn} ${formData.role === 'Customer' ? styles.roleBtnActive : ''}`}
-                      onClick={() => setFormData({ ...formData, role: 'Customer' })}
-                    >
-                      🛍️ Customer
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.roleBtn} ${formData.role === 'Employee' ? styles.roleBtnActive : ''}`}
-                      onClick={() => setFormData({ ...formData, role: 'Employee' })}
-                    >
-                      👨‍💼 Employee
-                    </button>
-                  </div>
-                </div>
 
                 {/* Full Name */}
                 <div className={styles.formGroup}>
@@ -230,35 +203,44 @@ const RegisterPage = () => {
                 {/* Password */}
                 <div className={styles.formGroup}>
                   <label htmlFor="password">Password</label>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Minimum 8 characters"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    className={styles.input}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Minimum 8 characters"
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      className={styles.input}
+                    />
+                    <button
+                      type="button"
+                      className={styles.passwordToggle}
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Show password checkbox */}
-                <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-                  <label className={styles.showPasswordLabel} style={{ textTransform: 'none', letterSpacing: 'normal' }}>
-                    <input
-                      type="checkbox"
-                      checked={showPassword}
-                      onChange={() => setShowPassword(!showPassword)}
-                      className={styles.showPasswordCheck}
-                    />
-                    Show password
-                  </label>
-                </div>
               </div>
 
-              {/* Form actions */}
+              {/* Show password toggle */}
+              <label className={styles.showPasswordLabel}>
+                <input
+                  type="checkbox"
+                  checked={showPassword}
+                  onChange={() => setShowPassword(!showPassword)}
+                  className={styles.showPasswordCheck}
+                />
+                Show password
+              </label>
+
+              {/* Submit */}
               <div className={styles.formActions}>
                 {!successMsg && (
                   <button
@@ -266,7 +248,12 @@ const RegisterPage = () => {
                     className={`${styles.btnPrimary}${loading ? ' ' + styles.loading : ''}`}
                     disabled={loading}
                   >
-                    {loading ? 'Creating Account...' : 'Create My Account'}
+                    {loading ? (
+                      <>
+                        <Loader2 size={18} className={styles.spinIcon} />
+                        Creating Account...
+                      </>
+                    ) : 'Create My Account'}
                   </button>
                 )}
               </div>
@@ -275,9 +262,12 @@ const RegisterPage = () => {
             {/* Already have account? */}
             <div className={styles.loginSection}>
               <div className={styles.divider}><span>Already have an account?</span></div>
-              <Link to="/login" className={styles.registerBtn}>
+              <Link to="/login" className={styles.loginBtn}>
                 Sign In
               </Link>
+              <p className={styles.adminNote}>
+                Admin &amp; staff accounts are created by an administrator.
+              </p>
             </div>
           </div>
 
