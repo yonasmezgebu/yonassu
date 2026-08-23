@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/apiClient';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
 import {
   Upload, Pill, Phone, User, MessageSquare, CheckCircle, List, FileText,
   RefreshCw, Hash, Clock, Calendar, AlertCircle, Package
@@ -90,7 +89,6 @@ export default function CustomerPrescription() {
       // res.status is the HTTP status code (200/201), not the JSON body status string
       if (res.status === 200 || res.status === 201) {
         showToast('Prescription submitted successfully', 'success');
-        playSound('success');
         setSubmitted(res.data?.data || res.data || {});
         setDrugName('');
         setQuantity('');
