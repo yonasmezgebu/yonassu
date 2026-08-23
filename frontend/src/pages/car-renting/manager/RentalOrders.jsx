@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../../services/apiClient';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -59,6 +60,7 @@ const PAY_CFG = {
 /* ─────────────── BADGE COMPONENTS ─────────────── */
 const StatusBadge = ({ code }) => {
   const cfg = STATUS_CFG[code] || { bg: '#F5F5F5', color: '#424242', border: '#BDBDBD' };
+
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -149,6 +151,8 @@ const S = {
 
 /* ─────────────── MAIN COMPONENT ─────────────── */
 const RentalOrders = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [orders,     setOrders]     = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
   const [loading,    setLoading]    = useState(true);
@@ -210,6 +214,29 @@ const RentalOrders = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
+    useEffect(() => {
+    if (location.state?.autoSelectSearchItem) {
+      const item = location.state.autoSelectSearchItem.item;
+      if (item && (item.order_number || item.id || item.plate_number || item.name)) {
+        const q = String(item.order_number || item.plate_number || item.name || item.id).toLowerCase();
+        
+        // Handle filter object (Orders)
+        if (typeof setFilter === 'function') {
+          setFilter(f => ({ ...f, search: q, page: 1 }));
+          if (typeof load === 'function') load({ ...filter, search: q, page: 1 });
+        } 
+        // Handle searchQuery string (Fleet)
+        else if (typeof setSearchQuery === 'function') {
+          setSearchQuery(q);
+        }
+      }
+      
+      // Clear state so refresh doesn't trigger it again
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   const handleSearch = () => {
     const fresh = { ...filter, page: 1 };
     setFilter(fresh);
@@ -250,7 +277,20 @@ const RentalOrders = () => {
     );
   }
 
+
   /* ── LIST VIEW ── */
+  const filteredOrders = filter.search
+    ? orders.filter(o => {
+        const q = filter.search.toLowerCase();
+        return (
+          (o.order_number || o.orderNumber || '').toLowerCase().includes(q) ||
+          String(o.id || '').includes(q) ||
+          (o.customer_name || o.customerName || '').toLowerCase().includes(q) ||
+          (o.customer_phone || o.customerPhone || '').toLowerCase().includes(q)
+        );
+      })
+    : orders;
+
   return (
     <div className="ro-page" style={S.page}>
       <Toast toasts={toasts} remove={removeToast} />
@@ -328,7 +368,7 @@ const RentalOrders = () => {
           <input
             placeholder="Search by Order #, Customer, Phone..."
             value={filter.search}
-            onChange={e => setFilter(f => ({ ...f, search: e.target.value }))}
+            onChange={e => setFilter(f => ({ ...f, search: e.target.value, page: 1 }))}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             style={S.searchInput}
             onFocus={e => { e.target.style.border = `1.5px solid ${C.forestGreen}`; }}
@@ -375,7 +415,7 @@ const RentalOrders = () => {
                   </div>
                 </td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <tr>
                 <td colSpan={7}>
                   <div style={S.empty}>
@@ -388,7 +428,7 @@ const RentalOrders = () => {
                   </div>
                 </td>
               </tr>
-            ) : orders.map((order, idx) => {
+            ) : filteredOrders.map((order, idx) => {
               const carName = order.carName || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : 'N/A');
               const startD  = order.startDate || order.start_date;
               const endD    = order.endDate   || order.end_date;
