@@ -6,7 +6,7 @@ const OrderModel = require('../../models/Order.model');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
-const { sendFinanceNotification, sendPrintingNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendPrintingNotification, sendCustomerNotification } = require('../../services/notification.service');
 const deleteFile = (path) => console.log('Deleted file:', path);
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
@@ -503,6 +503,24 @@ exports.verifyPayment = catchAsync(async (req, res) => {
     link: '/printing-manager/jobs/queue',
     related_entity_id: id
   }, req.app?.get('io')).catch(e => console.error('Failed to notify printing supervisor:', e.message));
+
+  // Customer bell — payment confirmed (resolve portal user via customer phone)
+  try {
+    if (order.customer_id) {
+      const cust = await db('customers').where('id', order.customer_id).first();
+      const portalUser = cust?.phone ? await db('users').where('phone', cust.phone).first() : null;
+      if (portalUser) {
+        sendCustomerNotification({
+          user_id: portalUser.id,
+          title: 'Print Order Payment Confirmed ✅',
+          message: `Your payment of ETB ${Number(order.total_price || 0).toLocaleString()} for order ${order.order_number} was confirmed. Production is starting.`,
+          type: 'payment_confirmed',
+          link: '/customer/printing-orders',
+          related_entity_id: id
+        }, req.app?.get('io')).catch(() => {});
+      }
+    }
+  } catch (e) { /* non-fatal */ }
 
   res.json({ status: 'success', message: 'Payment verified and receipt recorded', data: { orderId: id, payment_status: 'Confirmed' } });
 });
@@ -1016,6 +1034,16 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
       related_entity_id: orderId
     }, req.app?.get('io'));
   } catch (e) { console.error('Failed to notify printing supervisor:', e.message); }
+
+  // Customer bell — order received confirmation
+  sendCustomerNotification({
+    user_id: userId,
+    title: 'Print Order Received 🖨️',
+    message: `Your order ${orderNumber} (${productType || 'Book'} x${quantity || 1}) was received. Total: ETB ${Number(vatPricing.total || 0).toLocaleString()}.`,
+    type: 'printing_order',
+    link: '/customer/printing-orders',
+    related_entity_id: orderId
+  }, req.app?.get('io')).catch(() => {});
 
   await audit('PRINTING_ORDER_CREATED', userId, {
     ip: req.ip,
