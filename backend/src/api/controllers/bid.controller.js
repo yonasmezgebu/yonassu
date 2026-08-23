@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const notificationRepository = require('../../repositories/notification.repository');
+const { sendNotification } = require('../../services/notification.service');
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
 
@@ -309,17 +310,19 @@ exports.ceoApprove = catchAsync(async (req, res) => {
     });
     
     if (tenderData) {
-      await notificationRepository.create({
-        roleTarget: 'Sales Manager',
-        title: 'CEO Approved Bids',
-        message: `The CEO has approved bid(s) for tender ${tenderData.reference_number}.`
+      await sendNotification('Sales Manager', null, {
+        title: '✅ CEO Approved Bids',
+        message: `The CEO has approved bid(s) for tender ${tenderData.reference_number}.`,
+        type: 'REQUEST_APPROVED',
+        link: '/sales/bids'
       });
     }
   } else if (!anyApproved && tenderData) {
-    await notificationRepository.create({
-      roleTarget: 'Sales Manager',
-      title: 'CEO Rejected Bids',
-      message: `The CEO has rejected the forwarded bid(s) for tender ${tenderData.reference_number}.`
+    await sendNotification('Sales Manager', null, {
+      title: '❌ CEO Rejected Bids',
+      message: `The CEO has rejected the forwarded bid(s) for tender ${tenderData.reference_number}.`,
+      type: 'REQUEST_REJECTED',
+      link: '/sales/bids'
     });
   }
 
