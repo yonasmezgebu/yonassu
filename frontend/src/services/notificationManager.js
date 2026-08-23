@@ -7,7 +7,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import approvedSrc from '../assets/notification/approved.ogg';
 import bidAwardedSrc from '../assets/notification/bid_awarded.ogg';
-import cashOutSrc from '../assets/notification/cash_out.m4a';
 import ceoConfirmSrc from '../assets/notification/ceo_confirmation_needed.ogg';
 import closedSrc from '../assets/notification/closed.mp3';
 import clumpSrc from '../assets/notification/clump.mp3';
@@ -19,9 +18,12 @@ import readySrc from '../assets/notification/ready.m4a';
 import receivedSrc from '../assets/notification/received.ogg';
 import rejectSrc from '../assets/notification/reject.mp3';
 import rejectedSrc from '../assets/notification/rejected.ogg';
-import requestSrc from '../assets/notification/request.ogg';
-import waitedSrc from '../assets/notification/waited.mp3';
 import successSrc from '../assets/notification/success.mp3';
+
+// Fallbacks for missing files
+const cashOutSrc = successSrc;
+const requestSrc = infoSrc;
+const waitedSrc = clumpSrc;
 
 // Primary registry — one entry per sound file, named after its task
 export const SOUNDS = {
@@ -86,6 +88,13 @@ export const SOUND_FOR_TYPE = {
   tender_approval: 'posted',
   new_bid: 'request',
   transfer_request: 'info',
+  payroll_approved: 'approved',
+  payroll_rejected: 'rejected',
+  applicant_approved: 'approved',
+  contact_message: 'request',
+  printing_order: 'request',
+  payment_confirmed: 'approved',
+  payment_rejected: 'rejected',
   store_update: 'info',
   store_adjustment: 'clump',
   store_physical_count: 'info',
