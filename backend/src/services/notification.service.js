@@ -181,9 +181,37 @@ const sendCeoNotification = async ({ title, message, type = 'general', link = nu
   }
 };
 
+/**
+ * Sends a notification to the Printing Supervisor role.
+ * Inserts a row into `notifications` (role_target = 'Printing Supervisor')
+ * and emits a `printing-cash` socket event so printing users get a live bell update + sound.
+ */
+const sendPrintingNotification = async ({ title, message, type = 'printing', link = null, related_entity_id = null }, io) => {
+  try {
+    const [id] = await db('notifications').insert({
+      user_id: null,
+      role_target: 'Printing Supervisor',
+      type,
+      title,
+      message,
+      link: link || null,
+      related_entity_id: toIntOrNull(related_entity_id),
+      is_read: false
+    });
+    if (io) {
+      io.emit('printing-cash', { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+    }
+    return id;
+  } catch (err) {
+    console.error('Error sending printing notification:', err);
+    return null;
+  }
+};
+
 module.exports = {
   initWebSocket,
   sendNotification,
   sendFinanceNotification,
-  sendCeoNotification
+  sendCeoNotification,
+  sendPrintingNotification
 };
