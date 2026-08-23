@@ -75,7 +75,7 @@ const FinanceHome = () => {
       if (crvRes.status === 'fulfilled')     setCrvs(crvRes.value?.data || []);
       if (evRes.status === 'fulfilled')      setEvs(evRes.value?.data || []);
       if (bankRes.status === 'fulfilled')    setBanks(bankRes.value?.data || []);
-      if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data || null);
+      if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data?.summary || bankSumRes.value?.data || null);
       if (reconRes.status === 'fulfilled')   setRecons(reconRes.value?.data || []);
       if (rcvRes.status === 'fulfilled')     setReceivables(rcvRes.value?.data || []);
     } catch (err) {
@@ -107,15 +107,17 @@ const FinanceHome = () => {
   // EV — expense vouchers
   const evTotal  = evList.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
 
-  // Bank — total balance across all accounts
-  const bankBalance = bankSummary
-    ? parseFloat(bankSummary.total_balance || bankSummary.balance || 0)
-    : bankList.reduce((s, b) => s + parseFloat(b.balance || b.current_balance || 0), 0);
+  // Bank — total balance across all accounts (enriched netBalance = opening + in - out)
+  const bankBalance = bankList.length
+    ? bankList.reduce((s, b) => s + parseFloat(b.netBalance ?? b.balance ?? b.opening_balance ?? 0), 0)
+    : parseFloat(bankSummary?.netBalance || bankSummary?.total_balance || 0);
 
   // Receivables — outstanding amounts
   const totalReceivable    = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
-  const settledReceivable  = rcvList.reduce((s, r) => s + parseFloat(r.paid_amount  || r.settled || 0), 0);
-  const outstandingBalance = totalReceivable - settledReceivable;
+  const settledReceivable  = rcvList.reduce((s, r) => s + parseFloat(r.amount_paid || r.paid_amount || 0), 0);
+  const outstandingBalance = rcvList.length
+    ? rcvList.reduce((s, r) => s + parseFloat(r.outstanding_balance ?? ((r.total_amount || r.amount || 0) - (r.amount_paid || r.paid_amount || 0))), 0)
+    : totalReceivable - settledReceivable;
 
   // Reconciliations — unreconciled count
   const unreconCount = reconList.filter(r => r.status !== 'reconciled' && r.status !== 'completed').length;
