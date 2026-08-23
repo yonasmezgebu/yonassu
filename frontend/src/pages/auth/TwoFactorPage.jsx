@@ -52,7 +52,7 @@ const TwoFactorPage = () => {
       if (userRoles.includes('admin')) navigate('/admin');
       else if (userRoles.includes('ceo')) navigate('/ceo');
       else if (userRoles.includes('finance manager') || userRoles.includes('finance')) navigate('/finance');
-      else if (userRoles.includes('purchase')) navigate('/purchase');
+      else if (userRoles.includes('purchase') || userRoles.includes('purchase manager') || userRoles.includes('market team')) navigate('/purchase');
       else if (userRoles.includes('pharmacy store keeper')) navigate('/pharmacy-store');
       else if (userRoles.includes('general store keeper')) navigate('/general-store');
       else if (userRoles.includes('sales/cashier')) navigate('/pharmacy-worker');
