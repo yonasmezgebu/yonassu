@@ -1,4 +1,5 @@
 const { db } = require('../../config/database');
+const { sendNotification } = require('../../services/notification.service');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const notificationRepository = require('../../repositories/notification.repository');
@@ -140,7 +141,7 @@ exports.publish = catchAsync(async (req, res) => {
     await notificationRepository.create({ roleTarget: 'Admin', title: 'Tender Approval Needed', message: `Tender ${tender.reference_number} — ${tender.title} requires approval (value: ETB ${value.toLocaleString()})` });
     await notificationRepository.create({ roleTarget: 'CEO', title: 'Tender Approval Needed', message: `Tender ${tender.reference_number} — ${tender.title} requires approval (value: ETB ${value.toLocaleString()})` });
   } else {
-    await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Published', message: `Tender ${tender.reference_number} — ${tender.title} is now open for bids` });
+    await sendNotification('Sales Manager', null, { title: '📢 Tender Published', message: `Tender ${tender.reference_number} — ${tender.title} is now open for bids`, type: 'info', link: '/sales/bids' });
   }
   res.json({ status: 'success', data: updated });
 });
@@ -152,7 +153,7 @@ exports.approve = catchAsync(async (req, res) => {
   await db('tenders').where('id', req.params.id).update({ status: 'open', approved_by: req.user.id, updated_at: db.fn.now() });
   const updated = await db('tenders').where('id', req.params.id).first();
   log(req, 'Tender Approved', `Tender ${tender.reference_number} — ${tender.title}`, tender, updated);
-  await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Approved', message: `Tender ${tender.reference_number} — ${tender.title} has been approved and is now open` });
+  await sendNotification('Sales Manager', null, { title: '✅ Tender Approved', message: `Tender ${tender.reference_number} — ${tender.title} has been approved and is now open`, type: 'REQUEST_APPROVED', link: '/sales/bids' });
   res.json({ status: 'success', data: updated });
 });
 
@@ -200,7 +201,7 @@ exports.cancel = catchAsync(async (req, res) => {
   for (const b of bidders) {
     await notificationRepository.create({ userId: b.customer_id, title: 'Tender Cancelled', message: `Tender ${tender.reference_number} — ${tender.title} has been cancelled. Reason: ${reason}` });
   }
-  await notificationRepository.create({ roleTarget: 'Sales Manager', title: 'Tender Cancelled', message: `Tender ${tender.reference_number} — ${tender.title} was cancelled: ${reason}` });
+  await sendNotification('Sales Manager', null, { title: '🚫 Tender Cancelled', message: `Tender ${tender.reference_number} — ${tender.title} was cancelled: ${reason}`, type: 'REQUEST_REJECTED', link: '/sales/bids' });
   const cancelled = await db('tenders').where('id', req.params.id).first();
   log(req, 'Tender Cancelled', `Tender ${tender.reference_number} — ${tender.title}`, tender, cancelled);
   res.json({ status: 'success', message: 'Tender cancelled' });
