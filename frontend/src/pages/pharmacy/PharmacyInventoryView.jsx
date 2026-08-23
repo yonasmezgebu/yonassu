@@ -4,7 +4,6 @@ import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Layers, RefreshCw, Plus, CheckCircle, XCircle, AlertTriangle, Search, Package, Send, Clock, Image as ImageIcon, Edit3, Building, GitBranch } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import apiClient from '../../services/apiClient';
-import infoSound from '../../assets/notification/info.mp3';
 import { useAuth } from '../../hooks/useAuth';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -164,7 +163,6 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
       });
       setPendingReqs(prev => [...prev, { drug_id: adjusting.id, status: 'PENDING' }]);
       setMsg({ type: 'success', text: `Request sent to CEO for ${adjusting.name}` });
-      playSound();
       setAdjusting(null); setAdjQty(''); setAdjReason('');
     } catch (e) {
       setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to send request' });
