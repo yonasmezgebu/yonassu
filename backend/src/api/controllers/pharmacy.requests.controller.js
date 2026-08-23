@@ -4,6 +4,7 @@ const { getFileInfo } = require('../middleware/upload.middleware');
 const { v4: uuidv4 } = require('uuid');
 const { catchAsync } = require('../../utils/catchAsync');
 const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
+const { sendCustomerNotification } = require('../../services/notification.service');
 
 const requestsController = {
   // ==============================
@@ -192,17 +193,17 @@ const requestsController = {
         reference_no: request.request_number,
         created_by: req.user ? req.user.id : null
       });
-
-      // Insert in-app notification for customer
-      await trx('notifications').insert({
-        user_id: request.customer_id,
-        title: 'Prescription Request Approved ✅',
-        message: `Your request #${request.request_number} for ${request.medication_name} has been approved and is being prepared.`,
-        type: 'pharmacy',
-        is_read: 0,
-        created_at: trx.fn.now()
-      }).catch(() => {}); // Silently skip if notifications table has different structure
     });
+
+    // Customer bell: approved (persisted + live socket + sound)
+    sendCustomerNotification({
+      user_id: request.customer_id,
+      title: 'Prescription Request Approved ✅',
+      message: `Your request #${request.request_number} for ${request.medication_name} has been approved and is being prepared.`,
+      type: 'pharmacy',
+      link: '/customer/prescriptions',
+      related_entity_id: request.id
+    }, req.app?.get('io')).catch(() => {});
 
     const updated = await db('prescription_requests').where({ id }).first();
 
@@ -235,16 +236,17 @@ const requestsController = {
         rejection_reason,
         approved_rejected_at: trx.fn.now()
       });
-
-      await trx('notifications').insert({
-        user_id: request.customer_id,
-        title: 'Prescription Request Rejected ❌',
-        message: `Your request #${request.request_number} for ${request.medication_name} was rejected. Reason: ${rejection_reason}`,
-        type: 'pharmacy',
-        is_read: 0,
-        created_at: trx.fn.now()
-      }).catch(() => {});
     });
+
+    // Customer bell: rejected (persisted + live socket + sound)
+    sendCustomerNotification({
+      user_id: request.customer_id,
+      title: 'Prescription Request Rejected ❌',
+      message: `Your request #${request.request_number} for ${request.medication_name} was rejected. Reason: ${rejection_reason}`,
+      type: 'pharmacy',
+      link: '/customer/prescriptions',
+      related_entity_id: request.id
+    }, req.app?.get('io')).catch(() => {});
 
     const updated = await db('prescription_requests').where({ id }).first();
 
@@ -270,16 +272,17 @@ const requestsController = {
         status: 'ready_for_pickup',
         ready_at: trx.fn.now()
       });
-
-      await trx('notifications').insert({
-        user_id: request.customer_id,
-        title: 'Ready for Pickup 📦',
-        message: `Your request #${request.request_number} for ${request.medication_name} is ready! Please come collect it.`,
-        type: 'pharmacy',
-        is_read: 0,
-        created_at: trx.fn.now()
-      }).catch(() => {});
     });
+
+    // Customer bell: ready for pickup (persisted + live socket + sound)
+    sendCustomerNotification({
+      user_id: request.customer_id,
+      title: 'Ready for Pickup 📦',
+      message: `Your request #${request.request_number} for ${request.medication_name} is ready! Please come collect it.`,
+      type: 'pharmacy',
+      link: '/customer/prescriptions',
+      related_entity_id: request.id
+    }, req.app?.get('io')).catch(() => {});
 
     const updated = await db('prescription_requests').where({ id }).first();
 
