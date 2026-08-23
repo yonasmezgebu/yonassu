@@ -140,9 +140,9 @@ const AppRoutes = () => {
           </RoleBasedRoute>
         } />
         {}
-        <Route path="/purchase/*" element={
-          <RoleBasedRoute role={['Purchase', 'Market Team', 'Admin']}>
-            <PurchaseDashboard />
+<Route path="/purchase/*" element={
+<RoleBasedRoute role={['Purchase', 'Purchase Manager', 'Market Team', 'Admin']}>
+<PurchaseDashboard />
           </RoleBasedRoute>
         } />
         {}
