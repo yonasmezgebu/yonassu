@@ -29,7 +29,6 @@ import FinanceEquity from './FinanceEquity';
 
 import FinanceLiveIncome from './FinanceLiveIncome';
 import FinanceReceiptsDashboard from './FinanceReceiptsDashboard';
-import CashHandovers from './CashHandovers';
 import FinancePrintingAssets from './FinancePrintingAssets';
 import FinancePrintingMachines from './FinancePrintingMachines';
 import FinancePharmacyAssets from './FinancePharmacyAssets';
@@ -100,7 +99,6 @@ const FinanceDashboard = () => {
             {/* Cash Management */}
             <Route path="ev" element={<FinanceEV />} />
             <Route path="crv" element={<FinanceCRV />} />
-<Route path="cash-handovers" element={<CashHandovers />} />
             <Route path="cash-book" element={<FinanceCashBook />} />
             <Route path="bank-accounts" element={<FinanceBankAccounts />} />
             <Route path="payroll-payment" element={<FinancePayrollPayment />} />
