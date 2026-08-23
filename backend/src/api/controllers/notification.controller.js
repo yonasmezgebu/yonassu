@@ -38,6 +38,10 @@ const resolveNotificationScope = (roles = []) => {
   if (lowerRoles.some(r => r.includes('hr'))) {
     return { roleTarget: 'HR Manager', allowedTypes: null, requireLink: false };
   }
+  // Printing Supervisor / Printing Manager: everything addressed to the printing office
+  if (lowerRoles.some(r => r.includes('printing'))) {
+    return { roleTarget: 'Printing Supervisor', allowedTypes: null, requireLink: false };
+  }
   return { roleTarget: 'CUSTOMER', allowedTypes: null, requireLink: false };
 };
 
