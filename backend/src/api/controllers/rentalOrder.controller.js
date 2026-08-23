@@ -4,7 +4,7 @@ const rentalOrderRepository = require('../../repositories/rentalOrder.repository
 const carRepository = require('../../repositories/car.repository');
 const notificationRepository = require('../../repositories/notification.repository');
 const { sendNotification } = require('../../services/notification.service');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendCustomerNotification } = require('../../services/notification.service');
 const RentalOrder = require('../../models/RentalOrder.model');
 const AppError = require('../../utils/AppError');
 const { logger } = require('../../config/logger');
@@ -631,16 +631,22 @@ exports.verifyPayment = async (req, res) => {
     }
 
     if (notificationTitle) {
-      await notificationRepository.create({
-        userId: order.customerId,
-        title: notificationTitle,
-        message: notificationMessage
-      });
+      // Customer bell: persisted + live socket + decision-aware sound
+      try {
+        await sendCustomerNotification({
+          user_id: order.customerId,
+          title: notificationTitle,
+          message: notificationMessage,
+          type: isVerified ? 'rental' : 'rental',
+          link: '/customer/rentals',
+          related_entity_id: order.id
+        }, req.app?.get('io'));
+      } catch (e) { /* non-fatal */ }
       // Notify manager that finance acted on the payment
       try {
         await sendNotification('Car Renting Manager', null, {
           title: isVerified ? '✅ Payment Verified (Finance)' : '❌ Payment Rejected (Finance)',
-          message: isVerified 
+          message: isVerified
             ? `Finance verified payment for order ${order.orderNumber}`
             : `Finance rejected payment for order ${order.orderNumber}`,
           type: isVerified ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
