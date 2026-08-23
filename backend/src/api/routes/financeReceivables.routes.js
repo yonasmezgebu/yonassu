@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendPrintingNotification } = require('../../services/notification.service');
 
 // ── GET all pending/all submissions ──────────────────────────────
 router.get('/live-income', authenticate, async (req, res) => {
@@ -725,6 +725,17 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       related_entity_id: submission.id
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
+    // Printing department follows its own income through the bell
+    if (String(submission.department || '').toLowerCase() === 'printing') {
+      sendPrintingNotification({
+        title: 'Income Approved by Finance',
+        message: `ETB ${Number(systemTotal || 0).toLocaleString()} Printing income was approved by Finance (Ref: ${submission.reference_no || `INC-${submission.id}`}).`,
+        type: 'payment_confirmed',
+        link: '/printing-manager/reports/finance',
+        related_entity_id: submission.id
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify printing:', e.message));
+    }
+
     res.json({
       success: true,
       message: 'Income approved and recorded to Receivables Book',
@@ -816,6 +827,17 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
       link: '/finance/pharmacy-sales?tab=list',
       related_entity_id: submission.id
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+
+    // Printing department follows its own income through the bell
+    if (String(submission.department || '').toLowerCase() === 'printing') {
+      sendPrintingNotification({
+        title: 'Income Rejected by Finance',
+        message: `ETB ${Number(submission.amount || 0).toLocaleString()} Printing income was rejected by Finance. Reason: ${reason}`,
+        type: 'payment_rejected',
+        link: '/printing-manager/reports/finance',
+        related_entity_id: submission.id
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify printing:', e.message));
+    }
     res.json({ success: true, message: 'Submission rejected.' });
   } catch (error) {
     console.error('Error rejecting income submission:', error);
