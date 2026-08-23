@@ -175,8 +175,8 @@ const RequisitionForm = () => {
           <tr style="border-bottom:2px solid #224f94">
             <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase">Product</th>
             <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase;text-align:center">Qty</th>
-            <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase;text-align:center">Single Price</th>
-            <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase;text-align:right">Total Price</th>
+            <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase;text-align:center">Cost Price</th>
+            <th style="padding:0 0 14px 0;font-size:11px;font-weight:800;color:#1e293b;text-transform:uppercase;text-align:right">Total Cost</th>
           </tr>
         </thead>
         <tbody>${itemRows}</tbody>
@@ -269,8 +269,8 @@ const RequisitionForm = () => {
                       <th style={{ ...thStyle, width: '40%' }}>Drug / Product</th>
                       <th style={{ ...thStyle, textAlign: 'center' }}>Qty</th>
                       <th style={{ ...thStyle, textAlign: 'center' }}>Unit</th>
-                      <th style={{ ...thStyle, textAlign: 'center' }}>Single Price</th>
-                      <th style={{ ...thStyle, textAlign: 'right' }}>Total Price</th>
+                      <th style={{ ...thStyle, textAlign: 'center' }}>Cost Price</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>Total Cost</th>
                       <th style={{ ...thStyle, width: 40 }}></th>
                     </tr>
                   </thead>
@@ -432,8 +432,8 @@ const RequisitionForm = () => {
                   <div key={it.id} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>{it.drug_name}</div>
                     <div style={{ fontSize: 12, color: '#64748B' }}>Available: <strong style={{ color: '#1E293B' }}>{it.current_store_stock || 0}</strong></div>
-                    <div style={{ fontSize: 12, color: '#64748B' }}>Single Price: <strong style={{ color: '#1E293B' }}>{it.store_unit_price ? `${it.store_unit_price} ETB` : '—'}</strong></div>
-                    <div style={{ fontSize: 12, color: '#064E3B', fontWeight: 700 }}>Total Value: <strong>{it.store_unit_price ? `${((it.current_store_stock||0) * it.store_unit_price).toFixed(2)} ETB` : '—'}</strong></div>
+                    <div style={{ fontSize: 12, color: '#64748B' }}>Cost Price: <strong style={{ color: '#1E293B' }}>{it.store_unit_price ? `${it.store_unit_price} ETB` : '—'}</strong></div>
+                    <div style={{ fontSize: 12, color: '#064E3B', fontWeight: 700 }}>Total Cost Value: <strong>{it.store_unit_price ? `${((it.current_store_stock||0) * it.store_unit_price).toFixed(2)} ETB` : '—'}</strong></div>
                   </div>
                 ))}
                 <div style={{ borderTop: '2px solid #DBEAFE', paddingTop: 8, marginTop: 4, fontSize: 13, fontWeight: 800, color: '#1E40AF' }}>
@@ -452,8 +452,8 @@ const RequisitionForm = () => {
                     <div key={it.id} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>{it.drug_name}</div>
                       <div style={{ fontSize: 12, color: '#64748B' }}>Available: <strong style={{ color: '#1E293B' }}>{current}</strong></div>
-                      <div style={{ fontSize: 12, color: '#64748B' }}>Single Price: <strong style={{ color: '#1E293B' }}>{pharmPrice > 0 ? `${pharmPrice} ETB` : '—'}</strong></div>
-                      <div style={{ fontSize: 12, color: '#064E3B', fontWeight: 700 }}>Total Value: <strong>{pharmPrice > 0 ? `${(current * pharmPrice).toFixed(2)} ETB` : '—'}</strong></div>
+                      <div style={{ fontSize: 12, color: '#64748B' }}>Cost Price: <strong style={{ color: '#1E293B' }}>{pharmPrice > 0 ? `${pharmPrice} ETB` : '—'}</strong></div>
+                      <div style={{ fontSize: 12, color: '#064E3B', fontWeight: 700 }}>Total Cost Value: <strong>{pharmPrice > 0 ? `${(current * pharmPrice).toFixed(2)} ETB` : '—'}</strong></div>
                       <div style={{ fontSize: 12, color: '#64748B' }}>Reorder: <strong>{reorder}</strong></div>
                       {shortage > 0 && <div style={{ fontSize: 12, color: '#EF4444', fontWeight: 700 }}>Shortage: -{shortage}</div>}
                     </div>
@@ -510,8 +510,8 @@ const RequisitionForm = () => {
                     <tr style={{ borderBottom: '2px solid #224f94' }}>
                       <th style={{ ...thStyle, textTransform: 'uppercase' }}>Product</th>
                       <th style={{ ...thStyle, textAlign: 'center', textTransform: 'uppercase' }}>Qty</th>
-                      <th style={{ ...thStyle, textAlign: 'center', textTransform: 'uppercase' }}>Single Price</th>
-                      <th style={{ ...thStyle, textAlign: 'right', textTransform: 'uppercase' }}>Total Price</th>
+                      <th style={{ ...thStyle, textAlign: 'center', textTransform: 'uppercase' }}>Cost Price</th>
+                      <th style={{ ...thStyle, textAlign: 'right', textTransform: 'uppercase' }}>Total Cost</th>
                     </tr>
                   </thead>
                   <tbody>
