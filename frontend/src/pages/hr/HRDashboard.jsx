@@ -9,7 +9,6 @@ import HREmployeeStatus from './HREmployeeStatus';
 // Payroll
 import HRPayroll from './HRPayroll';
 import HRPayrollDashboard from './HRPayrollDashboard';
-import HRPayrollProcess from './HRPayrollProcess';
 import HRDeductions from './HRDeductions';
 import HRPayslips from './HRPayslips';
 // Recruitment
@@ -97,9 +96,8 @@ const HRDashboard = () => {
       <Route path="todays-activities"   element={<HRActivities />} />
       <Route path="employees"           element={<HREmployeesWrapper />} />
       <Route path="salary-list"         element={<HRPayroll />} />
-      <Route path="monthly-payroll"      element={<HRPayrollDashboard />} />
-      <Route path="payroll-processing"  element={<HRPayrollProcess />} />
-      <Route path="deductions"          element={<HRDeductions />} />
+        <Route path="monthly-payroll"      element={<HRPayrollDashboard />} />
+        <Route path="deductions"          element={<HRDeductions />} />
       <Route path="payslips"            element={<HRPayslips />} />
       <Route path="job-posts"           element={<HRJobPosts />} />
       <Route path="applications"        element={<HRApplications />} />
