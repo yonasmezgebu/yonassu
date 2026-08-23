@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
+
 import {
   ClipboardList, Clock, Package, CheckCircle, XCircle, RefreshCw,
   Pill, User, Phone, Building2, AlertCircle, ChevronRight, Bell, Loader
@@ -63,8 +63,7 @@ export default function PharmacyWorkerPrescriptions() {
 
       // New prescription arrived notification
       if (!loading && pending.length > prevCounts.current.PENDING) {
-        playSound('notification');
-      }
+        }
       prevCounts.current = { PENDING: pending.length, PREPARED: prepared.length };
 
       setColumns({ PENDING: pending, PREPARED: prepared });
@@ -101,7 +100,6 @@ export default function PharmacyWorkerPrescriptions() {
         pickup_branch_id: selectedBranch,
       });
       showToast('✅ Prescription marked as Ready for Pickup', 'success');
-      playSound('success');
       setBranchModal(null);
       fetchAll();
     } catch (e) {
@@ -116,7 +114,6 @@ export default function PharmacyWorkerPrescriptions() {
     try {
       await apiClient.patch(`/pharmacy/prescriptions/${rx.id}/status`, { status: 'PICKED_UP' });
       showToast('✅ Prescription marked as Picked Up — moved to history', 'success');
-      playSound('success');
       fetchAll();
     } catch (e) {
       showToast(e.response?.data?.message || 'Failed to update', 'error');
