@@ -2,7 +2,7 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { logAudit } = require('../../services/audit.service');
-const { sendFinanceNotification, sendCeoNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendCeoNotification, sendPurchaseNotification } = require('../../services/notification.service');
 
 exports.createRequest = catchAsync(async (req, res) => {
   const { module, item_name, item_description, quantity, estimated_cost, urgency, justification, requester_signature } = req.body;
@@ -74,6 +74,19 @@ exports.decideRequest = catchAsync(async (req, res) => {
     link: '/finance/general-procurement?tab=pending-payment',
     related_entity_id: newRequest.id
   }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
+
+  // Purchase office acts on approved requests; rejected ones close out
+  if (decision !== 'WAIT') {
+    sendPurchaseNotification({
+      title: decision === 'APPROVE'
+        ? `📋 Request ${newRequest.request_code} Approved — Process It`
+        : `❌ Request ${newRequest.request_code} Rejected`,
+      message: `${newRequest.item_name}${reason ? ' — Reason: ' + reason : ''}`,
+      type: decision === 'APPROVE' ? 'success' : 'error',
+      link: '/purchase/general-requests',
+      related_entity_id: newRequest.id
+    }, req.app?.get('io')).catch(() => {});
+  }
 
   res.json({ status: 'success', message: `Request ${newStatus}` });
 });
@@ -227,6 +240,25 @@ exports.decidePayment = catchAsync(async (req, res) => {
     userAgent: req.headers['user-agent']
   });
 
+  // CEO payment decision → Finance pays, or Purchase learns it bounced
+  if (decision === 'APPROVE') {
+    sendFinanceNotification({
+      title: 'Payment Approved — Disburse',
+      message: `Payment of ETB ${Number(oldRequest.requested_amount || oldRequest.estimated_cost || 0).toLocaleString()} approved for "${oldRequest.item_name}".`,
+      type: 'finance',
+      link: '/finance/general-procurement?tab=pending-payment',
+      related_entity_id: newRequest.id
+    }, req.app?.get('io')).catch(() => {});
+  } else {
+    sendPurchaseNotification({
+      title: `❌ Payment Rejected for ${newRequest.request_code}`,
+      message: `${newRequest.item_name}${reason ? ' — Reason: ' + reason : ''}`,
+      type: 'error',
+      link: '/purchase/general-requests',
+      related_entity_id: newRequest.id
+    }, req.app?.get('io')).catch(() => {});
+  }
+
   res.json({ status: 'success', message: `Payment ${newStatus === 'PAYMENT_APPROVED' ? 'Approved' : 'Rejected'}` });
 });
 
@@ -301,6 +333,15 @@ exports.payRequest = catchAsync(async (req, res) => {
     ipAddress: req.ip,
     userAgent: req.headers['user-agent']
   });
+
+  // Purchase office: money is out, proceed with the purchase
+  sendPurchaseNotification({
+    title: `💵 Payment Made — ${updated.request_code}`,
+    message: `ETB ${Number(updated.paid_amount || 0).toLocaleString()} paid for "${updated.item_name}". You can complete the purchase.`,
+    type: 'success',
+    link: '/purchase/general-requests',
+    related_entity_id: updated.id
+  }, req.app?.get('io')).catch(() => {});
 
   res.json({ status: 'success', message: 'Payment successfully recorded.' });
 });
