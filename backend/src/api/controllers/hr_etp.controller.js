@@ -1,6 +1,7 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
+const { sendNotification } = require('../../services/notification.service');
 
 const bcrypt = require('bcryptjs');
 
@@ -958,6 +959,14 @@ exports.approvePayroll = catchAsync(async (req, res) => {
       notification_message: `Payroll for ${m}/${y} approved by CEO. Submitted to Finance for payment processing.`,
       priority: 'MEDIUM', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
     });
+
+    // HR bell notification — payroll approved by CEO
+    sendNotification('HR Manager', null, {
+      title: 'Payroll Approved by CEO',
+      message: `Payroll for ${m}/${y} was approved by CEO and submitted to Finance for payment.`,
+      type: 'payroll_approved',
+      link: '/hr/monthly-payroll',
+    }).catch(err => console.error('[Notification] Failed to notify HR:', err.message));
   } else {
     // Rejected — notify HR
     await db('hr_notifications_log').insert({
@@ -965,6 +974,14 @@ exports.approvePayroll = catchAsync(async (req, res) => {
       notification_message: `Payroll for ${m}/${y} was rejected by CEO. Reason: ${reason || 'No reason given'}. Please revise and resubmit.`,
       priority: 'HIGH', status: 'Pending', recipient_user: 'HR', sent_date: db.fn.now(),
     });
+
+    // HR bell notification — payroll rejected by CEO
+    sendNotification('HR Manager', null, {
+      title: 'Payroll Rejected by CEO',
+      message: `Payroll for ${m}/${y} was rejected by CEO. Reason: ${reason || 'No reason given'}. Please revise and resubmit.`,
+      type: 'payroll_rejected',
+      link: '/hr/monthly-payroll',
+    }).catch(err => console.error('[Notification] Failed to notify HR:', err.message));
   }
 
   res.json({ status: 'success', message: `Payroll ${status.toLowerCase()}` });
