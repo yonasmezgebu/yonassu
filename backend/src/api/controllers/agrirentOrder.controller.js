@@ -1,6 +1,6 @@
 const { db } = require('../../config/database');
 const notificationRepository = require('../../repositories/notification.repository');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendCustomerNotification } = require('../../services/notification.service');
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
@@ -440,11 +440,14 @@ exports.updateOrderStatus = async (req, res) => {
 
     if (order.customer_id && messages[status]) {
       try {
-        await notificationRepository.create({
-          userId: order.customer_id,
+        await sendCustomerNotification({
+          user_id: order.customer_id,
           title: `AgriRent Order ${order.order_number}`,
-          message: messages[status]
-        });
+          message: messages[status],
+          type: 'agri',
+          link: '/customer/farming-orders',
+          related_entity_id: order.id
+        }, req.app?.get('io'));
       } catch (e) { /* non-fatal */ }
     }
 
