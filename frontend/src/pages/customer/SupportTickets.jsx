@@ -6,7 +6,7 @@ import styles from './SupportTickets.module.css';
 const statusClass = (status) => {
   if (!status) return '';
   const normalized = status.toLowerCase().replace(/\s+/g, '');
-  return styles[normalized] || styles[status] || '';
+  return styles[normalized] || '';
 };
 
 const normalizeTicket = (t) => ({
@@ -21,6 +21,7 @@ const SupportTickets = () => {
   const [form, setForm] = useState({ subject: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
@@ -33,20 +34,21 @@ const SupportTickets = () => {
       setLoading(false);
     }
   }, []);
+  
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') setShowModal(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (showModal) {
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [showModal]);
+  }, [showModal, handleKeyDown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,6 +65,7 @@ const SupportTickets = () => {
       setSubmitting(false);
     }
   };
+  
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -74,6 +77,7 @@ const SupportTickets = () => {
           + New Ticket
         </button>
       </div>
+      
       {loading ? (
         <div className={styles.loadingState}>Loading tickets...</div>
       ) : tickets.length === 0 ? (
@@ -86,7 +90,7 @@ const SupportTickets = () => {
             <div key={ticket.id} className={styles.ticketCard}>
               <div className={styles.ticketHeader}>
                 <h3 className={styles.ticketSubject}>{ticket.subject}</h3>
-                <span className={`${styles.badge} ${statusClass(ticket.status)}`}>
+                <span className={`${styles.badge} ${statusClass(ticket.status) || styles.closed}`}>
                   {ticket.status}
                 </span>
               </div>
@@ -99,6 +103,7 @@ const SupportTickets = () => {
           ))}
         </div>
       )}
+      
       {showModal && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Create support ticket">
@@ -154,4 +159,5 @@ const SupportTickets = () => {
     </div>
   );
 };
+
 export default SupportTickets;
