@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
-import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import { CheckCircle, Truck, Package, AlertCircle, ClipboardList } from 'lucide-react';
 
@@ -41,7 +40,6 @@ const ReceiveShipments = () => {
       const res = await apiClient.patch(`/pharmacy/transfers/${selected}/receive`, { quantityReceived: receivedQty });
       if (res.status === 'success') {
         showToast(`Received ${receivedQty} units successfully`, 'success');
-        playSound('info');
         setReceivedQty('');
         setDetail(d => ({ ...d, status: 'COMPLETED' }));
         loadShippedRequests();
