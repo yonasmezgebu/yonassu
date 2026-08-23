@@ -56,8 +56,7 @@ const PharmacyWorkerPOS = () => {
 
       setSubmitted({ m22: m22Record, crv: crvRecord, cart, subtotal, discount, total, date: new Date().toISOString() });
       submitNotification('💳 POS Sale Completed', 'Sale Completed - Click to View');
-    } catch (err) {
-      alert(err.message);
+      } catch (err) { alert(err.message);
     }
   };
 
