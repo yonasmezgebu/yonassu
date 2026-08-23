@@ -1,5 +1,6 @@
 const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
+const { sendNotification } = require('../../services/notification.service');
 const { getFileInfo, deleteFile } = require('../middleware/upload.middleware');
 const { audit } = require('../../config/logger');
 const settingsRepository = new (require('../../repositories/settings.repository'))();
