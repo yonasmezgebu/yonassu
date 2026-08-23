@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
-import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import CEOStampSignature from '../../components/CEOStampSignature';
 import { Package, CheckCircle, Printer, Truck, AlertTriangle } from 'lucide-react';
@@ -56,7 +55,6 @@ const GRNForm = () => {
       });
       if (res.status === 'success') {
         showToast(`GRN completed — ${qty} units received`, 'success');
-        playSound('success');
         loadGRN(selected);
         loadGRNs();
       }
