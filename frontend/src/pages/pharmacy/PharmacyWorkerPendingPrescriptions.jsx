@@ -35,8 +35,7 @@ const PharmacyWorkerPendingPrescriptions = () => {
 
   useEffect(() => { fetchPrescriptions(); }, []);
 
-  const handleProcess = (rx) => {
-    navigate('/pharmacy-worker/pos', { state: { prescription_id: rx.id } });
+  const handleProcess = (rx) => { navigate('/pharmacy-worker/pos', { state: { prescription_id: rx.id } });
   };
 
   const handleHold = async (rx) => {
@@ -54,8 +53,7 @@ const PharmacyWorkerPendingPrescriptions = () => {
     }
   };
 
-  const handleNotify = (rx) => {
-    alert(`Patient ${rx.patient_name || 'Unknown'} will be notified at their registered contact.`);
+  const handleNotify = (rx) => { alert(`Patient ${rx.patient_name || 'Unknown'} will be notified at their registered contact.`);
   };
 
   const sorted = [...prescriptions].sort((a, b) => {
