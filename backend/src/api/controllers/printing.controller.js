@@ -6,7 +6,7 @@ const OrderModel = require('../../models/Order.model');
 const { generateOrderNumber, generateInvoiceNumber } = require('../../utils/orderNumber');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendPrintingNotification } = require('../../services/notification.service');
 const deleteFile = (path) => console.log('Deleted file:', path);
 const calculatePrintingPrice = (params) => {
   const model = new OrderModel({
@@ -190,7 +190,7 @@ exports.createOrder = catchAsync(async (req, res) => {
   const invoiceLines = await buildPrintingInvoiceLines({
     productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
   });
-  const [orderId] = await db.transaction(async (trx) => {
+  const orderId = await db.transaction(async (trx) => {
     const [oid] = await trx('printing_orders').insert({
       order_number: orderNumber,
       customer_id: resolvedCustomerId,
@@ -273,26 +273,15 @@ exports.createOrder = catchAsync(async (req, res) => {
   });
   if (req.res) req.res.locals.__centralAudited = true;
 
-  // NOTIFY PRINTING DEPARTMENT
+  // NOTIFY PRINTING DEPARTMENT (navbar bell)
   try {
-    const printingStaff = await db('users')
-      .leftJoin('user_roles', 'users.id', 'user_roles.user_id')
-      .leftJoin('roles', 'user_roles.role_id', 'roles.id')
-      .whereIn('roles.name', ['Printing Supervisor', 'Admin'])
-      .select('users.id');
-
-    if (printingStaff && printingStaff.length > 0) {
-      const notificationsToInsert = printingStaff.map(staff => ({
-        user_id: staff.id,
-        title: 'New Printing Order',
-        message: `Order ${orderNumber} has been created.`,
-        type: 'printing_order',
-        link_url: `/printing/orders`,
-        is_read: false,
-        created_at: db.fn.now()
-      }));
-      await db('user_notifications').insert(notificationsToInsert);
-    }
+    await sendPrintingNotification({
+      title: 'New Printing Order',
+      message: `Order ${orderNumber} has been created${customer?.name ? ` for ${customer.name}` : ''}.`,
+      type: 'printing_order',
+      link: '/printing-manager/jobs/queue',
+      related_entity_id: orderId
+    }, req.app?.get('io'));
   } catch (notifErr) {
     console.error('Failed to notify printing staff:', notifErr.message);
   }
@@ -505,6 +494,15 @@ exports.verifyPayment = catchAsync(async (req, res) => {
     }
   });
   if (req.res) req.res.locals.__centralAudited = true;
+
+  // Notify Printing Supervisor — finance confirmed the payment
+  sendPrintingNotification({
+    title: 'Payment Confirmed by Finance',
+    message: `Payment of ETB ${Number(order.total_price || 0).toLocaleString()} for order ${order.order_number} was confirmed. You can start production.`,
+    type: 'payment_confirmed',
+    link: '/printing-manager/jobs/queue',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify printing supervisor:', e.message));
 
   res.json({ status: 'success', message: 'Payment verified and receipt recorded', data: { orderId: id, payment_status: 'Confirmed' } });
 });
@@ -938,7 +936,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   const invoiceLines = await buildPrintingInvoiceLines({
     productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
   });
-  const [orderId] = await db.transaction(async (trx) => {
+  const orderId = await db.transaction(async (trx) => {
     const [oid] = await trx('printing_orders').insert({
       order_number: orderNumber,
       customer_id: customerId,
@@ -1007,6 +1005,17 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
       related_entity_id: orderId
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
   }
+
+  // Notify Printing Supervisor — new online order from the customer portal
+  try {
+    await sendPrintingNotification({
+      title: 'New Online Print Order',
+      message: `${user?.full_name || 'A customer'} placed online order ${orderNumber} (${productType || 'Book'} x${quantity || 1}${paperType ? ', ' + paperType : ''}).`,
+      type: 'printing_order',
+      link: '/printing-manager/jobs/queue',
+      related_entity_id: orderId
+    }, req.app?.get('io'));
+  } catch (e) { console.error('Failed to notify printing supervisor:', e.message); }
 
   await audit('PRINTING_ORDER_CREATED', userId, {
     ip: req.ip,
