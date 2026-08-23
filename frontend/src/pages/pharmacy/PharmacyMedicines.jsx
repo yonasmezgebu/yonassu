@@ -284,7 +284,7 @@ const PharmacyMedicines = () => {
                   <Th col="image" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Image</Th>
                   <Th col="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Drug Name</Th>
                   <Th col="category" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Category</Th>
-                  <Th col="price" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Price</Th>
+                  <Th col="price" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Cost Price</Th>
                   <Th col="stock" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Stock</Th>
                   <Th col="expiryDate" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Expiry Date</Th>
                   <Th col="batchNo" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Batch #</Th>
