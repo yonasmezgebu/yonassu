@@ -17,14 +17,6 @@ const DARK   = '#064e3b'; // emerald-900
 const MID    = '#047857'; // emerald-600
 const ACCENT = '#10b981'; // emerald-500
 
-const preloadedAudio = {
-  notification: new Audio('/sounds/notification.mp3'),
-  approved:     new Audio('/sounds/approved.mp3'),
-  rejected:     new Audio('/sounds/rejected.mp3'),
-  shipment:     new Audio('/sounds/shipment.mp3'),
-  completed:    new Audio('/sounds/completed.mp3'),
-};
-Object.values(preloadedAudio).forEach(a => { a.load(); });
 
 // ── Step Config ──────────────────────────────────────────────────────────────
 const STEPS = [
