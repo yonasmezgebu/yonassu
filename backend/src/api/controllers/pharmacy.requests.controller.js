@@ -90,7 +90,7 @@ const requestsController = {
           title: `New Prescription Request: ${request_number}`,
           message: `${customerName} ordered ${request.medication_name} x${request.quantity}`,
           type: 'pharmacy',
-          link: '/pharmacy-worker/sales',
+          link: '/pharmacy-worker/sales?tab=online',
           is_read: 0,
           created_at: db.fn.now()
         });
