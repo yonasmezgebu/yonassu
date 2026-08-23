@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import cashOutSound from '../../assets/notification/cash_out.m4a';
-import successSound from '../../assets/notification/ready.m4a';
 import { loadVatSafe, getVatForItem } from '../../services/vatService';
 
 const API = '/api/pharmacy-sales';
