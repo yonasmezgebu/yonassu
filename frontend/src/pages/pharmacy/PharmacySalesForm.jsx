@@ -4,7 +4,7 @@ import apiClient from '../../services/apiClient';
 import pharmacyService from '../../services/pharmacyService';
 import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
+
 import {
   ShoppingCart, DollarSign, CreditCard, Smartphone, Banknote,
   CheckCircle, XCircle, Plus, Trash2, RefreshCw, List, Eye,
@@ -191,7 +191,6 @@ export default function PharmacySalesForm() {
         loadProducts();
 
         showToast('✅ Sale recorded successfully!', 'success');
-        playSound('success');
         submitNotification('Payment Processed', 'Transaction completed successfully. Model 22 Generated.');
         setPosStep(4);
         setPosCart([]);
@@ -304,14 +303,16 @@ export default function PharmacySalesForm() {
 
   useEffect(() => { loadBranches(); loadWorkers(); loadProducts(); loadSales(); loadFinanceAccounts(); }, []);
 
-  // Auto-switch to ONLINE tab when navigated from the bell notification
+  // Auto-switch to ONLINE tab when navigated from the bell notification (state OR ?tab=online in URL)
   useEffect(() => {
-    if (location.state?.tab === 'online') {
+    const urlParams = new URLSearchParams(location.search);
+    if (location.state?.tab === 'online' || urlParams.get('tab') === 'online') {
       setTab('online');
       setShowAudit(false);
       loadPendingOrders();
     }
-  }, [location.state?.bellTs]);
+  }, [location.state?.bellTs, location.search]);
+
 
   const handleRefreshAll = async () => {
     setRefreshing(true);
@@ -581,7 +582,6 @@ export default function PharmacySalesForm() {
       const res = await apiClient.post('/pharmacy/sales', payload);
       if (res.status === 'success') {
         showToast('Sale recorded successfully', 'success');
-        playSound('success');
         resetForm();
         loadSales();
         setTab('list');
