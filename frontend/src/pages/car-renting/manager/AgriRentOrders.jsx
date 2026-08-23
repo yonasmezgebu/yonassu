@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../../services/apiClient';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -288,6 +288,7 @@ const S = {
 /* ─────────────── MAIN COMPONENT ─────────────── */
 const AgriRentOrders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
@@ -325,6 +326,42 @@ const AgriRentOrders = () => {
 
   useEffect(() => { load(filter); }, [filter.page, filter.status, filter.paymentStatus, load]);
 
+    useEffect(() => {
+    if (location.state?.autoSelectSearchItem) {
+      const item = location.state.autoSelectSearchItem.item;
+      if (item && (item.order_number || item.id || item.plate_number || item.name)) {
+        const q = String(item.order_number || item.plate_number || item.name || item.id).toLowerCase();
+        
+        // Handle filter object (Orders)
+        if (typeof setFilter === 'function') {
+          setFilter(f => ({ ...f, search: q, page: 1 }));
+          if (typeof load === 'function') load({ ...filter, search: q, page: 1 });
+        } 
+        // Handle searchQuery string (Fleet)
+        else if (typeof setSearchQuery === 'function') {
+          setSearchQuery(q);
+        }
+      }
+      
+      // Clear state so refresh doesn't trigger it again
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  /* 🔍 Global navbar search listener */
+  useEffect(() => {
+    const handler = (e) => {
+      const q = (e.detail || '').trim();
+      const fresh = { ...filter, search: q, page: 1 };
+      setFilter(fresh);
+      load(fresh);
+    };
+    window.addEventListener('dashboardSearch', handler);
+    return () => window.removeEventListener('dashboardSearch', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
   const handleSearch = () => {
     const fresh = { ...filter, page: 1 };
     setFilter(fresh);
@@ -350,6 +387,19 @@ const AgriRentOrders = () => {
   if (selectedOrderId) {
     return <AgriRentOrderDetail orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />;
   }
+
+  /* ── Local client-side search filter (instant, no round-trip) ── */
+  const filteredOrders = filter.search
+    ? orders.filter(o => {
+        const q = filter.search.toLowerCase();
+        return (
+          (o.order_number || '').toLowerCase().includes(q) ||
+          String(o.id || '').includes(q) ||
+          (o.customer_name || '').toLowerCase().includes(q) ||
+          (o.customer_phone || '').toLowerCase().includes(q)
+        );
+      })
+    : orders;
 
   return (
     <div className="aro-page" style={S.page}>
@@ -432,7 +482,7 @@ const AgriRentOrders = () => {
           <input
             placeholder="Search by Order #, Customer, Phone..."
             value={filter.search}
-            onChange={e => setFilter(f => ({ ...f, search: e.target.value }))}
+            onChange={e => setFilter(f => ({ ...f, search: e.target.value, page: 1 }))}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
             style={S.searchInput}
             onFocus={e => { e.target.style.border = `1.5px solid ${C.forestGreen}`; }}
@@ -487,12 +537,12 @@ const AgriRentOrders = () => {
                   </div>
                 </td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <tr>
                 <td colSpan={7}>
                   <div style={S.empty}>
                     <FileText size={52} style={S.emptyIcon} />
-                    <p style={S.emptyText}>No orders found</p>
+                    <p style={S.emptyText}>{filter.search ? `No orders matching "${filter.search}"` : 'No orders found'}</p>
                     <p style={S.emptySubText}>Try adjusting your filters or create a new order.</p>
                     <button
                       style={{ ...S.btnGreen, marginTop: 8 }}
@@ -503,7 +553,7 @@ const AgriRentOrders = () => {
                   </div>
                 </td>
               </tr>
-            ) : orders.map((order, idx) => (
+            ) : filteredOrders.map((order, idx) => (
               <tr
                 key={order.id}
                 style={{
