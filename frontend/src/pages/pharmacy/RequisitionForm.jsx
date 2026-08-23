@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
-import { playSound, sendPushNotification } from '../../services/notificationManager';
+import { sendPushNotification } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import CEOStampSignature from '../../components/CEOStampSignature';
 import { FileText, Package, AlertTriangle, Printer, ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -91,7 +91,6 @@ const RequisitionForm = () => {
       const res = await apiClient.post('/erp/requisitions', payload);
       if (res.status === 'success') {
         showToast(`Requisition ${res.data.req_no} created — ${res.data.item_count} items sent to CEO`, 'success');
-        playSound('success');
         setItems([{ ...EMPTY_ROW }]);
         setJustification('');
         setTab('list');
