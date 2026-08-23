@@ -133,7 +133,7 @@ export default function PharmacyWorkerCurrentStock() {
               <tr style={{ background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={th}>Medication</th>
                 <th style={th}>Category</th>
-                <th style={th}>Price</th>
+                <th style={th}>Cost Price</th>
                 <th style={th}>Stock Qty</th>
                 <th style={th}>Reorder Level</th>
                 <th style={th}>Expiry Date</th>
