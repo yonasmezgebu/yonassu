@@ -136,7 +136,7 @@ const PharmacyHealthPublisher = () => {
       ...f,
       title: prod.name || f.title,
       subtitle: prod.generic_name || f.subtitle,
-      content: `Manufacturer: ${prod.manufacturer || 'N/A'}\nCategory: ${prod.category_name || ''}\nPrice: ${prod.price || ''} ${prod.price_unit || ''}`,
+      content: `Manufacturer: ${prod.manufacturer || 'N/A'}\nCategory: ${prod.category_name || ''}\nCost Price: ${prod.price || ''} ${prod.price_unit || ''}`,
       product_id: prod.id,
       product_name: prod.name,
       price: prod.price || '',
@@ -298,12 +298,12 @@ const PharmacyHealthPublisher = () => {
         {/* Numeric fields */}
         <div className={styles.formGrid}>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Price</label>
+            <label className={styles.formLabel}>Cost Price</label>
             <input className={styles.formInput} placeholder="0.00" value={form.price}
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Price Unit</label>
+            <label className={styles.formLabel}>Cost Price Unit</label>
             <input className={styles.formInput} placeholder="ETB" value={form.price_unit}
               onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))} />
           </div>
