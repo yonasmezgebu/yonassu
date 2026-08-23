@@ -208,10 +208,66 @@ const sendPrintingNotification = async ({ title, message, type = 'printing', lin
   }
 };
 
+/**
+ * Sends a notification to the Purchase Manager role.
+ * Inserts a row into `notifications` (role_target = 'Purchase Manager')
+ * and emits a `purchase-cash` socket event so purchase users get a live bell update + sound.
+ */
+const sendPurchaseNotification = async ({ title, message, type = 'purchase', link = null, related_entity_id = null }, io) => {
+  try {
+    const [id] = await db('notifications').insert({
+      user_id: null,
+      role_target: 'Purchase Manager',
+      type,
+      title,
+      message,
+      link: link || null,
+      related_entity_id: toIntOrNull(related_entity_id),
+      is_read: false
+    });
+    if (io) {
+      io.emit('purchase-cash', { id, title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+    }
+    return id;
+  } catch (err) {
+    console.error('Error sending purchase notification:', err);
+    return null;
+  }
+};
+
+/**
+ * Sends a notification to a Customer (portal bell).
+ * Inserts a row into `notifications` (role_target = 'CUSTOMER', optional user_id)
+ * and emits a `customer-cash` socket event so the customer gets a live bell update + sound.
+ */
+const sendCustomerNotification = async ({ title, message, type = 'general', link = null, related_entity_id = null, user_id = null }, io) => {
+  try {
+    const [id] = await db('notifications').insert({
+      user_id: toIntOrNull(user_id),
+      role_target: 'CUSTOMER',
+      type,
+      title,
+      message,
+      link: link || null,
+      related_entity_id: toIntOrNull(related_entity_id),
+      is_read: false
+    });
+    if (io) {
+      io.emit('customer-cash', { id, user_id: toIntOrNull(user_id), title, message, type, link, related_entity_id, is_read: false, timestamp: new Date() });
+    }
+    return id;
+  } catch (err) {
+    console.error('Error sending customer notification:', err);
+    return null;
+  }
+};
+
 module.exports = {
   initWebSocket,
   sendNotification,
   sendFinanceNotification,
   sendCeoNotification,
-  sendPrintingNotification
+  sendPrintingNotification,
+  sendPurchaseNotification,
+  sendCustomerNotification
 };
