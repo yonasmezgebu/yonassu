@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
 import { Send, Package, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const STEPS = ['Item', 'Quantity', 'Reason', 'Review'];
@@ -45,7 +44,6 @@ export default function StoreRequisitionForm() {
       const res = await apiClient.post('/store/requisitions', payload);
       if (res.success) {
         showToast('Requisition sent to CEO for approval', 'success');
-        playSound('success');
         setSubmittedReq({ id: res.data?.id, reqNo, drugName, quantity, reason });
         setDone(true);
       } else {
