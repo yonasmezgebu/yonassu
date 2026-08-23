@@ -214,7 +214,7 @@ export default function PharmacyManagerControls() {
                 </label>
                 <label className="pm-label">Change Type
                   <select value={crForm.target_type} onChange={e => setCrForm(f => ({ ...f, target_type: e.target.value }))} className="pm-input">
-                    <option value="DRUG_PRICE">Price Change</option>
+                    <option value="DRUG_PRICE">Cost Price Change</option>
                     <option value="DRUG_QUANTITY">Quantity Adjustment</option>
                   </select>
                 </label>
@@ -241,7 +241,7 @@ export default function PharmacyManagerControls() {
                         <span className="pm-item-title">{cr.drug_name}</span>
                         <span className={`pm-badge ${cr.status === 'PENDING' ? 'pm-badge-pending' : cr.status === 'APPROVED' ? 'pm-badge-approved' : 'pm-badge-rejected'}`}>{cr.status}</span>
                       </div>
-                      <div className="pm-item-meta">{cr.target_type}: {cr.current_value} → {cr.requested_value}</div>
+                      <div className="pm-item-meta">{cr.target_type === 'DRUG_PRICE' ? 'Cost Price' : cr.target_type}: {cr.current_value} → {cr.requested_value}</div>
                       <div className="pm-item-desc">By: {cr.requested_by_name} · {cr.reason}</div>
                       {cr.status === 'PENDING' && (
                         <div className="pm-actions">
