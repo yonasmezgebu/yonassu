@@ -1,7 +1,7 @@
 const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
-const { sendCeoNotification } = require('../../services/notification.service');
+const { sendCeoNotification, sendFinanceNotification } = require('../../services/notification.service');
 
 // Helper to notify clients (if needed)
 const notify = (req, title, message, link, type = 'info') => {
@@ -83,6 +83,14 @@ exports.createCRV = catchAsync(async (req, res) => {
   });
 
   notify(req, '💰 CRV Created', `New Receipt Voucher ${crvNumber} created`, '/finance/cash-book', 'success');
+  // Persist to the Finance bell (receipt/payment received)
+  sendFinanceNotification({
+    title: 'Receipt Voucher Created',
+    message: `CRV ${crvNumber}: ETB ${Number(amount || 0).toLocaleString()} received from ${receivedFrom}.`,
+    type: 'finance',
+    link: '/finance/cash-book',
+    related_entity_id: crvId
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
   res.status(201).json({
     status: 'success',
@@ -167,6 +175,14 @@ exports.createEV = catchAsync(async (req, res) => {
   const [evId] = await db('finance_evs').insert(evData);
 
   notify(req, '💰 New Expense Voucher for Approval', `Expense Voucher ${evNumber} is awaiting CEO approval.`, '/ceo/finance', 'warning');
+  // Persist to the CEO bell — expense needs CEO approval
+  sendCeoNotification({
+    title: 'Expense Voucher Awaiting Approval',
+    message: `EV ${evNumber}: ETB ${Number(amount || 0).toLocaleString()} to ${paidTo} needs your approval.`,
+    type: 'general',
+    link: '/ceo/finance',
+    related_entity_id: evId
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
 
   res.status(201).json({
     status: 'success',
@@ -206,13 +222,14 @@ exports.approveEV = catchAsync(async (req, res) => {
 
   await db('finance_evs').where({ id }).update({ status: 'approved_finance' });
   notify(req, '✅ Expense Voucher Approved', `Expense Voucher ${ev.ev_number} approved by CEO. Click to continue.`, '/finance/ev', 'success');
-  await sendCeoNotification({
-    title: 'Expense Voucher Approved',
-    message: `Expense Voucher ${ev.ev_number} (ETB ${ev.amount}) approved.`,
-    type: 'general',
+  // Persist to the Finance bell — CEO approved this expense
+  sendFinanceNotification({
+    title: 'Expense Approved by CEO',
+    message: `EV ${ev.ev_number} (ETB ${Number(ev.amount || 0).toLocaleString()} to ${ev.paid_to}) was approved by CEO. You can finalize the payment.`,
+    type: 'finance',
     link: '/finance/ev?tab=history',
     related_entity_id: id
-  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
   res.json({ status: 'success', message: 'Expense voucher approved successfully' });
 });
@@ -225,13 +242,14 @@ exports.rejectEV = catchAsync(async (req, res) => {
 
   await db('finance_evs').where({ id }).update({ status: 'rejected', reject_reason: reason });
   notify(req, '❌ Expense Voucher Rejected', `Expense Voucher ${ev.ev_number} was rejected by CEO.`, '/finance/ev', 'error');
-  await sendCeoNotification({
-    title: 'Expense Voucher Rejected',
-    message: `Expense Voucher ${ev.ev_number} (ETB ${ev.amount}) rejected${reason ? ' - ' + reason : ''}.`,
-    type: 'general',
+  // Persist to the Finance bell — CEO rejected this expense
+  sendFinanceNotification({
+    title: 'Expense Rejected by CEO',
+    message: `EV ${ev.ev_number} (ETB ${Number(ev.amount || 0).toLocaleString()} to ${ev.paid_to}) was rejected by CEO.${reason ? ' Reason: ' + reason : ''}`,
+    type: 'finance',
     link: '/finance/ev?tab=history',
     related_entity_id: id
-  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
   res.json({ status: 'success', message: 'Expense voucher rejected successfully' });
 });
@@ -254,6 +272,14 @@ exports.finalizeEV = catchAsync(async (req, res) => {
   });
 
   notify(req, '✅ Expense Voucher Completed', `Expense Voucher ${ev.ev_number} has been finalized and recorded in the cashbook by Finance.`, '/ceo/finance', 'success');
+  // Persist to the CEO bell — payment completed by Finance
+  sendCeoNotification({
+    title: 'Expense Payment Completed',
+    message: `EV ${ev.ev_number} (ETB ${Number(ev.amount || 0).toLocaleString()}) was paid and recorded in the cashbook.`,
+    type: 'general',
+    link: '/ceo/finance',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify CEO:', e.message));
   res.json({ status: 'success', message: 'Expense voucher recorded in cashbook' });
 });
 
