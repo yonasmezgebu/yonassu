@@ -4,7 +4,6 @@ import apiClient from '../../services/apiClient';
 import salesService from '../../services/salesService';
 import { loadVatSafe, calcCartVat, getVatForItem, fmtPct } from '../../services/vatService';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
 import {
   ShoppingCart, DollarSign, CreditCard, Smartphone, Banknote,
   CheckCircle, XCircle, Plus, Trash2, RefreshCw, List, Eye,
@@ -648,7 +647,6 @@ const addToCart = (item) => {
         loadProducts();
 
         showToast('✅ Sale recorded successfully!', 'success');
-        playSound('success');
         submitNotification('Payment Processed', 'Transaction completed successfully.');
         setPosStep(4);
         setPosCart([]);
@@ -1013,7 +1011,6 @@ const addToCart = (item) => {
       const res = await apiClient.post('/pos/checkout-retail', payload);
       if (res.status === 'success') {
         showToast('Sale recorded successfully', 'success');
-        playSound('success');
         resetForm();
         loadSales();
         setTab('list');
