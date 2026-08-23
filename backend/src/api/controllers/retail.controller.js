@@ -5,7 +5,7 @@ const { generateOrderNumber, generateInvoiceNumber, generateReceiptNumber } = re
 const { log } = require('../../services/salesAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { recordInvoiceForOrder, recordReceiptForOrder } = require('../../services/invoiceDocument.service');
-const { sendFinanceNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendNotification } = require('../../services/notification.service');
 
 const imgUrl = (file) => file ? `/uploads/products/${file.filename}` : null;
 
@@ -309,6 +309,16 @@ exports.placeOrder = catchAsync(async (req, res) => {
     await trx('retail_cart_items').where({ user_id: req.user.id }).delete();
     return { orderId, invoice_number: retail_order_number, total_amount: total };
   });
+
+  // Notify Sales Manager of new online order
+  try {
+    await sendNotification('Sales Manager', null, {
+      title: '🛒 New Online Order',
+      message: `New online order #${result.invoice_number} — ETB ${Number(result.total_amount || 0).toLocaleString()}`,
+      type: 'info',
+      link: '/sales/pos'
+    });
+  } catch (e) { console.error('retail-order emit error:', e.message); }
 
   res.status(201).json({ status: 'success', message: 'Order placed!', data: result });
 });
