@@ -1,366 +1,371 @@
-/* ── Google Font ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* ================================================================
+   LoginPage.module.css
+   Design System: The Ultimate General Design & CSS Master Note
+   Architecture: CSS Variables (HSL) + Mobile-First + 8-Point Grid
+   ================================================================ */
 
-/* ════════════════════════════════════════════════
-   AUTH PAGE — 100% screen, two-column layout
-   Left: Deep forest green brand panel
-   Right: White form panel
-════════════════════════════════════════════════ */
-
-/* Reset */
+/* ── 1. RESET ────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-/* Full-screen two-column container */
+/* ── 2. ROOT DESIGN TOKENS ───────────────────────────────────── */
+:root {
+  --background:          0 0% 100%;
+  --foreground:          222.2 84% 4.9%;
+  --primary:             142.1 70% 30%;     /* Forest Green */
+  --primary-light:       142.1 70% 40%;
+  --primary-dark:        142.1 70% 22%;
+  --primary-foreground:  0 0% 100%;
+  --accent:              77 55% 35%;        /* Olive accent */
+  --muted:               210 40% 96.1%;
+  --muted-foreground:    215.4 16.3% 46.9%;
+  --border:              214.3 31.8% 91.4%;
+  --radius:              0.5rem;
+  --radius-lg:           0.75rem;
+  --danger:              0 72% 51%;
+  --danger-bg:           0 72% 96%;
+}
+
+/* ── 3. FULL-SCREEN TWO-COLUMN LAYOUT ───────────────────────── */
 .authContainer {
   display: flex;
   width: 100%;
   min-height: 100vh;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  margin: 0;
-  padding: 0;
-  position: relative;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
 }
 
-/* ────────────────────────────────────────────────
-   LEFT PANEL — Forest Green brand panel
-   Width: 42% on desktop, hidden on mobile
-──────────────────────────────────────────────── */
+/* ── 4. LEFT PANEL ───────────────────────────────────────────── */
 .leftPanel {
+  display: none; /* Hidden on mobile — mobile-first */
   width: 42%;
+  flex-shrink: 0;
   min-height: 100vh;
-  background: #1B5E20; /* Dark Green */
-  display: flex;
   flex-direction: column;
-  align-items: flex-start;
   justify-content: space-between;
-  padding: 0;
+  align-items: flex-start;
   position: relative;
   overflow: hidden;
-  flex-shrink: 0;
+  background-color: hsl(var(--primary-dark));
 }
 
-/* Decorative green gradient overlay */
+@media (min-width: 1024px) {
+  .leftPanel { display: flex; }
+}
+
+/* Gradient overlay */
 .leftPanel::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, #1B5E20 0%, #228B22 55%, #2E8B57 100%);
+  background: linear-gradient(
+    160deg,
+    hsl(142.1 70% 22%) 0%,
+    hsl(142.1 70% 30%) 55%,
+    hsl(142.1 70% 42%) 100%
+  );
   z-index: 0;
 }
 
-/* Geometric grid pattern — nature texture, no plant animations */
+/* Subtle grid texture */
 .leftPanel::after {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 59px,
-      rgba(255,255,255,0.04) 60px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 59px,
-      rgba(255,255,255,0.04) 60px
-    );
+    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,0.04) 60px),
+    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.04) 60px);
   z-index: 1;
 }
 
-/* Left panel top: Brand & tagline */
+/* ── BRAND BLOCK ──────────────────────────────────────────────── */
 .brandBlock {
   position: relative;
   z-index: 2;
-  padding: 48px 44px 0 44px;
+  padding: 3rem 2.75rem 0;
   width: 100%;
 }
 
 .brandLogo {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 48px;
+  gap: 0.875rem;
+  margin-bottom: 3rem;
 }
 
 .logoMark {
-  width: 52px;
-  height: 52px;
-  background: #ffffff;
+  width: 3.25rem;
+  height: 3.25rem;
+  background-color: hsl(var(--background));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: var(--radius);
 }
 
 .logoMark svg {
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
 }
 
 .brandName {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 0.12em;
+  color: hsl(var(--primary-foreground));
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  line-height: 1.1;
 }
 
 .brandTagline {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: rgba(255,255,255,0.6);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   font-weight: 400;
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 0.25rem;
 }
 
-/* Hero text */
+/* ── HERO TEXT ───────────────────────────────────────────────── */
 .heroText {
-  margin-top: 60px;
+  margin-top: 3.75rem;
 }
 
 .heroText h1 {
-  font-size: 2.6rem;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1.2;
-  margin-bottom: 20px;
-  letter-spacing: -0.01em;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: hsl(var(--primary-foreground));
+  line-height: 1.15;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.02em;
 }
 
 .heroText h1 span {
-  color: #98FF98; /* Mint Green accent */
+  color: hsl(100 100% 75%); /* Mint accent */
 }
 
 .heroText p {
   font-size: 1rem;
   color: rgba(255,255,255,0.72);
-  line-height: 1.7;
-  max-width: 320px;
+  line-height: 1.625;
+  max-width: 20rem;
 }
 
-
-/* Left panel bottom footer */
+/* ── LEFT FOOTER ─────────────────────────────────────────────── */
 .leftFooter {
   position: relative;
   z-index: 2;
-  padding: 0 44px 32px 44px;
+  padding: 0 2.75rem 2rem;
   width: 100%;
 }
 
 .leftFooter p {
   font-size: 0.75rem;
   color: rgba(255,255,255,0.4);
-  line-height: 1.6;
+  line-height: 1.625;
 }
 
-/* ────────────────────────────────────────────────
-   RIGHT PANEL — White form panel
-   Width: 58% on desktop, full on mobile
-──────────────────────────────────────────────── */
+/* ── 5. RIGHT PANEL ──────────────────────────────────────────── */
 .rightPanel {
   flex: 1;
   min-height: 100vh;
-  background: #F5F5F5; /* Light Gray background */
+  background-color: hsl(var(--muted));
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  position: relative;
   overflow-y: auto;
 }
 
-/* Top bar strip inside right panel */
+/* ── TOP BAR ─────────────────────────────────────────────────── */
 .rightTopBar {
   width: 100%;
-  background: #228B22; /* Forest Green */
-  padding: 0 48px;
-  height: 56px;
+  background-color: hsl(var(--primary));
+  padding: 0 1.5rem;
+  height: 3.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
 }
 
-.rightTopBar .topBarBrand {
-  font-size: 0.85rem;
+@media (min-width: 640px) {
+  .rightTopBar { padding: 0 3rem; }
+}
+
+.topBarBrand {
+  font-size: 0.8125rem;
   font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 0.1em;
+  color: hsl(var(--primary-foreground));
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.rightTopBar .topBarNav {
+.topBarNav {
   display: flex;
-  gap: 24px;
+  gap: 1.5rem;
   align-items: center;
 }
 
-.rightTopBar .topBarNav a {
-  font-size: 0.82rem;
+.topBarNav a {
+  font-size: 0.8125rem;
   color: rgba(255,255,255,0.8);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
-.rightTopBar .topBarNav a:hover {
-  color: #ffffff;
+.topBarNav a:hover {
+  color: hsl(var(--primary-foreground));
 }
 
-/* Form area — scrollable, fills remaining height */
+.topBarNav a:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary-foreground) / 0.4);
+  border-radius: 2px;
+}
+
+/* ── FORM AREA ───────────────────────────────────────────────── */
 .formArea {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 48px 48px 48px;
+  padding: 3rem 1.5rem;
 }
 
-/* ── In-App Notification Banner (replaces alerts) ── */
+@media (min-width: 640px) {
+  .formArea { padding: 3rem 3rem; }
+}
+
+/* ── ERROR NOTIFICATION ──────────────────────────────────────── */
 .notification {
   width: 100%;
-  max-width: 480px;
-  padding: 14px 18px;
-  margin-bottom: 20px;
+  max-width: 30rem;
+  padding: 0.875rem 1.125rem;
+  margin-bottom: 1.25rem;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.75rem;
   font-size: 0.875rem;
   font-weight: 500;
+  border-radius: var(--radius);
   border-left: 4px solid;
-  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: slideDown 0.3s ease both;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(-0.625rem); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .notificationError {
-  background: #FFEBEE;
-  color: #C62828;
-  border-color: #F44336;
+  background-color: hsl(var(--danger-bg));
+  color: hsl(0 72% 35%);
+  border-color: hsl(var(--danger));
 }
 
-.notificationSuccess {
-  background: #E8F5E9;
-  color: #2E7D32;
-  border-color: #4CAF50;
-}
+.notificationIcon { flex-shrink: 0; }
 
-.notificationIcon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-/* ── Form card wrapper ── */
+/* ── FORM CARD ───────────────────────────────────────────────── */
 .formCard {
-  background: #ffffff;
+  background-color: hsl(var(--background));
   width: 100%;
-  max-width: 480px;
-  padding: 44px 44px 44px 44px;
-  /* Rule 8: No radius on cards */
-  border-radius: 0;
-  /* Sharp shadow */
-  box-shadow: 4px 4px 0px rgba(0,0,0,0.12);
-  border: 1.5px solid #D7CCC8; /* Earth Brown border */
+  max-width: 30rem;
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: box-shadow 0.2s ease;
 }
 
-/* Page heading inside card */
+@media (min-width: 640px) {
+  .formCard { padding: 2.5rem; }
+}
+
+/* ── FORM HEADING ────────────────────────────────────────────── */
 .formHeading {
-  margin-bottom: 32px;
+  margin-bottom: 2rem;
 }
 
 .formHeading h2 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #424242; /* Dark Gray */
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.375rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .formHeading p {
-  font-size: 0.9rem;
-  color: #616161;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
   line-height: 1.5;
 }
 
-/* Green accent underline on heading */
 .headingAccent {
-  width: 48px;
+  width: 3rem;
   height: 3px;
-  background: #228B22; /* Forest Green */
-  margin-top: 12px;
+  background-color: hsl(var(--primary));
+  margin-top: 0.75rem;
+  border-radius: 9999px;
 }
 
-/* ────────────────────────────────────────────────
-   FORM — sharp corners, bold borders
-──────────────────────────────────────────────── */
+/* ── FORM ────────────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 1.25rem;
   width: 100%;
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 0.375rem;
 }
 
-/* Visible label — Rule 9: proper text visibility */
 .formGroup label {
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #424242; /* Dark Gray */
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: hsl(var(--foreground));
   display: block;
 }
 
-/* Rule 10 & 14: Sharp corner inputs, bold border when form exists */
+/* ── INPUT ───────────────────────────────────────────────────── */
 .input {
   width: 100%;
-  padding: 13px 16px;
-  background: #ffffff;
-  /* Rule 10: No radius */
-  border-radius: 0;
-  /* Rule 14: Bold border for form fields */
-  border: 2px solid #8D6E63; /* Earth Brown */
-  font-size: 0.92rem;
+  padding: 0.625rem 0.875rem;
+  background-color: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  font-size: 1rem;
   font-family: inherit;
-  color: #424242; /* Dark Gray text */
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
+  color: hsl(var(--foreground));
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .input::placeholder {
-  color: #9E9E9E;
+  color: hsl(var(--muted-foreground));
   font-weight: 400;
 }
 
-/* Rule 15: Hover on input */
 .input:hover {
-  border-color: #228B22; /* Forest Green on hover */
+  border-color: hsl(var(--primary) / 0.5);
 }
 
-/* Focus: Forest Green border */
 .input:focus {
-  border-color: #228B22;
-  box-shadow: 0 0 0 3px rgba(34,139,34,0.15);
-  background: #ffffff;
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-/* ── Password wrapper ── */
+/* ── PASSWORD WRAPPER ────────────────────────────────────────── */
 .passwordInputWrapper {
   position: relative;
   display: flex;
@@ -368,113 +373,125 @@
 }
 
 .passwordInputWrapper .input {
-  padding-right: 3.2rem;
+  padding-right: 3rem;
 }
 
 .passwordToggle {
   position: absolute;
-  right: 12px;
+  right: 0.75rem;
   background: none;
   border: none;
   cursor: pointer;
-  color: #6B8E23; /* Olive Green */
+  color: hsl(var(--muted-foreground));
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  transition: color 0.2s;
+  padding: 0.25rem;
+  border-radius: var(--radius);
+  transition: color 0.2s ease;
   z-index: 10;
 }
 
 .passwordToggle:hover {
-  color: #228B22;
+  color: hsl(var(--primary));
 }
 
-/* ── Remember me row ── */
+.passwordToggle:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* ── REMEMBER ROW ────────────────────────────────────────────── */
 .rememberRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: -4px;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .rememberLabel {
   display: flex !important;
   flex-direction: row !important;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #616161;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .rememberLabel input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #228B22;
+  width: 1rem;
+  height: 1rem;
+  accent-color: hsl(var(--primary));
   cursor: pointer;
-  /* Rule 8: No radius */
-  border-radius: 0;
+  border-radius: var(--radius);
 }
 
 .forgotLink {
-  font-size: 0.82rem;
-  color: #2E8B57; /* Emerald Green */
+  font-size: 0.875rem;
+  color: hsl(var(--primary));
   text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
 .forgotLink:hover {
-  color: #228B22;
+  color: hsl(var(--primary-dark));
   text-decoration: underline;
 }
 
-/* ────────────────────────────────────────────────
-   PRIMARY BUTTON — Forest Green, sharp corners
-   Rule 1, 3, 8: Sharp, no radius
-   Rule 15: Hover effect
-──────────────────────────────────────────────── */
+.forgotLink:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-radius: 2px;
+}
+
+/* ── PRIMARY BUTTON ──────────────────────────────────────────── */
 .btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  margin-top: 4px;
-  padding: 15px 24px;
-  background: #228B22; /* Forest Green */
-  color: #ffffff;
-  border: none;
-  /* Rule 8: No radius */
-  border-radius: 0;
-  font-weight: 700;
+  margin-top: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 500;
   font-size: 1rem;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  /* Sharp 3D shadow */
-  box-shadow: 3px 3px 0px #1B5E20;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  transition: background-color 0.2s ease-in-out, transform 0.15s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
-/* Rule 15: Hover */
 .btnPrimary:hover:not(:disabled) {
-  background: #2E8B57; /* Emerald Green */
-  box-shadow: 3px 3px 0px #1B5E20;
-  transform: translate(-1px, -1px);
+  background-color: hsl(var(--primary) / 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.25);
 }
 
 .btnPrimary:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0px #1B5E20;
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.btnPrimary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
 }
 
 .btnPrimary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
-/* Loading state shimmer on button */
+/* Loading shimmer */
 .btnPrimary.loading::after {
   content: '';
   position: absolute;
@@ -488,26 +505,23 @@
   to   { transform: translateX(100%); }
 }
 
-/* ────────────────────────────────────────────────
-   DIVIDER
-──────────────────────────────────────────────── */
+/* ── DIVIDER ─────────────────────────────────────────────────── */
 .registerSection {
-  margin-top: 24px;
+  margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0.875rem;
   width: 100%;
 }
 
 .divider {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #9E9E9E;
-  font-size: 0.78rem;
+  gap: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
   width: 100%;
   font-weight: 500;
-  letter-spacing: 0.04em;
 }
 
 .divider::before,
@@ -515,51 +529,51 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #D7CCC8; /* Earth Brown light */
+  background-color: hsl(var(--border));
 }
 
-/* Register button — outlined, sharp corner */
+/* ── REGISTER BUTTON ─────────────────────────────────────────── */
 .registerBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 13px 24px;
-  background: transparent;
-  border: 2px solid #228B22; /* Forest Green border */
-  color: #228B22;
-  /* Rule 8: No radius */
-  border-radius: 0;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  background-color: transparent;
+  border: 1px solid hsl(var(--primary));
+  color: hsl(var(--primary));
+  border-radius: var(--radius);
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s;
   width: 100%;
   font-family: inherit;
-  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
 
-/* Rule 15: Hover */
 .registerBtn:hover {
-  background: #228B22;
-  color: #ffffff;
-  box-shadow: 3px 3px 0px #1B5E20;
-  transform: translate(-1px, -1px);
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: translateY(-1px);
+}
+
+.registerBtn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 .adminNote {
-  font-size: 0.78rem;
-  color: #9E9E9E;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
   margin: 0;
   font-style: italic;
   text-align: center;
 }
 
-/* ────────────────────────────────────────────────
-   BACK HOME LINK
-──────────────────────────────────────────────── */
+/* ── BACK HOME ───────────────────────────────────────────────── */
 .backHomeWrap {
-  margin-top: 28px;
+  margin-top: 1.75rem;
   display: flex;
   justify-content: center;
 }
@@ -567,33 +581,42 @@
 .backHome {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #6B8E23; /* Olive Green */
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
   text-decoration: none;
-  transition: color 0.2s;
-  padding: 4px 0;
-  border-bottom: 2px solid transparent;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .backHome:hover {
-  color: #228B22;
-  border-bottom-color: #228B22;
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
-/* ────────────────────────────────────────────────
-   RIGHT PANEL FOOTER
-──────────────────────────────────────────────── */
+.backHome:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-radius: 2px;
+}
+
+/* ── RIGHT FOOTER ────────────────────────────────────────────── */
 .rightFooter {
   width: 100%;
-  background: #228B22;
-  padding: 16px 48px;
+  background-color: hsl(var(--primary));
+  padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .rightFooter { padding: 1rem 3rem; }
 }
 
 .rightFooter p {
@@ -602,104 +625,24 @@
   margin: 0;
 }
 
-.rightFooter .footerLinks {
+.footerLinks {
   display: flex;
-  gap: 20px;
+  gap: 1.25rem;
 }
 
-.rightFooter .footerLinks a {
+.footerLinks a {
   font-size: 0.75rem;
   color: rgba(255,255,255,0.6);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
-.rightFooter .footerLinks a:hover {
-  color: #ffffff;
+.footerLinks a:hover {
+  color: hsl(var(--primary-foreground));
 }
 
-/* ════════════════════════════════════════════════
-   RESPONSIVE — Mobile: single column
-════════════════════════════════════════════════ */
-@media (max-width: 900px) {
-  .authContainer {
-    flex-direction: column;
-  }
-
-  .leftPanel {
-    width: 100%;
-    min-height: auto;
-    padding: 0;
-  }
-
-  .brandBlock {
-    padding: 28px 24px 28px 24px;
-  }
-
-  .heroText {
-    margin-top: 16px;
-  }
-
-  .heroText h1 {
-    font-size: 1.8rem;
-  }
-
-  .statsRow {
-    padding: 0 24px;
-  }
-
-  .leftFooter {
-    display: none;
-  }
-
-  .rightPanel {
-    min-height: auto;
-  }
-
-  .rightTopBar {
-    padding: 0 20px;
-  }
-
-  .formArea {
-    padding: 32px 20px 32px 20px;
-    align-items: stretch;
-  }
-
-  .formCard {
-    max-width: 100%;
-    padding: 28px 20px;
-    box-shadow: none;
-    border: none;
-    border-top: 3px solid #228B22;
-  }
-
-  .notification {
-    max-width: 100%;
-  }
-
-  .rightFooter {
-    padding: 14px 20px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .rightTopBar {
-    height: 48px;
-  }
-
-  .formHeading h2 {
-    font-size: 1.5rem;
-  }
-
-  .statNumber {
-    font-size: 1.3rem;
-  }
-
-  .btnPrimary {
-    padding: 13px 20px;
-    font-size: 0.95rem;
-  }
+.footerLinks a:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+  border-radius: 2px;
 }
