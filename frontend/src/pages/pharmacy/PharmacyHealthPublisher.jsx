@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Image as ImageIcon, Trash2, Globe, ExternalLink, Search, DollarSign, CheckCircle, XCircle, Building2, Layers, X, Edit3, MapPin, Phone, Clock, User, Hash, Save, Shield, ShieldCheck } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import { useAuth } from '../../hooks/useAuth';
-import successSound from '../../assets/notification/info.mp3';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './PharmacyHealthPublisher.module.css';
 
@@ -198,7 +197,6 @@ const PharmacyHealthPublisher = () => {
       } else {
         await pharmacyService.createHealthPost(fd);
       }
-      playSuccessSound();
       setShowForm(false);
       setEditingId(null);
       resetForm();
