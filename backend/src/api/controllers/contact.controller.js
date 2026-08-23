@@ -34,12 +34,16 @@ exports.submit = catchAsync(async (req, res) => {
 
   const roleTargets = [routing.role];
   if (routing.extraRole) roleTargets.push(routing.extraRole);
+  // HR always sees every incoming contact message at the bell
+  if (!roleTargets.includes('HR Manager')) roleTargets.push('HR Manager');
 
   for (const role of roleTargets) {
     await notificationRepository.create({
       roleTarget: role,
       title: `New Contact: ${department}`,
       message: `${full_name} — ${subject}`,
+      type: 'contact_message',
+      link: '/hr/settings-contact',
     });
     const recipients = await db('users')
       .join('user_roles', 'users.id', 'user_roles.user_id')
