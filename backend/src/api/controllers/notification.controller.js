@@ -23,6 +23,11 @@ const resolveNotificationScope = (roles = []) => {
   if (lowerRoles.some(r => r.includes('pharmacy manager') || r.includes('pharmacy worker'))) {
     return { roleTarget: 'Pharmacy Manager', allowedTypes: null, requireLink: false };
   }
+  // Purchase Manager / Purchase office (checked BEFORE market so the dedicated
+  // purchase role wins for users holding both) — everything addressed to purchasing
+  if (lowerRoles.some(r => r.includes('purchase'))) {
+    return { roleTarget: 'Purchase Manager', allowedTypes: null, requireLink: false };
+  }
   if (lowerRoles.some(r => r.includes('market'))) {
     return { roleTarget: 'MANAGER', allowedTypes: ['general'], requireLink: false };
   }
