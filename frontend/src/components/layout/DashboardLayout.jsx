@@ -272,7 +272,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     (ceoFundRequestsPending || 0) +
     (storeApprovalsPending || 0) +
     (isPharmacyManagerRoute ? pharmacyPending : 0) +
-    (window.location.pathname.startsWith('/pharmacy-worker') ? (pharmacyOnlinePending || 0) : 0) +
+    
     purchasePending +
     (purchaseApprovedTenders?.length || 0) +
     procurementMessages +
@@ -463,35 +463,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
             )}
 
 
-            {window.location.pathname.startsWith('/pharmacy-worker') && pharmacyOnlinePending > 0 && (
-              <Link
-                to="/pharmacy-worker/sales"
-                state={{ bellTs: Date.now(), tab: 'online' }}
-                onClick={() => {
-                  setOpen(false);
-                  if (setPharmacyOnlinePending) setPharmacyOnlinePending(0);
-                }}
-                style={{ textDecoration: 'none', display: 'block' }}
-              >
-                <div
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
-                  style={{
-                    padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
-                    cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
-                    backgroundColor: '#FEF2F2', transition: 'background 0.15s'
-                  }}
-                >
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#FEE2E2' }}>
-                    <ShoppingCart size={16} color="#B91C1C" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: '0 0 2px 0', fontWeight: '700', fontSize: '13px', color: '#B91C1C' }}>🔴 New Online Orders</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#DC2626', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pharmacyOnlinePending} online order{pharmacyOnlinePending > 1 ? 's' : ''} awaiting processing</p>
-                  </div>
-                </div>
-              </Link>
-            )}
+            
             
             {pharmacyPending > 0 && isPharmacyManagerRoute && (
               <Link
@@ -674,7 +646,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                   </p>
                 </div>
               </div>
-            )) : items.filter(i => !i.isRead).length === 0 && ceoPending.length === 0 && pharmacyPending === 0 && pharmacyOnlinePending === 0 && purchasePending === 0 && purchaseNewBids === 0 && procurementMessages === 0 ? (
+            )) : items.filter(i => !i.isRead).length === 0 && ceoPending.length === 0 && pharmacyPending === 0  && purchasePending === 0 && purchaseNewBids === 0 && procurementMessages === 0 ? (
               <div style={{ padding: '32px', textAlign: 'center', color: '#9CA3AF' }}>
                 <CheckCircle size={32} style={{ marginBottom: '8px', color: '#10B981' }} />
                 <p style={{ margin: 0 }}>All caught up!</p>
@@ -836,7 +808,11 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     const isPharmacy = location.pathname.startsWith('/pharmacy');
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isEmployeeRoute = location.pathname.startsWith('/employee');
-    if (!isPharmacy && !isAdminRoute && !isEmployeeRoute) return;
+    const isHrRoute = location.pathname.startsWith('/hr');
+    const isPrintingRoute = location.pathname.startsWith('/printing-manager');
+    const isSalesRoute = location.pathname.startsWith('/sales');
+    const isFinDashRoute = location.pathname.startsWith('/finance');
+    if (!isPharmacy && !isAdminRoute && !isEmployeeRoute && !isHrRoute && !isPrintingRoute && !isSalesRoute && !isFinDashRoute) return;
 
     if (!navSearchValue.trim()) {
       setNavSuggestions([]);
@@ -849,7 +825,49 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
 
     // INSTANT RESULTS: employee portal pages match locally with zero latency
     let instantPageHits = [];
-    if (isEmployeeRoute) {
+    let hrPageHits = [];
+    let printPageHits = [];
+    let salesPageHits = [];
+    let finPageHits = [];
+    if (isHrRoute) {
+      const hrPages = [
+        { label: 'Dashboard',           path: '/hr/employee-summary',   icon: '🏠', keywords: 'home dashboard summary overview start hr' },
+        { label: "Today's Activities",  path: '/hr/todays-activities',  icon: '📅', keywords: 'today activities daily log events' },
+        { label: 'Employees',           path: '/hr/employees',          icon: '👥', keywords: 'employees staff list etp people manage add edit worker' },
+        { label: 'Monthly Payroll',     path: '/hr/monthly-payroll',    icon: '📊', keywords: 'payroll monthly process salary calculate run' },
+        { label: 'Salary List',         path: '/hr/salary-list',        icon: '💰', keywords: 'salary list pay wages earnings basic' },
+        { label: 'Deductions',          path: '/hr/deductions',         icon: '💳', keywords: 'deductions loan tax pension absence deduct' },
+        { label: 'Payroll History',     path: '/hr/payslips',           icon: '🧾', keywords: 'payslips history payroll documents pdf slip' },
+        { label: 'Job Posts',           path: '/hr/job-posts',          icon: '📰', keywords: 'job posts vacancies recruitment publish opening' },
+        { label: 'Applications',        path: '/hr/applications',       icon: '📥', keywords: 'job applications applicants cv resume apply hiring' },
+        { label: 'Interviews',          path: '/hr/interviews',         icon: '🗣️', keywords: 'interviews schedule candidates meeting hire' },
+        { label: 'Hiring Status',       path: '/hr/hiring-status',      icon: '✅', keywords: 'hiring status pipeline candidates onboard' },
+        { label: 'Evaluations',         path: '/hr/evaluations',        icon: '⭐', keywords: 'evaluations performance score rating review' },
+        { label: 'Performance Review',  path: '/hr/performance-review', icon: '📈', keywords: 'performance review approve evaluate' },
+        { label: 'Feedback',            path: '/hr/feedback',           icon: '💬', keywords: 'feedback employee comments suggestions' },
+        { label: 'Contracts',           path: '/hr/contracts',          icon: '📜', keywords: 'contracts renew terminate agreement document' },
+        { label: 'Employee Info',       path: '/hr/employee-info',      icon: '🗂️', keywords: 'employee info status departments positions details' },
+        { label: 'HR Policies',         path: '/hr/hr-policies',        icon: '🛡️', keywords: 'policies rules guidelines handbook compliance' },
+        { label: 'Announcements',       path: '/hr/announcements',      icon: '📢', keywords: 'announcements news broadcast send all staff' },
+        { label: 'Internal Notices',    path: '/hr/internal-notices',   icon: '📌', keywords: 'internal notices memo pin board' },
+        { label: 'News Manager',        path: '/hr/news',               icon: '🗞️', keywords: 'news public website articles post' },
+        { label: 'Public Gallery',      path: '/hr/gallery',            icon: '🖼️', keywords: 'gallery photos images public upload picture' },
+        { label: 'Job Applications Manager', path: '/hr/job-applications', icon: '📋', keywords: 'job applications manager public submissions careers' },
+        { label: 'Contact Settings',    path: '/hr/settings-contact',   icon: '🔧', keywords: 'contact settings phone email address configure' },
+        { label: 'Chat',                path: '/hr/chat',               icon: '💬', keywords: 'chat messages talk communication manager' },
+        { label: 'Audit Log',           path: '/hr/audit-log',          icon: '🔎', keywords: 'audit log history actions trail security records' },
+      ];
+      hrPageHits = hrPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • HR Dashboard`,
+        type: 'hr_page',
+        item: p
+      }));
+      setNavSuggestions(hrPageHits);
+      setNavSelectedIndex(0);
+    } else if (isEmployeeRoute) {
       const empPages = [
         { label: 'Dashboard',         path: '/employee/overview',          icon: '🏠', keywords: 'home overview dashboard start' },
         { label: 'My Tasks',          path: '/employee/tasks/mine',        icon: '📋', keywords: 'tasks assigned work todo mine' },
@@ -872,7 +890,110 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       }));
       setNavSuggestions(instantPageHits);
       setNavSelectedIndex(0);
-    }
+    } else if (isPrintingRoute) {
+      const printPages = [
+        { label: 'Dashboard',              path: '/printing-manager/overview',            icon: '🏠', keywords: 'home overview dashboard start printing supervisor' },
+        { label: 'New Job',                path: '/printing-manager/jobs/new',            icon: '➕', keywords: 'new job create order add start job' },
+        { label: 'Job Process',            path: '/printing-manager/jobs/queue',          icon: '📋', keywords: 'job process queue pipeline workflow active jobs' },
+        { label: 'Design Stage',           path: '/printing-manager/jobs/design',         icon: '🎨', keywords: 'design stage artwork graphic layout' },
+        { label: 'Prepress',               path: '/printing-manager/jobs/prepress',       icon: '🖼️', keywords: 'prepress plate proof prepare press ready' },
+        { label: 'In Print',               path: '/printing-manager/jobs/printing',       icon: '🖨️', keywords: 'in print printing press machine running' },
+        { label: 'Finishing',              path: '/printing-manager/jobs/finishing',      icon: '✂️', keywords: 'finishing cutting binding lamination final touches' },
+        { label: 'Delivery',               path: '/printing-manager/jobs/delivery',       icon: '🚚', keywords: 'delivery ship dispatch handover customer pickup' },
+        { label: 'Job History',            path: '/printing-manager/jobs/history',        icon: '🗂️', keywords: 'job history completed past archive records all orders' },
+        { label: 'My Tasks',               path: '/printing-manager/jobs/tasks',          icon: '✅', keywords: 'tasks employee assignments todo work reports' },
+        { label: 'Design Requests',        path: '/printing-manager/design/requests',     icon: '📥', keywords: 'design requests inbox customer submitted designs' },
+        { label: 'Upload Artwork',         path: '/printing-manager/design/upload',       icon: '📤', keywords: 'upload artwork files media assets' },
+        { label: 'File Review',            path: '/printing-manager/design/review',       icon: '👁️', keywords: 'file review check approve proof files' },
+        { label: 'Production Machines',    path: '/printing-manager/prod/machines',       icon: '⚙️', keywords: 'machines equipment printer allocation status maintenance' },
+        { label: 'Production Materials',   path: '/printing-manager/prod/materials',      icon: '📦', keywords: 'production materials stock paper ink supplies inventory' },
+        { label: 'Store Material',         path: '/printing-manager/prod/store-materials',icon: '🏬', keywords: 'store material warehouse general supplies stock' },
+        { label: 'Redo Requests',          path: '/printing-manager/prod/reprints',       icon: '🔁', keywords: 'redo reprint requests rework defects complaints quality' },
+        { label: 'Daily Production Report',path: '/printing-manager/reports/daily',       icon: '📅', keywords: 'daily production report output today summary' },
+        { label: 'Job Cost Report',        path: '/printing-manager/reports/costs',       icon: '💰', keywords: 'job cost report pricing revenue profit expenses calculate' },
+        { label: 'Material Consumption',   path: '/printing-manager/reports/materials',   icon: '📉', keywords: 'material consumption report usage waste track' },
+        { label: 'CEO Report',             path: '/printing-manager/reports/ceo',         icon: '👔', keywords: 'ceo report executive summary performance submit' },
+        { label: 'Finance Review',         path: '/printing-manager/reports/finance',     icon: '🧾', keywords: 'finance review invoices payments billing verification' },
+        { label: 'Setting Contact',        path: '/printing-manager/contact',             icon: '📞', keywords: 'contact settings phone email address configure messages' },
+        { label: 'Chat',                   path: '/printing-manager/chat',                icon: '💬', keywords: 'chat messages talk communication manager' },
+        { label: 'Audit Log',              path: '/printing-manager/audit-log',           icon: '🔎', keywords: 'audit log history actions trail security records' },
+      ];
+      printPageHits = printPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Printing Supervisor`,
+        type: 'print_page',
+        item: p
+      }));
+      setNavSuggestions(printPageHits);
+      setNavSelectedIndex(0);
+    } else if (isSalesRoute) {
+        const salesPages = [
+          { label: 'Overview', path: '/sales/overview', icon: '📊', keywords: 'home overview dashboard start sales' },
+          { label: 'Retail POS', path: '/sales/pos', icon: '🛒', keywords: 'pos point of sale retail sell cash register checkout' },
+          { label: 'Sales Returns', path: '/sales/sales-return', icon: '🔄', keywords: 'returns refund reverse back' },
+          { label: 'Store Inventory', path: '/sales/store-inventory', icon: '📦', keywords: 'stock inventory products items store warehouse' },
+          { label: 'Tasks', path: '/sales/tasks', icon: '📋', keywords: 'tasks assignments todo work' },
+          { label: 'Branches', path: '/sales/branches', icon: '🏢', keywords: 'branches locations retail stores' },
+          { label: 'Tenders & Bids', path: '/sales/bids', icon: '📑', keywords: 'bids tender manage approve review quotes' },
+          { label: 'CEO Report', path: '/sales/ceo-report', icon: '📈', keywords: 'ceo report executive summary performance' },
+          { label: 'Finance Review', path: '/sales/finance-review', icon: '💵', keywords: 'finance review payments billing verification' },
+          { label: 'Daily Summary', path: '/sales/daily-summary', icon: '📅', keywords: 'daily summary report today sales' },
+          { label: 'Setting Contact', path: '/sales/contact', icon: '📞', keywords: 'contact settings phone email address' },
+          { label: 'Chat', path: '/sales/chat', icon: '💬', keywords: 'chat messages talk communication manager' },
+          { label: 'Audit Log', path: '/sales/audit-log', icon: '📝', keywords: 'audit log history tracking changes' }
+        ];
+        
+        salesPageHits = salesPages
+          .filter(p => p.label.toLowerCase().includes(q) || p.keywords.includes(q))
+          .map(p => ({
+            title: p.label,
+            subtitle: `${p.icon} Page • Sales Manager`,
+            type: 'sales_page',
+            item: p
+          }));
+
+        setNavSuggestions(salesPageHits);
+        setNavSelectedIndex(0);
+    } else if (isFinDashRoute) {
+      const finPages = [
+        { label: 'Dashboard',                  path: '/finance/overview',                icon: '🏠', keywords: 'home overview dashboard start finance summary' },
+        { label: 'Receipts (CRV)',             path: '/finance/crv',                     icon: '🧾', keywords: 'receipts crv cash received voucher income' },
+        { label: 'Expense Vouchers (EV)',      path: '/finance/ev',                      icon: '📄', keywords: 'expense vouchers ev payments spend' },
+        { label: 'Procurement (Drug/Stock)',   path: '/finance/procurement',             icon: '📦', keywords: 'procurement drug stock purchase pharmacy supplies' },
+        { label: 'General Procurement',        path: '/finance/general-procurement',     icon: '🚚', keywords: 'general procurement purchase tender supplies' },
+        { label: 'Expense Book',               path: '/finance/cash-book',               icon: '📚', keywords: 'expense book cash book payments ledger record' },
+        { label: 'Liabilities & Payable',      path: '/finance/liabilities',             icon: '⚠️', keywords: 'liabilities accounts payable debts owed suppliers' },
+        { label: 'Bank Accounts',              path: '/finance/bank-accounts',           icon: '🏦', keywords: 'bank accounts reconciliation balance transfer deposit' },
+        { label: 'Sales Invoice & Receipt',    path: '/finance/invoices',                icon: '🖨️', keywords: 'sales invoice receipt print document tax' },
+        { label: 'Live Income',                path: '/finance/pharmacy-sales',          icon: '📈', keywords: 'live income all departments verification submissions approve reject' },
+        { label: 'Revenue Book',               path: '/finance/outstanding-ar',          icon: '📕', keywords: 'revenue book outstanding receivables income records' },
+        { label: 'Accounts Receivable',        path: '/finance/accounts-receivable',     icon: '👥', keywords: 'accounts receivable customers collect debt invoices due' },
+        { label: 'Equity',                     path: '/finance/equity',                  icon: '🥧', keywords: 'equity capital owner shares retained' },
+        { label: 'General Store Valuation',    path: '/finance/general-store-assets',    icon: '🏬', keywords: 'general store valuation assets stock value' },
+        { label: 'Printing Machines Valuation',path: '/finance/printing-machines-assets',icon: '🖨️', keywords: 'printing machines valuation assets equipment value' },
+        { label: 'Pharmacy Store & Stock',     path: '/finance/pharmacy-assets',         icon: '💊', keywords: 'pharmacy store stock valuation assets medicines' },
+        { label: 'Vehicle & Rental Assets',    path: '/finance/vehicle-assets',          icon: '🚗', keywords: 'vehicle rental assets cars valuation fleet' },
+        { label: 'Tractor Assets',             path: '/finance/tractor-assets',          icon: '🚜', keywords: 'tractor assets machinery valuation farm' },
+        { label: 'Cash Handovers',             path: '/finance/cash-handovers',          icon: '🤝', keywords: 'cash handovers handover transfer approve ceo' },
+        { label: 'Payroll Payment',            path: '/finance/payroll-payment',         icon: '💸', keywords: 'payroll payment salaries wages pay staff' },
+        { label: 'Cash Flow',                  path: '/finance/cash-flow',               icon: '💧', keywords: 'cash flow statement inflow outflow movement' },
+        { label: 'Income Statement',           path: '/finance/profit-loss',             icon: '📊', keywords: 'income statement profit loss pnl revenue expenses' },
+        { label: 'Balance Sheet',              path: '/finance/balance-sheet',           icon: '⚖️', keywords: 'balance sheet assets liabilities equity position' },
+        { label: 'Audit Log',                  path: '/finance/audit-log',               icon: '🔎', keywords: 'audit log history actions trail security records' },
+      ];
+      finPageHits = finPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Finance Dashboard`,
+        type: 'fin_page',
+        item: p
+      }));
+      setNavSuggestions(finPageHits);
+      setNavSelectedIndex(0);
+      }
 
     const fetchSearch = async () => {
       try {
@@ -964,9 +1085,51 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
             });
           });
 
+        } else if (isHrRoute) {
+          // ── HR: pages already shown instantly above; now live data ──
+          suggs.push(...hrPageHits);
+
+          const [empRes, appRes] = await Promise.all([
+            apiClient.get('/hr/etp/employees?limit=10&search=' + encodeURIComponent(q)).catch(() => ({ data: {} })),
+            apiClient.get('/hr/recruitment/applications?limit=10&search=' + encodeURIComponent(q)).catch(() => ({ data: {} }))
+          ]);
+          if (!isMounted) return;
+
+          // Employees (name / employee ID / department / position)
+          const empsRaw = empRes.data?.data?.employees || empRes.data?.employees ||
+            (Array.isArray(empRes.data?.data) ? empRes.data.data : []);
+          (Array.isArray(empsRaw) ? empsRaw : []).filter(e =>
+            (e.full_name || '').toLowerCase().includes(q) ||
+            (e.employee_id || '').toLowerCase().includes(q) ||
+            (e.dept_name || '').toLowerCase().includes(q) ||
+            (e.position_title || '').toLowerCase().includes(q)
+          ).slice(0, 6).forEach(e => {
+            suggs.push({
+              title: e.full_name || 'Employee',
+              subtitle: `👤 Employee • ${e.employee_id || ''}${e.dept_name ? ` • ${e.dept_name}` : ''}${e.position_title ? ` • ${e.position_title}` : ''}`,
+              type: 'hr_employee',
+              item: e
+            });
+          });
+
+          // Job applications (applicant name / position)
+          const appsRaw = appRes.data?.data?.applications || appRes.data?.applications ||
+            (Array.isArray(appRes.data?.data) ? appRes.data.data : []);
+          (Array.isArray(appsRaw) ? appsRaw : []).filter(a =>
+            (a.full_name || a.applicant_name || '').toLowerCase().includes(q) ||
+            (a.position || a.job_title || '').toLowerCase().includes(q) ||
+            (a.email || '').toLowerCase().includes(q)
+          ).slice(0, 4).forEach(a => {
+            suggs.push({
+              title: a.full_name || a.applicant_name || 'Applicant',
+              subtitle: `💼 Application • ${a.position || a.job_title || 'Position N/A'}${a.status ? ` • ${String(a.status).replace(/_/g, ' ')}` : ''}`,
+              type: 'hr_application',
+              item: a
+            });
+          });
         } else if (isEmployeeRoute) {
           // ── EMPLOYEE: pages already shown instantly above; now live data ──
-          const suggs = [...instantPageHits];
+          suggs.push(...instantPageHits);
 
           const [taskRes, payRes] = await Promise.all([
             apiClient.get('/employee-tasks').catch(() => ({ data: [] })),
@@ -1001,6 +1164,172 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               subtitle: `💵 Payslip • Net ETB ${Number(s.net_pay || 0).toLocaleString()} • ${s.status || ''}`,
               type: 'emp_payslip',
               item: s
+            });
+          });
+        } else if (isPrintingRoute) {
+          // ── PRINTING SUPERVISOR: pages already shown instantly above; now live orders ──
+          suggs.push(...printPageHits);
+
+          const ordRes = await apiClient.get('/printing/orders', { params: { limit: 200 } }).catch(() => ({ data: [] }));
+          if (!isMounted) return;
+
+          const ordsRaw = Array.isArray(ordRes.data?.data) ? ordRes.data.data
+            : Array.isArray(ordRes.data?.orders) ? ordRes.data.orders
+            : (Array.isArray(ordRes.data) ? ordRes.data : []);
+          (Array.isArray(ordsRaw) ? ordsRaw : []).filter(o =>
+            (o.order_number || '').toLowerCase().includes(q) ||
+            String(o.id) === q ||
+            (o.customer_name || '').toLowerCase().includes(q) ||
+            (o.customer_phone || '').includes(q) ||
+            (o.product_type || '').toLowerCase().includes(q) ||
+            (o.status_name || o.status_code || '').toLowerCase().includes(q)
+          ).slice(0, 6).forEach(o => {
+            suggs.push({
+              title: `${o.order_number || 'Order #' + o.id} — ${o.product_type || 'Print Job'}`,
+              subtitle: `🖨️ Order • ${o.customer_name || 'Customer N/A'} • ${(o.status_name || o.status_code || 'unknown').replace(/_/g, ' ')}`,
+              type: 'print_order',
+              item: o
+            });
+          });
+        } else if (isSalesRoute) {
+            // SALES MANAGER
+            suggs.push(...salesPageHits);
+
+            const [prodRes, reqRes] = await Promise.all([
+              apiClient.get('/retail/store-inventory').catch(() => ({ data: [] })),
+              apiClient.get('/retail/store-requests').catch(() => ({ data: [] }))
+            ]);
+            if (!isMounted) return;
+
+            // Products
+            const prodRaw = Array.isArray(prodRes.data?.data) ? prodRes.data.data : Array.isArray(prodRes.data) ? prodRes.data : [];
+            prodRaw.filter(p =>
+              (p.name || '').toLowerCase().includes(q) ||
+              (p.category_name || '').toLowerCase().includes(q)
+            ).slice(0, 5).forEach(p => {
+              suggs.push({
+                title: p.name,
+                subtitle: `Store Inventory • ${p.category_name || 'General'}`,
+                type: 'sale_product',
+                item: p
+              });
+            });
+
+            // Requests
+            const reqRaw = Array.isArray(reqRes.data?.data) ? reqRes.data.data : Array.isArray(reqRes.data) ? reqRes.data : [];
+            reqRaw.filter(r =>
+              String(r.id) === q ||
+              (r.request_code || '').toLowerCase().includes(q) ||
+              (r.drug_name || '').toLowerCase().includes(q)
+            ).slice(0, 4).forEach(r => {
+              suggs.push({
+                title: `${r.request_code || 'Req #' + r.id} - ${r.drug_name || 'Product'}`,
+                subtitle: `Request • ${(r.status || 'unknown').replace(/_/g, ' ')}`,
+                type: 'sale_request',
+                item: r
+              });
+            });
+          } else if (isFinDashRoute) {
+          // ── FINANCE: pages already shown instantly above; now live data ──
+          suggs.push(...finPageHits);
+
+          const [bankRes, rcvRes, crvRes, evRes, cbRes, liabRes] = await Promise.all([
+            apiClient.get('/finance-bank').catch(() => ({ data: [] })),
+            apiClient.get('/finance-receivables/book').catch(() => ({ data: [] })),
+            apiClient.get('/finance-cash/crv').catch(() => ({ data: [] })),
+            apiClient.get('/finance-cash/ev').catch(() => ({ data: [] })),
+            apiClient.get('/finance-cash/cashbook').catch(() => ({ data: [] })),
+            apiClient.get('/finance-liabilities').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+          const arr = (r) => Array.isArray(r?.data?.data) ? r.data.data : (Array.isArray(r?.data) ? r.data : []);
+
+          // Bank accounts (name / provider / account number)
+          arr(bankRes).filter(b =>
+            (b.account_name || '').toLowerCase().includes(q) ||
+            (b.bank_provider || '').toLowerCase().includes(q) ||
+            String(b.account_number || '').includes(q)
+          ).slice(0, 4).forEach(b => {
+            const netBal = b.netBalance ?? b.opening_balance ?? 0;
+            suggs.push({
+              title: `${b.bank_provider || 'Bank'} — ${b.account_name}`,
+              subtitle: `🏦 Bank Account • ${b.account_number || 'N/A'} • ETB ${Number(netBal).toLocaleString()}`,
+              type: 'fin_account',
+              item: b
+            });
+          });
+
+          // Receivables book (customer / invoice no / status)
+          arr(rcvRes).filter(r =>
+            (r.customer_name || '').toLowerCase().includes(q) ||
+            (r.invoice_no || '').toLowerCase().includes(q) ||
+            (r.status || '').toLowerCase().includes(q) ||
+            String(r.id) === q
+          ).slice(0, 4).forEach(r => {
+            suggs.push({
+              title: `${r.invoice_no || 'Invoice #' + r.id} — ${r.customer_name || 'Customer'}`,
+              subtitle: `🧾 Receivable • ETB ${Number(r.outstanding_balance ?? r.total_amount ?? 0).toLocaleString()} outstanding • ${(r.status || '').replace(/_/g, ' ')}`,
+              type: 'fin_receivable',
+              item: r
+            });
+          });
+
+          // Receipt vouchers / CRVs (received payments)
+          arr(crvRes).filter(c =>
+            (c.crv_number || '').toLowerCase().includes(q) ||
+            (c.received_from || '').toLowerCase().includes(q) ||
+            (c.description || '').toLowerCase().includes(q) ||
+            String(c.amount || '') === q
+          ).slice(0, 3).forEach(c => {
+            suggs.push({
+              title: `${c.crv_number || 'CRV #' + c.id} — ${c.received_from || 'Payer'}`,
+              subtitle: `🧾 Receipt • ETB ${Number(c.amount || 0).toLocaleString()} received • ${(c.status || 'recorded')}`,
+              type: 'fin_crv',
+              item: c
+            });
+          });
+
+          // Expense vouchers / EVs
+          arr(evRes).filter(v =>
+            (v.ev_number || '').toLowerCase().includes(q) ||
+            (v.paid_to || '').toLowerCase().includes(q) ||
+            (v.description || '').toLowerCase().includes(q) ||
+            String(v.amount || '') === q
+          ).slice(0, 3).forEach(v => {
+            suggs.push({
+              title: `${v.ev_number || 'EV #' + v.id} — ${v.paid_to || 'Payee'}`,
+              subtitle: `📄 Expense • ETB ${Number(v.amount || 0).toLocaleString()} • ${(v.status || 'pending').replace(/_/g, ' ')}`,
+              type: 'fin_ev',
+              item: v
+            });
+          });
+
+          // Cash book entries (expense/income ledger rows)
+          arr(cbRes).filter(e =>
+            (e.reference || '').toLowerCase().includes(q) ||
+            (e.description || '').toLowerCase().includes(q) ||
+            (e.type || '').toLowerCase() === q
+          ).slice(0, 3).forEach(e => {
+            const amt = Number(e.receipts || 0) > 0 ? `+ETB ${Number(e.receipts).toLocaleString()}` : `-ETB ${Number(e.payments || 0).toLocaleString()}`;
+            suggs.push({
+              title: e.description ? String(e.description).slice(0, 55) : (e.reference || `Entry #${e.id}`),
+              subtitle: `📚 Cash Book • ${amt} • ${e.reference || e.date || ''}`,
+              type: 'fin_cashbook',
+              item: e
+            });
+          });
+
+          // Liabilities & payables (supplier bills)
+          arr(liabRes).filter(l =>
+            (l.supplier_name || '').toLowerCase().includes(q) ||
+            (l.invoice_number || '').toLowerCase().includes(q) ||
+            (l.status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(l => {
+            suggs.push({
+              title: `${l.supplier_name || 'Supplier'} — ${l.invoice_number || 'Invoice'}`,
+              subtitle: `⚠️ Liability • ETB ${Number(l.balance ?? l.amount ?? 0).toLocaleString()} owed • ${l.status || 'Pending'}`,
+              type: 'fin_liability',
+              item: l
             });
           });
         } else {
@@ -1131,14 +1460,13 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       const isForMe = (data) => data && roleFlags.userId != null && Number(data.user_id) === Number(roleFlags.userId);
       socket.on('employee-task', (data) => {
         if (!isForMe(data)) return;
-        playSound('info');
+        // No sound — bell notifications are silent; sound plays only for new chat messages
         sendPushNotification(data.title || 'New Task Assigned', data.message || '', data.link || '');
         if (data.title) showToast(`${data.title}: ${data.message}`, 'info');
         setNotifRefresh(n => n + 1);
       });
       socket.on('employee-payslip', (data) => {
         if (!isForMe(data)) return;
-        playSound('ready');
         sendPushNotification(data.title || 'Payslip Available', data.message || '', data.link || '');
         if (data.title) showToast(`${data.title}: ${data.message}`, 'success');
         setNotifRefresh(n => n + 1);
@@ -1169,8 +1497,12 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
 
         // Always refresh the bell so the DB-backed notification appears (badge + list)
         if (meantForFinance) {
-          playSound('request');
-          if (title) showToast(`${title}: ${message}`, type || 'info');
+          if (title) {
+            // sound fires only when a bell message actually arrives
+            const t = String(title).toLowerCase();
+            playSound(t.includes('reject') ? 'rejected' : t.includes('approv') || t.includes('confirm') ? 'approved' : 'request');
+            showToast(`${title}: ${message}`, type || 'info');
+          }
           setNotifRefresh(n => n + 1);
         }
       });
@@ -1192,6 +1524,42 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
             showToast(`${title}: ${message}`, type || 'info');
           }
           setNotifRefresh(n => n + 1);
+        }
+      });
+      // Printing Supervisor notifications (online orders, finance decisions, CEO material decisions)
+      socket.on('printing-cash', (data) => {
+        const { title, message, type, link } = data || {};
+        let isPrintingUser = false;
+        try {
+          const u = JSON.parse(localStorage.getItem('user') || '{}');
+          const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []);
+          isPrintingUser = roles.some(r => String(r).toLowerCase().includes('printing'));
+        } catch (_) {}
+        if (isPrintingUser && title) {
+          // sound fires only when a bell message actually arrives
+          playSound(soundNameForType(type));
+          showToast(`${title}: ${message}`, type === 'payment_confirmed' ? 'success' : type === 'payment_rejected' ? 'error' : 'info');
+        }
+        if (isPrintingUser) setNotifRefresh(n => n + 1);
+      });
+
+      // ── Generic DB notification (sent by sendNotification() service for any role) ──
+      // This fires for: transfer approved/rejected, procurement approved/rejected,
+      // health publisher unlock, stock operations unlock, shipment notifications, etc.
+      socket.on('notification', (data) => {
+        const { title, message, type } = data || {};
+        // Always refresh the bell badge & list
+        setNotifRefresh(n => n + 1);
+        // Play a sound matching the notification type or title
+        if (title) {
+          const t = String(title).toLowerCase();
+          const sound = t.includes('reject') ? 'rejected'
+            : t.includes('approv') ? 'approved'
+            : t.includes('ship') || t.includes('receiv') ? 'received'
+            : t.includes('unlock') || t.includes('grant') ? 'info'
+            : t.includes('expired') || t.includes('expir') ? 'expired'
+            : soundNameForType(type);
+          playSound(sound);
         }
       });
     }, 500);
@@ -1550,7 +1918,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               </span>
               <input 
                 type="text" 
-                placeholder={location.pathname.startsWith('/admin') ? 'Search users, logs, alerts...' : (location.pathname.startsWith('/pharmacy') ? 'Search sales, medicines, orders...' : (location.pathname.startsWith('/employee') ? 'Search tasks, payslips, pages...' : 'Search...'))} 
+                placeholder={location.pathname.startsWith('/admin') ? 'Search users, logs, alerts...' : (location.pathname.startsWith('/pharmacy') ? 'Search sales, medicines, orders...' : (location.pathname.startsWith('/employee') ? 'Search tasks, payslips, pages...' : (location.pathname.startsWith('/hr') ? 'Search employees, payroll, HR pages...' : (location.pathname.startsWith('/printing-manager') ? 'Search jobs, orders, production...' : (location.pathname.startsWith('/sales') ? 'Search products, sales, pages...' : (location.pathname.startsWith('/finance') ? 'Search bank accounts, receivables, pages...' : 'Search...'))))))}
                 value={navSearchValue}
                 onChange={(e) => {
                   setNavSearchValue(e.target.value);
@@ -1603,6 +1971,44 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                           navigate('/employee/payslips');
                         } else {
                           navigate('/employee/overview');
+                        }
+                      } else if (location.pathname.startsWith('/hr')) {
+                        if (sel.type === 'hr_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'hr_employee') {
+                          navigate('/hr/employees', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'hr_application') {
+                          navigate('/hr/applications', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/hr/employee-summary');
+                        }
+                      } else if (location.pathname.startsWith('/printing-manager')) {
+                        if (sel.type === 'print_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'print_order') {
+                          navigate('/printing-manager/jobs/history', { state: { dashSearchTerm: sel.item?.order_number || sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/printing-manager/overview');
+                        }
+                      } else if (location.pathname.startsWith('/finance')) {
+                        if (sel.type === 'fin_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'fin_account') {
+                          navigate('/finance/bank-accounts', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'fin_receivable') {
+                          navigate('/finance/accounts-receivable', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'fin_crv') {
+                          navigate('/finance/crv', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'fin_ev') {
+                          navigate('/finance/ev', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'fin_cashbook') {
+                          navigate('/finance/cash-book');
+                        } else if (sel.type === 'fin_liability') {
+                          navigate('/finance/liabilities');
+                        } else if (sel.type === 'fin_income') {
+                          navigate('/finance/pharmacy-sales');
+                        } else {
+                          navigate('/finance/overview');
                         }
                       }
                       setShowNavSuggestions(false);
@@ -1691,6 +2097,44 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                               navigate('/employee/payslips');
                             } else {
                               navigate('/employee/overview');
+                            }
+                          } else if (location.pathname.startsWith('/hr')) {
+                            if (s.type === 'hr_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'hr_employee') {
+                              navigate('/hr/employees', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'hr_application') {
+                              navigate('/hr/applications', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/hr/employee-summary');
+                            }
+                          } else if (location.pathname.startsWith('/printing-manager')) {
+                            if (s.type === 'print_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'print_order') {
+                              navigate('/printing-manager/jobs/history', { state: { dashSearchTerm: s.item?.order_number || s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/printing-manager/overview');
+                            }
+                          } else if (location.pathname.startsWith('/finance')) {
+                            if (s.type === 'fin_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'fin_account') {
+                              navigate('/finance/bank-accounts', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'fin_receivable') {
+                              navigate('/finance/accounts-receivable', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'fin_crv') {
+                              navigate('/finance/crv', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'fin_ev') {
+                              navigate('/finance/ev', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'fin_cashbook') {
+                              navigate('/finance/cash-book');
+                            } else if (s.type === 'fin_liability') {
+                              navigate('/finance/liabilities');
+                            } else if (s.type === 'fin_income') {
+                              navigate('/finance/pharmacy-sales');
+                            } else {
+                              navigate('/finance/overview');
                             }
                           }
                           setShowNavSuggestions(false);
