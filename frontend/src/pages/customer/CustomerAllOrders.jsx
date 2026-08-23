@@ -1,122 +1,61 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import apiClient from '../../services/apiClient';
-import carService from '../../services/carService';
-import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import apiClient from "../../services/apiClient";
+import carService from "../../services/carService";
+import SegmentedSpinner from "../../components/ui/SegmentedSpinner";
+import styles from "./CustomerAllOrders.module.css";
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
 const G = {
-  forest: '#228B22', dark: '#1B5E20', emerald: '#2E8B57', leaf: '#4CAF50',
-  sage: '#A5D6A7', olive: '#6B8E23', lime: '#8BC34A', brown: '#8D6E63',
-  sky: '#87CEEB', white: '#FFFFFF', light: '#F5F5F5', darkGray: '#424242',
-  orange: '#FF9800', red: '#F44336', purple: '#7C3AED', blue: '#3b82f6', pink: '#ec4899'
+  emerald: "#10b981",
+  orange: "#f59e0b",
+  blue: "#3b82f6",
+  pink: "#ec4899",
+  red: "#ef4444",
+  olive: "#65a30d",
 };
-const COLORS_ARR = [G.emerald, G.sky, G.orange, G.purple, G.lime, G.red];
+const COLORS_ARR = [G.emerald, G.blue, G.orange, G.pink, G.olive, G.red];
 
 const CategoryBar = ({ value, max, color }) => (
-  <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 0, height: 7, overflow: 'hidden', flex: 1 }}>
-    <div style={{
-      height: '100%', borderRadius: 0, background: color,
-      width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
-      transition: 'width 1.2s ease'
-    }} />
+  <div
+    style={{
+      background: "hsl(var(--muted))",
+      borderRadius: "var(--radius)",
+      height: "0.5rem",
+      overflow: "hidden",
+      flex: 1,
+    }}
+  >
+    <div
+      style={{
+        height: "100%",
+        borderRadius: "var(--radius)",
+        background: color,
+        width: `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`,
+        transition: "width 0.5s ease",
+      }}
+    />
   </div>
-);
-
-/* ─── Global Animations ─────────────────────────────────────────────────── */
-const GlobalStyles = () => (
-  <style>{`
-    @keyframes floatLeaf { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-14px) rotate(7deg); } }
-    @keyframes rowIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
-    @keyframes laserSweep { 0% { left: -150%; } 100% { left: 150%; } }
-    @keyframes colorBlink { 0% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } 25% { color:#8BC34A; filter:drop-shadow(0 0 10px #8BC34Acc); transform:scale(1.15) rotate(10deg); } 50% { color:#2E8B57; filter:drop-shadow(0 0 14px #2E8B57); transform:scale(1.3) rotate(-10deg); } 75% { color:#87CEEB; filter:drop-shadow(0 0 10px #87CEEBcc); transform:scale(1.15) rotate(5deg); } 100% { color:#228B22; filter:drop-shadow(0 0 6px #228B2288); transform:scale(1) rotate(0deg); } }
-    .blink-star { animation: colorBlink 2.5s infinite ease-in-out; display:inline-block; }
-
-    .artistic-3d-title { font-size:3rem; font-weight:900; color:#1B5E20; letter-spacing:-0.02em; text-shadow:1px 1px 0 #fff, 2px 2px 0 #fff, 3px 3px 0 #fff, 4px 4px 0 #228B22, 5px 5px 0 #228B22, 6px 6px 0 #2E8B57, 7px 7px 0 #2E8B57, 8px 8px 15px rgba(0,0,0,0.2); margin:0; display:flex; align-items:center; gap:12px; line-height:1.1; }
-    .artistic-3d-subtitle { font-size:1rem; color:#2E8B57; font-weight:800; text-align:center; text-transform:uppercase; letter-spacing:0.15em; margin:0; text-shadow:1px 1px 0px rgba(255,255,255,0.9); }
-    .btn-sync { position: relative; background: #FFFFFF; color: #1B5E20; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; z-index: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
-    .btn-sync::before { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: conic-gradient(transparent, transparent, transparent, #4CAF50, #228B22); animation: rotate-border 2s linear infinite; z-index: -2; }
-    .btn-sync::after { content: ''; position: absolute; inset: 2px; background: #FFFFFF; border-radius: 6px; z-index: -1; }
-    .btn-sync:hover::after { background: #F5F5F5; }
-    .btn-sync:active { transform: scale(0.97); }
-    @keyframes rotate-border { 100% { transform: rotate(360deg); } }
-
-    .d-card {
-      --hover-color: #2E8B57;
-      position:relative; overflow:hidden; background-color:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s, transform 0.4s; animation:fadeUp 0.5s ease both; border:none; cursor:pointer;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.4) 20%, rgba(255,0,255,0.4) 50%, rgba(0,255,0,0.4) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card:hover { transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,80,120,0.14), 0 0 18px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card:hover::before { animation: laserSweep 0.8s ease-out; }
-
-    .d-card-no-hover {
-      --hover-color: #228B22;
-      position:relative; overflow:hidden; background:white; border-radius:0; padding:26px; box-shadow:0 2px 14px rgba(0,80,120,0.08); transition:background-size 0.4s cubic-bezier(.4,0,.2,1), box-shadow 0.4s; animation:fadeUp 0.5s ease both;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
-    }
-    .d-card-no-hover::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.2) 20%, rgba(255,0,255,0.2) 50%, rgba(0,255,0,0.2) 80%, transparent 100%); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .d-card-no-hover:hover { box-shadow:0 6px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%; }
-    .d-card-no-hover:hover::before { animation: laserSweep 1s ease-out; }
-
-    .alert-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:13px 16px; background:rgba(230,242,235,0.5); border-radius:0; cursor:pointer; transition:all 0.25s; border:1.5px solid transparent; margin-bottom:10px; }
-    .alert-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,0,255,0.3), rgba(0,255,255,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .alert-row:hover { background:white; border-color:var(--row-c); transform:translateX(4px); box-shadow:0 4px 14px rgba(0,0,0,0.08); }
-    .alert-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .cat-row { position:relative; overflow:hidden; display:grid; grid-template-columns:150px 1fr 70px; gap:12px; align-items:center; padding:11px 14px; border-radius:0; transition:background 0.2s; cursor:pointer; }
-    .cat-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,0,0.2), rgba(0,255,255,0.2), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .cat-row:hover { background:rgba(230,242,235,0.6); box-shadow:0 2px 8px rgba(0,80,120,0.05); }
-    .cat-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .top-row { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:0; background:rgba(230,242,235,0.45); margin-bottom:8px; transition:all 0.2s; cursor:pointer; }
-    .top-row::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(107,142,35,0.3), rgba(107,142,35,0.3), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .top-row:hover { background:white; box-shadow:0 3px 12px rgba(0,80,120,0.09); border:1px solid rgba(107,142,35,0.4); }
-    .top-row:hover::before { animation: laserSweep 0.6s ease-in-out; }
-
-    .qa-card {
-      --hover-color: #2E8B57;
-      --base-top: transparent;
-      position:relative; overflow:hidden; background:rgba(255,255,255,0.65); border-radius:0; padding:22px 16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(.4,0,.2,1); border:none;
-      background-image: linear-gradient(to right, var(--hover-color), var(--hover-color)), linear-gradient(to bottom, var(--hover-color), var(--hover-color)), linear-gradient(to left, var(--hover-color), var(--hover-color)), linear-gradient(to top, var(--hover-color), var(--hover-color)), linear-gradient(to right, var(--base-top), var(--base-top));
-      background-position: 0 0, 100% 0, 100% 100%, 0 100%, 0 0; background-repeat: no-repeat; background-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%, 100% 4px;
-    }
-    .qa-card::before { content:''; position:absolute; top:0; left:-150%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,255,0.6), rgba(255,0,255,0.6), transparent); transform:skewX(-25deg); pointer-events:none; z-index:1; }
-    .qa-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,80,120,0.12), 0 0 14px var(--hover-color); background-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%, 100% 4px; }
-    .qa-card:hover::before { animation: laserSweep 0.6s ease-out; }
-  `}</style>
-);
-
-const DecorPlants = () => (
-  <>
-    <GlobalStyles />
-    {[
-      { e:'🍃', sz:55, op:0.22, top:'1%',    left:'0.5%'  },
-      { e:'🌿', sz:48, op:0.18, top:'0%',    right:'0.5%' },
-      { e:'🌾', sz:52, op:0.20, bottom:'1%', left:'0.5%'  },
-      { e:'🍃', sz:50, op:0.18, bottom:'0%', right:'0.5%' },
-    ].map((p,i) => (
-      <span key={i} style={{ position:'fixed', fontSize: p.sz, opacity: p.op, top: p.top, left: p.left, right: p.right, bottom: p.bottom, pointerEvents:'none', userSelect:'none', animation:`floatLeaf ${9+i*1.5}s ease-in-out infinite`, animationDelay:`${i*1.2}s`, zIndex:0 }}>{p.e}</span>
-    ))}
-  </>
 );
 
 export default function CustomerAllOrders() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [timeString, setTimeString] = useState('');
+  const [timeString, setTimeString] = useState("");
 
   useEffect(() => {
-    const updateTime = () => setTimeString(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    const updateTime = () =>
+      setTimeString(
+        new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
     updateTime();
     const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
@@ -128,305 +67,523 @@ export default function CustomerAllOrders() {
     try {
       const results = [];
 
-      const printingP = apiClient.get('/printing/customer/orders')
-        .then(r => {
-          if (r.status === 'success') {
-            (r.data?.orders || []).forEach(o => results.push({
-              id: `prt-${o.id}`, type: 'Printing', typeLabel: 'Printing',
-              orderNumber: o.order_number, date: o.created_at, status: o.status_name || o.status_code,
-              amount: o.total_price, description: `${o.product_type || ''}`,
-              navPath: '/customer/printing-orders', icon: '🖨️', color: '#6B8E23', bg: '#F1F8E9'
-            }));
+      const printingP = apiClient
+        .get("/printing/customer/orders")
+        .then((r) => {
+          if (r.status === "success") {
+            (r.data?.orders || []).forEach((o) =>
+              results.push({
+                id: `prt-${o.id}`,
+                type: "Printing",
+                typeLabel: "Printing",
+                orderNumber: o.order_number,
+                date: o.created_at,
+                status: o.status_name || o.status_code,
+                amount: o.total_price,
+                description: `${o.product_type || ""}`,
+                navPath: "/customer/printing-orders",
+                icon: "🖨️",
+                color: G.olive,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      const farmingP = apiClient.get('/agrirent-orders/my-orders')
-        .then(r => {
-          if (r.status === 'success') {
-            (r.data || []).forEach(o => results.push({
-              id: `farm-${o.id}`, type: 'AgriRent', typeLabel: 'AgriRent',
-              orderNumber: o.order_number, date: o.created_at, status: o.status,
-              amount: o.total_amount, description: `${o.tractor_name || ''}`,
-              navPath: '/customer/farming-orders', icon: '🚜', color: '#2E8B57', bg: '#E8F5E9'
-            }));
+      const farmingP = apiClient
+        .get("/agrirent-orders/my-orders")
+        .then((r) => {
+          if (r.status === "success") {
+            (r.data || []).forEach((o) =>
+              results.push({
+                id: `farm-${o.id}`,
+                type: "AgriRent",
+                typeLabel: "AgriRent",
+                orderNumber: o.order_number,
+                date: o.created_at,
+                status: o.status,
+                amount: o.total_amount,
+                description: `${o.tractor_name || ""}`,
+                navPath: "/customer/farming-orders",
+                icon: "🚜",
+                color: G.emerald,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      const retailP = apiClient.get('/retail/orders/my-orders')
-        .then(r => {
-          if (r.status === 'success') {
-            (r.data || []).forEach(o => results.push({
-              id: `ret-${o.id}`, type: 'Retail', typeLabel: 'Retail',
-              orderNumber: o.invoice_number, date: o.created_at, status: o.status,
-              amount: o.total_amount, description: o.items?.map(i => i.product_name).join(', ')?.slice(0, 80) || '',
-              navPath: '/customer/retail-orders', icon: '🛍️', color: '#FF9800', bg: '#FFF3E0'
-            }));
+      const retailP = apiClient
+        .get("/retail/orders/my-orders")
+        .then((r) => {
+          if (r.status === "success") {
+            (r.data || []).forEach((o) =>
+              results.push({
+                id: `ret-${o.id}`,
+                type: "Retail",
+                typeLabel: "Retail",
+                orderNumber: o.invoice_number,
+                date: o.created_at,
+                status: o.status,
+                amount: o.total_amount,
+                description:
+                  o.items
+                    ?.map((i) => i.product_name)
+                    .join(", ")
+                    ?.slice(0, 80) || "",
+                navPath: "/customer/retail-orders",
+                icon: "🛍️",
+                color: G.orange,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      const rentalP = carService.getMyRentalOrders()
-        .then(r => {
-          if (r.status === 'success') {
-            (r.data || []).forEach(o => results.push({
-              id: `rent-${o.id}`, type: 'Rental', typeLabel: 'Car Rental',
-              orderNumber: o.orderNumber, date: o.createdAt || o.created_at, status: o.status,
-              amount: o.totalAmount, description: `${o.carName || ''}`,
-              navPath: '/customer/rentals', icon: '🚗', color: '#1976D2', bg: '#E3F2FD'
-            }));
+      const rentalP = carService
+        .getMyRentalOrders()
+        .then((r) => {
+          if (r.status === "success") {
+            (r.data || []).forEach((o) =>
+              results.push({
+                id: `rent-${o.id}`,
+                type: "Rental",
+                typeLabel: "Car Rental",
+                orderNumber: o.orderNumber,
+                date: o.createdAt || o.created_at,
+                status: o.status,
+                amount: o.totalAmount,
+                description: `${o.carName || ""}`,
+                navPath: "/customer/rentals",
+                icon: "🚗",
+                color: G.blue,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      const prescriptionP = apiClient.get('/pharmacy/requests/my-requests')
-        .then(r => {
-          if (r.status === 'success') {
+      const prescriptionP = apiClient
+        .get("/pharmacy/requests/my-requests")
+        .then((r) => {
+          if (r.status === "success") {
             const data = r.data?.data || r.data || [];
-            (data).forEach(o => results.push({
-              id: `rx-${o.id}`, type: 'Pharmacy', typeLabel: 'Pharmacy',
-              orderNumber: o.request_number || `RX-${o.id}`, date: o.requested_at, status: o.status,
-              amount: o.total_amount, description: o.medication_name,
-              navPath: '/customer/prescriptions', icon: '💊', color: '#9C27B0', bg: '#F3E5F5'
-            }));
+            data.forEach((o) =>
+              results.push({
+                id: `rx-${o.id}`,
+                type: "Pharmacy",
+                typeLabel: "Pharmacy",
+                orderNumber: o.request_number || `RX-${o.id}`,
+                date: o.requested_at,
+                status: o.status,
+                amount: o.total_amount,
+                description: o.medication_name,
+                navPath: "/customer/prescriptions",
+                icon: "💊",
+                color: G.pink,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      const tenderP = apiClient.get('/tenders/my-bids')
-        .then(r => {
-          if (r.status === 'success') {
-            (r.data || []).forEach(o => results.push({
-              id: `bid-${o.id}`, type: 'Tenders', typeLabel: 'Tender Bid',
-              orderNumber: `BID-${o.id}`, date: o.created_at, status: o.status,
-              amount: o.bid_amount, description: o.tender_title || 'Tender Bid',
-              navPath: '/customer/bids', icon: '🏆', color: '#F44336', bg: '#FFEBEE'
-            }));
+      const tenderP = apiClient
+        .get("/tenders/my-bids")
+        .then((r) => {
+          if (r.status === "success") {
+            (r.data || []).forEach((o) =>
+              results.push({
+                id: `bid-${o.id}`,
+                type: "Tenders",
+                typeLabel: "Tender Bid",
+                orderNumber: `BID-${o.id}`,
+                date: o.created_at,
+                status: o.status,
+                amount: o.bid_amount,
+                description: o.tender_title || "Tender Bid",
+                navPath: "/customer/bids",
+                icon: "🏆",
+                color: G.red,
+              }),
+            );
           }
-        }).catch(() => {});
+        })
+        .catch(() => {});
 
-      await Promise.all([printingP, farmingP, retailP, rentalP, prescriptionP, tenderP]);
-      results.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+      await Promise.all([
+        printingP,
+        farmingP,
+        retailP,
+        rentalP,
+        prescriptionP,
+        tenderP,
+      ]);
+      results.sort(
+        (a, b) =>
+          new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+      );
       setOrders(results);
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+      console.error("Failed to fetch dashboard data:", err);
     }
     setLoading(false);
     setRefreshing(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // Stats
   const totalCount = orders.length;
-  const pendingOrders = orders.filter(o => {
-    const s = (o.status || '').toUpperCase();
-    return ['PROCESSING', 'PENDING', 'SHIPPED', 'APPROVED', 'ACTIVE'].some(x => s.includes(x));
+  const pendingOrders = orders.filter((o) => {
+    const s = (o.status || "").toUpperCase();
+    return ["PROCESSING", "PENDING", "SHIPPED", "APPROVED", "ACTIVE"].some(
+      (x) => s.includes(x),
+    );
   });
-  const completedOrders = orders.filter(o => {
-    const s = (o.status || '').toUpperCase();
-    return ['COMPLETED', 'DELIVERED', 'PAID', 'PICKED_UP'].some(x => s.includes(x));
+  const completedOrders = orders.filter((o) => {
+    const s = (o.status || "").toUpperCase();
+    return ["COMPLETED", "DELIVERED", "PAID", "PICKED_UP"].some((x) =>
+      s.includes(x),
+    );
   });
-  
+
   const pendingCount = pendingOrders.length;
   const completedCount = completedOrders.length;
-  const servicesUsedCount = new Set(orders.map(o => o.type)).size;
+  const servicesUsedCount = new Set(orders.map((o) => o.type)).size;
   const recentActivities = orders.slice(0, 8);
 
-  const statuses = ['Printing', 'AgriRent', 'Retail', 'Rental', 'Pharmacy', 'Tenders'];
-  const maxStatusCount = Math.max(...statuses.map(s => orders.filter(o => o.type === s).length), 1);
-  const statusColors = { 'Printing': G.olive, 'AgriRent': G.emerald, 'Retail': G.orange, 'Rental': G.blue, 'Pharmacy': G.pink, 'Tenders': G.red };
+  const statuses = [
+    "Printing",
+    "AgriRent",
+    "Retail",
+    "Rental",
+    "Pharmacy",
+    "Tenders",
+  ];
+  const maxStatusCount = Math.max(
+    ...statuses.map((s) => orders.filter((o) => o.type === s).length),
+    1,
+  );
+  const statusColors = {
+    Printing: G.olive,
+    AgriRent: G.emerald,
+    Retail: G.orange,
+    Rental: G.blue,
+    Pharmacy: G.pink,
+    Tenders: G.red,
+  };
 
   return (
-    <div style={{ margin: '-24px', padding: '2.5rem', minHeight: 'calc(100vh - 64px)', background: '#E8F4EC', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
-      <DecorPlants />
-
-      {/* ── HEADER ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '2.5rem', marginTop: '0.5rem', animation: 'fadeUp 0.35s ease', width: '100%', position:'relative', zIndex:1 }}>
-        <div style={{ justifySelf: 'start' }}>
-          <h1 className="artistic-3d-title" style={{ fontSize: '2.5rem' }}>
-            Welcome!&nbsp;<span className="blink-star">🌿</span>
-          </h1>
-        </div>
-        <div style={{ justifySelf: 'center' }}>
-          <p className="artistic-3d-subtitle">
-            CUSTOMER PORTAL · It's {timeString}
-          </p>
-        </div>
-        <div style={{ justifySelf: 'end' }}>
-          <button onClick={load} className="btn-sync" disabled={refreshing} style={{ opacity: refreshing ? 0.7 : 1 }}>
-            {refreshing && <SegmentedSpinner size={16} />}
-            <span style={{ zIndex: 1, position: 'relative' }}>SYNC</span>
+    <div className={styles.portalWrapper}>
+      <div className={styles.container}>
+        {/* Header */}
+        <div className={styles.headerRow}>
+          <div>
+            <h1 className={styles.pageTitle}>
+              Welcome back, {user?.name || "Customer"}!
+            </h1>
+            <p className={styles.pageSubtitle}>It's {timeString}</p>
+          </div>
+          <button
+            onClick={load}
+            className={styles.btnPrimary}
+            disabled={refreshing}
+          >
+            {refreshing ? <SegmentedSpinner size={16} /> : <span>🔄</span>}
+            Sync Data
           </button>
         </div>
-      </div>
 
-      {/* ── ROW 1: KPI HERO CARDS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
-
-        {/* Total Activity Hero */}
-        <div className="d-card"
-          style={{ background: `linear-gradient(135deg,${G.forest} 0%,${G.dark} 100%)`, color: 'white', position: 'relative', overflow: 'hidden', animationDelay: '0.05s' }}>
-          <div style={{ position: 'absolute', right: -20, top: -20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ position: 'absolute', right: 20, top: 20, background: 'rgba(255,255,255,0.18)', borderRadius: 0, padding: 12 }}>
-            <span style={{ fontSize: 24 }}>🛍️</span>
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.8, marginBottom: 10 }}>Total Activity</div>
-          <div style={{ fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: 14 }}>
-            {totalCount} <span style={{ fontSize: '1.1rem', opacity: 0.75, marginLeft: 6 }}>Orders</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
-            <span>📊</span> Lifetime requests and orders
-          </div>
-        </div>
-
-        {/* Completed */}
-        <div className="d-card" style={{ animationDelay: '0.1s' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Completed</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>✅</span></div>
-          </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{completedCount}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Successfully fulfilled</div>
-        </div>
-
-        {/* In Progress */}
-        <div className="d-card" style={{ animationDelay: '0.15s', background: pendingCount > 0 ? '#FFF8F0' : undefined }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: pendingCount > 0 ? G.orange : G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>In Progress</span>
-            <div style={{ background: pendingCount > 0 ? '#FFF4EB' : '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>{pendingCount > 0 ? '⏱️' : '⌛'}</span></div>
-          </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: pendingCount > 0 ? G.orange : G.dark, letterSpacing: '-0.03em', margin: '12px 0 6px' }}>{pendingCount}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Currently active or pending</div>
-        </div>
-
-        {/* Services Used */}
-        <div className="d-card" style={{ animationDelay: '0.2s' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Services Used</span>
-            <div style={{ background: '#E6F2EB', borderRadius: 0, padding: 8 }}><span style={{ fontSize:18 }}>🔄</span></div>
-          </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: G.dark, margin: '12px 0 6px' }}>{servicesUsedCount}</div>
-          <div style={{ fontSize: 12, color: G.olive, fontWeight: 600 }}>Across all departments</div>
-        </div>
-      </div>
-
-      {/* ── ROW 2: ACTIVITY STATUS BREAKDOWN + RECENT ACTIVITY FEED ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
-
-        {/* Activity Status Breakdown */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.25s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <span style={{ fontSize:18 }}>🔀</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: G.dark }}>Activity Status Breakdown</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: G.olive, fontWeight: 700 }}>Lifetime</span>
-          </div>
-          {/* Sub-KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
-            {[
-              { label: 'Total',         val: totalCount,      icon: '🛍️', c: G.forest },
-              { label: 'Completed',     val: completedCount,  icon: '✅', c: G.emerald },
-              { label: 'Pending',       val: pendingCount,    icon: '⏱️', c: G.orange },
-              { label: 'Services',      val: servicesUsedCount,icon: '🔄', c: G.blue },
-            ].map(k => (
-              <div key={k.label} style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 0, padding: '12px 14px', border: `1.5px solid ${k.c}22` }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>{k.icon}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: k.c }}>{k.val}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: G.olive, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
-              </div>
-            ))}
-          </div>
-          {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 60px', gap: 12, padding: '4px 14px', marginBottom: 6 }}>
-            {['Service', '', 'Count'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: G.emerald, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</div>
-            ))}
-          </div>
-          {statuses.map((status, i) => {
-            const count = orders.filter(o => o.type === status).length;
-            const c = statusColors[status] || COLORS_ARR[i % COLORS_ARR.length];
-            return (
-              <div key={status} className="cat-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 0, background: c, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textTransform: 'capitalize' }}>{status}</span>
-                </div>
-                <CategoryBar value={count} max={maxStatusCount} color={c} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: G.dark, textAlign: 'right' }}>{count}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Recent Activity Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div className="d-card-no-hover" style={{ flex: 1, animationDelay: '0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize:18 }}>📜</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: G.dark }}>Recent Activity</span>
+        {/* Top KPIs */}
+        <div className={styles.gridTop}>
+          <div className={`${styles.card} ${styles.cardHero}`}>
+            <div
+              className={styles.cardSubtitle}
+              style={{ color: "inherit", opacity: 0.9 }}
+            >
+              Total Activity
             </div>
-            {recentActivities.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: G.olive, fontSize: 13 }}>
-                <span style={{ fontSize:28, marginBottom: 8, opacity: 0.4 }}>📉</span><br />No activity yet
+            <div
+              style={{ fontSize: "3rem", fontWeight: 700, margin: "0.5rem 0" }}
+            >
+              {totalCount}
+            </div>
+            <div style={{ fontSize: "0.875rem", opacity: 0.9 }}>
+              Lifetime requests and orders
+            </div>
+          </div>
+          <div className={styles.card}>
+            <div className={styles.cardSubtitle}>Completed</div>
+            <div
+              style={{
+                fontSize: "2.25rem",
+                fontWeight: 700,
+                margin: "0.5rem 0",
+              }}
+            >
+              {completedCount}
+            </div>
+            <div style={{ fontSize: "0.875rem", color: G.emerald }}>
+              Successfully fulfilled
+            </div>
+          </div>
+          <div className={styles.card}>
+            <div className={styles.cardSubtitle}>In Progress</div>
+            <div
+              style={{
+                fontSize: "2.25rem",
+                fontWeight: 700,
+                margin: "0.5rem 0",
+              }}
+            >
+              {pendingCount}
+            </div>
+            <div
+              style={{
+                fontSize: "0.875rem",
+                color: pendingCount > 0 ? G.orange : G.emerald,
+              }}
+            >
+              Currently active or pending
+            </div>
+          </div>
+          <div className={styles.card}>
+            <div className={styles.cardSubtitle}>Services Used</div>
+            <div
+              style={{
+                fontSize: "2.25rem",
+                fontWeight: 700,
+                margin: "0.5rem 0",
+              }}
+            >
+              {servicesUsedCount}
+            </div>
+            <div
+              style={{
+                fontSize: "0.875rem",
+                color: "hsl(var(--muted-foreground))",
+              }}
+            >
+              Across all departments
+            </div>
+          </div>
+        </div>
+
+        {/* Main Section */}
+        <div className={styles.gridMain}>
+          {/* Status Breakdown */}
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Activity Status Breakdown</h2>
+            <div className={styles.gridSubKPIs}>
+              <div className={styles.subKpiCard}>
+                <div className={styles.subKpiLabel}>Total</div>
+                <div className={styles.subKpiValue}>{totalCount}</div>
               </div>
-            ) : recentActivities.map((l) => {
-              const c = statusColors[l.type] || G.emerald;
-              return (
-                <div key={l.id} className="top-row" onClick={() => l.navPath && navigate(l.navPath)}>
-                  <div style={{ width: 32, height: 32, borderRadius: 0, background: `${c}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14 }}>{l.icon}</span>
-                  </div>
-                  <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: G.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {l.typeLabel}: {l.description || `#${l.orderNumber}`}
+              <div className={styles.subKpiCard}>
+                <div className={styles.subKpiLabel}>Completed</div>
+                <div
+                  className={styles.subKpiValue}
+                  style={{ color: G.emerald }}
+                >
+                  {completedCount}
+                </div>
+              </div>
+              <div className={styles.subKpiCard}>
+                <div className={styles.subKpiLabel}>Pending</div>
+                <div className={styles.subKpiValue} style={{ color: G.orange }}>
+                  {pendingCount}
+                </div>
+              </div>
+              <div className={styles.subKpiCard}>
+                <div className={styles.subKpiLabel}>Services</div>
+                <div className={styles.subKpiValue} style={{ color: G.blue }}>
+                  {servicesUsedCount}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "1.5rem" }}>
+              {statuses.map((status, i) => {
+                const count = orders.filter((o) => o.type === status).length;
+                const c =
+                  statusColors[status] || COLORS_ARR[i % COLORS_ARR.length];
+                return (
+                  <div key={status} className={styles.catRow}>
+                    <div className={styles.catRowLabel}>
+                      <span
+                        style={{
+                          width: "0.75rem",
+                          height: "0.75rem",
+                          borderRadius: "50%",
+                          backgroundColor: c,
+                        }}
+                      ></span>
+                      {status}
                     </div>
-                    <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{l.status}</div>
+                    <CategoryBar value={count} max={maxStatusCount} color={c} />
+                    <div className={styles.catRowValue}>{count}</div>
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: c, whiteSpace: 'nowrap' }}>
-                    {l.date ? new Date(l.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent Activity Feed */}
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Recent Activity</h2>
+            {recentActivities.length === 0 ? (
+              <p
+                style={{
+                  color: "hsl(var(--muted-foreground))",
+                  textAlign: "center",
+                  padding: "2rem",
+                }}
+              >
+                No activity yet
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {recentActivities.map((l) => (
+                  <div
+                    key={l.id}
+                    className={styles.listRow}
+                    onClick={() => l.navPath && navigate(l.navPath)}
+                  >
+                    <div
+                      className={styles.iconBox}
+                      style={{
+                        color: l.color,
+                        backgroundColor: `${l.color}22`,
+                      }}
+                    >
+                      {l.icon}
+                    </div>
+                    <div className={styles.listRowContent}>
+                      <div className={styles.listRowTitle}>
+                        {l.typeLabel}: {l.description || `#${l.orderNumber}`}
+                      </div>
+                      <div className={styles.listRowSubtitle}>{l.status}</div>
+                    </div>
+                    <div
+                      className={styles.listRowRight}
+                      style={{ color: l.color }}
+                    >
+                      {l.date
+                        ? new Date(l.date).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                          })
+                        : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* ── ROW 3: ALERTS + QUICK ACTIONS ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 18, marginBottom: 18, position:'relative', zIndex:1 }}>
-        {/* Alerts */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.35s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 14 }}>⚠ Attention Required</div>
-          {pendingOrders.length === 0 ? (
-            <div style={{ fontSize: 13, color: G.olive }}>No pending actions required.</div>
-          ) : pendingOrders.slice(0, 3).map(o => (
-            <div key={o.id} className="alert-row" style={{ '--row-c': statusColors[o.type] || G.orange }} onClick={() => o.navPath && navigate(o.navPath)}>
-              <div style={{ background: '#FFFBEB', padding: 9, borderRadius: 0 }}><span style={{ fontSize: 18 }}>{o.icon}</span></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: G.dark }}>{o.typeLabel} #{o.orderNumber}</div>
-                <div style={{ fontSize: 11, color: G.olive, fontWeight: 600 }}>{o.status}</div>
+        {/* Alerts & Quick Actions */}
+        <div className={styles.gridActions}>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Attention Required</h2>
+            {pendingOrders.length === 0 ? (
+              <p style={{ color: "hsl(var(--muted-foreground))" }}>
+                No pending actions required at this time.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {pendingOrders.slice(0, 3).map((o) => (
+                  <div
+                    key={o.id}
+                    className={styles.listRow}
+                    onClick={() => o.navPath && navigate(o.navPath)}
+                  >
+                    <div
+                      className={styles.iconBox}
+                      style={{
+                        color: o.color,
+                        backgroundColor: `${o.color}22`,
+                      }}
+                    >
+                      {o.icon}
+                    </div>
+                    <div className={styles.listRowContent}>
+                      <div className={styles.listRowTitle}>
+                        {o.typeLabel} #{o.orderNumber}
+                      </div>
+                      <div className={styles.listRowSubtitle}>{o.status}</div>
+                    </div>
+                    <div className={styles.listRowRight}>›</div>
+                  </div>
+                ))}
               </div>
-              <span style={{ fontSize:14, color:'#ccc' }}>›</span>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
 
-        {/* Quick Actions */}
-        <div className="d-card-no-hover" style={{ animationDelay: '0.4s' }}>
-          <div style={{ fontSize: 15, fontWeight: 900, color: G.dark, marginBottom: 16 }}>⚡ Quick Operations</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-            {[
-              { label: 'Retail',    sub: 'My Orders',  icon: '🛍️', bg: '#FFF3E0', color: G.orange,  href: '/customer/retail-orders' },
-              { label: 'AgriRent',  sub: 'Equipment',  icon: '🚜', bg: '#E8F9F1', color: G.emerald, href: '/customer/farming-orders' },
-              { label: 'Pharmacy',  sub: 'Prescriptions',icon: '💊', bg: '#F3E5F5', color: G.pink,    href: '/customer/prescriptions' },
-              { label: 'Rentals',   sub: 'Car Rentals',icon: '🚗', bg: '#E1F5FE', color: G.blue,    href: '/customer/rentals' },
-              { label: 'Printing',  sub: 'Orders',     icon: '🖨️', bg: '#F1F8E9', color: G.olive,   href: '/customer/printing-orders' },
-              { label: 'Support',   sub: 'Tickets',    icon: '💬', bg: '#EFEBE9', color: G.brown,   href: '/customer/support' }
-            ].map((a, i) => (
-              <div key={a.label} className="qa-card" onClick={() => navigate(a.href)} style={{ animationDelay: `${0.4 + i * 0.04}s` }}>
-                <div style={{ width: 46, height: 46, borderRadius: 0, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', color: a.color }}>
-                  <span style={{ fontSize:22 }}>{a.icon}</span>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Quick Operations</h2>
+            <div className={styles.gridQuickActions}>
+              {[
+                {
+                  label: "Retail",
+                  sub: "My Orders",
+                  icon: "🛍️",
+                  color: G.orange,
+                  href: "/customer/retail-orders",
+                },
+                {
+                  label: "AgriRent",
+                  sub: "Equipment",
+                  icon: "🚜",
+                  color: G.emerald,
+                  href: "/customer/farming-orders",
+                },
+                {
+                  label: "Pharmacy",
+                  sub: "Prescriptions",
+                  icon: "💊",
+                  color: G.pink,
+                  href: "/customer/prescriptions",
+                },
+                {
+                  label: "Rentals",
+                  sub: "Car Rentals",
+                  icon: "🚗",
+                  color: G.blue,
+                  href: "/customer/rentals",
+                },
+                {
+                  label: "Printing",
+                  sub: "Orders",
+                  icon: "🖨️",
+                  color: G.olive,
+                  href: "/customer/printing-orders",
+                },
+                {
+                  label: "Support",
+                  sub: "Tickets",
+                  icon: "💬",
+                  color: "hsl(var(--foreground))",
+                  href: "/customer/support",
+                },
+              ].map((a) => (
+                <div
+                  key={a.label}
+                  className={styles.qaCard}
+                  onClick={() => navigate(a.href)}
+                >
+                  <div
+                    className={styles.qaIconBox}
+                    style={{ color: a.color, backgroundColor: `${a.color}22` }}
+                  >
+                    {a.icon}
+                  </div>
+                  <div className={styles.qaLabel}>{a.label}</div>
+                  <div className={styles.qaSub}>{a.sub}</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: G.dark, marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: G.olive, fontWeight: 600 }}>{a.sub}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
