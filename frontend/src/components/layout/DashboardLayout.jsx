@@ -812,7 +812,9 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     const isPrintingRoute = location.pathname.startsWith('/printing-manager');
     const isSalesRoute = location.pathname.startsWith('/sales');
     const isFinDashRoute = location.pathname.startsWith('/finance');
-    if (!isPharmacy && !isAdminRoute && !isEmployeeRoute && !isHrRoute && !isPrintingRoute && !isSalesRoute && !isFinDashRoute) return;
+    const isPurchRoute = location.pathname.startsWith('/purchase');
+    const isCustomerRoute = location.pathname.startsWith('/customer');
+    if (!isPharmacy && !isAdminRoute && !isEmployeeRoute && !isHrRoute && !isPrintingRoute && !isSalesRoute && !isFinDashRoute && !isCarRentingRoute && !isPurchRoute && !isCustomerRoute) return;
 
     if (!navSearchValue.trim()) {
       setNavSuggestions([]);
@@ -829,6 +831,9 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
     let printPageHits = [];
     let salesPageHits = [];
     let finPageHits = [];
+    let carPageHits = [];
+    let purchPageHits = [];
+    let custPageHits = [];
     if (isHrRoute) {
       const hrPages = [
         { label: 'Dashboard',           path: '/hr/employee-summary',   icon: '🏠', keywords: 'home dashboard summary overview start hr' },
@@ -976,7 +981,6 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         { label: 'Pharmacy Store & Stock',     path: '/finance/pharmacy-assets',         icon: '💊', keywords: 'pharmacy store stock valuation assets medicines' },
         { label: 'Vehicle & Rental Assets',    path: '/finance/vehicle-assets',          icon: '🚗', keywords: 'vehicle rental assets cars valuation fleet' },
         { label: 'Tractor Assets',             path: '/finance/tractor-assets',          icon: '🚜', keywords: 'tractor assets machinery valuation farm' },
-        { label: 'Cash Handovers',             path: '/finance/cash-handovers',          icon: '🤝', keywords: 'cash handovers handover transfer approve ceo' },
         { label: 'Payroll Payment',            path: '/finance/payroll-payment',         icon: '💸', keywords: 'payroll payment salaries wages pay staff' },
         { label: 'Cash Flow',                  path: '/finance/cash-flow',               icon: '💧', keywords: 'cash flow statement inflow outflow movement' },
         { label: 'Income Statement',           path: '/finance/profit-loss',             icon: '📊', keywords: 'income statement profit loss pnl revenue expenses' },
@@ -992,6 +996,91 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
         item: p
       }));
       setNavSuggestions(finPageHits);
+      setNavSelectedIndex(0);
+      } else if (isPurchRoute) {
+      const purchPages = [
+        { label: 'Dashboard',              path: '/purchase/overview',               icon: '🏠', keywords: 'home overview dashboard start purchase summary' },
+        { label: 'Tasks',                  path: '/purchase/tasks',                  icon: '✅', keywords: 'tasks assignments todo work reports employee' },
+        { label: 'Purchase Requests',      path: '/purchase/requests',               icon: '🛒', keywords: 'purchase requests pr requisition order buy items drugs' },
+        { label: 'Tender & Bid',           path: '/purchase/smart-tenders',          icon: '💵', keywords: 'tender bid smart auction supplier offers bids' },
+        { label: 'Quotations',             path: '/purchase/quotations',             icon: '📄', keywords: 'quotation quote price supplier offer estimate' },
+        { label: 'General Procurements',   path: '/purchase/general-procurements',   icon: '🚚', keywords: 'general procurement non drug supplies tender' },
+        { label: 'Supplier Directory',     path: '/purchase/suppliers',              icon: '🏢', keywords: 'suppliers directory vendor list company verify' },
+        { label: 'Add Supplier',           path: '/purchase/suppliers/add',          icon: '➕', keywords: 'add supplier new vendor create register' },
+        { label: 'Purchase Orders',        path: '/purchase/orders',                 icon: '📦', keywords: 'purchase orders po delivery status track' },
+        { label: 'Returns',                path: '/purchase/returns',                icon: '↩️', keywords: 'returns refund send back damaged wrong items' },
+        { label: 'Contact Settings',       path: '/purchase/contact',                icon: '📞', keywords: 'contact settings phone email address configure' },
+        { label: 'Chat',                   path: '/purchase/chat',                   icon: '💬', keywords: 'chat messages talk communication manager' },
+        { label: 'Purchase Report',        path: '/purchase/reports/purchase',       icon: '📊', keywords: 'purchase report analytics summary buying' },
+        { label: 'Delivery Report',        path: '/purchase/reports/delivery',       icon: '🚛', keywords: 'delivery report shipments received logistics' },
+        { label: 'CEO Report',             path: '/purchase/reports/ceo',            icon: '📈', keywords: 'ceo report executive summary performance' },
+        { label: 'Financial Review',       path: '/purchase/reports/financial',      icon: '💰', keywords: 'financial review budget cost spending payment' },
+        { label: 'Audit Log',              path: '/purchase/audit-log',              icon: '🔎', keywords: 'audit log history actions trail security records' },
+      ];
+      purchPageHits = purchPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Purchase Manager`,
+        type: 'purch_page',
+        item: p
+      }));
+      setNavSuggestions(purchPageHits);
+      setNavSelectedIndex(0);
+      } else if (isCarRentingRoute) {
+      const carPages = [
+        { label: 'Dashboard',            path: '/car-renting/manager/dashboard',       icon: '🏠', keywords: 'home overview dashboard start car rental summary' },
+        { label: 'Tasks',                path: '/car-renting/manager/tasks',           icon: '✅', keywords: 'tasks assignments todo work employee' },
+        { label: 'Rental Orders',        path: '/car-renting/manager/orders',          icon: '📋', keywords: 'rental order booking rent customer car reservation' },
+        { label: 'Agri Rent Orders',     path: '/car-renting/manager/agri-orders',     icon: '🌿', keywords: 'agri rent tractor farm agriculture order booking' },
+        { label: 'Agri Rent List',       path: '/car-renting/manager/agrirent-list',   icon: '🌾', keywords: 'agri rent list records history farm' },
+        { label: 'Store Request',        path: '/car-renting/manager/store-request',   icon: '📦', keywords: 'store request inventory items parts spare' },
+        { label: 'Procurement Request',  path: '/car-renting/manager/procurement-request', icon: '➕', keywords: 'procurement purchase request supplies' },
+        { label: 'Fleet & Vehicles',     path: '/car-renting/manager/fleet',           icon: '🚗', keywords: 'fleet vehicles car rental post availability' },
+        { label: 'Tractor Fleet',        path: '/car-renting/manager/tractor-fleet',   icon: '🚜', keywords: 'tractor fleet agri post machinery farm' },
+        { label: 'Asset Register',       path: '/car-renting/manager/assets',          icon: '🗃️', keywords: 'asset register assets property value record' },
+        { label: 'Maintenance',          path: '/car-renting/manager/maintenance',     icon: '🔧', keywords: 'maintenance repair fix service garage' },
+        { label: 'Service & Fuel',       path: '/car-renting/manager/utilization',     icon: '⛽', keywords: 'service fuel utilization gas petrol consumption' },
+        { label: 'Drivers & Calendar',   path: '/car-renting/manager/calendar',        icon: '👥', keywords: 'drivers calendar availability schedule booking driver' },
+        { label: 'Rental Report',        path: '/car-renting/manager/reports/rental',  icon: '📈', keywords: 'rental report analytics performance' },
+        { label: 'Revenue Report',       path: '/car-renting/manager/reports/revenue', icon: '💲', keywords: 'revenue report finance money income earnings' },
+        { label: 'Contact Settings',     path: '/car-renting/manager/contact',         icon: '📞', keywords: 'contact settings phone email address configure' },
+        { label: 'Chat',                 path: '/car-renting/manager/chat',            icon: '💬', keywords: 'chat messages talk communication manager' },
+        { label: 'Audit Log',            path: '/car-renting/manager/audit-log',       icon: '🔎', keywords: 'audit log history actions trail security records' },
+      ];
+      carPageHits = carPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Car Rental Manager`,
+        type: 'car_page',
+        item: p
+      }));
+      setNavSuggestions(carPageHits);
+      setNavSelectedIndex(0);
+      } else if (isCustomerRoute) {
+      const custPages = [
+        { label: 'Overview',            path: '/customer/dashboard',       icon: '🏠', keywords: 'overview home dashboard all orders summary start customer' },
+        { label: 'Printing Orders',     path: '/customer/printing-orders', icon: '🖨️', keywords: 'printing orders print jobs business cards flyers documents' },
+        { label: 'AgriRent Orders',     path: '/customer/farming-orders',  icon: '🌿', keywords: 'agri rent farming tractor plough land orders' },
+        { label: 'Retail Orders',       path: '/customer/retail-orders',   icon: '🛍️', keywords: 'retail orders shop products purchase delivery invoice' },
+        { label: 'Car Rentals',         path: '/customer/rentals',         icon: '🚗', keywords: 'car rentals vehicle booking driver reservation' },
+        { label: 'Pharmacy Orders',     path: '/customer/prescriptions',   icon: '💊', keywords: 'pharmacy prescriptions medicine drugs order upload' },
+        { label: 'Tender Bids',         path: '/customer/bids',            icon: '🏆', keywords: 'tender bids auction offers supplier bid' },
+        { label: 'Invoices',            path: '/customer/invoices',        icon: '🧾', keywords: 'invoices billing payments due amounts documents' },
+        { label: 'Receipts',            path: '/customer/receipts',        icon: '🧾', keywords: 'receipts payment proof paid records' },
+        { label: 'Support Tickets',     path: '/customer/support',         icon: '🎫', keywords: 'support tickets help issues complaints contact' },
+        { label: 'Become a Supplier',   path: '/customer/become-supplier', icon: '🚚', keywords: 'become supplier register sell vendor partner' },
+      ];
+      custPageHits = custPages.filter(p =>
+        p.label.toLowerCase().includes(q) || p.keywords.includes(q)
+      ).map(p => ({
+        title: p.label,
+        subtitle: `${p.icon} Page • Customer Portal`,
+        type: 'cust_page',
+        item: p
+      }));
+      setNavSuggestions(custPageHits);
       setNavSelectedIndex(0);
       }
 
@@ -1178,7 +1267,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
             : (Array.isArray(ordRes.data) ? ordRes.data : []);
           (Array.isArray(ordsRaw) ? ordsRaw : []).filter(o =>
             (o.order_number || '').toLowerCase().includes(q) ||
-            String(o.id) === q ||
+            String(o.id).includes(q) ||
             (o.customer_name || '').toLowerCase().includes(q) ||
             (o.customer_phone || '').includes(q) ||
             (o.product_type || '').toLowerCase().includes(q) ||
@@ -1229,7 +1318,177 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                 item: r
               });
             });
-          } else if (isFinDashRoute) {
+          } else if (isCarRentingRoute) {
+        // ── CAR RENTAL / AGRI: pages already shown instantly above; now live data ──
+        suggs.push(...carPageHits);
+        const [rentRes, agriRes, carRes, tractRes] = await Promise.all([
+          apiClient.get('/rental-orders').catch(() => ({ data: [] })),
+          apiClient.get('/agrirent-orders').catch(() => ({ data: [] })),
+          apiClient.get('/cars').catch(() => ({ data: [] })),
+          apiClient.get('/tractors').catch(() => ({ data: [] }))
+        ]);
+        if (!isMounted) return;
+
+        const rentRaw = rentRes.data?.data || rentRes.data || [];
+        (Array.isArray(rentRaw) ? rentRaw : []).filter(o =>
+          (o.order_number || o.orderNumber || '').toLowerCase().includes(q) ||
+          String(o.id) === q ||
+          (o.customer_name || o.customerName || '').toLowerCase().includes(q) ||
+          (o.customer_phone || o.customerPhone || '').toString().includes(q)
+        ).slice(0, 4).forEach(o => {
+          suggs.push({
+            title: `${o.order_number || o.orderNumber || 'Order #' + o.id} - ${o.customer_name || o.customerName || 'Customer'}`,
+            subtitle: `🚘 Rental Order • ${(o.status || o.order_status || 'unknown').replace(/_/g, ' ')}`,
+            type: 'car_order',
+            item: o
+          });
+        });
+
+        const agriRaw = agriRes.data?.orders || agriRes.data?.data || agriRes.data || [];
+        (Array.isArray(agriRaw) ? agriRaw : []).filter(o =>
+          (o.order_number || '').toLowerCase().includes(q) ||
+          String(o.id) === q ||
+          (o.customer_name || '').toLowerCase().includes(q) ||
+          (o.customer_phone || '').toString().includes(q)
+        ).slice(0, 3).forEach(o => {
+          suggs.push({
+            title: `${o.order_number || 'Agri #' + o.id} - ${o.customer_name || 'Customer'}`,
+            subtitle: `🚜 Agri Order • ${(o.status || o.order_status || 'unknown').replace(/_/g, ' ')}`,
+            type: 'car_agri_order',
+            item: o
+          });
+        });
+
+        const carsRaw = carRes.data?.data || carRes.data || [];
+        (Array.isArray(carsRaw) ? carsRaw : []).filter(c =>
+          (c.name || '').toLowerCase().includes(q) ||
+          (c.car_type || c.carType || '').toLowerCase().includes(q) ||
+          String(c.id) === q
+        ).slice(0, 3).forEach(c => {
+          suggs.push({
+            title: `${c.name || 'Unknown Vehicle'}`,
+            subtitle: `🚙 Fleet Vehicle • ETB ${Number(c.dailyRate ?? c.daily_rate ?? 0).toLocaleString()}/day • ${(c.availability || 'unknown').replace(/_/g, ' ')}`,
+            type: 'car_fleet',
+            item: c
+          });
+        });
+
+        const tractsRaw = tractRes.data?.data || tractRes.data || [];
+        (Array.isArray(tractsRaw) ? tractsRaw : []).filter(t =>
+          (t.name || '').toLowerCase().includes(q) ||
+          (t.tractor_type || t.tractorType || '').toLowerCase().includes(q) ||
+          String(t.id) === q
+        ).slice(0, 3).forEach(t => {
+          suggs.push({
+            title: `${t.name || 'Tractor'}`,
+            subtitle: `🚜 Tractor • ETB ${Number(t.dailyRate ?? t.daily_rate ?? 0).toLocaleString()}/day • ${(t.availability || 'unknown').replace(/_/g, ' ')}`,
+            type: 'car_tractor',
+            item: t
+          });
+        });
+      } else if (isCustomerRoute) {
+          // ── CUSTOMER PORTAL: pages already shown instantly above; now live data ──
+          suggs.push(...custPageHits);
+
+          const [printRes, agriRes, retailRes, rentRes, rxRes, bidRes] = await Promise.all([
+            apiClient.get('/printing/customer/orders').catch(() => ({ data: [] })),
+            apiClient.get('/agrirent-orders/my-orders').catch(() => ({ data: [] })),
+            apiClient.get('/retail/orders/my-orders').catch(() => ({ data: [] })),
+            apiClient.get('/rental-orders/my-orders').catch(() => ({ data: [] })),
+            apiClient.get('/pharmacy/requests/my-requests').catch(() => ({ data: [] })),
+            apiClient.get('/tenders/my-bids').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+          const rows = (r, key) => {
+            let d = r?.data ?? r;
+            if (d && typeof d === 'object' && !Array.isArray(d)) d = d[key] || d.orders || d.data || d.bids || d.requests || [];
+            return Array.isArray(d) ? d : [];
+          };
+
+          // Printing orders
+          rows(printRes).filter(o =>
+            (o.order_number || o.orderNumber || '').toLowerCase().includes(q) ||
+            String(o.id) === q ||
+            (o.product_type || o.productType || o.status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.order_number || o.orderNumber || 'Print Order #' + o.id}`,
+              subtitle: `🖨️ Printing • ${o.product_type || o.productType || 'order'} • ${(o.status || 'pending')}`,
+              type: 'cust_printing',
+              item: o
+            });
+          });
+
+          // AgriRent orders
+          rows(agriRes).filter(o =>
+            (o.order_number || '').toLowerCase().includes(q) ||
+            String(o.id) === q ||
+            (o.farm_name || o.service_type || o.status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.order_number || 'Agri Order #' + o.id}`,
+              subtitle: `🌿 AgriRent • ${o.service_type || o.farm_name || 'farming service'} • ${(o.status || 'pending')}`,
+              type: 'cust_agri',
+              item: o
+            });
+          });
+
+          // Retail orders (invoice-based)
+          rows(retailRes).filter(o =>
+            (o.invoice_number || '').toLowerCase().includes(q) ||
+            String(o.id) === q ||
+            (o.status || o.payment_status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.invoice_number || 'Retail Order #' + o.id}`,
+              subtitle: `🛍️ Retail • ETB ${Number(o.total_amount || 0).toLocaleString()} • ${(o.status || 'placed')}${o.payment_status ? ' • ' + o.payment_status : ''}`,
+              type: 'cust_retail',
+              item: o
+            });
+          });
+
+          // Car rentals
+          rows(rentRes).filter(o =>
+            (o.orderNumber || o.order_number || '').toLowerCase().includes(q) ||
+            String(o.id) === q ||
+            (o.status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.orderNumber || o.order_number || 'Rental #' + o.id}`,
+              subtitle: `🚗 Rental • ${o.totalDays ?? '-'} day(s) • ${(o.status || 'reserved').replace(/_/g, ' ')}`,
+              type: 'cust_rental',
+              item: o
+            });
+          });
+
+          // Pharmacy prescriptions
+          rows(rxRes).filter(o =>
+            (o.request_number || '').toLowerCase().includes(q) ||
+            (o.medication_name || '').toLowerCase().includes(q) ||
+            String(o.id) === q
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.request_number || 'Rx #' + o.id} — ${o.medication_name || 'Medicine'}`,
+              subtitle: `💊 Pharmacy • Qty ${o.quantity ?? '-'} • ${(o.status || 'pending').replace(/_/g, ' ')}`,
+              type: 'cust_rx',
+              item: o
+            });
+          });
+
+          // Tender bids
+          rows(bidRes).filter(b =>
+            (b.tender_no || b.reference_number || b.tender_title || '').toLowerCase().includes(q) ||
+            String(b.id) === q ||
+            (b.status || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(b => {
+            suggs.push({
+              title: `${b.tender_title || b.tender_no || b.reference_number || 'Bid #' + b.id}`,
+              subtitle: `🏆 Bid • ${(b.status || 'submitted').replace(/_/g, ' ')}`,
+              type: 'cust_bid',
+              item: b
+            });
+          });
+      } else if (isFinDashRoute) {
           // ── FINANCE: pages already shown instantly above; now live data ──
           suggs.push(...finPageHits);
 
@@ -1330,6 +1589,92 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               subtitle: `⚠️ Liability • ETB ${Number(l.balance ?? l.amount ?? 0).toLocaleString()} owed • ${l.status || 'Pending'}`,
               type: 'fin_liability',
               item: l
+            });
+          });
+        } else if (isPurchRoute) {
+          // ── PURCHASE MANAGER: pages already shown instantly above; now live data ──
+          suggs.push(...purchPageHits);
+
+          const [tenderRes, reqRes, quoteRes, orderRes, supRes] = await Promise.all([
+            apiClient.get('/tenders').catch(() => ({ data: [] })),
+            apiClient.get('/procurement/requests').catch(() => ({ data: [] })),
+            apiClient.get('/purchase/quotations').catch(() => ({ data: [] })),
+            apiClient.get('/purchase/orders').catch(() => ({ data: [] })),
+            apiClient.get('/suppliers').catch(() => ({ data: [] }))
+          ]);
+          if (!isMounted) return;
+
+          // Tenders & bids
+          arr(tenderRes).filter(t =>
+            (t.reference_number || '').toLowerCase().includes(q) ||
+            (t.title || '').toLowerCase().includes(q) ||
+            (t.item_name || '').toLowerCase().includes(q) ||
+            (t.status || '').toLowerCase().includes(q)
+          ).slice(0, 4).forEach(t => {
+            suggs.push({
+              title: `${t.reference_number || 'Tender #' + t.id} — ${t.title || t.item_name || 'Tender'}`,
+              subtitle: `💵 Tender • ${(t.item_name || '')}${t.quantity ? ` • Qty ${t.quantity}` : ''} • ${(t.status || 'open')}`,
+              type: 'purch_tender',
+              item: t
+            });
+          });
+
+          // Procurement requests (purchase requisitions)
+          arr(reqRes).filter(r =>
+            (r.pr_no || '').toLowerCase().includes(q) ||
+            (r.drug_name || r.item_name || '').toLowerCase().includes(q) ||
+            (r.status || '').toLowerCase().includes(q) ||
+            String(r.id) === q
+          ).slice(0, 4).forEach(r => {
+            suggs.push({
+              title: `${r.pr_no || 'PR #' + r.id} — ${r.drug_name || r.item_name || 'Request'}`,
+              subtitle: `🛒 Request • Qty ${r.quantity_requested ?? r.quantity ?? '-'} ${r.unit_of_measure || ''} • ${(r.urgency || r.status || 'pending')}`,
+              type: 'purch_request',
+              item: r
+            });
+          });
+
+          // Supplier quotations
+          arr(quoteRes).filter(qt =>
+            (qt.quotation_no || '').toLowerCase().includes(q) ||
+            (qt.supplier_name || '').toLowerCase().includes(q) ||
+            (qt.item_description || '').toLowerCase().includes(q)
+          ).slice(0, 3).forEach(qt => {
+            suggs.push({
+              title: `${qt.quotation_no || 'Quote #' + qt.id} — ${qt.supplier_name || 'Supplier'}`,
+              subtitle: `📄 Quotation • ETB ${Number(qt.total_amount ?? qt.unit_price ?? 0).toLocaleString()} • ${String(qt.item_description || '').slice(0, 30)}`,
+              type: 'purch_quote',
+              item: qt
+            });
+          });
+
+          // Purchase orders
+          arr(orderRes).filter(o =>
+            (o.po_number || o.order_number || '').toLowerCase().includes(q) ||
+            (o.supplier_name || o.supplier || '').toLowerCase().includes(q) ||
+            (o.status || '').toLowerCase().includes(q) ||
+            String(o.id) === q
+          ).slice(0, 3).forEach(o => {
+            suggs.push({
+              title: `${o.po_number || o.order_number || 'PO #' + o.id}`,
+              subtitle: `📦 Purchase Order • ${o.supplier_name || o.supplier || 'Supplier'} • ${(o.status || 'pending').replace(/_/g, ' ')}`,
+              type: 'purch_order',
+              item: o
+            });
+          });
+
+          // Suppliers directory
+          arr(supRes).filter(s =>
+            (s.name || s.company_name || s.supplier_name || '').toLowerCase().includes(q) ||
+            (s.email || s.contact_email || '').toLowerCase().includes(q) ||
+            (s.phone || s.contact_phone || '').toString().includes(q)
+          ).slice(0, 4).forEach(s => {
+            const nm = s.name || s.company_name || s.supplier_name || 'Supplier';
+            suggs.push({
+              title: nm,
+              subtitle: `🏢 Supplier • ${s.email || s.contact_email || s.phone || s.contact_phone || 'contact N/A'}${s.verified ? ' • ✔ verified' : ''}`,
+              type: 'purch_supplier',
+              item: s
             });
           });
         } else {
@@ -1541,6 +1886,26 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
           showToast(`${title}: ${message}`, type === 'payment_confirmed' ? 'success' : type === 'payment_rejected' ? 'error' : 'info');
         }
         if (isPrintingUser) setNotifRefresh(n => n + 1);
+      });
+      // Customer portal notifications (order confirmations, payments, prescriptions, rentals)
+      socket.on('customer-cash', (data) => {
+        const { title, message, type, link } = data || {};
+        let isCustomerUser = false;
+        try {
+          const u = JSON.parse(localStorage.getItem('user') || '{}');
+          const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []);
+          isCustomerUser = roles.some(r => String(r).toLowerCase() === 'customer');
+        } catch (_) {}
+        if (!isCustomerUser) return;
+        // Only react to rows meant for customer pages
+        const meantForCustomer = !link || link?.startsWith('/customer');
+        if (meantForCustomer && title) {
+          // sound fires only when a bell message actually arrives; decision-aware
+          const t = String(title).toLowerCase();
+          playSound(t.includes('reject') ? 'rejected' : t.includes('approv') || t.includes('confirm') || t.includes('ready') ? 'approved' : 'request');
+          showToast(`${title}: ${message}`, t.includes('reject') ? 'error' : 'success');
+        }
+        setNotifRefresh(n => n + 1);
       });
 
       // ── Generic DB notification (sent by sendNotification() service for any role) ──
@@ -1918,7 +2283,19 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               </span>
               <input 
                 type="text" 
-                placeholder={location.pathname.startsWith('/admin') ? 'Search users, logs, alerts...' : (location.pathname.startsWith('/pharmacy') ? 'Search sales, medicines, orders...' : (location.pathname.startsWith('/employee') ? 'Search tasks, payslips, pages...' : (location.pathname.startsWith('/hr') ? 'Search employees, payroll, HR pages...' : (location.pathname.startsWith('/printing-manager') ? 'Search jobs, orders, production...' : (location.pathname.startsWith('/sales') ? 'Search products, sales, pages...' : (location.pathname.startsWith('/finance') ? 'Search bank accounts, receivables, pages...' : 'Search...'))))))}
+                placeholder={
+  location.pathname.startsWith('/admin') ? 'Search users, logs, alerts...' : 
+  location.pathname.startsWith('/pharmacy') ? 'Search sales, medicines, orders...' : 
+  location.pathname.startsWith('/employee') ? 'Search tasks, payslips, pages...' : 
+  location.pathname.startsWith('/hr') ? 'Search employees, payroll, HR pages...' : 
+  location.pathname.startsWith('/printing-manager') ? 'Search jobs, orders, production...' : 
+  location.pathname.startsWith('/sales') ? 'Search products, sales, pages...' : 
+  location.pathname.startsWith('/purchase') ? 'Search tenders, suppliers, orders, pages...' : 
+  location.pathname.startsWith('/finance') ? 'Search bank accounts, receivables, pages...' : 
+  location.pathname.startsWith('/car-renting') ? 'Search rentals, fleet, tractors...' :
+  location.pathname.startsWith('/customer') ? 'Search my orders, invoices, pages...' :
+  'Search...'
+}
                 value={navSearchValue}
                 onChange={(e) => {
                   setNavSearchValue(e.target.value);
@@ -2009,6 +2386,54 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                           navigate('/finance/pharmacy-sales');
                         } else {
                           navigate('/finance/overview');
+                        }
+                      } else if (location.pathname.startsWith('/purchase')) {
+                        if (sel.type === 'purch_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'purch_tender') {
+                          navigate('/purchase/smart-tenders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'purch_request') {
+                          navigate('/purchase/requests', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'purch_quote') {
+                          navigate('/purchase/quotations', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'purch_order') {
+                          navigate('/purchase/orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'purch_supplier') {
+                          navigate('/purchase/suppliers', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/purchase/overview');
+                        }
+                      } else if (location.pathname.startsWith('/car-renting')) {
+                        if (sel.type === 'car_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'car_order') {
+                          navigate('/car-renting/manager/orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'car_agri_order') {
+                          navigate('/car-renting/manager/agri-orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'car_fleet') {
+                          navigate('/car-renting/manager/fleet', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'car_tractor') {
+                          navigate('/car-renting/manager/tractor-fleet', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/car-renting/manager/dashboard');
+                        }
+                      } else if (location.pathname.startsWith('/customer')) {
+                        if (sel.type === 'cust_page' && sel.item?.path) {
+                          navigate(sel.item.path);
+                        } else if (sel.type === 'cust_printing') {
+                          navigate('/customer/printing-orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'cust_agri') {
+                          navigate('/customer/farming-orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'cust_retail') {
+                          navigate('/customer/retail-orders', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'cust_rental') {
+                          navigate('/customer/rentals', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'cust_rx') {
+                          navigate('/customer/prescriptions', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else if (sel.type === 'cust_bid') {
+                          navigate('/customer/bids', { state: { dashSearchTerm: sel.title, dashSearchItem: sel.item } });
+                        } else {
+                          navigate('/customer/dashboard');
                         }
                       }
                       setShowNavSuggestions(false);
@@ -2116,6 +2541,38 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                             } else {
                               navigate('/printing-manager/overview');
                             }
+                          } else if (location.pathname.startsWith('/car-renting')) {
+                            if (s.type === 'car_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'car_order') {
+                              navigate('/car-renting/manager/orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'car_agri_order') {
+                              navigate('/car-renting/manager/agri-orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'car_fleet') {
+                              navigate('/car-renting/manager/fleet', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'car_tractor') {
+                              navigate('/car-renting/manager/tractor-fleet', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/car-renting/manager/dashboard');
+                            }
+                          } else if (location.pathname.startsWith('/customer')) {
+                            if (s.type === 'cust_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'cust_printing') {
+                              navigate('/customer/printing-orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'cust_agri') {
+                              navigate('/customer/farming-orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'cust_retail') {
+                              navigate('/customer/retail-orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'cust_rental') {
+                              navigate('/customer/rentals', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'cust_rx') {
+                              navigate('/customer/prescriptions', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'cust_bid') {
+                              navigate('/customer/bids', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/customer/dashboard');
+                            }
                           } else if (location.pathname.startsWith('/finance')) {
                             if (s.type === 'fin_page' && s.item?.path) {
                               navigate(s.item.path);
@@ -2135,6 +2592,22 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
                               navigate('/finance/pharmacy-sales');
                             } else {
                               navigate('/finance/overview');
+                            }
+                          } else if (location.pathname.startsWith('/purchase')) {
+                            if (s.type === 'purch_page' && s.item?.path) {
+                              navigate(s.item.path);
+                            } else if (s.type === 'purch_tender') {
+                              navigate('/purchase/smart-tenders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'purch_request') {
+                              navigate('/purchase/requests', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'purch_quote') {
+                              navigate('/purchase/quotations', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'purch_order') {
+                              navigate('/purchase/orders', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else if (s.type === 'purch_supplier') {
+                              navigate('/purchase/suppliers', { state: { dashSearchTerm: s.title, dashSearchItem: s.item } });
+                            } else {
+                              navigate('/purchase/overview');
                             }
                           }
                           setShowNavSuggestions(false);
