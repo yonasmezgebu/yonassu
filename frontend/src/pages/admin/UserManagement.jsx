@@ -115,7 +115,7 @@ const UserManagement = () => {
   };
 
   const handleToggleActive = (userId, currentStatus) => {
-    const newStatusId = currentStatus.toLowerCase() === 'active' ? 2 : 1; // 1 = active, 2 = inactive
+    const newStatusId = String(currentStatus).toLowerCase() === 'active' ? 2 : 1; // 1 = active, 2 = inactive
     const action = newStatusId === 2 ? 'deactivate' : 'activate';
     setConfirmBox({
       message: `Are you sure you want to ${action} this user?`,
@@ -124,7 +124,9 @@ const UserManagement = () => {
         try {
           await adminService.updateUser(userId, { statusId: newStatusId });
           showToast(`User ${action}d successfully.`);
-          fetchUsers();
+          setUsers((prevUsers) => prevUsers.map(u => 
+            u.id === userId ? { ...u, status_id: newStatusId, status_name: newStatusId === 1 ? 'Active' : 'Inactive' } : u
+          ));
         } catch (error) {
           showToast(error.response?.data?.message || `Failed to ${action} user.`, 'error');
         }
@@ -140,7 +142,9 @@ const UserManagement = () => {
         try {
           await adminService.updateUserStatus(userId, { status: 'inactive' });
           showToast('User deleted.');
-          fetchUsers();
+          setUsers((prevUsers) => prevUsers.map(u => 
+            u.id === userId ? { ...u, deleted_at: new Date().toISOString() } : u
+          ));
         } catch (error) {
           showToast(error.response?.data?.message || 'Failed to delete user.', 'error');
         }
@@ -156,7 +160,9 @@ const UserManagement = () => {
         try {
           await adminService.updateUserStatus(userId, { status: 'active' });
           showToast('User restored.');
-          fetchUsers();
+          setUsers((prevUsers) => prevUsers.map(u => 
+            u.id === userId ? { ...u, deleted_at: null, status_id: 1, status_name: 'Active' } : u
+          ));
         } catch (error) {
           showToast(error.response?.data?.message || 'Failed to restore user.', 'error');
         }
@@ -371,7 +377,7 @@ const UserManagement = () => {
                       <input
                         type="checkbox"
                         className={styles.toggleInput}
-                        checked={(user.status_name || user.status) === 'active'}
+                        checked={String(user.status_name || user.status).toLowerCase() === 'active'}
                         readOnly
                         disabled={!!user.deleted_at}
                       />
