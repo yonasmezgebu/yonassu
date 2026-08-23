@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/apiClient';
 import { useToast } from '../../components/Toast';
-import { playSound } from '../../services/notificationManager';
 import {
   EyeOff, Search, Pill, Calendar, Shield, Globe, Bell, X,
   CheckCircle, List, RefreshCw, AlertTriangle, Lock
@@ -94,7 +93,6 @@ export default function DrugHideForm() {
       const res = await apiClient.post('/pharmacy/drug-hide', payload);
       if (res.status === 'success') {
         showToast('Drug hidden successfully', 'success');
-        playSound('success');
         clearSelection();
       }
     } catch (e) {
