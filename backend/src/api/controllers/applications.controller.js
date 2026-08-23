@@ -107,6 +107,26 @@ exports.updateStatus = async (req, res) => {
         }).catch(err => console.error('[Notification] Failed to notify CEO:', err.message));
       }
     }
+
+    // When a candidate is APPROVED (by CEO), notify HR so it appears at the HR bell
+    if (status === 'APPROVED') {
+      const appInfo = await db('job_applications')
+        .join('news_posts', 'job_applications.post_id', 'news_posts.id')
+        .where('job_applications.id', id)
+        .select('job_applications.full_name', 'news_posts.hiring_position', 'news_posts.title')
+        .first();
+
+      if (appInfo) {
+        const positionName = appInfo.hiring_position || appInfo.title || 'Open Position';
+        sendNotification('HR Manager', null, {
+          title: 'Applicant Approved by CEO',
+          message: `${appInfo.full_name} was approved for ${positionName}. You can proceed with hiring.`,
+          type: 'applicant_approved',
+          link: '/hr/applications',
+          related_entity_id: id
+        }).catch(err => console.error('[Notification] Failed to notify HR:', err.message));
+      }
+    }
     
     res.json({ success: true, message: 'Status updated successfully' });
   } catch (err) {
