@@ -45,8 +45,7 @@ const PharmacyWorkerNewPrescription = () => {
         medicineName: rx.medicine_name,
         isAvailable: rx.status !== 'ON_HOLD'
       });
-    } catch (err) {
-      alert(`Failed to submit: ${err.response?.data?.message || err.message}`);
+    } catch (err) { alert(`Failed to submit: ${err.response?.data?.message || err.message}`);
     }
   };
 
