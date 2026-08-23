@@ -34,10 +34,9 @@ export default function PharmacyWorkerLowStock({ hideHeader = false, refreshTrig
       }).filter(item => item.status === 'Low Stock' || item.status === 'Out of Stock');
       
       setStock(lowStockItems);
-      
       if (lowStockItems.length > 0) {
-        receiveNotification('⚠️ Low Stock Alert', 'Reorder Required - Please review low stock items.');
-      }
+        showToast('⚠️ Low Stock Alert: Reorder Required', 'warning');
+        }
     } catch (e) {
       showToast('Failed to load low stock items', 'error');
     } finally {
