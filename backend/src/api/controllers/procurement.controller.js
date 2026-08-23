@@ -2,7 +2,7 @@ const { db } = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { HTTP_STATUS } = require('../../utils/constants');
 const notificationRepository = require('../../repositories/notification.repository');
-const { sendFinanceNotification, sendCeoNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendCeoNotification, sendPurchaseNotification } = require('../../services/notification.service');
 const { hashPassword } = require('../../config/auth');
 const vatConfigService = require('../../services/vatConfig.service');
 
@@ -213,20 +213,27 @@ const procController = {
 
     const updates = {
       ceo_decision: decision, ceo_notes: ceoNotes, ceo_decided_by: userId, ceo_decided_at: db.fn.now(),
-      status: decision === 'APPROVED' ? 'APPROVED_FOR_PURCHASE' : 'CEO_REJECTED'
+      status: decision === 'APPROVED' ? 'CEO_APPROVED' : 'CEO_REJECTED'
     };
     await db('procurement_requests').where({ id: row.id }).update(updates);
 
     if (decision === 'APPROVED') {
       try {
-        await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: `✅ ${prefix}Request ${row.pr_no} Accepted — Create Tender${newTag}`,
+        await sendPurchaseNotification({
+          title: `✅ ${prefix}Request ${row.pr_no} Accepted — Create Tender${newTag}`,
           message: `${isNew ? '🆕 New Drug ' : ''}${row.drug_name} — CEO accepted. Create a tender now.`,
-          type: 'success', link: `/purchase/tenders`
-        });
+          type: 'success', link: `/purchase/tenders`,
+          related_entity_id: row.id
+        }, req.app?.get('io'));
       } catch (e) {}
     } else {
       try {
+        await sendPurchaseNotification({
+          title: `❌ ${prefix}Request ${row.pr_no} Rejected by CEO${newTag}`,
+          message: `${prefix}${row.drug_name} — Reason: ${ceoNotes || 'No reason provided'}`,
+          type: 'error', link: `/purchase/smart-tenders`,
+          related_entity_id: row.id
+        }, req.app?.get('io'));
         await notificationRepository.create({
           roleTarget: 'Pharmacy Manager', title: `❌ Request ${row.pr_no} Rejected${newTag}`,
           message: `${prefix}${row.drug_name} - Reason: ${ceoNotes || 'No reason provided'}`,
@@ -254,7 +261,7 @@ const procController = {
   },
 
   getApprovedPRsForMarket: async (req, res) => {
-    const rows = await db('procurement_requests').whereIn('status', ['APPROVED_FOR_PURCHASE', 'IN_MARKET']).orderBy('created_at', 'desc');
+    const rows = await db('procurement_requests').whereIn('status', ['CEO_APPROVED', 'IN_MARKET']).orderBy('created_at', 'desc');
     res.json({ status: 'success', data: rows });
   },
 
@@ -269,11 +276,12 @@ const procController = {
       quantity_needed: pr.quantity_requested, assigned_by: userId, assigned_by_name: userName, notes
     });
     try {
-      await notificationRepository.create({
-        roleTarget: 'Purchase Manager', title: 'Market Task Assigned',
+      await sendPurchaseNotification({
+        title: 'Market Task Assigned',
         message: `PR ${pr.pr_no}: Market research assigned to ${userName}`,
-        type: 'info', link: `/purchase/market-tasks`
-      });
+        type: 'info', link: `/purchase/market-tasks`,
+        related_entity_id: pr.id
+      }, req.app?.get('io'));
     } catch (e) {}
     res.status(HTTP_STATUS.CREATED).json({ status: 'success', data: { pr_no: pr.pr_no } });
   },
@@ -445,11 +453,12 @@ const procController = {
       await db('procurement_bids').where({ tender_id: tender.id }).whereNot({ id: selectedBidId }).update({ status: 'REJECTED' });
       const bid = await db('procurement_bids').where({ id: selectedBidId }).first();
       try {
-        await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: `✅ CEO Approved${newTag}`,
+        await sendPurchaseNotification({
+          title: `✅ CEO Approved${newTag}`,
           message: `${tender.drug_name} | Supplier: ${bid ? bid.supplier_name : ''} | Total: $${bid ? parseFloat(bid.total_amount).toFixed(2) : '0.00'}`,
-          type: 'success', link: `/purchase/drug-tenders`
-        });
+          type: 'success', link: `/purchase/drug-tenders`,
+          related_entity_id: tender.id
+        }, req.app?.get('io'));
         await notificationRepository.create({
           roleTarget: 'Finance Manager', title: `Tender Awarded${newTag}`,
           message: `Tender ${tender.tender_no} awarded to ${bid ? bid.supplier_name : ''}`,
@@ -458,17 +467,19 @@ const procController = {
       } catch (e) {}
     } else if (decision === 'RE_TENDER') {
       try {
-        await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: 'Re-Tender Requested',
-          message: `Tender ${tender.tender_no} needs re-tendering`, type: 'warning', link: `/purchase/drug-tenders`
-        });
+        await sendPurchaseNotification({
+          title: 'Re-Tender Requested',
+          message: `Tender ${tender.tender_no} needs re-tendering`, type: 'warning', link: `/purchase/drug-tenders`,
+          related_entity_id: tender.id
+        }, req.app?.get('io'));
       } catch (e) {}
     } else if (decision === 'REJECTED' || decision === 'CLOSED') {
       try {
-        await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: 'Tender Closed',
-          message: `Tender ${tender.tender_no} was closed without award`, type: 'error', link: `/purchase/drug-tenders`
-        });
+        await sendPurchaseNotification({
+          title: 'Tender Closed',
+          message: `Tender ${tender.tender_no} was closed without award`, type: 'error', link: `/purchase/drug-tenders`,
+          related_entity_id: tender.id
+        }, req.app?.get('io'));
       } catch (e) {}
     }
     res.json({ status: 'success', data: { tender_no: tender.tender_no, decision } });
@@ -538,14 +549,21 @@ const procController = {
           link: '/finance/procurement?tab=pending-payment',
           related_entity_id: fr.id
         }, req.app?.get('io'));
-        await notificationRepository.create({
-          roleTarget: 'Purchase Manager', title: `💰 Fund Request #FR-${fr.id} Approved${newTag}`,
+        await sendPurchaseNotification({
+          title: `💰 Fund Request #FR-${fr.id} Approved${newTag}`,
           message: `${isNew ? 'NEW DRUG: ' : ''}Total: $${parseFloat(fr.total_amount).toFixed(2)}`,
-          type: 'success', link: `/purchase/drug-tenders`
-        });
+          type: 'success', link: `/purchase/drug-tenders`,
+          related_entity_id: fr.id
+        }, req.app?.get('io'));
       } catch (e) {}
     } else {
       try {
+        await sendPurchaseNotification({
+          title: `❌ Fund Request #FR-${fr.id} Rejected${newTag}`,
+          message: `${isNew ? 'NEW DRUG: ' : ''}Reason: ${ceoNotes || 'No reason provided'}`,
+          type: 'error', link: `/purchase/drug-tenders`,
+          related_entity_id: fr.id
+        }, req.app?.get('io'));
         await notificationRepository.create({
           roleTarget: 'Finance Manager', title: `❌ Fund Request #FR-${fr.id} Rejected${newTag}`,
           message: `Reason: ${ceoNotes || 'No reason provided'}`,
