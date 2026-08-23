@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
-import { playSound } from '../../services/notificationManager';
 import { useToast } from '../../components/Toast';
 import { Plus, List, AlertCircle, Clock, CheckCircle, X, Truck } from 'lucide-react';
 import './PharmacyTransferRequests.css';
@@ -27,8 +26,7 @@ const PharmacyTransferRequests = () => {
   useEffect(() => {
     loadProducts();
     loadRequests();
-    playSound('info');
-  }, []);
+    }, []);
 
   const loadProducts = async () => {
     try {
@@ -52,7 +50,6 @@ const PharmacyTransferRequests = () => {
       const res = await apiClient.post('/pharmacy/transfers', form);
       if (res.status === 'success') {
         showToast('Transfer request created and sent to CEO', 'success');
-        playSound('info');
         setForm({ drugId: '', quantityRequested: '', urgency: 'MEDIUM', notes: '' });
         setTab('list');
         loadRequests();
