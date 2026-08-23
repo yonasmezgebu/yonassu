@@ -450,7 +450,7 @@ const TabDelivery = ({ toast }) => {
           <div className="ph-table-wrap"><table className="ph-table">
             <thead>
               <tr>
-                {['Delivery No', 'Drug / Item', 'Supplier', 'Qty', 'Unit Price', 'Total (ETB)', 'Date', 'Received By', 'Invoice', 'Actions'].map(h => (
+                {['Delivery No', 'Drug / Item', 'Supplier', 'Qty', 'Cost Price', 'Total (ETB)', 'Date', 'Received By', 'Invoice', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.8, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
