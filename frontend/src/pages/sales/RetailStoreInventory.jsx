@@ -41,14 +41,6 @@ const STATUS_ORDER = {
   DISCREPANCY: 3, REJECTED: -1, CANCELLED: -1,
 };
 
-const preloadedAudio = {
-  notification: new Audio('/sounds/notification.mp3'),
-  approved:     new Audio('/sounds/approved.mp3'),
-  rejected:     new Audio('/sounds/rejected.mp3'),
-  shipment:     new Audio('/sounds/shipment.mp3'),
-  completed:    new Audio('/sounds/completed.mp3'),
-};
-Object.values(preloadedAudio).forEach(a => { a.load(); });
 
 // ── Step Tracker ──────────────────────────────────────────────────────────────
 function StepTracker({ status }) {
@@ -258,7 +250,6 @@ export default function RetailStoreInventory() {
         requested_qty: qty, urgency: reqModal.urgency, signature: savedSig,
       });
       showMsg('✅ Transfer request sent to CEO for approval','success');
-      preloadedAudio.notification.play().catch(()=>{});
       setReqModal({ open:false, item:null, qty:'', urgency:'MEDIUM' });
       setSavedSig(null);
       if (sigCanvas.current) sigCanvas.current.clear();
@@ -276,7 +267,6 @@ export default function RetailStoreInventory() {
       const isMatch = qty === Number(receiveModal.req.shipped_qty);
       if (isMatch) {
         showMsg(`✅ ${qty} units of "${receiveModal.req.product_name}" received & added to Sales stock!`,'success');
-        preloadedAudio.completed.play().catch(()=>{});
         if ('Notification' in window) {
           const grant = Notification.permission === 'granted'
             ? true : (await Notification.requestPermission()) === 'granted';
@@ -286,7 +276,6 @@ export default function RetailStoreInventory() {
         }
       } else {
         showMsg('⚠️ Quantity mismatch! Discrepancy reported to CEO for review.','error');
-        preloadedAudio.rejected.play().catch(()=>{});
       }
       setReceiveModal({ open:false, req:null, qty:'' });
       loadData();
