@@ -193,7 +193,7 @@ export default function TopNavBar() {
                       const link = getLink();
                       return (
                       <div key={n.id} className="tnb-notif-item"
-                        style={{ cursor: 'pointer', background: n.isRead ? 'transparent' : '#f0fdf4', borderLeft: n.isRead ? 'none' : '3px solid #228B22' }}
+                        style={{ cursor: 'pointer', background: n.isRead ? 'transparent' : '#f0fdf4', borderLeft: n.isRead ? 'none' : '3px solid #228B22', position: 'relative' }}
                         onClick={async () => {
                           setNotifOpen(false);
                           setNotifications(prev => prev.filter(x => x.id !== n.id));
@@ -202,9 +202,39 @@ export default function TopNavBar() {
                           }
                           if (link) navigate(link);
                         }}>
-                        <p className="tnb-notif-title">{n.title}</p>
-                        <p className="tnb-notif-msg">{n.message}</p>
-                        {link && <p style={{margin:'2px 0 0',fontSize:'0.7rem',color:'#228B22',fontWeight:700}}>→ Click to view</p>}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotifications(prev => prev.filter(x => x.id !== n.id));
+                            if (n.id && n.id.startsWith('sys-') && n._refId) {
+                              try { notificationService.markSystemAsRead(n._refId); } catch (_) {}
+                            }
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#9ca3af',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '50%'
+                          }}
+                          title="Dismiss notification"
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <X size={14} />
+                        </button>
+                        <div style={{ paddingRight: '20px' }}>
+                          <p className="tnb-notif-title">{n.title}</p>
+                          <p className="tnb-notif-msg">{n.message}</p>
+                          {link && <p style={{margin:'2px 0 0',fontSize:'0.7rem',color:'#228B22',fontWeight:700}}>→ Click to view</p>}
+                        </div>
                       </div>
                       );
                     })
