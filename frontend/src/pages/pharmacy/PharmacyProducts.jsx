@@ -244,7 +244,7 @@ const PharmacyProducts = () => {
                 <th>Image</th>
                 <th>Product Details</th>
                 <th>Category</th>
-                <th>Price</th>
+                <th>Cost Price</th>
                 <th>Status</th>
                 <th>Availability</th>
                 <th>Actions</th>
@@ -353,11 +353,11 @@ const PharmacyProducts = () => {
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label>Price (ETB) *</label>
+                  <label>Cost Price (ETB) *</label>
                   <input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} required />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Price Unit (e.g. per strip)</label>
+                  <label>Cost Price Unit (e.g. per strip)</label>
                   <input type="text" name="price_unit" value={formData.price_unit} onChange={handleInputChange} />
                 </div>
               </div>
