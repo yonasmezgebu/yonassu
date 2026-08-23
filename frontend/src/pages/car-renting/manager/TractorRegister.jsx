@@ -128,6 +128,7 @@ const TractorRegister = () => {
   const navigate = useNavigate();
   const [tractors, setTractors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   /* ── Form State ── */
@@ -162,6 +163,24 @@ const TractorRegister = () => {
 
   /* ── Load ── */
   useEffect(() => { fetchTractors(); }, []);
+
+
+  /* 🔍 Global navbar search listener */
+  useEffect(() => {
+    const handler = (e) => setSearchQuery((e.detail || '').toLowerCase().trim());
+    window.addEventListener('dashboardSearch', handler);
+    return () => window.removeEventListener('dashboardSearch', handler);
+  }, []);
+
+  const filteredTractors = searchQuery
+    ? tractors.filter(t =>
+        (t.name || '').toLowerCase().includes(searchQuery) ||
+        (t.tractorType || '').toLowerCase().includes(searchQuery) ||
+        (t.plate_number || '').toLowerCase().includes(searchQuery) ||
+        (t.availability || '').toLowerCase().includes(searchQuery) ||
+        (t.fuelType || '').toLowerCase().includes(searchQuery)
+      )
+    : tractors;
 
   const fetchTractors = async (isManualRefresh = false) => {
     try {
@@ -568,7 +587,7 @@ const TractorRegister = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {tractors.map((tractor, idx) => {
+                      {filteredTractors.map((tractor, idx) => {
                         const isPublic = !tractor.deleted_at;
                         return (
                           <tr key={tractor.id} className="fm-row" style={{
