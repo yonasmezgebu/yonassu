@@ -98,10 +98,60 @@ const ICONS = {
 };
 
 /* ── Notification Bell with dropdown ── */
-const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, storeApprovalsPending = 0, pharmacyPending, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread }) => {
+const NotifDismissBtn = ({ onClick, title = 'Dismiss — do not navigate' }) => (
+  <button
+    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(e); }}
+    onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+    onMouseLeave={(e) => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+    title={title}
+    aria-label={title}
+    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'color .15s, background .15s' }}
+  >
+    <X size={14} />
+  </button>
+);
+
+// Route prefixes restricted by role — mirrors AppRoutes.jsx RoleBasedRoute rules
+const NOTIF_ROUTE_ROLES = [
+  ['/admin',            ['admin']],
+  ['/ceo',              ['ceo']],
+  ['/finance',          ['finance', 'finance manager', 'admin']],
+  ['/purchase',         ['purchase', 'purchase manager', 'market team', 'admin']],
+  ['/pharmacy-store',   ['pharmacy store keeper', 'ceo']],
+  ['/general-store',    ['general store keeper', 'ceo']],
+  ['/printing-manager', ['printing supervisor', 'printing manager', 'admin', 'ceo']],
+  ['/pharmacy-worker',  ['pharmacy worker', 'sales/cashier', 'admin', 'ceo']],
+  ['/pharmacy',         ['pharmacy manager', 'admin', 'ceo']],
+  ['/car-renting',      ['car renting manager']],
+  ['/hr',               ['hr manager', 'admin', 'ceo']],
+  ['/board',            ['board member', 'admin', 'ceo']],
+  ['/employee',         ['employee', 'admin', 'ceo']],
+  ['/sales',            ['admin', 'ceo', 'sales manager']],
+];
+
+const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending, isCeoRoute, ceoPendingSnapshot, setCeoPendingSnapshot, storeApprovalsPending = 0, setStoreApprovalsPending = () => {}, pharmacyPending, setPharmacyPending = () => {}, pharmacyOnlinePending, setPharmacyOnlinePending, purchasePending, setPurchasePending = () => {}, purchaseApprovedTenders, setPurchaseApprovedTenders, procurementMessages, setProcurementMessages = () => {}, purchaseNewBids, purchaseBidsList, setPurchaseBidsList, setPurchaseNewBids, ceoFundRequestsPending, setCeoFundRequestsPending = () => {}, agriRentPending, onOpenProcurementInbox, pcvNotifications = [], setPcvNotifications, isFinanceRoute = false, isPharmacyManagerRoute = false, chatUnread = 0, setChatUnread, showToast = () => {} }) => {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ref = useRef(null);
+  const { hasRole } = useAuth();
+
+  // Returns true only if the current user has a role that permits opening this link.
+  // Uses hasRole (reads fresh from localStorage) instead of user.roles (React state
+  // which can be stale/null on first render — caused every message to be blocked).
+  const canAccessLink = (link) => {
+    if (!link) return false;
+    try {
+      const path = (link.split('?')[0].split('#')[0]).replace(/\/+$/, '') || '/';
+      for (const [prefix, allowed] of NOTIF_ROUTE_ROLES) {
+        if (path === prefix || path.startsWith(prefix + '/')) {
+          return allowed.some(role => hasRole(role));
+        }
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
 
   const load = async () => {
     try {
@@ -146,6 +196,27 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
       load();
     } catch (e) { console.error(e); }
   };
+
+  // Dismiss a DB notification: remove from bell + mark read server-side so it never returns
+  const dismissNotif = async (id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    try { await notificationService.markAsReadV2(id); } catch (e) { console.error(e); }
+  };
+
+  // Dismiss a live EV notification (local hide + server read)
+  const dismissPcv = (n) => {
+    if (setPcvNotifications) setPcvNotifications(prev => prev.map(p => p.id === n.id ? { ...p, read: true } : p));
+    if (n.dbId) apiClient.put(`/finance-cash/ev/${n.dbId}/finance-read`).catch(() => {});
+  };
+
+  const dismissCeoGroup = (group) => setCeoPending(prev => prev.filter(g => g !== group));
+
+  const dismissCeoDetail = (group, detail) => setCeoPending(prev =>
+    prev
+      .map(g => g === group ? { ...g, details: (g.details || []).filter(d => d !== detail) } : g)
+      .map(g => ({ ...g, count: (g.details || []).length }))
+      .filter(g => g.count > 0)
+  );
 
   // Maps known broken/non-existent notification links to real working routes
   const resolveLink = (link, isCeo) => {
@@ -221,11 +292,17 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const handleClick = (item) => {
     setOpen(false);
     if (item.id) markRead(item.id);
+    // No link → informational message only, never navigate
+    if (!item.link) return;
     const resolved = resolveLink(item.link, isCeoRoute);
-    if (resolved) {
-      // Pass a state timestamp so same-route pages can detect and re-fetch
-      navigate(resolved, { state: { bellTs: Date.now() } });
+    if (!resolved) return;
+    // Unauthorized target → stay put, tell the user why
+    if (!canAccessLink(resolved)) {
+      showToast("You don't have access to that page", 'warning');
+      return;
     }
+    // Pass a state timestamp so same-route pages can detect and re-fetch
+    navigate(resolved, { state: { bellTs: Date.now() } });
   };
 
   const handleCeoClick = (item) => {
@@ -252,8 +329,14 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
       apiClient.post('/erp/mark-ceo-read', { type: item.type, id: item.id }).catch(() => {});
     }
 
+    const target = resolveLink(link, true);
+    // Never navigate to a page this role cannot open
+    if (!target || !canAccessLink(target)) {
+      showToast("You don't have access to that page", 'warning');
+      return;
+    }
     // Navigate using React Router to avoid hard page refresh
-    navigate(link, { state: { bellTs: Date.now() } });
+    navigate(target, { state: { bellTs: Date.now() } });
   };
 
   const bellDebounce = React.useRef(null);
@@ -348,6 +431,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                     <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#92400E' }}>Pending CEO Action</p>
                     <p style={{ margin: 0, fontSize: '12px', color: '#A16207', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</p>
                   </div>
+                  <NotifDismissBtn onClick={() => dismissCeoGroup(item)} title="Dismiss this group" />
                 </div>
                 {item.details && item.details.map(detail => (
                   <div key={detail.id} style={{ padding: '10px 18px 10px 48px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#FFFBEB' }}>
@@ -357,11 +441,12 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                         <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>{detail.subtitle}</p>
                       </div>
                       {detail.type === 'procurement' && (
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, marginRight: 4 }}>
                           <button onClick={(e) => handleQuickAction(e, 'APPROVED', detail.id)} style={{ background: '#10B981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>APPROVE</button>
                           <button onClick={(e) => handleQuickAction(e, 'CEO_REJECTED', detail.id)} style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>REJECT</button>
                         </div>
                       )}
+                      <NotifDismissBtn onClick={() => dismissCeoDetail(item, detail)} title="Dismiss this item" />
                     </div>
                   </div>
                 ))}
@@ -384,8 +469,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#9D174D' }}>Fund Request Awaiting Approval</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#BE185D' }}>{ceoFundRequestsPending} request{ceoFundRequestsPending > 1 ? 's' : ''} need your decision</p>
+                  <p style={{ margin: '0', fontSize: '12px', color: '#BE185D' }}>{ceoFundRequestsPending} request{ceoFundRequestsPending > 1 ? 's' : ''} need your decision</p>
                 </div>
+                <NotifDismissBtn onClick={() => setCeoFundRequestsPending(0)} title="Dismiss" />
               </div>
             )}
 
@@ -406,8 +492,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#C2410C' }}>Store Inventory Update Pending</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#EA580C' }}>{storeApprovalsPending} item update{storeApprovalsPending > 1 ? 's' : ''} awaiting your approval</p>
+                  <p style={{ margin: '0', fontSize: '12px', color: '#EA580C' }}>{storeApprovalsPending} item update{storeApprovalsPending > 1 ? 's' : ''} awaiting your approval</p>
                 </div>
+                <NotifDismissBtn onClick={() => setStoreApprovalsPending(0)} title="Dismiss" />
               </div>
             )}
 
@@ -425,8 +512,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#065F46' }}>Tender Creation Required</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#059669' }}>{purchasePending} CEO-approved request{purchasePending > 1 ? 's' : ''} awaiting tender</p>
+                  <p style={{ margin: '0', fontSize: '12px', color: '#059669' }}>{purchasePending} CEO-approved request{purchasePending > 1 ? 's' : ''} awaiting tender</p>
                 </div>
+                <NotifDismissBtn onClick={() => setPurchasePending(0)} title="Dismiss" />
               </div>
             )}
             
@@ -451,12 +539,15 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                   <div
                     key={`appr-${t.id}`}
                     onClick={() => { setOpen(false); navigate(`/purchase/smart-tenders?viewTender=${t.id}`, { state: { bellTs: Date.now() } }); }}
-                    style={{ padding: '10px 18px 10px 16px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#F0FDF4', cursor: 'pointer', transition: 'background 0.15s' }}
+                    style={{ padding: '10px 18px 10px 16px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#F0FDF4', cursor: 'pointer', transition: 'background 0.15s', display: 'flex', alignItems: 'flex-start', gap: 8 }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DCFCE7'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F0FDF4'}
                   >
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#065F46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title} ({t.tender_number})</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#059669' }}>Click to view → Mark as Read on page</p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#065F46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title} ({t.tender_number})</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#059669' }}>Click to view → Mark as Read on page</p>
+                    </div>
+                    <NotifDismissBtn onClick={() => setPurchaseApprovedTenders(prev => prev.filter(x => x.id !== t.id))} title="Dismiss this tender" />
                   </div>
                 ))}
               </div>
@@ -488,6 +579,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                     <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#0369A1' }}>Action Required</p>
                     <p style={{ margin: 0, fontSize: '12px', color: '#0284C7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pharmacyPending} Shipment{pharmacyPending > 1 ? 's' : ''} Awaiting Receipt</p>
                   </div>
+                  <NotifDismissBtn onClick={() => setPharmacyPending(0)} title="Dismiss" />
                 </div>
               </Link>
             )}
@@ -511,15 +603,19 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 {purchaseBidsList && purchaseBidsList.slice(0, 5).map(b => (
                   <div key={b.id} style={{ padding: '10px 18px 10px 48px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#FFFBEB' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { 
+                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => {
                         setOpen(false);
                         if (setPurchaseBidsList) setPurchaseBidsList(prev => prev.filter(x => x.id !== b.id));
                         if (setPurchaseNewBids) setPurchaseNewBids(prev => Math.max(0, prev - 1));
                         navigate(`/purchase/smart-tenders?viewTender=${b.public_tender_id}`, { state: { bellTs: Date.now() } });
                       }}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>Bid from {b.competitor_name}</p>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>Pending Evaluation</p>
+                        <p style={{ margin: '0', fontSize: '11px', color: '#B45309' }}>Pending Evaluation</p>
                       </div>
+                      <NotifDismissBtn onClick={() => {
+                        if (setPurchaseBidsList) setPurchaseBidsList(prev => prev.filter(x => x.id !== b.id));
+                        if (setPurchaseNewBids) setPurchaseNewBids(prev => Math.max(0, prev - 1));
+                      }} title="Dismiss this bid" />
                     </div>
                   </div>
                 ))}
@@ -548,6 +644,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                     <p style={{ margin: '0 0 2px 0', fontWeight: '600', fontSize: '13px', color: '#6b21a8' }}>New Customer Messages</p>
                     <p style={{ margin: 0, fontSize: '12px', color: '#9333ea' }}>{procurementMessages} unread message{procurementMessages > 1 ? 's' : ''} from public tender inquiries</p>
                   </div>
+                  <NotifDismissBtn onClick={() => setProcurementMessages(0)} title="Dismiss" />
                 </div>
               </Link>
             )}
@@ -579,6 +676,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 <span style={{ background: '#ef4444', color: '#fff', borderRadius: '9999px', fontSize: 11, fontWeight: 800, minWidth: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flexShrink: 0 }}>
                   {chatUnread > 9 ? '9+' : chatUnread}
                 </span>
+                <NotifDismissBtn onClick={() => { if (setChatUnread) setChatUnread(0); }} title="Dismiss" />
               </div>
             )}
             {((ceoPending && ceoPending.length > 0) || pharmacyPending > 0) && items.filter(i => !i.isRead).length > 0 && <div style={{ borderTop: '1px solid #E5E7EB' }} />}
@@ -595,7 +693,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                   if (n.dbId) {
                     apiClient.put(`/finance-cash/ev/${n.dbId}/finance-read`).catch(()=>{});
                   }
-                  if (n.link) navigate(n.link, { state: { bellTs: Date.now() } });
+                  // No link or unauthorized link → stay put
+                  if (n.link && canAccessLink(n.link)) navigate(n.link, { state: { bellTs: Date.now() } });
+                  else if (n.link) showToast("You don't have access to that page", 'warning');
                 }}
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
@@ -618,6 +718,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                     Just now
                   </p>
                 </div>
+                <NotifDismissBtn onClick={() => dismissPcv(n)} title="Dismiss" />
               </div>
             ))}
             {items.filter(i => !i.isRead).length > 0 ? items.filter(i => !i.isRead).map((item, idx) => (
@@ -645,6 +746,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                     {safeDate(item.createdAt)}
                   </p>
                 </div>
+                <NotifDismissBtn onClick={() => dismissNotif(item.id)} title="Dismiss — mark as read" />
               </div>
             )) : items.filter(i => !i.isRead).length === 0 && ceoPending.length === 0 && pharmacyPending === 0  && purchasePending === 0 && purchaseNewBids === 0 && procurementMessages === 0 ? (
               <div style={{ padding: '32px', textAlign: 'center', color: '#9CA3AF' }}>
@@ -2635,18 +2737,23 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               ceoPendingSnapshot={ceoPendingSnapshot}
               setCeoPendingSnapshot={setCeoPendingSnapshot}
               storeApprovalsPending={storeApprovalsPending}
+              setStoreApprovalsPending={setStoreApprovalsPending}
               pharmacyPending={pharmacyPending}
+              setPharmacyPending={setPharmacyPending}
               pharmacyOnlinePending={pharmacyOnlinePending}
               setPharmacyOnlinePending={setPharmacyOnlinePending}
               purchasePending={purchasePending}
+              setPurchasePending={setPurchasePending}
               purchaseApprovedTenders={purchaseApprovedTenders}
               setPurchaseApprovedTenders={setPurchaseApprovedTenders}
               procurementMessages={procurementMessages}
+              setProcurementMessages={setProcurementMessages}
               purchaseNewBids={purchaseNewBids}
               purchaseBidsList={purchaseBidsList}
               setPurchaseBidsList={setPurchaseBidsList}
               setPurchaseNewBids={setPurchaseNewBids}
               ceoFundRequestsPending={ceoFundRequestsPending}
+              setCeoFundRequestsPending={setCeoFundRequestsPending}
               agriRentPending={agriRentPending}
               onOpenProcurementInbox={() => navigate('/purchase/smart-tenders?tab=contact')}
               pcvNotifications={pcvNotifications}
@@ -2655,6 +2762,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
               isPharmacyManagerRoute={location.pathname === '/pharmacy' || location.pathname.startsWith('/pharmacy/')}
               chatUnread={chatUnread}
               setChatUnread={setChatUnread}
+              showToast={showToast}
             />
             <div className="dash-profile-dropdown" ref={profileRef}>
               <button 
