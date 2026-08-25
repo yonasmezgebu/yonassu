@@ -454,7 +454,7 @@ const addToCart = (item) => {
   };
 
   const rawPosTotal = posCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const posCalc = vatCtx ? calcCartVat(vatCtx, 'retail', posCart, 'price', 'qty') : { subtotal: rawPosTotal, vat: 0, total: rawPosTotal };
+  const posCalc = vatCtx ? calcCartVat(vatCtx, 'retail', posCart, 'price', 'qty', () => 0) : { subtotal: rawPosTotal, vat: 0, total: rawPosTotal };
   const posCartVat = posCalc.vat;
   const posCartTotal = posCalc.total;
 
@@ -618,7 +618,7 @@ const addToCart = (item) => {
         
         const saleSubtotal = saleItems.reduce((s, i) => s + (parseFloat(i.unit_price) * parseFloat(i.quantity || 1)), 0);
         const saleVat = vatCtx
-          ? saleItems.reduce((s, i) => s + getVatForItem(vatCtx, 'retail', i.product_id, parseFloat(i.unit_price) * parseFloat(i.quantity || 1)).vat, 0)
+          ? saleItems.reduce((s, i) => s + getVatForItem(vatCtx, 'retail', i.product_id, parseFloat(i.unit_price) * parseFloat(i.quantity || 1), 0).vat, 0)
           : 0;
 
         setCompletedSale({
@@ -699,7 +699,7 @@ const addToCart = (item) => {
   items.forEach((row) => {
     const qty = parseFloat(row.quantity) || 0;
     const price = parseFloat(row.unit_price) || 0;
-    const r = getVatForItem(vatCtx, 'retail', row.product_id, qty * price);
+    const r = getVatForItem(vatCtx, 'retail', row.product_id, qty * price, 0);
     rawGrand += r.sub;
     grandVat += r.vat;
   });
