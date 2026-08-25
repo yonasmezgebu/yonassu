@@ -275,7 +275,7 @@ const StoreStockList = () => {
     const fmt2 = n => parseFloat(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
     const grand = sorted.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price || 0), 0);
     let body = `<p style="font-size:14px;font-weight:600;color:#111827;margin-bottom:12px">Total Value: ETB ${fmt2(grand)} &nbsp;|&nbsp; Total Items: ${sorted.length}</p>`;
-    body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH('#')}${TH('Drug Name')}${TH('Strength')}${TH('Category')}${TH('Batch No')}${TH('Unit')}${TH('Price (ETB)')}${TH('Qty')}${TH('Min Level')}${TH('Expiry Date')}${TH('Status')}</tr></thead><tbody>`;
+    body += `<table style="width:100%;border-collapse:collapse"><thead><tr>${TH('#')}${TH('Drug Name')}${TH('Strength')}${TH('Category')}${TH('Batch No')}${TH('Unit')}${TH('Cost Price (ETB)')}${TH('Qty')}${TH('Min Level')}${TH('Expiry Date')}${TH('Status')}</tr></thead><tbody>`;
     sorted.forEach((row, i) => {
       const expStat = expiryStatus(row.expiry_date, row.near_expiry_days);
       const isExpired = expStat === 'expired', isNear = expStat === 'near';
@@ -411,7 +411,7 @@ const StoreStockList = () => {
                   { key: 'category',    label: 'Category' },
                   { key: 'batch_no',    label: 'Batch No' },
                   { key: 'unit',        label: 'Unit' },
-                  { key: 'unit_price',  label: 'Price (ETB)', right: true },
+                  { key: 'unit_price',  label: 'Cost Price (ETB)', right: true },
                   { key: 'quantity',    label: 'Qty in Store', right: true },
                   { key: 'min_level',   label: 'Min Level', right: true },
                   { key: 'expiry_date', label: 'Expiry Date' },
