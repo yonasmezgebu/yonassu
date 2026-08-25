@@ -417,7 +417,7 @@ const StoreAddNewStock = () => {
                 { label: 'Expiry Date', val: confirmed.expiryDate ? new Date(confirmed.expiryDate).toLocaleDateString() : '—' },
                 { label: 'Unit',        val: confirmed.unit || '—' },
                 { label: 'Initial Qty', val: confirmed.initialQty || '—' },
-                { label: 'Unit Price',  val: confirmed.unitPrice ? `ETB ${parseFloat(confirmed.unitPrice).toFixed(2)}` : '—' },
+                { label: 'Cost Price',  val: confirmed.unitPrice ? `ETB ${parseFloat(confirmed.unitPrice).toFixed(2)}` : '—' },
                 { label: 'Category',    val: confirmed.category || '—' },
                 { label: 'Storage',     val: confirmed.storage || '—' },
               ].map(({ label, val }) => (
@@ -488,7 +488,7 @@ const StoreAddNewStock = () => {
               </div>
 
               <div className="ans-fg">
-                <label className="ans-label">Unit Price (ETB)</label>
+                <label className="ans-label">Cost Price (ETB)</label>
                 <input
                   className="ans-input"
                   type="number"
