@@ -27,17 +27,20 @@ const PharmacyHealthPublisher = () => {
   const [form, setForm] = useState({
     title: '', subtitle: '', content: '', source_url: '',
     category_id: '', category_name: '', product_id: '', product_name: '',
-    price: '', price_unit: '', manufacturer: '',
+    price: '', price_unit: 'ETB', selling_price: '', manufacturer: '',
     stock_quantity: '', reorder_level: '', is_prescription_required: false,
     status: 'draft', meta_title: '', meta_description: ''
   });
 
   const [drugImage, setDrugImage] = useState(null);
   const [drugPreview, setDrugPreview] = useState('');
-  const [coverImage, setCoverImage] = useState(null);
-  const [coverPreview, setCoverPreview] = useState('');
   const drugFileRef = useRef(null);
-  const coverFileRef = useRef(null);
+
+  // Store inventory search
+  const [drugSearch, setDrugSearch] = useState('');
+  const [drugOptions, setDrugOptions] = useState([]);
+  const [drugSearching, setDrugSearching] = useState(false);
+  const [showDrugDropdown, setShowDrugDropdown] = useState(false);
 
   const [scrapedCategories, setScrapedCategories] = useState([]);
   const [scrapedProducts, setScrapedProducts] = useState([]);
@@ -108,14 +111,15 @@ const PharmacyHealthPublisher = () => {
     setForm({
       title: '', subtitle: '', content: '', source_url: '',
       category_id: '', category_name: '', product_id: '', product_name: '',
-      price: '', price_unit: '', manufacturer: '',
+      price: '', price_unit: 'ETB', selling_price: '', manufacturer: '',
       stock_quantity: '', reorder_level: '', is_prescription_required: false,
       status: 'draft', meta_title: '', meta_description: ''
     });
     setDrugImage(null);
     setDrugPreview('');
-    setCoverImage(null);
-    setCoverPreview('');
+    setDrugSearch('');
+    setDrugOptions([]);
+    setShowDrugDropdown(false);
   };
 
   const fillFromCategory = (cat) => {
@@ -140,7 +144,7 @@ const PharmacyHealthPublisher = () => {
       product_id: prod.id,
       product_name: prod.name,
       price: prod.price || '',
-      price_unit: prod.price_unit || '',
+      price_unit: prod.price_unit || 'ETB',
       manufacturer: prod.manufacturer || '',
       stock_quantity: prod.stock_quantity || '',
       reorder_level: prod.reorder_level || '',
@@ -150,6 +154,41 @@ const PharmacyHealthPublisher = () => {
       meta_title: prod.name,
       meta_description: `${prod.name} - ${prod.generic_name || ''} - ${prod.manufacturer || ''}`.trim()
     }));
+  };
+
+  const handleDrugSearch = async (val) => {
+    setDrugSearch(val);
+    if (val.length < 2) {
+      setShowDrugDropdown(false);
+      return;
+    }
+    setDrugSearching(true);
+    setShowDrugDropdown(true);
+    try {
+      const res = await pharmacyService.getStoreInventory();
+      if (res?.data) {
+        const lowerVal = val.toLowerCase();
+        const filtered = res.data.filter(d => 
+          (d.name && d.name.toLowerCase().includes(lowerVal))
+        );
+        setDrugOptions(filtered);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDrugSearching(false);
+    }
+  };
+
+  const handleSelectDrug = (d) => {
+    setDrugSearch(d.name);
+    setForm(f => ({
+      ...f,
+      title: d.name,
+      price: d.unit_price || '',
+      selling_price: d.selling_price || ''
+    }));
+    setShowDrugDropdown(false);
   };
 
   const startEdit = (post) => {
@@ -164,7 +203,8 @@ const PharmacyHealthPublisher = () => {
       product_id: post.product_id || '',
       product_name: post.product_name || '',
       price: post.price || '',
-      price_unit: post.price_unit || '',
+      price_unit: post.price_unit || 'ETB',
+      selling_price: post.selling_price || '',
       manufacturer: post.manufacturer || '',
       stock_quantity: post.stock_quantity || '',
       reorder_level: post.reorder_level || '',
@@ -173,6 +213,7 @@ const PharmacyHealthPublisher = () => {
       meta_title: post.meta_title || '',
       meta_description: post.meta_description || ''
     });
+    setDrugSearch(post.title || '');
     setShowForm(true);
   };
 
@@ -190,7 +231,6 @@ const PharmacyHealthPublisher = () => {
         if (v !== '' && v !== null && v !== undefined) fd.append(k, v);
       });
       if (drugImage) fd.append('drug_image', drugImage);
-      if (coverImage) fd.append('cover_image', coverImage);
 
       if (editingId) {
         await pharmacyService.updateHealthPost(editingId, fd);
@@ -262,10 +302,33 @@ const PharmacyHealthPublisher = () => {
         {/* Main row: text fields + image uploads */}
         <div className={styles.formRow}>
           <div className={styles.formColMain}>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Title <span style={{ color: '#DC2626' }}>*</span></label>
-              <input className={styles.formInput} required value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            <div className={styles.formGroup} style={{ position: 'relative' }}>
+              <label className={styles.formLabel}>Title / Drug Search <span style={{ color: '#DC2626' }}>*</span></label>
+              <input className={styles.formInput} required value={drugSearch}
+                placeholder="Search store inventory or type new title..."
+                onChange={e => {
+                  handleDrugSearch(e.target.value);
+                  setForm(f => ({ ...f, title: e.target.value }));
+                }} 
+                onFocus={() => { if(drugSearch.length >= 2) setShowDrugDropdown(true) }}
+                onBlur={() => setTimeout(() => setShowDrugDropdown(false), 200)}
+              />
+              {showDrugDropdown && (
+                <div className={styles.dropdownMenu} style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                  {drugSearching ? (
+                    <div style={{ padding: 12, textAlign: 'center', color: '#6B7280' }}>Searching...</div>
+                  ) : drugOptions.length > 0 ? (
+                    drugOptions.map(d => (
+                      <div key={d.id} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onClick={() => handleSelectDrug(d)}>
+                        <div style={{ fontWeight: 500 }}>{d.name}</div>
+                        <div style={{ fontSize: 12, color: '#6B7280' }}>Cost: {d.unit_price} | Stock: {d.stock_quantity}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: 12, textAlign: 'center', color: '#6B7280' }}>No matches found</div>
+                  )}
+                </div>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Subtitle</label>
@@ -286,12 +349,6 @@ const PharmacyHealthPublisher = () => {
                 onChange={e => { const f = e.target.files[0]; if (f) { setDrugImage(f); setDrugPreview(URL.createObjectURL(f)); } }} />
               {drugPreview && <img src={drugPreview} alt="" className={styles.imagePreview} />}
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Cover Image</label>
-              <input type="file" accept="image/*" ref={coverFileRef} className={styles.fileInput}
-                onChange={e => { const f = e.target.files[0]; if (f) { setCoverImage(f); setCoverPreview(URL.createObjectURL(f)); } }} />
-              {coverPreview && <img src={coverPreview} alt="" className={styles.imagePreview} />}
-            </div>
           </div>
         </div>
 
@@ -303,7 +360,12 @@ const PharmacyHealthPublisher = () => {
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Cost Price Unit</label>
+            <label className={styles.formLabel}>Selling Price</label>
+            <input className={styles.formInput} placeholder="0.00" value={form.selling_price}
+              onChange={e => setForm(f => ({ ...f, selling_price: e.target.value }))} />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Price Unit</label>
             <input className={styles.formInput} placeholder="ETB" value={form.price_unit}
               onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))} />
           </div>
@@ -502,10 +564,10 @@ const PharmacyHealthPublisher = () => {
                   <div className={styles.inlineEditSlot}>{renderForm(true)}</div>
                 ) : (
                   <div className={styles.postCard}>
-                    {(post.drug_image || post.cover_image) && (
+                    {post.drug_image && (
                       <div className={styles.postCardImgWrap}>
                         <img
-                          src={`http://localhost:5000${post.drug_image || post.cover_image}`}
+                          src={`http://localhost:5000${post.drug_image}`}
                           alt={post.title}
                           className={styles.postCardImg}
                           onError={e => { e.target.style.display = 'none'; }}
@@ -523,9 +585,10 @@ const PharmacyHealthPublisher = () => {
 
                       {post.subtitle && <p className={styles.postCardSubtitle}>{post.subtitle}</p>}
 
-                      {post.price && (
+                      {(post.price || post.selling_price) && (
                         <p className={styles.postCardPrice}>
-                          <DollarSign size={15} /> {post.price} {post.price_unit}
+                          <DollarSign size={15} /> 
+                          {post.selling_price ? `Sell: ${post.selling_price}` : `Cost: ${post.price}`} {post.price_unit}
                         </p>
                       )}
 
