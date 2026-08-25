@@ -547,7 +547,7 @@ function ListView({ loading, items, allItems, search, importedSkus, onSearch, on
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: G.dark, color: G.white, position: 'sticky', top: 0 }}>
-                {['#','PRODUCT NAME','STORE ID','STOCK','UNIT','UNIT PRICE (ETB)','CATEGORY','ACTION'].map((h, i) => (
+                {['#','PRODUCT NAME','STORE ID','STOCK','UNIT','COST PRICE (ETB)','CATEGORY','ACTION'].map((h, i) => (
                   <th key={h} style={{
                     padding: '12px 14px', textAlign: i === 7 ? 'center' : 'left',
                     fontWeight: 800, fontSize: 11, letterSpacing: '0.5px',
@@ -732,7 +732,7 @@ function PublishForm({
         <span>📦 Source: <span style={{ color: G.mint }}>{src.material_name || src.name}</span></span>
         <span>🔑 <span style={{ color: G.mint }}>{src.material_id}</span></span>
         <span>Stock: <span style={{ color: G.mint }}>{qty} {src.unit}</span></span>
-        <span>Unit Value: <span style={{ color: G.mint }}>ETB {srcPrice.toLocaleString('en-ET', { minimumFractionDigits: 2 })}</span></span>
+        <span>Cost Price: <span style={{ color: G.mint }}>ETB {srcPrice.toLocaleString('en-ET', { minimumFractionDigits: 2 })}</span></span>
       </div>
 
       {/* Scrollable body */}
@@ -821,12 +821,13 @@ function PublishForm({
               />
             </div>
             <div>
-              <FL hint="Pre-filled from store unit value">Cost Price (ETB)</FL>
+              <FL hint="Locked — from store cost price">Cost Price (ETB)</FL>
               <SharpInput
                 type="number" min="0" step="0.01"
                 value={form.cost_price}
-                onChange={e => setF('cost_price', e.target.value)}
-                placeholder="0.00"
+                readOnly
+                disabled
+                style={{ backgroundColor: '#E8F5E9', cursor: 'not-allowed', color: '#2E7D32', fontWeight: 700 }}
               />
             </div>
           </div>
@@ -969,7 +970,8 @@ function PublishForm({
             {[
               { label: 'Name',  val: form.name  || '—' },
               { label: 'SKU',   val: form.sku   || '—', mono: true },
-              { label: 'Price', val: `ETB ${parseFloat(form.price || 0).toLocaleString('en-ET', { minimumFractionDigits: 2 })}`, hi: true },
+              { label: 'Selling Price', val: `ETB ${parseFloat(form.price || 0).toLocaleString('en-ET', { minimumFractionDigits: 2 })}`, hi: true },
+              { label: 'Cost Price', val: `ETB ${parseFloat(form.cost_price || 0).toLocaleString('en-ET', { minimumFractionDigits: 2 })}` },
               { label: 'Stock', val: `${form.stock_quantity || 0} units` },
               { label: 'Reorder', val: form.reorder_level || 0 },
               { label: 'Category', val: categories.find(c => String(c.id) === String(form.category_id))?.name || '—' },
