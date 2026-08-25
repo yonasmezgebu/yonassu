@@ -296,10 +296,23 @@ const pharmacyController = {
         'si.id',
         'si.drug_id',
         'd.name',
+        'd.generic_name',
+        'd.brand_name',
         db.raw('COALESCE(dc.name, d.category) as category'),
         'd.unit',
         'si.quantity as stock_quantity',
         'si.min_level',
+        'si.max_level',
+        'si.reorder_level',
+        'si.reserved_quantity',
+        'si.batch_no',
+        'si.expiry_date',
+        'si.manufacture_date',
+        'si.unit_cost',
+        'si.selling_price',
+        'si.stock_status',
+        'si.storage_location',
+        'si.warehouse_id',
         'd.unit_price'
       )
       .orderBy('d.name', 'asc');
