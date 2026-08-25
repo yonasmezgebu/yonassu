@@ -2456,11 +2456,13 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
   }
 
   // Central VAT — consistent with the cart/order pricing shown in the POS
+  // fallbackRate=0: unmapped products get no tax (CEO must configure tax per product)
   const vatCalc = await vatConfigService.computeVatForItems(
     'retail',
     items
       .filter((i) => i.product_id)
-      .map((i) => ({ itemId: i.product_id, amount: (i.quantity || 0) * (i.unit_price || 0) }))
+      .map((i) => ({ itemId: i.product_id, amount: (i.quantity || 0) * (i.unit_price || 0) })),
+    0
   );
   const vatAmount = vatCalc.vat;
   const totalAmount = subtotal + vatAmount;
@@ -2513,6 +2515,72 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       is_submitted: false // Cash always goes to audit
     });
 
+    // VAT breakdown by treatment for invoice record
+    let vat_standard = 0, vat_exempt = 0, vat_zero_rated = 0, std_rate = 0.15;
+    (vatCalc.rows || []).forEach(r => {
+      if (r.treatment === 'standard') { vat_standard += r.vat; std_rate = r.rate; }
+      else if (r.treatment === 'exempt') vat_exempt += r.vat;
+      else if (r.treatment === 'zero_rated') vat_zero_rated += r.vat;
+    });
+
+    // ── Create sales_invoices + sales_invoice_items so Finance sees POS sales
+    const invoiceId = 'INV-' + saleId + '-' + Date.now().toString().slice(-4);
+    await trx('sales_invoices').insert({
+      id: invoiceId,
+      invoice_no: invoiceNumber,
+      source: 'pos',
+      sale_type: 'walk_in',
+      sale_id: saleId,
+      customer_name: payment?.recipient_name || 'Walk-in Customer',
+      customer_tin: null,
+      subtotal,
+      vat_standard,
+      vat_standard_rate: std_rate,
+      vat_exempt,
+      vat_zero_rated,
+      vat_total: vatAmount,
+      total_amount: totalAmount,
+      status: 'active',
+      created_by_name: req.user?.fullName || req.user?.name || 'Cashier',
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
+    // Build per-item VAT rows (same order as filtered items)
+    const taxLines = items.filter(i => i.product_id);
+    for (let i = 0; i < taxLines.length; i++) {
+      const item = taxLines[i];
+      const r = (vatCalc.rows || [])[i] || { treatment: 'standard', rate: 0, vat: 0, sub: item.quantity * item.unit_price };
+      const itemSub = item.quantity * item.unit_price;
+      await trx('sales_invoice_items').insert({
+        invoice_id: invoiceId,
+        item_id: item.product_id,
+        name: item.product_name || `Product #${item.product_id}`,
+        qty: item.quantity,
+        unit_price: item.unit_price,
+        treatment: r.treatment,
+        rate: r.rate,
+        vat_amount: r.vat,
+        subtotal: r.sub,
+        total: r.sub + r.vat
+      });
+    }
+
+    // ── Create sales_receipt for this cash payment
+    const receiptNumber = await generateReceiptNumber();
+    await trx('sales_receipts').insert({
+      id: 'REC-' + saleId + '-' + Date.now().toString().slice(-4),
+      receipt_no: receiptNumber,
+      invoice_id: invoiceId,
+      amount_paid: payment?.amount || totalAmount,
+      payment_method: 'Cash',
+      payment_reference: paymentRef,
+      received_by_name: req.user?.fullName || req.user?.name || 'Cashier',
+      status: 'active',
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+
     for (const item of items) {
       if (!item.product_id && !item.product_name) continue;
       if (!item.product_id) {
@@ -2546,7 +2614,7 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       await trx('retail_pos_carts').where('id', cart_id).update({ status: 'FINALIZED', updated_at: new Date() }).catch(() => {});
     }
 
-    return { id: saleId, invoice_number: invoiceNumber };
+    return { id: saleId, invoice_number: invoiceNumber, invoice_id: invoiceId, receipt_no: receiptNumber };
   });
 
   res.status(201).json({ status: 'success', data: result });
