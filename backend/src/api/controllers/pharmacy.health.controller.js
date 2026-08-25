@@ -15,6 +15,7 @@ function toResponse(row) {
     branch_name: row.branch_name || '',
     price: row.price,
     price_unit: row.price_unit || 'ETB',
+    selling_price: row.selling_price,
     manufacturer: row.manufacturer,
     drug_image: row.drug_image,
     cover_image: row.cover_image,
@@ -67,7 +68,7 @@ const healthController = {
 
   create: async (req, res) => {
     const { title, subtitle, content, source_url, category_id, branch_id,
-            price, price_unit, manufacturer,
+            price, price_unit, selling_price, manufacturer,
             stock_quantity, reorder_level, is_prescription_required, status } = req.body;
     if (!title) throw new AppError('Title is required', 400);
 
@@ -90,6 +91,7 @@ const healthController = {
 
     if (price !== undefined) data.price = parseFloat(price);
     if (price_unit !== undefined) data.price_unit = price_unit;
+    if (selling_price !== undefined && selling_price !== '') data.selling_price = parseFloat(selling_price);
     if (stock_quantity !== undefined) data.stock_quantity = parseInt(stock_quantity);
     if (reorder_level !== undefined) data.reorder_level = parseInt(reorder_level);
     if (is_prescription_required !== undefined) data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
@@ -118,7 +120,7 @@ const healthController = {
     if (!existing) throw new AppError('Post not found', 404);
 
     const { title, subtitle, content, source_url, category_id, branch_id,
-            price, price_unit, manufacturer,
+            price, price_unit, selling_price, manufacturer,
             stock_quantity, reorder_level, is_prescription_required, status } = req.body;
 
     const data = {};
@@ -136,6 +138,7 @@ const healthController = {
     if (manufacturer !== undefined) data.manufacturer = manufacturer;
     if (price !== undefined) data.price = parseFloat(price);
     if (price_unit !== undefined) data.price_unit = price_unit;
+    if (selling_price !== undefined && selling_price !== '') data.selling_price = parseFloat(selling_price);
     if (stock_quantity !== undefined) data.stock_quantity = parseInt(stock_quantity);
     if (reorder_level !== undefined) data.reorder_level = parseInt(reorder_level);
     if (is_prescription_required !== undefined) data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
