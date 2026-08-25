@@ -61,7 +61,7 @@ const PharmacyOverview = () => {
   if (loading) {
     return (
       <div className="loader-screen">
-        <div className="spinner-large spinner-ring"></div>
+        <SegmentedSpinner size={48} />
         <div style={{ marginTop: 16, fontWeight: 600 }}>Loading Dashboard...</div>
       </div>
     );
