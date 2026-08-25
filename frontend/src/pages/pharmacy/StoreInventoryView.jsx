@@ -370,35 +370,13 @@ export default function StoreInventoryView() {
 
       <div className="siv-body" style={{ padding:'24px', animation:'fadeUp .35s ease' }}>
 
-        {/* ── KPI CHIPS ── */}
-        <div className="siv-kpi-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20, marginBottom:24 }}>
-          {[
-            { label:'Store Items',    value:storeStock.length,                         icon:Package,  color:PURPLE },
-            { label:'My Requests',    value:myRequests.length,                          icon:List,     color:CYAN },
-            { label:'Shipped',        value:shippedRequests.length,                     icon:Truck,    color:PURPLE },
-            { label:'Completed',      value:myRequests.filter(r=>r.status==='COMPLETED').length, icon:CheckCircle, color:CYAN },
-          ].map((kpi,i) => (
-            <div key={i} className="card3d siv-kpi-card" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, display:'flex', flexDirection:'column' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <span className="siv-kpi-label" style={{ fontSize:12, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>{kpi.label}</span>
-                <div className="iconPop siv-kpi-icon" style={{ background:DARK, padding:8, border:`3px solid ${DARK}` }}>
-                  <kpi.icon size={18} color={'white'}/>
-                </div>
-              </div>
-              <div className="siv-kpi-value" style={{ fontSize:'2.5rem', fontWeight:900, color:DARK, marginTop:16 }}>
-                {kpi.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Tabs */}
         <div className="siv-tabs" style={{ display:'flex', gap:12, marginBottom:24 }}>
           <button type="button" className={`btn3d siv-tab ${activeTab === 'store_stock' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveTab('store_stock'); }} style={{
             background: activeTab === 'store_stock' ? DARK : 'white',
             color: activeTab === 'store_stock' ? CYAN : DARK,
             border: `3px solid ${DARK}`, padding: '12px 24px', fontWeight: 900, fontSize: 13, textTransform: 'uppercase',
-            boxShadow: `4px 4px 0 ${DARK}`
+            boxShadow: `4px 4px 0 ${DARK}`, display:'flex', alignItems:'center', gap:8
           }}>
             <span className="icon3d"><Package size={16}/></span> Store Stock
           </button>
@@ -415,6 +393,84 @@ export default function StoreInventoryView() {
               </span>
             )}
           </button>
+        </div>
+
+        {/* ── KPI CHIPS — change by tab ── */}
+        <div className="siv-kpi-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20, marginBottom:24 }}>
+          {(activeTab === 'store_stock' ? [
+            {
+              label: 'Total Items',
+              value: storeStock.length,
+              sub: 'distinct drugs in store',
+              icon: Package,
+              color: PURPLE,
+            },
+            {
+              label: 'Total Stock',
+              value: storeStock.reduce((s,d) => s+(Number(d.stock_quantity)||0), 0).toLocaleString(),
+              sub: 'units across all items',
+              icon: Database,
+              color: CYAN,
+            },
+            {
+              label: 'Low Stock',
+              value: storeStock.filter(d => (Number(d.stock_quantity)||0) <= (Number(d.min_level)||10) && (Number(d.stock_quantity)||0) > 0).length,
+              sub: 'items below min level',
+              icon: AlertTriangle,
+              color: PURPLE,
+            },
+            {
+              label: 'Out of Stock',
+              value: storeStock.filter(d => (Number(d.stock_quantity)||0) <= 0).length,
+              sub: 'items fully depleted',
+              icon: XCircle,
+              color: CYAN,
+            },
+          ] : [
+            {
+              label: 'Total Requests',
+              value: myRequests.length,
+              sub: 'all transfer requests',
+              icon: List,
+              color: PURPLE,
+            },
+            {
+              label: 'Pending / Approved',
+              value: myRequests.filter(r => ['PENDING_APPROVAL','APPROVED'].includes(r.status)).length,
+              sub: 'awaiting CEO / store action',
+              icon: Clock,
+              color: CYAN,
+            },
+            {
+              label: 'Shipped',
+              value: shippedRequests.length,
+              sub: 'en route — ready to receive',
+              icon: Truck,
+              color: PURPLE,
+            },
+            {
+              label: 'Completed',
+              value: myRequests.filter(r => r.status === 'COMPLETED').length,
+              sub: 'received & stocked',
+              icon: CheckCircle,
+              color: CYAN,
+            },
+          ]).map((kpi, i) => (
+            <div key={i} className="card3d siv-kpi-card" style={{ padding:24, background:kpi.color, border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, display:'flex', flexDirection:'column', animation:`rowIn3D .3s ease-out ${i*0.06}s both` }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <span className="siv-kpi-label" style={{ fontSize:12, fontWeight:900, color:DARK, textTransform:'uppercase', letterSpacing:'.05em' }}>{kpi.label}</span>
+                <div className="iconPop siv-kpi-icon" style={{ background:DARK, padding:8, border:`3px solid ${DARK}` }}>
+                  <kpi.icon size={18} color={'white'}/>
+                </div>
+              </div>
+              <div className="siv-kpi-value" style={{ fontSize:'2.5rem', fontWeight:900, color:DARK, marginTop:16 }}>
+                {kpi.value}
+              </div>
+              <div style={{ fontSize:11, fontWeight:700, color:DARK, marginTop:6, opacity:0.7, textTransform:'uppercase', letterSpacing:'.03em' }}>
+                {kpi.sub}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* ── STORE STOCK TAB ── */}
@@ -434,24 +490,28 @@ export default function StoreInventoryView() {
 
             <div className="siv-table-wrap" style={{ background:'white', border:`3px solid ${DARK}`, boxShadow:`4px 4px 0 ${DARK}`, overflow:'hidden' }}>
               <div className="siv-table-scroll" style={{ overflowX: 'auto' }}>
-                <table className="siv-table" style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <table className="siv-table" style={{ width:'100%', borderCollapse:'collapse', fontSize:13, minWidth: 1200 }}>
                   <thead>
                     <tr>
-                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Drug Name</th>
+                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Drug Details</th>
                       <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Category</th>
-                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Amount</th>
-                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Unit</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Stock Qty</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Reserved</th>
+                      <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Levels (Min/Max)</th>
+                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Batch & Expiry</th>
+                      <th style={{ padding:'14px 18px', textAlign:'right', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Financials</th>
+                      <th style={{ padding:'14px 18px', textAlign:'left', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Location</th>
                       <th style={{ padding:'14px 18px', textAlign:'center', fontWeight:900, color:'white', background:DARK, borderBottom:`3px solid ${DARK}`, textTransform:'uppercase', letterSpacing:'.05em' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr><td colSpan={5} style={{ padding:60, textAlign:'center' }}>
+                      <tr><td colSpan={9} style={{ padding:60, textAlign:'center' }}>
                         <SegmentedSpinner size={40} />
                         <div style={{ marginTop:12, fontWeight:900, color:DARK, textTransform:'uppercase' }}>Loading Store Inventory...</div>
                       </td></tr>
                     ) : filteredStock.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding:60, textAlign:'center', color:DARK, fontWeight:900, textTransform:'uppercase' }}>
+                      <tr><td colSpan={9} style={{ padding:60, textAlign:'center', color:DARK, fontWeight:900, textTransform:'uppercase' }}>
                         <span className="iconPop" style={{ display:'block', fontSize:40, marginBottom:16 }}>📦</span>
                         No items found.
                       </td></tr>
@@ -460,27 +520,52 @@ export default function StoreInventoryView() {
                         r.drug_id===(item.drug_id||item.id) && ['PENDING_APPROVAL','APPROVED','SHIPPED'].includes(r.status)
                       );
                       const qty   = Number(item.stock_quantity) || 0;
-                      const clr   = qty <= 0 ? '#dc2626' : qty < 10 ? '#d97706' : DARK;
+                      const resQty = Number(item.reserved_quantity) || 0;
+                      const clr   = qty <= 0 ? '#dc2626' : qty < (Number(item.min_level)||10) ? '#d97706' : DARK;
                       const dName = item.name || item.drug_name || `Drug #${item.drug_id||item.id||idx+1}`;
                       const dUnit = item.unit || item.drug_unit || 'pcs';
                       const dCat  = item.category || item.drug_category || '—';
+                      
+                      const expDate = item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '—';
+                      
                       return (
                         <tr key={`row-${item.id||idx}`} className="row3d" style={{ borderBottom:`3px solid ${DARK}`, background: idx % 2 === 0 ? 'white' : PURPLE, animation: `rowIn3D .3s ease-out ${idx*0.03}s both` }}>
-                          <td style={{ padding:'14px 18px', fontWeight:900, color:DARK }}>
-                            {dName}
+                          <td style={{ padding:'14px 18px', color:DARK }}>
+                            <div style={{ fontWeight:900 }}>{dName}</div>
+                            {(item.generic_name || item.brand_name) && (
+                              <div style={{ fontSize:11, color:'#4B5563', marginTop:4 }}>
+                                {item.generic_name && <span>Gen: {item.generic_name}</span>}
+                                {item.generic_name && item.brand_name && <span style={{margin:'0 4px'}}>|</span>}
+                                {item.brand_name && <span>Br: {item.brand_name}</span>}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding:'14px 18px' }}>
                             <span className="badge3d" style={{ display:'inline-block', background:CYAN, color:DARK, padding:'4px 12px', fontSize:11, fontWeight:900, border:`2px solid ${DARK}`, textTransform:'uppercase' }}>
                               {dCat}
                             </span>
                           </td>
-                          <td style={{ padding:'14px 18px', textAlign:'center', fontSize:20, fontWeight:900, color:clr }}>
-                            {qty.toLocaleString()}
-                          </td>
                           <td style={{ padding:'14px 18px', textAlign:'center' }}>
-                            <span style={{ display:'inline-block', background:DARK, color:CYAN, padding:'4px 12px', fontSize:12, fontWeight:900, textTransform:'uppercase' }}>
-                              {dUnit}
-                            </span>
+                            <div style={{ fontSize:20, fontWeight:900, color:clr }}>{qty.toLocaleString()}</div>
+                            <div style={{ fontSize:11, fontWeight:700, color:DARK, textTransform:'uppercase' }}>{dUnit}</div>
+                          </td>
+                          <td style={{ padding:'14px 18px', textAlign:'center', fontWeight:700, color:'#4B5563' }}>
+                            {resQty.toLocaleString()}
+                          </td>
+                          <td style={{ padding:'14px 18px', textAlign:'center', fontSize:12, fontWeight:700, color:'#4B5563' }}>
+                            {item.min_level || '—'} / {item.max_level || '—'}
+                            {item.reorder_level && <div style={{ fontSize:10, color:'#d97706', marginTop:2 }}>Reorder: {item.reorder_level}</div>}
+                          </td>
+                          <td style={{ padding:'14px 18px', fontSize:12, fontWeight:600 }}>
+                            <div><span style={{color:'#6B7280'}}>Batch:</span> {item.batch_no || '—'}</div>
+                            <div style={{marginTop:2}}><span style={{color:'#6B7280'}}>Exp:</span> {expDate}</div>
+                          </td>
+                          <td style={{ padding:'14px 18px', textAlign:'right', fontSize:12, fontWeight:600 }}>
+                            <div><span style={{color:'#6B7280'}}>Cost:</span> {item.unit_cost || item.unit_price || '—'} ETB</div>
+                            <div style={{marginTop:2}}><span style={{color:'#6B7280'}}>Sell:</span> {item.selling_price || '—'} ETB</div>
+                          </td>
+                          <td style={{ padding:'14px 18px', fontSize:12, fontWeight:700, color:'#4B5563' }}>
+                            {item.storage_location || '—'}
                           </td>
                           <td style={{ padding:'14px 18px', textAlign:'center' }}>
                             {hasOpen
@@ -505,16 +590,21 @@ export default function StoreInventoryView() {
                         <td style={{ padding:'16px 18px', textAlign:'center', fontSize:22, fontWeight:900, color:CYAN }}>
                           {filteredStock.reduce((s,d)=>s+(Number(d.stock_quantity)||0),0).toLocaleString()}
                         </td>
-                        <td style={{ padding:'16px 18px', textAlign:'center', fontSize:12, fontWeight:900, color:CYAN, textTransform:'uppercase' }}>
-                          UNITS
+                        <td colSpan={3}></td>
+                        <td style={{ padding:'16px 18px', textAlign:'right', fontWeight:900, color:CYAN }}>
+                          <div style={{ fontSize:11, textTransform:'uppercase', opacity:0.8 }}>Total Value</div>
+                          <div style={{ fontSize:18 }}>
+                            {filteredStock.reduce((s,d)=>s+((Number(d.stock_quantity)||0) * (Number(d.unit_cost) || Number(d.unit_price) || 0)), 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} ETB
+                          </div>
                         </td>
-                        <td></td>
+                        <td colSpan={2}></td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
+
           </div>
         )}
 
