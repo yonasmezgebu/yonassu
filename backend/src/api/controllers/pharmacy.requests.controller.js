@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { catchAsync } = require('../../utils/catchAsync');
 const logPharmacyAction = require('../../utils/pharmacyAuditLogger');
 const { sendCustomerNotification } = require('../../services/notification.service');
+const vatConfigService = require('../../services/vatConfig.service');
 
 const requestsController = {
   // ==============================
@@ -26,8 +27,16 @@ const requestsController = {
     const request_number = `RX-${String((parseInt(count.c) || 0) + 1).padStart(4, '0')}`;
 
     const delivery_fee = delivery_option === 'delivery' ? 50 : 0;
-    const price_per_unit = parseFloat(medication.price || 0);
-    const total_amount = price_per_unit * parseInt(quantity) + delivery_fee;
+    const price_per_unit = parseFloat(medication.selling_price || medication.price || 0);
+    const subtotal = price_per_unit * parseInt(quantity);
+
+    let tax_amount = 0;
+    try {
+      const vatResult = await vatConfigService.computeVatForItem('pharmacy', medication.id || null, subtotal);
+      tax_amount = parseFloat(vatResult.vat.toFixed(2));
+    } catch (_) {}
+
+    const total_amount = subtotal + tax_amount + delivery_fee;
 
     let prescription_image = null;
     if (req.file) {
@@ -48,6 +57,8 @@ const requestsController = {
       medication_name: medication.name,
       quantity: parseInt(quantity),
       price_per_unit,
+      subtotal,
+      tax_amount,
       total_amount,
       prescription_image,
       delivery_option: delivery_option || 'pickup',
@@ -312,22 +323,26 @@ const requestsController = {
       });
 
       // Record online payments into POS logs
-      if (payment_method && request.estimated_price) {
+      if (payment_method && request.total_amount) {
         const shift = await trx('pos_shifts').where({ cashier_id: req.user.id, status: 'OPEN' }).first();
         if (shift) {
           let completedStatus = await trx('sale_statuses').where('status_code', 'completed').first();
           const pMethodRec = await trx('payment_methods').where('name', payment_method).first();
 
           if (completedStatus && pMethodRec) {
+            const saleSubtotal = parseFloat(request.subtotal || request.price_per_unit * request.quantity || 0);
+            const saleTax = parseFloat(request.tax_amount || 0);
+            const saleTotal = parseFloat(request.total_amount || 0);
+
             await trx('pos_sales').insert({
               invoice_number: `ONL-P-${request.request_number}`,
               customer_id: request.customer_id || null,
-              subtotal: request.estimated_price,
-              tax_amount: 0,
+              subtotal: saleSubtotal,
+              tax_amount: saleTax,
               discount_amount: 0,
-              total_amount: request.estimated_price,
+              total_amount: saleTotal,
               payment_method_id: pMethodRec.id,
-              amount_paid: request.estimated_price,
+              amount_paid: saleTotal,
               change_amount: 0,
               cashier_id: req.user.id,
               sale_date: trx.fn.now(),
@@ -337,10 +352,10 @@ const requestsController = {
 
             await trx('pos_shifts').where({ id: shift.id }).update({
               transaction_count: trx.raw('transaction_count + 1'),
-              total_sales: trx.raw('COALESCE(total_sales,0) + ?', [request.estimated_price]),
-              cash_collected: payment_method === 'Cash' ? trx.raw('COALESCE(cash_collected,0) + ?', [request.estimated_price]) : trx.raw('cash_collected'),
-              telebirr_collected: payment_method === 'Telebirr' ? trx.raw('COALESCE(telebirr_collected,0) + ?', [request.estimated_price]) : trx.raw('telebirr_collected'),
-              transfer_collected: payment_method === 'Bank Transfer' ? trx.raw('COALESCE(transfer_collected,0) + ?', [request.estimated_price]) : trx.raw('transfer_collected')
+              total_sales: trx.raw('COALESCE(total_sales,0) + ?', [saleTotal]),
+              cash_collected: payment_method === 'Cash' ? trx.raw('COALESCE(cash_collected,0) + ?', [saleTotal]) : trx.raw('cash_collected'),
+              telebirr_collected: payment_method === 'Telebirr' ? trx.raw('COALESCE(telebirr_collected,0) + ?', [saleTotal]) : trx.raw('telebirr_collected'),
+              transfer_collected: payment_method === 'Bank Transfer' ? trx.raw('COALESCE(transfer_collected,0) + ?', [saleTotal]) : trx.raw('transfer_collected')
             });
           }
         }
