@@ -5,9 +5,11 @@ import {
   Search, Hash, CheckCircle, Circle, AlertTriangle,
   HelpCircle, Package, Printer, Sprout, Car, Pill,
   ShoppingCart, X, MapPin, Clock, Calendar, CreditCard,
-  Shield, Info, ChevronRight, Zap
+  Shield, Zap
 } from 'lucide-react';
 import { PublicNav } from './PublicNavFooter';
+import './LandingRedesign.css';
+import './TrackOrderPage.css';
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 const MODULE_ICONS = {
@@ -24,362 +26,6 @@ const FAQS = [
   { q: 'What should I do if the status seems wrong?',   a: 'There may be a brief delay between physical processing and digital updates. If the issue persists for more than 24 hours, please visit our branch directly.' },
   { q: 'Why do I need both phone number and receipt number?', a: 'Requiring both fields together ensures only you can access your order details. This protects your privacy and prevents others from viewing your orders.' },
 ];
-
-/* ─── Inline styles ──────────────────────────────────────────────── */
-const STYLES = `
-  @keyframes trackSpin       { to   { transform: rotate(360deg); } }
-  @keyframes trackFadeIn     { from { opacity:0; } to { opacity:1; } }
-
-  .track-page {
-    min-height: calc(100vh - 60px);
-    background: transparent;
-    font-family: 'Inter', -apple-system, sans-serif;
-    color: #424242;
-    position: relative;
-    z-index: 1;
-  }
-  .track-inner {
-    max-width: 1300px;
-    margin: 0 auto;
-    padding: 48px 24px 80px;
-    box-sizing: border-box;
-  }
-
-  /* ── Split grid ── */
-  .track-split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    align-items: start;
-    margin-bottom: 64px;
-  }
-  @media (max-width: 860px) {
-    .track-split { grid-template-columns: 1fr; gap: 32px; }
-    .track-inner { padding: 28px 16px 56px; }
-  }
-
-  /* ── Left hero ── */
-  .track-hero-title {
-    font-size: clamp(26px, 3.5vw, 40px);
-    font-weight: 900;
-    color: #1B5E20;
-    margin: 0 0 16px;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-  }
-  .track-hero-sub {
-    font-size: clamp(14px, 1.8vw, 16px);
-    color: #424242;
-    line-height: 1.7;
-    margin: 0 0 32px;
-  }
-
-  /* ── Info cards ── */
-  .track-info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  @media (max-width: 480px) { .track-info-grid { grid-template-columns: 1fr; } }
-
-  .track-info-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 12px;
-    padding: 20px;
-    border-left: 4px solid #228B22;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
-  }
-  .track-info-card:hover {
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    transform: translateY(-2px);
-  }
-  .track-info-card h3 {
-    margin: 0 0 8px;
-    font-size: 15px;
-    font-weight: 800;
-    color: #1B5E20;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .track-info-card p {
-    margin: 0;
-    color: #424242;
-    font-size: 13px;
-    line-height: 1.65;
-  }
-
-  /* ── Right column (form / result) ── */
-
-  /* ── Form card ── */
-  .track-form-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 12px;
-    padding: 36px 32px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  }
-  .track-form-title {
-    margin: 0 0 28px;
-    font-size: 22px;
-    font-weight: 800;
-    color: #1B5E20;
-  }
-
-  /* ── Form groups ── */
-  .track-form-group { margin-bottom: 24px; }
-  .track-form-label {
-    display: block;
-    font-size: 13px; font-weight: 700; color: #424242;
-    margin-bottom: 8px;
-  }
-  .track-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  .track-input-icon {
-    position: absolute;
-    left: 14px;
-    color: #8D6E63;
-    pointer-events: none;
-    transition: color 0.2s ease;
-    display: flex;
-  }
-  .track-form-group:focus-within .track-input-icon {
-    color: #2E8B57;
-  }
-  .track-form-input {
-    width: 100%;
-    padding: 14px 16px 14px 42px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #424242;
-    background: #F9FAFB;
-    border: 1px solid #8D6E63;
-    border-radius: 6px;
-    outline: none;
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
-    font-family: inherit;
-  }
-  .track-form-input::placeholder { color: #A8A29E; font-weight: 500; }
-  .track-form-input:focus {
-    background: #FFFFFF;
-    border-color: #2E8B57;
-    box-shadow: 0 0 0 3px rgba(46,139,87,0.15);
-  }
-
-  /* ── Error box ── */
-  .track-error {
-    background: #fff5f5;
-    border: 1px solid #F44336;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    display: flex; align-items: flex-start; gap: 12px;
-    font-size: 13px; color: #B71C1C; line-height: 1.6;
-  }
-
-  /* ── Submit button ── */
-  .track-submit-btn {
-    width: 100%;
-    padding: 13px;
-    background: #2E8B57;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-    position: relative; overflow: hidden;
-    margin-top: 8px;
-  }
-  .track-submit-btn::after {
-    content: '';
-    position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transform: skewX(-20deg);
-    transition: left 0.45s ease;
-  }
-  .track-submit-btn:hover { background: #1B5E20; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(27,94,32,0.3); }
-  .track-submit-btn:hover::after { left: 150%; }
-  .track-submit-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
-  .track-spinner {
-    width: 20px; height: 20px;
-    border: 3px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: trackSpin 0.8s linear infinite;
-  }
-
-  /* ── Result card ── */
-  .track-result-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  }
-  .track-result-header {
-    background: #1B5E20;
-    color: #fff;
-    padding: 24px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .track-result-module-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(255,255,255,0.18);
-    padding: 4px 12px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .track-result-id {
-    font-size: clamp(20px, 3vw, 28px);
-    font-weight: 900;
-    margin: 0 0 4px;
-  }
-  .track-result-date { font-size: 13px; color: #A5D6A7; margin: 0; }
-  .track-result-close {
-    width: 38px; height: 38px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.15);
-    border: none; cursor: pointer; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.15s ease;
-  }
-  .track-result-close:hover { background: rgba(255,255,255,0.3); }
-
-  /* ── Stages ── */
-  .track-stages { padding: 24px 28px; background: #FFFFFF; }
-  .track-stages-label {
-    font-size: 11px; font-weight: 800; color: #8D6E63;
-    text-transform: uppercase; letter-spacing: .1em; margin-bottom: 16px;
-  }
-  .track-stage {
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 16px;
-    border-radius: 8px;
-    border: 1px solid #F5F5F5;
-    margin-bottom: 10px;
-    transition: all 0.25s ease;
-    background: #FFFFFF;
-  }
-  .track-stage.active {
-    background: #f1fdf4;
-    border-color: #4CAF50;
-    border-left: 4px solid #4CAF50;
-  }
-  .track-stage-icon {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    background: #F5F5F5;
-  }
-  .track-stage.active .track-stage-icon { background: #4CAF50; }
-  .track-stage-label {
-    font-size: 15px; font-weight: 600; color: #8D6E63;
-  }
-  .track-stage.active .track-stage-label { font-weight: 800; color: #1B5E20; }
-
-  /* ── Detail cards grid ── */
-  .track-detail-section {
-    background: #F5F5F5;
-    border-top: 1px solid #8D6E63;
-    padding: 20px 28px 24px;
-  }
-  .track-detail-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  }
-  @media (max-width: 480px) { .track-detail-grid { grid-template-columns: 1fr; } }
-  .track-detail-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 10px;
-    padding: 14px 16px;
-    transition: box-shadow 0.15s ease;
-  }
-  .track-detail-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-  .track-detail-label {
-    font-size: 11px; font-weight: 700; color: #8D6E63;
-    text-transform: uppercase; letter-spacing: .08em;
-    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
-  }
-  .track-detail-value {
-    font-size: 14px; font-weight: 800; color: #424242; word-break: break-word;
-  }
-
-  /* ── Bottom section ── */
-  .track-bottom {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    margin-top: 8px;
-  }
-  @media (max-width: 720px) {
-    .track-bottom { grid-template-columns: 1fr; gap: 32px; }
-  }
-
-  /* ── Section heading ── */
-  .track-section-title {
-    font-size: 18px; font-weight: 800;
-    color: #1B5E20;
-    margin: 0 0 20px;
-    display: flex; align-items: center; gap: 10px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #A5D6A7;
-  }
-
-  /* ── FAQ cards ── */
-  .track-faq-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 12px;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
-  }
-  .track-faq-card:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,0.07);
-    transform: translateY(-1px);
-  }
-  .track-faq-q {
-    font-size: 14px; font-weight: 700; color: #1B5E20; margin-bottom: 8px;
-  }
-  .track-faq-a {
-    font-size: 13px; color: #424242; line-height: 1.65;
-  }
-
-  /* ── Trust cards ── */
-  .track-trust-card {
-    background: #FFFFFF;
-    border: 1px solid #8D6E63;
-    border-radius: 12px;
-    padding: 22px;
-    margin-bottom: 14px;
-    transition: box-shadow 0.15s ease, transform 0.15s ease;
-  }
-  .track-trust-card:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,0.07);
-    transform: translateY(-1px);
-  }
-  .track-trust-card.privacy   { border-left: 4px solid #228B22; }
-  .track-trust-card.disclaimer { border-left: 4px solid #FF9800; }
-  .track-trust-card h3 { font-size: 15px; font-weight: 800; color: #424242; margin: 0 0 10px; }
-  .track-trust-card p  { margin: 0; font-size: 13px; color: #424242; line-height: 1.7; }
-`;
 
 /* ─── Detail Card Sub-component ─────────────────────────────────── */
 const DetailCard = ({ icon, label, value }) => (
@@ -402,7 +48,7 @@ export default function TrackOrderPage() {
   const canvasRef = useRef(null);
   const animRef   = useRef(null);
 
-  /* ─── 3D Particle Network Canvas (Green & White Theme) ─── */
+  /* ─── 3D Particle Network Canvas (Preserved Animation) ─── */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -519,13 +165,12 @@ export default function TrackOrderPage() {
   /* ─── Render ─── */
   return (
     <>
-      <style>{STYLES}</style>
       <PublicNav />
 
       {/* 3D Canvas BG */}
       <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }} />
 
-      <div className="track-page" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="track-page">
         <div className="track-inner">
 
           {/* ── Split layout ── */}
@@ -539,11 +184,11 @@ export default function TrackOrderPage() {
               </p>
               <div className="track-info-grid">
                 <div className="track-info-card">
-                  <h3><Zap size={16} color="#228B22" /> 1. Enter Details</h3>
+                  <h3><Zap size={16} /> 1. Enter Details</h3>
                   <p>Input your exact invoice number (e.g. INV-2026...) and the phone number provided at checkout.</p>
                 </div>
                 <div className="track-info-card">
-                  <h3><Search size={16} color="#228B22" /> 2. View Status</h3>
+                  <h3><Search size={16} /> 2. View Status</h3>
                   <p>Instantly see the real-time stage, estimated completion, and branch details.</p>
                 </div>
               </div>
@@ -596,7 +241,7 @@ export default function TrackOrderPage() {
 
                     {error && (
                       <div className="track-error">
-                        <AlertTriangle size={18} color="#F44336" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
                         <div>{error}</div>
                       </div>
                     )}
@@ -635,8 +280,8 @@ export default function TrackOrderPage() {
                       <div key={stage.label} className={`track-stage${stage.completed ? ' active' : ''}`}>
                         <div className="track-stage-icon">
                           {stage.completed
-                            ? <CheckCircle size={18} color="#fff" />
-                            : <Circle size={18} color="#8D6E63" />
+                            ? <CheckCircle size={18} />
+                            : <Circle size={18} />
                           }
                         </div>
                         <div className="track-stage-label">{stage.label}</div>
@@ -667,7 +312,8 @@ export default function TrackOrderPage() {
             {/* FAQ */}
             <div>
               <h2 className="track-section-title">
-                <HelpCircle size={20} color="#228B22" /> Frequently Asked Questions
+                <HelpCircle size={20} className="track-title-icon" style={{ color: 'hsl(var(--primary))' }} /> 
+                Frequently Asked Questions
               </h2>
               {FAQS.map((faq, i) => (
                 <div key={i} className="track-faq-card">
@@ -680,7 +326,8 @@ export default function TrackOrderPage() {
             {/* Trust & Security */}
             <div>
               <h2 className="track-section-title">
-                <Shield size={20} color="#228B22" /> Trust &amp; Security
+                <Shield size={20} className="track-title-icon" style={{ color: 'hsl(var(--primary))' }} /> 
+                Trust &amp; Security
               </h2>
               <div className="track-trust-card privacy">
                 <h3>Data Privacy</h3>
