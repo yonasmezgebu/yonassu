@@ -42,38 +42,12 @@ const capabilities = [
 function CapabilityCard({ c }) {
   const Icon = c.icon;
   return (
-    <div 
-      className="cap-card" 
-      style={{ 
-        cursor: 'default', flexShrink: 0, marginRight: 28, width: '280px',
-        background: '#FFFFFF', border: '1px solid #8D6E63', 
-        borderRadius: 12, display: 'flex', flexDirection: 'column', 
-        alignItems: 'center', justifyContent: 'flex-start', 
-        padding: '28px 20px', textAlign: 'center', 
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-1px)';
-        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'none';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      <div 
-        style={{ 
-          width: 42, height: 42, borderRadius: 12, 
-          background: 'rgba(34, 139, 34, 0.1)', 
-          color: '#228B22', 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', 
-          marginBottom: 12, flexShrink: 0 
-        }}
-      >
+    <div className="cap-card">
+      <div className="cap-card__icon">
         <Icon size={20} />
       </div>
-      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1B5E20', marginBottom: 8, flexShrink: 0 }}>{c.title}</span>
-      <p style={{ fontSize: '0.85rem', lineHeight: 1.55, color: '#424242', margin: 0, fontWeight: 500, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' }}>
+      <span className="cap-card__title">{c.title}</span>
+      <p className="cap-card__para">
         {c.para}
       </p>
     </div>
@@ -84,14 +58,14 @@ export function CapabilitiesSection() {
   const topRow = capabilities.slice(0, 5);
   const bottomRow = capabilities.slice(5);
   return (
-    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px', overflow: 'hidden' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>Platform Capabilities</h2>
-          <p style={{ fontSize: '1.1rem', color: '#424242' }}>Ten powerful modules purpose-built for Ethiopian enterprises — integrated under one roof.</p>
+    <section className="ld-section">
+      <div className="ld-container" style={{ overflow: 'hidden' }}>
+        <div className="ld-section-header">
+          <h2>Platform Capabilities</h2>
+          <p>Ten powerful modules purpose-built for Ethiopian enterprises — integrated under one roof.</p>
         </div>
         {/* Top row — moving RIGHT */}
-        <div className="scroll-track-wrap" style={{ marginBottom: 28 }}>
+        <div className="scroll-track-wrap" style={{ marginBottom: '1.75rem' }}>
           <div className="scroll-track scroll-right">
             {[...topRow, ...topRow].map((c, i) => <CapabilityCard key={i} c={c} />)}
           </div>
@@ -117,55 +91,25 @@ const steps = [
 
 export function GettingStartedSection() {
   return (
-    <section style={{ background: '#F5F5F5', padding: '80px 0', width: '100%' }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .gs-card {
-            border-top: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
-            border-radius: 0 !important;
-            border-left: 2px solid #8D6E63 !important;
-          }
-        }
-      `}</style>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>Getting Started</h2>
-          <p style={{ fontSize: '1.1rem', color: '#424242' }}>Up and running in 4 simple steps. Most businesses are fully operational within their first week.</p>
+    <section className="ld-section ld-section--alt">
+      <div className="container">
+        <div className="ld-section-header">
+          <h2>Getting Started</h2>
+          <p>Up and running in 4 simple steps. Most businesses are fully operational within their first week.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 28 }}>
+        <div className="grid-container">
           {steps.map((s, i) => {
             const Icon = s.icon;
             return (
-              <div 
-                key={i} 
-                className="gs-card"
-                style={{ 
-                  background: '#FFFFFF', padding: '36px 28px', textAlign: 'center', cursor: 'default',
-                  border: '1px solid #8D6E63', borderRadius: 12,
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ 
-                  width: 48, height: 48, borderRadius: '50%', background: '#98FF98', color: '#424242', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontWeight: 800, fontSize: '1.1rem' 
-                }}>
+              <div key={i} className="card" style={{ textAlign: 'center' }}>
+                <div className="gs-card__step">
                   {String(i + 1).padStart(2, '0')}
                 </div>
-                <div style={{ marginBottom: 14, color: '#228B22' }}>
+                <div className="gs-card__icon">
                   <Icon size={28} />
                 </div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>{s.title}</h3>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#424242', margin: 0 }}>{s.desc}</p>
+                <h3 className="gs-card__title">{s.title}</h3>
+                <p className="gs-card__desc">{s.desc}</p>
               </div>
             );
           })}
@@ -185,91 +129,36 @@ const benefits = [
 
 export function WhySutanaSection() {
   return (
-    <section style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .ws-card {
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-            border-radius: 0 !important;
-            padding: 24px 0 !important;
-          }
-          .ws-card:last-child {
-            border-bottom: none !important;
-          }
-        }
-      `}</style>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
-
-        {/* Section Header — plain bg + colored text only, no banner box */}
-        <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>
-            Why SUTANA
-          </h2>
-          <p style={{ fontSize: '1.1rem', color: '#424242', maxWidth: 600, margin: '0 auto' }}>
-            Trusted by growing Ethiopian enterprises — simplifying operations, empowering growth.
-          </p>
+    <section className="ld-section">
+      <div className="container">
+        <div className="ld-section-header">
+          <h2>Why SUTANA</h2>
+          <p>Trusted by growing Ethiopian enterprises — simplifying operations, empowering growth.</p>
         </div>
 
-        {/* Two-column layout: Benefits left, Image right */}
-        <div style={{ display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap' }}>
-
-          {/* Left — Benefits list */}
-          <div style={{ flex: '1 1 440px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="ld-grid-2col">
+          <div className="ld-grid-2col__main">
             {benefits.map((b, i) => {
               const Icon = b.icon;
               return (
-                <div
-                  key={i}
-                  className="ws-card"
-                  style={{
-                    display: 'flex', gap: 18, padding: '22px 20px',
-                    background: '#FFFFFF', border: '1px solid #8D6E63', borderRadius: 12,
-                    cursor: 'default', transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  {/* Icon box — Sage Green background, Forest Green icon */}
-                  <div style={{
-                    width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-                    background: '#A5D6A7', color: '#228B22',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
+                <div key={i} className="card" style={{ display: 'flex', gap: '1.25rem', padding: '1.5rem' }}>
+                  <div className="ws-card__icon">
                     <Icon size={22} />
                   </div>
                   <div>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#1B5E20', marginBottom: 4 }}>{b.title}</h4>
-                    <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: '#424242', margin: 0 }}>{b.desc}</p>
+                    <h4 className="ws-card__title">{b.title}</h4>
+                    <p className="ws-card__desc">{b.desc}</p>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Right — Image with hover zoom, 10px radius, Earth Brown border */}
-          <div style={{ flex: '1 1 380px' }}>
-            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #8D6E63', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-              <img
-                src={happy1}
-                alt="SUTANA Enterprise Team"
-                style={{
-                  width: '100%', height: 'auto', display: 'block',
-                  transition: 'transform 0.15s ease'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-              />
+          <div className="ld-grid-2col__aside">
+            <div className="image-container">
+              <img src={happy1} alt="SUTANA Enterprise Team" />
             </div>
           </div>
-
         </div>
       </div>
     </section>
@@ -286,85 +175,40 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section style={{ background: '#F5F5F5', padding: '80px 0', width: '100%' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
-
-        {/* Section Header — plain bg + colored text only, no banner box */}
-        <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#1B5E20', marginBottom: 12, letterSpacing: '-0.02em' }}>
-            Success Stories
-          </h2>
-          <p style={{ fontSize: '1.1rem', color: '#424242', maxWidth: 580, margin: '0 auto' }}>
-            Businesses that transformed with SUTANA — real results from real Ethiopian enterprises.
-          </p>
+    <section className="ld-section ld-section--alt">
+      <div className="container">
+        <div className="ld-section-header">
+          <h2>Success Stories</h2>
+          <p>Businesses that transformed with SUTANA — real results from real Ethiopian enterprises.</p>
         </div>
 
-        {/* Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px,1fr))', gap: 28 }}>
+        <div className="grid-container">
           {testimonials.map((t, i) => (
-            <div
-              key={i}
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #8D6E63',
-                borderRadius: 12,
-                padding: '32px 28px',
-                cursor: 'default',
-                display: 'flex',
-                flexDirection: 'column',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              {/* 5 Stars */}
-              <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
+            <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="ts-card__stars">
                 {[...Array(5)].map((_, si) => (
-                  <Star key={si} size={15} fill="#228B22" color="#228B22" strokeWidth={1.5} />
+                  <Star key={si} size={15} fill="hsl(var(--primary))" color="hsl(var(--primary))" strokeWidth={1.5} />
                 ))}
               </div>
 
-              {/* Quote icon — Forest Green, subtle */}
-              <Quote size={28} color="#A5D6A7" style={{ marginBottom: 10 }} />
+              <Quote size={28} className="ts-card__quote-icon" />
 
-              {/* Quote text */}
-              <p style={{
-                fontSize: '0.92rem', lineHeight: 1.75, color: '#424242',
-                flex: 1, marginBottom: 24, fontStyle: 'italic'
-              }}>
+              <p className="ts-card__text">
                 "{t.quote}"
               </p>
 
-              {/* Divider + Author */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                borderTop: '1px solid #8D6E63', paddingTop: 18
-              }}>
-                {/* Avatar — 50% radius as per rules */}
-                <div style={{
-                  width: 44, height: 44, borderRadius: '50%',
-                  background: '#1B5E20', color: '#FFFFFF',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 800, fontSize: '0.85rem', flexShrink: 0,
-                  border: '2px solid #A5D6A7'
-                }}>
+              <div className="ts-card__author" style={{ marginTop: 'auto' }}>
+                <div className="ts-card__avatar">
                   {t.initials}
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B5E20' }}>{t.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#6B8E23', fontWeight: 500 }}>{t.role}</div>
+                  <div className="ts-card__name">{t.name}</div>
+                  <div className="ts-card__role">{t.role}</div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-
       </div>
     </section>
   );
@@ -475,62 +319,15 @@ export function SmartFooter() {
     }
   };
 
-  const handleLinkHover = (e) => {
-    e.currentTarget.style.color = '#8BC34A';
-    e.currentTarget.style.textDecoration = 'underline';
-  };
-  const handleLinkLeave = (e) => {
-    e.currentTarget.style.color = '#1B89B6';
-    e.currentTarget.style.textDecoration = 'none';
-  };
-
   return (
-    <footer className="smart-footer-wrapper" style={{ background: '#1B5E20', color: '#FFFFFF', width: '100%' }}>
-      <style>{`
-        .sf-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 60px 40px;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        }
-        .sf-socials { display: flex; gap: 12px; flex-wrap: wrap; }
-        .sf-contact-list { display: flex; flex-direction: column; gap: 16px; font-size: 0.95rem; color: #FFFFFF; }
-        .sf-contact-item { display: flex; gap: 12px; align-items: flex-start; }
-        
-        @media (min-width: 769px) {
-          .sf-col {
-            padding: 0 32px;
-            border-right: 1px solid rgba(255,255,255,0.15);
-          }
-          .sf-col:first-child { padding-left: 0; }
-          .sf-col:last-child { padding-right: 0; border-right: none; }
-        }
-
-        @media (max-width: 768px) {
-          .sf-container {
-            padding: 40px 20px;
-            gap: 28px;
-            text-align: center;
-          }
-          .sf-col {
-            padding-bottom: 28px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-          }
-          .sf-col:last-child { border-bottom: none; padding-bottom: 0; }
-          .sf-socials { justify-content: center; }
-          .sf-contact-list { align-items: center; }
-          .sf-contact-item { justify-content: center; text-align: center; flex-direction: column; align-items: center; gap: 6px; }
-        }
-      `}</style>
-      
+    <footer className="smart-footer-wrapper">
       {/* 4 Columns Container */}
       <div className="sf-container">
         
         {/* Column 1: Brand & Social */}
         <div className="sf-col">
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '16px', color: '#FFFFFF' }}>SUTANA</h3>
-          <p style={{ fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px', color: '#FFFFFF' }}>
+          <h3>SUTANA</h3>
+          <p>
             Modern Enterprise Management for Ethiopia's growing businesses. Built locally. Trusted widely.
           </p>
           {socialLinks.length > 0 && (
@@ -541,17 +338,9 @@ export function SmartFooter() {
                   href={link.url || '#'}
                   target={link.url ? "_blank" : "_self"}
                   rel="noopener noreferrer"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: 'transparent',
-                    color: '#FFFFFF',
-                    transition: 'background 0.15s ease',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#2E8B57'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  className="sf-social-btn"
                 >
-                  {getSocialIcon(link.platform, '#FFFFFF')}
+                  {getSocialIcon(link.platform, 'currentColor')}
                 </a>
               ))}
             </div>
@@ -560,22 +349,19 @@ export function SmartFooter() {
 
         {/* Column 2: Quick Links */}
         <div className="sf-col">
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Quick Links</h4>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <h4>Quick Links</h4>
+          <nav className="sf-nav">
             {['About', 'Admissions', 'Academics'].map((label, i) => (
-              <a 
-                key={i} href="#" 
-                style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease', fontSize: '0.95rem' }} 
-                onMouseEnter={handleLinkHover} 
-                onMouseLeave={handleLinkLeave}
-              >
+              <a key={i} href="#" className="sf-link">
                 {label}
               </a>
             ))}
           </nav>
-        </div>        {/* Column 3: Contact Info */}
+        </div>
+
+        {/* Column 3: Contact Info */}
         <div className="sf-col">
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Contact Info</h4>
+          <h4>Contact Info</h4>
           <div className="sf-contact-list">
             {(isGeneralPage ? hrContact.contact_phone1 : isPrintingPage ? printingContact.contact_phone1 : isPharmacyPage ? pharmacyContact.contact_phone1 : isRentalPage ? rentalContact.contact_phone1 : isBuyPage ? salesContact.contact_phone1 : procContact.contact_phone1) && (
               <div className="sf-contact-item">
@@ -589,21 +375,10 @@ export function SmartFooter() {
                 <span>{isGeneralPage ? hrContact.contact_email : isPrintingPage ? printingContact.contact_email : isPharmacyPage ? pharmacyContact.contact_email : isRentalPage ? rentalContact.contact_email : isBuyPage ? salesContact.contact_email : procContact.contact_email}</span>
               </div>
             )}
-            <div className="sf-contact-item" style={{ marginTop: '8px' }}>
+            <div className="sf-contact-item" style={{ marginTop: '0.5rem' }}>
               <Link
                 to={isGeneralPage ? "/hr-contact" : isPrintingPage ? "/printing-contact" : isPharmacyPage ? "/pharmacy-contact" : isRentalPage ? "/rental-contact" : isBuyPage ? "/sales-contact" : "/procurement-contact"}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  color: '#1B89B6',
-                  textDecoration: 'none',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  transition: 'color 0.15s ease',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#8BC34A'; e.currentTarget.style.textDecoration = 'underline'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#1B89B6'; e.currentTarget.style.textDecoration = 'none'; }}
+                className="sf-contact-cta"
               >
                 <Phone size={14} /> {isGeneralPage ? "Contact SUTANA" : isPrintingPage ? "Printing Team" : isPharmacyPage ? "Pharmacy Team" : isRentalPage ? "Rental Team" : isBuyPage ? "Sales Team" : "Procurement Team"}
               </Link>
@@ -613,48 +388,16 @@ export function SmartFooter() {
 
         {/* Column 4: Newsletter */}
         <div className="sf-col">
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '24px', color: '#FFFFFF' }}>Newsletter</h4>
-          <p style={{ fontSize: '0.9rem', marginBottom: '16px', color: '#FFFFFF', lineHeight: 1.5 }}>
-            Subscribe to get the latest updates and news.
-          </p>
-          <form onSubmit={e => e.preventDefault()} style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.4)', paddingBottom: '8px', transition: 'border-color 0.2s' }}>
+          <h4>Newsletter</h4>
+          <p>Subscribe to get the latest updates and news.</p>
+          <form className="sf-newsletter-form" onSubmit={e => e.preventDefault()}>
             <input 
               type="email" 
               placeholder="Your email address" 
               required
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-              onFocus={e => { e.currentTarget.parentElement.style.borderColor = '#8BC34A'; }}
-              onBlur={e => { e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.4)'; }}
+              className="sf-newsletter-input"
             />
-            <button 
-              type="submit"
-              style={{
-                background: 'transparent',
-                color: '#1B89B6',
-                border: 'none',
-                fontWeight: 700, 
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                padding: '0 4px',
-                textDecoration: 'none',
-                transition: 'color 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = '#8BC34A';
-                e.currentTarget.style.textDecoration = 'underline';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = '#1B89B6';
-                e.currentTarget.style.textDecoration = 'none';
-              }}
-            >
+            <button type="submit" className="sf-newsletter-btn">
               Subscribe
             </button>
           </form>
@@ -662,22 +405,14 @@ export function SmartFooter() {
       </div>
 
       {/* Bottom Bar: Copyright & Links */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto', padding: '24px 40px',
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center', gap: '24px',
-          fontSize: '0.85rem'
-        }}>
-          <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-            INJIBARA ETHIOPIA
-          </span>
-          <span style={{ color: '#FFFFFF', textAlign: 'center' }}>
-            &copy; 2026 SUTANA Enterprise Management System. All rights reserved.
-          </span>
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Link to="/privacy" style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Privacy Policy</Link>
-              <Link to="/terms"   style={{ color: '#1B89B6', textDecoration: 'none', transition: 'color 0.15s ease' }} onMouseEnter={handleLinkHover} onMouseLeave={handleLinkLeave}>Terms of Service</Link>
-            </div>
+      <div className="sf-bottom-bar">
+        <div className="sf-bottom-inner">
+          <span style={{ fontWeight: 800 }}>INJIBARA ETHIOPIA</span>
+          <span>&copy; 2026 SUTANA Enterprise Management System. All rights reserved.</span>
+          <div className="sf-bottom-links">
+            <Link to="/privacy" className="sf-bottom-link">Privacy Policy</Link>
+            <Link to="/terms" className="sf-bottom-link">Terms of Service</Link>
+          </div>
         </div>
       </div>
     </footer>
@@ -686,138 +421,25 @@ export function SmartFooter() {
 
 export function CTASection() {
   return (
-    <section className="cta-wrapper" style={{ background: '#FFFFFF', padding: '80px 0', width: '100%' }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .cta-wrapper { padding: 40px 0 !important; }
-          .cta-container { padding: 0 16px !important; }
-          .cta-card {
-            border: none !important;
-            border-radius: 12px !important;
-            padding: 48px 24px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-          }
-        }
-      `}</style>
-      <div className="cta-container" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
-
-        {/* Inner card — White with Earth Brown border, 12px radius */}
-        <div className="cta-card" style={{
-          background: '#F5F5F5',
-          border: '1px solid #8D6E63',
-          borderRadius: 12,
-          padding: '64px 40px',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-
-          {/* Subtle Forest Green top accent bar — not a full banner, just a thin decorative line */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0,
-            height: 4, background: '#228B22', borderRadius: '12px 12px 0 0'
-          }} />
-
-          {/* Small label badge using Sage Green — informational widget */}
-          <div style={{
-            display: 'inline-block',
-            padding: '5px 16px',
-            background: '#A5D6A7',
-            border: '1px solid #8D6E63',
-            borderRadius: 8,
-            fontSize: '0.78rem',
-            fontWeight: 800,
-            color: '#424242',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            marginBottom: 24
-          }}>
-            Ready to transform?
-          </div>
-
-          {/* Main heading — Dark Green, no banner, plain bg */}
-          <h2 style={{
-            fontSize: 'clamp(1.8rem, 4vw, 3rem)',
-            fontWeight: 900,
-            color: '#1B5E20',
-            marginBottom: 16,
-            lineHeight: 1.15,
-            letterSpacing: '-0.02em'
-          }}>
+    <section className="cta-wrapper">
+      <div className="ld-container">
+        <div className="cta-card">
+          <div className="cta-card__accent" />
+          <div className="cta-card__badge">Ready to transform?</div>
+          <h2 className="cta-card__title">
             Stop managing chaos.<br />Start managing growth.
           </h2>
-
-          {/* Body text — Dark Gray on Light Gray bg */}
-          <p style={{
-            fontSize: '1.05rem',
-            lineHeight: 1.75,
-            color: '#424242',
-            maxWidth: 620,
-            margin: '0 auto 40px'
-          }}>
+          <p className="cta-card__body">
             Join forward-thinking Ethiopian businesses using SUTANA EMS to eliminate manual work,
             break data silos, and gain real-time visibility into every corner of your operations.
           </p>
-
-          {/* Buttons row — moderate size, 8px radius, hover lift */}
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-
-            {/* Primary — Emerald Green */}
-            <button
-              onClick={() => window.location.href = '/login'}
-              style={{
-                padding: '12px 28px', borderRadius: 8,
-                border: '1px solid #2E8B57',
-                background: '#2E8B57', color: '#FFFFFF',
-                fontWeight: 700, fontSize: '0.95rem',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#1B5E20';
-                e.currentTarget.style.borderColor = '#1B5E20';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(46,139,87,0.3)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#2E8B57';
-                e.currentTarget.style.borderColor = '#2E8B57';
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
+          <div className="cta-card__actions">
+            <button onClick={() => window.location.href = '/login'} className="btn-primary">
               Sign In Now <ArrowRight size={16} />
             </button>
-
-            {/* Secondary — Olive Green */}
-            <button
-              onClick={() => window.location.href = '/chat'}
-              style={{
-                padding: '12px 28px', borderRadius: 8,
-                border: '1px solid #6B8E23',
-                background: 'transparent', color: '#6B8E23',
-                fontWeight: 700, fontSize: '0.95rem',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#6B8E23';
-                e.currentTarget.style.color = '#FFFFFF';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(107,142,35,0.25)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#6B8E23';
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
+            <button onClick={() => window.location.href = '/chat'} className="btn-outline">
               Talk to Our Team <ChevronRight size={16} />
             </button>
-
           </div>
         </div>
       </div>
