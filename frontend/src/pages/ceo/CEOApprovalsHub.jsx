@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCheck, DollarSign, FileText, ChevronRight, Package, Clock, Truck, Printer, Award, AlertOctagon } from 'lucide-react';
+import { UserCheck, DollarSign, FileText, ChevronRight, Package, Clock, Truck, Printer, Award, AlertOctagon, ShoppingCart } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import ceoService from '../../services/ceoService';
 
@@ -177,6 +177,7 @@ const CEOApprovalsHub = () => {
   const navigate = useNavigate();
   const [storeCount, setStoreCount] = useState(null);
   const [dangerZoneCount, setDangerZoneCount] = useState(0);
+  const [quotationCount, setQuotationCount] = useState(null);
 
   useEffect(() => {
     apiClient.get('/ceo/store-updates/pending')
@@ -191,6 +192,12 @@ const CEOApprovalsHub = () => {
         setDangerZoneCount(reqs.filter(r => r.status === 'PENDING').length);
       })
       .catch(() => setDangerZoneCount(0));
+  }, []);
+
+  useEffect(() => {
+    apiClient.get('/purchase/quotations/pending-ceo')
+      .then(res => setQuotationCount(Array.isArray(res?.data?.data) ? res.data.data.length : 0))
+      .catch(() => setQuotationCount(0));
   }, []);
 
   const approvalLinks = [
@@ -238,6 +245,15 @@ const CEOApprovalsHub = () => {
       color: 'var(--color-warning)',
       path: '/ceo/approvals/tenders?tab=Fund Requests',
       count: null
+    },
+    {
+      title: 'Purchase Quotations',
+      description: 'Review and approve supplier quotations submitted by the Purchase Manager.',
+      icon: <ShoppingCart size={24} />,
+      bg: '#FEF3C7',
+      color: '#92400E',
+      path: '/ceo/quotation-approvals',
+      count: quotationCount
     },
     {
       title: 'Store Approvals',
