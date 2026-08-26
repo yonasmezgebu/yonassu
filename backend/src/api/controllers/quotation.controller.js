@@ -18,10 +18,38 @@ db.schema.hasTable('purchase_quotations').then(exists => {
       table.date('date_agreed');
       table.string('agreed_via');
       table.text('notes');
-      table.string('status').defaultTo('Recorded'); // Recorded, Converted, Cancelled
+      table.string('status').defaultTo('Pending CEO Approval');
       table.integer('recorded_by');
       table.integer('converted_to_delivery_id').nullable();
+      table.decimal('vat_rate', 5, 2).defaultTo(15);
+      table.decimal('vat_amount', 15, 2).defaultTo(0);
+      table.integer('ceo_approved_by').unsigned().nullable();
+      table.timestamp('ceo_approved_at').nullable();
+      table.text('ceo_rejection_reason').nullable();
       table.timestamps(true, true);
+    });
+  } else {
+    // Migrate: add columns if missing
+    return db.schema.hasColumn('purchase_quotations', 'vat_rate').then(hasVatRate => {
+      const cols = [];
+      if (!hasVatRate) cols.push(table => table.decimal('vat_rate', 5, 2).defaultTo(15));
+      return db.schema.hasColumn('purchase_quotations', 'vat_amount').then(hasVatAmount => {
+        if (!hasVatAmount) cols.push(table => table.decimal('vat_amount', 15, 2).defaultTo(0));
+        return db.schema.hasColumn('purchase_quotations', 'ceo_approved_by').then(hasCeoApproved => {
+          if (!hasCeoApproved) cols.push(table => table.integer('ceo_approved_by').unsigned().nullable());
+          return db.schema.hasColumn('purchase_quotations', 'ceo_approved_at').then(hasCeoAt => {
+            if (!hasCeoAt) cols.push(table => table.timestamp('ceo_approved_at').nullable());
+            return db.schema.hasColumn('purchase_quotations', 'ceo_rejection_reason').then(hasCeoReason => {
+              if (!hasCeoReason) cols.push(table => table.text('ceo_rejection_reason').nullable());
+              if (cols.length > 0) {
+                return db.schema.alterTable('purchase_quotations', table => {
+                  cols.forEach(fn => fn(table));
+                });
+              }
+            });
+          });
+        });
+      });
     });
   }
 }).catch(console.error);
@@ -31,14 +59,26 @@ exports.getQuotations = catchAsync(async (req, res) => {
   res.json({ status: 'success', data: quotations });
 });
 
+exports.getPendingQuotations = catchAsync(async (req, res) => {
+  const quotations = await db('purchase_quotations')
+    .where({ status: 'Pending CEO Approval' })
+    .orderBy('id', 'desc');
+  res.json({ status: 'success', data: quotations });
+});
+
 exports.createQuotation = catchAsync(async (req, res) => {
-  const { supplier_id, supplier_name, item_description, unit, quantity, unit_price, date_agreed, agreed_via, notes } = req.body;
+  const { supplier_id, supplier_name, item_description, unit, quantity, unit_price, date_agreed, agreed_via, notes, vat_rate } = req.body;
   
   if (!supplier_name || !item_description || !quantity || !unit_price) {
     throw AppError.badRequest('Missing required fields: supplier_name, item_description, quantity, unit_price');
   }
 
-  const total_amount = parseFloat(quantity) * parseFloat(unit_price);
+  const costPrice = parseFloat(unit_price);
+  const qty = parseFloat(quantity);
+  const subtotal = qty * costPrice;
+  const vatPct = parseFloat(vat_rate ?? 15);
+  const vatAmt = subtotal * (vatPct / 100);
+  const total_amount = subtotal + vatAmt;
   
   // Auto-generate quotation_no
   const lastQ = await db('purchase_quotations').orderBy('id', 'desc').first();
@@ -52,23 +92,55 @@ exports.createQuotation = catchAsync(async (req, res) => {
     item_description,
     unit: unit || '',
     quantity,
-    unit_price,
+    unit_price: costPrice,
     total_amount,
     date_agreed: date_agreed || db.fn.now(),
     agreed_via: agreed_via || 'Phone',
-    notes,
-    status: 'Recorded',
-    recorded_by: req.user.id
+    notes: notes || '',
+    status: 'Pending CEO Approval',
+    recorded_by: req.user.id,
+    vat_rate: vatPct,
+    vat_amount: vatAmt
   });
 
   res.status(201).json({ status: 'success', data: { id, quotation_no } });
+});
+
+exports.approveQuotation = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { action, reason } = req.body; // action: 'approve' or 'reject'
+
+  const quote = await db('purchase_quotations').where({ id }).first();
+  if (!quote) throw AppError.notFound('Quotation not found');
+  if (quote.status !== 'Pending CEO Approval') throw AppError.badRequest(`Quotation is already ${quote.status}`);
+
+  if (action === 'approve') {
+    await db('purchase_quotations').where({ id }).update({
+      status: 'Recorded',
+      ceo_approved_by: req.user.id,
+      ceo_approved_at: db.fn.now(),
+      updated_at: db.fn.now()
+    });
+    res.json({ status: 'success', message: 'Quotation approved by CEO' });
+  } else if (action === 'reject') {
+    await db('purchase_quotations').where({ id }).update({
+      status: 'Cancelled',
+      ceo_approved_by: req.user.id,
+      ceo_approved_at: db.fn.now(),
+      ceo_rejection_reason: reason || 'Rejected by CEO',
+      updated_at: db.fn.now()
+    });
+    res.json({ status: 'success', message: 'Quotation rejected by CEO' });
+  } else {
+    throw AppError.badRequest('Invalid action. Use "approve" or "reject"');
+  }
 });
 
 exports.convertQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
   const quote = await db('purchase_quotations').where({ id }).first();
   if (!quote) throw AppError.notFound('Quotation not found');
-  if (quote.status !== 'Recorded') throw AppError.badRequest(`Quotation is already ${quote.status}`);
+  if (quote.status !== 'Recorded') throw AppError.badRequest(`Quotation must be approved before converting (current status: ${quote.status})`);
 
   // Create a purchase order directly based on this quotation
   const [poId] = await db('purchase_orders').insert({
@@ -105,7 +177,9 @@ exports.cancelQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
   const quote = await db('purchase_quotations').where({ id }).first();
   if (!quote) throw AppError.notFound('Quotation not found');
-  if (quote.status !== 'Recorded') throw AppError.badRequest('Cannot cancel a converted quotation');
+  if (!['Recorded', 'Pending CEO Approval'].includes(quote.status)) {
+    throw AppError.badRequest('Cannot cancel a converted quotation');
+  }
 
   await db('purchase_quotations').where({ id }).update({
     status: 'Cancelled',
