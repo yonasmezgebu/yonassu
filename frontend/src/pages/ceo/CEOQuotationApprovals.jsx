@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, ArrowLeft, Building2, FileText, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ArrowLeft, Building2, AlertTriangle } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 
 const CEOQuotationApprovals = () => {
   const navigate = useNavigate();
   const [quotations, setQuotations] = useState([]);
+  const [itemsMap, setItemsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
@@ -21,7 +22,17 @@ const CEOQuotationApprovals = () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/purchase/quotations/pending-ceo');
-      setQuotations(res?.data?.data || []);
+      const data = res?.data?.data || [];
+      setQuotations(data);
+      // Fetch items for each quotation
+      const itemsResults = {};
+      await Promise.all(data.map(async (q) => {
+        try {
+          const iRes = await apiClient.get(`/purchase/quotations/${q.id}/items`);
+          itemsResults[q.id] = iRes.data?.data || [];
+        } catch { itemsResults[q.id] = []; }
+      }));
+      setItemsMap(itemsResults);
     } catch (err) {
       showToast('Failed to load pending quotations', 'error');
     } finally {
@@ -110,9 +121,12 @@ const CEOQuotationApprovals = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {quotations.map(q => {
+            const items = itemsMap[q.id] || [];
             const vatPct = parseFloat(q.vat_rate || 0);
             const vatAmt = parseFloat(q.vat_amount || 0);
-            const subtotal = parseFloat(q.unit_price) * parseFloat(q.quantity);
+            const viewSubtotal = items.length > 0
+              ? items.reduce((s, i) => s + parseFloat(i.line_total || 0), 0)
+              : parseFloat(q.total_amount || 0) - vatAmt;
             return (
               <div key={q.id} style={{
                 background: '#FFFFFF', borderRadius: 12, border: '1px solid #E5E7EB',
@@ -130,7 +144,7 @@ const CEOQuotationApprovals = () => {
                     <span style={{ fontSize: 13, color: '#92400E', fontWeight: 600 }}>Pending CEO Approval</span>
                   </div>
                   <span style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    Recorded {new Date(q.created_at).toLocaleDateString()}
+                    {new Date(q.created_at).toLocaleDateString()}
                   </span>
                 </div>
 
@@ -145,23 +159,49 @@ const CEOQuotationApprovals = () => {
                     </div>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#9CA3AF', marginBottom: 4 }}>Agreed Via</div>
-                      <div style={{ fontSize: 14, color: '#111827' }}>{q.agreed_via} on {new Date(q.date_agreed).toLocaleDateString()}</div>
+                      <div style={{ fontSize: 14, color: '#111827' }}>{q.agreed_via} on {q.date_agreed ? new Date(q.date_agreed).toLocaleDateString() : '—'}</div>
                     </div>
                   </div>
 
+                  {/* Line Items Table */}
                   <div style={{ background: '#F9FAFB', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#9CA3AF', marginBottom: 8 }}>Item Details</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 8 }}>{q.item_description}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#9CA3AF', marginBottom: 8 }}>Item Details ({items.length || q.item_count || 1} item{(items.length || q.item_count || 1) !== 1 ? 's' : ''})</div>
+                    {items.length > 0 ? (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+                            <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>#</th>
+                            <th style={{ padding: '6px 0', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Item</th>
+                            <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Qty</th>
+                            <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Cost Price</th>
+                            <th style={{ padding: '6px 0', textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map(item => (
+                            <tr key={item.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                              <td style={{ padding: '8px 0', fontWeight: 600, color: '#2563EB' }}>{item.line_no}</td>
+                              <td style={{ padding: '8px 0', fontWeight: 500 }}>{item.item_description}</td>
+                              <td style={{ padding: '8px 0', textAlign: 'right' }}>{item.quantity} {item.unit}</td>
+                              <td style={{ padding: '8px 0', textAlign: 'right' }}>ETB {parseFloat(item.unit_price).toLocaleString()}</td>
+                              <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600 }}>ETB {parseFloat(item.line_total).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div style={{ fontSize: 13, color: '#6B7280' }}>{q.item_description}</div>
+                    )}
+                  </div>
+
+                  {/* Totals */}
+                  <div style={{ marginBottom: 16 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <tbody>
-                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Quantity</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>{q.quantity} {q.unit}</td></tr>
-                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Cost Price</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {parseFloat(q.unit_price).toLocaleString()}</td></tr>
-                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Subtotal</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {subtotal.toLocaleString()}</td></tr>
-                        {q.vat_rate === 'exempt' ? (
-                          <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>VAT</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600, color: '#D97706' }}>Exempt</td></tr>
-                        ) : vatPct > 0 ? (
+                        <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>Subtotal</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {viewSubtotal.toLocaleString()}</td></tr>
+                        {vatPct > 0 && (
                           <tr><td style={{ padding: '4px 0', color: '#6B7280' }}>VAT ({vatPct}%)</td><td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>ETB {vatAmt.toLocaleString()}</td></tr>
-                        ) : null}
+                        )}
                         <tr style={{ borderTop: '2px solid #E5E7EB' }}>
                           <td style={{ padding: '8px 0 0 0', fontWeight: 700, color: '#111827' }}>Total Amount</td>
                           <td style={{ padding: '8px 0 0 0', textAlign: 'right', fontWeight: 700, fontSize: 16, color: '#111827' }}>ETB {parseFloat(q.total_amount).toLocaleString()}</td>
@@ -221,7 +261,7 @@ const CEOQuotationApprovals = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <AlertTriangle size={20} color="#DC2626" />
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Reject Quotation {rejectModal.quotation_no}</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Reject {rejectModal.quotation_no}</h3>
             </div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Rejection Reason</label>
             <textarea
@@ -238,15 +278,11 @@ const CEOQuotationApprovals = () => {
               <button onClick={() => setRejectModal(null)} style={{
                 flex: 1, padding: '10px 16px', background: '#F3F4F6', border: 'none', borderRadius: 8,
                 fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#374151'
-              }}>
-                Cancel
-              </button>
+              }}>Cancel</button>
               <button onClick={handleReject} style={{
                 flex: 1, padding: '10px 16px', background: '#DC2626', color: '#FFFFFF', border: 'none',
                 borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer'
-              }}>
-                Confirm Reject
-              </button>
+              }}>Confirm Reject</button>
             </div>
           </div>
         </div>
