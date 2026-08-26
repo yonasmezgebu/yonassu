@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Calendar, Phone, Edit, Building2 } from 'lucide-react';
+import { Plus, X, Search, CheckCircle, FileText, ShoppingCart, Trash2, Calendar, Phone, Edit, Building2, Clock } from 'lucide-react';
 import api from '../../services/apiClient';
 
 const C = {
@@ -127,6 +127,7 @@ const PQ_STYLES = `
   .pq-badge-recorded  { background: #E0F2FE; color: #0369A1; }
   .pq-badge-converted { background: #DCFCE7; color: #15803D; }
   .pq-badge-cancelled { background: #FEE2E2; color: #B91C1C; }
+  .pq-badge-pending   { background: #FEF3C7; color: #92400E; }
   .pq-badge-default   { background: #F1F5F9; color: #475569; }
 
   /* Modal */
@@ -224,7 +225,8 @@ const PurchaseSupplierQuotations = () => {
     unit_price: '',
     date_agreed: new Date().toISOString().split('T')[0],
     agreed_via: 'Phone',
-    notes: ''
+    notes: '',
+    vat_rate: '15'
   });
 
   const showToast = (msg, type = 'success') => {
@@ -276,7 +278,7 @@ const PurchaseSupplierQuotations = () => {
       setFormData({
         supplier_id: '', supplier_name: '', item_description: '',
         quantity: '', unit: '', unit_price: '', date_agreed: new Date().toISOString().split('T')[0],
-        agreed_via: 'Phone', notes: ''
+        agreed_via: 'Phone', notes: '', vat_rate: '15'
       });
       fetchData();
     } catch (err) {
@@ -307,15 +309,20 @@ const PurchaseSupplierQuotations = () => {
     q.item_description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalAmountCalc = (formData.quantity && formData.unit_price) 
-    ? (parseFloat(formData.quantity) * parseFloat(formData.unit_price)).toLocaleString() 
-    : '0';
+  const totalAmountCalc = (() => {
+    if (!formData.quantity || !formData.unit_price) return '0';
+    const subtotal = parseFloat(formData.quantity) * parseFloat(formData.unit_price);
+    const vatPct = parseFloat(formData.vat_rate || 0);
+    const vatAmt = subtotal * (vatPct / 100);
+    return (subtotal + vatAmt).toLocaleString();
+  })();
 
   const Badge = ({ status }) => {
     const s = {
       Recorded: { bg: '#e0f2fe', color: '#0369a1' },
       Converted: { bg: '#dcfce7', color: '#15803d' },
-      Cancelled: { bg: '#fee2e2', color: '#b91c1c' }
+      Cancelled: { bg: '#fee2e2', color: '#b91c1c' },
+      'Pending CEO Approval': { bg: '#fef3c7', color: '#92400e' }
     }[status] || { bg: '#f1f5f9', color: '#475569' };
     
     return (
@@ -370,7 +377,7 @@ const PurchaseSupplierQuotations = () => {
                 <th>Supplier</th>
                 <th>Item</th>
                 <th>Qty</th>
-                <th className="right">Unit Price</th>
+                <th className="right">Cost Price</th>
                 <th className="right">Total</th>
                 <th>Date Agreed</th>
                 <th>Status</th>
@@ -387,7 +394,7 @@ const PurchaseSupplierQuotations = () => {
               ) : (
                 filteredQuotes.map(q => {
                   const status = q.status || 'Recorded';
-                  const badgeCls = status === 'Converted' ? 'pq-badge-converted' : status === 'Cancelled' ? 'pq-badge-cancelled' : status === 'Recorded' ? 'pq-badge-recorded' : 'pq-badge-default';
+                  const badgeCls = status === 'Converted' ? 'pq-badge-converted' : status === 'Cancelled' ? 'pq-badge-cancelled' : status === 'Recorded' ? 'pq-badge-recorded' : status === 'Pending CEO Approval' ? 'pq-badge-pending' : 'pq-badge-default';
                   return (
                     <tr key={q.id}>
                       <td style={{ fontWeight: 600, color: '#2563EB', fontFamily: 'monospace', fontSize: 13 }}>{q.quotation_no}</td>
@@ -454,7 +461,7 @@ const PurchaseSupplierQuotations = () => {
                       placeholder="e.g. pcs, box, kg" />
                   </div>
                   <div>
-                    <label>Unit Price (ETB)</label>
+                    <label>Cost Price (ETB)</label>
                     <input required type="number" min="0" step="0.01" className="pq-input"
                       value={formData.unit_price}
                       onChange={e => setFormData({...formData, unit_price: e.target.value})} />
@@ -468,6 +475,16 @@ const PurchaseSupplierQuotations = () => {
                     <input required type="date" className="pq-input"
                       value={formData.date_agreed}
                       onChange={e => setFormData({...formData, date_agreed: e.target.value})} />
+                  </div>
+                  <div>
+                    <label>VAT Rate</label>
+                    <select className="pq-input"
+                      value={formData.vat_rate}
+                      onChange={e => setFormData({...formData, vat_rate: e.target.value})}>
+                      <option value="15">15% (Standard)</option>
+                      <option value="0">0% (Zero Rated)</option>
+                      <option value="exempt">Exempt</option>
+                    </select>
                   </div>
                   <div>
                     <label>Agreed Via</label>
@@ -522,7 +539,12 @@ const PurchaseSupplierQuotations = () => {
                   <tbody>
                     <tr><td>Item</td><td>{selectedQuote.item_description}</td></tr>
                     <tr><td>Quantity</td><td>{selectedQuote.quantity} {selectedQuote.unit}</td></tr>
-                    <tr><td>Unit Price</td><td>ETB {parseFloat(selectedQuote.unit_price).toLocaleString()}</td></tr>
+                    <tr><td>Cost Price</td><td>ETB {parseFloat(selectedQuote.unit_price).toLocaleString()}</td></tr>
+                    {selectedQuote.vat_rate === 'exempt' ? (
+                      <tr><td>VAT</td><td style={{ color: '#D97706', fontWeight: 600 }}>Exempt</td></tr>
+                    ) : parseFloat(selectedQuote.vat_rate) > 0 ? (
+                      <tr><td>VAT ({parseFloat(selectedQuote.vat_rate)}%)</td><td>ETB {parseFloat(selectedQuote.vat_amount || 0).toLocaleString()}</td></tr>
+                    ) : null}
                     <tr>
                       <td className="pq-total-label">Total Amount</td>
                       <td className="pq-total-val">ETB {parseFloat(selectedQuote.total_amount).toLocaleString()}</td>
@@ -533,6 +555,16 @@ const PurchaseSupplierQuotations = () => {
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#9CA3AF', marginBottom: 6 }}>Notes</div>
                     <div style={{ fontSize: 14, color: '#111827', fontStyle: 'italic', background: '#FEF3C7', padding: '10px 14px', borderRadius: 8, border: '1px solid #FDE68A' }}>{selectedQuote.notes}</div>
+                  </div>
+                )}
+                {selectedQuote.status === 'Pending CEO Approval' && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ textAlign: 'center', padding: 14, background: '#FEF3C7', color: '#92400E', fontWeight: 600, borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}>
+                      <Clock size={16} /> Waiting for CEO approval before conversion.
+                    </div>
+                    <button className="pq-btn pq-btn-danger" style={{ height: 44, width: '100%' }} onClick={() => handleAction('cancel', selectedQuote.id)}>
+                      <Trash2 size={16} /> Cancel Quotation
+                    </button>
                   </div>
                 )}
                 {selectedQuote.status === 'Recorded' && (
