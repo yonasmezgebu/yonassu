@@ -362,9 +362,9 @@ const FarmingServicePage = () => {
             </div>
           ) : searchResults.length === 0 ? (
             <div className={styles.noResults}>
-              <Sprout size={56} />
-              <h3>No products found</h3>
-              <p>Try adjusting your search or selecting a different category.</p>
+              <Tractor size={56} />
+              <h3>No machinery found</h3>
+              <p>We couldn't find any equipment matching your search. Please try adjusting your search criteria.</p>
             </div>
           ) : (
             <div className={styles.productsGrid}>
@@ -455,33 +455,20 @@ const FarmingServicePage = () => {
             ══════════════════════════════════════════════ */}
 
         {/* ── How to Hire ── */}
-        <section style={{ background: '#F5F5F5', padding: '72px 24px', borderTop: '1px solid #228B22' }}>
-          <style>{`
-            .fsp-how-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 20px; }
-            .fsp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 20px; text-align: center; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: default; }
-            .fsp-how-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-            .fsp-how-icon { width: 52px; height: 52px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-            .fsp-how-title { font-size: 15px; font-weight: 700; color: #424242; margin-bottom: 6px; }
-            .fsp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.6; }
-            @media (max-width: 600px) {
-              .fsp-how-card { border: none; box-shadow: none; padding: 16px 8px; border-radius: 0; }
-              .fsp-how-card:hover { transform: none; box-shadow: none; }
-              .fsp-how-icon { border-radius: 0; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }}>
-              <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', margin: '0 0 10px' }}>How to Hire a Machine</h2>
-              <p style={{ fontSize: 15, color: '#424242', maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>Four easy steps to get your field work done. Fast, reliable, and professional.</p>
+        <section className="fsp-section fsp-bg-muted">
+          <div className="fsp-container">
+            <div className="fsp-section-header">
+              <h2 className="fsp-section-title">How to Hire a Machine</h2>
+              <p className="fsp-section-subtitle">Four easy steps to get your field work done. Fast, reliable, and professional.</p>
             </div>
-            <div className="fsp-how-grid">
+            <div className="fsp-grid-4">
               {HOW_TO_HIRE.map((step) => (
-                <div key={step.n} className="fsp-how-card">
-                  <div className="fsp-how-icon">
-                    <step.icon size={24} color="#FFFFFF" />
+                <div key={step.n} className="fsp-card fsp-text-center">
+                  <div className="fsp-icon-box">
+                    <step.icon size={24} color="currentColor" />
                   </div>
-                  <h3 className="fsp-how-title">{step.title}</h3>
-                  <p className="fsp-how-desc">{step.desc}</p>
+                  <h3 className="fsp-card-title">{step.title}</h3>
+                  <p className="fsp-card-desc">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -489,89 +476,66 @@ const FarmingServicePage = () => {
         </section>
 
         {/* ── Requirements & Pricing ── */}
-        <section style={{ background: '#FFFFFF', padding: '72px 24px' }}>
-          <style>{`
-            .fsp-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
-            .fsp-info-card { background: #FFFFFF; border-radius: 12px; padding: 36px 32px; border: 1px solid #8D6E63; transition: box-shadow 0.15s ease, transform 0.15s ease; }
-            .fsp-info-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
-            .fsp-info-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-            .fsp-info-title { font-size: 20px; font-weight: 800; color: #1B5E20; margin: 0 0 6px; }
-            .fsp-info-sub { font-size: 14px; color: #424242; margin: 0 0 22px; }
-            .fsp-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
-            .fsp-row-label { font-size: 13px; font-weight: 700; color: #1B5E20; flex-shrink: 0; }
-            .fsp-row-val { font-size: 13px; color: #424242; text-align: right; }
-            @media (max-width: 600px) {
-              .fsp-info-card { border: none; box-shadow: none; padding: 20px 0; border-radius: 0; }
-              .fsp-info-card:hover { transform: none; box-shadow: none; }
-              .fsp-info-grid { gap: 16px; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div className="fsp-info-grid">
+        <section className="fsp-section">
+          <div className="fsp-container">
+            <div className="fsp-grid-2">
               {/* Service Coverage */}
-              <div className="fsp-info-card">
-                <div className="fsp-info-icon"><MapPin size={24} color="#FFFFFF" /></div>
-                <h3 className="fsp-info-title">Coverage &amp; Details</h3>
-                <p className="fsp-info-sub">Important information about our service areas.</p>
-                {[
-                  { label: 'Coverage Area', value: 'Addis Ababa & surrounding farming zones' },
-                  { label: 'Booking Method', value: 'Phone booking only. No online self-booking.' },
-                  { label: 'Included Staff', value: 'Professional driver/operator always included' },
-                ].map(r => (
-                  <div key={r.label} className="fsp-row">
-                    <span className="fsp-row-label">{r.label}</span>
-                    <span className="fsp-row-val">{r.value}</span>
-                  </div>
-                ))}
+              <div className="fsp-card">
+                <div className="fsp-icon-box"><MapPin size={24} color="currentColor" /></div>
+                <h3 className="fsp-card-title">Coverage &amp; Details</h3>
+                <p className="fsp-card-desc">Important information about our service areas.</p>
+                <div className="fsp-list">
+                  {[
+                    { label: 'Coverage Area', value: 'Addis Ababa & surrounding farming zones' },
+                    { label: 'Booking Method', value: 'Phone booking only. No online self-booking.' },
+                    { label: 'Included Staff', value: 'Professional driver/operator always included' },
+                  ].map(r => (
+                    <div key={r.label} className="fsp-list-item">
+                      <span className="fsp-list-label">{r.label}</span>
+                      <span className="fsp-list-value">{r.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Pricing */}
-              <div className="fsp-info-card">
-                <div className="fsp-info-icon"><Wallet size={24} color="#FFFFFF" /></div>
-                <h3 className="fsp-info-title">Pricing Structure</h3>
-                <p className="fsp-info-sub">Flexible rates based on your specific farm needs.</p>
-                {[
-                  { label: 'Per Hour Rate', value: 'Available for short-term minor field work' },
-                  { label: 'Daily Rate', value: 'Standard flat rate for full-day tractor usage' },
-                  { label: 'Per Hectare', value: 'Priced by land size for plowing/harvesting' },
-                  { label: 'Fuel Costs', value: 'Fuel is billed separately or supplied by client' },
-                ].map(r => (
-                  <div key={r.label} className="fsp-row">
-                    <span className="fsp-row-label">{r.label}</span>
-                    <span className="fsp-row-val">{r.value}</span>
-                  </div>
-                ))}
+              <div className="fsp-card">
+                <div className="fsp-icon-box"><Wallet size={24} color="currentColor" /></div>
+                <h3 className="fsp-card-title">Pricing Structure</h3>
+                <p className="fsp-card-desc">Flexible rates based on your specific farm needs.</p>
+                <div className="fsp-list">
+                  {[
+                    { label: 'Per Hour Rate', value: 'Available for short-term minor field work' },
+                    { label: 'Daily Rate', value: 'Standard flat rate for full-day tractor usage' },
+                    { label: 'Per Hectare', value: 'Priced by land size for plowing/harvesting' },
+                    { label: 'Fuel Costs', value: 'Fuel is billed separately or supplied by client' },
+                  ].map(r => (
+                    <div key={r.label} className="fsp-list-item">
+                      <span className="fsp-list-label">{r.label}</span>
+                      <span className="fsp-list-value">{r.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ── FAQs ── */}
-        <section style={{ background: '#F5F5F5', padding: '72px 24px' }}>
-          <style>{`
-            .fsp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; border: none; }
-            .fsp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-            .fsp-faq-btn { width: 100%; background: none; border: none; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
-            .fsp-faq-btn:hover { color: #1B5E20; }
-            .fsp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 24px 20px; }
-            @media (max-width: 600px) {
-              .fsp-faq-item { border-radius: 0; box-shadow: none; border-bottom: 1px solid #E0E0E0; margin-bottom: 0; }
-              .fsp-faq-item:hover { box-shadow: none; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 760, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 40 }}>Common Questions</h2>
-            <div>
+        <section className="fsp-section fsp-bg-muted">
+          <div className="fsp-container fsp-container-sm">
+            <h2 className="fsp-section-title fsp-text-center" style={{ marginBottom: '2.5rem' }}>Common Questions</h2>
+            <div className="fsp-accordion">
               {AGRIRENT_FAQS.map((f, i) => (
-                <div key={i} className="fsp-faq-item">
-                  <button className="fsp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                <div key={i} className="fsp-accordion-item">
+                  <button className="fsp-accordion-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                     <span>{f.q}</span>
                     {openFaq === i
-                      ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} />
-                      : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
+                      ? <ChevronUp size={20} color="currentColor" />
+                      : <ChevronDown size={20} color="currentColor" />}
                   </button>
                   {openFaq === i && (
-                    <div className="fsp-faq-ans">{f.a}</div>
+                    <div className="fsp-accordion-content">{f.a}</div>
                   )}
                 </div>
               ))}
@@ -582,31 +546,33 @@ const FarmingServicePage = () => {
         {/* ── STATIC SECTIONS END ── */}
       </section>
 
-      {/* ── AgriRent Order Modal — Printing-style ────────────────── */}
-      {orderModal.open && (
-        <div className="psp-overlay" onClick={closeOrderModal}>
-          <div className="psp-modal" onClick={e => e.stopPropagation()}>
+      {/* ── AgriRent Order Modal — Master Design Style ────────────────── */}
 
-            {/* Header — identical to printing modal */}
-            <div className="psp-modal-header">
+      {/* ── AgriRent Order Modal — Master Design Style ────────────────── */}
+      {orderModal.open && (
+        <div className="fsp-overlay" onClick={closeOrderModal}>
+          <div className="fsp-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="fsp-modal-header">
               <div>
-                <h3 className="psp-modal-title"><Tractor size={22} /> Hire Agricultural Machine</h3>
-                <p className="psp-modal-subtitle">{orderModal.tractor?.name} — ETB {dailyRate.toLocaleString()}/day — Fill in all details below</p>
+                <h3 className="fsp-modal-title"><Tractor size={22} /> Hire Agricultural Machine</h3>
+                <p className="fsp-modal-subtitle">{orderModal.tractor?.name} — ETB {dailyRate.toLocaleString()}/day — Fill in all details below</p>
               </div>
-              <button className="psp-close-btn" onClick={closeOrderModal}><X size={22} /></button>
+              <button className="fsp-close-btn" onClick={closeOrderModal}><X size={22} /></button>
             </div>
 
             {/* SUCCESS */}
             {orderSuccess ? (
-              <div className="psp-success-body">
-                <span className="psp-success-emoji">✅</span>
-                <h3 className="psp-success-title">Order Placed Successfully!</h3>
-                <p className="psp-success-sub">
+              <div className="fsp-success">
+                <span className="fsp-success-icon">✅</span>
+                <h3 className="fsp-success-title">Order Placed Successfully!</h3>
+                <p className="fsp-success-sub">
                   Order <strong>{orderSuccess.orderNumber}</strong> has been received.<br />
                   Our team will contact you shortly to confirm the booking.
                 </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-                  <button className="psp-print-btn" onClick={() => {
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button className="fsp-btn-primary" onClick={() => {
                     const win = window.open('', '_blank', 'width=760,height=800');
                     const u = currentUser || {};
                     const userName = u.fullName || u.full_name || u.name || 'Customer';
@@ -638,101 +604,100 @@ ${orderForm.fieldLocation?`<div class="cell"><div class="lbl">Field Location</di
 <div class="cell"><div class="lbl">Method</div><div class="val">${orderForm.paymentMethod}</div></div>
 <div class="cell"><div class="lbl">Reference</div><div class="val">${orderForm.paymentReference||'Screenshot Uploaded'}</div></div>
 </div>
-${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;font-family:monospace;letter-spacing:3px;font-size:22px;color:#1a2b4b;background:#f1f5f9;padding:10px">${orderSuccess.orderNumber}</p>`:''}
+${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;font-size:22px;color:#1a2b4b;background:#f1f5f9;padding:10px;text-align:center">${orderSuccess.orderNumber}</p>`:''}
 </div>
-<div class="ftr"><div class="ftr-l">SUTANA AgriRent &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>📞 +251 911 000 000 &nbsp;|&nbsp; ✉️ agrirent@sutana.com</div><div class="ftr-r">Printed: ${new Date().toLocaleString()}</div></div>
+<div class="ftr"><div class="ftr-l">SUTANA AgriRent &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>+251 911 000 000 &nbsp;|&nbsp; agrirent@sutana.com</div><div class="ftr-r">Printed: ${new Date().toLocaleString()}</div></div>
 </div><script>window.onload=function(){window.print()}<\/script></body></html>`);
                     win.document.close();
                   }}>
                     <Tractor size={18} /> Print Receipt
                   </button>
-                  <button style={{ padding: '12px 24px', background: '#f1f5f9', border: '2px solid #e2e8f0', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#334155' }}
-                    onClick={() => { closeOrderModal(); navigate('/customer'); }}>
+                  <button className="fsp-btn-outline" onClick={() => { closeOrderModal(); navigate('/customer'); }}>
                     My Orders
                   </button>
                 </div>
-                <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 20 }}>Track your order from <strong>Customer Portal → AgriRent Orders</strong></p>
+                <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', marginTop: '1.25rem' }}>Track your order from <strong>Customer Portal → AgriRent Orders</strong></p>
               </div>
 
             ) : (
               <form onSubmit={handleOrderSubmit}>
-                <div className="psp-modal-body">
+                <div className="fsp-modal-body">
 
                   {orderError && (
-                    <div className="psp-error-box"><X size={15} /> {orderError}</div>
+                    <div className="fsp-error"><X size={15} /> {orderError}</div>
                   )}
 
-                  {/* Customer Info — pre-filled read-only (same as printing page) */}
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px' }}>
-                    <div className="psp-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
+                  {/* Customer Info — pre-filled read-only */}
+                  <div style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', padding: '1rem', borderRadius: 'var(--radius)' }}>
+                    <div className="fsp-section-div" style={{ marginBottom: '1rem' }}>
                       <Wallet size={14} /> Customer Information
                     </div>
-                    <div className="psp-form-row">
-                      <div className="psp-form-group">
-                        <label className="psp-form-label">Full Name</label>
-                        <input className="psp-form-input" value={currentUser?.fullName || currentUser?.full_name || currentUser?.name || ''} disabled />
+                    <div className="fsp-form-row">
+                      <div className="fsp-form-group">
+                        <label className="fsp-form-label">Full Name</label>
+                        <input className="fsp-input" value={currentUser?.fullName || currentUser?.full_name || currentUser?.name || ''} disabled />
                       </div>
-                      <div className="psp-form-group">
-                        <label className="psp-form-label">Email</label>
-                        <input className="psp-form-input" value={currentUser?.email || ''} disabled />
+                      <div className="fsp-form-group">
+                        <label className="fsp-form-label">Email</label>
+                        <input className="fsp-input" value={currentUser?.email || ''} disabled />
                       </div>
                     </div>
-                    <div className="psp-form-group" style={{ marginTop: 12 }}>
-                      <label className="psp-form-label">Phone Number</label>
-                      <input className="psp-form-input" value={currentUser?.phone || ''} disabled />
+                    <div className="fsp-form-group" style={{ marginTop: '1rem' }}>
+                      <label className="fsp-form-label">Phone Number</label>
+                      <input className="fsp-input" value={currentUser?.phone || ''} disabled />
                     </div>
                   </div>
 
                   {/* Machine summary */}
-                  <div style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <Tractor size={28} color="#059669" />
+                  <div style={{ background: 'hsl(var(--primary) / 0.08)', border: '1px solid hsl(var(--primary) / 0.2)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: 'var(--radius)' }}>
+                    <Tractor size={28} color="hsl(var(--primary))" />
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>{orderModal.tractor?.name}</div>
-                      <div style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>ETB {dailyRate.toLocaleString()}/day • {orderModal.tractor?.tractor_type || orderModal.tractor?.tractorType}</div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', color: 'hsl(var(--foreground))' }}>{orderModal.tractor?.name}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'hsl(var(--primary))', fontWeight: 600 }}>ETB {dailyRate.toLocaleString()}/day • {orderModal.tractor?.tractor_type || orderModal.tractor?.tractorType}</div>
                     </div>
                   </div>
 
                   {/* Rental Period */}
-                  <div className="psp-section-divider"><Calendar size={14} /> Rental Period</div>
-                  <div className="psp-form-row">
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">Start Date *</label>
-                      <input type="date" required className="psp-form-input" value={orderForm.startDate}
+                  <div className="fsp-section-div"><Calendar size={14} /> Rental Period</div>
+                  <div className="fsp-form-row">
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Start Date *</label>
+                      <input type="date" required className="fsp-input" value={orderForm.startDate}
                         min={new Date().toISOString().split('T')[0]}
                         onChange={e => setOrderForm(p => ({ ...p, startDate: e.target.value }))} />
                     </div>
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">End Date *</label>
-                      <input type="date" required className="psp-form-input" value={orderForm.endDate}
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">End Date *</label>
+                      <input type="date" required className="fsp-input" value={orderForm.endDate}
                         min={orderForm.startDate || new Date().toISOString().split('T')[0]}
                         onChange={e => setOrderForm(p => ({ ...p, endDate: e.target.value }))} />
                     </div>
                   </div>
                   {totalDays > 0 && (
-                    <div className="psp-price-summary">
-                      <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalSubtotal.toLocaleString()}</span></div>
-                      <div className="psp-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
-                      <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {totalAmount.toLocaleString()}</span></div>
+                    <div className="fsp-price-box">
+                      <div className="fsp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalSubtotal.toLocaleString()}</span></div>
+                      <div className="fsp-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
+                      <div className="fsp-price-total"><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {totalAmount.toLocaleString()}</span></div>
                     </div>
                   )}
 
                   {/* Field Info */}
-                  <div className="psp-section-divider"><MapPin size={14} /> Field Information</div>
-                  <div className="psp-form-row">
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">Field Location</label>
-                      <input type="text" className="psp-form-input" placeholder="e.g. Bishoftu, East Shewa"
+                  <div className="fsp-section-div"><MapPin size={14} /> Field Information</div>
+                  <div className="fsp-form-row">
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Field Location</label>
+                      <input type="text" className="fsp-input" placeholder="e.g. Bishoftu, East Shewa"
                         value={orderForm.fieldLocation} onChange={e => setOrderForm(p => ({ ...p, fieldLocation: e.target.value }))} />
                     </div>
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">Field Size (Hectares)</label>
-                      <input type="number" min="0" step="0.1" className="psp-form-input" placeholder="e.g. 2.5"
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Field Size (Hectares)</label>
+                      <input type="number" min="0" step="0.1" className="fsp-input" placeholder="e.g. 2.5"
                         value={orderForm.fieldSizeHectares} onChange={e => setOrderForm(p => ({ ...p, fieldSizeHectares: e.target.value }))} />
                     </div>
                   </div>
-                  <div className="psp-form-group">
-                    <label className="psp-form-label">Farming Purpose</label>
-                    <select className="psp-form-input" value={orderForm.farmingPurpose} onChange={e => setOrderForm(p => ({ ...p, farmingPurpose: e.target.value }))}>
+                  <div className="fsp-form-group">
+                    <label className="fsp-form-label">Farming Purpose</label>
+                    <select className="fsp-input" value={orderForm.farmingPurpose} onChange={e => setOrderForm(p => ({ ...p, farmingPurpose: e.target.value }))}>
                       <option value="">Select purpose…</option>
                       <option>Plowing</option><option>Planting / Seeding</option><option>Harvesting</option>
                       <option>Land Preparation</option><option>Irrigation</option><option>Other</option>
@@ -740,16 +705,16 @@ ${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94
                   </div>
 
                   {/* Payment */}
-                  <div className="psp-section-divider"><CreditCard size={14} /> Payment Proof</div>
-                  <div className="psp-form-row">
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">Payment Method *</label>
+                  <div className="fsp-section-div"><CreditCard size={14} /> Payment Proof</div>
+                  <div className="fsp-form-row">
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Payment Method *</label>
                       {financeAccounts.length === 0 ? (
-                        <div style={{ padding: '10px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '13px', color: '#92400e' }}>
+                        <div style={{ padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 'var(--radius)', fontSize: '0.875rem', color: '#92400e' }}>
                           ⏳ Loading payment accounts…
                         </div>
                       ) : (
-                        <select required className="psp-form-input"
+                        <select required className="fsp-input"
                           value={orderForm.paymentMethod}
                           onChange={e => {
                             const selectedId = e.target.value;
@@ -757,7 +722,6 @@ ${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94
                             setOrderForm(p => ({
                               ...p,
                               paymentMethod: selectedId,
-                              // Store account name for the order submission
                               paymentAccountName: acc ? acc.account_name : ''
                             }));
                           }}
@@ -779,9 +743,9 @@ ${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94
                         </select>
                       )}
                     </div>
-                    <div className="psp-form-group">
-                      <label className="psp-form-label">Transaction Reference</label>
-                      <input type="text" className="psp-form-input" placeholder="e.g. TXN-123456"
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Transaction Reference</label>
+                      <input type="text" className="fsp-input" placeholder="e.g. TXN-123456"
                         value={orderForm.paymentReference} onChange={e => setOrderForm(p => ({ ...p, paymentReference: e.target.value }))} />
                     </div>
                   </div>
@@ -791,166 +755,144 @@ ${orderSuccess.orderNumber?`<p style="text-align:center;font-size:11px;color:#94
                     const acc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
                     if (!acc) return null;
                     return (
-                      <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '6px', border: '1.5px solid #4ade80', fontSize: '13px', color: '#166534', display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '4px' }}>
-                        <Wallet size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div style={{ background: 'hsl(var(--primary) / 0.07)', padding: '0.75rem 1rem', borderRadius: 'var(--radius)', border: '1px solid hsl(var(--primary) / 0.2)', fontSize: '0.875rem', color: 'hsl(var(--foreground))', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                        <Wallet size={18} color="hsl(var(--primary))" style={{ flexShrink: 0, marginTop: 1 }} />
                         <div>
-                          <div style={{ fontWeight: 700, marginBottom: '4px' }}>📋 Transfer Payment To:</div>
+                          <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'hsl(var(--primary))' }}>Transfer Payment To:</div>
                           <div><strong>Account Name:</strong> {acc.account_name}</div>
                           {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
                           {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
                           {acc.branch && <div><strong>Branch:</strong> {acc.branch}</div>}
-                          <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d' }}>After payment, enter the transaction reference number above.</div>
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>After payment, enter the transaction reference number above.</div>
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Screenshot upload — same as printing file upload */}
-                  <div className="psp-form-group">
-                    <label className="psp-form-label"><Upload size={14} /> Payment Screenshot <span>(optional if reference given)</span></label>
-                    <div className={`psp-file-upload${orderFile ? ' has-file' : ''}`} onClick={() => fileRef.current?.click()}>
+                  {/* Screenshot upload */}
+                  <div className="fsp-form-group">
+                    <label className="fsp-form-label"><Upload size={14} /> Payment Screenshot <span>(optional if reference given)</span></label>
+                    <div className={`fsp-upload${orderFile ? ' has-file' : ''}`} onClick={() => fileRef.current?.click()}>
                       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setOrderFile(e.target.files[0] || null)} />
-                      <Upload size={24} color={orderFile ? '#0D7C66' : '#94a3b8'} />
-                      <p style={{ margin: '8px 0 4px', fontWeight: 700, color: orderFile ? '#0D7C66' : '#475569', fontSize: 14 }}>
+                      <Upload size={24} color={orderFile ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} />
+                      <p style={{ margin: '0.5rem 0 0.25rem', fontWeight: 700, color: orderFile ? 'hsl(var(--primary))' : 'hsl(var(--foreground))', fontSize: '0.875rem' }}>
                         {orderFile ? `✅ ${orderFile.name}` : 'Click to upload payment screenshot'}
                       </p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>PNG, JPG, JPEG accepted</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>PNG, JPG, JPEG accepted</p>
                     </div>
                   </div>
 
                   {/* Special Instructions */}
-                  <div className="psp-form-group">
-                    <label className="psp-form-label">Special Instructions <span>(Optional)</span></label>
-                    <textarea className="psp-form-input" rows={2} placeholder="Any specific requirements…"
+                  <div className="fsp-form-group">
+                    <label className="fsp-form-label">Special Instructions <span>(Optional)</span></label>
+                    <textarea className="fsp-input" rows={2} placeholder="Any specific requirements…"
                       value={orderForm.specialInstructions} onChange={e => setOrderForm(p => ({ ...p, specialInstructions: e.target.value }))}
-                      style={{ resize: 'vertical' }} />
+                      style={{ resize: 'vertical', minHeight: '5rem' }} />
                   </div>
 
                 </div>
 
                 {/* Footer */}
-                <div className="psp-modal-footer">
-                  <button type="button" className="psp-cancel-btn" onClick={closeOrderModal} disabled={orderSubmitting}>Cancel</button>
-                  <button type="submit" className="psp-submit-btn" disabled={orderSubmitting || totalDays <= 0}>
-                    {orderSubmitting ? <><span className="psp-spinner" /> Submitting…</> : <><Tractor size={18} /> Submit Order</>}
+                <div className="fsp-modal-footer">
+                  <button type="button" className="fsp-btn-outline" onClick={closeOrderModal} disabled={orderSubmitting}>Cancel</button>
+                  <button type="submit" className="fsp-btn-primary" disabled={orderSubmitting || totalDays <= 0}>
+                    {orderSubmitting ? <>⏳ Submitting…</> : <><Tractor size={18} /> Submit Order</>}
                   </button>
                 </div>
               </form>
             )}
           </div>
         </div>
+
       )}
 
       {viewImage && <PrescriptionViewer imageUrl={viewImage.url} onClose={handleCloseViewer} />}
 
       <style>{`
-        /* ── MODAL / OVERLAY ─────────────────────────────── */
-        .psp-overlay {
-          position:fixed;top:0;left:0;right:0;bottom:0;
-          background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);
-          display:flex;align-items:flex-start;justify-content:center;
-          z-index:9999;padding:40px 20px;overflow-y:auto;
-        }
-        .psp-modal {
-          background:white;border-radius:0;width:100%;max-width:620px;
-          margin:auto;box-shadow:0 25px 60px rgba(0,0,0,0.3);
-          animation:psp-pop 0.3s ease;
-        }
-        @keyframes psp-pop {
-          from { opacity: 0; transform: translateY(20px) scale(0.98); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .psp-modal-header {
-          padding:24px 28px;border-bottom:1px solid #e2e8f0;
-          display:flex;align-items:center;justify-content:space-between;
-          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-        }
-        .psp-modal-title { margin:0;font-size:1.1rem;font-weight:800;color:#FFD700;display:flex;align-items:center;gap:10px; }
-        .psp-modal-subtitle { font-size:0.8rem;color:rgba(255,255,255,0.7);margin:4px 0 0; }
-        .psp-close-btn {
-          background:rgba(255,255,255,0.15);border:none;color:white;
-          cursor:pointer;display:flex;align-items:center;
-          padding:8px;border-radius:8px;transition:all 0.2s;
-        }
-        .psp-close-btn:hover { background:rgba(255,255,255,0.3); }
-        .psp-modal-body { padding:28px;display:flex;flex-direction:column;gap:18px; }
-        .psp-form-group { display:flex;flex-direction:column;gap:8px; }
-        .psp-form-label {
-          font-weight:700;font-size:0.85rem;color:#1e293b;
-          display:flex;align-items:center;gap:6px;
-        }
-        .psp-form-label span { font-weight:400;color:#94a3b8; }
-        .psp-form-input {
-          padding:12px 16px;border:2px solid #e2e8f0;width:100%;box-sizing:border-box;
-          border-radius:0;font-size:0.95rem;background:white;
-          color:#0f172a;transition:all 0.2s;font-family:inherit;outline:none;
-        }
-        .psp-form-input:focus { border-color:#0D7C66;box-shadow:0 0 0 3px rgba(13,124,102,0.1); }
-        .psp-form-input:disabled { background:#f8fafc;color:#64748b;cursor:not-allowed; }
-        .psp-form-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
-        @media(max-width:500px){ .psp-form-row { grid-template-columns:1fr; } }
+        /* ── FSP Standard Component Classes (Master Design System) ── */
+        .fsp-section { padding: 4rem 1.5rem; }
+        .fsp-bg-muted { background-color: hsl(var(--muted)); }
+        .fsp-container { width: 100%; max-width: 1280px; margin: 0 auto; }
+        .fsp-container-sm { max-width: 768px; }
+        .fsp-text-center { text-align: center; }
         
-        .psp-section-divider {
-          font-size:0.75rem;font-weight:800;color:#1a2b4b;letter-spacing:1.5px;
-          text-transform:uppercase;padding:8px 0 4px;border-top:2px solid #e2e8f0;
-          margin-top:4px;display:flex;align-items:center;gap:8px;
-        }
-        .psp-section-divider::after { content:'';flex:1;height:1px;background:#e2e8f0; }
+        .fsp-section-header { text-align: center; margin-bottom: 3rem; }
+        .fsp-section-title { font-size: clamp(1.875rem, 4vw, 2.25rem); font-weight: 800; color: hsl(var(--primary)); line-height: 1.1; margin-bottom: 1rem; letter-spacing: -0.02em; }
+        .fsp-section-subtitle { font-size: 1.125rem; color: hsl(var(--muted-foreground)); max-width: 600px; margin: 0 auto; }
         
-        .psp-file-upload {
-          border:2px dashed #cbd5e1;border-radius:0;padding:24px;
-          text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;
-        }
-        .psp-file-upload:hover { border-color:#0D7C66;background:#f0fdf4; }
-        .psp-file-upload.has-file { border-color:#0D7C66;background:#f0fdf4;border-style:solid; }
+        .fsp-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+        .fsp-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
         
-        .psp-price-summary {
-          background:linear-gradient(135deg,#f0fdf4,#dcfce7);
-          border:2px solid #86efac;border-radius:0;padding:20px;
-        }
-        .psp-price-row { display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;color:#166534;padding:4px 0; }
-        .psp-price-total { font-size:1.3rem;font-weight:900;color:#15803d;border-top:2px solid #86efac;padding-top:12px;margin-top:8px; }
+        .fsp-card { background-color: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 2rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .fsp-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
         
-        .psp-modal-footer {
-          padding:20px 28px;border-top:1px solid #e2e8f0;
-          display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;
-        }
-        .psp-cancel-btn {
-          padding:12px 24px;background:white;border:2px solid #e2e8f0;
-          border-radius:0;color:#475569;font-weight:700;
-          cursor:pointer;transition:all 0.2s;font-family:inherit;
-        }
-        .psp-cancel-btn:hover { background:#f1f5f9; }
-        .psp-submit-btn {
-          padding:12px 28px;
-          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-          border:none;border-radius:0;color:white;
-          font-weight:800;cursor:pointer;display:flex;
-          align-items:center;gap:8px;transition:all 0.2s;
-          font-family:inherit;font-size:1rem;
-        }
-        .psp-submit-btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
-        .psp-submit-btn:disabled { opacity:0.6;cursor:not-allowed; }
-        .psp-spinner {
-          display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);
-          border-radius:50%;border-top-color:white;animation:spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform:rotate(360deg); } }
+        .fsp-icon-box { width: 3rem; height: 3rem; background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-radius: 0.5rem; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; }
+        .fsp-card-title { font-size: 1.25rem; font-weight: 700; color: hsl(var(--foreground)); margin-bottom: 0.75rem; }
+        .fsp-card-desc { font-size: 0.875rem; color: hsl(var(--muted-foreground)); line-height: 1.625; }
         
-        .psp-error-box {
-          background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;
-          padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px;border-radius:0;
+        .fsp-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem; }
+        .fsp-list-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 0.75rem 1rem; background-color: hsl(var(--muted)); border-radius: 0.5rem; gap: 1rem; }
+        .fsp-list-label { font-size: 0.875rem; font-weight: 700; color: hsl(var(--primary)); flex-shrink: 0; }
+        .fsp-list-value { font-size: 0.875rem; color: hsl(var(--foreground)); text-align: right; }
+        
+        .fsp-accordion { display: flex; flex-direction: column; gap: 1rem; }
+        .fsp-accordion-item { background-color: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); overflow: hidden; transition: box-shadow 0.2s ease; }
+        .fsp-accordion-item:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .fsp-accordion-btn { width: 100%; background: none; border: none; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; font-weight: 700; color: hsl(var(--foreground)); cursor: pointer; text-align: left; transition: color 0.2s ease; }
+        .fsp-accordion-btn:hover { color: hsl(var(--primary)); }
+        .fsp-accordion-content { padding: 0 1.5rem 1.25rem; font-size: 0.875rem; color: hsl(var(--muted-foreground)); line-height: 1.625; }
+        
+        /* ── Order Modal ─────────────────────────────── */
+        .fsp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; z-index: 9999; padding: 90px 1rem 2rem; overflow-y: auto; }
+        .fsp-modal { background: hsl(var(--background)); border-radius: var(--radius); width: 100%; max-width: 640px; margin: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: fsp-pop 0.3s cubic-bezier(0.16,1,0.3,1); display: flex; flex-direction: column; }
+        @keyframes fsp-pop { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        
+        .fsp-modal-header { padding: 1.5rem 2rem; border-bottom: 1px solid hsl(var(--border)); display: flex; justify-content: space-between; align-items: center; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+        .fsp-modal-title { font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+        .fsp-modal-subtitle { font-size: 0.875rem; color: hsl(var(--primary-foreground) / 0.8); margin: 0.25rem 0 0; }
+        .fsp-close-btn { background: rgba(255,255,255,0.15); border: none; color: inherit; cursor: pointer; padding: 0.5rem; border-radius: 0.5rem; transition: background 0.2s; display: flex; }
+        .fsp-close-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .fsp-modal-body { padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        .fsp-modal-footer { padding: 1.5rem 2rem; border-top: 1px solid hsl(var(--border)); display: flex; justify-content: flex-end; gap: 1rem; background: hsl(var(--muted)); border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+        
+        .fsp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .fsp-form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .fsp-form-label { font-size: 0.875rem; font-weight: 700; color: hsl(var(--foreground)); display: flex; align-items: center; gap: 0.5rem; }
+        .fsp-form-label span { font-weight: 400; color: hsl(var(--muted-foreground)); }
+        
+        .fsp-input { width: 100%; padding: 0.75rem 1rem; border: 1px solid hsl(var(--border)); border-radius: var(--radius); background: hsl(var(--background)); font-size: 0.875rem; color: hsl(var(--foreground)); transition: all 0.2s ease; min-height: 3rem; appearance: auto; box-sizing: border-box; }
+        .fsp-input:focus { outline: none; border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2); }
+        .fsp-input:disabled { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); cursor: not-allowed; }
+        
+        .fsp-section-div { font-size: 0.75rem; font-weight: 800; color: hsl(var(--primary)); letter-spacing: 0.05em; text-transform: uppercase; display: flex; align-items: center; gap: 0.75rem; }
+        .fsp-section-div::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+        
+        .fsp-upload { border: 2px dashed hsl(var(--border)); border-radius: var(--radius); padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: hsl(var(--muted)); }
+        .fsp-upload:hover { border-color: hsl(var(--primary)); background: hsl(var(--primary) / 0.05); }
+        .fsp-upload.has-file { border-color: hsl(var(--primary)); background: hsl(var(--primary) / 0.05); border-style: solid; }
+        
+        .fsp-price-box { background: hsl(var(--primary) / 0.05); border: 1px solid hsl(var(--primary) / 0.2); border-radius: var(--radius); padding: 1.25rem; }
+        .fsp-price-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: hsl(var(--foreground)); padding: 0.25rem 0; }
+        .fsp-price-total { display: flex; justify-content: space-between; font-size: 1.125rem; font-weight: 800; color: hsl(var(--primary)); border-top: 1px solid hsl(var(--primary) / 0.2); padding-top: 0.75rem; margin-top: 0.5rem; }
+        
+        .fsp-btn-outline { padding: 0.75rem 1.5rem; background: transparent; border: 1px solid hsl(var(--border)); border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .fsp-btn-outline:hover { background: hsl(var(--muted)); }
+        .fsp-btn-primary { padding: 0.75rem 1.5rem; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; }
+        .fsp-btn-primary:hover:not(:disabled) { background: hsl(var(--primary) / 0.9); }
+        .fsp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .fsp-error { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; padding: 1rem; border-radius: var(--radius); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
+        
+        .fsp-success { padding: 3rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .fsp-success-icon { font-size: 4rem; margin-bottom: 1.5rem; animation: fsp-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275); }
+        .fsp-success-title { font-size: 1.5rem; font-weight: 800; color: hsl(var(--foreground)); margin-bottom: 0.5rem; }
+        .fsp-success-sub { color: hsl(var(--muted-foreground)); font-size: 1rem; margin-bottom: 2rem; line-height: 1.5; }
+        
+        @media (max-width: 600px) {
+          .fsp-form-row { grid-template-columns: 1fr; }
+          .fsp-modal { max-height: calc(100vh - 100px); }
         }
-        .psp-success-body { padding:48px 32px;text-align:center;display:flex;flex-direction:column;align-items:center; }
-        .psp-success-emoji { font-size:4rem;margin-bottom:16px;display:block;animation:psp-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275); }
-        .psp-success-title { font-size:1.6rem;font-weight:900;color:#0f172a;margin:0 0 8px; }
-        .psp-success-sub { color:#64748b;font-size:1rem;line-height:1.6;margin:0 0 24px; }
-        .psp-print-btn {
-          padding:12px 24px;background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-          border:none;border-radius:0;color:white;font-weight:800;
-          cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;font-family:inherit;
-        }
-        .psp-print-btn:hover { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
       `}</style>
     </div>
   );
