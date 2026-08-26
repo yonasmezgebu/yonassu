@@ -19,467 +19,728 @@ import {
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
-   STYLES
+   STYLES (Master Design System)
 ════════════════════════════════════════════════════════ */
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-@keyframes psp-fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-@keyframes psp-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-@keyframes psp-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-@keyframes psp-spin { to{transform:rotate(360deg)} }
-@keyframes psp-pop { 0%{transform:scale(0.8);opacity:0} 60%{transform:scale(1.05)} 100%{transform:scale(1);opacity:1} }
+:root {
+  --psp-bg: 0 0% 100%;
+  --psp-fg: 222.2 84% 4.9%;
+  --psp-primary: 221.2 83.2% 53.3%;
+  --psp-primary-fg: 210 40% 98%;
+  --psp-primary-dark: 220 80% 40%;
+  --psp-accent: 50 100% 50%;
+  --psp-muted: 210 40% 96.1%;
+  --psp-muted-fg: 215.4 16.3% 46.9%;
+  --psp-border: 214.3 31.8% 91.4%;
+  --psp-radius: 0.75rem;
+  --psp-radius-sm: 0.5rem;
+  --psp-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --psp-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --psp-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
 
-.psp-root { font-family:'Inter',-apple-system,sans-serif; background:#f0f2f5; min-height:100vh; }
+.psp-root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: hsl(var(--psp-bg));
+  min-height: 100vh;
+}
 
-/* ── HERO ─────────────────────────────────────────── */
+.psp-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* ─────────────── HERO ─────────────── */
 .psp-hero {
-  width:100%; position:relative; overflow:hidden; height:440px;
-  background:linear-gradient(rgba(26,43,75,0.8),rgba(13,124,102,0.72));
-  background-size:cover; background-position:center;
+  position: relative;
+  width: 100%;
+  height: 500px;
+  background-color: hsl(var(--psp-fg));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.psp-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6));
+  z-index: 1;
 }
 .psp-hero-grid {
-  position:absolute;inset:0;
-  background-image:linear-gradient(rgba(255,255,255,0.03)1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,0.03)1px,transparent 1px);
-  background-size:50px 50px;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 .psp-hero-content {
-  position:relative;z-index:10;height:100%;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:20px;padding:0 24px;text-align:center;
-}
-.psp-hero-badge {
-  display:inline-flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,0.25);border-radius:999px;
-  padding:8px 20px;color:#fff;font-size:0.85rem;font-weight:700;
-  letter-spacing:0.5px;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
 }
 .psp-hero-title {
-  font-size:clamp(32px,5vw,56px);font-weight:900;color:#FFD700;
-  margin:0;line-height:1.1;letter-spacing:-1px;
-  text-shadow:0 0 30px rgba(255,215,0,0.35);
+  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--psp-accent));
 }
+.psp-hero-title span { color: hsl(var(--psp-bg)); }
 .psp-hero-sub {
-  font-size:clamp(1rem,2vw,1.25rem);color:rgba(255,255,255,0.85);
-  margin:0;font-weight:500;max-width:600px;line-height:1.5;
-}
-.psp-hero-btns { display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:4px; }
-.psp-hero-btn-primary {
-  display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,#0D7C66,#059669);color:#fff;
-  border:none;border-radius:0;padding:14px 32px;
-  font-size:1rem;font-weight:800;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
-  box-shadow:0 4px 16px rgba(13,124,102,0.4);
-}
-.psp-hero-btn-primary:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,124,102,0.5); }
-.psp-hero-btn-outline {
-  display:inline-flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,0.12);backdrop-filter:blur(8px);
-  color:#fff;border:2px solid rgba(255,255,255,0.5);border-radius:0;
-  padding:12px 28px;font-size:1rem;font-weight:700;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
-}
-.psp-hero-btn-outline:hover { background:rgba(255,255,255,0.25); }
-
-/* ── TOOLBAR ─────────────────────────────────────── */
-.psp-toolbar {
-  background:white;border-bottom:1px solid #e4e6ea;
-  padding:14px 0;position:sticky;top:68px;z-index:100;
-  box-shadow:0 2px 8px rgba(0,0,0,0.06);
-}
-.psp-toolbar-inner {
-  max-width:1440px;margin:0 auto;padding:0 24px;
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-}
-.psp-cat-pill {
-  padding:8px 20px;border-radius:0;border:1.5px solid #e2e8f0;
-  cursor:pointer;font-size:13px;font-weight:700;
-  transition:all 0.2s;background:#f8fafc;color:#64748b;font-family:inherit;
-}
-.psp-cat-pill:hover { background:#e2e8f0;color:#334155; }
-.psp-cat-pill.active {
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-  color:white;border-color:transparent;
-  box-shadow:0 4px 12px rgba(13,124,102,0.3);
+  font-size: 1.125rem;
+  line-height: 1.625;
+  color: hsl(var(--psp-bg) / 0.85);
+  max-width: 600px;
+  font-weight: 500;
 }
 
-/* ── MAIN GRID ───────────────────────────────────── */
-.psp-main { max-width:1440px;margin:0 auto;padding:32px 24px 100px; }
+/* ─────────────── BUTTONS ─────────────── */
+.psp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: hsl(var(--psp-primary));
+  color: hsl(var(--psp-primary-fg));
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: var(--psp-radius-sm);
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  border: none;
+  cursor: pointer;
+}
+.psp-btn-primary:hover:not(:disabled) {
+  background-color: hsl(var(--psp-primary-dark));
+  transform: translateY(-2px);
+}
+.psp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.psp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: hsl(var(--psp-bg));
+  color: hsl(var(--psp-fg));
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: var(--psp-radius-sm);
+  border: 1px solid hsl(var(--psp-border));
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+.psp-btn-secondary:hover:not(:disabled) {
+  background-color: hsl(var(--psp-muted));
+}
+
+/* ─────────────── SECTIONS ─────────────── */
+.psp-section { padding: 4rem 0; }
+.psp-section-bg { background-color: hsl(var(--psp-muted)); }
+.psp-section-header {
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.psp-section-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--psp-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.psp-section-title {
+  font-size: 1.875rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: hsl(var(--psp-fg));
+}
+
+/* ─────────────── PRODUCT CARDS ─────────────── */
 .psp-grid {
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
 }
 .psp-card {
-  background:#FFFFFF;border-radius:12px;overflow:hidden;
-  border:1px solid #8D6E63;box-shadow:none;
-  display:flex;flex-direction:column;
-  animation:psp-fadeUp 0.4s both;
-  transition:transform 0.15s ease, box-shadow 0.15s ease;
+  background-color: hsl(var(--psp-bg));
+  border: 1px solid hsl(var(--psp-border));
+  border-radius: var(--psp-radius);
+  overflow: hidden;
+  box-shadow: var(--psp-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.psp-card:hover { box-shadow:0 8px 24px rgba(0,0,0,0.08);transform:translateY(-1px); }
+.psp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--psp-shadow-lg);
+}
+.psp-card-img-wrap {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  background-color: hsl(var(--psp-muted));
+}
 .psp-card-img {
-  width:100%;height:220px;object-fit:cover;
-  transition:transform 0.15s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
 }
-.psp-card:hover .psp-card-img { transform:scale(1.03); }
-.psp-card-img-wrap { position:relative;overflow:hidden; }
+.psp-card:hover .psp-card-img { transform: scale(1.05); }
 .psp-card-badge {
-  position:absolute;top:12px;left:12px;
-  background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);
-  padding:4px 12px;border-radius:12px;
-  font-size:11px;font-weight:800;color:#424242;letter-spacing:0.3px;
-  border:1px solid #8D6E63;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background-color: hsl(var(--psp-bg) / 0.9);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
 }
-.psp-card-body { padding:20px;flex:1;display:flex;flex-direction:column; }
-.psp-card-name { font-size:16px;font-weight:800;color:#424242;margin:0 0 6px; }
-.psp-card-desc { font-size:13px;color:#424242;margin:0 0 16px;line-height:1.6;flex:1; }
-.psp-card-footer { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto; }
-.psp-price { font-size:18px;font-weight:800;color:#1B5E20; }
-.psp-price-sub { font-size:11px;color:#424242;margin-top:2px; }
-.psp-order-btn {
-  background:#2E8B57;color:#FFFFFF;
-  border:none;padding:10px 18px;border-radius:8px;
-  cursor:pointer;display:flex;align-items:center;gap:6px;
-  font-weight:800;font-size:13px;transition:all 0.15s ease;font-family:inherit;
-  white-space:nowrap;
+.psp-card-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
-.psp-order-btn:hover { background:#1B5E20;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.psp-card-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
+  margin-bottom: 0.5rem;
+}
+.psp-card-desc {
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  line-height: 1.625;
+  margin-bottom: 1.5rem;
+  flex: 1;
+}
+.psp-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: auto;
+}
+.psp-price {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--psp-primary));
+}
+.psp-price-sub { font-size: 0.75rem; color: hsl(var(--psp-muted-fg)); }
 
-/* ── MODAL / OVERLAY ─────────────────────────────── */
+/* ─────────────── HOW TO ORDER STEPS ─────────────── */
+.psp-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+}
+.psp-step {
+  background-color: hsl(var(--psp-bg));
+  border: 1px solid hsl(var(--psp-border));
+  border-radius: var(--psp-radius);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: var(--psp-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.psp-step:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--psp-shadow-md);
+}
+.psp-step-num {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background-color: hsl(var(--psp-primary-light));
+  color: hsl(var(--psp-primary-dark));
+  font-size: 1.25rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+.psp-step-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
+  margin-bottom: 0.5rem;
+}
+.psp-step-desc {
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  line-height: 1.625;
+}
+
+/* ─────────────── PRICING TABLE ─────────────── */
+.psp-table-wrap {
+  background-color: hsl(var(--psp-bg));
+  border: 1px solid hsl(var(--psp-border));
+  border-radius: var(--psp-radius);
+  overflow-x: auto;
+  box-shadow: var(--psp-shadow-sm);
+}
+.psp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.psp-table th, .psp-table td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--psp-border));
+}
+.psp-table th {
+  background-color: hsl(var(--psp-muted));
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  white-space: nowrap;
+}
+.psp-table td {
+  font-size: 1rem;
+  color: hsl(var(--psp-fg));
+}
+.psp-table tbody tr:last-child td { border-bottom: none; }
+.psp-table tbody tr:hover { background-color: hsl(var(--psp-muted) / 0.5); }
+.psp-pricing-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  margin-top: 1.5rem;
+}
+
+/* ─────────────── FAQ ─────────────── */
+.psp-faq-inner {
+  max-width: 800px;
+  margin: 0 auto;
+}
+.psp-faq-item {
+  border-bottom: 1px solid hsl(var(--psp-border));
+}
+.psp-faq-item:first-of-type { border-top: 1px solid hsl(var(--psp-border)); }
+.psp-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 0;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--psp-fg));
+  cursor: pointer;
+  text-align: left;
+}
+.psp-faq-q:focus { outline: none; box-shadow: inset 0 0 0 2px hsl(var(--psp-primary) / 0.2); border-radius: var(--psp-radius-sm); }
+.psp-faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  line-height: 1.625;
+}
+.psp-faq-a.open {
+  max-height: 300px;
+  padding-bottom: 1.5rem;
+}
+
+/* ─────────────── MODALS & FORMS ─────────────── */
 .psp-overlay {
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);
-  display:flex;align-items:flex-start;justify-content:center;
-  z-index:9999;padding:40px 20px;overflow-y:auto;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  overflow-y: auto;
+  padding: 90px 1rem 2rem;       /* 90px top = clears the sticky navbar */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 .psp-modal {
-  background:white;border-radius:0;width:100%;max-width:620px;
-  margin:auto;box-shadow:0 25px 60px rgba(0,0,0,0.3);
-  animation:psp-pop 0.3s ease;
+  margin: 0 auto;
+  background-color: hsl(var(--psp-bg));
+  border-radius: var(--psp-radius);
+  width: 100%;
+  max-width: 620px;
+  box-shadow: 0 25px 50px rgb(0 0 0 / 0.25);
+  display: flex;
+  flex-direction: column;
+  /* No overflow:hidden here — lets dropdowns render fully */
 }
 .psp-modal-header {
-  padding:24px 28px;border-bottom:1px solid #e2e8f0;
-  display:flex;align-items:center;justify-content:space-between;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+  padding: 1.5rem;
+  border-bottom: 1px solid hsl(var(--psp-border));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: hsl(var(--psp-bg));
+  z-index: 10;
+  border-radius: var(--psp-radius) var(--psp-radius) 0 0;
+  /* NOT sticky — removed position:sticky so header is always visible */
 }
-.psp-modal-title { margin:0;font-size:1.1rem;font-weight:800;color:#FFD700;display:flex;align-items:center;gap:10px; }
-.psp-modal-subtitle { font-size:0.8rem;color:rgba(255,255,255,0.7);margin:4px 0 0; }
+.psp-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.psp-modal-subtitle {
+  font-size: 0.875rem;
+  color: hsl(var(--psp-muted-fg));
+  margin-top: 0.25rem;
+}
 .psp-close-btn {
-  background:rgba(255,255,255,0.15);border:none;color:white;
-  cursor:pointer;display:flex;align-items:center;
-  padding:8px;border-radius:8px;transition:all 0.2s;
+  background: hsl(var(--psp-muted));
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--psp-radius-sm);
+  cursor: pointer;
+  color: hsl(var(--psp-muted-fg));
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
-.psp-close-btn:hover { background:rgba(255,255,255,0.3); }
-.psp-modal-body { padding:28px;display:flex;flex-direction:column;gap:18px; }
-.psp-form-group { display:flex;flex-direction:column;gap:8px; }
+.psp-close-btn:hover {
+  background-color: hsl(var(--psp-border));
+  color: hsl(var(--psp-fg));
+}
+.psp-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.psp-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.psp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
 .psp-form-label {
-  font-weight:700;font-size:0.85rem;color:#1e293b;
-  display:flex;align-items:center;gap:6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--psp-fg));
 }
-.psp-form-label span { font-weight:400;color:#94a3b8; }
+.psp-form-label span {
+  font-weight: 400;
+  color: hsl(var(--psp-muted-fg));
+}
 .psp-form-input {
-  padding:12px 16px;border:2px solid #e2e8f0;width:100%;box-sizing:border-box;
-  border-radius:0;font-size:0.95rem;background:white;
-  color:#0f172a;transition:all 0.2s;font-family:inherit;outline:none;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid hsl(var(--psp-border));
+  border-radius: var(--psp-radius-sm);
+  background-color: hsl(var(--psp-bg));
+  font-size: 1rem;
+  font-family: inherit;
+  color: hsl(var(--psp-fg));
+  line-height: 1.5;
+  min-height: 3rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: auto;
+  -webkit-appearance: auto;
+  box-sizing: border-box;
 }
-.psp-form-input:focus { border-color:#0D7C66;box-shadow:0 0 0 3px rgba(13,124,102,0.1); }
-.psp-form-input:disabled { background:#f8fafc;color:#64748b;cursor:not-allowed; }
-.psp-form-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
-@media(max-width:500px){ .psp-form-row { grid-template-columns:1fr; } }
-
-.psp-section-divider {
-  font-size:0.75rem;font-weight:800;color:#1a2b4b;letter-spacing:1.5px;
-  text-transform:uppercase;padding:8px 0 4px;border-top:2px solid #e2e8f0;
-  margin-top:4px;display:flex;align-items:center;gap:8px;
+select.psp-form-input {
+  height: 3rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  cursor: pointer;
 }
-.psp-section-divider::after { content:'';flex:1;height:1px;background:#e2e8f0; }
-
-/* File upload */
+.psp-form-input:focus {
+  outline: none;
+  border-color: hsl(var(--psp-primary));
+  box-shadow: 0 0 0 2px hsl(var(--psp-primary) / 0.2);
+}
+.psp-form-input:disabled {
+  background-color: hsl(var(--psp-muted));
+  color: hsl(var(--psp-muted-fg));
+  cursor: not-allowed;
+}
 .psp-file-upload {
-  border:2px dashed #cbd5e1;border-radius:0;padding:24px;
-  text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;
+  border: 2px dashed hsl(var(--psp-border));
+  border-radius: var(--psp-radius-sm);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background-color: hsl(var(--psp-muted) / 0.5);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
-.psp-file-upload:hover { border-color:#0D7C66;background:#f0fdf4; }
-.psp-file-upload.has-file { border-color:#0D7C66;background:#f0fdf4;border-style:solid; }
-
-/* Price summary */
-.psp-price-summary {
-  background:linear-gradient(135deg,#f0fdf4,#dcfce7);
-  border:2px solid #86efac;border-radius:0;padding:20px;
+.psp-file-upload:hover {
+  border-color: hsl(var(--psp-primary));
+  background-color: hsl(var(--psp-primary-light) / 0.3);
 }
-.psp-price-row { display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;color:#166534;padding:4px 0; }
-.psp-price-total { font-size:1.3rem;font-weight:900;color:#15803d;border-top:2px solid #86efac;padding-top:12px;margin-top:8px; }
-
-/* Checkbox row */
-.psp-check-row {
-  display:flex;align-items:center;gap:10px;
-  padding:14px 16px;background:#fffbeb;border:1.5px solid #fbbf24;
-  border-radius:0;cursor:pointer;
-}
-.psp-check-row input[type=checkbox] { width:18px;height:18px;accent-color:#d97706;cursor:pointer; }
-
-/* Modal footer */
 .psp-modal-footer {
-  padding:20px 28px;border-top:1px solid #e2e8f0;
-  display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;
+  padding: 1.5rem;
+  border-top: 1px solid hsl(var(--psp-border));
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background-color: hsl(var(--psp-bg));
+  border-radius: 0 0 var(--psp-radius) var(--psp-radius);
 }
-.psp-cancel-btn {
-  padding:12px 24px;background:white;border:2px solid #e2e8f0;
-  border-radius:0;color:#475569;font-weight:700;
-  cursor:pointer;transition:all 0.2s;font-family:inherit;
-}
-.psp-cancel-btn:hover { background:#f1f5f9; }
-.psp-submit-btn {
-  padding:12px 28px;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-  border:none;border-radius:0;color:white;
-  font-weight:800;cursor:pointer;display:flex;
-  align-items:center;gap:8px;transition:all 0.2s;
-  font-family:inherit;font-size:1rem;
-}
-.psp-submit-btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
-.psp-submit-btn:disabled { opacity:0.6;cursor:not-allowed; }
 
-/* Login gate inside modal */
+/* ─────────────── UTILITIES & SMALLER COMPONENTS ─────────────── */
+.psp-section-divider {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
+  margin-top: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--psp-border));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.psp-price-summary {
+  background-color: hsl(var(--psp-primary-light) / 0.3);
+  border: 1px solid hsl(var(--psp-primary-light));
+  border-radius: var(--psp-radius-sm);
+  padding: 1.5rem;
+}
+.psp-price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: hsl(var(--psp-fg));
+  margin-bottom: 0.5rem;
+}
+.psp-price-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--psp-primary-dark));
+  border-top: 1px solid hsl(var(--psp-border));
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+.psp-check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: hsl(var(--psp-accent) / 0.1);
+  border: 1px solid hsl(var(--psp-accent) / 0.3);
+  border-radius: var(--psp-radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--psp-fg));
+}
+.psp-check-row input[type=checkbox] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
 .psp-login-gate {
-  padding:40px 28px;text-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:20px;
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
 }
-.psp-login-gate-icon { width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#1a2b4b,#0D7C66);display:flex;align-items:center;justify-content:center; }
-.psp-login-gate-title { font-size:1.4rem;font-weight:900;color:#0f172a;margin:0; }
-.psp-login-gate-sub { font-size:0.95rem;color:#64748b;margin:0;line-height:1.6;max-width:320px; }
-.psp-login-gate-btns { display:flex;gap:12px;flex-wrap:wrap;justify-content:center; }
-.psp-gate-btn-login {
-  display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);color:#fff;
-  border:none;border-radius:0;padding:12px 28px;
-  font-size:0.95rem;font-weight:800;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
+.psp-login-gate-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background-color: hsl(var(--psp-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.psp-gate-btn-login:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
-.psp-gate-btn-register {
-  display:inline-flex;align-items:center;gap:8px;
-  background:white;color:#1a2b4b;
-  border:2px solid #1a2b4b;border-radius:0;padding:10px 24px;
-  font-size:0.95rem;font-weight:800;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
+.psp-login-gate-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--psp-fg));
 }
-.psp-gate-btn-register:hover { background:#f8fafc; }
-
-/* Success */
-.psp-success-body { padding:48px 28px;text-align:center; }
-.psp-success-emoji { font-size:72px;display:block;margin-bottom:16px;animation:psp-pop 0.5s; }
-.psp-success-title { font-size:1.4rem;font-weight:900;color:#059669;margin:0 0 8px; }
-.psp-success-sub { color:#64748b;margin:0 0 24px; }
-.psp-print-btn {
-  display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);color:#fff;
-  border:none;border-radius:0;padding:14px 32px;
-  font-size:1rem;font-weight:800;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
-  box-shadow:0 4px 16px rgba(13,124,102,0.3);
+.psp-login-gate-sub {
+  font-size: 1rem;
+  color: hsl(var(--psp-muted-fg));
+  max-width: 400px;
+  line-height: 1.625;
 }
-.psp-print-btn:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,124,102,0.45); }
-
-/* Error */
+.psp-login-gate-btns {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.psp-success-body {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+.psp-success-emoji { font-size: 4rem; }
+.psp-success-title { font-size: 1.5rem; font-weight: 700; color: hsl(var(--psp-primary)); }
+.psp-success-sub { font-size: 1rem; color: hsl(var(--psp-muted-fg)); line-height: 1.625; }
 .psp-error-box {
-  padding:12px 16px;background:#fef2f2;border:1.5px solid #fca5a5;
-  border-radius:0;color:#dc2626;font-size:0.9rem;
-  display:flex;align-items:center;gap:8px;
+  padding: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--psp-radius-sm);
+  color: #dc2626;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* ── How to Order ─────────────────────────────────── */
-.psp-how { background:#F5F5F5;padding:72px 24px; }
-.psp-how-inner { max-width:1100px;margin:0 auto; }
-.psp-section-label { font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#228B22;margin:0 0 12px; }
-.psp-section-title { font-size:clamp(22px,3.5vw,36px);font-weight:900;margin:0 0 48px;color:#1B5E20;line-height:1.2; }
-.psp-steps { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px; }
-.psp-step {
-  background:#FFFFFF;border:1px solid #8D6E63;
-  border-radius:12px;padding:28px 20px;text-align:center;
-  transition:transform 0.15s ease,box-shadow 0.15s ease;
-}
-.psp-step:hover { transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.08); }
-.psp-step-num {
-  width:52px;height:52px;border-radius:50%;
-  background:#98FF98;color:#424242;font-size:20px;font-weight:900;
-  display:flex;align-items:center;justify-content:center;
-  margin:0 auto 18px;
-}
-.psp-step-title { font-size:15px;font-weight:800;color:#1B5E20;margin:0 0 8px; }
-.psp-step-desc { font-size:13px;color:#424242;line-height:1.6;margin:0; }
-
+/* ─────────────── RESPONSIVE ─────────────── */
 @media (max-width: 768px) {
-  .psp-how { padding:40px 20px; }
-  .psp-step {
-    border:none !important;
-    border-radius:0 !important;
-    background:transparent !important;
-    padding:24px 0 !important;
-    box-shadow:none !important;
-    border-bottom:1px solid rgba(141,110,99,0.15) !important;
-  }
-  .psp-step:last-child { border-bottom:none !important; padding-bottom:0 !important; }
+  .psp-hero-title { font-size: 2.25rem; }
+  .psp-form-row { grid-template-columns: 1fr; }
+  .psp-section { padding: 3rem 0; }
+}
+@media (max-width: 640px) {
+  .psp-login-gate-btns { flex-direction: column; width: 100%; }
+  .psp-login-gate-btns button { width: 100%; }
 }
 
-/* ── Pricing table ───────────────────────────────── */
-.psp-pricing { padding:72px 24px;background:#FFFFFF; }
-.psp-pricing-inner { max-width:900px;margin:0 auto; }
-.psp-pricing-title { font-size:clamp(22px,3.5vw,32px);font-weight:900;color:#1B5E20;margin:0 0 32px;line-height:1.2; }
-.psp-table-scroll { overflow-x:auto;-webkit-overflow-scrolling:touch; }
-.psp-table-wrap {
-  background:#FFFFFF;border-radius:10px;overflow:hidden;
-  border:1px solid #8D6E63;box-shadow:0 1px 4px rgba(0,0,0,0.06);
-  min-width:480px;
-}
-.psp-table { width:100%;border-collapse:collapse;font-size:0.92rem; }
-.psp-table thead tr { background:#1B5E20; }
-.psp-table th { padding:14px 18px;text-align:left;color:#FFFFFF;font-weight:700;font-size:0.85rem;white-space:nowrap; }
-.psp-table th:not(:first-child) { text-align:right; }
-.psp-table tbody tr:nth-child(odd) { background:#FFFFFF; }
-.psp-table tbody tr:nth-child(even) { background:#F5F5F5; }
-.psp-table tbody tr { border-bottom:1px solid #F5F5F5;transition:background 0.15s ease; }
-.psp-table tbody tr:hover { background:#A5D6A7; }
-.psp-table tbody tr:last-child { border-bottom:none; }
-.psp-table td { padding:14px 18px;color:#424242;white-space:nowrap; }
-.psp-table td:first-child { font-weight:700;color:#1B5E20;text-align:left; }
-.psp-table td:not(:first-child) { text-align:right; }
-.psp-table .color-val { color:#2E8B57;font-weight:700; }
-.psp-pricing-note { font-size:13px;color:#424242;margin-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px; }
-
-/* ── FAQ ──────────────────────────────────────── */
-.psp-faq { padding:72px 24px;background:#F5F5F5; }
-.psp-faq-inner { max-width:780px;margin:0 auto; }
-.psp-faq-title { font-size:clamp(22px,3.5vw,32px);font-weight:900;color:#1B5E20;margin:0 0 36px;line-height:1.2; }
-.psp-faq-item {
-  border-bottom:1px solid #8D6E63;
-  background:#FFFFFF;
-  border-radius:0;
-  transition:background 0.15s ease;
-}
-.psp-faq-item:first-of-type { border-top:1px solid #8D6E63;border-radius:12px 12px 0 0; }
-.psp-faq-item:last-of-type { border-radius:0 0 12px 12px;border-bottom:none; }
-.psp-faq-q {
-  width:100%;text-align:left;background:none;border:none;
-  padding:20px 24px;display:flex;justify-content:space-between;align-items:center;
-  font-size:15px;font-weight:700;color:#424242;cursor:pointer;
-  gap:16px;font-family:inherit;transition:color 0.15s ease;
-}
-.psp-faq-q:hover { color:#1B5E20; }
-.psp-faq-item:hover { background:#F5F5F5; }
-.psp-faq-a {
-  overflow:hidden;max-height:0;
-  transition:max-height 0.35s ease,padding 0.35s ease;
-  font-size:14px;color:#424242;line-height:1.8;padding:0 24px;
-}
-.psp-faq-a.open { max-height:300px;padding-bottom:20px; }
-
-@media (max-width:768px) {
-  .psp-faq { padding:40px 16px; }
-  .psp-faq-item { border:none !important;border-radius:0 !important;border-bottom:1px solid rgba(141,110,99,0.2) !important;background:transparent !important; }
-  .psp-faq-item:first-of-type { border-top:none !important; }
-  .psp-faq-item:last-of-type { border-bottom:none !important; }
-  .psp-faq-q { padding:18px 0; }
-  .psp-faq-a { padding:0; }
-  .psp-faq-a.open { padding-bottom:16px; }
-}
-
-/* ── Trust bar ─────────────────────────────────── */
-.psp-trust { background:#1B5E20;padding:48px 24px; }
-.psp-trust-inner { max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px; }
-.psp-trust-item {
-  display:flex;align-items:flex-start;gap:14px;
-  padding:20px;border-radius:12px;
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.12);
-  transition:background 0.15s ease,transform 0.15s ease;
-}
-.psp-trust-item:hover { background:rgba(255,255,255,0.12);transform:translateY(-1px); }
-.psp-trust-icon {
-  width:44px;height:44px;border-radius:10px;
-  background:#A5D6A7;border:none;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.psp-trust-title { font-size:14px;font-weight:800;color:#FFFFFF;margin:0 0 4px; }
-.psp-trust-desc { font-size:12px;color:rgba(255,255,255,0.75);margin:0;line-height:1.6; }
-
-@media (max-width:768px) {
-  .psp-trust { padding:32px 16px; }
-  .psp-trust-item {
-    border:none !important;
-    border-radius:0 !important;
-    background:transparent !important;
-    padding:16px 0 !important;
-    border-bottom:1px solid rgba(255,255,255,0.12) !important;
-  }
-  .psp-trust-item:last-child { border-bottom:none !important; }
-  .psp-trust-item:hover { transform:none; }
-}
-
-/* ── Spinner ─────────────────────────────────────── */
-.psp-spinner {
-  width:20px;height:20px;border:3px solid rgba(255,255,255,0.3);
-  border-top-color:white;border-radius:50%;
-  animation:psp-spin 0.7s linear infinite;
-}
-/* ── Calculator Modal ── */
+/* ─────────────── CALCULATOR MODAL ─────────────── */
 .calc-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999; padding: 20px;
+  position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px); display: flex; align-items: flex-start;
+  justify-content: center; z-index: 9999;
+  padding: 80px 1rem 1rem;          /* 80px top clears the navbar */
+  overflow-y: auto;
 }
 .calc-modal {
-  background: #f8fafc; width: 320px; max-width: 100%; border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2), inset 0 2px 0 rgba(255,255,255,0.8);
-  padding: 20px; display: flex; flex-direction: column; gap: 16px;
-  border: 1px solid #e2e8f0;
+  background-color: hsl(var(--psp-bg));
+  width: 100%; max-width: 420px;
+  border-radius: var(--psp-radius);
+  box-shadow: var(--psp-shadow-lg);
+  padding: 1.5rem;
+  display: flex; flex-direction: column; gap: 1.25rem;
+  margin: auto;                      /* vertically centered when it fits */
+  max-height: calc(100vh - 100px);  /* never taller than viewport */
+  overflow-y: auto;                  /* scroll if content is too tall */
 }
 .calc-header {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 14px; font-weight: 700; color: #1B5E20; margin-bottom: 4px;
+  font-size: 1.125rem; font-weight: 700; color: hsl(var(--psp-fg));
 }
 .calc-close {
-  background: rgba(27,94,32,0.1); border: none; width: 28px; height: 28px;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  color: #1B5E20; cursor: pointer; transition: 0.2s;
+  background-color: hsl(var(--psp-muted)); border: none; width: 2rem; height: 2rem;
+  border-radius: var(--psp-radius-sm); display: flex; align-items: center; justify-content: center;
+  color: hsl(var(--psp-muted-fg)); cursor: pointer; transition: 0.2s; flex-shrink: 0;
 }
-.calc-close:hover { background: #1B5E20; color: white; }
-.calc-screen {
-  background: #d4d8ce; border-radius: 12px; padding: 16px;
-  text-align: right; box-shadow: inset 0 4px 8px rgba(0,0,0,0.1);
-  display: flex; flex-direction: column; justify-content: flex-end;
-  height: 80px; position: relative; border: 2px solid #b7bdae;
+.calc-close:hover { background-color: hsl(var(--psp-border)); color: hsl(var(--psp-fg)); }
+
+/* ─────────────── LEGACY SUPPORT CLASSES ─────────────── */
+/* Spinner */
+@keyframes psp-spin { to { transform: rotate(360deg); } }
+.psp-spinner {
+  width: 1.25rem; height: 1.25rem;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 9999px;
+  animation: psp-spin 0.7s linear infinite;
+  display: inline-block;
 }
-.calc-equation { font-size: 13px; color: #64748b; min-height: 16px; margin-bottom: 4px; font-family: 'Courier New', monospace; }
-.calc-display { font-size: 32px; font-weight: 600; color: #1e293b; letter-spacing: -1px; font-family: 'Courier New', monospace; }
-.calc-keys {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+
+/* Gate buttons (login modal) */
+.psp-gate-btn-login {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background-color: hsl(var(--psp-primary));
+  color: hsl(var(--psp-primary-fg));
+  padding: 0.75rem 1.5rem; border: none; border-radius: var(--psp-radius-sm);
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  font-family: inherit;
 }
-.calc-key {
-  background: #ffffff; border: none; border-radius: 10px;
-  font-size: 20px; font-weight: 600; color: #334155;
-  height: 54px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: 0.1s;
-  box-shadow: 0 4px 0 #cbd5e1, 0 8px 12px rgba(0,0,0,0.05);
+.psp-gate-btn-login:hover {
+  background-color: hsl(var(--psp-primary-dark));
+  transform: translateY(-2px);
 }
-.calc-key:active {
-  transform: translateY(4px); box-shadow: 0 0 0 #cbd5e1;
+.psp-gate-btn-register {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background-color: hsl(var(--psp-bg));
+  color: hsl(var(--psp-fg));
+  padding: 0.75rem 1.5rem;
+  border: 1px solid hsl(var(--psp-border));
+  border-radius: var(--psp-radius-sm);
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-family: inherit;
 }
-.calc-func { background: #e2e8f0; color: #0f172a; box-shadow: 0 4px 0 #94a3b8; }
-.calc-func:active { box-shadow: 0 0 0 #94a3b8; }
-.calc-op { background: #1B5E20; color: #ffffff; box-shadow: 0 4px 0 #0d3811; font-size: 24px; }
-.calc-op:active { box-shadow: 0 0 0 #0d3811; }
-.calc-zero { grid-column: span 2; justify-content: flex-start; padding-left: 24px; }
-.calc-btn-trigger {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: #2E8B57; color: white; border: none;
-  padding: 8px 16px; border-radius: 8px; font-size: 14px;
-  font-weight: 700; cursor: pointer; transition: 0.2s;
+.psp-gate-btn-register:hover { background-color: hsl(var(--psp-muted)); }
+
+/* Print receipt button */
+.psp-print-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background-color: hsl(var(--psp-primary));
+  color: hsl(var(--psp-primary-fg));
+  padding: 0.875rem 2rem; border: none; border-radius: var(--psp-radius-sm);
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  font-family: inherit;
 }
-.calc-btn-trigger:hover { background: #1B5E20; transform: translateY(-1px); }
+.psp-print-btn:hover { background-color: hsl(var(--psp-primary-dark)); transform: translateY(-2px); }
+
+/* View orders button */
+.psp-orders-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background-color: hsl(var(--psp-bg)); color: hsl(var(--psp-fg));
+  border: 1px solid hsl(var(--psp-border)); border-radius: var(--psp-radius-sm);
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: background-color 0.2s ease; font-family: inherit;
+}
+.psp-orders-btn:hover { background-color: hsl(var(--psp-muted)); }
+
+/* Pricing section container classes */
+.psp-pricing { padding: 4rem 1.5rem; }
+.psp-pricing-inner { max-width: 900px; margin: 0 auto; }
+.psp-pricing-title { font-size: 1.875rem; font-weight: 800; color: hsl(var(--psp-fg)); }
+.psp-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.psp-how { padding: 4rem 1.5rem; background-color: hsl(var(--psp-muted)); }
+.psp-how-inner { max-width: 1100px; margin: 0 auto; }
+.psp-main { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
 `;
 
 /* ═══════════════════════════════════════════════════════
@@ -878,55 +1139,61 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
         <div className="psp-hero-grid" />
         <div className="psp-hero-content">
           <h1 className="psp-hero-title">Printing Services</h1>
+          <p className="psp-hero-sub">
+            Professional printing solutions for students, academics, and businesses. Fast turnaround, high quality.
+          </p>
         </div>
       </div>
 
-      {/* ── Category Toolbar ── */}
-
       {/* ── Service Cards ── */}
-      <div className="psp-main">
-        <div style={{ marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1B5E20', margin: 0 }}>
-            {catFilter === 'all' ? 'All Printing Services' : PRODUCT_TYPES.find(p => p.code === catFilter)?.name}
-          </h2>
-        </div>
+      <div className="psp-section">
+        <div className="psp-container">
+          <div className="psp-section-header" style={{ textAlign: 'center' }}>
+            <div className="psp-section-label">Our Catalog</div>
+            <h2 className="psp-section-title">
+              {catFilter === 'all' ? 'All Printing Services' : PRODUCT_TYPES.find(p => p.code === catFilter)?.name}
+            </h2>
+          </div>
 
-        <div className="psp-grid">
-          {filtered.map((svc, i) => (
-            <div key={svc.code} className="psp-card" style={{ animationDelay: i * 0.07 + 's' }}>
-              <div className="psp-card-img-wrap">
-                {svc.img ? (
-                  <img src={svc.img} className="psp-card-img" alt={svc.name} />
-                ) : (
-                  <div style={{ height: 220, background: 'linear-gradient(135deg,#1B5E20,#2E8B57)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText size={60} color="rgba(255,255,255,0.4)" />
+          <div className="psp-grid">
+            {filtered.map((svc, i) => (
+              <div key={svc.code} className="psp-card" style={{ animationDelay: i * 0.07 + 's' }}>
+                <div className="psp-card-img-wrap">
+                  {svc.img ? (
+                    <img src={svc.img} className="psp-card-img" alt={svc.name} />
+                  ) : (
+                    <div style={{ height: '100%', background: 'hsl(var(--psp-primary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FileText size={60} color="rgba(255,255,255,0.4)" />
+                    </div>
+                  )}
+                  <div className="psp-card-badge">{svc.code}</div>
+                </div>
+                <div className="psp-card-body">
+                  <h3 className="psp-card-name">{svc.name}</h3>
+                  <p className="psp-card-desc">{svc.desc}</p>
+                  <div className="psp-card-footer">
+                    <div>
+                      <div className="psp-price">From 0.50 ETB</div>
+                      <div className="psp-price-sub">per page</div>
+                    </div>
+                    <button className="psp-btn-primary" onClick={() => handleOpenOrder(svc)}>
+                      <ShoppingCart size={16} /> Order Now
+                    </button>
                   </div>
-                )}
-                <div className="psp-card-badge">{svc.code}</div>
-              </div>
-              <div className="psp-card-body">
-                <h3 className="psp-card-name">{svc.name}</h3>
-                <p className="psp-card-desc">{svc.desc}</p>
-                <div className="psp-card-footer">
-                  <div>
-                    <div className="psp-price">From 0.50 ETB</div>
-                    <div className="psp-price-sub">per page</div>
-                  </div>
-                  <button className="psp-order-btn" onClick={() => handleOpenOrder(svc)}>
-                    <ShoppingCart size={15} /> Order Now
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ── How to Order ── */}
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(46, 139, 87, 0.3)', margin: 0, width: '100%' }} />
-      <div className="psp-how">
-        <div className="psp-how-inner">
-          <h2 className="psp-section-title">How to Place Your Order</h2>
+      <div className="psp-section psp-section-bg">
+        <div className="psp-container">
+          <div className="psp-section-header">
+            <div className="psp-section-label">Simple Process</div>
+            <h2 className="psp-section-title">How to Place Your Order</h2>
+          </div>
           <div className="psp-steps">
             {[
               { n:'1', title:'Browse & Select', desc:'Choose your printing service from the catalog above — books, modules, exam papers, or brochures.' },
@@ -943,59 +1210,58 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
           </div>
         </div>
       </div>
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(46, 139, 87, 0.3)', margin: 0, width: '100%' }} />
 
       {/* ── Pricing Table ── */}
-      <div className="psp-pricing">
-        <div className="psp-pricing-inner">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 className="psp-pricing-title" style={{ margin: 0 }}>Pricing Guide</h2>
-            <button className="calc-btn-trigger" onClick={() => setIsCalcOpen(true)}>
+      <div className="psp-section">
+        <div className="psp-container" style={{ maxWidth: '900px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 className="psp-section-title" style={{ margin: 0 }}>Pricing Guide</h2>
+            <button className="psp-btn-primary" onClick={() => setIsCalcOpen(true)}>
               <Calculator size={16} /> Calculator
             </button>
           </div>
-          <div className="psp-table-scroll">
-            <div className="psp-table-wrap">
-              <table className="psp-table">
-                <thead>
-                  <tr>
-                    <th>Service / Product</th>
-                    <th>Base Price (B/W)</th>
-                    <th>Color Price</th>
-                    <th>Binding / Extras</th>
+          <div className="psp-table-wrap">
+            <table className="psp-table">
+              <thead>
+                <tr>
+                  <th>Service / Product</th>
+                  <th>Base Price (B/W)</th>
+                  <th>Color Price</th>
+                  <th>Binding / Extras</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PRICING_ROWS.map((r, i) => (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 600, color: 'hsl(var(--psp-primary))' }}>{r.name}</td>
+                    <td>{r.base}</td>
+                    <td style={{ fontWeight: 600, color: 'hsl(var(--psp-accent))' }}>{r.color}</td>
+                    <td>{r.bind}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {PRICING_ROWS.map((r, i) => (
-                    <tr key={i}>
-                      <td>{r.name}</td>
-                      <td>{r.base}</td>
-                      <td className="color-val">{r.color}</td>
-                      <td>{r.bind}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
           <p className="psp-pricing-note">
-            <Info size={14} />
+            <Info size={16} />
             Tax Receipts are priced by approval quantity. Contact us for custom bulk pricing.
           </p>
         </div>
       </div>
 
       {/* ── FAQs ── */}
-      <div className="psp-faq">
-        <div className="psp-faq-inner">
-          <h2 className="psp-faq-title">Frequently Asked Questions</h2>
+      <div className="psp-section psp-section-bg">
+        <div className="psp-container psp-faq-inner">
+          <div className="psp-section-header">
+            <h2 className="psp-section-title">Frequently Asked Questions</h2>
+          </div>
           {FAQS.map((f, i) => (
             <div className="psp-faq-item" key={i}>
               <button className="psp-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 <span>{f.q}</span>
                 {openFaq === i
-                  ? <ChevronUp size={18} color="#1B5E20" style={{ flexShrink: 0 }} />
-                  : <ChevronDown size={18} color="#8D6E63" style={{ flexShrink: 0 }} />}
+                  ? <ChevronUp size={20} color="hsl(var(--psp-primary))" />
+                  : <ChevronDown size={20} color="hsl(var(--psp-muted-fg))" />}
               </button>
               <div className={`psp-faq-a${openFaq === i ? ' open' : ''}`}>{f.a}</div>
             </div>
@@ -1291,8 +1557,8 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
 
                 {/* Footer */}
                 <div className="psp-modal-footer">
-                  <button type="button" className="psp-cancel-btn" onClick={closeModal}>Cancel</button>
-                  <button type="submit" id="psp-submit-order" className="psp-submit-btn" disabled={isSubmitting}>
+                  <button type="button" className="psp-btn-secondary" onClick={closeModal}>Cancel</button>
+                  <button type="submit" id="psp-submit-order" className="psp-btn-primary" disabled={isSubmitting}>
                     {isSubmitting
                       ? <><div className="psp-spinner" /> Submitting…</>
                       : <><ShoppingCart size={18} /> Confirm Order</>
