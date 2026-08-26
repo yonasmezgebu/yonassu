@@ -7,425 +7,804 @@ import { Store, ShoppingCart, Search, Package, Plus, Minus, Trash2, X, CheckCirc
 import retailStoreHero from '../../assets/hero-section/retail store.jpg';
 
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-@keyframes heroZoom { 0%{transform:scale(1)} 100%{transform:scale(1.15)} }
-@keyframes shimmerAnim { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
-@keyframes cartBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+  --radius: 0.5rem;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 .rsp-root {
-  font-family: 'Inter', -apple-system, sans-serif;
-  background: #f0f2f5;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   min-height: 100vh;
+  line-height: 1.625;
+}
+
+/* Container */
+.rsp-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 /* Hero */
 .rsp-hero {
-  width: 100%;
   position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 400px;
+  background-color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   overflow: hidden;
-  height: 420px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f4c35 100%);
-}
-.rsp-hero-orbs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-.rsp-hero-orb1 {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 0;
-  background: radial-gradient(circle, rgba(59,130,246,0.25) 0%, transparent 70%);
-  top: -150px; right: -100px;
-}
-.rsp-hero-orb2 {
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  border-radius: 0;
-  background: radial-gradient(circle, rgba(5,150,105,0.2) 0%, transparent 70%);
-  bottom: -100px; left: -50px;
-}
-.rsp-hero-grid {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
 }
 .rsp-hero-content {
   position: relative;
   z-index: 10;
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 0 24px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  gap: 60px;
-}
-.rsp-hero-text { flex: 1; }
-.rsp-hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(59,130,246,0.2);
-  border: 1px solid rgba(59,130,246,0.4);
-  backdrop-filter: blur(8px);
-  padding: 6px 16px;
-  border-radius: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: #93c5fd;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 20px;
+  padding: 0 1.5rem;
 }
 .rsp-hero-title {
-  font-size: clamp(32px, 5vw, 56px);
-  font-weight: 900;
-  color: white;
-  margin: 0 0 16px;
+  font-size: 2.25rem;
+  font-weight: 700;
   line-height: 1.1;
-  letter-spacing: -1px;
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
-.rsp-hero-title span { color: #34d399; }
-.rsp-hero-sub {
-  font-size: 18px;
-  color: rgba(255,255,255,0.7);
-  margin: 0 0 32px;
-  max-width: 480px;
-  line-height: 1.6;
+@media (min-width: 768px) {
+  .rsp-hero-title { font-size: 3.75rem; }
 }
-.rsp-hero-stats {
-  display: flex;
-  gap: 32px;
-  flex-wrap: wrap;
+.rsp-hero-title span {
+  color: hsl(var(--primary));
 }
-.rsp-hero-stat { text-align: left; }
-.rsp-hero-stat-num { font-size: 28px; font-weight: 800; color: white; line-height: 1; }
-.rsp-hero-stat-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px; font-weight: 500; }
 
-/* Toolbar */
-.rsp-toolbar {
-  background: #FFFFFF;
-  border-bottom: 1px solid #8D6E63;
-  padding: 12px 0;
-  position: sticky;
-  top: 68px;
-  z-index: 100;
-}
-.rsp-toolbar-inner {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 .rsp-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.7);
-  border-radius: 6px;
+  gap: 0.5rem;
   width: 100%;
   max-width: 600px;
-  margin-top: 30px;
-  transition: all 0.15s ease;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  margin: 0 auto;
+  transition: all 0.2s;
 }
-.rsp-search:focus-within { border-color: white; background: rgba(255,255,255,0.1); }
-.rsp-search input { border: none; outline: none; flex: 1; font-size: 15px; color: white; background: transparent; font-family: inherit; }
-.rsp-search input::placeholder { color: rgba(255,255,255,0.7); }
+.rsp-search:focus-within {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+.rsp-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+}
+.rsp-search input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Toolbar */
+.rsp-toolbar {
+  background-color: hsl(var(--background));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem 0;
+  position: sticky;
+  top: 68px;
+  z-index: 40;
+}
+.rsp-toolbar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .rsp-cat-pill {
-  padding: 7px 16px;
-  border-radius: 8px;
-  border: 1px solid #8D6E63;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  background: #FFFFFF;
-  color: #424242;
-  font-family: inherit;
+  transition: all 0.2s ease-in-out;
 }
-.rsp-cat-pill:hover { background: #F5F5F5; color: #1B5E20; border-color: #2E8B57; }
-.rsp-cat-pill.active { background: #2E8B57; color: #FFFFFF; border-color: #2E8B57; }
+.rsp-cat-pill:hover {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--primary));
+}
+.rsp-cat-pill.active {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
 
 /* Main */
 .rsp-main {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 32px 24px 100px;
+  padding-top: 3rem;
+  padding-bottom: 5rem;
 }
 
-/* Grid */
+/* Grid & Cards */
 .rsp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 .rsp-card {
-  background: #FFFFFF;
-  border-radius: 12px;
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
   overflow: hidden;
-  border: 1px solid #8D6E63;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  animation: fadeUp 0.4s both;
 }
-.rsp-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
+.rsp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
 .rsp-card-img-wrap {
-  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
   overflow: hidden;
-  aspect-ratio: 4/3;
-  background: #F5F5F5;
+  background-color: hsl(var(--muted));
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px 10px 0 0;
+  position: relative;
 }
-.rsp-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.15s ease; border-radius: 10px 10px 0 0; }
-.rsp-card:hover .rsp-card-img { transform: scale(1.03); }
-.rsp-card-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(4px);
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #1B5E20;
+.rsp-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .rsp-card-oos {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.45);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  color: #ffffff;
   font-weight: 700;
-  color: white;
-  letter-spacing: 1px;
-  border-radius: 10px 10px 0 0;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
 }
-.rsp-card-body { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; }
+.rsp-card-body {
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 .rsp-card-name {
-  font-size: 16px;
+  font-size: 1.125rem;
   font-weight: 700;
-  font-family: 'Playfair Display', Georgia, serif;
-  color: #1B5E20;
-  margin: 0 0 6px;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
 }
 .rsp-card-desc {
-  font-size: 12px;
-  font-style: italic;
-  color: #5D4037;
-  margin: 0 0 14px;
-  line-height: 1.65;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
   flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  letter-spacing: 0.02em;
 }
-.rsp-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
-.rsp-price {
-  font-size: 17px;
-  font-weight: 800;
-  font-family: 'Playfair Display', Georgia, serif;
-  color: #2E8B57;
-  letter-spacing: 0.03em;
-}
-.rsp-price-sub { font-size: 10px; color: #6D4C41; margin-top: 2px; font-style: italic; letter-spacing: 0.04em; }
-.rsp-add-btn {
-  background: #2E8B57;
-  color: #FFFFFF;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
+.rsp-card-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 13px;
-  transition: all 0.15s ease;
-  font-family: inherit;
+  justify-content: space-between;
+  margin-top: auto;
 }
-.rsp-add-btn:hover:not(:disabled) { background: #1B5E20; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-.rsp-add-btn:disabled { background: #F5F5F5; color: #8D6E63; border: 1px solid #8D6E63; cursor: not-allowed; }
+.rsp-price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+.rsp-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  transition: background-color 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+.rsp-add-btn:hover:not(:disabled) {
+  background-color: hsl(var(--primary) / 0.9);
+}
+.rsp-add-btn:disabled {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
 
 /* Shimmer */
 .rsp-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 600px 100%;
-  animation: shimmerAnim 1.5s infinite;
-  border-radius: 0;
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.5s infinite linear;
+  border-radius: 0.75rem;
   height: 320px;
+}
+@keyframes shimmerAnim {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Cart FAB */
 .rsp-cart-fab {
   position: fixed;
-  bottom: 32px;
-  right: 32px;
-  width: 64px;
-  height: 64px;
-  border-radius: 0;
-  background: linear-gradient(135deg,#059669,#10b981);
-  color: white;
+  bottom: 2rem;
+  right: 2rem;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(5,150,105,0.45);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   cursor: pointer;
-  z-index: 100;
-  transition: transform 0.2s;
+  z-index: 50;
+  transition: transform 0.2s ease;
   border: none;
-  animation: cartBounce 2s ease-in-out infinite;
 }
-.rsp-cart-fab:hover { transform: scale(1.08); }
+.rsp-cart-fab:hover {
+  transform: scale(1.05);
+}
 .rsp-cart-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #ef4444;
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 0;
-  font-size: 12px;
+  top: 0;
+  right: 0;
+  background-color: #ef4444;
+  color: #ffffff;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid white;
+  border: 2px solid hsl(var(--background));
 }
 
-/* Cart items list (now inside modal) */
-.rsp-ci { display:flex;gap:14px;padding:16px 0;border-bottom:1px solid #f1f5f9;animation:slideIn 0.3s both; }
-.rsp-ci-img { width:64px;height:64px;border-radius:0;object-fit:cover;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center; }
-.rsp-ci-info { flex:1;min-width:0; }
-.rsp-ci-name { font-size:14px;font-weight:600;color:#0f172a;margin:0 0 4px; }
-.rsp-ci-price { font-size:13px;color:#059669;font-weight:700; }
-.rsp-ci-ctrl { display:flex;align-items:center;gap:10px;margin-top:8px; }
-.rsp-ci-btn { width:26px;height:26px;border-radius:0;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#475569;transition:all 0.15s; }
-.rsp-ci-btn:hover { background:#f1f5f9;border-color:#cbd5e1; }
-
-/* ── MODAL / OVERLAY ─────────────────────────────── */
+/* Modal / Overlay */
 .rsp-overlay {
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);
-  display:flex;align-items:flex-start;justify-content:center;
-  z-index:9999;padding:40px 20px;overflow-y:auto;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 50;
+  padding: 5rem 1.5rem 2rem;
+  overflow-y: auto;
 }
 .rsp-modal {
-  background:white;border-radius:0;width:100%;max-width:620px;
-  margin:auto;box-shadow:0 25px 60px rgba(0,0,0,0.3);
-  animation:psp-pop 0.3s ease;
+  background-color: hsl(var(--background));
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+  margin: auto;
 }
-@keyframes psp-pop { 0%{transform:scale(0.95);opacity:0} 100%{transform:scale(1);opacity:1} }
 .rsp-modal-header {
-  padding:24px 28px;border-bottom:1px solid #e2e8f0;
-  display:flex;align-items:center;justify-content:space-between;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+  padding: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: hsl(var(--muted));
 }
-.rsp-modal-title { margin:0;font-size:1.1rem;font-weight:800;color:#FFD700;display:flex;align-items:center;gap:10px; }
-.rsp-modal-subtitle { font-size:0.8rem;color:rgba(255,255,255,0.7);margin:4px 0 0; }
+.rsp-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+.rsp-modal-subtitle {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.25rem;
+}
 .rsp-close-btn {
-  background:rgba(255,255,255,0.15);border:none;color:white;
-  cursor:pointer;display:flex;align-items:center;
-  padding:8px;border-radius:8px;transition:all 0.2s;
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.rsp-close-btn:hover { background:rgba(255,255,255,0.3); }
-.rsp-modal-body { padding:28px;display:flex;flex-direction:column;gap:18px; }
-.rsp-form-group { display:flex;flex-direction:column;gap:8px; }
-.rsp-form-label {
-  font-weight:700;font-size:0.85rem;color:#1e293b;
-  display:flex;align-items:center;gap:6px;
+.rsp-close-btn:hover {
+  background-color: hsl(var(--border));
+  color: hsl(var(--foreground));
 }
-.rsp-form-label span { font-weight:400;color:#94a3b8; }
-.rsp-form-input {
-  padding:12px 16px;border:2px solid #e2e8f0;width:100%;box-sizing:border-box;
-  border-radius:0;font-size:0.95rem;background:white;
-  color:#0f172a;transition:all 0.2s;font-family:inherit;outline:none;
+.rsp-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
-.rsp-form-input:focus { border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.1); }
-.rsp-form-input:disabled { background:#f8fafc;color:#64748b;cursor:not-allowed; }
-.rsp-form-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
-@media(max-width:500px){ .rsp-form-row { grid-template-columns:1fr; } }
-
 .rsp-section-divider {
-  font-size:0.75rem;font-weight:800;color:#1a2b4b;letter-spacing:1.5px;
-  text-transform:uppercase;padding:8px 0 4px;border-top:2px solid #e2e8f0;
-  margin-top:4px;display:flex;align-items:center;gap:8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.rsp-section-divider::after { content:'';flex:1;height:1px;background:#e2e8f0; }
+.rsp-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: hsl(var(--border));
+}
+
+/* Forms & Inputs */
+.rsp-form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .rsp-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.rsp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rsp-form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.rsp-form-label span {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+.rsp-form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: transparent;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rsp-form-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+.rsp-form-input:disabled {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
+
+/* Cart Items */
+.rsp-ci {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.rsp-ci:last-child {
+  border-bottom: none;
+}
+.rsp-ci-img {
+  width: 4rem;
+  height: 4rem;
+  background-color: hsl(var(--muted));
+  border-radius: var(--radius);
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rsp-ci-info {
+  flex: 1;
+}
+.rsp-ci-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+.rsp-ci-price {
+  font-size: 0.875rem;
+  color: hsl(var(--primary));
+  font-weight: 500;
+}
+.rsp-ci-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.rsp-ci-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.rsp-ci-btn:hover {
+  background-color: hsl(var(--muted));
+}
 
 /* Price summary */
 .rsp-price-summary {
-  background:linear-gradient(135deg,#f0fdf4,#dcfce7);
-  border:2px solid #86efac;border-radius:0;padding:20px;
+  background-color: hsl(var(--muted));
+  padding: 1.5rem;
+  border-radius: var(--radius);
 }
-.rsp-price-row { display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;color:#166534;padding:4px 0; }
-.rsp-price-total { font-size:1.3rem;font-weight:900;color:#15803d;border-top:2px solid #86efac;padding-top:12px;margin-top:8px; }
+.rsp-price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  padding: 0.25rem 0;
+}
+.rsp-price-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  border-top: 1px solid hsl(var(--border));
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
 
-/* Modal footer */
+/* Modal Footer */
 .rsp-modal-footer {
-  padding:20px 28px;border-top:1px solid #e2e8f0;
-  display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;
+  padding: 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background-color: hsl(var(--background));
 }
 .rsp-cancel-btn {
-  padding:12px 24px;background:white;border:2px solid #e2e8f0;
-  border-radius:0;color:#475569;font-weight:700;
-  cursor:pointer;transition:all 0.2s;font-family:inherit;
+  padding: 0.5rem 1.5rem;
+  background-color: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
-.rsp-cancel-btn:hover { background:#f1f5f9; }
+.rsp-cancel-btn:hover {
+  background-color: hsl(var(--muted));
+}
 .rsp-submit-btn {
-  padding:12px 28px;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-  border:none;border-radius:0;color:white;
-  font-weight:800;cursor:pointer;display:flex;
-  align-items:center;gap:8px;transition:all 0.2s;
-  font-family:inherit;font-size:1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
-.rsp-submit-btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
-.rsp-submit-btn:disabled { opacity:0.6;cursor:not-allowed; }
+.rsp-submit-btn:hover:not(:disabled) {
+  background-color: hsl(var(--primary) / 0.9);
+}
+.rsp-submit-btn:disabled {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
 
-/* Success */
-.rsp-success-body { padding:48px 28px;text-align:center; }
-.rsp-success-emoji { font-size:72px;display:block;margin-bottom:16px;animation:psp-pop 0.5s; }
-.rsp-success-title { font-size:1.4rem;font-weight:900;color:#059669;margin:0 0 8px; }
-.rsp-success-sub { color:#64748b;margin:0 0 24px; }
+/* Success Body */
+.rsp-success-body {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+.rsp-success-emoji {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+.rsp-success-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  margin-bottom: 0.5rem;
+}
+.rsp-success-sub {
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.5rem;
+}
 .rsp-view-orders-btn {
-  display:inline-flex;align-items:center;gap:8px;
-  background:linear-gradient(135deg,#1a2b4b,#0D7C66);color:#fff;
-  border:none;border-radius:0;padding:14px 32px;
-  font-size:1rem;font-weight:800;cursor:pointer;
-  transition:all 0.2s;font-family:inherit;
-  box-shadow:0 4px 16px rgba(13,124,102,0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.rsp-view-orders-btn:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,124,102,0.45); }
+.rsp-view-orders-btn:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
 
-@media (max-width: 768px) {
-  .rsp-form-row { grid-template-columns: 1fr; }
-  .rsp-hero-content { padding: 0 16px; gap: 0; }
-  .rsp-hero-stats { gap: 20px; }
+/* Section wrappers */
+.rsp-section {
+  padding: 4rem 0;
+}
+.rsp-section-muted {
+  padding: 4rem 0;
+  background-color: hsl(var(--muted));
+}
+.rsp-section-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+.rsp-section-sub {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.rsp-section-sub-center {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* How to Buy */
+.rsp-how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+.rsp-how-card {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rsp-how-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+.rsp-how-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius);
+  background-color: hsl(var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.rsp-how-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+.rsp-how-desc {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.625;
+}
+
+/* Delivery & Payment */
+.rsp-dp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.rsp-dp-card {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+.rsp-dp-head {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.rsp-dp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: hsl(var(--muted));
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+.rsp-dp-row-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius);
+  background-color: hsl(var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rsp-dp-row-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+.rsp-dp-row-desc {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+/* FAQs */
+.rsp-faq-item {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.rsp-faq-item:hover {
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.06);
+}
+.rsp-faq-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: left;
+  gap: 1rem;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+.rsp-faq-btn:hover {
+  color: hsl(var(--primary));
+}
+.rsp-faq-ans {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.75;
+  padding: 0 1.5rem 1.25rem;
+}
+
+/* No results */
+.rsp-no-results {
+  text-align: center;
+  padding: 5rem 1.5rem;
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  margin-top: 1.5rem;
+}
+.rsp-no-results h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+.rsp-no-results p {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Product heading */
+.rsp-products-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Hero overlay */
+.rsp-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.rsp-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 76, 53, 0.7) 100%);
+  z-index: 1;
+}
+.rsp-hero-search-wrap {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
 }
 `;
 
@@ -695,217 +1074,179 @@ const RetailStorePage = () => {
 
       {/* ─── Hero Section ─── */}
       <div className="rsp-hero">
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: `url("${retailStoreHero}")`, backgroundSize: 'cover', backgroundPosition: 'center', animation: 'heroZoom 20s ease-in-out infinite alternate', zIndex: 0 }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(15,76,53,0.7) 100%)', zIndex: 1 }} />
-        <div className="rsp-hero-grid" style={{ zIndex: 2 }} />
-        <div className="rsp-hero-content" style={{ zIndex: 3 }}>
-          <div className="rsp-hero-text">
-            <h1 className="rsp-hero-title" style={{ textAlign: 'center' }}>
-              Shop Premium <span>Commercial</span> Goods
-            </h1>
-          </div>
-        </div>
-        
-        <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, zIndex: 4, display: 'flex', justifyContent: 'center', padding: '0 24px' }}>
-          <div className="rsp-search" style={{ margin: 0 }}>
-            <Search size={18} color="rgba(255,255,255,0.8)" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
-            />
+        <div className="rsp-hero-bg" style={{ backgroundImage: `url("${retailStoreHero}")` }} />
+        <div className="rsp-hero-overlay" />
+        <div className="rsp-hero-content">
+          <h1 className="rsp-hero-title">
+            Shop Premium <span>Commercial</span> Goods
+          </h1>
+          <div className="rsp-hero-search-wrap">
+            <div className="rsp-search">
+              <Search size={18} color="rgba(255,255,255,0.8)" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search products..."
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* ─── Sticky Toolbar ─── */}
       <div className="rsp-toolbar">
-        <div className="rsp-toolbar-inner" style={{ maxWidth: '100%', width: '100%', margin: '0 auto', display: 'flex', gap: 10, padding: '0 24px' }}>
-          <button
-            className={'rsp-cat-pill' + (catFilter === 'all' ? ' active' : '')}
-            onClick={() => setCatFilter('all')}
-          >
-            All
-          </button>
-          {categories.map(c => (
+        <div className="rsp-container">
+          <div className="rsp-toolbar-inner">
             <button
-              key={c.id}
-              className={'rsp-cat-pill' + (String(catFilter) === String(c.id) ? ' active' : '')}
-              onClick={() => setCatFilter(String(c.id))}
+              className={'rsp-cat-pill' + (catFilter === 'all' ? ' active' : '')}
+              onClick={() => setCatFilter('all')}
             >
-              {c.name}
+              All
             </button>
-          ))}
+            {categories.map(c => (
+              <button
+                key={c.id}
+                className={'rsp-cat-pill' + (String(catFilter) === String(c.id) ? ' active' : '')}
+                onClick={() => setCatFilter(String(c.id))}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ─── Product Grid ─── */}
       <div className="rsp-main">
-        <div style={{ marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1B5E20', margin: 0 }}>
+        <div className="rsp-container">
+          <h2 className="rsp-products-heading">
             {catFilter === 'all' ? 'All Products' : categories.find(c => String(c.id) === catFilter)?.name || 'Products'}
           </h2>
-        </div>
 
-        {loading ? (
-          <div className="rsp-grid">
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="rsp-shimmer" />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px', background: 'white', borderRadius: 0, border: '1px solid #e2e8f0' }}>
-            <Package size={56} color="#cbd5e1" style={{ marginBottom: 16 }} />
-            <h3 style={{ fontSize: 20, color: '#0f172a', margin: '0 0 8px' }}>No products found</h3>
-            <p style={{ color: '#64748b', margin: 0 }}>Try a different search term or category.</p>
-          </div>
-        ) : (
-          <div className="rsp-grid">
-            {filtered.map((p, i) => (
-              <div key={p.id} className="rsp-card" style={{ animationDelay: i * 0.05 + 's' }}>
-                <div className="rsp-card-img-wrap">
-                  {imgSrc(p.product_image) ? (
-                    <img src={imgSrc(p.product_image)} className="rsp-card-img" alt={p.name} />
-                  ) : (
-                    <Package size={44} color="#cbd5e1" />
-                  )}
-                  {(p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 0) && (
-                    <div className="rsp-card-oos">OUT OF STOCK</div>
-                  )}
-                </div>
-                <div className="rsp-card-body">
-                  <h3 className="rsp-card-name">{p.name}</h3>
-                  {p.description && <p className="rsp-card-desc">{p.description}</p>}
-                  <div className="rsp-card-footer">
-                    <div>
+          {loading ? (
+            <div className="rsp-grid">
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="rsp-shimmer" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rsp-no-results">
+              <Package size={48} color="hsl(215.4, 16.3%, 46.9%)" />
+              <h3>No products found</h3>
+              <p>Try a different search term or category.</p>
+            </div>
+          ) : (
+            <div className="rsp-grid">
+              {filtered.map((p) => (
+                <div key={p.id} className="rsp-card">
+                  <div className="rsp-card-img-wrap">
+                    {imgSrc(p.product_image) ? (
+                      <img src={imgSrc(p.product_image)} className="rsp-card-img" alt={p.name} />
+                    ) : (
+                      <Package size={44} color="hsl(215.4, 16.3%, 46.9%)" />
+                    )}
+                    {(p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 0) && (
+                      <div className="rsp-card-oos">OUT OF STOCK</div>
+                    )}
+                  </div>
+                  <div className="rsp-card-body">
+                    <h3 className="rsp-card-name">{p.name}</h3>
+                    {p.description && <p className="rsp-card-desc">{p.description}</p>}
+                    <div className="rsp-card-footer">
                       <div className="rsp-price">{parseFloat(p.price || p.selling_price || 0).toLocaleString()} ETB</div>
+                      <button
+                        className="rsp-add-btn"
+                        disabled={p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 0}
+                        onClick={(e) => { e.stopPropagation(); addToCart(p); }}
+                      >
+                        <ShoppingCart size={16} /> Add
+                      </button>
                     </div>
-                    <button
-                      className="rsp-add-btn"
-                      disabled={p.stock_quantity !== null && p.stock_quantity !== undefined && p.stock_quantity <= 0}
-                      onClick={(e) => { e.stopPropagation(); addToCart(p); }}
-                    >
-                      <ShoppingCart size={16} /> Add
-                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Section: How to Buy ── */}
+      <section className="rsp-section-muted">
+        <div className="rsp-container">
+          <h2 className="rsp-section-title">How to Buy</h2>
+          <p className="rsp-section-sub">Two simple ways to get what you need.</p>
+          <div className="rsp-how-grid">
+            {HOW_TO_BUY.map(step => (
+              <div key={step.n} className="rsp-how-card">
+                <div className="rsp-how-icon"><step.icon size={22} color="hsl(210, 40%, 98%)" /></div>
+                <h3 className="rsp-how-title">{step.title}</h3>
+                <p className="rsp-how-desc">{step.desc}</p>
               </div>
             ))}
           </div>
-        )}
-        
-        {/* ── Section: How to Buy ── */}
-        <section style={{ background: '#F5F5F5', margin: '60px -24px 0', padding: '56px 24px', borderTop: '1px solid #228B22' }}>
-          <style>{`
-            .rsp-how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 20px; }
-            .rsp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 22px; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; }
-            .rsp-how-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
-            .rsp-how-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
-            .rsp-how-title { font-size: 16px; font-weight: 700; color: #1B5E20; margin: 0 0 8px; }
-            .rsp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.65; }
-            @media (max-width: 600px) {
-              .rsp-how-card { border: none; border-radius: 0; box-shadow: none; padding: 16px 0; border-bottom: 1px solid #E0E0E0; }
-              .rsp-how-card:hover { transform: none; box-shadow: none; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, color: '#1B5E20', marginBottom: 8 }}>How to Buy</h2>
-            <p style={{ fontSize: 14, color: '#424242', marginBottom: 32 }}>Two simple ways to get what you need.</p>
-            <div className="rsp-how-grid">
-              {HOW_TO_BUY.map(step => (
-                <div key={step.n} className="rsp-how-card">
-                  <div className="rsp-how-icon"><step.icon size={22} color="#FFFFFF" /></div>
-                  <h3 className="rsp-how-title">{step.title}</h3>
-                  <p className="rsp-how-desc">{step.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── Section: Delivery & Payment ── */}
-        <section style={{ background: '#FFFFFF', margin: '0 -24px', padding: '56px 24px' }}>
-          <style>{`
-            .rsp-dp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: 32px; }
-            .rsp-dp-card { background: #FFFFFF; border-radius: 12px; padding: 28px 24px; border: 1px solid #8D6E63; }
-            .rsp-dp-head { font-size: 18px; font-weight: 700; color: #1B5E20; margin: 0 0 20px; display: flex; align-items: center; gap: 8px; }
-            .rsp-dp-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #F5F5F5; border-radius: 8px; margin-bottom: 10px; }
-            .rsp-dp-row-icon { width: 36px; height: 36px; border-radius: 8px; background: #2E8B57; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-            .rsp-dp-row-title { font-size: 13px; font-weight: 700; color: #424242; margin: 0 0 3px; }
-            .rsp-dp-row-desc { font-size: 12px; color: #424242; margin: 0; line-height: 1.5; }
-            @media (max-width: 600px) {
-              .rsp-dp-card { border: none; border-radius: 0; padding: 20px 0; }
-              .rsp-dp-grid { gap: 0; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div className="rsp-dp-grid">
-              <div className="rsp-dp-card">
-                <h2 className="rsp-dp-head"><Truck size={20} color="#2E8B57" /> Delivery / Pickup</h2>
-                <div className="rsp-dp-row">
-                  <div className="rsp-dp-row-icon"><Truck size={18} color="#FFFFFF" /></div>
-                  <div>
-                    <p className="rsp-dp-row-title">Standard Delivery</p>
-                    <p className="rsp-dp-row-desc">Available in major areas. Fees calculated at checkout. Delivery within 1-2 business days for in-stock items.</p>
-                  </div>
-                </div>
-                <div className="rsp-dp-row">
-                  <div className="rsp-dp-row-icon"><Package size={18} color="#FFFFFF" /></div>
-                  <div>
-                    <p className="rsp-dp-row-title">Store Pickup</p>
-                    <p className="rsp-dp-row-desc">Free pickup from our main branch. Ready within 2 hours for in-stock items.</p>
-                  </div>
+      {/* ── Section: Delivery & Payment ── */}
+      <section className="rsp-section">
+        <div className="rsp-container">
+          <div className="rsp-dp-grid">
+            <div className="rsp-dp-card">
+              <h2 className="rsp-dp-head"><Truck size={20} color="hsl(221.2, 83.2%, 53.3%)" /> Delivery / Pickup</h2>
+              <div className="rsp-dp-row">
+                <div className="rsp-dp-row-icon"><Truck size={18} color="hsl(210, 40%, 98%)" /></div>
+                <div>
+                  <p className="rsp-dp-row-title">Standard Delivery</p>
+                  <p className="rsp-dp-row-desc">Available in major areas. Fees calculated at checkout. Delivery within 1-2 business days for in-stock items.</p>
                 </div>
               </div>
-              <div className="rsp-dp-card">
-                <h2 className="rsp-dp-head"><CreditCard size={20} color="#2E8B57" /> Payment Methods</h2>
-                <div className="rsp-dp-row">
-                  <div className="rsp-dp-row-icon"><Banknote size={18} color="#FFFFFF" /></div>
-                  <div>
-                    <p className="rsp-dp-row-title">Bank Transfer</p>
-                    <p className="rsp-dp-row-desc">Direct transfer to our accounts (CBE, Awash, etc.)</p>
-                  </div>
+              <div className="rsp-dp-row">
+                <div className="rsp-dp-row-icon"><Package size={18} color="hsl(210, 40%, 98%)" /></div>
+                <div>
+                  <p className="rsp-dp-row-title">Store Pickup</p>
+                  <p className="rsp-dp-row-desc">Free pickup from our main branch. Ready within 2 hours for in-stock items.</p>
                 </div>
-                <div className="rsp-dp-row">
-                  <div className="rsp-dp-row-icon"><CreditCard size={18} color="#FFFFFF" /></div>
-                  <div>
-                    <p className="rsp-dp-row-title">Mobile Money</p>
-                    <p className="rsp-dp-row-desc">Telebirr, CBE Birr, and other wallets supported.</p>
-                  </div>
+              </div>
+            </div>
+            <div className="rsp-dp-card">
+              <h2 className="rsp-dp-head"><CreditCard size={20} color="hsl(221.2, 83.2%, 53.3%)" /> Payment Methods</h2>
+              <div className="rsp-dp-row">
+                <div className="rsp-dp-row-icon"><Banknote size={18} color="hsl(210, 40%, 98%)" /></div>
+                <div>
+                  <p className="rsp-dp-row-title">Bank Transfer</p>
+                  <p className="rsp-dp-row-desc">Direct transfer to our accounts (CBE, Awash, etc.)</p>
+                </div>
+              </div>
+              <div className="rsp-dp-row">
+                <div className="rsp-dp-row-icon"><CreditCard size={18} color="hsl(210, 40%, 98%)" /></div>
+                <div>
+                  <p className="rsp-dp-row-title">Mobile Money</p>
+                  <p className="rsp-dp-row-desc">Telebirr, CBE Birr, and other wallets supported.</p>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── Section: FAQs ── */}
-        <section style={{ background: '#F5F5F5', margin: '0 -24px', padding: '56px 24px' }}>
-          <style>{`
-            .rsp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; }
-            .rsp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-            .rsp-faq-btn { width: 100%; background: none; border: none; padding: 20px 22px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
-            .rsp-faq-btn:hover { color: #1B5E20; }
-            .rsp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 22px 20px; }
-            @media (max-width: 600px) {
-              .rsp-faq-item { border-radius: 0; box-shadow: none; border-bottom: 1px solid #E0E0E0; margin-bottom: 0; background: #F5F5F5; }
-              .rsp-faq-item:hover { box-shadow: none; }
-            }
-          `}</style>
-          <div style={{ maxWidth: 760, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 36 }}>Common Questions</h2>
-            <div>
-              {FAQS.map((f, i) => (
-                <div key={i} className="rsp-faq-item">
-                  <button className="rsp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                    <span>{f.q}</span>
-                    {openFaq === i ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} /> : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
-                  </button>
-                  {openFaq === i && <div className="rsp-faq-ans">{f.a}</div>}
-                </div>
-              ))}
-            </div>
+      {/* ── Section: FAQs ── */}
+      <section className="rsp-section-muted">
+        <div className="rsp-container" style={{ maxWidth: '760px' }}>
+          <h2 className="rsp-section-title" style={{ textAlign: 'center' }}>Common Questions</h2>
+          <p className="rsp-section-sub-center">Answers to the most common retail questions.</p>
+          <div>
+            {FAQS.map((f, i) => (
+              <div key={i} className="rsp-faq-item">
+                <button className="rsp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                  <span>{f.q}</span>
+                  {openFaq === i
+                    ? <ChevronUp size={18} color="hsl(221.2, 83.2%, 53.3%)" style={{ flexShrink: 0 }} />
+                    : <ChevronDown size={18} color="hsl(215.4, 16.3%, 46.9%)" style={{ flexShrink: 0 }} />}
+                </button>
+                {openFaq === i && <div className="rsp-faq-ans">{f.a}</div>}
+              </div>
+            ))}
           </div>
-        </section>
-
-      </div>
+        </div>
+      </section>
 
 
 
@@ -937,14 +1278,11 @@ const RetailStorePage = () => {
                   Invoice <strong>{orderSuccess}</strong> has been received.<br />
                   Our sales team will confirm your order shortly.
                 </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button className="rsp-view-orders-btn" onClick={() => navigate('/customer/orders')}>
                     <Package size={20} /> View My Orders
                   </button>
-                  <button
-                    style={{ padding: '14px 32px', background: '#f1f5f9', border: '2px solid #e2e8f0', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#334155' }}
-                    onClick={() => { setOrderSuccess(null); setCartOpen(false); }}
-                  >
+                  <button className="rsp-cancel-btn" onClick={() => { setOrderSuccess(null); setCartOpen(false); }}>
                     Continue Shopping
                   </button>
                 </div>
