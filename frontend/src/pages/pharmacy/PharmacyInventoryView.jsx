@@ -102,6 +102,9 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
     setTimeout(() => setMsg({ type: '', text: '' }), 3000);
   };
 
+  const [editingDetails, setEditingDetails] = useState(null);
+  const [editForm, setEditForm] = useState({ price: '', selling_price: '', reorder_level: '', expiry_date: '', batch_no: '', strength: '', unit: '' });
+
   const loadData = async () => {
     setLoading(true);
     setError('');
@@ -110,9 +113,13 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
       const list = Array.isArray(raw) ? raw : raw?.data || raw?.products || [];
       setDrugs(list.map(p => ({
         id: p.id, name: p.name, category: p.category_name || p.category || 'Uncategorized',
-        price: parseFloat(p.price || 0), stock: parseInt(p.stock_quantity || 0),
+        price: parseFloat(p.price || 0),
+        selling_price: parseFloat(p.selling_price || 0),
+        expiry_date: p.expiry_date || null,
+        batch_no: p.batch_no || '',
+        stock: parseInt(p.stock_quantity || 0),
         reorder: parseInt(p.reorder_level || 10), image: p.drug_image || p.cover_image || null,
-        strength: p.strength, unit: p.unit
+        strength: p.strength || '', unit: p.unit || ''
       })));
 
       if (isManager) {
@@ -175,6 +182,42 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
     if (filterMode === 'low-stock' && d.stock > d.reorder) return false;
     return !search || d.name.toLowerCase().includes(search.toLowerCase());
   });
+
+  const handleEditDetails = (drug) => {
+    setEditingDetails(drug.id);
+    setEditForm({
+      price: drug.price || 0,
+      selling_price: drug.selling_price || 0,
+      reorder_level: drug.reorder || 10,
+      expiry_date: drug.expiry_date ? drug.expiry_date.split('T')[0] : '',
+      batch_no: drug.batch_no || '',
+      strength: drug.strength || '',
+      unit: drug.unit || ''
+    });
+  };
+
+  const saveDetails = async (drugId) => {
+    setSaving(true);
+    try {
+      await apiClient.put(`/pharmacy/products/${drugId}`, {
+        price: editForm.price,
+        selling_price: editForm.selling_price,
+        reorder_level: editForm.reorder_level,
+        expiry_date: editForm.expiry_date || null,
+        batch_no: editForm.batch_no,
+        strength: editForm.strength,
+        unit: editForm.unit
+      });
+      setMsg({ type: 'success', text: 'Details updated successfully' });
+      setEditingDetails(null);
+      loadData();
+    } catch (e) {
+      setMsg({ type: 'error', text: e?.response?.data?.message || 'Update failed' });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setMsg({ type: '', text: '' }), 3000);
+    }
+  };
 
   const content = (
     <div className="card-container" style={{ padding: 0, overflow: 'hidden' }}>
@@ -239,25 +282,30 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
               <th>Image</th>
               <th>Drug Name</th>
               <th>Category</th>
+              <th>Strength</th>
+              <th>Batch</th>
               <th>Current Stock</th>
               <th>Reorder Lvl</th>
+              <th>Expiry</th>
+              <th style={{ textAlign: 'right' }}>Financials</th>
               <th style={{ textAlign: 'center' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center' }}>
+              <tr><td colSpan={10} style={{ padding: '60px 24px', textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><SegmentedSpinner size={32} /></div>
                 <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}>Loading stock...</p>
               </td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '60px 24px', textAlign: 'center' }}>
+              <tr><td colSpan={10} style={{ padding: '60px 24px', textAlign: 'center' }}>
                 <Package size={40} style={{ color: 'var(--color-text-muted)', marginBottom: 12 }} />
                 <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 4px', color: 'var(--color-text-primary)' }}>No stock items found</p>
               </td></tr>
             ) : filtered.map((drug, idx) => {
               const stockStatus = drug.stock <= 0 ? 'out' : drug.stock < drug.reorder ? 'low' : 'ok';
               const hasPending = isPending(drug.id);
+              const isEditing = editingDetails === drug.id;
               return (
                 <tr key={drug.id} style={{ background: stockStatus === 'out' ? 'var(--color-danger-bg)' : stockStatus === 'low' ? 'var(--color-warning-bg)' : 'var(--color-bg-card)' }}>
                   <td>
@@ -280,12 +328,62 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
                   <td>
                     <span className="badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{drug.category}</span>
                   </td>
+                  <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input type="text" value={editForm.strength} onChange={e => setEditForm({...editForm, strength: e.target.value})} style={{ width: 60 }} placeholder="Str" />
+                        <input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} style={{ width: 50 }} placeholder="Unit" />
+                      </div>
+                    ) : (
+                      drug.strength ? `${drug.strength}${drug.unit ? ' ' + drug.unit : ''}` : '—'
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontFamily: 'monospace' }}>
+                    {isEditing ? (
+                      <input type="text" value={editForm.batch_no} onChange={e => setEditForm({...editForm, batch_no: e.target.value})} style={{ width: 80 }} placeholder="Batch" />
+                    ) : (
+                      drug.batch_no || '—'
+                    )}
+                  </td>
                   <td style={{ fontWeight: 600, color: stockStatus === 'out' ? 'var(--color-danger)' : stockStatus === 'low' ? 'var(--color-warning)' : 'var(--color-success)' }}>
                     {drug.stock}
                   </td>
-                  <td style={{ color: 'var(--color-text-secondary)' }}>{drug.reorder}</td>
+                  <td style={{ color: 'var(--color-text-secondary)' }}>
+                    {isEditing ? (
+                      <input type="number" value={editForm.reorder_level} onChange={e => setEditForm({...editForm, reorder_level: e.target.value})} style={{ width: 60 }} />
+                    ) : (
+                      drug.reorder
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
+                    {isEditing ? (
+                      <input type="date" value={editForm.expiry_date} onChange={e => setEditForm({...editForm, expiry_date: e.target.value})} />
+                    ) : (
+                      drug.expiry_date ? new Date(drug.expiry_date).toLocaleDateString() : '—'
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right', fontSize: 13 }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                        <div><span style={{ fontSize: 10, color: 'var(--color-text-muted)', marginRight: 4 }}>Cost:</span><input type="number" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} style={{ width: 70 }} /></div>
+                        <div><span style={{ fontSize: 10, color: 'var(--color-text-muted)', marginRight: 4 }}>Sell:</span><input type="number" value={editForm.selling_price} onChange={e => setEditForm({...editForm, selling_price: e.target.value})} style={{ width: 70 }} /></div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div><span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginRight: 4 }}>Cost:</span><span style={{ fontWeight: 600 }}>{drug.price || '—'} ETB</span></div>
+                        <div><span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginRight: 4 }}>Sell:</span><span style={{ fontWeight: 600 }}>{drug.selling_price || '—'} ETB</span></div>
+                      </div>
+                    )}
+                  </td>
                   <td style={{ textAlign: 'center' }}>
-                    {hasPending ? (
+                    {isEditing ? (
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        <button onClick={() => saveDetails(drug.id)} disabled={saving} className="btn-primary" style={{ padding: '4px 10px', fontSize: 12 }}>
+                          {saving ? '...' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditingDetails(null)} disabled={saving} style={{ padding: '4px 8px', fontSize: 12 }}>✕</button>
+                      </div>
+                    ) : hasPending ? (
                       <span className="badge" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', border: '1px solid var(--color-warning)' }}>
                         <Clock size={12} /> CEO Review
                       </span>
@@ -302,9 +400,14 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
                       </div>
                     ) : (
                       (isManager || workerCanAdjust) ? (
-                        <button onClick={() => { setAdjusting(drug); setAdjQty(String(drug.stock)); setAdjReason(''); }} style={{ height: 28, padding: '0 10px', fontSize: 12 }}>
-                          <Edit3 size={12} /> Adjust
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                          <button onClick={() => { setAdjusting(drug); setAdjQty(String(drug.stock)); setAdjReason(''); }} style={{ height: 26, padding: '0 10px', fontSize: 11, width: '100%' }}>
+                            Adjust Qty
+                          </button>
+                          <button onClick={() => handleEditDetails(drug)} style={{ height: 26, padding: '0 10px', fontSize: 11, width: '100%', background: 'var(--color-bg-page)', border: '1px solid var(--color-border)' }}>
+                            <Edit3 size={11} style={{ marginRight: 4 }} /> Edit Details
+                          </button>
+                        </div>
                       ) : (
                         <span className="badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-muted)' }}>🔒 Locked</span>
                       )
@@ -334,7 +437,6 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
               <thead>
                 <tr>
                   <th>Drug</th>
-                  <th>Strength</th>
                   {branches.map(b => (
                     <th key={b.id} style={{ textAlign: 'center' }}>
                       <Building size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />{b.name}
@@ -346,9 +448,9 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
               </thead>
               <tbody>
                 {branchStockLoading ? (
-                  <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center' }}><SegmentedSpinner size={28} /></td></tr>
+                  <tr><td colSpan={branches.length + 3} style={{ padding: '40px 24px', textAlign: 'center' }}><SegmentedSpinner size={28} /></td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={branches.length + 4} style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No branch stock data</td></tr>
+                  <tr><td colSpan={branches.length + 3} style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>No branch stock data</td></tr>
                 ) : filtered.map((drug, idx) => {
                   const itemBranchData = branchInventory[drug.id]?.branches || {};
                   const branchTotal = Object.values(itemBranchData).reduce((s, q) => s + q, 0);
@@ -356,7 +458,6 @@ const PharmacyStockView = ({ hideHeader = false, refreshTrigger = 0 }) => {
                   return (
                     <tr key={drug.id}>
                       <td style={{ fontWeight: 500 }}>{drug.name}</td>
-                      <td style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{drug.strength ? `${drug.strength}${drug.unit ? ' ' + drug.unit : ''}` : '-'}</td>
                       {branches.map(b => {
                         const qty = itemBranchData[b.id] || 0;
                         const isEditing = assigningCell?.drug_id === drug.id && assigningCell?.branch_id === b.id;
