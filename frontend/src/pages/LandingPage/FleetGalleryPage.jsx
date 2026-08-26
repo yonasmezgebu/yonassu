@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight,
   Shield, FileText, Info, Phone, Mail, CreditCard, ChevronDown, ChevronUp, 
   MapPin, Key, Calendar, FileBadge, Wallet, HelpCircle,
-  Car, PhoneCall, Image as ImageIcon
+  Car, PhoneCall, Image as ImageIcon, Building2, RefreshCw
 } from 'lucide-react';
 import { PublicNav } from './ServicesPage';
 import RentalAgreementModal from './RentalAgreementModal';
@@ -310,53 +310,324 @@ const FleetGalleryPage = () => {
             STATIC INFO SECTIONS — Car Rental Page
           ══════════════════════════════════════════════ */}
 
+      <style>{`
+        /* ── Root Design Tokens ── */
+        .fgp-root {
+          --fgp-bg: 0 0% 100%;
+          --fgp-fg: 222.2 84% 4.9%;
+          --fgp-primary: 142.1 76.2% 36.3%;
+          --fgp-primary-fg: 355.7 100% 97.3%;
+          --fgp-primary-dark: 142.4 71.8% 29.2%;
+          --fgp-muted: 210 40% 96.1%;
+          --fgp-muted-fg: 215.4 16.3% 46.9%;
+          --fgp-border: 214.3 31.8% 91.4%;
+          --fgp-accent: 142.1 76.2% 36.3%;
+          --fgp-radius: 0.75rem;
+          --fgp-radius-sm: 0.5rem;
+          --fgp-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+          --fgp-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+          --fgp-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        /* ── Global Reset (scoped) ── */
+        .fgp-section *, .fgp-section *::before, .fgp-section *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* ── Section Base ── */
+        .fgp-section {
+          padding: 5rem 1.5rem;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .fgp-section-light { background-color: hsl(var(--fgp-muted)); }
+        .fgp-section-white { background-color: hsl(var(--fgp-bg)); }
+
+        /* ── Container ── */
+        .fgp-container {
+          width: 100%;
+          max-width: 1280px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .fgp-container-narrow {
+          width: 100%;
+          max-width: 800px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        /* ── Section Header ── */
+        .fgp-section-header {
+          text-align: center;
+          margin-bottom: 3.5rem;
+        }
+        .fgp-section-label {
+          display: inline-block;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: hsl(var(--fgp-primary));
+          margin-bottom: 0.75rem;
+        }
+        .fgp-section-title {
+          font-size: clamp(1.875rem, 4vw, 2.5rem);
+          font-weight: 700;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
+          color: hsl(var(--fgp-fg));
+          margin-bottom: 1rem;
+        }
+        .fgp-section-sub {
+          font-size: 1rem;
+          line-height: 1.625;
+          color: hsl(var(--fgp-muted-fg));
+          max-width: 36rem;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        /* ─────────────── HOW TO RENT STEPS ─────────────── */
+        .fgp-how-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1.5rem;
+        }
+        .fgp-how-card {
+          background-color: hsl(var(--fgp-bg));
+          border: 1px solid hsl(var(--fgp-border));
+          border-radius: var(--fgp-radius);
+          padding: 2rem 1.5rem;
+          text-align: center;
+          box-shadow: var(--fgp-shadow-sm);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          cursor: default;
+        }
+        .fgp-how-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--fgp-shadow-lg);
+        }
+        .fgp-how-icon {
+          width: 3.5rem;
+          height: 3.5rem;
+          border-radius: 9999px;
+          background-color: hsl(var(--fgp-primary));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.25rem;
+          flex-shrink: 0;
+        }
+        .fgp-how-step-num {
+          font-size: 0.6875rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: hsl(var(--fgp-primary));
+          margin-bottom: 0.375rem;
+        }
+        .fgp-how-title {
+          font-size: 1rem;
+          font-weight: 700;
+          color: hsl(var(--fgp-fg));
+          margin-bottom: 0.5rem;
+          line-height: 1.3;
+        }
+        .fgp-how-desc {
+          font-size: 0.875rem;
+          color: hsl(var(--fgp-muted-fg));
+          line-height: 1.625;
+        }
+
+        /* ─────────────── INFO GRID (Pricing + Pickup) ─────────────── */
+        .fgp-info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 2rem;
+        }
+        .fgp-info-card {
+          background-color: hsl(var(--fgp-bg));
+          border: 1px solid hsl(var(--fgp-border));
+          border-radius: var(--fgp-radius);
+          padding: 2.5rem 2rem;
+          box-shadow: var(--fgp-shadow-sm);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .fgp-info-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--fgp-shadow-md);
+        }
+        .fgp-info-icon {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 0.625rem;
+          background-color: hsl(var(--fgp-primary));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 1.25rem;
+          flex-shrink: 0;
+        }
+        .fgp-info-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: hsl(var(--fgp-fg));
+          margin-bottom: 0.375rem;
+          line-height: 1.3;
+        }
+        .fgp-info-sub {
+          font-size: 0.875rem;
+          color: hsl(var(--fgp-muted-fg));
+          margin-bottom: 1.5rem;
+          line-height: 1.5;
+        }
+
+        /* Pricing rows */
+        .fgp-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 1rem;
+          padding: 0.75rem 1rem;
+          border-radius: var(--fgp-radius-sm);
+          background-color: hsl(var(--fgp-muted));
+          margin-bottom: 0.5rem;
+          border-bottom: 1px solid hsl(var(--fgp-border));
+        }
+        .fgp-row:last-child { border-bottom: none; }
+        .fgp-row-label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: hsl(var(--fgp-fg));
+          flex-shrink: 0;
+        }
+        .fgp-row-val {
+          font-size: 0.875rem;
+          color: hsl(var(--fgp-muted-fg));
+          text-align: right;
+          line-height: 1.5;
+        }
+
+        /* Pickup rows */
+        .fgp-pickup-row {
+          display: flex;
+          gap: 1rem;
+          align-items: flex-start;
+          padding: 1rem;
+          border-radius: var(--fgp-radius-sm);
+          background-color: hsl(var(--fgp-muted));
+          margin-bottom: 0.5rem;
+          transition: background-color 0.15s ease;
+        }
+        .fgp-pickup-row:hover { background-color: hsl(var(--fgp-border)); }
+        .fgp-pickup-emoji {
+          font-size: 1.375rem;
+          flex-shrink: 0;
+          line-height: 1;
+          margin-top: 0.125rem;
+        }
+        .fgp-pickup-label {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          color: hsl(var(--fgp-fg));
+          margin-bottom: 0.25rem;
+        }
+        .fgp-pickup-desc {
+          font-size: 0.875rem;
+          color: hsl(var(--fgp-muted-fg));
+          line-height: 1.5;
+        }
+
+        /* ─────────────── FAQ ─────────────── */
+        .fgp-faq-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .fgp-faq-item {
+          background-color: hsl(var(--fgp-bg));
+          border: 1px solid hsl(var(--fgp-border));
+          border-radius: var(--fgp-radius);
+          overflow: hidden;
+          transition: box-shadow 0.2s ease;
+        }
+        .fgp-faq-item:hover { box-shadow: var(--fgp-shadow-md); }
+        .fgp-faq-btn {
+          width: 100%;
+          background: none;
+          border: none;
+          padding: 1.25rem 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+          color: hsl(var(--fgp-fg));
+          font-size: 1rem;
+          line-height: 1.5;
+          cursor: pointer;
+          text-align: left;
+          gap: 1rem;
+          font-family: inherit;
+          transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .fgp-faq-btn:hover { background-color: hsl(var(--fgp-muted)); }
+        .fgp-faq-btn:focus {
+          outline: none;
+          box-shadow: inset 0 0 0 2px hsl(var(--fgp-primary) / 0.35);
+        }
+        .fgp-faq-icon { flex-shrink: 0; color: hsl(var(--fgp-primary)); }
+        .fgp-faq-ans {
+          font-size: 0.9375rem;
+          color: hsl(var(--fgp-muted-fg));
+          line-height: 1.75;
+          padding: 0 1.5rem 1.25rem;
+          border-top: 1px solid hsl(var(--fgp-border));
+        }
+
+        /* ─────────────── RESPONSIVE ─────────────── */
+        @media (max-width: 768px) {
+          .fgp-section { padding: 3rem 1rem; }
+          .fgp-section-header { margin-bottom: 2.5rem; }
+          .fgp-how-grid { gap: 1rem; }
+          .fgp-how-card {
+            border: none;
+            box-shadow: none;
+            padding: 1.25rem 0.75rem;
+            border-bottom: 1px solid hsl(var(--fgp-border));
+            border-radius: 0;
+          }
+          .fgp-how-card:last-child { border-bottom: none; }
+          .fgp-how-card:hover { transform: none; box-shadow: none; }
+          .fgp-info-grid { gap: 1rem; }
+          .fgp-info-card {
+            border: none;
+            box-shadow: none;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid hsl(var(--fgp-border));
+            border-radius: 0;
+          }
+          .fgp-info-card:last-child { border-bottom: none; }
+          .fgp-info-card:hover { transform: none; box-shadow: none; }
+        }
+      `}</style>
+
       {/* ── How to Rent ── */}
-      <section style={{ background: '#F5F5F5', padding: '72px 24px', borderTop: '1px solid #228B22' }}>
-        <style>{`
-          .fgp-how-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 20px; }
-          .fgp-how-card { background: #FFFFFF; border-radius: 12px; padding: 28px 20px; text-align: center; border: 1px solid #8D6E63; transition: transform 0.15s ease, box-shadow 0.15s ease; cursor: default; }
-          .fgp-how-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-          .fgp-how-icon { width: 52px; height: 52px; border-radius: 50%; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-          .fgp-how-title { font-size: 15px; font-weight: 700; color: #424242; margin-bottom: 6px; }
-          .fgp-how-desc { font-size: 13px; color: #424242; margin: 0; line-height: 1.6; }
-          @media (max-width: 600px) {
-            .fgp-how-card { border: none; box-shadow: none; padding: 16px 8px; }
-            .fgp-how-card:hover { transform: none; box-shadow: none; }
-          }
-          .fgp-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
-          .fgp-info-card { background: #FFFFFF; border-radius: 12px; padding: 36px 32px; border: 1px solid #8D6E63; transition: box-shadow 0.15s ease, transform 0.15s ease; }
-          .fgp-info-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
-          .fgp-info-icon { width: 48px; height: 48px; border-radius: 10px; background: #2E8B57; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-          .fgp-info-title { font-size: 20px; font-weight: 800; color: #1B5E20; margin: 0 0 6px; }
-          .fgp-info-sub { font-size: 14px; color: #424242; margin: 0 0 22px; }
-          .fgp-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
-          .fgp-row-label { font-size: 13px; font-weight: 700; color: #1B5E20; flex-shrink: 0; }
-          .fgp-row-val { font-size: 13px; color: #424242; text-align: right; }
-          .fgp-pickup-row { display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px; border-radius: 8px; background: #F5F5F5; margin-bottom: 8px; }
-          .fgp-pickup-label { font-weight: 700; font-size: 14px; color: #424242; margin-bottom: 2px; }
-          .fgp-pickup-desc { font-size: 13px; color: #424242; line-height: 1.5; }
-          @media (max-width: 600px) {
-            .fgp-info-card { border: none; box-shadow: none; padding: 20px 0; }
-            .fgp-info-card:hover { transform: none; box-shadow: none; }
-            .fgp-info-grid { gap: 4px; }
-          }
-          .fgp-faq-item { background: #FFFFFF; border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.15s ease; }
-          .fgp-faq-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-          .fgp-faq-btn { width: 100%; background: none; border: none; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #424242; font-size: 15px; cursor: pointer; text-align: left; gap: 16px; font-family: inherit; transition: color 0.15s ease; }
-          .fgp-faq-btn:hover { color: #1B5E20; }
-          .fgp-faq-ans { font-size: 14px; color: #424242; line-height: 1.75; padding: 0 24px 20px; }
-        `}</style>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', margin: '0 0 10px' }}>How to Rent a Car</h2>
-            <p style={{ fontSize: 15, color: '#424242', maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>Five easy steps to get you behind the wheel — no hassle, no delays.</p>
+      <section className="fgp-section fgp-section-light fgp-root">
+        <div className="fgp-container">
+          <div className="fgp-section-header">
+            <span className="fgp-section-label">Simple Process</span>
+            <h2 className="fgp-section-title">How to Rent a Car</h2>
+            <p className="fgp-section-sub">Five easy steps to get you behind the wheel — no hassle, no delays.</p>
           </div>
           <div className="fgp-how-grid">
             {HOW_TO_RENT.map((step) => (
               <div key={step.n} className="fgp-how-card">
                 <div className="fgp-how-icon">
-                  <step.icon size={24} color="#FFFFFF" />
+                  <step.icon size={22} color="#ffffff" />
                 </div>
+                <div className="fgp-how-step-num">Step {step.n}</div>
                 <h3 className="fgp-how-title">{step.title}</h3>
                 <p className="fgp-how-desc">{step.desc}</p>
               </div>
@@ -365,13 +636,20 @@ const FleetGalleryPage = () => {
         </div>
       </section>
 
-      {/* ── Pricing & Pickup (merged) ── */}
-      <section style={{ background: '#FFFFFF', padding: '72px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      {/* ── Pricing & Pickup ── */}
+      <section className="fgp-section fgp-section-white fgp-root">
+        <div className="fgp-container">
+          <div className="fgp-section-header">
+            <span className="fgp-section-label">Transparent & Flexible</span>
+            <h2 className="fgp-section-title">Pricing & Pickup Details</h2>
+            <p className="fgp-section-sub">Clear rates and convenient pickup options — everything you need to know before you book.</p>
+          </div>
           <div className="fgp-info-grid">
+
+            {/* Pricing Card */}
             <div className="fgp-info-card">
-              <div className="fgp-info-icon"><Wallet size={24} color="#FFFFFF" /></div>
-              <h3 className="fgp-info-title">Pricing &amp; Rates</h3>
+              <div className="fgp-info-icon"><Wallet size={22} color="#ffffff" /></div>
+              <h3 className="fgp-info-title">Pricing & Rates</h3>
               <p className="fgp-info-sub">Transparent pricing — no hidden charges.</p>
               {[
                 { label: 'Daily Rate', value: 'Per-car pricing — see fleet listings above' },
@@ -385,17 +663,21 @@ const FleetGalleryPage = () => {
                 </div>
               ))}
             </div>
+
+            {/* Pickup Card */}
             <div className="fgp-info-card">
-              <div className="fgp-info-icon"><MapPin size={24} color="#FFFFFF" /></div>
-              <h3 className="fgp-info-title">Pickup &amp; Delivery</h3>
+              <div className="fgp-info-icon"><MapPin size={22} color="#ffffff" /></div>
+              <h3 className="fgp-info-title">Pickup & Delivery</h3>
               <p className="fgp-info-sub">Flexible options to suit your schedule.</p>
               {[
-                { icon: '🏢', label: 'Office Pickup', desc: 'Collect from our main Addis Ababa office during business hours. Free of charge.' },
-                { icon: '🚗', label: 'Delivery Option', desc: 'We deliver to hotels and selected city locations for an additional fee.' },
-                { icon: '🔄', label: 'Return Process', desc: 'Return to the agreed location on time. Early returns credited; late returns charged hourly.' },
+                { icon: Building2, label: 'Office Pickup', desc: 'Collect from our main Addis Ababa office during business hours. Free of charge.' },
+                { icon: Car, label: 'Delivery Option', desc: 'We deliver to hotels and selected city locations for an additional fee.' },
+                { icon: RefreshCw, label: 'Return Process', desc: 'Return to the agreed location on time. Early returns credited; late returns charged hourly.' },
               ].map(p => (
                 <div key={p.label} className="fgp-pickup-row">
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{p.icon}</span>
+                  <span className="fgp-pickup-emoji">
+                    <p.icon size={20} color="hsl(var(--fgp-primary))" />
+                  </span>
                   <div>
                     <div className="fgp-pickup-label">{p.label}</div>
                     <div className="fgp-pickup-desc">{p.desc}</div>
@@ -403,22 +685,29 @@ const FleetGalleryPage = () => {
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       </section>
 
       {/* ── Common Questions ── */}
-      <section style={{ background: '#F5F5F5', padding: '72px 24px' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: '#1B5E20', textAlign: 'center', marginBottom: 40 }}>Common Questions</h2>
-          <div>
+      <section className="fgp-section fgp-section-light fgp-root">
+        <div className="fgp-container-narrow">
+          <div className="fgp-section-header">
+            <span className="fgp-section-label">Support</span>
+            <h2 className="fgp-section-title">Common Questions</h2>
+            <p className="fgp-section-sub">Everything you need to know about renting with us.</p>
+          </div>
+          <div className="fgp-faq-list">
             {FAQS.map((f, i) => (
               <div key={i} className="fgp-faq-item">
                 <button className="fgp-faq-btn" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                   <span>{f.q}</span>
-                  {openFaq === i
-                    ? <ChevronUp size={18} color="#228B22" style={{ flexShrink: 0 }} />
-                    : <ChevronDown size={18} color="#424242" style={{ flexShrink: 0 }} />}
+                  <span className="fgp-faq-icon">
+                    {openFaq === i
+                      ? <ChevronUp size={20} />
+                      : <ChevronDown size={20} />}
+                  </span>
                 </button>
                 {openFaq === i && (
                   <div className="fgp-faq-ans">{f.a}</div>
