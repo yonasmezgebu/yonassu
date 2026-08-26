@@ -221,23 +221,9 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
-/* Getting started card */
-.gs-card {
-  background-color: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  padding: 2.25rem 1.75rem;
-  text-align: center;
-  cursor: default;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.gs-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-}
-
+/* ─── Getting Started cards ─── */
+/* These use .card from the Master Note base class.
+   The modifier classes below style only the inner elements. */
 .gs-card__step {
   width: 3rem;
   height: 3rem;
@@ -250,44 +236,35 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 auto 1rem;
   font-weight: 800;
   font-size: 1rem;
+  letter-spacing: -0.02em;
 }
 
 .gs-card__icon {
+  display: flex;
+  justify-content: center;
   margin-bottom: 0.875rem;
   color: hsl(var(--primary));
 }
 
 .gs-card__title {
-  font-size: 1.1rem;
+  font-size: 1.125rem; /* H3 — 18px */
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: hsl(var(--foreground));
   margin-bottom: 0.5rem;
 }
 
 .gs-card__desc {
-  font-size: 0.9rem;
-  line-height: 1.625;
+  font-size: 0.875rem; /* 14px small/meta */
+  line-height: 1.625; /* body loose */
   color: hsl(var(--muted-foreground));
+  margin: 0;
 }
 
-/* Why Sutana benefit card */
-.ws-card {
-  display: flex;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  background-color: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  cursor: default;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.ws-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-}
-
+/* ─── Why SUTANA benefit rows ─── */
+/* These use .card from the Master Note base class.
+   Row layout is set inline via style={{ display:'flex', gap:'1.25rem' }} */
 .ws-card__icon {
   width: 3rem;
   height: 3rem;
@@ -301,69 +278,37 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .ws-card__title {
-  font-size: 1rem;
+  font-size: 1rem; /* H4 equivalent */
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: hsl(var(--foreground));
   margin-bottom: 0.25rem;
 }
 
 .ws-card__desc {
-  font-size: 0.875rem;
-  line-height: 1.625;
+  font-size: 0.875rem; /* 14px small/meta */
+  line-height: 1.625; /* body loose */
   color: hsl(var(--muted-foreground));
+  margin: 0;
 }
 
-/* Why Sutana image */
-.ws-image-wrap {
-  border-radius: 0.75rem;
-  overflow: hidden;
-  border: 1px solid hsl(var(--border));
-  box-shadow: var(--shadow-md);
-}
-
-.ws-image-wrap img {
-  width: 100%;
-  height: auto;
-  display: block;
-  transition: transform 0.2s ease;
-}
-
-.ws-image-wrap img:hover {
-  transform: scale(1.03);
-}
-
-/* Testimonial card */
-.ts-card {
-  background-color: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  padding: 2rem 1.75rem;
-  display: flex;
-  flex-direction: column;
-  cursor: default;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.ts-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
-}
-
+/* ─── Success Stories testimonial cards ─── */
+/* These use .card from the Master Note base class. */
 .ts-card__stars {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.25rem; /* 4px micro-spacing */
   margin-bottom: 1rem;
 }
 
 .ts-card__quote-icon {
-  margin-bottom: 0.625rem;
+  margin-bottom: 0.5rem;
   color: hsl(var(--primary) / 0.4);
 }
 
 .ts-card__text {
-  font-size: 0.9rem;
-  line-height: 1.75;
+  font-size: 0.875rem; /* 14px small/meta */
+  line-height: 1.75; /* body loose */
   color: hsl(var(--muted-foreground));
   flex: 1;
   margin-bottom: 1.5rem;
@@ -376,6 +321,7 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.875rem;
   border-top: 1px solid hsl(var(--border));
   padding-top: 1.25rem;
+  margin-top: auto;
 }
 
 .ts-card__avatar {
@@ -396,11 +342,13 @@ h1, h2, h3, h4, h5, h6 {
 .ts-card__name {
   font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.2;
   color: hsl(var(--foreground));
+  margin-bottom: 0.125rem;
 }
 
 .ts-card__role {
-  font-size: 0.78rem;
+  font-size: 0.75rem; /* 12px small/meta */
   color: hsl(var(--primary));
   font-weight: 500;
 }
