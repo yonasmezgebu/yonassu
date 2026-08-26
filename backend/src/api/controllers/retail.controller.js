@@ -506,7 +506,12 @@ exports.getTransactions = catchAsync(async (req, res) => {
 exports.getInventory = catchAsync(async (req, res) => {
   const { search, category_id, low_stock } = req.query;
   let query = db('retail_products as rp')
-    .select('rp.*', 'rc.name as category_name')
+    .select(
+      'rp.id', 'rp.name', 'rp.sku', 'rp.price', 'rp.category_id',
+      'rp.stock_quantity', 'rp.reorder_level', 'rp.expiry_date',
+      'rp.product_image', 'rp.is_active', 'rp.created_at', 'rp.updated_at',
+      'rc.name as category_name'
+    )
     .leftJoin('retail_categories as rc', 'rp.category_id', 'rc.id');
   if (search) query = query.where(q => q.where('rp.name', 'like', `%${search}%`).orWhere('rp.sku', 'like', `%${search}%`));
   if (category_id) query = query.where('rp.category_id', category_id);
@@ -558,7 +563,9 @@ exports.createProduct = catchAsync(async (req, res) => {
     if (category_id) syncData.category_id = category_id;
     await db('products').insert(syncData);
   } catch (_) { /* sync is best-effort */ }
-  const product = await db('retail_products').where({ id }).first();
+  const product = await db('retail_products')
+    .select('id', 'name', 'sku', 'price', 'category_id', 'stock_quantity', 'reorder_level', 'expiry_date', 'product_image', 'is_active', 'created_at', 'updated_at')
+    .where({ id }).first();
   log(req, 'Product Created', `Product #${id} — ${product.name}`, null, product);
   res.status(201).json({ status: 'success', message: 'Product created', data: product });
 });
@@ -620,7 +627,9 @@ exports.updateProduct = catchAsync(async (req, res) => {
     try { await db('products').where({ sku: product.sku, business_unit: 'retail' }).update(prodUpdates); } catch (_) {}
   }
 
-  const updated = await db('retail_products').where({ id }).first();
+  const updated = await db('retail_products')
+    .select('id', 'name', 'sku', 'price', 'category_id', 'stock_quantity', 'reorder_level', 'expiry_date', 'product_image', 'is_active', 'created_at', 'updated_at')
+    .where({ id }).first();
   log(req, 'Product Updated', `Product #${id} — ${product.name}`, product, updated);
   res.json({ status: 'success', message: 'Product updated', data: updated });
 });
