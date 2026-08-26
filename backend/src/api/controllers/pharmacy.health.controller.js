@@ -17,8 +17,7 @@ function toResponse(row) {
     price_unit: row.price_unit || 'ETB',
     selling_price: row.selling_price,
     manufacturer: row.manufacturer,
-    drug_image: row.drug_image,
-    cover_image: row.cover_image,
+    drug_image: row.drug_image,   // single image only
     stock_quantity: row.stock_quantity,
     reorder_level: row.reorder_level,
     is_prescription_required: row.is_prescription_required,
@@ -89,20 +88,17 @@ const healthController = {
       is_active: status === 'published' ? 1 : 0
     };
 
-    if (price !== undefined) data.price = parseFloat(price);
+    if (price !== undefined && price !== '') data.price = parseFloat(price);
     if (price_unit !== undefined) data.price_unit = price_unit;
     if (selling_price !== undefined && selling_price !== '') data.selling_price = parseFloat(selling_price);
-    if (stock_quantity !== undefined) data.stock_quantity = parseInt(stock_quantity);
-    if (reorder_level !== undefined) data.reorder_level = parseInt(reorder_level);
-    if (is_prescription_required !== undefined) data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
+    if (stock_quantity !== undefined && stock_quantity !== '') data.stock_quantity = parseInt(stock_quantity);
+    if (reorder_level !== undefined && reorder_level !== '') data.reorder_level = parseInt(reorder_level);
+    if (is_prescription_required !== undefined)
+      data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
 
-    if (req.files) {
-      if (req.files.drug_image) {
-        data.drug_image = getFileInfo(req.files.drug_image[0]).url;
-      }
-      if (req.files.cover_image) {
-        data.cover_image = getFileInfo(req.files.cover_image[0]).url;
-      }
+    // Single image only — drug_image
+    if (req.files && req.files.drug_image) {
+      data.drug_image = getFileInfo(req.files.drug_image[0]).url;
     }
 
     const [id] = await db('pharmacy_medications').insert(data);
@@ -129,30 +125,31 @@ const healthController = {
       const parts = [];
       if (subtitle !== undefined) parts.push(subtitle);
       if (content !== undefined) parts.push(content);
-      if (source_url !== undefined) parts.push(`Source: ${source_url}`);
-      else if (existing.description) parts.push(existing.description);
-      data.description = parts.filter(Boolean).join('\n\n');
+      if (source_url !== undefined && source_url) parts.push(`Source: ${source_url}`);
+      data.description = parts.filter(Boolean).join('\n\n') || null;
     }
     if (category_id !== undefined) data.category_id = category_id ? parseInt(category_id) : null;
     if (branch_id !== undefined) data.branch_id = branch_id ? parseInt(branch_id) : null;
     if (manufacturer !== undefined) data.manufacturer = manufacturer;
-    if (price !== undefined) data.price = parseFloat(price);
+    if (price !== undefined && price !== '') data.price = parseFloat(price);
     if (price_unit !== undefined) data.price_unit = price_unit;
     if (selling_price !== undefined && selling_price !== '') data.selling_price = parseFloat(selling_price);
-    if (stock_quantity !== undefined) data.stock_quantity = parseInt(stock_quantity);
-    if (reorder_level !== undefined) data.reorder_level = parseInt(reorder_level);
-    if (is_prescription_required !== undefined) data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
+    if (stock_quantity !== undefined && stock_quantity !== '') data.stock_quantity = parseInt(stock_quantity);
+    if (reorder_level !== undefined && reorder_level !== '') data.reorder_level = parseInt(reorder_level);
+    if (is_prescription_required !== undefined)
+      data.is_prescription_required = is_prescription_required === true || is_prescription_required === 'true';
     if (status !== undefined) data.is_active = status === 'published' ? 1 : 0;
 
-    if (req.files) {
-      if (req.files.drug_image) {
-        data.drug_image = getFileInfo(req.files.drug_image[0]).url;
-        if (existing.drug_image) deleteFile(existing.drug_image.replace('/uploads/', 'uploads/'));
+    // Single image — replace old drug_image if new one uploaded
+    if (req.files && req.files.drug_image) {
+      data.drug_image = getFileInfo(req.files.drug_image[0]).url;
+      if (existing.drug_image) {
+        try { deleteFile(existing.drug_image.replace('/uploads/', 'uploads/')); } catch {}
       }
-      if (req.files.cover_image) {
-        data.cover_image = getFileInfo(req.files.cover_image[0]).url;
-        if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
-      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.json({ status: 'success', message: 'Nothing to update' });
     }
 
     await db('pharmacy_medications').where({ id }).update(data);
@@ -168,8 +165,9 @@ const healthController = {
     const { id } = req.params;
     const existing = await db('pharmacy_medications').where({ id }).first();
     if (!existing) throw new AppError('Post not found', 404);
-    if (existing.drug_image) deleteFile(existing.drug_image.replace('/uploads/', 'uploads/'));
-    if (existing.cover_image) deleteFile(existing.cover_image.replace('/uploads/', 'uploads/'));
+    if (existing.drug_image) {
+      try { deleteFile(existing.drug_image.replace('/uploads/', 'uploads/')); } catch {}
+    }
     await db('pharmacy_medications').where({ id }).del();
     res.status(204).send();
   },
