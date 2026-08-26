@@ -422,7 +422,7 @@ export function SmartFooter() {
 export function CTASection() {
   return (
     <section className="cta-wrapper">
-      <div className="ld-container">
+      <div className="container">
         <div className="cta-card">
           <div className="cta-card__accent" />
           <div className="cta-card__badge">Ready to transform?</div>
