@@ -331,6 +331,7 @@ router.patch('/workflow/:id/status', wfAuth([...storeRoles, ...poRoles, ...finRo
 // ── Quotations (Manual Record-Only) ──
 router.get('/quotations', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotations);
 router.get('/quotations/pending-ceo', authenticate, authorize(['purchase_orders:read']), QuotationController.getPendingQuotations);
+router.get('/quotations/:id/items', authenticate, authorize(['purchase_orders:read']), QuotationController.getQuotationItems);
 router.post('/quotations', authenticate, authorize(['purchase_orders:create']), QuotationController.createQuotation);
 router.post('/quotations/:id/convert', authenticate, authorize(['purchase_orders:create']), QuotationController.convertQuotation);
 router.post('/quotations/:id/ceo-approve', authenticate, authorizeRoles(['CEO', 'Admin']), QuotationController.approveQuotation);
