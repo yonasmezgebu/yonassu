@@ -120,9 +120,9 @@ const NOTIF_ROUTE_ROLES = [
   ['/pharmacy-store',   ['pharmacy store keeper', 'ceo']],
   ['/general-store',    ['general store keeper', 'ceo']],
   ['/printing-manager', ['printing supervisor', 'printing manager', 'admin', 'ceo']],
-  ['/pharmacy-worker',  ['pharmacy worker', 'sales/cashier', 'admin', 'ceo']],
-  ['/pharmacy',         ['pharmacy manager', 'admin', 'ceo']],
-  ['/car-renting',      ['car renting manager']],
+  ['/pharmacy-worker',  ['pharmacy worker', 'sales/cashier', 'admin']],
+  ['/pharmacy',         ['pharmacy manager', 'admin']],
+  ['/car-renting',      ['car renting manager', 'admin', 'ceo']],
   ['/hr',               ['hr manager', 'admin', 'ceo']],
   ['/board',            ['board member', 'admin', 'ceo']],
   ['/employee',         ['employee', 'admin', 'ceo']],
@@ -222,6 +222,9 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
   const resolveLink = (link, isCeo) => {
     if (!link) return isCeo ? '/ceo/overview' : '/';
 
+    // CEO: remap any /finance/* link to the CEO finance page
+    if (isCeo && link.startsWith('/finance')) return '/ceo/finance';
+
     // Finance Route Check — all /finance routes exist; keep query strings so tab deep-links work
     if (link.startsWith('/finance')) return link;
 
@@ -282,6 +285,12 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     }
     // If CEO is browsing, trust any /ceo/ route
     if (isCeo && link.startsWith('/ceo/')) return link;
+
+    // CEO should never navigate to pharmacy/worker/store dashboards via bell.
+    // Remap any /pharmacy/* or /pharmacy-worker/* link to CEO's own hub.
+    if (isCeo && (link.startsWith('/pharmacy') || link.startsWith('/pharmacy-worker'))) {
+      return '/ceo/pharmacy-hub';
+    }
 
     // If a non-CEO (like Purchase Manager) clicks a generic broadcast link meant for CEO:
     if (!isCeo && link.startsWith('/ceo/tenders')) return '/purchase/smart-tenders';
@@ -500,7 +509,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
 
             {purchasePending > 0 && (
               <div
-                onClick={() => { setOpen(false); navigate('/purchase/tenders'); }}
+                onClick={() => { setOpen(false); navigate('/ceo/tenders'); }}
                 style={{
                   padding: '14px 18px', borderBottom: '1px solid #F9FAFB',
                   cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start',
@@ -538,7 +547,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                 {purchaseApprovedTenders.map(t => (
                   <div
                     key={`appr-${t.id}`}
-                    onClick={() => { setOpen(false); navigate(`/purchase/smart-tenders?viewTender=${t.id}`, { state: { bellTs: Date.now() } }); }}
+                    onClick={() => { setOpen(false); navigate(`/ceo/tenders?viewTender=${t.id}`, { state: { bellTs: Date.now() } }); }}
                     style={{ padding: '10px 18px 10px 16px', borderBottom: '1px solid #F3F4F6', backgroundColor: '#F0FDF4', cursor: 'pointer', transition: 'background 0.15s', display: 'flex', alignItems: 'flex-start', gap: 8 }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DCFCE7'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F0FDF4'}
@@ -607,7 +616,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                         setOpen(false);
                         if (setPurchaseBidsList) setPurchaseBidsList(prev => prev.filter(x => x.id !== b.id));
                         if (setPurchaseNewBids) setPurchaseNewBids(prev => Math.max(0, prev - 1));
-                        navigate(`/purchase/smart-tenders?viewTender=${b.public_tender_id}`, { state: { bellTs: Date.now() } });
+                        navigate(`/ceo/tenders?viewTender=${b.public_tender_id}`, { state: { bellTs: Date.now() } });
                       }}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#92400E' }}>Bid from {b.competitor_name}</p>
                         <p style={{ margin: '0', fontSize: '11px', color: '#B45309' }}>Pending Evaluation</p>
@@ -623,7 +632,7 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
             )}
             {procurementMessages > 0 && (
               <Link
-                to="/purchase/smart-tenders"
+                to="/ceo/tenders"
                 state={{ tab: 'contact', bellTs: Date.now() }}
                 onClick={() => { setOpen(false); if (onOpenProcurementInbox) onOpenProcurementInbox(); }}
                 style={{ textDecoration: 'none', display: 'block' }}
