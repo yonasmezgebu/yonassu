@@ -1,0 +1,573 @@
+/* ══════════════════════════════════════════════
+   AboutPage.css — Public About Us Page
+   Follows: The Ultimate General Design & CSS Master Note
+   ══════════════════════════════════════════════ */
+
+/* ─── 1. Foundation ───
+   Box-sizing & global reset come from LandingRedesign.css (already imported).
+   All colour tokens (--primary, --muted, --border, etc.) defined there too.  */
+
+/* ─── 2. Page shell ─── */
+.about-page {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── 3. Container — Master Note §4 ─── */
+.about-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* ─── 4. Section wrappers — 8-pt grid §3 ─── */
+.about-section {
+  padding: 5rem 0; /* 80px — section spacing */
+}
+
+.about-section--alt {
+  background-color: hsl(var(--muted));
+}
+
+/* Section header: centered, consistent spacing */
+.about-section-header {
+  text-align: center;
+  margin-bottom: 3.5rem; /* 56px */
+}
+
+/* ─── 5. Typography — Master Note §2 ─── */
+
+/* H1 — clamp between text-4xl and text-6xl */
+.about-hero-title {
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  max-width: 50rem;
+  margin: 0 auto 1.5rem;
+}
+
+/* Accent text inside headings */
+.about-accent {
+  color: hsl(var(--primary));
+}
+
+/* H2 — text-3xl */
+.about-heading {
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin: 0 0 0.75rem;
+}
+
+/* H3 — text-2xl */
+.about-h3 {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin: 0 0 0.5rem;
+}
+
+/* Body subtitle — 1rem, loose line-height */
+.about-sub {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: hsl(var(--muted-foreground));
+  max-width: 45rem;
+  margin: 0 auto;
+}
+
+/* ─── 6. Badge pill ─── */
+.about-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem; /* 6px */
+  padding: 0.375rem 1.125rem; /* 6px / 18px — 8pt grid */
+  background-color: hsl(var(--primary) / 0.12);
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: 99rem;
+  font-size: 0.75rem; /* 12px small/meta */
+  font-weight: 700;
+  color: hsl(var(--primary));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem; /* 24px */
+}
+
+/* ─── 7. Hero section ─── */
+.about-hero-section {
+  padding: 5rem 0 4rem;
+  text-align: center;
+  background-color: hsl(var(--muted));
+}
+
+/* Hero CTA row */
+.about-hero-actions {
+  display: flex;
+  gap: 1rem; /* 16px */
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 4rem; /* 64px */
+}
+
+/* Photo strip — overlapping team avatars */
+.about-photo-strip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+}
+
+.about-photo-stack {
+  display: flex;
+}
+
+.about-photo-avatar {
+  width: 4.25rem; /* 68px — multiple of 8 */
+  height: 4.25rem;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Each avatar after the first overlaps left by 1rem */
+.about-photo-avatar + .about-photo-avatar {
+  margin-left: -1rem; /* -16px */
+}
+
+/* Image inside avatar — Master Note §6 */
+.about-photo-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.about-photo-label {
+  margin-left: 1.25rem; /* 20px */
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+
+/* ─── 8. Mission section ─── */
+.about-mission-inner {
+  max-width: 50rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.about-mission-inner p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.25rem;
+}
+
+.about-mission-inner p:last-of-type {
+  margin-bottom: 2rem;
+}
+
+/* ─── 9. Leaders grid ─── */
+.about-leaders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem; /* 24px */
+}
+
+/* Leader card — Master Note §5B card pattern */
+.about-leader-card {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.about-leader-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* Square image — 1:1 aspect ratio, Master Note §6 */
+.about-leader-img-wrap {
+  aspect-ratio: 1;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.about-leader-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.about-leader-card:hover .about-leader-img-wrap img {
+  transform: scale(1.03);
+}
+
+/* Hover overlay with quote */
+.about-leader-overlay {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--primary) / 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.about-leader-card:hover .about-leader-overlay {
+  opacity: 1;
+}
+
+.about-leader-quote {
+  color: hsl(var(--primary-foreground));
+  font-size: 0.875rem;
+  font-style: italic;
+  line-height: 1.625;
+  text-align: center;
+  margin: 0;
+}
+
+/* Leader name / role */
+.about-leader-info {
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+
+.about-leader-name {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+
+.about-leader-role {
+  font-size: 0.875rem; /* small/meta */
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+/* ─── 10. Why SUTANA / Our DNA grids ─── */
+.about-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.about-dna-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Feature / value card — Master Note §5B card pattern */
+.about-card {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 2rem 1.5rem; /* 32px / 24px — 8pt grid */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+}
+
+.about-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* Icon box inside card */
+.about-icon-box {
+  width: 3rem; /* 48px */
+  height: 3rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem; /* 20px */
+  flex-shrink: 0;
+  background-color: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+.about-card-title {
+  font-size: 1.125rem; /* H3 scale — 18px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.625rem; /* 10px */
+}
+
+.about-card-desc {
+  font-size: 0.875rem; /* small/meta */
+  line-height: 1.625;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+/* DNA card uses slightly smaller icon */
+.about-dna-icon {
+  width: 2.5rem; /* 40px */
+  height: 2.5rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+  background-color: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+}
+
+/* ─── 11. Timeline (Roadmap section) ─── */
+.about-timeline {
+  position: relative;
+  max-width: 50rem;
+  margin: 0 auto;
+}
+
+.about-timeline-item {
+  position: relative;
+  padding-left: 3.5rem; /* 56px — leaves room for dot + line */
+  padding-bottom: 2.5rem; /* 40px */
+}
+
+.about-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Vertical connector line */
+.about-timeline-line {
+  position: absolute;
+  left: 1.1875rem; /* 19px — aligns with dot center */
+  top: 2rem;
+  bottom: 0;
+  width: 1px;
+  background-color: hsl(var(--border));
+}
+
+.about-timeline-item:last-child .about-timeline-line {
+  display: none;
+}
+
+/* Dot */
+.about-timeline-dot {
+  position: absolute;
+  left: 0.75rem; /* 12px */
+  top: 0.375rem; /* 6px */
+  width: 1rem; /* 16px */
+  height: 1rem;
+  border-radius: 50%;
+  background-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--background));
+  box-shadow: 0 0 0 1px hsl(var(--border));
+}
+
+/* Year label — small/meta */
+.about-timeline-year {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  margin-bottom: 0.25rem;
+}
+
+/* Timeline milestone title — H3 */
+.about-timeline-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+  margin: 0 0 0.5rem;
+}
+
+/* Timeline body */
+.about-timeline-desc {
+  font-size: 0.9375rem;
+  line-height: 1.625;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+/* ─── 12. CTA section ─── */
+.about-cta-section {
+  padding: 5rem 0;
+  background-color: hsl(var(--muted));
+  text-align: center;
+}
+
+.about-cta-inner {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.about-cta-inner .about-sub {
+  margin-bottom: 2.5rem;
+}
+
+/* CTA action row */
+.about-cta-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ─── 13. Buttons — Master Note §5A ─── */
+.about-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+
+.about-btn-primary:hover {
+  background-color: hsl(var(--primary) / 0.88);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.28);
+}
+
+.about-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+.about-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  background-color: transparent;
+  color: hsl(var(--primary));
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  text-decoration: none;
+}
+
+.about-btn-secondary:hover {
+  background-color: hsl(var(--primary) / 0.08);
+  transform: translateY(-1px);
+}
+
+.about-btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* ─── 14. Mobile-First Responsive — Master Note §7 ─── */
+
+/* Default (mobile): already set above as single-column */
+
+/* Small tablets (640px+) */
+@media (min-width: 640px) {
+  .about-leaders-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Medium / iPad (768px+) */
+@media (min-width: 768px) {
+  .about-hero-section {
+    padding: 5rem 0 4rem;
+  }
+
+  .about-section {
+    padding: 5rem 0;
+  }
+
+  .about-section-header {
+    margin-bottom: 3.5rem;
+  }
+}
+
+/* Large desktops (1024px+) */
+@media (min-width: 1024px) {
+  .about-leaders-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Mobile overrides (below 640px) */
+@media (max-width: 639px) {
+  .about-section {
+    padding: 3rem 0;
+  }
+
+  .about-hero-section {
+    padding: 3rem 0 2.5rem;
+  }
+
+  .about-section-header {
+    margin-bottom: 2rem;
+  }
+
+  .about-hero-title {
+    font-size: 2rem;
+  }
+
+  .about-card-grid,
+  .about-dna-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-leaders-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-photo-strip {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .about-photo-label {
+    margin-left: 0;
+  }
+}
