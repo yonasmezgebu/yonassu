@@ -26,181 +26,78 @@ export default function EventSection() {
   }, []);
 
   return (
-    <section className="event-section" style={sectionStyle}>
-      <div className="event-row" style={containerStyle}>
-        {/* Left — Image */}
-        <div style={imageWrapStyle}>
-          <div style={imageInnerStyle}>
-            {images.map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt={`Event ${i + 1}`}
-                style={{
-                  ...imgStyle,
-                  opacity: i === index ? (fade ? 1 : 0) : 0,
-                  transition: 'opacity 0.6s ease',
-                  position: 'absolute',
-                  inset: 0,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Right — Text */}
-        <div style={textWrapStyle}>
-          <h2 style={headingStyle}>SUTANA ENTERPRISE & CONSULTANCY</h2>
-          <p style={subStyle}>Empowering Agriculture Through Innovation</p>
-          <p style={descStyle}>
-            SUTANA Enterprise is a leading agricultural technology
-            and consultancy firm dedicated to transforming farming
-            practices across Ethiopia.
-          </p>
-
-          <div style={servicesStyle}>
-            <span style={serviceTagStyle}>Agricultural ERP Solutions</span>
-            <span style={serviceTagStyle}>Farming Consultancy</span>
-            <span style={serviceTagStyle}>Supply Chain Management</span>
-            <span style={serviceTagStyle}>Training & Capacity Building</span>
+    <section className="ld-section ld-section--alt">
+      <div className="ld-container">
+        <div className="ld-grid-2col">
+          {/* Left — Image */}
+          <div className="ld-grid-2col__aside">
+            <div className="ws-image-wrap" style={{ position: 'relative', paddingTop: '75%' }}>
+              {images.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Event ${i + 1}`}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    opacity: i === index ? (fade ? 1 : 0) : 0,
+                    transition: 'opacity 0.6s ease',
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
-          <div style={visionStyle}>
-            <h3 style={miniHeadStyle}>OUR VISION</h3>
-            <p style={miniTextStyle}>
-              To be the premier agricultural technology partner in Ethiopia,
-              driving sustainable farming through innovation.
+          {/* Right — Text */}
+          <div className="ld-grid-2col__main">
+            <h2 style={{ fontSize: 'clamp(1.4rem, 3vw, 2.2rem)', fontWeight: 800, color: 'hsl(var(--primary))', letterSpacing: '-0.01em', marginBottom: '0.5rem' }}>
+              SUTANA ENTERPRISE & CONSULTANCY
+            </h2>
+            <p style={{ fontSize: 'clamp(0.85rem, 1.6vw, 1.15rem)', color: 'hsl(var(--accent))', fontWeight: 600, marginBottom: '1.25rem' }}>
+              Empowering Agriculture Through Innovation
+            </p>
+            <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'hsl(var(--muted-foreground))', marginBottom: '1.5rem' }}>
+              SUTANA Enterprise is a leading agricultural technology
+              and consultancy firm dedicated to transforming farming
+              practices across Ethiopia.
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <span className="cta-card__badge" style={{ marginBottom: 0 }}>Agricultural ERP Solutions</span>
+              <span className="cta-card__badge" style={{ marginBottom: 0 }}>Farming Consultancy</span>
+              <span className="cta-card__badge" style={{ marginBottom: 0 }}>Supply Chain Management</span>
+              <span className="cta-card__badge" style={{ marginBottom: 0 }}>Training & Capacity Building</span>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--primary))', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                OUR VISION
+              </h3>
+              <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'hsl(var(--muted-foreground))' }}>
+                To be the premier agricultural technology partner in Ethiopia,
+                driving sustainable farming through innovation.
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--primary))', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                OUR MISSION
+              </h3>
+              <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'hsl(var(--muted-foreground))' }}>
+                To empower farmers and agricultural enterprises with cutting-edge
+                technology solutions that increase productivity, efficiency, and profitability.
+              </p>
+            </div>
+
+            <p style={{ fontSize: '1rem', fontStyle: 'italic', color: 'hsl(var(--accent))', borderTop: '1px solid hsl(var(--border))', paddingTop: '1rem' }}>
+              Together, we grow. <strong>SUTANA</strong> — Cultivating Tomorrow.
             </p>
           </div>
-
-          <div style={missionStyle}>
-            <h3 style={miniHeadStyle}>OUR MISSION</h3>
-            <p style={miniTextStyle}>
-              To empower farmers and agricultural enterprises with cutting-edge
-              technology solutions that increase productivity, efficiency, and profitability.
-            </p>
-          </div>
-
-          <p style={taglineStyle}>
-            Together, we grow. <strong>SUTANA</strong> — Cultivating Tomorrow.
-          </p>
         </div>
       </div>
     </section>
   );
 }
-
-/* ── New Unified Design System Styles ── */
-
-const sectionStyle = {
-  padding: '80px 40px',
-  background: '#F5F5F5', // Light Gray background
-  color: '#424242',      // Dark Gray text
-  width: '100%',
-  boxSizing: 'border-box'
-};
-
-const containerStyle = {
-  maxWidth: 1200,
-  margin: '0 auto',
-  display: 'flex',
-  gap: 48,
-  alignItems: 'center',
-};
-
-const imageWrapStyle = {
-  flex: '0 0 50%',
-  borderRadius: 10, // Images / thumbnails get 10px radius
-  overflow: 'hidden',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.06)', // Soft shadow
-  border: '1px solid #8D6E63', // Earth Brown default border
-};
-
-const imageInnerStyle = {
-  position: 'relative',
-  width: '100%',
-  paddingTop: '75%',
-  background: '#FFFFFF',
-};
-
-const imgStyle = {
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  display: 'block',
-};
-
-const textWrapStyle = {
-  flex: '0 0 50%',
-  color: '#424242', // Text on light background -> Dark Gray
-};
-
-const headingStyle = {
-  fontSize: 'clamp(1.4rem, 3vw, 2.2rem)',
-  fontWeight: 800,
-  color: '#1B5E20', // Dark Green
-  letterSpacing: '-0.01em',
-  marginBottom: 8,
-};
-
-const subStyle = {
-  fontSize: 'clamp(0.85rem, 1.6vw, 1.15rem)',
-  color: '#228B22', // Forest Green
-  fontWeight: 600,
-  marginBottom: 20,
-};
-
-const descStyle = {
-  fontSize: '1rem',
-  lineHeight: 1.6,
-  color: '#424242',
-  marginBottom: 24,
-};
-
-const servicesStyle = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 8,
-  marginBottom: 24,
-};
-
-const serviceTagStyle = {
-  padding: '6px 14px',
-  background: '#A5D6A7', // Sage Green for small informational cards
-  border: '1px solid #8D6E63', // Earth Brown thin border
-  borderRadius: 6, // small elements get smaller radius
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: '#424242', // Dark Gray text on Sage Green background
-};
-
-const visionStyle = {
-  marginBottom: 16,
-};
-
-const missionStyle = {
-  marginBottom: 20,
-};
-
-const miniHeadStyle = {
-  fontSize: '0.75rem',
-  fontWeight: 800,
-  color: '#1B5E20', // Dark Green
-  letterSpacing: '1px',
-  textTransform: 'uppercase',
-  marginBottom: 4,
-};
-
-const miniTextStyle = {
-  fontSize: '0.9rem',
-  lineHeight: 1.6,
-  color: '#424242',
-};
-
-const taglineStyle = {
-  fontSize: '1rem',
-  fontStyle: 'italic',
-  color: '#2E8B57', // Emerald Green accent
-  borderTop: '1px solid #8D6E63', // Earth Brown border
-  paddingTop: 16,
-};
