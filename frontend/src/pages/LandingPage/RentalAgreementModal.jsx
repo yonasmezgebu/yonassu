@@ -135,26 +135,26 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
   if (!isOpen || !car) return null;
 
   return (
-    <div className="psp-overlay" onClick={onClose}>
-      <div className="psp-modal" onClick={e => e.stopPropagation()}>
-        <div className="psp-modal-header">
+    <div className="ram-overlay" onClick={onClose}>
+      <div className="ram-modal" onClick={e => e.stopPropagation()}>
+        <div className="ram-modal-header">
           <div>
-            <h3 className="psp-modal-title"><Car size={22} /> Reserve Vehicle</h3>
-            <p className="psp-modal-subtitle">{car?.name} — ETB {dailyRate.toLocaleString()}/day — Fill in all details below</p>
+            <h3 className="ram-modal-title"><Car size={22} /> Reserve Vehicle</h3>
+            <p className="ram-modal-subtitle">{car?.name} — ETB {dailyRate.toLocaleString()}/day — Fill in all details below</p>
           </div>
-          <button className="psp-close-btn" onClick={onClose}><X size={22} /></button>
+          <button className="ram-close-btn" onClick={onClose}><X size={22} /></button>
         </div>
 
         {successData ? (
-          <div className="psp-success-body">
-            <span className="psp-success-emoji">✅</span>
-            <h3 className="psp-success-title">Order Placed Successfully!</h3>
-            <p className="psp-success-sub">
+          <div className="ram-success-body">
+            <span className="ram-success-emoji">✅</span>
+            <h3 className="ram-success-title">Order Placed Successfully!</h3>
+            <p className="ram-success-sub">
               Order <strong>{successData.orderNumber}</strong> has been received.<br />
               Our team will contact you shortly to confirm the booking.
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-              <button className="psp-print-btn" onClick={() => {
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <button className="ram-btn-primary" onClick={() => {
                 const win = window.open('', '_blank', 'width=760,height=800');
                 const u = currentUser || {};
                 const userName = u.fullName || u.full_name || u.name || 'Customer';
@@ -195,86 +195,85 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
               }}>
                 <Car size={18} /> Print Receipt
               </button>
-              <button style={{ padding: '12px 24px', background: '#f1f5f9', border: '2px solid #e2e8f0', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#334155' }}
-                onClick={() => { onClose(); navigate('/customer'); }}>
+              <button className="ram-btn-secondary" onClick={() => { onClose(); navigate('/customer'); }}>
                 My Orders
               </button>
             </div>
-            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 20 }}>Track your order from <strong>Customer Portal → Car Rental Orders</strong></p>
+            <p className="ram-success-hint">Track your order from <strong>Customer Portal → Car Rental Orders</strong></p>
           </div>
         ) : (
-          <form onSubmit={handleOrderSubmit}>
-            <div className="psp-modal-body">
+          <form onSubmit={handleOrderSubmit} className="ram-modal-form">
+            <div className="ram-modal-body">
               {error && (
-                <div className="psp-error-box"><X size={15} /> {error}</div>
+                <div className="ram-error-box"><X size={15} /> {error}</div>
               )}
 
               {/* Customer Info */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px' }}>
-                <div className="psp-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
-                  <Wallet size={14} /> Customer Information
+              <div className="ram-info-panel">
+                <div className="ram-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
+                  <User size={14} /> Customer Information
                 </div>
-                <div className="psp-form-row">
-                  <div className="psp-form-group">
-                    <label className="psp-form-label">Full Name</label>
-                    <input className="psp-form-input" value={currentUser?.fullName || currentUser?.full_name || currentUser?.name || ''} disabled />
+                <div className="ram-form-row">
+                  <div className="ram-form-group">
+                    <label className="ram-form-label">Full Name</label>
+                    <input className="ram-form-input" value={currentUser?.fullName || currentUser?.full_name || currentUser?.name || ''} disabled />
                   </div>
-                  <div className="psp-form-group">
-                    <label className="psp-form-label">Email</label>
-                    <input className="psp-form-input" value={currentUser?.email || ''} disabled />
+                  <div className="ram-form-group">
+                    <label className="ram-form-label">Email</label>
+                    <input className="ram-form-input" value={currentUser?.email || ''} disabled />
                   </div>
                 </div>
-                <div className="psp-form-group" style={{ marginTop: 12 }}>
-                  <label className="psp-form-label">Phone Number</label>
-                  <input className="psp-form-input" value={currentUser?.phone || ''} disabled />
+                <div className="ram-form-group" style={{ marginTop: '0.75rem' }}>
+                  <label className="ram-form-label">Phone Number</label>
+                  <input className="ram-form-input" value={currentUser?.phone || ''} disabled />
                 </div>
               </div>
 
               {/* Vehicle summary */}
-              <div style={{ background: '#ecfdf5', border: '1.5px solid #6ee7b7', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <Car size={28} color="#059669" />
+              <div className="ram-vehicle-panel">
+                <Car size={28} className="ram-vehicle-icon" />
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>{car?.name}</div>
-                  <div style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>ETB {dailyRate.toLocaleString()}/day • Includes Company Driver</div>
+                  <div className="ram-vehicle-name">{car?.name}</div>
+                  <div className="ram-vehicle-rate">ETB {dailyRate.toLocaleString()}/day • Includes Company Driver</div>
                 </div>
               </div>
 
               {/* Rental Period */}
-              <div className="psp-section-divider"><Calendar size={14} /> Rental Period</div>
-              <div className="psp-form-row">
-                <div className="psp-form-group">
-                  <label className="psp-form-label">Pickup Date *</label>
-                  <input type="date" required className="psp-form-input" value={orderForm.pickupDate}
+              <div className="ram-section-divider"><Calendar size={14} /> Rental Period</div>
+              <div className="ram-form-row">
+                <div className="ram-form-group">
+                  <label className="ram-form-label">Pickup Date *</label>
+                  <input type="date" required className="ram-form-input" value={orderForm.pickupDate}
                     min={new Date().toISOString().split('T')[0]}
                     onChange={e => setOrderForm(p => ({ ...p, pickupDate: e.target.value }))} />
                 </div>
-                <div className="psp-form-group">
-                  <label className="psp-form-label">Return Date *</label>
-                  <input type="date" required className="psp-form-input" value={orderForm.returnDate}
+                <div className="ram-form-group">
+                  <label className="ram-form-label">Return Date *</label>
+                  <input type="date" required className="ram-form-input" value={orderForm.returnDate}
                     min={orderForm.pickupDate || new Date().toISOString().split('T')[0]}
                     onChange={e => setOrderForm(p => ({ ...p, returnDate: e.target.value }))} />
                 </div>
               </div>
               {totalDays > 0 && (
-                <div className="psp-price-summary">
-                  <div className="psp-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalTotal.toLocaleString()}</span></div>
-                  <div className="psp-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
-                  <div className="psp-price-row" style={{ color: '#047857' }}><span>Security Deposit (Refundable)</span><span>ETB {securityDeposit.toLocaleString()}</span></div>
-                  <div className="psp-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {grandTotal.toLocaleString()}</span></div>
+                <div className="ram-price-summary">
+                  <div className="ram-price-row"><span>{totalDays} day{totalDays !== 1 ? 's' : ''} × ETB {dailyRate.toLocaleString()}/day</span><span>ETB {rentalTotal.toLocaleString()}</span></div>
+                  <div className="ram-price-row"><span>VAT ({fmtPct(vatCalc.rate)})</span><span>ETB {vatCalc.vat.toLocaleString()}</span></div>
+                  <div className="ram-price-row" style={{ color: 'hsl(var(--ram-success))' }}><span>Security Deposit (Refundable)</span><span>ETB {securityDeposit.toLocaleString()}</span></div>
+                  <div className="ram-price-total" style={{ display: 'flex', justifyContent: 'space-between' }}><span>TOTAL ESTIMATED (incl. VAT)</span><span>ETB {grandTotal.toLocaleString()}</span></div>
                 </div>
               )}
 
               {/* Payment */}
-              <div className="psp-section-divider"><CreditCard size={14} /> Payment Proof</div>
-              <div className="psp-form-row">
-                <div className="psp-form-group">
-                  <label className="psp-form-label">Payment Method *</label>
+              <div className="ram-section-divider"><CreditCard size={14} /> Payment Proof</div>
+              <div className="ram-form-row">
+                <div className="ram-form-group">
+                  <label className="ram-form-label">Payment Method *</label>
                   {financeAccounts.length === 0 ? (
-                    <div style={{ padding: '10px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '13px', color: '#92400e' }}>
+                    <div className="ram-loading-box">
                       ⏳ Loading payment accounts…
                     </div>
                   ) : (
-                    <select required className="psp-form-input"
+                    <select required className="ram-form-input"
                       value={orderForm.paymentMethod}
                       onChange={e => setOrderForm(p => ({ ...p, paymentMethod: e.target.value }))}
                     >
@@ -295,9 +294,9 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
                     </select>
                   )}
                 </div>
-                <div className="psp-form-group">
-                  <label className="psp-form-label">Transaction Reference</label>
-                  <input type="text" className="psp-form-input" placeholder="e.g. TXN-123456"
+                <div className="ram-form-group">
+                  <label className="ram-form-label">Transaction Reference</label>
+                  <input type="text" className="ram-form-input" placeholder="e.g. TXN-123456"
                     value={orderForm.paymentReference} onChange={e => setOrderForm(p => ({ ...p, paymentReference: e.target.value }))} />
                 </div>
               </div>
@@ -307,47 +306,47 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
                 const acc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
                 if (!acc) return null;
                 return (
-                  <div style={{ background: '#f0fdf4', padding: '12px 16px', borderRadius: '6px', border: '1.5px solid #4ade80', fontSize: '13px', color: '#166534', display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '4px' }}>
-                    <Wallet size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div className="ram-bank-panel">
+                    <Wallet size={18} className="ram-bank-icon" />
                     <div>
-                      <div style={{ fontWeight: 700, marginBottom: '4px' }}>📋 Transfer Payment To:</div>
+                      <div className="ram-bank-title">📋 Transfer Payment To:</div>
                       <div><strong>Account Name:</strong> {acc.account_name}</div>
                       {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
                       {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
                       {acc.branch && <div><strong>Branch:</strong> {acc.branch}</div>}
-                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#15803d' }}>After payment, enter the transaction reference number above.</div>
+                      <div className="ram-bank-hint">After payment, enter the transaction reference number above.</div>
                     </div>
                   </div>
                 );
               })()}
 
               {/* Screenshot upload */}
-              <div className="psp-form-group">
-                <label className="psp-form-label"><Upload size={14} /> Payment Screenshot <span>(optional if reference given)</span></label>
-                <div className={`psp-file-upload${orderFile ? ' has-file' : ''}`} onClick={() => fileRef.current?.click()}>
+              <div className="ram-form-group">
+                <label className="ram-form-label"><Upload size={14} /> Payment Screenshot <span>(optional if reference given)</span></label>
+                <div className={`ram-file-upload${orderFile ? ' has-file' : ''}`} onClick={() => fileRef.current?.click()}>
                   <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setOrderFile(e.target.files[0] || null)} />
-                  <Upload size={24} color={orderFile ? '#0D7C66' : '#94a3b8'} />
-                  <p style={{ margin: '8px 0 4px', fontWeight: 700, color: orderFile ? '#0D7C66' : '#475569', fontSize: 14 }}>
+                  <Upload size={24} color={orderFile ? 'hsl(var(--ram-primary))' : 'hsl(var(--ram-muted-fg))'} />
+                  <p className="ram-file-upload-title">
                     {orderFile ? `✅ ${orderFile.name}` : 'Click to upload payment screenshot'}
                   </p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>PNG, JPG, JPEG accepted</p>
+                  <p className="ram-file-upload-sub">PNG, JPG, JPEG accepted</p>
                 </div>
               </div>
 
               {/* Special Requests */}
-              <div className="psp-form-group">
-                <label className="psp-form-label">Special Instructions <span>(Optional)</span></label>
-                <textarea className="psp-form-input" rows={2} placeholder="Any specific requirements…"
+              <div className="ram-form-group">
+                <label className="ram-form-label">Special Instructions <span>(Optional)</span></label>
+                <textarea className="ram-form-input" rows={2} placeholder="Any specific requirements…"
                   value={orderForm.specialRequests} onChange={e => setOrderForm(p => ({ ...p, specialRequests: e.target.value }))}
                   style={{ resize: 'vertical' }} />
               </div>
 
             </div>
 
-            <div className="psp-modal-footer">
-              <button type="button" className="psp-cancel-btn" onClick={onClose} disabled={loading}>Cancel</button>
-              <button type="submit" className="psp-submit-btn" disabled={loading || totalDays <= 0}>
-                {loading ? <><span className="psp-spinner" /> Submitting…</> : <><Car size={18} /> Submit Reservation</>}
+            <div className="ram-modal-footer">
+              <button type="button" className="ram-btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
+              <button type="submit" className="ram-btn-primary" disabled={loading || totalDays <= 0}>
+                {loading ? <><span className="ram-spinner" /> Submitting…</> : <><Car size={18} /> Submit Reservation</>}
               </button>
             </div>
           </form>
@@ -356,113 +355,420 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
 
       <style>{`
         /* ── MODAL / OVERLAY ─────────────────────────────── */
-        .psp-overlay {
-          position:fixed;top:0;left:0;right:0;bottom:0;
-          background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);
-          display:flex;align-items:flex-start;justify-content:center;
-          z-index:9999;padding:40px 20px;overflow-y:auto;
+        :root {
+          --ram-bg: 0 0% 100%;
+          --ram-fg: 222.2 84% 4.9%;
+          --ram-primary: 142.1 76.2% 36.3%;
+          --ram-primary-fg: 355.7 100% 97.3%;
+          --ram-muted: 210 40% 96.1%;
+          --ram-muted-fg: 215.4 16.3% 46.9%;
+          --ram-border: 214.3 31.8% 91.4%;
+          --ram-radius: 0.75rem;
+          --ram-radius-sm: 0.5rem;
+          --ram-success: 160.1 84.1% 39.4%;
+          --ram-error: 0 84.2% 60.2%;
         }
-        .psp-modal {
-          background:white;border-radius:0;width:100%;max-width:620px;
-          margin:auto;box-shadow:0 25px 60px rgba(0,0,0,0.3);
-          animation:psp-pop 0.3s ease;
+
+        .ram-overlay {
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          z-index: 9999;
+          overflow-y: auto;
+          padding: 5rem 1rem 2rem;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        @keyframes psp-pop {
+
+        .ram-overlay *, .ram-overlay *::before, .ram-overlay *::after {
+          box-sizing: border-box;
+        }
+
+        .ram-modal {
+          margin: 0 auto;
+          background-color: hsl(var(--ram-bg));
+          border-radius: var(--ram-radius);
+          width: 100%;
+          max-width: 650px;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+          display: flex;
+          flex-direction: column;
+          animation: ram-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes ram-pop {
           from { opacity: 0; transform: translateY(20px) scale(0.98); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .psp-modal-header {
-          padding:24px 28px;border-bottom:1px solid #e2e8f0;
-          display:flex;align-items:center;justify-content:space-between;
-          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
+
+        .ram-modal-header {
+          padding: 1.5rem;
+          border-bottom: 1px solid hsl(var(--ram-border));
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background-color: hsl(var(--ram-bg));
+          z-index: 10;
+          border-radius: var(--ram-radius) var(--ram-radius) 0 0;
         }
-        .psp-modal-title { margin:0;font-size:1.1rem;font-weight:800;color:#FFD700;display:flex;align-items:center;gap:10px; }
-        .psp-modal-subtitle { font-size:0.8rem;color:rgba(255,255,255,0.7);margin:4px 0 0; }
-        .psp-close-btn {
-          background:rgba(255,255,255,0.15);border:none;color:white;
-          cursor:pointer;display:flex;align-items:center;
-          padding:8px;border-radius:8px;transition:all 0.2s;
+
+        .ram-modal-title {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: hsl(var(--ram-fg));
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
-        .psp-close-btn:hover { background:rgba(255,255,255,0.3); }
-        .psp-modal-body { padding:28px;display:flex;flex-direction:column;gap:18px; }
-        .psp-form-group { display:flex;flex-direction:column;gap:8px; }
-        .psp-form-label {
-          font-weight:700;font-size:0.85rem;color:#1e293b;
-          display:flex;align-items:center;gap:6px;
+
+        .ram-modal-subtitle {
+          font-size: 0.875rem;
+          color: hsl(var(--ram-muted-fg));
+          margin: 0.25rem 0 0;
+          line-height: 1.5;
         }
-        .psp-form-label span { font-weight:400;color:#94a3b8; }
-        .psp-form-input {
-          padding:12px 16px;border:2px solid #e2e8f0;width:100%;box-sizing:border-box;
-          border-radius:0;font-size:0.95rem;background:white;
-          color:#0f172a;transition:all 0.2s;font-family:inherit;outline:none;
+
+        .ram-close-btn {
+          background-color: hsl(var(--ram-muted));
+          border: none;
+          color: hsl(var(--ram-muted-fg));
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.5rem;
+          border-radius: var(--ram-radius-sm);
+          transition: background-color 0.2s ease, color 0.2s ease;
         }
-        .psp-form-input:focus { border-color:#0D7C66;box-shadow:0 0 0 3px rgba(13,124,102,0.1); }
-        .psp-form-input:disabled { background:#f8fafc;color:#64748b;cursor:not-allowed; }
-        .psp-form-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
-        @media(max-width:500px){ .psp-form-row { grid-template-columns:1fr; } }
-        
-        .psp-section-divider {
-          font-size:0.75rem;font-weight:800;color:#1a2b4b;letter-spacing:1.5px;
-          text-transform:uppercase;padding:8px 0 4px;border-top:2px solid #e2e8f0;
-          margin-top:4px;display:flex;align-items:center;gap:8px;
+        .ram-close-btn:hover {
+          background-color: hsl(var(--ram-border));
+          color: hsl(var(--ram-fg));
         }
-        .psp-section-divider::after { content:'';flex:1;height:1px;background:#e2e8f0; }
-        
-        .psp-file-upload {
-          border:2px dashed #cbd5e1;border-radius:0;padding:24px;
-          text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc;
+
+        .ram-modal-body {
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
         }
-        .psp-file-upload:hover { border-color:#0D7C66;background:#f0fdf4; }
-        .psp-file-upload.has-file { border-color:#0D7C66;background:#f0fdf4;border-style:solid; }
-        
-        .psp-price-summary {
-          background:linear-gradient(135deg,#f0fdf4,#dcfce7);
-          border:2px solid #86efac;border-radius:0;padding:20px;
+
+        .ram-form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
         }
-        .psp-price-row { display:flex;justify-content:space-between;align-items:center;font-size:0.9rem;color:#166534;padding:4px 0; }
-        .psp-price-total { font-size:1.3rem;font-weight:900;color:#15803d;border-top:2px solid #86efac;padding-top:12px;margin-top:8px; }
-        
-        .psp-modal-footer {
-          padding:20px 28px;border-top:1px solid #e2e8f0;
-          display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;
+
+        .ram-form-label {
+          font-weight: 600;
+          font-size: 0.875rem;
+          color: hsl(var(--ram-fg));
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
         }
-        .psp-cancel-btn {
-          padding:12px 24px;background:white;border:2px solid #e2e8f0;
-          border-radius:0;color:#475569;font-weight:700;
-          cursor:pointer;transition:all 0.2s;font-family:inherit;
+        .ram-form-label span {
+          font-weight: 400;
+          color: hsl(var(--ram-muted-fg));
         }
-        .psp-cancel-btn:hover { background:#f1f5f9; }
-        .psp-submit-btn {
-          padding:12px 28px;
-          background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-          border:none;border-radius:0;color:white;
-          font-weight:800;cursor:pointer;display:flex;
-          align-items:center;gap:8px;transition:all 0.2s;
-          font-family:inherit;font-size:1rem;
+
+        .ram-form-input {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid hsl(var(--ram-border));
+          border-radius: var(--ram-radius-sm);
+          background-color: hsl(var(--ram-bg));
+          font-size: 1rem;
+          font-family: inherit;
+          color: hsl(var(--ram-fg));
+          line-height: 1.5;
+          min-height: 3rem;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          appearance: auto;
+          -webkit-appearance: auto;
         }
-        .psp-submit-btn:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
-        .psp-submit-btn:disabled { opacity:0.6;cursor:not-allowed; }
-        .psp-spinner {
-          display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);
-          border-radius:50%;border-top-color:white;animation:spin 0.8s linear infinite;
+        .ram-form-input:focus {
+          outline: none;
+          border-color: hsl(var(--ram-primary));
+          box-shadow: 0 0 0 2px hsl(var(--ram-primary) / 0.2);
         }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        
-        .psp-error-box {
-          background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;
-          padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px;border-radius:0;
+        .ram-form-input:disabled {
+          background-color: hsl(var(--ram-muted));
+          color: hsl(var(--ram-muted-fg));
+          cursor: not-allowed;
         }
-        .psp-success-body { padding:48px 32px;text-align:center;display:flex;flex-direction:column;align-items:center; }
-        .psp-success-emoji { font-size:4rem;margin-bottom:16px;display:block;animation:psp-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275); }
-        .psp-success-title { font-size:1.6rem;font-weight:900;color:#0f172a;margin:0 0 8px; }
-        .psp-success-sub { font-size:1rem;color:#475569;margin:0;line-height:1.6; }
-        .psp-print-btn {
-          padding:12px 24px;background:linear-gradient(135deg,#1a2b4b,#0D7C66);
-          border:none;border-radius:0;color:white;font-weight:700;
-          cursor:pointer;display:flex;align-items:center;gap:8px;
-          font-family:inherit;font-size:0.95rem;transition:all 0.2s;
+
+        select.ram-form-input {
+          padding-top: 0.625rem;
+          padding-bottom: 0.625rem;
+          height: auto;
+          cursor: pointer;
         }
-        .psp-print-btn:hover { transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,124,102,0.4); }
+
+        .ram-form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+        @media(max-width: 600px) {
+          .ram-form-row { grid-template-columns: 1fr; }
+        }
+
+        .ram-section-divider {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: hsl(var(--ram-muted-fg));
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0 0;
+          border-top: 1px solid hsl(var(--ram-border));
+        }
+
+        /* Information Panels */
+        .ram-info-panel {
+          background-color: hsl(var(--ram-muted));
+          border: 1px solid hsl(var(--ram-border));
+          border-radius: var(--ram-radius-sm);
+          padding: 1.25rem;
+        }
+
+        .ram-vehicle-panel {
+          background-color: hsl(var(--ram-primary) / 0.05);
+          border: 1px solid hsl(var(--ram-primary) / 0.2);
+          border-radius: var(--ram-radius-sm);
+          padding: 1rem 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .ram-vehicle-icon {
+          color: hsl(var(--ram-primary));
+          flex-shrink: 0;
+        }
+        .ram-vehicle-name {
+          font-weight: 700;
+          font-size: 1rem;
+          color: hsl(var(--ram-fg));
+          margin-bottom: 0.25rem;
+        }
+        .ram-vehicle-rate {
+          font-size: 0.875rem;
+          color: hsl(var(--ram-primary));
+          font-weight: 600;
+        }
+
+        .ram-bank-panel {
+          background-color: hsl(var(--ram-primary) / 0.05);
+          border: 1px solid hsl(var(--ram-primary) / 0.3);
+          border-radius: var(--ram-radius-sm);
+          padding: 1rem 1.25rem;
+          font-size: 0.875rem;
+          color: hsl(var(--ram-fg));
+          display: flex;
+          gap: 0.75rem;
+          align-items: flex-start;
+        }
+        .ram-bank-icon {
+          color: hsl(var(--ram-primary));
+          flex-shrink: 0;
+          margin-top: 0.125rem;
+        }
+        .ram-bank-title {
+          font-weight: 700;
+          margin-bottom: 0.375rem;
+        }
+        .ram-bank-hint {
+          margin-top: 0.5rem;
+          font-size: 0.75rem;
+          color: hsl(var(--ram-primary));
+        }
+
+        /* File Upload */
+        .ram-file-upload {
+          border: 1px dashed hsl(var(--ram-border));
+          border-radius: var(--ram-radius-sm);
+          padding: 2rem 1.5rem;
+          text-align: center;
+          cursor: pointer;
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+          background-color: hsl(var(--ram-muted));
+        }
+        .ram-file-upload:hover {
+          border-color: hsl(var(--ram-primary));
+          background-color: hsl(var(--ram-primary) / 0.02);
+        }
+        .ram-file-upload.has-file {
+          border-color: hsl(var(--ram-primary));
+          background-color: hsl(var(--ram-primary) / 0.05);
+          border-style: solid;
+        }
+        .ram-file-upload-title {
+          margin: 0.75rem 0 0.25rem;
+          font-weight: 600;
+          color: hsl(var(--ram-fg));
+          font-size: 0.875rem;
+        }
+        .ram-file-upload-sub {
+          margin: 0;
+          font-size: 0.75rem;
+          color: hsl(var(--ram-muted-fg));
+        }
+
+        /* Pricing Summary */
+        .ram-price-summary {
+          background-color: hsl(var(--ram-primary) / 0.05);
+          border: 1px solid hsl(var(--ram-primary) / 0.2);
+          border-radius: var(--ram-radius-sm);
+          padding: 1.25rem;
+        }
+        .ram-price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.875rem;
+          color: hsl(var(--ram-fg));
+          padding: 0.25rem 0;
+        }
+        .ram-price-total {
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: hsl(var(--ram-fg));
+          border-top: 1px solid hsl(var(--ram-border));
+          padding-top: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        /* Buttons & Footer */
+        .ram-modal-footer {
+          padding: 1.25rem 1.5rem;
+          border-top: 1px solid hsl(var(--ram-border));
+          display: flex;
+          justify-content: flex-end;
+          gap: 1rem;
+          background-color: hsl(var(--ram-bg));
+          border-radius: 0 0 var(--ram-radius) var(--ram-radius);
+        }
+
+        .ram-btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background-color: hsl(var(--ram-primary));
+          color: hsl(var(--ram-primary-fg));
+          font-weight: 600;
+          font-size: 1rem;
+          border-radius: var(--ram-radius-sm);
+          border: none;
+          cursor: pointer;
+          transition: background-color 0.2s ease, transform 0.1s ease;
+          font-family: inherit;
+        }
+        .ram-btn-primary:hover:not(:disabled) {
+          background-color: hsl(var(--ram-primary-dark));
+          transform: translateY(-2px);
+        }
+        .ram-btn-primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .ram-btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.75rem 1.5rem;
+          background-color: hsl(var(--ram-bg));
+          color: hsl(var(--ram-fg));
+          font-weight: 600;
+          font-size: 1rem;
+          border-radius: var(--ram-radius-sm);
+          border: 1px solid hsl(var(--ram-border));
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+          font-family: inherit;
+        }
+        .ram-btn-secondary:hover:not(:disabled) {
+          background-color: hsl(var(--ram-muted));
+        }
+        .ram-btn-secondary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        /* Utilities */
+        .ram-error-box {
+          background-color: hsl(var(--ram-error) / 0.1);
+          border: 1px solid hsl(var(--ram-error) / 0.3);
+          color: hsl(var(--ram-error));
+          padding: 1rem;
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          border-radius: var(--ram-radius-sm);
+        }
+
+        .ram-spinner {
+          display: inline-block;
+          width: 1.25rem;
+          height: 1.25rem;
+          border: 3px solid rgba(255, 255, 255, 0.3);
+          border-radius: 9999px;
+          border-top-color: white;
+          animation: ram-spin 0.8s linear infinite;
+        }
+        @keyframes ram-spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .ram-loading-box {
+          padding: 0.75rem 1rem;
+          background-color: hsl(var(--ram-muted));
+          border: 1px solid hsl(var(--ram-border));
+          border-radius: var(--ram-radius-sm);
+          font-size: 0.875rem;
+          color: hsl(var(--ram-muted-fg));
+        }
+
+        /* Success Screen */
+        .ram-success-body {
+          padding: 3rem 2rem;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .ram-success-emoji {
+          font-size: 4rem;
+          margin-bottom: 1.5rem;
+          display: block;
+          animation: ram-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .ram-success-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: hsl(var(--ram-fg));
+          margin: 0 0 0.5rem;
+        }
+        .ram-success-sub {
+          font-size: 1rem;
+          color: hsl(var(--ram-muted-fg));
+          margin: 0 0 2rem;
+          line-height: 1.625;
+        }
+        .ram-success-hint {
+          font-size: 0.875rem;
+          color: hsl(var(--ram-muted-fg));
+          margin-top: 1.5rem;
+        }
       `}</style>
     </div>
   );
