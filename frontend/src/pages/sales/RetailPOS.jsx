@@ -3103,11 +3103,11 @@ const addToCart = (item) => {
                       type="number"
                       step="0.01"
                       value={editingProduct.cost_price || ''}
-                      onChange={e => setEditingProduct({...editingProduct, cost_price: e.target.value})}
-                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, background: '#FFFFFF', outline: 'none', color: '#111827', boxSizing: 'border-box' }}
-                      onFocus={(e) => { e.target.style.border = '1px solid #2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.1)'; }}
-                      onBlur={(e) => { e.target.style.border = '1px solid #D1D5DB'; e.target.style.boxShadow = 'none'; }}
+                      readOnly
+                      disabled
+                      style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, background: '#F9FAFB', outline: 'none', cursor: 'not-allowed', color: '#9CA3AF', boxSizing: 'border-box' }}
                     />
+                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Read-only — from store inventory</div>
                   </div>
                 </div>
 
