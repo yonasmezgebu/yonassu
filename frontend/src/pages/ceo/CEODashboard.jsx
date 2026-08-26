@@ -48,6 +48,7 @@ import CEOStoreApprovals from './CEOStoreApprovals';
 import CEOAuditLog from './CEOAuditLog';
 import CEOVatConfig from './CEOVatConfig';
 import CEODangerZone from './CEODangerZone';
+import CEOQuotationApprovals from './CEOQuotationApprovals';
 
 import ManagerChat from '../../components/ManagerChat';
 import styles from './CEODashboard.module.css';
@@ -100,7 +101,7 @@ const CEODashboard = () => {
     { label: 'Administration', icon: 'shield',
       children: [
         { label: 'Job Applicants', path: '/ceo/applicants', icon: 'briefcase', color: '#f43f5e' },
-        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals', '/ceo/payment-approvals', '/ceo/procurement-decisions', '/ceo/danger-zone'] },
+        { label: 'Approvals Hub', path: '/ceo/approvals', icon: 'check-circle', color: '#10b981', altActiveOn: ['/ceo/finance-approvals', '/ceo/salary-approval', '/ceo/store-approvals', '/ceo/approvals/tenders', '/ceo/approvals/printing', '/ceo/approvals/agri-and-car-rental', '/ceo/approvals/approved', '/ceo/approvals/rejected', '/ceo/employee-approvals', '/ceo/payment-approvals', '/ceo/procurement-decisions', '/ceo/danger-zone', '/ceo/quotation-approvals'] },
         { label: 'HR Policies', path: '/ceo/policies', icon: 'shield', color: '#64748b' },
         { label: 'Announcements', path: '/ceo/announcements', icon: 'bell', color: '#fbbf24' },
       ]
@@ -146,6 +147,7 @@ const CEODashboard = () => {
             <Route path="store-approvals" element={<CEOStoreApprovals />} />
             <Route path="finance-approvals" element={<CEOFinanceApprovals />} />
             <Route path="payment-approvals" element={<CEOGeneralProcurementPaymentApprovals />} />
+            <Route path="quotation-approvals" element={<CEOQuotationApprovals />} />
 
             <Route path="policies" element={<HRPolicies />} />
             <Route path="announcements" element={<HRAnnouncements />} />
