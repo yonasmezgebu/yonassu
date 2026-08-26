@@ -4,487 +4,1124 @@ import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import pharmacyService from '../../services/pharmacyService';
 import axios from '../../services/apiClient';
-import { Search, Pill, XCircle, AlertTriangle, CheckCircle2, MapPin, Package, UploadCloud, X, ShoppingCart, Zap, ChevronDown, ChevronUp, Phone, Clock, Star, Shield, Award, Truck, CreditCard, FileText, Users, HelpCircle, AlertCircle, Heart } from 'lucide-react';
+import {
+  Search, Pill, Package, UploadCloud, X, ShoppingCart,
+  ChevronDown, ChevronUp, Phone, Clock, MapPin, Star,
+  Shield, Award, Truck, CreditCard, Heart, AlertCircle
+} from 'lucide-react';
 import pharmacyHero from '../../assets/hero-section/pharmacy.jpg';
 import licFikerte from '../../assets/license_fikerte.jpg';
 import licAbebe from '../../assets/license_abebe.jpg';
 import licMeron from '../../assets/license_meron.jpg';
 import licDawit from '../../assets/license_dawit.jpg';
 
+/* ─────────────────────────────────────────────────────────────
+   Design tokens — inline <style> using the master design system
+───────────────────────────────────────────────────────────── */
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-@keyframes shimmerAnim { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-
-.php-root {
-  font-family: 'Inter', -apple-system, sans-serif;
-  background: #f0f2f5;
-  min-height: 100vh;
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-/* Hero */
-.php-hero {
+:root {
+  --ph-bg:            0 0% 100%;
+  --ph-fg:            222 47% 11%;
+  --ph-primary:       152 69% 31%;
+  --ph-primary-dark:  152 69% 22%;
+  --ph-primary-light: 152 60% 95%;
+  --ph-accent:        47 100% 50%;
+  --ph-muted:         210 40% 96%;
+  --ph-muted-fg:      215 16% 47%;
+  --ph-border:        214 32% 91%;
+  --ph-radius:        0.75rem;
+  --ph-radius-sm:     0.5rem;
+  --ph-shadow-sm:     0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --ph-shadow-md:     0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --ph-shadow-lg:     0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* ── Base ── */
+.ph-root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: hsl(var(--ph-muted));
+  color: hsl(var(--ph-fg));
+  min-height: 100vh;
+  line-height: 1.625;
+}
+
+/* ── Container ── */
+.ph-container {
   width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* ── Section spacing ── */
+.ph-section { padding: 4rem 0; }
+.ph-section-sm { padding: 2.5rem 0; }
+
+/* ── Section labels & titles ── */
+.ph-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--ph-primary));
+  background: hsl(var(--ph-primary-light));
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 0.75rem;
+}
+.ph-section-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--ph-fg));
+  margin-bottom: 1rem;
+}
+.ph-section-sub {
+  font-size: 1rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.625;
+  max-width: 600px;
+}
+
+/* ─────────────── HERO ─────────────── */
+.ph-hero {
   position: relative;
-  overflow: hidden;
-  height: 420px;
-  background: linear-gradient(rgba(26,43,75,0.75), rgba(13,124,102,0.7));
+  height: 480px;
+  background-image:
+    linear-gradient(to bottom, rgba(15,30,20,0.68) 0%, rgba(10,60,38,0.72) 100%),
+    url(${pharmacyHero});
   background-size: cover;
   background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.5rem;
 }
-.php-hero-orbs { position: absolute; inset: 0; overflow: hidden; }
-.php-hero-orb1 {
-  position: absolute; width: 500px; height: 500px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(16,185,129,0.25) 0%, transparent 70%);
-  top: -150px; right: -100px;
+.ph-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: hsl(var(--ph-accent));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  margin-bottom: 1.25rem;
 }
-.php-hero-orb2 {
-  position: absolute; width: 400px; height: 400px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(5,150,105,0.2) 0%, transparent 70%);
-  bottom: -100px; left: -50px;
+.ph-hero-title {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
 }
-.php-hero-grid {
-  position: absolute; inset: 0;
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
+.ph-hero-title span { color: hsl(var(--ph-accent)); }
+.ph-hero-sub {
+  font-size: 1.0625rem;
+  color: rgba(255,255,255,0.8);
+  max-width: 520px;
+  margin-bottom: 2rem;
+  line-height: 1.6;
 }
-.php-hero-content {
-  position: relative; z-index: 10;
-  width: 100%; padding: 0 24px;
-  height: 100%;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  box-sizing: border-box;
+.ph-hero-search {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 540px;
+  background: hsl(var(--ph-bg));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+  box-shadow: var(--ph-shadow-lg);
 }
-.php-hero-title {
-  font-size: clamp(36px, 5vw, 58px); font-weight: 900; color: #FFD700;
-  margin: 0 0 32px; line-height: 1.1; letter-spacing: -1px;
-  text-shadow: 0 0 30px rgba(255,215,0,0.35);
+.ph-hero-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0.875rem 1.25rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: hsl(var(--ph-fg));
+  background: transparent;
+}
+.ph-hero-search button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  border: none;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.ph-hero-search button:hover { background: hsl(var(--ph-primary-dark)); }
+.ph-hero-stats {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ph-hero-stat {
   text-align: center;
 }
-/* Hero search bar */
-.php-hero-search {
-  display: flex; align-items: center; gap: 0;
-  border: 1.5px solid rgba(255,255,255,0.5);
-  border-radius: 0;
-  overflow: hidden;
-  max-width: 560px;
-  width: 100%;
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(8px);
+.ph-hero-stat-num {
+  display: block;
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: hsl(var(--ph-accent));
+  line-height: 1;
 }
-.php-hero-search input {
-  flex: 1; border: none; outline: none;
-  background: transparent; color: white;
-  font-size: 15px; padding: 14px 20px;
+.ph-hero-stat-lbl {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.7);
+  margin-top: 0.25rem;
+}
+
+/* ─────────────── ADVISORY BANNER ─────────────── */
+.ph-advisory {
+  background: hsl(var(--ph-primary-light));
+  border-bottom: 1px solid hsl(var(--ph-border));
+  padding: 0.875rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.ph-advisory p {
+  font-size: 0.875rem;
+  color: hsl(var(--ph-primary-dark));
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.ph-advisory button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: hsl(var(--ph-muted-fg));
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border-radius: var(--ph-radius-sm);
+  transition: color 0.2s;
+}
+.ph-advisory button:hover { color: hsl(var(--ph-fg)); }
+
+/* ─────────────── TOOLBAR / FILTER ─────────────── */
+.ph-toolbar {
+  background: hsl(var(--ph-bg));
+  border-bottom: 1px solid hsl(var(--ph-border));
+  position: sticky;
+  top: 68px;
+  z-index: 40;
+  box-shadow: var(--ph-shadow-sm);
+}
+.ph-toolbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  flex-wrap: wrap;
+  max-width: 1280px;
+  margin: auto;
+}
+.ph-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4375rem 1rem;
+  border: 1.5px solid hsl(var(--ph-border));
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: hsl(var(--ph-bg));
+  color: hsl(var(--ph-muted-fg));
+  transition: all 0.15s ease;
   font-family: inherit;
-}
-.php-hero-search input::placeholder { color: rgba(255,255,255,0.6); }
-.php-hero-search button {
-  background: rgba(255,255,255,0.15); color: white;
-  border: none; border-left: 1.5px solid rgba(255,255,255,0.4);
-  padding: 14px 24px; font-size: 14px; font-weight: 700;
-  cursor: pointer; font-family: inherit; border-radius: 0;
-  transition: background 0.2s;
-}
-.php-hero-search button:hover { background: rgba(255,255,255,0.28); }
-
-/* Toolbar */
-.php-toolbar {
-  background: white; border-bottom: 1px solid #e4e6ea;
-  padding: 14px 0; position: sticky; top: 68px;
-  z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
-.php-toolbar-inner {
-  width: 100%; padding: 0 24px;
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  box-sizing: border-box;
-}
-.php-search {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 16px; background: #f8fafc;
-  border: 1.5px solid #e2e8f0; border-radius: 0;
-  flex: 1; max-width: 380px; transition: all 0.2s;
-  margin-left: auto;
-}
-.php-search:focus-within { border-color: #10b981; background: white; }
-.php-search input { border: none; outline: none; flex: 1; font-size: 13px; color: #0f172a; background: transparent; font-family: inherit; }
-.php-cat-pill {
-  padding: 7px 18px; border-radius: 0; border: 1.5px solid #e2e8f0;
-  cursor: pointer; font-size: 13px; font-weight: 600;
-  transition: all 0.2s; background: #f8fafc; color: #64748b; font-family: inherit;
-}
-.php-cat-pill:hover { background: #e2e8f0; color: #334155; }
-.php-cat-pill.active { background: linear-gradient(135deg,#10b981,#059669); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
-
-/* Main */
-.php-main { max-width: 1440px; margin: 0 auto; padding: 32px 24px 100px; }
-
-/* Grid */
-.php-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-.php-card {
-  background: white; border-radius: 12px; overflow: hidden;
-  border: 1px solid #8D6E63; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  cursor: pointer; transition: all 0.15s ease;
-  display: flex; flex-direction: column;
-  animation: fadeUp 0.15s both;
-}
-.php-card:hover { 
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
-  transform: translateY(-1px); 
-}
-.php-card-img-wrap {
-  position: relative; overflow: hidden; aspect-ratio: 4/3;
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  display: flex; align-items: stretch; justify-content: center;
-}
-.php-card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.15s ease; cursor: pointer; border-radius: 10px 10px 0 0; }
-.php-card:hover .php-card-img { transform: scale(1.03); }
-.php-card-badge {
-  position: absolute; top: 12px; left: 12px;
-  background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
-  padding: 4px 12px; border-radius: 6px;
-  font-size: 11px; font-weight: 700; color: #424242; letter-spacing: 0.3px;
-  border: 1px solid #8D6E63;
-}
-.php-card-oos {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.45);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: white; letter-spacing: 1px;
-}
-.php-card-rx {
-  position: absolute; top: 12px; right: 12px;
-  background: #F44336; color: white;
-  padding: 3px 10px; border-radius: 6px;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-}
-.php-card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
-.php-card-name { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 4px; line-height: 1.4; }
-.php-card-generic { font-size: 12px; color: #64748b; margin: 0 0 8px; font-style: italic; }
-.php-card-desc { font-size: 12px; color: #424242; margin: 0 0 8px; line-height: 1.5; flex: 1; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.php-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.php-price { font-size: 18px; font-weight: 800; color: #1B5E20; }
-.php-price-sub { font-size: 11px; color: #6B8E23; margin-top: 2px; }
-.php-stock-in { color: #4CAF50; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.php-stock-low { color: #FF9800; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.php-stock-out { color: #F44336; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
-.php-order-btn {
-  background: #2E8B57; color: white;
-  border: none; padding: 10px 14px; border-radius: 8px;
-  cursor: pointer; display: flex; align-items: center; gap: 6px;
-  font-weight: 700; font-size: 13px; transition: all 0.15s ease; font-family: inherit;
   white-space: nowrap;
 }
-.php-order-btn:hover:not(:disabled) { 
-  background: #1B5E20; 
-  transform: translateY(-1px); 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+.ph-filter-pill:hover {
+  border-color: hsl(var(--ph-primary));
+  color: hsl(var(--ph-primary));
+  background: hsl(var(--ph-primary-light));
 }
-.php-order-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ph-filter-pill.active {
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px hsl(var(--ph-primary) / 0.3);
+}
+.ph-toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: hsl(var(--ph-muted));
+  border: 1.5px solid hsl(var(--ph-border));
+  border-radius: 9999px;
+  flex: 1;
+  max-width: 340px;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+.ph-toolbar-search:focus-within {
+  border-color: hsl(var(--ph-primary));
+  background: hsl(var(--ph-bg));
+  box-shadow: 0 0 0 3px hsl(var(--ph-primary) / 0.15);
+}
+.ph-toolbar-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: hsl(var(--ph-fg));
+  flex: 1;
+  min-width: 0;
+}
 
-/* Shimmer */
-.php-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-  background-size: 600px 100%; animation: shimmerAnim 1.5s infinite;
-  border-radius: 0; height: 320px;
+/* ─────────────── PRODUCT GRID ─────────────── */
+.ph-products { padding: 2.5rem 0 4rem; }
+.ph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+.ph-card {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+  box-shadow: var(--ph-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ph-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ph-shadow-lg);
+}
+.ph-card-img-wrap {
+  aspect-ratio: 4 / 3;
+  background: hsl(var(--ph-primary-light));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ph-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.2s ease;
+}
+.ph-card:hover .ph-card-img { transform: scale(1.04); }
+.ph-card-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(6px);
+  color: hsl(var(--ph-primary-dark));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--ph-primary-light));
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.ph-card-img-wrap { position: relative; }
+.ph-card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+.ph-card-cat {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(var(--ph-primary));
+}
+.ph-card-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  line-height: 1.35;
+}
+.ph-card-desc {
+  font-size: 0.8125rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+.ph-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid hsl(var(--ph-border));
+}
+.ph-card-price {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: hsl(var(--ph-primary));
+  line-height: 1;
+}
+.ph-card-price span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--ph-muted-fg));
+  margin-left: 2px;
+}
+.ph-order-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  border: none;
+  border-radius: var(--ph-radius-sm);
+  padding: 0.4375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+.ph-order-btn:hover { background: hsl(var(--ph-primary-dark)); }
+.ph-rx-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid #fde68a;
 }
 
-/* Locations */
-.php-locations { max-width: 1440px; margin: 0 auto; padding: 32px 24px 60px; }
-.php-locations-title {
-  font-size: 18px; font-weight: 700; color: #424242;
-  margin: 0 0 20px; display: flex; align-items: center; gap: 8px;
+/* shimmer */
+@keyframes ph-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
-.php-loc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
-.php-loc-card {
-  background: white; border-radius: 12px; overflow: hidden;
-  border: 1px solid #8D6E63; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+.ph-shimmer {
+  border-radius: var(--ph-radius);
+  background: linear-gradient(90deg, hsl(var(--ph-muted)) 25%, hsl(var(--ph-border)) 50%, hsl(var(--ph-muted)) 75%);
+  background-size: 600px 100%;
+  animation: ph-shimmer 1.4s infinite linear;
+  aspect-ratio: 4/3;
+}
+.ph-shimmer-card {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+}
+.ph-shimmer-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.ph-shimmer-line {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, hsl(var(--ph-muted)) 25%, hsl(var(--ph-border)) 50%, hsl(var(--ph-muted)) 75%);
+  background-size: 600px 100%;
+  animation: ph-shimmer 1.4s infinite linear;
+}
+
+/* ─────────────── LOCATIONS ─────────────── */
+.ph-locations { background: hsl(var(--ph-bg)); }
+.ph-loc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.ph-loc-card {
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+  box-shadow: var(--ph-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: hsl(var(--ph-bg));
+}
+.ph-loc-card:hover { transform: translateY(-4px); box-shadow: var(--ph-shadow-lg); }
+.ph-loc-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+.ph-loc-body { padding: 1.25rem; }
+.ph-loc-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  margin-bottom: 0.875rem;
+}
+.ph-loc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--ph-muted-fg));
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+.ph-loc-row strong { color: hsl(var(--ph-fg)); font-weight: 600; }
+
+/* ─────────────── HOW TO ORDER ─────────────── */
+.ph-how { background: hsl(var(--ph-muted)); }
+.ph-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.ph-step {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: var(--ph-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ph-step:hover { transform: translateY(-4px); box-shadow: var(--ph-shadow-lg); }
+.ph-step-num {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+  box-shadow: 0 4px 12px hsl(var(--ph-primary) / 0.35);
+}
+.ph-step-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  margin-bottom: 0.5rem;
+}
+.ph-step-desc {
+  font-size: 0.8125rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.6;
+}
+.ph-delivery-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding: 1.75rem;
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  box-shadow: var(--ph-shadow-sm);
+}
+.ph-delivery-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+  min-width: 200px;
+}
+.ph-delivery-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--ph-radius-sm);
+  background: hsl(var(--ph-primary-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ph-delivery-info-item strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  margin-bottom: 0.25rem;
+}
+.ph-delivery-info-item p {
+  font-size: 0.8125rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ─────────────── ABOUT ─────────────── */
+.ph-about { background: hsl(var(--ph-bg)); }
+.ph-about-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+.ph-about-visual {
+  background: hsl(var(--ph-primary-light));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  padding: 3rem 2rem;
+  text-align: center;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.ph-about-icon {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 9999px;
+  background: hsl(var(--ph-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px hsl(var(--ph-primary) / 0.3);
+}
+.ph-about-stat {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: hsl(var(--ph-primary-dark));
+}
+.ph-about-stat-lbl {
+  font-size: 0.875rem;
+  color: hsl(var(--ph-primary));
+  font-weight: 600;
+}
+.ph-about-text { display: flex; flex-direction: column; gap: 1rem; }
+.ph-about-text p { font-size: 0.9375rem; color: hsl(var(--ph-muted-fg)); line-height: 1.75; }
+
+/* ─────────────── TEAM ─────────────── */
+.ph-team { background: hsl(var(--ph-muted)); }
+.ph-team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ph-team-card {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+  box-shadow: var(--ph-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ph-team-card:hover { transform: translateY(-4px); box-shadow: var(--ph-shadow-lg); }
+.ph-team-license-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+.ph-team-license-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.ph-team-card:hover .ph-team-license-img { transform: scale(1.03); }
+.ph-team-license-badge {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  background: hsl(var(--ph-primary) / 0.9);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  backdrop-filter: blur(4px);
+}
+.ph-team-body { padding: 1.25rem; }
+.ph-team-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  margin-bottom: 0.25rem;
+}
+.ph-team-role {
+  font-size: 0.8125rem;
+  color: hsl(var(--ph-primary));
+  font-weight: 600;
+  margin-bottom: 0.625rem;
+}
+.ph-team-bio {
+  font-size: 0.875rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.6;
+}
+
+/* ─────────────── PARTNERS ─────────────── */
+.ph-partners { background: hsl(var(--ph-bg)); }
+.ph-partners-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 2rem;
+}
+.ph-partners-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.ph-partners-sub {
+  font-size: 0.9375rem;
+  color: hsl(var(--ph-muted-fg));
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.ph-partners-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.ph-partner-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 1.5px solid hsl(var(--ph-border));
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--ph-fg));
+  background: hsl(var(--ph-bg));
+  box-shadow: var(--ph-shadow-sm);
   transition: all 0.15s ease;
 }
-.php-loc-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.php-loc-img { width: 100%; height: 160px; object-fit: cover; transition: transform 0.15s ease; border-radius: 10px 10px 0 0; }
-.php-loc-card:hover .php-loc-img { transform: scale(1.03); }
-.php-loc-body { padding: 16px 20px; }
-.php-loc-name { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
-.php-loc-detail { font-size: 13px; color: #424242; line-height: 1.7; }
+.ph-partner-chip:hover {
+  border-color: hsl(var(--ph-primary));
+  color: hsl(var(--ph-primary));
+  background: hsl(var(--ph-primary-light));
+}
+.ph-suppliers-label {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+}
 
-/* Modal */
-.php-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15,23,42,0.6); display: flex;
-  align-items: flex-start; justify-content: center;
-  z-index: 9999; padding: 60px 20px; overflow-y: auto;
+/* ─────────────── FAQ ─────────────── */
+.ph-faq { background: hsl(var(--ph-muted)); }
+.ph-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
 }
-.php-modal {
-  background: white; border-radius: 0; width: 100%;
-  max-width: 500px; margin: auto;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+.ph-faq-item {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  overflow: hidden;
+  box-shadow: var(--ph-shadow-sm);
 }
-.php-modal-header {
-  padding: 24px; border-bottom: 1px solid #e2e8f0;
-  display: flex; align-items: center; justify-content: space-between;
-  background: #f8fafc; border-radius: 0;
-}
-.php-modal-title { margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a; }
-.php-close-btn {
-  background: transparent; border: none; color: #64748b;
-  cursor: pointer; display: flex; align-items: center;
-  padding: 8px; border-radius: 0; transition: all 0.2s;
-}
-.php-close-btn:hover { background: #e2e8f0; color: #0f172a; }
-.php-modal-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-.php-form-group { display: flex; flex-direction: column; gap: 8px; }
-.php-form-group label { font-weight: 700; font-size: 0.9rem; color: #1e293b; }
-.php-form-input {
-  padding: 12px 16px; border: 2px solid #e2e8f0; width: 100%; box-sizing: border-box;
-  border-radius: 0; font-size: 1rem; background: white;
-  color: #0f172a; transition: all 0.2s; font-family: inherit; outline: none;
-}
-.php-form-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
-.php-form-input:disabled { background: #f8fafc; color: #64748b; cursor: not-allowed; }
-.php-file-upload {
-  border: 2px dashed #cbd5e1; border-radius: 0; padding: 24px;
-  text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc;
-}
-.php-file-upload:hover { border-color: #10b981; background: #f0fdf4; }
-.php-modal-footer {
-  padding: 20px 24px; border-top: 1px solid #e2e8f0;
-  display: flex; justify-content: flex-end; gap: 12px;
-  background: #f8fafc; border-radius: 0;
-}
-.php-cancel-btn {
-  padding: 12px 24px; background: white; border: 2px solid #e2e8f0;
-  border-radius: 0; color: #475569; font-weight: 700;
-  cursor: pointer; transition: all 0.2s; font-family: inherit;
-}
-.php-cancel-btn:hover { background: #f1f5f9; }
-.php-submit-btn {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  border: none; border-radius: 0; color: white;
-  font-weight: 700; cursor: pointer; display: flex;
-  align-items: center; gap: 8px; transition: all 0.2s;
+.ph-faq-q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: hsl(var(--ph-fg));
+  gap: 1rem;
   font-family: inherit;
+  text-align: left;
+  transition: color 0.15s;
 }
-.php-submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.4); }
-.php-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.ph-faq-q:hover { color: hsl(var(--ph-primary)); }
+.ph-faq-q:focus { outline: none; box-shadow: inset 0 0 0 2px hsl(var(--ph-primary) / 0.3); border-radius: var(--ph-radius); }
+.ph-faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+  font-size: 0.9375rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.75;
+  padding: 0 1.5rem;
+  border-top: 0px solid hsl(var(--ph-border));
+}
+.ph-faq-a.open {
+  max-height: 400px;
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid hsl(var(--ph-border));
+}
 
-/* ═══════ ADVISORY BANNER ═══════ */
-.php-advisory {
-  background: linear-gradient(90deg, #065f46, #047857);
-  color: white; padding: 12px 24px;
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  font-size: 13px; font-weight: 600; position: relative;
+/* ─────────────── REVIEWS ─────────────── */
+.ph-reviews { background: hsl(var(--ph-bg)); }
+.ph-reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
 }
-.php-advisory-close {
-  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-  background: rgba(255,255,255,0.15); border: none; color: white;
-  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; font-size: 16px;
+.ph-review-card {
+  background: hsl(var(--ph-bg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius);
+  padding: 1.5rem;
+  box-shadow: var(--ph-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.ph-stars { display: flex; gap: 0.25rem; }
+.ph-review-text {
+  font-size: 0.875rem;
+  color: hsl(var(--ph-muted-fg));
+  line-height: 1.75;
+  flex: 1;
+  font-style: italic;
+}
+.ph-reviewer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.ph-reviewer-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ph-reviewer-name { font-size: 0.875rem; font-weight: 700; color: hsl(var(--ph-fg)); }
+.ph-reviewer-date { font-size: 0.75rem; color: hsl(var(--ph-muted-fg)); }
+
+/* ─────────────── MODAL ─────────────── */
+.ph-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+@media (min-width: 640px) {
+  .ph-overlay { align-items: center; }
+}
+.ph-modal {
+  margin: auto;
+  background: hsl(var(--ph-bg));
+  border-radius: var(--ph-radius);
+  box-shadow: 0 25px 50px rgb(0 0 0 / 0.25);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+}
+.ph-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--ph-border));
+  position: sticky;
+  top: 0;
+  background: hsl(var(--ph-bg));
+  z-index: 10;
+  border-radius: var(--ph-radius) var(--ph-radius) 0 0;
+}
+.ph-modal-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--ph-fg));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ph-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: hsl(var(--ph-muted));
+  border: none;
+  border-radius: var(--ph-radius-sm);
+  cursor: pointer;
+  color: hsl(var(--ph-muted-fg));
+  transition: all 0.2s;
+}
+.ph-modal-close:hover { background: hsl(var(--ph-border)); color: hsl(var(--ph-fg)); }
+.ph-modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; }
+.ph-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid hsl(var(--ph-border));
+  background: hsl(var(--ph-bg));
+  border-radius: 0 0 var(--ph-radius) var(--ph-radius);
+}
+.ph-form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+.ph-form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--ph-fg));
+}
+.ph-form-input {
+  width: 100%;
+  padding: 0.5625rem 0.875rem;
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius-sm);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: hsl(var(--ph-fg));
+  background: hsl(var(--ph-bg));
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ph-form-input:focus {
+  outline: none;
+  border-color: hsl(var(--ph-primary));
+  box-shadow: 0 0 0 3px hsl(var(--ph-primary) / 0.15);
+}
+.ph-form-input:disabled {
+  background: hsl(var(--ph-muted));
+  color: hsl(var(--ph-muted-fg));
+  cursor: not-allowed;
+}
+.ph-file-upload {
+  border: 2px dashed hsl(var(--ph-border));
+  border-radius: var(--ph-radius-sm);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ph-file-upload:hover {
+  border-color: hsl(var(--ph-primary));
+  background: hsl(var(--ph-primary-light));
+}
+.ph-file-upload p { font-size: 0.875rem; font-weight: 600; color: hsl(var(--ph-fg)); margin: 0; }
+.ph-file-upload small { font-size: 0.75rem; color: hsl(var(--ph-muted-fg)); }
+.ph-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: hsl(var(--ph-primary-light));
+  border: 1px solid hsl(var(--ph-primary) / 0.2);
+  border-radius: var(--ph-radius-sm);
+  font-weight: 700;
+  color: hsl(var(--ph-primary-dark));
+}
+.ph-total-row span:last-child { font-size: 1.125rem; font-weight: 800; }
+.ph-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--ph-radius-sm);
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+.ph-btn-primary {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: hsl(var(--ph-primary));
+  color: #fff;
+  border: none;
+  border-radius: var(--ph-radius-sm);
+  padding: 0.6875rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.ph-btn-primary:hover { background: hsl(var(--ph-primary-dark)); }
+.ph-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.ph-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--ph-bg));
+  color: hsl(var(--ph-muted-fg));
+  border: 1px solid hsl(var(--ph-border));
+  border-radius: var(--ph-radius-sm);
+  padding: 0.6875rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ph-btn-secondary:hover {
+  background: hsl(var(--ph-muted));
+  color: hsl(var(--ph-fg));
+}
+
+/* ─────────────── IMAGE PREVIEW ─────────────── */
+.ph-img-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+.ph-img-preview-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   transition: background 0.2s;
 }
-.php-advisory-close:hover { background: rgba(255,255,255,0.3); }
+.ph-img-preview-close:hover { background: rgba(255,255,255,0.3); }
 
-/* ═══════ HOW TO ORDER ═══════ */
-.php-how { background: #F5F5F5; padding: 72px 24px; }
-.php-how-inner { max-width: 1100px; margin: 0 auto; }
-.php-section-label { font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #228B22; margin: 0 0 12px; }
-.php-section-title { font-size: clamp(24px, 4vw, 40px); font-weight: 900; margin: 0 0 48px; color: #1B5E20; line-height: 1.2; }
-.php-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; }
-.php-step {
-  background: #FFFFFF; border: 1px solid #8D6E63;
-  border-radius: 12px; padding: 32px 24px; text-align: center; position: relative;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.php-step:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-.php-step-num {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: #2E8B57;
-  color: white; font-size: 22px; font-weight: 900;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px;
-}
-.php-step-title { font-size: 15px; font-weight: 700; color: #424242; margin: 0 0 10px; }
-.php-step-desc { font-size: 13px; color: #424242; line-height: 1.6; margin: 0; }
-.php-delivery-info {
-  margin-top: 48px; padding: 24px 32px;
-  background: #FFFFFF; border: 1px solid #8D6E63;
-  border-radius: 12px; display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.php-delivery-info-item { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 200px; }
-.php-delivery-info-item p { margin: 0; font-size: 13px; color: #424242; line-height: 1.6; }
-.php-delivery-info-item strong { display: block; font-size: 14px; color: #424242; margin-bottom: 4px; }
-
+/* ─────────────── RESPONSIVE ─────────────── */
 @media (max-width: 768px) {
-  .php-step, .php-delivery-info { border: none !important; box-shadow: none !important; }
+  .ph-about-inner { grid-template-columns: 1fr; gap: 2rem; }
+  .ph-partners-inner { grid-template-columns: 1fr; gap: 2rem; }
+  .ph-team-grid { grid-template-columns: 1fr; }
+  .ph-hero { height: 420px; }
+  .ph-hero-title { font-size: 2rem; }
+  .ph-section { padding: 3rem 0; }
 }
-
-/* ═══════ ABOUT ═══════ */
-.php-about { padding: 72px 24px; background: #FFFFFF; }
-.php-about-inner { 
-  max-width: 1100px; margin: 0 auto; 
-  display: grid; grid-template-columns: 1fr 1fr; 
-  gap: 56px; align-items: center; 
+@media (max-width: 640px) {
+  .ph-toolbar-inner { gap: 0.5rem; padding: 0.75rem 1rem; }
+  .ph-toolbar-search { max-width: 100%; margin-left: 0; }
+  .ph-hero-stats { gap: 1.25rem; }
 }
-.php-about-visual {
-  background: #F5F5F5;
-  border-radius: 12px; padding: 48px; 
-  display: flex; align-items: center; justify-content: center;
-  min-height: 280px; position: relative; overflow: hidden;
-  border: 1px solid #8D6E63;
-}
-.php-about-visual-icon {
-  width: 120px; height: 120px; border-radius: 50%;
-  background: #2E8B57;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px;
-  box-shadow: 0 8px 24px rgba(46,139,87,0.25);
-}
-.php-about-visual-label { font-size: 18px; font-weight: 800; color: #1B5E20; text-align: center; }
-.php-about-visual-sub { font-size: 13px; color: #228B22; margin-top: 4px; text-align: center; }
-.php-about-text .php-section-title { color: #1B5E20; }
-.php-about-text p { color: #424242; line-height: 1.8; margin: 0 0 16px; font-size: 15px; }
-
-@media (max-width: 768px) {
-  .php-about-inner { grid-template-columns: 1fr; gap: 32px; }
-  .php-about-visual { padding: 32px; min-height: 200px; }
-}
-
-/* ═══════ TEAM ═══════ */
-.php-team { padding: 72px 24px; background: #F5F5F5; }
-.php-team-inner { width: 100%; }
-.php-team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-.php-team-card {
-  background: white; border-radius: 12px; overflow: hidden;
-  border: 1px solid #8D6E63;
-  text-align: center; padding-bottom: 20px;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.php-team-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-
-/* License image area */
-.php-team-license-wrap {
-  position: relative; width: 100%; overflow: hidden;
-  border-radius: 10px 10px 0 0;
-  background: #f0fdf4;
-  cursor: pointer;
-}
-.php-team-license-img {
-  width: 100%; height: 280px; object-fit: cover;
-  display: block; transition: transform 0.15s ease;
-  border-radius: 10px 10px 0 0;
-}
-.php-team-card:hover .php-team-license-img { transform: scale(1.03); }
-.php-team-license-badge {
-  position: absolute; bottom: 8px; left: 8px;
-  background: rgba(27,94,32,0.92); color: white;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-  padding: 3px 8px; border-radius: 6px;
-  display: flex; align-items: center; gap: 4px;
-}
-.php-team-initials-wrap {
-  width: 100%; height: 170px;
-  background: #A5D6A7;
-  display: flex; align-items: center; justify-content: center;
-}
-.php-team-initials {
-  width: 72px; height: 72px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 900; color: white;
-}
-.php-team-name { font-size: 15px; font-weight: 700; color: #424242; margin: 16px 0 4px; padding: 0 12px; }
-.php-team-role { font-size: 12px; color: #228B22; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 8px; }
-.php-team-bio { font-size: 12px; color: #424242; padding: 0 16px; line-height: 1.6; margin: 0; }
-
-@media (max-width: 600px) {
-  .php-team-grid { grid-template-columns: 1fr; gap: 16px; }
-  .php-team-card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding-bottom: 14px; }
-  .php-team-license-img, .php-team-initials-wrap { height: 130px; }
-  .php-team-name { font-size: 13px; margin-top: 12px; }
-  .php-team-bio { font-size: 11px; }
-}
-
-/* ═══════ TESTIMONIALS ═══════ */
-
-
-/* ═══════ PARTNERS ═══════ */
-.php-partners { background: #F5F5F5; padding: 72px 24px; border-top: 1px solid #8D6E63; }
-.php-partners-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
-.php-partners h2 { font-size: 28px; font-weight: 800; color: #1B5E20; margin: 0 0 12px; }
-.php-partners-sub { font-size: 16px; color: #424242; margin: 0 auto 40px; max-width: 600px; line-height: 1.6; }
-.php-partners-grid { display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap; }
-.php-partner-chip {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 24px; border-radius: 12px;
-  border: 1px solid #8D6E63; background: #FFFFFF;
-  font-size: 14px; font-weight: 700; color: #424242;
-  transition: all 0.15s ease;
-}
-.php-partner-chip:hover { 
-  transform: translateY(-1px); 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06); 
-}
-
-/* ═══════ FAQ ═══════ */
-.php-faq { padding: 72px 24px; background: #FFFFFF; border-top: 1px solid #8D6E63; }
-.php-faq-inner { max-width: 800px; margin: 0 auto; }
-.php-faq-item { 
-  border-radius: 12px; 
-  margin-bottom: 16px; background: #FFFFFF; 
-  overflow: hidden; transition: all 0.15s ease;
-}
-.php-faq-item:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-.php-faq-q {
-  width: 100%; text-align: left; background: none; border: none;
-  padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;
-  font-size: 16px; font-weight: 700; color: #424242; cursor: pointer;
-  gap: 16px; font-family: inherit; transition: color 0.15s ease;
-}
-.php-faq-q:hover { color: #1B5E20; }
-.php-faq-a {
-  overflow: hidden; max-height: 0;
-  transition: max-height 0.35s ease, padding 0.35s ease;
-  font-size: 15px; color: #424242; line-height: 1.7;
-  padding: 0 24px;
-}
-.php-faq-a.open { max-height: 300px; padding-bottom: 24px; }
-
-
 `;
 
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────── */
 const imgSrc = (url) => {
   if (!url) return null;
   return url.startsWith('http') ? url : 'http://localhost:5000' + url;
 };
 
+const FAQS = [
+  { q: 'Do I need a prescription for all medications?', a: 'No. Many over-the-counter medications can be ordered without a prescription. However, some controlled or prescription-only drugs require a valid prescription uploaded during checkout or presented at pickup.' },
+  { q: 'What are your delivery areas and fees?', a: 'We currently deliver within Addis Ababa and surrounding areas. Delivery fee is 50 ETB flat within city limits. Free delivery for orders above 500 ETB. Rural deliveries may take 2–3 extra days.' },
+  { q: 'How long does it take to process my order?', a: 'Standard orders are processed within 2–4 hours during business hours. Home delivery takes 3–6 hours. Pickup orders are usually ready within 1 hour.' },
+  { q: 'Can I return or exchange a medication?', a: 'For safety reasons, medications cannot be returned once dispensed. If you received a wrong item, contact us within 24 hours and we will resolve the issue immediately.' },
+  { q: 'What happens if my prescribed drug is out of stock?', a: 'Our pharmacist will contact you to suggest a suitable alternative or notify you when the item is back in stock. You will not be charged until the order is fulfilled.' },
+  { q: 'Do you accept health insurance?', a: 'Yes. We work with several insurance providers including CBHI, Nyala Insurance, and Awash Insurance. Bring your insurance card to our branch or upload a photo during checkout.' },
+];
+
+const TEAM = [
+  { name: 'Dr. Fikerte Haile', role: 'Chief Pharmacist', bio: 'B.Pharm, MSc. 12 years of clinical experience in pharmaceutical care and patient safety.', license: licFikerte, licNo: 'ETH-EFDA-2024-0012' },
+  { name: 'Abebe Girma', role: 'Senior Pharmacist', bio: 'B.Pharm. Specialist in chronic disease medication management and patient counselling.', license: licAbebe, licNo: 'ETH-EFDA-2024-0047' },
+  { name: 'Meron Tesfaye', role: 'Pharmacist', bio: 'B.Pharm. Focused on paediatric medications and women\'s health pharmaceutical care.', license: licMeron, licNo: 'ETH-EFDA-2024-0091' },
+  { name: 'Dawit Bekele', role: 'Pharmacy Technician', bio: 'Experienced in dispensing, inventory management, and compounding medications.', license: licDawit, licNo: 'ETH-EFDA-2024-0138' },
+];
+
+const REVIEWS = [
+  { text: 'Fast delivery and the staff was very professional. My prescription was handled with care and they even called to confirm the dosage.', name: 'Selamawit T.', date: 'June 2025', rating: 5, initial: 'S' },
+  { text: 'I love that I can order refills online. No more waiting in long queues. The app notifies me when my order is ready!', name: 'Bereket M.', date: 'May 2025', rating: 5, initial: 'B' },
+  { text: 'Very affordable prices compared to other pharmacies. The MOH licensed badge gives me full confidence in the quality.', name: 'Hana G.', date: 'July 2025', rating: 4, initial: 'H' },
+];
+
+/* ─────────────────────────────────────────────────────────────
+   Component
+───────────────────────────────────────────────────────────── */
 const PharmacyHealthPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
-
   const [categories, setCategories] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Description & Image Modal state
   const [advisoryOpen, setAdvisoryOpen] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
-  const [expandedDesc, setExpandedDesc] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
 
-  // Modal State
+  /* Modal */
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
   const [refillQuantity, setRefillQuantity] = useState(1);
@@ -495,27 +1132,29 @@ const PharmacyHealthPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  /* Data fetch */
   useEffect(() => {
-    const fetchPublicData = async () => {
+    const fetch = async () => {
       try {
         setLoading(true);
         const [catRes, prodRes, branchRes] = await Promise.all([
           pharmacyService.getCategories(),
           pharmacyService.getProducts(),
-          pharmacyService.getBranches()
+          pharmacyService.getBranches(),
         ]);
         if (catRes.status === 'success') setCategories(catRes.data.filter(c => c.is_active));
         if (prodRes.status === 'success') setAllProducts(prodRes.data.filter(p => p.is_active));
         if (branchRes.status === 'success') setBranches(branchRes.data.filter(b => b.is_active));
-      } catch (error) {
-        console.error('Failed to fetch public pharmacy data', error);
+      } catch (e) {
+        console.error('Failed to fetch pharmacy data', e);
       } finally {
         setLoading(false);
       }
     };
-    fetchPublicData();
+    fetch();
   }, []);
 
+  /* Auto-open refill from location state */
   useEffect(() => {
     if (location.state?.refillMedicine && authService.isAuthenticated()) {
       setSelectedMedicine(location.state.refillMedicine);
@@ -524,6 +1163,7 @@ const PharmacyHealthPage = () => {
     }
   }, [location]);
 
+  /* Filter */
   const filtered = allProducts.filter(p => {
     const matchSearch = !search ||
       p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -533,11 +1173,12 @@ const PharmacyHealthPage = () => {
     return matchSearch && matchCat;
   });
 
-  const handleRequestRefill = (medicine) => {
+  /* Actions */
+  const handleRequestRefill = (med) => {
     if (!authService.isAuthenticated()) {
-      navigate('/login', { state: { from: '/services/pharmacy', refillMedicine: medicine } });
+      navigate('/login', { state: { from: '/services/pharmacy', refillMedicine: med } });
     } else {
-      setSelectedMedicine(medicine);
+      setSelectedMedicine(med);
       setIsModalOpen(true);
     }
   };
@@ -557,13 +1198,13 @@ const PharmacyHealthPage = () => {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      const formData = new FormData();
-      formData.append('medication_id', selectedMedicine.id);
-      formData.append('quantity', refillQuantity);
-      formData.append('delivery_option', deliveryOption);
-      if (deliveryOption === 'delivery') formData.append('delivery_address', deliveryAddress);
-      if (prescriptionFile) formData.append('prescription_image', prescriptionFile);
-      await axios.post('/pharmacy/requests', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const fd = new FormData();
+      fd.append('medication_id', selectedMedicine.id);
+      fd.append('quantity', refillQuantity);
+      fd.append('delivery_option', deliveryOption);
+      if (deliveryOption === 'delivery') fd.append('delivery_address', deliveryAddress);
+      if (prescriptionFile) fd.append('prescription_image', prescriptionFile);
+      await axios.post('/pharmacy/requests', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setSubmitSuccess(true);
       setTimeout(() => closeModal(), 2500);
     } catch (err) {
@@ -573,365 +1214,491 @@ const PharmacyHealthPage = () => {
     }
   };
 
-  // Removed renderStock function as per user request to hide internal stock text
+  const currentUser = authService.getCurrentUser();
 
-  const FAQS = [
-    { q: 'Do I need a prescription for all medications?', a: 'No. Many over-the-counter medications can be ordered without a prescription. However, some controlled or prescription-only drugs require a valid prescription uploaded during checkout or presented at pickup.' },
-    { q: 'What are your delivery areas and fees?', a: 'We currently deliver within Addis Ababa and surrounding areas. Delivery fee is 50 ETB flat within city limits. Free delivery for orders above 500 ETB. Rural deliveries may take 2–3 extra days.' },
-    { q: 'How long does it take to process my order?', a: 'Standard orders are processed within 2–4 hours during business hours. Home delivery takes 3–6 hours. Pickup orders are usually ready within 1 hour.' },
-    { q: 'Can I return or exchange a medication?', a: 'For safety reasons, medications cannot be returned once dispensed. If you received a wrong item, contact us within 24 hours and we will resolve the issue immediately.' },
-    { q: 'What happens if my prescribed drug is out of stock?', a: 'Our pharmacist will contact you to suggest a suitable alternative or notify you when the item is back in stock. You will not be charged until the order is fulfilled.' },
-    { q: 'Do you accept health insurance?', a: 'Yes. We work with several insurance providers including CBHI, Nyala Insurance, and Awash Insurance. Bring your insurance card to our branch or upload a photo during checkout.' },
-  ];
-
-  const TEAM = [
-    { name: 'Dr. Fikerte Haile', role: 'Chief Pharmacist', bio: 'B.Pharm, MSc. 12 years of clinical experience in pharmaceutical care and patient safety.', initials: 'FH', color: '#1B5E20', license: licFikerte, licNo: 'ETH-EFDA-2024-0012' },
-    { name: 'Abebe Girma', role: 'Senior Pharmacist', bio: 'B.Pharm. Specialist in chronic disease medication management and patient counselling.', initials: 'AG', color: '#2E8B57', license: licAbebe, licNo: 'ETH-EFDA-2024-0047' },
-    { name: 'Meron Tesfaye', role: 'Pharmacist', bio: 'B.Pharm. Focused on paediatric medications and women\'s health pharmaceutical care.', initials: 'MT', color: '#228B22', license: licMeron, licNo: 'ETH-EFDA-2024-0091' },
-    { name: 'Dawit Bekele', role: 'Pharmacy Technician', bio: 'Experienced in dispensing, inventory management, and compounding medications.', initials: 'DB', color: '#6B8E23', license: licDawit, licNo: 'ETH-EFDA-2024-0138' },
-  ];
-
-  const REVIEWS = [
-    { text: 'Fast delivery and the staff was very professional. My prescription was handled with care and they even called to confirm the dosage.', name: 'Selamawit T.', date: 'June 2025', rating: 5, initial: 'S' },
-    { text: 'I love that I can order refills online. No more waiting in long queues. The app notifies me when my order is ready!', name: 'Bereket M.', date: 'May 2025', rating: 5, initial: 'B' },
-    { text: 'Very affordable prices compared to other pharmacies. The MOH licensed badge gives me full confidence in the quality.', name: 'Hana G.', date: 'July 2025', rating: 4, initial: 'H' },
-  ];
-
+  /* ── Render ── */
   return (
-    <div className="php-root">
+    <div className="ph-root">
       <style>{STYLES}</style>
       <PublicNav />
 
-      {/* ── Health Advisory Banner ── */}
+      {/* ══ HERO ══════════════════════════════════════════════ */}
+      <section className="ph-hero">
+        <div className="ph-hero-badge">
+          <Shield size={12} />
+          MOH Licensed · EFDA Approved
+        </div>
+        <h1 className="ph-hero-title">
+          Your Health,<br /><span>Our Priority</span>
+        </h1>
+        <p className="ph-hero-sub">
+          Browse our full catalog of quality medications. Order online and pick up at your nearest branch or get home delivery.
+        </p>
+
+        <div className="ph-hero-stats">
+          <div className="ph-hero-stat">
+            <span className="ph-hero-stat-num">{allProducts.length || '500+'}</span>
+            <div className="ph-hero-stat-lbl">Medications</div>
+          </div>
+          <div className="ph-hero-stat">
+            <span className="ph-hero-stat-num">{branches.length || '4'}</span>
+            <div className="ph-hero-stat-lbl">Branches</div>
+          </div>
+          <div className="ph-hero-stat">
+            <span className="ph-hero-stat-num">4.9 ★</span>
+            <div className="ph-hero-stat-lbl">Avg Rating</div>
+          </div>
+          <div className="ph-hero-stat">
+            <span className="ph-hero-stat-num">24/7</span>
+            <div className="ph-hero-stat-lbl">On-Call</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ ADVISORY BANNER ═══════════════════════════════════ */}
       {advisoryOpen && (
-        <div className="php-advisory">
-          <AlertCircle size={16} />
-          <span>⚕️ <strong>Health Advisory:</strong> Flu season is here — consult our pharmacists for vaccinations and preventive care.</span>
-          <button className="php-advisory-close" onClick={() => setAdvisoryOpen(false)}>×</button>
+        <div className="ph-advisory">
+          <p>
+            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+            <strong>Medical Advisory:</strong>&nbsp;This catalog is for informational purposes. Always consult a licensed pharmacist or physician before using any medication. Prescription-only drugs require a valid prescription.
+          </p>
+          <button onClick={() => setAdvisoryOpen(false)} aria-label="Dismiss">
+            <X size={16} />
+          </button>
         </div>
       )}
 
-      {/* Hero */}
-      <div className="php-hero" style={{ backgroundImage: `linear-gradient(rgba(26,43,75,0.75), rgba(13,124,102,0.7)), url(${pharmacyHero})`, backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="php-hero-orbs">
-          <div className="php-hero-orb1" />
-          <div className="php-hero-orb2" />
-        </div>
-        <div className="php-hero-grid" />
-        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', padding: '0 24px' }}>
-          <h1 className="php-hero-title">Sutana Pharmacy &amp; Health</h1>
-          <div className="php-hero-search">
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && setSearch(search)}
-              placeholder="Search medications by name or category..."
-            />
-            <button type="button" onClick={() => setSearch(search)}>Search</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sticky Toolbar */}
-      <div className="php-toolbar">
-        <div className="php-toolbar-inner">
-          <button className={'php-cat-pill' + (catFilter === 'all' ? ' active' : '')} onClick={() => setCatFilter('all')}>All</button>
-          {categories.map(c => (
+      {/* ══ FILTER TOOLBAR ════════════════════════════════════ */}
+      <div className="ph-toolbar">
+        <div className="ph-toolbar-inner">
+          <button
+            className={`ph-filter-pill ${catFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setCatFilter('all')}
+          >
+            All
+          </button>
+          {categories.slice(0, 8).map(c => (
             <button
               key={c.id}
-              className={'php-cat-pill' + (String(catFilter) === String(c.id) ? ' active' : '')}
-              onClick={() => setCatFilter(String(catFilter) === String(c.id) ? 'all' : String(c.id))}
+              className={`ph-filter-pill ${String(catFilter) === String(c.id) ? 'active' : ''}`}
+              onClick={() => setCatFilter(c.id)}
             >
               {c.name}
             </button>
           ))}
-
+          <div className="ph-toolbar-search">
+            <Search size={14} color="hsl(215 16% 47%)" />
+            <input
+              type="text"
+              placeholder="Filter results…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Product Grid */}
-      <div className="php-main">
-        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#228B22', margin: 0 }}>
-              {catFilter === 'all' ? 'All Medications' : categories.find(c => String(c.id) === catFilter)?.name || 'Medications'}
-            </h2>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="php-grid">
-            {[1,2,3,4,5,6].map(i => <div key={i} className="php-shimmer" />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px', background: 'white', borderRadius: 20, border: '1px solid #e2e8f0' }}>
-            <Package size={56} color="#cbd5e1" style={{ marginBottom: 16 }} />
-            <h3 style={{ fontSize: 20, color: '#0f172a', margin: '0 0 8px' }}>No medications found</h3>
-            <p style={{ color: '#64748b', margin: 0 }}>Try a different search term or category.</p>
-          </div>
-        ) : (
-          <div className="php-grid">
-            {filtered.map((p, i) => (
-              <div key={p.id} className="php-card" style={{ animationDelay: i * 0.05 + 's' }}>
-                <div className="php-card-img-wrap" style={{ display: 'flex' }}>
-                  {p.drug_image && p.cover_image ? (
-                    <>
-                      <img src={imgSrc(p.drug_image)} className="php-card-img" style={{ width: '50%' }} alt={p.name} onClick={(e) => { e.stopPropagation(); setPreviewImage(imgSrc(p.drug_image)); }} />
-                      <img src={imgSrc(p.cover_image)} className="php-card-img" style={{ width: '50%', borderLeft: '1px solid white' }} alt={p.name} onClick={(e) => { e.stopPropagation(); setPreviewImage(imgSrc(p.cover_image)); }} />
-                    </>
-                  ) : imgSrc(p.drug_image || p.cover_image) ? (
-                    <img src={imgSrc(p.drug_image || p.cover_image)} className="php-card-img" style={{ width: '100%' }} alt={p.name} onClick={(e) => { e.stopPropagation(); setPreviewImage(imgSrc(p.drug_image || p.cover_image)); }} />
-                  ) : (
-                    <Package size={44} color="#cbd5e1" style={{ alignSelf: 'center' }} />
-                  )}
-                </div>
-                <div className="php-card-body">
-                  <h3 className="php-card-name">{p.name}</h3>
-                  {p.description && (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <p className="php-card-desc">{p.description}</p>
-                    </div>
-                  )}
-                  <div className="php-card-footer">
-                    <div>
-                      <div className="php-price">{parseFloat(p.price || 0).toLocaleString()} ETB</div>
-                    </div>
-                    <button
-                      className="php-order-btn"
-                      onClick={(e) => { e.stopPropagation(); handleRequestRefill(p); }}
-                    >
-                      <ShoppingCart size={15} /> Order
-                    </button>
+      {/* ══ PRODUCT GRID ══════════════════════════════════════ */}
+      <section className="ph-products">
+        <div className="ph-container">
+          {loading ? (
+            <div className="ph-grid">
+              {[1,2,3,4,5,6].map(i => (
+                <div key={i} className="ph-shimmer-card">
+                  <div className="ph-shimmer" />
+                  <div className="ph-shimmer-body">
+                    <div className="ph-shimmer-line" style={{ height: '0.625rem', width: '40%' }} />
+                    <div className="ph-shimmer-line" style={{ height: '0.875rem', width: '75%' }} />
+                    <div className="ph-shimmer-line" style={{ height: '0.75rem', width: '90%' }} />
+                    <div className="ph-shimmer-line" style={{ height: '0.75rem', width: '60%' }} />
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <hr style={{ border: 'none', borderTop: '1px solid #e4e6ea', margin: '0 24px' }} />
-
-      {/* Pharmacy Locations */}
-      {branches.length > 0 && (
-        <div className="php-locations">
-          <h2 className="php-locations-title"><MapPin size={20} color="#228B22" /> Our Pharmacy Locations</h2>
-          <div className="php-loc-grid">
-            {branches.map(branch => (
-              <div className="php-loc-card" key={branch.id}>
-                {branch.cover_image && <div style={{ overflow: 'hidden', borderRadius: '10px 10px 0 0' }}><img src={`http://localhost:5000${branch.cover_image}`} alt={branch.name} className="php-loc-img" /></div>}
-                <div className="php-loc-body">
-                  <h3 className="php-loc-name"><MapPin size={16} color="#228B22" /> {branch.name}</h3>
-                  <div className="php-loc-detail">
-                    <strong style={{ color: '#424242' }}>Address:</strong> {branch.address}<br />
-                    <strong style={{ color: '#424242' }}>Phone:</strong> {branch.phone}<br />
-                    <strong style={{ color: '#424242' }}>Hours:</strong> {branch.working_hours}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* ── How to Order ── */}
-      <div className="php-how">
-        <div className="php-how-inner">
-          <h2 className="php-section-title">How to Order &amp; Delivery Policy</h2>
-          <div className="php-steps">
-            {[
-              { n: '1', title: 'Browse & Search', desc: 'Find your medication by name or category from our live catalog.' },
-              { n: '2', title: 'Place Your Order', desc: 'Add quantity, choose pickup or delivery, and optionally upload your prescription.' },
-              { n: '3', title: 'We Prepare & Verify', desc: 'Our licensed pharmacist verifies your order and prepares it safely.' },
-              { n: '4', title: 'Pickup or Delivery', desc: 'Collect from your nearest branch or receive it at your doorstep.' },
-            ].map(s => (
-              <div className="php-step" key={s.n}>
-                <div className="php-step-num">{s.n}</div>
-                <h3 className="php-step-title">{s.title}</h3>
-                <p className="php-step-desc">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="php-delivery-info">
-            <div className="php-delivery-info-item"><Truck size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Delivery Areas</strong><p>Addis Ababa & surrounding regions. 3–6 hrs standard delivery. Rural: 2–3 extra days.</p></div></div>
-            <div className="php-delivery-info-item"><CreditCard size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Delivery Fee</strong><p>Flat 50 ETB within city limits. Free delivery on orders above 500 ETB.</p></div></div>
-            <div className="php-delivery-info-item"><Clock size={24} color="#059669" style={{flexShrink:0}} /><div><strong>Operating Hours</strong><p>Mon – Sat: 7:00 AM – 9:00 PM. Sunday: 9:00 AM – 5:00 PM. 24/7 On-Call available.</p></div></div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── About Us ── */}
-      <div className="php-about">
-        <div className="php-about-inner">
-          <div className="php-about-visual">
-            <div style={{textAlign:'center', position:'relative', zIndex:1}}>
-              <div className="php-about-visual-icon">
-                <Heart size={52} color="white" />
-              </div>
-              <div className="php-about-visual-label">Trusted Since 2010</div>
-              <div className="php-about-visual-sub">MOH Licensed Pharmacy</div>
+              ))}
             </div>
-          </div>
-          <div className="php-about-text">
-            <p className="php-section-label">Who We Are</p>
-            <h2 className="php-section-title">Ethiopia's Trusted Pharmaceutical Partner</h2>
-            <p>Sutana Pharmacy &amp; Health has been serving communities across Ethiopia since 2010. Our mission is to make quality, affordable healthcare accessible to everyone — from essential everyday medications to specialized pharmaceutical care.</p>
-            <p>We operate under the direct supervision of licensed pharmacists and comply fully with the Ethiopian Food and Drug Authority (EFDA) standards and Ministry of Health (MOH) regulations.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Our Pharmacists ── */}
-      <div className="php-team">
-        <div className="php-team-inner">
-          <h2 className="php-section-title" style={{marginBottom:8}}>Meet Our Licensed Pharmacists</h2>
-          <p style={{fontSize:14, color:'#424242', marginBottom:32, marginTop:0}}>All practitioners hold valid EFDA / MOH licenses. Hover a card to view the license certificate.</p>
-          <div className="php-team-grid">
-            {TEAM.map(m => (
-              <div className="php-team-card" key={m.name}>
-                <div className="php-team-license-wrap">
-                  <img src={m.license} alt={`${m.name} license`} className="php-team-license-img" />
-                  <div className="php-team-license-badge">
-                    <Shield size={10} /> {m.licNo}
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '5rem 1.5rem', background: 'hsl(var(--ph-bg))', borderRadius: 'var(--ph-radius)', border: '1px solid hsl(var(--ph-border))' }}>
+              <Package size={48} color="hsl(var(--ph-muted-fg))" style={{ marginBottom: '1rem' }} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>No medications found</h3>
+              <p style={{ color: 'hsl(var(--ph-muted-fg))', fontSize: '0.9375rem' }}>Try a different search term or select another category.</p>
+            </div>
+          ) : (
+            <div className="ph-grid">
+              {filtered.map(p => (
+                <div key={p.id} className="ph-card">
+                  <div className="ph-card-img-wrap">
+                    {imgSrc(p.drug_image) ? (
+                      <img
+                        src={imgSrc(p.drug_image)}
+                        className="ph-card-img"
+                        alt={p.name}
+                        onClick={() => setPreviewImage(imgSrc(p.drug_image))}
+                      />
+                    ) : (
+                      <Pill size={40} color="hsl(var(--ph-primary))" style={{ opacity: 0.4 }} />
+                    )}
+                    {p.is_prescription_required && (
+                      <div className="ph-card-badge">
+                        <Shield size={9} />
+                        Rx Only
+                      </div>
+                    )}
+                  </div>
+                  <div className="ph-card-body">
+                    {p.category_name && <div className="ph-card-cat">{p.category_name}</div>}
+                    <h3 className="ph-card-name">{p.name}</h3>
+                    {p.description && <p className="ph-card-desc">{p.description}</p>}
+                    <div className="ph-card-footer">
+                      <div>
+                        <div className="ph-card-price">
+                          {parseFloat(p.selling_price || p.price || 0).toLocaleString()}
+                          <span>ETB</span>
+                        </div>
+                      </div>
+                      <button
+                        className="ph-order-btn"
+                        onClick={(e) => { e.stopPropagation(); handleRequestRefill(p); }}
+                      >
+                        <ShoppingCart size={13} />
+                        Order
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <p className="php-team-name">{m.name}</p>
-                <p className="php-team-role">{m.role}</p>
-                <p className="php-team-bio">{m.bio}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-
-      {/* ── Insurance & Partners ── */}
-      <div className="php-partners">
-        <div className="php-partners-inner">
-          <h2>Insurance Partners &amp; Trusted Suppliers</h2>
-          <p className="php-partners-sub">We work with leading insurance providers and pharmaceutical suppliers to guarantee quality and affordability.</p>
-          <div className="php-partners-grid">
-            {['CBHI Insurance','Nyala Insurance','Awash Insurance','Lucy Insurance','Abbay Insurance'].map(p=>(
-              <div className="php-partner-chip" key={p}><Shield size={18} color="#228B22"/>{p}</div>
-            ))}
-          </div>
-          <div style={{marginTop:32,borderTop:'1px solid #228B22',paddingTop:32}}>
-            <p style={{fontSize:14,color:'#424242',textAlign:'center',marginBottom:16,fontWeight:700}}>EFDA-Approved Supplier Brands</p>
-            <div className="php-partners-grid">
-              {['Almiral Pharma','Ethiopian Pharmaceuticals','Cadila Healthcare','Africa Pharma','BioTech Supply'].map(b=>(
-                <div className="php-partner-chip" key={b}><Award size={18} color="#2E8B57"/>{b}</div>
+      {/* ══ BRANCH LOCATIONS ══════════════════════════════════ */}
+      {branches.length > 0 && (
+        <section className="ph-section ph-locations">
+          <div className="ph-container">
+            <div className="ph-label">Find Us</div>
+            <h2 className="ph-section-title">Our Pharmacy Locations</h2>
+            <p className="ph-section-sub">Visit your nearest branch or call ahead for faster service.</p>
+            <div className="ph-loc-grid">
+              {branches.map(branch => (
+                <div className="ph-loc-card" key={branch.id}>
+                  {branch.cover_image && (
+                    <img src={imgSrc(branch.cover_image)} alt={branch.name} className="ph-loc-img" />
+                  )}
+                  <div className="ph-loc-body">
+                    <div className="ph-loc-name">
+                      <MapPin size={16} color="hsl(var(--ph-primary))" />
+                      {branch.name}
+                    </div>
+                    {branch.address && (
+                      <div className="ph-loc-row">
+                        <MapPin size={13} color="hsl(var(--ph-muted-fg))" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <span>{branch.address}</span>
+                      </div>
+                    )}
+                    {branch.phone && (
+                      <div className="ph-loc-row">
+                        <Phone size={13} color="hsl(var(--ph-muted-fg))" style={{ flexShrink: 0 }} />
+                        <span>{branch.phone}</span>
+                      </div>
+                    )}
+                    {branch.working_hours && (
+                      <div className="ph-loc-row">
+                        <Clock size={13} color="hsl(var(--ph-muted-fg))" style={{ flexShrink: 0 }} />
+                        <span>{branch.working_hours}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      )}
 
-
-      {/* ── FAQs ── */}
-      <div className="php-faq">
-        <div className="php-faq-inner">
-          <h2 className="php-section-title" style={{color:'#1B5E20',marginBottom:40, textAlign:'center'}}>Frequently Asked Questions</h2>
-          {FAQS.map((f,i)=>(
-            <div className="php-faq-item" key={i}>
-              <button className="php-faq-q" onClick={()=>setOpenFaq(openFaq===i?null:i)}>
-                <span>{f.q}</span>
-                {openFaq===i ? <ChevronUp size={20} color="#228B22" style={{flexShrink:0}}/> : <ChevronDown size={20} color="#424242" style={{flexShrink:0}}/>}
-              </button>
-              <div className={`php-faq-a ${openFaq===i?'open':''}`}>{f.a}</div>
+      {/* ══ HOW TO ORDER ══════════════════════════════════════ */}
+      <section className="ph-section ph-how">
+        <div className="ph-container">
+          <div className="ph-label">Simple Process</div>
+          <h2 className="ph-section-title">How to Order &amp; Delivery Policy</h2>
+          <div className="ph-steps">
+            {[
+              { n: '1', title: 'Browse & Search', desc: 'Find your medication by name or category from our live catalog.' },
+              { n: '2', title: 'Place Your Order', desc: 'Choose quantity, pickup or delivery, and upload your prescription if required.' },
+              { n: '3', title: 'Pharmacist Verifies', desc: 'Our licensed pharmacist verifies your order and prepares it safely.' },
+              { n: '4', title: 'Pickup or Delivery', desc: 'Collect from your nearest branch or receive it at your doorstep.' },
+            ].map(s => (
+              <div className="ph-step" key={s.n}>
+                <div className="ph-step-num">{s.n}</div>
+                <h3 className="ph-step-title">{s.title}</h3>
+                <p className="ph-step-desc">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="ph-delivery-info">
+            <div className="ph-delivery-info-item">
+              <div className="ph-delivery-icon"><Truck size={20} color="hsl(var(--ph-primary))" /></div>
+              <div>
+                <strong>Delivery Areas</strong>
+                <p>Addis Ababa &amp; surrounding regions. 3–6 hrs standard delivery. Rural: 2–3 extra days.</p>
+              </div>
             </div>
-          ))}
+            <div className="ph-delivery-info-item">
+              <div className="ph-delivery-icon"><CreditCard size={20} color="hsl(var(--ph-primary))" /></div>
+              <div>
+                <strong>Delivery Fee</strong>
+                <p>Flat 50 ETB within city limits. Free delivery on orders above 500 ETB.</p>
+              </div>
+            </div>
+            <div className="ph-delivery-info-item">
+              <div className="ph-delivery-icon"><Clock size={20} color="hsl(var(--ph-primary))" /></div>
+              <div>
+                <strong>Operating Hours</strong>
+                <p>Mon–Sat: 7:00 AM – 9:00 PM. Sunday: 9:00 AM – 5:00 PM. 24/7 On-Call available.</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
+      {/* ══ ABOUT ══════════════════════════════════════════════ */}
+      <section className="ph-section ph-about">
+        <div className="ph-container">
+          <div className="ph-about-inner">
+            <div className="ph-about-visual">
+              <div className="ph-about-icon">
+                <Heart size={48} color="#fff" />
+              </div>
+              <div className="ph-about-stat">Trusted Since 2010</div>
+              <div className="ph-about-stat-lbl">MOH Licensed Pharmacy</div>
+            </div>
+            <div className="ph-about-text">
+              <div>
+                <div className="ph-label">Who We Are</div>
+                <h2 className="ph-section-title" style={{ marginTop: '0.5rem' }}>Ethiopia's Trusted Pharmaceutical Partner</h2>
+              </div>
+              <p>Sutana Pharmacy &amp; Health has been serving communities across Ethiopia since 2010. Our mission is to make quality, affordable healthcare accessible to everyone — from essential everyday medications to specialized pharmaceutical care.</p>
+              <p>We operate under the direct supervision of licensed pharmacists and comply fully with the Ethiopian Food and Drug Authority (EFDA) standards and Ministry of Health (MOH) regulations.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Order Modal */}
+      {/* ══ TEAM ══════════════════════════════════════════════ */}
+      <section className="ph-section ph-team">
+        <div className="ph-container">
+          <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+            <div className="ph-label">Licensed Professionals</div>
+          </div>
+          <h2 className="ph-section-title" style={{ textAlign: 'center' }}>Meet Our Pharmacists</h2>
+          <p className="ph-section-sub" style={{ margin: '0 auto 0', textAlign: 'center' }}>All practitioners hold valid EFDA / MOH licenses.</p>
+          <div className="ph-team-grid">
+            {TEAM.map(m => (
+              <div className="ph-team-card" key={m.name}>
+                <div className="ph-team-license-wrap">
+                  <img src={m.license} alt={`${m.name} license`} className="ph-team-license-img" />
+                  <div className="ph-team-license-badge">
+                    <Shield size={9} />
+                    {m.licNo}
+                  </div>
+                </div>
+                <div className="ph-team-body">
+                  <div className="ph-team-name">{m.name}</div>
+                  <div className="ph-team-role">{m.role}</div>
+                  <div className="ph-team-bio">{m.bio}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ REVIEWS ═══════════════════════════════════════════ */}
+      <section className="ph-section ph-reviews">
+        <div className="ph-container">
+          <div className="ph-label">What Customers Say</div>
+          <h2 className="ph-section-title">Patient Reviews</h2>
+          <div className="ph-reviews-grid">
+            {REVIEWS.map((r, i) => (
+              <div className="ph-review-card" key={i}>
+                <div className="ph-stars">
+                  {Array.from({ length: 5 }).map((_, s) => (
+                    <Star key={s} size={14} color={s < r.rating ? '#f59e0b' : '#e2e8f0'} fill={s < r.rating ? '#f59e0b' : '#e2e8f0'} />
+                  ))}
+                </div>
+                <p className="ph-review-text">"{r.text}"</p>
+                <div className="ph-reviewer">
+                  <div className="ph-reviewer-avatar">{r.initial}</div>
+                  <div>
+                    <div className="ph-reviewer-name">{r.name}</div>
+                    <div className="ph-reviewer-date">{r.date}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ PARTNERS ══════════════════════════════════════════ */}
+      <section className="ph-section ph-partners">
+        <div className="ph-container">
+          <div className="ph-label">Our Partners</div>
+          <h2 className="ph-section-title">Quality &amp; Affordability</h2>
+          
+          <div className="ph-partners-inner">
+            <div className="ph-partners-section">
+              <h3 className="ph-suppliers-label">Insurance Providers</h3>
+              <p className="ph-partners-sub">We work with leading insurance providers to guarantee affordability.</p>
+              <div className="ph-partners-grid">
+                {['CBHI Insurance', 'Nyala Insurance', 'Awash Insurance', 'Lucy Insurance', 'Abbay Insurance'].map(p => (
+                  <div className="ph-partner-chip" key={p}><Shield size={15} color="hsl(var(--ph-primary))" />{p}</div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ph-partners-section">
+              <h3 className="ph-suppliers-label">EFDA-Approved Brands</h3>
+              <p className="ph-partners-sub">We only source from trusted pharmaceutical suppliers.</p>
+              <div className="ph-partners-grid">
+                {['Almiral Pharma', 'Ethiopian Pharmaceuticals', 'Cadila Healthcare', 'Africa Pharma', 'BioTech Supply'].map(b => (
+                  <div className="ph-partner-chip" key={b}><Award size={15} color="hsl(var(--ph-primary))" />{b}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ FAQ ════════════════════════════════════════════════ */}
+      <section className="ph-section ph-faq">
+        <div className="ph-container" style={{ maxWidth: 760, marginLeft: 'auto', marginRight: 'auto' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="ph-label">FAQ</div>
+            <h2 className="ph-section-title">Frequently Asked Questions</h2>
+          </div>
+          <div className="ph-faq-list">
+            {FAQS.map((f, i) => (
+              <div className="ph-faq-item" key={i}>
+                <button
+                  className="ph-faq-q"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                >
+                  <span>{f.q}</span>
+                  {openFaq === i
+                    ? <ChevronUp size={18} color="hsl(var(--ph-primary))" style={{ flexShrink: 0 }} />
+                    : <ChevronDown size={18} color="hsl(var(--ph-muted-fg))" style={{ flexShrink: 0 }} />}
+                </button>
+                <div className={`ph-faq-a ${openFaq === i ? 'open' : ''}`}>{f.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ ORDER MODAL ═══════════════════════════════════════ */}
       {isModalOpen && selectedMedicine && (
-        <div className="php-overlay" onClick={closeModal}>
-          <div className="php-modal" onClick={e => e.stopPropagation()}>
-            <div className="php-modal-header">
-              <h3 className="php-modal-title">💊 Place Order</h3>
-              <button className="php-close-btn" onClick={closeModal}><X size={22} /></button>
+        <div className="ph-overlay" onClick={closeModal}>
+          <div className="ph-modal" onClick={e => e.stopPropagation()}>
+            <div className="ph-modal-header">
+              <div className="ph-modal-title">
+                <Pill size={18} color="hsl(var(--ph-primary))" />
+                Place Order
+              </div>
+              <button className="ph-modal-close" onClick={closeModal} aria-label="Close">
+                <X size={16} />
+              </button>
             </div>
 
             {submitSuccess ? (
-              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
-                <h3 style={{ color: '#059669', fontSize: '1.3rem', fontWeight: 800, margin: '0 0 8px' }}>Order Submitted!</h3>
-                <p style={{ color: '#64748b', margin: 0 }}>Please pay and pick up your order. Track it in <strong>My Account → Orders</strong>.</p>
+              <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>✅</div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'hsl(var(--ph-primary))', marginBottom: '0.5rem' }}>Order Submitted!</h3>
+                <p style={{ color: 'hsl(var(--ph-muted-fg))', fontSize: '0.9375rem' }}>
+                  Please pay and pick up your order. Track it in <strong>My Account → Orders</strong>.
+                </p>
               </div>
             ) : (
               <form onSubmit={handleRefillSubmit}>
-                <div className="php-modal-body">
-                  {/* Pre-filled User Details */}
-                  {authService.getCurrentUser() && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '0', border: '1px solid #e2e8f0' }}>
-                      <div className="php-form-group" style={{ gridColumn: '1 / -1' }}>
-                        <label>Customer Name</label>
-                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().fullName || authService.getCurrentUser().full_name || authService.getCurrentUser().name || `${authService.getCurrentUser().first_name || ''} ${authService.getCurrentUser().last_name || ''}`.trim() || 'Guest'} disabled />
+                <div className="ph-modal-body">
+                  {/* Pre-filled user */}
+                  {currentUser && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', padding: '1rem', background: 'hsl(var(--ph-muted))', borderRadius: 'var(--ph-radius-sm)', border: '1px solid hsl(var(--ph-border))' }}>
+                      <div className="ph-form-group" style={{ gridColumn: '1 / -1' }}>
+                        <label className="ph-form-label">Customer Name</label>
+                        <input className="ph-form-input" type="text" disabled
+                          value={currentUser.fullName || currentUser.full_name || currentUser.name ||
+                            `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Guest'} />
                       </div>
-                      <div className="php-form-group">
-                        <label>Email</label>
-                        <input type="email" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().email || ''} disabled />
+                      <div className="ph-form-group">
+                        <label className="ph-form-label">Email</label>
+                        <input className="ph-form-input" type="email" disabled value={currentUser.email || ''} />
                       </div>
-                      <div className="php-form-group">
-                        <label>Phone</label>
-                        <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }} value={authService.getCurrentUser().phone || ''} disabled />
+                      <div className="ph-form-group">
+                        <label className="ph-form-label">Phone</label>
+                        <input className="ph-form-input" type="text" disabled value={currentUser.phone || ''} />
                       </div>
                     </div>
                   )}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div className="php-form-group">
-                      <label>Medication</label>
-                      <input type="text" className="php-form-input" style={{ background: '#f1f5f9', color: '#475569' }} value={selectedMedicine.name} disabled />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="ph-form-group">
+                      <label className="ph-form-label">Medication</label>
+                      <input className="ph-form-input" type="text" disabled value={selectedMedicine.name} />
                     </div>
-                    <div className="php-form-group">
-                      <label>Amount (Quantity)</label>
-                      <input type="number" className="php-form-input" min="1" value={refillQuantity} onChange={e => setRefillQuantity(e.target.value)} required />
+                    <div className="ph-form-group">
+                      <label className="ph-form-label">Quantity</label>
+                      <input className="ph-form-input" type="number" min="1" required
+                        value={refillQuantity} onChange={e => setRefillQuantity(e.target.value)} />
                     </div>
                   </div>
 
-                  <div className="php-form-group">
-                    <label>Delivery Option</label>
-                    <select className="php-form-input" value={deliveryOption} onChange={e => setDeliveryOption(e.target.value)}>
-                      <option value="pickup">Hospital Pickup</option>
+                  <div className="ph-form-group">
+                    <label className="ph-form-label">Delivery Option</label>
+                    <select className="ph-form-input" value={deliveryOption} onChange={e => setDeliveryOption(e.target.value)}>
+                      <option value="pickup">Branch Pickup</option>
                       <option value="delivery">Home Delivery</option>
                     </select>
                   </div>
 
                   {deliveryOption === 'delivery' && (
-                    <div className="php-form-group">
-                      <label>Delivery Address</label>
-                      <input type="text" className="php-form-input" placeholder="Enter your full address" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} required />
+                    <div className="ph-form-group">
+                      <label className="ph-form-label">Delivery Address</label>
+                      <input className="ph-form-input" type="text" required placeholder="Enter your full address"
+                        value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} />
                     </div>
                   )}
 
-                  <div className="php-form-group" style={{ marginTop: 8 }}>
-                    <label>Upload Prescription <span style={{ color: '#64748b', fontWeight: 'normal' }}>(Optional)</span></label>
+                  <div className="ph-form-group">
+                    <label className="ph-form-label">Upload Prescription <span style={{ color: 'hsl(var(--ph-muted-fg))', fontWeight: 400 }}>(Optional)</span></label>
                     <label style={{ cursor: 'pointer' }}>
-                      <div className="php-file-upload">
-                        <UploadCloud size={28} color="#10b981" style={{ marginBottom: 8 }} />
-                        <p style={{ margin: 0, fontWeight: 600, color: '#334155' }}>{prescriptionFile ? prescriptionFile.name : 'Click to choose a file'}</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>JPEG, PNG, or PDF</p>
+                      <div className="ph-file-upload">
+                        <UploadCloud size={24} color="hsl(var(--ph-primary))" />
+                        <p>{prescriptionFile ? prescriptionFile.name : 'Click to choose a file'}</p>
+                        <small>JPEG, PNG, or PDF accepted</small>
                       </div>
-                      <input type="file" accept="image/jpeg,image/png,application/pdf" style={{ display: 'none' }} onChange={e => setPrescriptionFile(e.target.files[0] || null)} required={false} />
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" style={{ display: 'none' }}
+                        onChange={e => setPrescriptionFile(e.target.files[0] || null)} />
                     </label>
                   </div>
-                  <div style={{ padding: '16px 20px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: '0.95rem', color: '#065f46', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>💰 Total Amount</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>{((parseFloat(selectedMedicine.price || 0) * refillQuantity)).toFixed(2)} ETB</span>
+
+                  <div className="ph-total-row">
+                    <span>Total Amount</span>
+                    <span>{(parseFloat(selectedMedicine.selling_price || selectedMedicine.price || 0) * refillQuantity).toFixed(2)} ETB</span>
                   </div>
+
                   {submitError && (
-                    <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: '0.9rem', marginTop: 8 }}>
-                      ❌ {submitError}
+                    <div className="ph-error-msg">
+                      <AlertCircle size={16} />
+                      {submitError}
                     </div>
                   )}
                 </div>
-                <div className="php-modal-footer">
-                  <button type="button" className="php-cancel-btn" onClick={closeModal}>Cancel</button>
-                  <button type="submit" className="php-submit-btn" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : '🚀 Place Order'}
+
+                <div className="ph-modal-footer">
+                  <button type="button" className="ph-btn-secondary" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="ph-btn-primary" disabled={isSubmitting}>
+                    <ShoppingCart size={16} />
+                    {isSubmitting ? 'Submitting…' : 'Place Order'}
                   </button>
                 </div>
               </form>
@@ -940,15 +1707,18 @@ const PharmacyHealthPage = () => {
         </div>
       )}
 
-      {/* Image Preview Modal */}
+      {/* ══ IMAGE PREVIEW ═════════════════════════════════════ */}
       {previewImage && (
-        <div className="php-overlay" onClick={() => setPreviewImage(null)} style={{ zIndex: 99999, alignItems: 'center' }}>
-          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <button className="php-close-btn" onClick={() => setPreviewImage(null)} style={{ position: 'absolute', top: '-20px', right: '-20px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-              <X size={20} />
-            </button>
-            <img src={previewImage} style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '0', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', objectFit: 'contain' }} alt="Preview" />
-          </div>
+        <div className="ph-img-preview-overlay" onClick={() => setPreviewImage(null)}>
+          <button className="ph-img-preview-close" onClick={() => setPreviewImage(null)} aria-label="Close preview">
+            <X size={18} />
+          </button>
+          <img
+            src={previewImage}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 'var(--ph-radius)', objectFit: 'contain', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}
+            alt="Preview"
+            onClick={e => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
