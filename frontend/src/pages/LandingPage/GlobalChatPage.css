@@ -1,0 +1,433 @@
+/* ══════════════════════════════════════════════
+   GlobalChatPage.css — Talk to Our Team
+   Follows: The Ultimate General Design & CSS Master Note
+   ══════════════════════════════════════════════ */
+
+/* ─── 1. Foundation ─── */
+/* Box-sizing and reset are already global in LandingRedesign.css */
+
+/* ─── 2. Page shell ─── */
+.gcp-page {
+  min-height: 100vh;
+  background-color: hsl(var(--muted));
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: hsl(var(--foreground));
+}
+
+/* ─── 3. Container (Master Note §4) ─── */
+.gcp-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 4rem 1.5rem 5rem; /* 64px top, 80px bottom — section spacing */
+}
+
+/* ─── 4. Page header ─── */
+.gcp-header {
+  margin-bottom: 3rem; /* 48px */
+}
+
+/* Back button — btn-outline pattern from Master Note §5A */
+.gcp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem; /* 6px micro-spacing */
+  padding: 0.5rem 1rem; /* 8pt grid */
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  font-size: 0.875rem; /* 14px small/meta */
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  margin-bottom: 1.5rem; /* 24px */
+}
+.gcp-back-btn:hover {
+  background-color: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
+  transform: translateY(-1px);
+}
+.gcp-back-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* Badge pill */
+.gcp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.875rem; /* 4px / 14px */
+  background-color: hsl(var(--primary) / 0.12);
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: var(--radius);
+  font-size: 0.75rem; /* 12px */
+  font-weight: 700;
+  color: hsl(var(--primary));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1rem; /* 16px */
+}
+
+/* H1 — Master Note §2 H1 scale */
+.gcp-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.75rem;
+}
+
+.gcp-subtitle {
+  font-size: 1rem; /* body */
+  line-height: 1.625; /* body loose */
+  color: hsl(var(--muted-foreground));
+  max-width: 32rem;
+  margin: 0;
+}
+
+/* ─── 5. Two-column layout ─── */
+/* Master Note §4: use Grid for 2-dimensional layout */
+.gcp-layout {
+  display: grid;
+  grid-template-columns: 1fr; /* mobile-first: single column */
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+@media (min-width: 768px) {
+  .gcp-layout {
+    grid-template-columns: 42% 1fr;
+  }
+}
+
+/* ─── 6. Left panel — Contact Info ─── */
+.gcp-left {
+  background-color: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 2rem 1.5rem; /* 32px / 24px */
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem; /* 20px */
+}
+
+@media (min-width: 768px) {
+  .gcp-left {
+    padding: 3rem 2.5rem;
+    border-bottom: none;
+    border-right: 1px solid hsl(var(--border));
+  }
+}
+
+/* H2 — Master Note §2 H2 scale (1.875rem) */
+.gcp-left-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+
+.gcp-left-desc {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.5rem;
+}
+
+/* ─── 7. Info Card (Master Note §5B card pattern) ─── */
+.gcp-info-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* 16px base spacing */
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1.125rem 1.25rem; /* 18px / 20px — 8pt grid */
+  cursor: default;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gcp-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+.gcp-info-icon {
+  width: 2.75rem; /* 44px */
+  height: 2.75rem;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background-color: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gcp-info-label {
+  font-size: 0.75rem; /* 12px small/meta */
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
+}
+
+.gcp-info-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a.gcp-info-value:hover {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+/* Map container — Master Note §6 image-container pattern */
+.gcp-map-wrap {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+}
+.gcp-map-wrap iframe {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: 0;
+}
+
+/* WhatsApp outline button — Master Note §5A btn-outline pattern */
+.gcp-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem; /* 8px */
+  padding: 0.625rem 1.375rem; /* 10px / 22px — 8pt grid */
+  background-color: transparent;
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gcp-whatsapp-btn:hover {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.28);
+}
+.gcp-whatsapp-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* ─── 8. Right panel — Contact Form ─── */
+.gcp-right {
+  padding: 2rem 1.5rem;
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .gcp-right {
+    padding: 3rem 2.75rem;
+  }
+}
+
+/* H2 inside form panel */
+.gcp-form-title {
+  font-size: 1.5rem; /* H3 scale — 24px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+
+.gcp-form-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.75rem;
+}
+
+/* Form card — Master Note §5B card */
+.gcp-form-card {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1.75rem; /* 28px */
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem; /* 18px */
+}
+
+/* Two-column row for name + email */
+.gcp-form-row {
+  display: grid;
+  grid-template-columns: 1fr; /* mobile: stacked */
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .gcp-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Form group */
+.gcp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem; /* 6px */
+}
+
+/* Label */
+.gcp-label {
+  font-size: 0.75rem; /* 12px small/meta */
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Input & Textarea — Master Note §5C input-field pattern */
+.gcp-input,
+.gcp-textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem; /* ~10px / 14px */
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  font-size: 1rem; /* body */
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.gcp-input::placeholder,
+.gcp-textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+.gcp-input:focus,
+.gcp-textarea:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2); /* Focus ring */
+}
+
+.gcp-textarea {
+  resize: vertical;
+  min-height: 7.5rem; /* 120px */
+}
+
+/* Submit button — Master Note §5A btn-primary pattern */
+.gcp-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  align-self: flex-end;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gcp-submit-btn:hover {
+  background-color: hsl(var(--primary) / 0.88);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.28);
+}
+.gcp-submit-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* ─── 9. Success state ─── */
+.gcp-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 20rem;
+  gap: 1rem;
+  padding: 2.5rem 0;
+}
+
+.gcp-success__icon {
+  width: 4.5rem; /* 72px */
+  height: 4.5rem;
+  border-radius: 50%;
+  background-color: hsl(var(--primary) / 0.12);
+  border: 2px solid hsl(var(--primary) / 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
+}
+
+/* H3 — Master Note §2 H3 scale (1.5rem) */
+.gcp-success__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.gcp-success__body {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: hsl(var(--muted-foreground));
+  max-width: 22.5rem;
+  margin: 0;
+}
+
+/* Back to home button inside success state */
+.gcp-success__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  margin-top: 0.5rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gcp-success__btn:hover {
+  background-color: hsl(var(--primary) / 0.88);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.28);
+}
+.gcp-success__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
