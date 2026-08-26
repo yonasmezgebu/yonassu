@@ -133,11 +133,12 @@ const optionalAuthenticate = async (req, res, next) => {
         issuer: 'sutana-ems'
       });
       const user = await db('users')
-        .select('id', 'full_name', 'email', 'phone')
-        .where('id', decoded.userId)
-        .whereNull('deleted_at')
+        .leftJoin('user_statuses', 'users.status_id', 'user_statuses.id')
+        .select('users.id', 'users.full_name', 'users.email', 'users.phone', 'user_statuses.status_code')
+        .where('users.id', decoded.userId)
+        .whereNull('users.deleted_at')
         .first();
-      if (user && user.status === 'active') {
+      if (user && (!user.status_code || user.status_code === 'active')) {
         req.user = {
           id: user.id,
           fullName: user.full_name,
