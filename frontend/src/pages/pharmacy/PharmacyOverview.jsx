@@ -266,7 +266,6 @@ const PharmacyOverview = () => {
               { label: 'Procurement',  sub: 'Orders',        icon: '📝', bg: 'var(--color-success-bg)', color: 'var(--color-success)',     path: '/pharmacy/procurement-requests' },
               { label: 'Staff',        sub: 'Team mgmt',     icon: '👥', bg: 'var(--color-info-bg)', color: 'var(--color-info)',  path: '/pharmacy/staff' },
               { label: 'Expiry Mgmt',  sub: 'Review dates',  icon: '⏳', bg: 'var(--color-warning-bg)', color: 'var(--color-warning)',   path: '/pharmacy/expiry-management' },
-              { label: 'Finance',      sub: 'Approve',       icon: '💵', bg: 'var(--color-success-bg)', color: 'var(--color-success)',    path: '/pharmacy/finance-review' },
             ].map((a, i) => (
               <div key={a.label} className="qa-item" onClick={() => nav(a.path)}>
                 <div className="qa-icon" style={{ background: a.bg, color: a.color }}>
