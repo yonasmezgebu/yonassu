@@ -117,8 +117,8 @@ export const PublicNav = () => {
             onClose={() => setMarketOpen(false)}
             isActive={isActiveAt('/tenders') || isActiveAt('/marketplace')}
           >
-            <Link to="/tenders/smart-bids" className={`pub-dropdown-item${isActive('/tenders/smart-bids') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
-            <Link to="/tenders/buy"        className={`pub-dropdown-item${isActive('/tenders/buy') ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
+            <Link to="/tenders/smart-bids" className={`pub-dropdown-item${(isActive('/tenders/smart-bids') || isActive('/tenders')) ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><Award size={17}/></span><span>Compete &amp; Sell</span></Link>
+            <Link to="/tenders/buy"        className={`pub-dropdown-item${(isActive('/tenders/buy') || (isActiveAt('/tenders/') && !isActiveAt('/tenders/smart-bids') && !isActiveAt('/tenders/manage'))) ? ' pub-dropdown-item--active' : ''}`} onClick={closeAll}><span className="pub-dropdown-icon"><ShoppingCart size={17}/></span><span>Compete &amp; Buy</span></Link>
           </NavDropdown>
 
           <NavDropdown
@@ -179,8 +179,8 @@ export const PublicNav = () => {
 
           {/* Marketplace */}
           <MobileGroup label="Marketplace" icon={<ShoppingCart size={16}/>}>
-            <Link to="/tenders/smart-bids" onClick={closeAll} className={`pub-mobile-link ${location.pathname === '/tenders/smart-bids' ? 'active-sublink' : ''}`}><Award size={14}/> Compete &amp; Sell</Link>
-            <Link to="/tenders/buy"        onClick={closeAll} className={`pub-mobile-link ${location.pathname === '/tenders/buy' ? 'active-sublink' : ''}`}><ShoppingCart size={14}/> Compete &amp; Buy</Link>
+            <Link to="/tenders/smart-bids" onClick={closeAll} className={`pub-mobile-link ${(location.pathname === '/tenders/smart-bids' || location.pathname === '/tenders') ? 'active-sublink' : ''}`}><Award size={14}/> Compete &amp; Sell</Link>
+            <Link to="/tenders/buy"        onClick={closeAll} className={`pub-mobile-link ${(location.pathname === '/tenders/buy' || (location.pathname.startsWith('/tenders/') && !location.pathname.startsWith('/tenders/smart-bids') && !location.pathname.startsWith('/tenders/manage'))) ? 'active-sublink' : ''}`}><ShoppingCart size={14}/> Compete &amp; Buy</Link>
           </MobileGroup>
 
           {/* Gallery */}
