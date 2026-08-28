@@ -84,7 +84,7 @@ const salesController = {
       const vatResult = await vatConfigService.computeVatForItem('pharmacy', drug ? drug.id : null, lineSubtotal);
       const lineVat = parseFloat(vatResult.vat.toFixed(2));
       vatAmount += lineVat;
-      vatLineItems.push({ vat_amount: lineVat, rate: vatResult.rate, treatment: vatResult.treatment });
+      vatLineItems.push({ vat_amount: lineVat, rate: vatResult.rate, treatment: vatResult.treatment, cost_price: drug ? parseFloat(drug.price || 0) : 0 });
     }
     const totalAmount = parseFloat((subtotal + vatAmount).toFixed(2));
 
@@ -126,6 +126,7 @@ const salesController = {
         name: it.drug_name,
         qty: parseInt(it.quantity) || 1,
         unitPrice: parseFloat(it.unit_price) || 0,
+        costPrice: vatLineItems[idx] ? (vatLineItems[idx].cost_price || 0) : 0,
         amount: (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1),
         rate: vatLineItems[idx].rate,
         treatment: vatLineItems[idx].treatment
