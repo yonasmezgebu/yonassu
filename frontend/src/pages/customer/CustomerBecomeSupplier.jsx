@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/apiClient';
 import {
   Truck, User, Mail, Phone, Building2, Tag, MapPin, FileText,
-  CheckCircle2, Clock, AlertCircle, ShieldCheck, Star, Package, ArrowRight
+  CheckCircle2, Clock, AlertCircle, ShieldCheck, Star, Package, ArrowRight, XCircle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -35,6 +35,7 @@ const CustomerBecomeSupplier = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   
   const { user } = useAuth();
 
@@ -57,9 +58,11 @@ const CustomerBecomeSupplier = () => {
           apiClient.get('/customer/profile'),
           apiClient.get('/suppliers/me'),
         ]);
-        const customer = profileRes.data?.data?.customer || profileRes.data?.customer || {};
+        // apiClient interceptor already unwraps response.data, so profileRes IS the JSON body
+        const customer = profileRes.data?.customer || profileRes.data?.data?.customer || {};
         setUserProfile(customer);
-        setSupplierProfile(supplierRes.data?.data || null);
+        // supplierRes.data is the supplier row (or null when not registered)
+        setSupplierProfile(supplierRes.data || null);
       } catch (err) {
         console.error('Init error:', err);
       } finally {
@@ -77,14 +80,37 @@ const CustomerBecomeSupplier = () => {
     setSubmitting(true);
     try {
       const res = await apiClient.post('/suppliers', form);
-      setSupplierProfile(res.data?.data);
+      // apiClient already unwraps response.data → res is the JSON body { status, data, message }
+      setSupplierProfile(res.data || null);
       showToast('You are now registered as a supplier! Companies can contact you to purchase your products.');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Registration failed. Please try again.';
+      // apiClient rejects with a plain Error whose .message is the server error text
+      const msg = err.message || 'Registration failed. Please try again.';
       showToast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleWithdrawClick = () => {
+    setConfirmDialog({
+      title: 'Withdraw Registration',
+      msg: 'Are you sure you want to withdraw your supplier registration? This action cannot be undone.',
+      onConfirm: async () => {
+        setSubmitting(true);
+        try {
+          await apiClient.delete('/suppliers/me');
+          setSupplierProfile(null);
+          setForm({ company_name: '', category: '', business_address: '', description: '' });
+          showToast('Your supplier registration has been successfully withdrawn.');
+        } catch (err) {
+          showToast(err.message || 'Failed to withdraw registration. Please try again.', 'error');
+        } finally {
+          setSubmitting(false);
+          setConfirmDialog(null);
+        }
+      }
+    });
   };
 
   const fmt = (val) => val || '—';
@@ -207,6 +233,20 @@ const CustomerBecomeSupplier = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+              <div className={styles.submitRow} style={{ borderTop: '1px solid hsl(var(--border))', backgroundColor: 'transparent' }}>
+                <p style={{ margin: 0, fontSize: '0.8125rem', color: 'hsl(var(--muted-foreground))', flexGrow: 1 }}>
+                  No longer wish to be a supplier? You can withdraw your registration.
+                </p>
+                <button
+                  className={`${styles.btnPrimary} ${styles.btnDanger}`}
+                  type="button"
+                  onClick={handleWithdrawClick}
+                  disabled={submitting}
+                >
+                  {submitting ? <SegmentedSpinner size={16} /> : <XCircle size={16} />}
+                  Withdraw Registration
+                </button>
               </div>
             </>
           ) : (
@@ -359,8 +399,39 @@ const CustomerBecomeSupplier = () => {
           {toast.msg}
         </div>
       )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <div className={styles.confirmOverlay}>
+          <div className={styles.confirmBox}>
+            <div className={styles.confirmIcon}>
+              <XCircle size={32} color="hsl(0 72% 51%)" />
+            </div>
+            <h3 className={styles.confirmTitle}>{confirmDialog.title}</h3>
+            <p className={styles.confirmMsg}>{confirmDialog.msg}</p>
+            <div className={styles.confirmActions}>
+              <button
+                className={styles.confirmCancel}
+                onClick={() => setConfirmDialog(null)}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.confirmDanger}
+                onClick={confirmDialog.onConfirm}
+                disabled={submitting}
+              >
+                {submitting ? <SegmentedSpinner size={14} /> : <XCircle size={14} />}
+                {submitting ? 'Withdrawing...' : 'Yes, Withdraw'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default CustomerBecomeSupplier;
+
