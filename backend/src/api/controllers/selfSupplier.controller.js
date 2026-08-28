@@ -70,6 +70,25 @@ exports.getMySupplierProfile = async (req, res) => {
 };
 
 /**
+ * DELETE /api/suppliers/me
+ * Customer withdraws their own supplier registration
+ */
+exports.withdrawSupplier = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const existing = await db('self_registered_suppliers').where({ user_id: userId }).first();
+    if (!existing) {
+      return res.status(404).json({ status: 'error', message: 'No supplier profile found to withdraw.' });
+    }
+    await db('self_registered_suppliers').where({ user_id: userId }).delete();
+    return res.json({ status: 'success', message: 'Your supplier registration has been withdrawn successfully.' });
+  } catch (error) {
+    console.error('Error withdrawing supplier:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
+
+/**
  * GET /api/suppliers
  * All self-registered suppliers (for Purchase Manager)
  */
@@ -134,8 +153,10 @@ exports.verifySupplier = async (req, res) => {
       bank_name: bank_name || null,
       bank_account: bank_account || null,
       bank_holder: bank_holder || null,
+      bank_account_number: bank_account || null,
+      bank_account_holder: bank_holder || null,
       website: website || null,
-      status: 'Verified',
+      status: supplier.status === 'Active' ? 'Active' : 'Verified',
       updated_at: db.fn.now(),
     });
 
@@ -153,18 +174,25 @@ exports.verifySupplier = async (req, res) => {
  */
 exports.updateSupplierStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid supplier ID' });
+    }
     const { status } = req.body;
     const allowed = ['Pending', 'Verified', 'Active', 'Rejected'];
     if (!allowed.includes(status)) {
       return res.status(400).json({ status: 'error', message: 'Invalid status value' });
+    }
+    const supplier = await db('self_registered_suppliers').where({ id }).first();
+    if (!supplier) {
+      return res.status(404).json({ status: 'error', message: 'Supplier not found' });
     }
     await db('self_registered_suppliers').where({ id }).update({ status, updated_at: db.fn.now() });
     const updated = await db('self_registered_suppliers').where({ id }).first();
     return res.json({ status: 'success', data: updated });
   } catch (error) {
     console.error('Error updating supplier status:', error);
-    res.status(500).json({ status: 'error', message: 'Internal server error' });
+    res.status(500).json({ status: 'error', message: error.message || 'Internal server error' });
   }
 };
 
@@ -215,6 +243,28 @@ exports.registerInternalSupplier = async (req, res) => {
     });
   } catch (error) {
     console.error('Error registering internal supplier:', error);
+    res.status(500).json({ status: 'error', message: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * DELETE /api/suppliers/:id
+ * Manager deletes a supplier profile
+ */
+exports.deleteSupplier = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid supplier ID' });
+    }
+    const supplier = await db('self_registered_suppliers').where({ id }).first();
+    if (!supplier) {
+      return res.status(404).json({ status: 'error', message: 'Supplier not found' });
+    }
+    await db('self_registered_suppliers').where({ id }).delete();
+    return res.json({ status: 'success', message: 'Supplier deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting supplier:', error);
     res.status(500).json({ status: 'error', message: error.message || 'Internal server error' });
   }
 };
