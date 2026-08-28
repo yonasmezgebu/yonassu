@@ -500,12 +500,15 @@ exports.createSale = async (req, res) => {
       const vatResult = await vatConfigService.computeVatForItem('pharmacy', item.drug_id, lineSubtotal, parseFloat(drug.vat_rate || 0));
       const vatAmount = parseFloat(vatResult.vat.toFixed(2));
       const lineTotal = parseFloat((lineSubtotal + vatAmount).toFixed(2));
+      const med = await trx('pharmacy_medications').whereRaw('LOWER(name) = LOWER(?)', [drug.name]).first();
+      const costPrice = med ? parseFloat(med.price || 0) : null;
       subtotal += lineSubtotal;
       totalVat += vatAmount;
       enrichedItems.push({
         drug_id: item.drug_id,
         name: drug.name,
         unit_price: unitPrice,
+        cost_price: costPrice,
         quantity: item.quantity,
         vat_rate: parseFloat(drug.vat_rate || 0),
         vat_amount: vatAmount,
@@ -567,6 +570,7 @@ exports.createSale = async (req, res) => {
         name: ei.name,
         qty: ei.quantity,
         unitPrice: ei.unit_price,
+        costPrice: ei.cost_price,
         amount: ei.line_subtotal,
         rate: ei.rate,
         treatment: ei.treatment
