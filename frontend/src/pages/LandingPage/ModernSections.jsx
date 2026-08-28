@@ -234,6 +234,8 @@ export function SmartFooter() {
   const [pharmacyContact, setPharmacyContact] = useState({ contact_phone1: '', contact_email: '' });
   const [printingContact, setPrintingContact] = useState({ contact_phone1: '', contact_email: '' });
   const [hrContact, setHrContact] = useState({ contact_phone1: '', contact_email: '' });
+  const [nlEmail, setNlEmail] = useState('');
+  const [nlStatus, setNlStatus] = useState('');
 
   useEffect(() => {
     const fetchSocials = async () => {
@@ -390,17 +392,36 @@ export function SmartFooter() {
         <div className="sf-col">
           <h4>Newsletter</h4>
           <p>Subscribe to get the latest updates and news.</p>
-          <form className="sf-newsletter-form" onSubmit={e => e.preventDefault()}>
-            <input 
-              type="email" 
-              placeholder="Your email address" 
-              required
-              className="sf-newsletter-input"
-            />
-            <button type="submit" className="sf-newsletter-btn">
-              Subscribe
-            </button>
-          </form>
+          {nlStatus ? (
+            <div style={{ fontSize: '0.85rem', color: '#86efac', fontWeight: 600, padding: '0.5rem 0' }}>
+              {nlStatus}
+            </div>
+          ) : (
+            <form className="sf-newsletter-form" onSubmit={async (e) => {
+              e.preventDefault();
+              if (!nlEmail.trim()) return;
+              try {
+                const res = await apiClient.post('/email-subscribers/subscribe', { email: nlEmail, source: 'landing_page' });
+                setNlStatus(res?.message || 'Thank you for subscribing!');
+                setNlEmail('');
+              } catch (err) {
+                setNlStatus(err?.message || 'Subscription failed. Please try again.');
+              }
+              setTimeout(() => setNlStatus(''), 5000);
+            }}>
+              <input 
+                type="email" 
+                placeholder="Your email address" 
+                required
+                className="sf-newsletter-input"
+                value={nlEmail}
+                onChange={(e) => setNlEmail(e.target.value)}
+              />
+              <button type="submit" className="sf-newsletter-btn">
+                Subscribe
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
