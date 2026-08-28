@@ -1042,6 +1042,23 @@ exports.registerReceiving = catchAsync(async (req, res) => {
         unit_price: poItem.unit_price,
         total: item.quantityReceived * poItem.unit_price
       });
+      if (item.quantityReceived > 0 && purchaseOrder.tax_amount > 0) {
+        const effectiveVatRate = purchaseOrder.subtotal > 0 ? purchaseOrder.tax_amount / purchaseOrder.subtotal : 0;
+        const itemVat = item.quantityReceived * poItem.unit_price * effectiveVatRate;
+        await trx('vat_transactions').insert({
+          type: 'input',
+          source: 'purchase',
+          source_id: poId,
+          item_name: poItem.product_name,
+          qty: item.quantityReceived,
+          selling_price: 0,
+          cost_price: poItem.unit_price,
+          vat_rate: effectiveVatRate,
+          vat_amount: parseFloat(itemVat.toFixed(2)),
+          treatment: 'standard',
+          reference_no: purchaseOrder.po_number
+        });
+      }
     }
 
     const newStatus = await trx('po_statuses').where('status_code', newStatusCode).first();
