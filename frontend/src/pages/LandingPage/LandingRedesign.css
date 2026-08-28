@@ -669,14 +669,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .sf-newsletter-form {
   display: flex;
-  align-items: center;
-  border-bottom: 1px solid hsl(var(--primary-foreground) / 0.4);
-  padding-bottom: 0.5rem;
-  transition: border-color 0.2s ease;
-}
-
-.sf-newsletter-form:focus-within {
-  border-color: hsl(var(--primary-foreground));
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .sf-newsletter-input {
@@ -687,6 +681,14 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.9rem;
   outline: none;
   font-family: inherit;
+  border-bottom: 1px solid hsl(var(--primary-foreground) / 0.4);
+  padding-bottom: 0.5rem;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.sf-newsletter-input:focus {
+  border-color: hsl(var(--primary-foreground));
 }
 
 .sf-newsletter-input::placeholder {
@@ -694,20 +696,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sf-newsletter-btn {
-  background: transparent;
+  background: hsl(var(--primary-foreground));
   border: none;
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--primary));
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
-  padding: 0 0.25rem;
+  padding: 0.5rem 1rem;
   font-family: inherit;
+  border-radius: 6px;
   transition: opacity 0.2s ease;
+  align-self: flex-start;
 }
 
 .sf-newsletter-btn:hover {
-  opacity: 0.8;
-  text-decoration: underline;
+  opacity: 0.85;
 }
 
 /* Footer bottom bar */
