@@ -1194,3 +1194,294 @@ exports.rejectCashHandover = catchAsync(async (req, res) => {
 
   res.status(200).json({ status: 'success', message: 'Handover rejected successfully' });
 });
+
+/* ── VAT & Profit Report — LIVE from ALL source tables ──────────────────── */
+
+exports.getVatProfitReport = catchAsync(async (req, res) => {
+  const { from, to, period } = req.query;
+
+  let dateFrom = from || null;
+  let dateTo = to || null;
+  const now = new Date();
+  if (period) {
+    const sod = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const eod = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+    if (period === 'today') { dateFrom = sod(now).toISOString().slice(0,10); dateTo = eod(now).toISOString().slice(0,19).replace('T',' '); }
+    else if (period === 'week') { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); dateFrom = sod(d).toISOString().slice(0,10); dateTo = eod(now).toISOString().slice(0,19).replace('T',' '); }
+    else if (period === 'month') { dateFrom = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`; dateTo = eod(now).toISOString().slice(0,19).replace('T',' '); }
+    else if (period === 'year') { dateFrom = `${now.getFullYear()}-01-01`; dateTo = eod(now).toISOString().slice(0,19).replace('T',' '); }
+    else if (period === 'all') { dateFrom = null; dateTo = null; }
+  }
+
+  const fmt2 = (n) => Math.round(parseFloat(n || 0) * 100) / 100;
+  const applyRange = (qb, col) => { if (dateFrom) qb.where(col, '>=', dateFrom); if (dateTo) qb.where(col, '<=', dateTo); };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     REVENUE from ALL source tables (matching receipts dashboard)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const sources = [
+    { key: 'retail', label: 'Retail & POS', icon: '🛒', color: '#2563EB' },
+    { key: 'pharmacy', label: 'Pharmacy', icon: '💊', color: '#059669' },
+    { key: 'printing', label: 'Printing', icon: '🖨️', color: '#D97706' },
+    { key: 'car_rental', label: 'Car Rental', icon: '🚗', color: '#7C3AED' },
+    { key: 'agrirent', label: 'AgriRent', icon: '🚜', color: '#16A34A' },
+    { key: 'tender_sell', label: 'Tender Sell', icon: '📤', color: '#0EA5E9' },
+    { key: 'tender_buy', label: 'Tender Buy', icon: '📥', color: '#EF4444' },
+  ];
+
+  const sourceResults = {};
+
+  // 1. sales_invoices sources (retail, pharmacy, printing, car_rental)
+  const invSources = ['retail', 'pharmacy', 'printing', 'car_rental'];
+  const invAgg = await db('sales_invoices')
+    .whereIn('source', invSources)
+    .andWhereNot('status', 'cancelled')
+    .modify((q) => { applyRange(q, 'created_at'); })
+    .select('source')
+    .sum('subtotal as revenue')
+    .sum('vat_total as output_vat')
+    .sum('vat_standard as vat_std')
+    .sum('vat_exempt as vat_ex')
+    .sum('vat_zero_rated as vat_zero')
+    .count('* as cnt')
+    .groupBy('source');
+
+  for (const row of invAgg) {
+    sourceResults[row.source] = {
+      revenue: fmt2(row.revenue),
+      outputVat: fmt2(row.output_vat),
+      vatStandard: fmt2(row.vat_std),
+      vatExempt: fmt2(row.vat_ex),
+      vatZeroRated: fmt2(row.vat_zero),
+      invoiceCount: parseInt(row.cnt || 0),
+    };
+  }
+
+  // COGS from sales_invoice_items
+  const cogsBySource = await db('sales_invoice_items as sii')
+    .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
+    .whereIn('si.source', invSources)
+    .andWhereNot('si.status', 'cancelled')
+    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .select('si.source')
+    .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
+    .groupBy('si.source');
+
+  for (const row of cogsBySource) {
+    if (!sourceResults[row.source]) sourceResults[row.source] = { revenue: 0, outputVat: 0, invoiceCount: 0 };
+    sourceResults[row.source].cogs = fmt2(row.cogs);
+  }
+
+  // 2. agrirent_orders
+  const agriRows = await db('agrirent_orders')
+    .whereNull('deleted_at')
+    .whereIn('payment_status', ['Confirmed', 'PAID'])
+    .where('status', 'completed')
+    .modify((q) => { applyRange(q, 'created_at'); })
+    .select('total_amount', 'vat_amount');
+  sourceResults['agrirent'] = {
+    revenue: fmt2(agriRows.reduce((s, r) => s + parseFloat(r.total_amount || 0), 0)),
+    outputVat: fmt2(agriRows.reduce((s, r) => s + parseFloat(r.vat_amount || 0), 0)),
+    invoiceCount: agriRows.length,
+    cogs: 0,
+  };
+
+  // 3. tender sell (bids)
+  const sellRows = await db('bids')
+    .where('status', 'awarded')
+    .where('ceo_approval_status', 'approved')
+    .modify((q) => { applyRange(q, 'submitted_at'); })
+    .select('total_bid_value');
+  sourceResults['tender_sell'] = {
+    revenue: fmt2(sellRows.reduce((s, r) => s + parseFloat(r.total_bid_value || 0), 0)),
+    outputVat: 0,
+    invoiceCount: sellRows.length,
+    cogs: 0,
+  };
+
+  // 4. tender buy (fund requests)
+  const [buyFunds, drugFunds] = await Promise.all([
+    db('public_fund_requests').whereIn('status', ['READY_FOR_PAYMENT', 'PAID', 'APPROVED'])
+      .modify((q) => { applyRange(q, 'created_at'); })
+      .select('total_amount'),
+    db('procurement_fund_requests').where('status', 'approved')
+      .modify((q) => { applyRange(q, 'created_at'); })
+      .select('total_amount'),
+  ]);
+  sourceResults['tender_buy'] = {
+    revenue: fmt2([...buyFunds, ...drugFunds].reduce((s, r) => s + parseFloat(r.total_amount || 0), 0)),
+    outputVat: 0,
+    invoiceCount: buyFunds.length + drugFunds.length,
+    cogs: 0,
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     AGGREGATE TOTALS
+     ══════════════════════════════════════════════════════════════════════ */
+
+  let totalRevenue = 0, totalOutputVat = 0, totalInvoiceCount = 0, totalCogs = 0;
+  const bySource = sources.map(s => {
+    const d = sourceResults[s.key] || { revenue: 0, outputVat: 0, invoiceCount: 0, cogs: 0 };
+    const rev = fmt2(d.revenue);
+    const outVat = fmt2(d.outputVat);
+    const cost = fmt2(d.cogs || 0);
+    const profit = fmt2(rev - cost);
+    totalRevenue += rev;
+    totalOutputVat += outVat;
+    totalInvoiceCount += (d.invoiceCount || 0);
+    totalCogs += cost;
+    return { ...s, revenue: rev, outputVat: outVat, cost, profit, invoiceCount: d.invoiceCount || 0, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     INPUT VAT (purchase orders + expenses)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const poRow = await db('purchase_orders')
+    .modify((q) => { applyRange(q, 'created_at'); })
+    .select(
+      db.raw('COALESCE(SUM(tax_amount), 0) as input_vat'),
+      db.raw('COALESCE(SUM(total_amount), 0) as po_total')
+    ).first();
+  const inputVatFromPurchases = fmt2(poRow.input_vat);
+  const totalPurchases = fmt2(poRow.po_total);
+
+  const expRow = await db('expenses').whereNull('deleted_at')
+    .modify((q) => { applyRange(q, 'created_at'); })
+    .select(
+      db.raw('COALESCE(SUM(vat_amount), 0) as input_vat'),
+      db.raw('COALESCE(SUM(amount), 0) as expense_total')
+    ).first();
+  const inputVatFromExpenses = fmt2(expRow.input_vat);
+  const totalExpenses = fmt2(expRow.expense_total);
+
+  const inputVat = fmt2(inputVatFromPurchases + inputVatFromExpenses);
+  const payableVat = fmt2(totalOutputVat - inputVat);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     HR COSTS (payroll + employees)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const hrRow = await db('payroll_company_aggregation')
+    .modify(function(q) {
+      if (dateFrom) {
+        const d = new Date(dateFrom);
+        q.where(function() {
+          this.where('year_number', '>', d.getFullYear())
+            .orWhere(function() {
+              this.where('year_number', '=', d.getFullYear()).andWhere('month_number', '>=', d.getMonth() + 1);
+            });
+        });
+      }
+      if (dateTo) {
+        const d = new Date(dateTo);
+        q.where(function() {
+          this.where('year_number', '<', d.getFullYear())
+            .orWhere(function() {
+              this.where('year_number', '=', d.getFullYear()).andWhere('month_number', '<=', d.getMonth() + 1);
+            });
+        });
+      }
+    })
+    .select(
+      db.raw('COALESCE(SUM(company_gross_pay), 0) as gross'),
+      db.raw('COALESCE(SUM(company_net_pay), 0) as net'),
+      db.raw('COALESCE(SUM(total_deductions), 0) as deductions'),
+      db.raw('COALESCE(SUM(total_overtime_pay), 0) as overtime')
+    ).first();
+
+  const empRow = await db('hr_employees').where('employment_status', 'Active')
+    .count('* as cnt').sum('base_salary as sal').first();
+  const hrCosts = {
+    grossPay: fmt2(hrRow.gross),
+    netPay: fmt2(hrRow.net),
+    deductions: fmt2(hrRow.deductions),
+    overtime: fmt2(hrRow.overtime),
+    employeeCount: parseInt(empRow.cnt || 0),
+    monthlySalaryTotal: fmt2(empRow.sal),
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PROFIT & LOSS
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const grossProfit = fmt2(totalRevenue - totalCogs);
+  const operatingProfit = fmt2(grossProfit - totalExpenses);
+  const netProfit = fmt2(operatingProfit - hrCosts.netPay);
+  const totalCost = fmt2(totalCogs + totalExpenses + hrCosts.netPay);
+  const margin = totalRevenue > 0 ? fmt2((netProfit / totalRevenue) * 100) : 0;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     BY MONTH (from sales_invoices only — other sources don't have monthly granularity)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const invMonthRows = await db('sales_invoices')
+    .andWhereNot('status', 'cancelled')
+    .modify((q) => { applyRange(q, 'created_at'); })
+    .select(db.raw("DATE_FORMAT(created_at, '%Y-%m') as month"))
+    .sum('subtotal as revenue').sum('vat_total as output_vat')
+    .groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+    .orderBy('month');
+
+  const cogsMonthRows = await db('sales_invoice_items as sii')
+    .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
+    .andWhereNot('si.status', 'cancelled')
+    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .select(db.raw("DATE_FORMAT(si.created_at, '%Y-%m') as month"))
+    .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cogs'))
+    .groupByRaw("DATE_FORMAT(si.created_at, '%Y-%m')");
+
+  const cogsByMonth = {};
+  for (const r of cogsMonthRows) cogsByMonth[r.month] = fmt2(r.cogs);
+
+  const byMonth = invMonthRows.map(r => {
+    const rev = fmt2(r.revenue);
+    const outVat = fmt2(r.output_vat);
+    const cost = cogsByMonth[r.month] || 0;
+    const profit = fmt2(rev - cost);
+    return { month: r.month, revenue: rev, cost, outputVat: outVat, profit, margin: rev > 0 ? fmt2((profit / rev) * 100) : 0 };
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     TOP PRODUCTS (from invoice items)
+     ══════════════════════════════════════════════════════════════════════ */
+
+  const topProdRows = await db('sales_invoice_items as sii')
+    .join('sales_invoices as si', 'sii.invoice_id', 'si.id')
+    .andWhereNot('si.status', 'cancelled')
+    .modify((q) => { applyRange(q, 'si.created_at'); })
+    .select('sii.name', 'si.source')
+    .select(db.raw('COALESCE(SUM(sii.qty), 0) as qty'))
+    .select(db.raw('COALESCE(SUM(sii.unit_price * sii.qty), 0) as revenue'))
+    .select(db.raw('COALESCE(SUM(sii.cost_price * sii.qty), 0) as cost'))
+    .select(db.raw('COALESCE(SUM(sii.vat_amount), 0) as vat'))
+    .groupBy('sii.name', 'si.source')
+    .orderBy('revenue', 'desc').limit(20);
+
+  const topProducts = topProdRows.map(p => {
+    const rev = fmt2(p.revenue);
+    const c = fmt2(p.cost);
+    return { name: p.name, source: p.source, qtySold: parseInt(p.qty || 0), revenue: rev, cost: c, profit: fmt2(rev - c), margin: rev > 0 ? fmt2(((rev - c) / rev) * 100) : 0, vat: fmt2(p.vat) };
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RESPONSE
+     ══════════════════════════════════════════════════════════════════════ */
+
+  res.json({
+    status: 'success',
+    data: {
+      period: { from: dateFrom || 'All time', to: dateTo || 'Now', label: period || 'custom' },
+      summary: {
+        totalRevenue, totalCogs, grossProfit, totalExpenses, operatingProfit,
+        totalPurchases, hrCosts, netProfit, totalCost, totalProfit: netProfit, margin,
+        outputVat: totalOutputVat, inputVat, inputVatFromExpenses, inputVatFromPurchases,
+        payableVat, invoiceCount: totalInvoiceCount,
+      },
+      bySource,
+      byMonth,
+      topProducts,
+    }
+  });
+});
