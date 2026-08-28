@@ -1,154 +1,345 @@
-import React, { useState } from 'react';
-import { RotateCcw, Download, Plus, Send, FileText, ShoppingCart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { purchaseState, createReturnNote } from '../../utils/purchaseTransactionService';
+import React, { useState, useEffect } from 'react';
+import { RotateCcw, Download, Plus, Send, X, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import apiClient from '../../services/apiClient';
+import styles from './PurchaseReturns.module.css';
+
+
+const REASONS = ['Damaged Goods', 'Wrong Items', 'Quality Issue', 'Expired/Expiring', 'Overstock'];
+const METHODS = ['Ship', 'In-person', 'Courier'];
+
+const statusColors = {
+  Pending:    { bg: '#fef3c7', color: '#92400e' },
+  Authorized: { bg: '#e0e7ff', color: '#3730a3' },
+  Shipped:    { bg: '#e0f2fe', color: '#0369a1' },
+  Completed:  { bg: '#dcfce7', color: '#16a34a' },
+  Cancelled:  { bg: '#fee2e2', color: '#991b1b' },
+};
+
+const emptyForm = {
+  po_ref: '', supplier_name: '', item: '',
+  qty: '', reason: 'Damaged Goods', auth_number: '', method: 'Ship', notes: '',
+};
 
 const PurchaseReturns = () => {
-  const navigate = useNavigate();
-  const [returns, setReturns] = useState([...purchaseState.returns]);
+  const [returns, setReturns]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterReason, setFilterReason] = useState('All');
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal]       = useState(false);
+  const [form, setForm]                 = useState(emptyForm);
+  const [submitting, setSubmitting]     = useState(false);
+  const [toast, setToast]               = useState(null);
 
-  // Form state
-  const [poRef, setPoRef] = useState('');
-  const [supplierName, setSupplierName] = useState('');
-  const [item, setItem] = useState('');
-  const [qty, setQty] = useState('');
-  const [reason, setReason] = useState('Damaged Goods');
-  const [authNumber, setAuthNumber] = useState('');
-  const [method, setMethod] = useState('Ship');
+  useEffect(() => { fetchReturns(); }, []);
 
-  const handleCreateReturn = (e) => {
-    e.preventDefault();
-    createReturnNote({ poRef, supplierName, item, qty: parseInt(qty, 10), reason, authNumber, method });
-    setReturns([...purchaseState.returns]);
-    setShowModal(false);
+  const fetchReturns = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get('/purchase-returns');
+      setReturns(res.data || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to load returns');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filtered = returns.filter(r => 
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleOpenModal = () => {
+    setForm(emptyForm);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      await apiClient.post('/purchase-returns', form);
+      showToast('Return note created successfully');
+      setShowModal(false);
+      fetchReturns();
+    } catch (err) {
+      showToast(err.message || 'Failed to create return', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStatusUpdate = async (id, status) => {
+    try {
+      await apiClient.patch(`/purchase-returns/${id}/status`, { status });
+      showToast(`Status updated to ${status}`);
+      fetchReturns();
+    } catch (err) {
+      showToast(err.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await apiClient.delete(`/purchase-returns/${id}`);
+      showToast('Return deleted');
+      fetchReturns();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete return', 'error');
+    }
+  };
+
+  const filtered = returns.filter(r =>
     (filterStatus === 'All' || r.status === filterStatus) &&
     (filterReason === 'All' || r.reason === filterReason)
   );
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#ea580c' }}>
-            <RotateCcw color="#ea580c" size={28} /> PURCHASE RETURNS
+    <div className={styles.container}>
+
+      {/* Header */}
+      <div className={styles.header}>
+        <div className={styles.titleWrapper}>
+          <h1 className={styles.title}>
+            <RotateCcw size={26} /> PURCHASE RETURNS
           </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Manage return of goods and trigger inventory/financial adjustments.</p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <FileText size={16} /> Purchase Request
-            </button>
-            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <ShoppingCart size={16} /> Purchase Order
-            </button>
-            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <RotateCcw size={16} /> Purchase Return
-            </button>
-          </div>
+          <p className={styles.subtitle}>Manage return of goods and trigger inventory/financial adjustments.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+        <div className={styles.headerActions}>
+          <button className={styles.btnPrimary} onClick={handleOpenModal}>
             <Plus size={16} /> Create Return
           </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
+          <button className={styles.btnSecondary}>
             <Download size={16} /> Export
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 16, marginBottom: 16, display: 'flex', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Status</label>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-            <option>All</option><option>Pending</option><option>Authorized</option><option>Shipped</option><option>Completed</option>
-          </select>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Reason</label>
-          <select value={filterReason} onChange={e => setFilterReason(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-            <option>All</option><option>Damaged Goods</option><option>Wrong Items</option><option>Quality Issue</option><option>Expired/Expiring</option><option>Overstock</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['Return #', 'Date', 'PO #', 'Supplier', 'Item', 'Qty', 'Reason', 'Auth #', 'Method', 'Status'].map(col => (
-                <th key={col} style={{ padding: '12px 14px', textAlign: col === 'Qty' ? 'right' : 'left', color: '#475569', fontWeight: 600, fontSize: 13 }}>{col}</th>
+      {/* Filters + Table card */}
+      <div className={styles.card}>
+        <div className={styles.filterBar}>
+          <div className={styles.filterGroup}>
+            <label className={styles.label}>Status</label>
+            <select className={styles.select} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="All">All</option>
+              {['Pending', 'Authorized', 'Shipped', 'Completed', 'Cancelled'].map(s => (
+                <option key={s} value={s}>{s}</option>
               ))}
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label className={styles.label}>Reason</label>
+            <select className={styles.select} value={filterReason} onChange={e => setFilterReason(e.target.value)}>
+              <option value="All">All</option>
+              {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Return #</th>
+              <th>Date</th>
+              <th>PO #</th>
+              <th>Supplier</th>
+              <th>Item</th>
+              <th className={styles.textRight}>Qty</th>
+              <th>Reason</th>
+              <th>Auth #</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{r.id}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{r.date}</td>
-                <td style={{ padding: '12px 14px', color: '#8b5cf6', fontWeight: 500 }}>{r.poRef}</td>
-                <td style={{ padding: '12px 14px', color: '#0f172a' }}>{r.supplierName}</td>
-                <td style={{ padding: '12px 14px', color: '#475569' }}>{r.item}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{r.qty}</td>
-                <td style={{ padding: '12px 14px', color: '#dc2626' }}>{r.reason}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b', fontFamily: 'monospace' }}>{r.authNumber || 'Pending'}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{r.method}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: r.status === 'Completed' ? '#dcfce7' : r.status === 'Shipped' ? '#e0f2fe' : '#f1f5f9', color: r.status === 'Completed' ? '#16a34a' : r.status === 'Shipped' ? '#0369a1' : '#475569' }}>
-                    {r.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No return records found.</td></tr>}
+            {loading ? (
+              <tr><td colSpan={11} className={styles.emptyState}>Loading returns…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={11} className={styles.emptyState} style={{ color: '#ef4444' }}>{error}</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={11} className={styles.emptyState}>No return records found.</td></tr>
+            ) : filtered.map(r => {
+              const sc = statusColors[r.status] || statusColors.Pending;
+              return (
+                <tr key={r.id}>
+                  <td style={{ fontWeight: 700 }}>{r.return_code}</td>
+                  <td style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td style={{ color: '#8b5cf6', fontWeight: 500 }}>{r.po_ref}</td>
+                  <td>{r.supplier_name}</td>
+                  <td style={{ color: 'hsl(var(--muted-foreground))' }}>{r.item}</td>
+                  <td className={styles.textRight} style={{ fontWeight: 700 }}>{r.qty}</td>
+                  <td style={{ color: '#dc2626' }}>{r.reason}</td>
+                  <td style={{ fontFamily: 'monospace', color: 'hsl(var(--muted-foreground))' }}>{r.auth_number || '—'}</td>
+                  <td style={{ color: 'hsl(var(--muted-foreground))' }}>{r.method}</td>
+                  <td>
+                    <span className={styles.badge} style={{ background: sc.bg, color: sc.color }}>{r.status}</span>
+                  </td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      {r.status === 'Pending' && (
+                        <button
+                          className={styles.actionBtn}
+                          style={{ background: '#e0e7ff', color: '#3730a3' }}
+                          onClick={() => handleStatusUpdate(r.id, 'Authorized')}
+                        >Authorize</button>
+                      )}
+                      {r.status === 'Authorized' && (
+                        <button
+                          className={styles.actionBtn}
+                          style={{ background: '#e0f2fe', color: '#0369a1' }}
+                          onClick={() => handleStatusUpdate(r.id, 'Shipped')}
+                        >Mark Shipped</button>
+                      )}
+                      {r.status === 'Shipped' && (
+                        <button
+                          className={styles.actionBtn}
+                          style={{ background: '#dcfce7', color: '#16a34a' }}
+                          onClick={() => handleStatusUpdate(r.id, 'Completed')}
+                        >Complete</button>
+                      )}
+                      {r.status === 'Pending' && (
+                        <button
+                          className={styles.actionBtn}
+                          style={{ background: '#fee2e2', color: '#991b1b' }}
+                          onClick={() => handleDelete(r.id)}
+                          title="Delete"
+                        ><Trash2 size={13} /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Add Modal */}
+      {/* Create Return Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, width: '100%', maxWidth: 600 }}>
-            <h2 style={{ margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 8, color: '#ea580c' }}><RotateCcw size={20} /> Create Return Note</h2>
-            <form onSubmit={handleCreateReturn}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>PO Reference # *</label>
-                <input value={poRef} onChange={e => setPoRef(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Supplier Name *</label>
-                <input value={supplierName} onChange={e => setSupplierName(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3><RotateCcw size={20} /> Create Return Note</h3>
+              <button className={styles.closeBtn} onClick={() => setShowModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className={styles.modalBody}>
+                <div className={styles.formGrid2}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>PO Reference #<span className={styles.required}>*</span></label>
+                    <input
+                      className={styles.inputField}
+                      value={form.po_ref}
+                      onChange={e => setForm({ ...form, po_ref: e.target.value })}
+                      placeholder="PO-XXXX"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Supplier Name<span className={styles.required}>*</span></label>
+                    <input
+                      className={styles.inputField}
+                      value={form.supplier_name}
+                      onChange={e => setForm({ ...form, supplier_name: e.target.value })}
+                      placeholder="Supplier name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGridItem2}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Item to Return<span className={styles.required}>*</span></label>
+                    <input
+                      className={styles.inputField}
+                      value={form.item}
+                      onChange={e => setForm({ ...form, item: e.target.value })}
+                      placeholder="Item name / description"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Quantity<span className={styles.required}>*</span></label>
+                    <input
+                      className={styles.inputField}
+                      type="number"
+                      min="1"
+                      value={form.qty}
+                      onChange={e => setForm({ ...form, qty: e.target.value })}
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGrid3}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Reason<span className={styles.required}>*</span></label>
+                    <select
+                      className={styles.select}
+                      value={form.reason}
+                      onChange={e => setForm({ ...form, reason: e.target.value })}
+                      required
+                    >
+                      {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Return Auth #</label>
+                    <input
+                      className={styles.inputField}
+                      value={form.auth_number}
+                      onChange={e => setForm({ ...form, auth_number: e.target.value })}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Method</label>
+                    <select
+                      className={styles.select}
+                      value={form.method}
+                      onChange={e => setForm({ ...form, method: e.target.value })}
+                    >
+                      {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Notes</label>
+                  <textarea
+                    className={`${styles.inputField} ${styles.textarea}`}
+                    value={form.notes}
+                    onChange={e => setForm({ ...form, notes: e.target.value })}
+                    placeholder="Additional context or instructions…"
+                  />
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Item to Return *</label>
-                <input value={item} onChange={e => setItem(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Quantity *</label>
-                <input type="number" value={qty} onChange={e => setQty(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Reason *</label>
-                <select value={reason} onChange={e => setReason(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6 }} required>
-                  <option>Damaged Goods</option><option>Wrong Items</option><option>Quality Issue</option><option>Expired/Expiring</option><option>Overstock</option>
-                </select></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Return Auth #</label>
-                <input value={authNumber} onChange={e => setAuthNumber(e.target.value)} placeholder="(Optional)" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Method</label>
-                <select value={method} onChange={e => setMethod(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6 }}>
-                  <option>Ship</option><option>In-person</option><option>Courier</option>
-                </select></div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-                  <Send size={16} /> Process Return
+
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecondary} onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className={styles.btnPrimary} disabled={submitting}>
+                  <Send size={15} /> {submitting ? 'Processing…' : 'Process Return'}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
+          {toast.type === 'error' ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
+          <span>{toast.msg}</span>
         </div>
       )}
     </div>
