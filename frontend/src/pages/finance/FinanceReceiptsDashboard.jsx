@@ -1,9 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import { amountInWordsBirr } from '../../utils/amountInWords';
 import styles from './FinanceReceiptsDashboard.module.css';
+
+
+const Icon = {
+  file: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  check: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  barChart: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  money: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>,
+  bank: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7 12 2"/></svg>,
+  building: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>,
+  trendUp: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  trendDown: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>,
+  court: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 22v-4h18v4"/><path d="M19 18v-8"/><path d="M15 18v-8"/><path d="M9 18v-8"/><path d="M5 18v-8"/><path d="M2 10l10-7 10 7H2z"/></svg>,
+  users: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  clipboard: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
+};
 
 const G = {
   forest: '#059669', sky: '#0891B2', blue: '#2563EB', orange: '#D97706', darkGray: '#374151'
@@ -597,6 +612,8 @@ const PAGE_SIZE = 10;
 const FinanceReceiptsDashboard = () => {
   const [agg, setAgg] = useState(null);
   const [docs, setDocs] = useState([]);
+  const [vatReport, setVatReport] = useState(null);
+  const [vatLoading, setVatLoading] = useState(false);
   const [company, setCompany] = useState({ name: '', address: '', phone: '', tin: '', vatReg: '' });
   const [companyDraft, setCompanyDraft] = useState(null);
   const [savingCompany, setSavingCompany] = useState(false);
@@ -608,6 +625,10 @@ const FinanceReceiptsDashboard = () => {
   const [page, setPage] = useState(1);
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
+  const [vatPeriod, setVatPeriod] = useState('year');
+  const [vatDateRange, setVatDateRange] = useState({ from: '', to: '' });
+  const vatPeriodRef = useRef(vatPeriod);
+  const vatDateRangeRef = useRef(vatDateRange);
 
   useEffect(() => {
     setActiveTab(location.pathname.includes('receipts') ? 'receipts' : 'receivable');
@@ -637,6 +658,69 @@ const FinanceReceiptsDashboard = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const fetchVatReport = async (period, from, to) => {
+    setVatLoading(true);
+    try {
+      const params = {};
+      if (from && to) {
+        params.from = from;
+        params.to = to + ' 23:59:59';
+      } else {
+        params.period = period || 'year';
+      }
+      const res = await api.get('/finance/vat-profit-report', { params });
+      setVatReport(res?.data || null);
+    } catch (err) {
+      console.error('VAT report load failed:', err);
+      setVatReport(null);
+    }
+    setVatLoading(false);
+  };
+
+  // Load VAT report whenever user opens the tab, and also on first mount
+  useEffect(() => {
+    if (activeTab === 'vatprofit') {
+      fetchVatReport(vatPeriod, vatDateRange.from, vatDateRange.to);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Also load on first render if the tab is already vatprofit
+  useEffect(() => {
+    fetchVatReport('year', '', '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePeriodClick = (key) => {
+    setVatPeriod(key);
+    setVatDateRange({ from: '', to: '' });
+    vatPeriodRef.current = key;
+    vatDateRangeRef.current = { from: '', to: '' };
+    fetchVatReport(key, '', '');
+  };
+
+  const handleDateFromChange = (val) => {
+    const newRange = { ...vatDateRange, from: val };
+    setVatDateRange(newRange);
+    vatDateRangeRef.current = newRange;
+    setVatPeriod('custom');
+    vatPeriodRef.current = 'custom';
+  };
+
+  const handleDateToChange = (val) => {
+    const newRange = { ...vatDateRange, to: val };
+    setVatDateRange(newRange);
+    vatDateRangeRef.current = newRange;
+    setVatPeriod('custom');
+    vatPeriodRef.current = 'custom';
+  };
+
+  const handleRefresh = () => {
+    const p = vatPeriodRef.current;
+    const r = vatDateRangeRef.current;
+    fetchVatReport(p, r.from, r.to);
+  };
 
   const saveCompany = async () => {
     setSavingCompany(true);
@@ -694,7 +778,7 @@ const FinanceReceiptsDashboard = () => {
         <div className={`${styles.kpiCard} ${activeTab === 'receivable' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
             <span className={styles.kpiLabel}>Receivable Invoices</span>
-            <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}>📄</span>
+            <span className={styles.kpiIcon} style={{ background: '#FEF3C7' }}><Icon.file /></span>
           </div>
           <div className={styles.kpiValue} style={{ color: '#B45309' }}>{receivableDocs.length}</div>
           <div className={styles.kpiMeta}>Unpaid / outstanding orders</div>
@@ -704,7 +788,7 @@ const FinanceReceiptsDashboard = () => {
         <div className={`${styles.kpiCard} ${activeTab === 'receipts' ? styles.kpiCardActive : ''}`}>
           <div className={styles.kpiTop}>
             <span className={styles.kpiLabel}>Receipts (Paid)</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}>✅</span>
+            <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}><Icon.check /></span>
           </div>
           <div className={styles.kpiValue} style={{ color: G.forest }}>{paidDocs.length}</div>
           <div className={styles.kpiMeta}>Fully paid orders</div>
@@ -714,7 +798,7 @@ const FinanceReceiptsDashboard = () => {
         <div className={`${styles.kpiCard} ${styles.kpiCardHero}`}>
           <div className={styles.kpiTop}>
             <span className={styles.kpiLabel}>Outstanding Balance</span>
-            <span className={styles.kpiIconHero}>💰</span>
+            <span className={styles.kpiIconHero}><Icon.money /></span>
           </div>
           <div className={styles.kpiHeroValue}>{fmt(receivableValue)}</div>
           <div className={styles.kpiHeroMeta}>
@@ -727,7 +811,7 @@ const FinanceReceiptsDashboard = () => {
         <div className={styles.kpiCard}>
           <div className={styles.kpiTop}>
             <span className={styles.kpiLabel}>Total Value Collected</span>
-            <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}>🏦</span>
+            <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}><Icon.bank /></span>
           </div>
           <div className={styles.kpiValue} style={{ color: G.blue }}>{fmt(paidValue)}</div>
           <div className={styles.kpiMeta}>Revenue received to date</div>
@@ -741,22 +825,28 @@ const FinanceReceiptsDashboard = () => {
           className={`${styles.tabBtn} ${activeTab === 'receivable' ? styles.tabBtnActive : ''}`}
           onClick={() => { setActiveTab('receivable'); setPage(1); }}
         >
-          📄 Receivable Invoices
+          <Icon.file /> Receivable Invoices
           <span className={styles.tabBadge} style={{ background: '#FEF3C7', color: '#92400E' }}>{receivableDocs.length}</span>
         </button>
         <button
           className={`${styles.tabBtn} ${activeTab === 'receipts' ? styles.tabBtnActive : ''}`}
           onClick={() => { setActiveTab('receipts'); setPage(1); }}
         >
-          ✅ Receipts (Paid)
+          <Icon.check /> Receipts (Paid)
           <span className={styles.tabBadge} style={{ background: '#DCFCE7', color: '#166534' }}>{paidDocs.length}</span>
+        </button>
+        <button
+          className={`${styles.tabBtn} ${activeTab === 'vatprofit' ? styles.tabBtnActive : ''}`}
+          onClick={() => { setActiveTab('vatprofit'); setPage(1); }}
+        >
+          <Icon.barChart /> VAT & Profit
         </button>
       </div>
 
       {/* ── ROW 3: COMPANY PROFILE ── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitleIcon}>🏢</span>
+          <span className={styles.cardTitleIcon}><Icon.building /></span>
           <h3 className={styles.cardTitle}>Company Profile (Invoice / Receipt header)</h3>
           <span className={styles.cardSub}>Saved to settings — used on all documents</span>
         </div>
@@ -797,10 +887,275 @@ const FinanceReceiptsDashboard = () => {
         </div>
       </div>
 
+      {/* ── ROW 4: VAT & PROFIT (when tab active) ── */}
+      {activeTab === 'vatprofit' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Period Filter Bar */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.cardTitleIcon}><Icon.barChart /></span>
+              <h3 className={styles.cardTitle}>VAT & Profit Report</h3>
+              <span className={styles.cardSub}>Live data — Output VAT from invoices · Input VAT from purchases/expenses · HR costs from payroll · Profit = Revenue - Cost - HR</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px 20px', flexWrap: 'wrap' }}>
+              {[
+                { key: 'today', label: 'Today' },
+                { key: 'week', label: 'This Week' },
+                { key: 'month', label: 'This Month' },
+                { key: 'year', label: 'This Year' },
+                { key: 'all', label: 'All Time' }
+              ].map(p => (
+                <button key={p.key} onClick={() => handlePeriodClick(p.key)}
+                  style={{ padding: '6px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    background: vatPeriod === p.key && !vatDateRange.from ? '#2563EB' : '#F3F4F6',
+                    color: vatPeriod === p.key && !vatDateRange.from ? '#fff' : '#374151' }}>
+                  {p.label}
+                </button>
+              ))}
+              <span style={{ color: '#D1D5DB', margin: '0 4px' }}>|</span>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B7280' }}>Custom:</label>
+              <input type="date" value={vatDateRange.from} onChange={(e) => handleDateFromChange(e.target.value)}
+                style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
+              <span style={{ color: '#9CA3AF' }}>-</span>
+              <input type="date" value={vatDateRange.to} onChange={(e) => handleDateToChange(e.target.value)}
+                style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
+              <button onClick={handleRefresh} disabled={vatLoading}
+                style={{ padding: '5px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: vatLoading ? 0.6 : 1 }}>
+                {vatLoading ? 'Loading...' : 'Refresh'}
+              </button>
+              {vatReport?.period && (
+                <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
+                  {vatReport.period.from} to {vatReport.period.to} · {vatReport.summary?.invoiceCount || 0} invoices
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Spinner: first load (no data yet) */}
+          {vatLoading && !vatReport && (
+            <div className={styles.card} style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: '#9CA3AF' }}>
+              <SegmentedSpinner size={28} />
+              <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', fontWeight: 500 }}>Loading live VAT &amp; Profit data…</div>
+            </div>
+          )}
+
+          {/* Subtle refresh overlay while data is already showing */}
+          {vatLoading && vatReport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', color: '#6B7280', fontSize: '0.8125rem' }}>
+              <SegmentedSpinner size={14} /> Refreshing…
+            </div>
+          )}
+
+          {/* No data */}
+          {!vatLoading && !vatReport && (
+            <div className={styles.card} style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
+              <div style={{ fontWeight: 600, color: '#374151' }}>No data for this period</div>
+              <div style={{ fontSize: '0.875rem', color: '#9CA3AF', marginTop: '0.25rem' }}>Try selecting a different time range or click Refresh.</div>
+            </div>
+          )}
+
+          {vatReport && (() => {
+            const s = vatReport.summary || {};
+            const hr = s.hrCosts || {};
+          return (<>
+            {/* ── VAT Summary Cards ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', borderRadius: 12, padding: '16px 18px', border: '1px solid #A7F3D0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#065F46' }}>Output VAT (Sales)</span><span><Icon.trendUp /></span>
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#059669' }}>{fmt(s.outputVat)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>VAT collected from customers</div>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', borderRadius: 12, padding: '16px 18px', border: '1px solid #FECACA' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#991B1B' }}>Input VAT (Purchases)</span><span><Icon.trendDown /></span>
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#DC2626' }}>{fmt(s.inputVat)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>PO: {fmt(s.inputVatFromPurchases)} + Exp: {fmt(s.inputVatFromExpenses)}</div>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', borderRadius: 12, padding: '16px 18px', border: '1px solid #BFDBFE' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#1E3A8A' }}>Payable VAT</span><span><Icon.court /></span>
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: s.payableVat >= 0 ? '#2563EB' : '#DC2626' }}>{s.payableVat >= 0 ? '+' : ''}{fmt(s.payableVat)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>{s.payableVat >= 0 ? 'Amount payable to govt' : 'Refund due from govt'}</div>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', borderRadius: 12, padding: '16px 18px', border: '1px solid #FDE68A' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#92400E' }}>Net Profit</span><span><Icon.money /></span>
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: s.netProfit >= 0 ? '#059669' : '#DC2626' }}>{fmt(s.netProfit)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>After COGS + Expenses + HR</div>
+              </div>
+            </div>
+
+            {/* ── P&L Statement Cards ── */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <span className={styles.cardTitleIcon}><Icon.clipboard /></span>
+                <h3 className={styles.cardTitle}>Profit & Loss Statement</h3>
+                <span className={styles.cardSub}>Revenue - COGS - Expenses - HR = Net Profit</span>
+              </div>
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { label: 'Total Revenue (Sales)', value: s.totalRevenue, color: '#059669', indent: 0 },
+                  { label: 'Cost of Goods Sold (COGS)', value: -s.totalCogs, color: '#DC2626', indent: 0 },
+                  { label: 'Gross Profit', value: s.grossProfit, color: '#2563EB', indent: 0, bold: true },
+                  { label: 'Operating Expenses', value: -s.totalExpenses, color: '#DC2626', indent: 16 },
+                  { label: 'Operating Profit', value: s.operatingProfit, color: '#2563EB', indent: 0, bold: true },
+                  { label: `HR Costs (${hr.employeeCount || 0} employees, ${fmt(hr.monthlySalaryTotal)}/mo)`, value: -hr.netPay, color: '#DC2626', indent: 16 },
+                  { label: '    Base Salaries', value: hr.grossPay, color: '#9CA3AF', indent: 32, small: true },
+                  { label: '    Deductions (tax/pension)', value: -hr.deductions, color: '#9CA3AF', indent: 32, small: true },
+                  { label: '    Overtime Pay', value: hr.overtime, color: '#9CA3AF', indent: 32, small: true },
+                  { label: 'NET PROFIT', value: s.netProfit, color: s.netProfit >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true },
+                  { label: 'Profit Margin', value: s.margin + '%', color: '#374151', indent: 0, isText: true }
+                ].map((row, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: row.indent,
+                    padding: `${row.large ? '10' : '4'}px ${row.large ? '12' : '8'}px`, marginLeft: row.indent,
+                    borderRadius: row.bold ? 6 : 0, background: row.bold ? '#F9FAFB' : 'transparent',
+                    borderTop: row.bold && row.large ? '2px solid #D1D5DB' : 'none' }}>
+                    <span style={{ fontSize: row.small ? 11 : row.large ? 14 : 13, fontWeight: row.bold ? 700 : 400, color: row.color }}>{row.label}</span>
+                    <span style={{ fontSize: row.large ? 16 : row.small ? 11 : 13, fontWeight: row.bold ? 800 : 400, color: row.color, fontFamily: 'monospace' }}>
+                      {row.isText ? row.value : (row.value >= 0 ? '+' : '') + fmt(row.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── HR Breakdown ── */}
+            {hr.employeeCount > 0 && (
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitleIcon}><Icon.users /></span>
+                  <h3 className={styles.cardTitle}>HR Costs ({hr.employeeCount} Active Employees)</h3>
+                  <span className={styles.cardSub}>Monthly salary total: {fmt(hr.monthlySalaryTotal)}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, padding: '12px 20px' }}>
+                  {[
+                    { label: 'Gross Pay', value: hr.grossPay, color: '#2563EB', bg: '#EFF6FF' },
+                    { label: 'Net Pay', value: hr.netPay, color: '#059669', bg: '#ECFDF5' },
+                    { label: 'Deductions', value: hr.deductions, color: '#DC2626', bg: '#FEF2F2' },
+                    { label: 'Overtime', value: hr.overtime, color: '#D97706', bg: '#FFFBEB' }
+                  ].map((c, i) => (
+                    <div key={i} style={{ background: c.bg, borderRadius: 8, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: c.color, marginBottom: 4 }}>{c.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: c.color }}>{fmt(c.value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Breakdown by Department ── */}
+            {vatReport.bySource && vatReport.bySource.length > 0 && (
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitleIcon}><Icon.barChart /></span>
+                  <h3 className={styles.cardTitle}>Revenue by Department</h3>
+                </div>
+                <div className={styles.table}>
+                  <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+                    <span>Department</span>
+                    <span style={{ textAlign: 'right' }}>Revenue</span>
+                    <span style={{ textAlign: 'right' }}>COGS</span>
+                    <span style={{ textAlign: 'right' }}>Profit</span>
+                    <span style={{ textAlign: 'right' }}>Margin</span>
+                    <span style={{ textAlign: 'right' }}>Output VAT</span>
+                  </div>
+                  {vatReport.bySource.map((src, i) => (
+                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(src.revenue)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(src.cost)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: src.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(src.profit)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{src.margin || 0}%</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(src.outputVat)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Monthly Trend ── */}
+            {vatReport.byMonth && vatReport.byMonth.length > 0 && (
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitleIcon}><Icon.trendUp /></span>
+                  <h3 className={styles.cardTitle}>Monthly Trend</h3>
+                </div>
+                <div className={styles.table}>
+                  <div className={styles.tHead} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}>
+                    <span>Month</span>
+                    <span style={{ textAlign: 'right' }}>Revenue</span>
+                    <span style={{ textAlign: 'right' }}>Cost</span>
+                    <span style={{ textAlign: 'right' }}>Profit</span>
+                    <span style={{ textAlign: 'right' }}>Output VAT</span>
+                    <span style={{ textAlign: 'right' }}>Margin</span>
+                  </div>
+                  {vatReport.byMonth.map((m, i) => (
+                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}>
+                      <span style={{ fontWeight: 600 }}>{m.month}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(m.revenue)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(m.cost)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: m.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(m.profit)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(m.outputVat)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{m.margin || 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Top Products ── */}
+            {vatReport.topProducts && vatReport.topProducts.length > 0 && (
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitleIcon}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+                  </span>
+                  <h3 className={styles.cardTitle}>Top Products</h3>
+                  <span className={styles.cardSub}>{vatReport.topProducts.length} products · Sell Price − Cost = Profit</span>
+                </div>
+                <div className={styles.table}>
+                  <div className={styles.tHead} style={{ gridTemplateColumns: '36px 2fr 1fr 0.6fr 1fr 1fr 1fr 0.8fr' }}>
+                    <span>#</span><span>Product</span><span>Source</span>
+                    <span style={{ textAlign: 'right' }}>Qty</span>
+                    <span style={{ textAlign: 'right' }}>Revenue</span>
+                    <span style={{ textAlign: 'right' }}>Cost</span>
+                    <span style={{ textAlign: 'right' }}>Profit</span>
+                    <span style={{ textAlign: 'right' }}>Margin</span>
+                  </div>
+                  {vatReport.topProducts.map((p, i) => (
+                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '36px 2fr 1fr 0.6fr 1fr 1fr 1fr 0.8fr' }}>
+                      <span className={styles.rowNum}>{i + 1}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{p.name || 'Unknown'}</span>
+                      <span style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#6B7280' }}>{p.source}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{p.qtySold}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(p.revenue)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(p.cost)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: p.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(p.profit)}</span>
+                      <span className={styles.num} style={{ textAlign: 'right' }}>{p.margin}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.note}>
+              <strong>Live data:</strong> Output VAT from sales invoices · Input VAT from purchase orders + expenses · COGS from invoice item cost prices · HR costs from payroll salary components. Profit = Revenue - COGS - Expenses - HR Costs.
+            </div>
+          </>); })()}
+        </div>
+      )}
+
       {/* ── ROW 4: DOCUMENT LIST ── */}
+      {activeTab !== 'vatprofit' && (
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardTitleIcon}>{activeTab === 'receivable' ? '📄' : '✅'}</span>
+          <span className={styles.cardTitleIcon}>{activeTab === 'receivable' ? <Icon.file /> : <Icon.check />}</span>
           <h3 className={styles.cardTitle}>
             {activeTab === 'receivable' ? 'Receivable Invoices — awaiting full payment' : 'Receipts — payment confirmed'}
           </h3>
@@ -827,7 +1182,7 @@ const FinanceReceiptsDashboard = () => {
                 : 'No confirmed receipts yet — payments will appear here once orders are paid.'}
             </div>
           ) : pagedDocs.map((d, i) => (
-            <div key={d.id} className={styles.tRow} onClick={() => setSelected(d)}>
+            <div key={d.id} className={styles.tRow} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelected(d)} onClick={() => setSelected(d)}>
               <span className={styles.rowNum}>{(safePage - 1) * PAGE_SIZE + i + 1}</span>
               <span className={styles.moduleName}>
                 <span className={styles.moduleIcon} style={{ background: (d.color || G.darkGray) + '1A', color: d.color }}>{d.icon}</span>
@@ -887,6 +1242,7 @@ const FinanceReceiptsDashboard = () => {
             : 'Every payment received auto-generates a linked Sales Receipt: Sale ID → Invoice ID → Payment ID → Receipt ID — no double counting. The receipt confirms money received against the invoice; it never recalculates the sale.'}
         </div>
       </div>
+      )}
 
       {selected && <DocumentModal doc={selected} company={company} onClose={() => setSelected(null)} />}
     </div>
