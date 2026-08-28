@@ -256,12 +256,14 @@ exports.placeOrder = catchAsync(async (req, res) => {
     for (let i = 0; i < cartItems.length; i++) {
       const item = cartItems[i];
       const r = vatCalc.rows[i];
+      const prod = await trx('retail_products').where({ id: item.product_id }).first();
       await trx('sales_invoice_items').insert({
         invoice_id: invoiceId,
         item_id: item.product_id,
         name: item.name,
         qty: item.quantity,
         unit_price: item.price,
+        cost_price: prod ? parseFloat(prod.cost_price || 0) : null,
         treatment: r.treatment,
         rate: r.rate,
         vat_amount: r.vat,
@@ -414,6 +416,7 @@ exports.posCheckout = catchAsync(async (req, res) => {
       name: ri.product.name,
       qty: ri.quantity,
       unitPrice: ri.product.price,
+      costPrice: parseFloat(ri.product.cost_price || 0),
       amount: ri.product.price * ri.quantity,
       rate: vatCalc.rows[i].rate,
       treatment: vatCalc.rows[i].treatment
@@ -815,15 +818,22 @@ exports.checkoutDirect = catchAsync(async (req, res) => {
 
     // Invoice + receipt are recorded at checkout (payment is collected here).
     const vatCalc = await vatConfigService.computeVatForItems('retail', items.map((i) => ({ itemId: i.product_id, amount: i.line_total })));
-    const invoiceLines = items.map((i, idx) => ({
-      itemId: i.product_id,
-      name: i.name || i.product_name || `Product #${i.product_id}`,
-      qty: i.quantity,
-      unitPrice: i.unit_price,
-      amount: i.line_total,
-      rate: vatCalc.rows[idx].rate,
-      treatment: vatCalc.rows[idx].treatment
-    }));
+    const invoiceLines = [];
+    for (let idx = 0; idx < items.length; idx++) {
+      const i = items[idx];
+      const r = vatCalc.rows[idx];
+      const prod = await trx('retail_products').where({ id: i.product_id }).first();
+      invoiceLines.push({
+        itemId: i.product_id,
+        name: i.name || i.product_name || `Product #${i.product_id}`,
+        qty: i.quantity,
+        unitPrice: i.unit_price,
+        costPrice: prod ? parseFloat(prod.cost_price || 0) : null,
+        amount: i.line_total,
+        rate: r.rate,
+        treatment: r.treatment
+      });
+    }
     if (discount) {
       invoiceLines.push({ itemId: 0, name: 'Discount', qty: 1, unitPrice: -discount, amount: -discount, rate: 0, treatment: 'zero_rated' });
     }
