@@ -17,8 +17,6 @@ import CashierAuditLog from '../sales/CashierAuditLog';
 import SalesReports from '../sales/SalesReports';
 import ReturnsPage from '../sales/ReturnsPage';
 import PharmacyManagerControls from './PharmacyManagerControls';
-import PharmacyFinanceReview from './PharmacyFinanceReview';
-import CEOReport from './CEOReport';
 
 import ExpiredDrugReport from './ExpiredDrugReport';
 import DrugHideForm from './DrugHideForm';
@@ -52,15 +50,15 @@ import PharmacyHealthPublisher from './PharmacyHealthPublisher';
 
 // Sales & Ops Imports
 import PharmacyStaff from './PharmacyStaff';
-import PharmacyDailySummary from './PharmacyDailySummary';
+
 import CentralAuditLog from '../admin/CentralAuditLog';
 import PharmacyManagerSales from './PharmacyManagerSales';
+import PharmacySalesReports from './PharmacySalesReports';
 
 const PharmacyDashboard = () => {
   const location = useLocation();
   const FULL_BLEED = [
     '/pharmacy/staff', '/pharmacy/branches', 
-    '/pharmacy/daily-summary', '/pharmacy/finance-review', '/pharmacy/ceo-report', 
     '/pharmacy/store-inventory', '/pharmacy/stock-operations', 
     '/pharmacy/procurement-requests', '/pharmacy/stock-adjustment', 
     '/pharmacy/expiry-management', '/pharmacy/batches', '/pharmacy/health-publisher',
@@ -101,12 +99,7 @@ const PharmacyDashboard = () => {
         { label: 'Worker Sales',  path: '/pharmacy/manager-sales', icon: 'dollar-sign', color: '#059669' },
       ] },
     { type: 'divider' },
-    { label: 'Reports', icon: 'bar-chart',
-      children: [
-        { label: 'CEO Report', path: '/pharmacy/ceo-report', icon: 'bar-chart-2',  color: '#064e3b' },
-        { label: 'Finance Review', path: '/pharmacy/finance-review', icon: 'dollar-sign',  color: '#D97706' },
-        { label: 'Daily Summary',    path: '/pharmacy/daily-summary',     icon: 'file-text' },
-      ] },
+    { label: 'Reports', path: '/pharmacy/reports', icon: 'bar-chart', color: '#059669' },
     { type: 'divider' },
     { label: 'Audit Log', path: '/pharmacy/audit-log', icon: 'clipboard', color: '#6366f1' },
   ];
@@ -118,8 +111,6 @@ const PharmacyDashboard = () => {
           margin: '-32px -32px -32px -32px',
           padding: 0,
           background:
-            location.pathname.includes('/pharmacy/ceo-report')     ? '#F1BE91' :
-            location.pathname.includes('/pharmacy/finance-review') ? '#46D17A' :
             (
               location.pathname.includes('/pharmacy/store-inventory') ||
               location.pathname.includes('/pharmacy/stock-operations') ||
@@ -151,8 +142,6 @@ const PharmacyDashboard = () => {
             <Route path="direct-delivery" element={<PharmacyDirectDeliveries />} />
             {/* <Route path="product-posts" element={<PharmacyWorkerProductPosts />} /> */}
             <Route path="health-publisher" element={<PharmacyHealthPublisher />} />
-            <Route path="finance-review" element={<PharmacyFinanceReview />} />
-            <Route path="finance-review/:id" element={<PharmacyFinanceReview />} />
 
             <Route path="expired-drugs" element={<ExpiredDrugReport />} />
             <Route path="drug-hide" element={<DrugHideForm />} />
@@ -174,9 +163,6 @@ const PharmacyDashboard = () => {
 
             {/* Sales & Ops Routes */}
             <Route path="staff"         element={<PharmacyStaff />} />
-            <Route path="ceo-report"    element={<CEOReport />} />
-            <Route path="finance-review" element={<PharmacyFinanceReview />} />
-            <Route path="daily-summary" element={<PharmacyDailySummary />} />
             <Route path="warehouses"    element={<WarehouseManagement />} />
             <Route path="branch-drugs"  element={<BranchDrugs />} />
             <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
@@ -184,6 +170,7 @@ const PharmacyDashboard = () => {
             <Route path="chat"          element={<ManagerChat />} />
             <Route path="audit-log"     element={<CentralAuditLog />} />
             <Route path="manager-sales" element={<PharmacyManagerSales />} />
+            <Route path="reports"       element={<PharmacySalesReports />} />
 
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
