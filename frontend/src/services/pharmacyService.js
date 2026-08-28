@@ -279,7 +279,15 @@ const pharmacyService = {
 
   // Daily Summary
   getManagerDailySummary: async (params) =>
-    await apiClient.get('/pharmacy-reports/daily-summary', { params })
+    await apiClient.get('/pharmacy-reports/daily-summary', { params }),
+
+  // ── CEO Pharmacy Sales Reporting Pack (5 reports) ──
+  getExecutivePack: async (params) =>
+    await apiClient.get('/pharmacy-reports/executive', { params }),
+  getTargets: async () =>
+    await apiClient.get('/pharmacy-reports/targets'),
+  saveTargets: async (data) =>
+    await apiClient.put('/pharmacy-reports/targets', data)
 };
 
 export default pharmacyService;
