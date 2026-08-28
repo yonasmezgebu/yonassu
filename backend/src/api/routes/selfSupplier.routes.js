@@ -3,9 +3,10 @@ const router = express.Router();
 const selfSupplierController = require('../controllers/selfSupplier.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 
-// Any logged-in user can register or view their own profile
+// Any logged-in user can register or view/remove their own profile
 router.post('/', authenticate, selfSupplierController.registerSupplier);
 router.get('/me', authenticate, selfSupplierController.getMySupplierProfile);
+router.delete('/me', authenticate, selfSupplierController.withdrawSupplier);
 
 // Purchase managers and admins can view all registered suppliers
 const managerRoles = ['Admin', 'CEO', 'Purchase Manager', 'Purchase', 'Procurement Manager', 'Finance'];
@@ -17,5 +18,8 @@ router.put('/:id/verify', authenticate, authorizeRoles(managerRoles), selfSuppli
 
 // Quick status update
 router.patch('/:id/status', authenticate, authorizeRoles(managerRoles), selfSupplierController.updateSupplierStatus);
+
+// Delete supplier
+router.delete('/:id', authenticate, authorizeRoles(managerRoles), selfSupplierController.deleteSupplier);
 
 module.exports = router;
