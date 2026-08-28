@@ -48,25 +48,28 @@ const BoardDashboard   = lazy(() => import('../pages/board/BoardDashboard'));
 const NotificationsPage = lazy(() => import('../pages/employee/NotificationsPage'));
 const EmployeeDashboard = lazy(() => import('../pages/employee/EmployeePortalDashboard'));
 const PrescriptionViewer = lazy(() => import('../pages/shared/PrescriptionViewer'));
-const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
-const PublicSmartTendersPage = lazy(() => import('../pages/LandingPage/PublicSmartTendersPage'));
+const PublicTendersPage = lazy(() => import('../pages/LandingPage/PublicCompeteAndBuyPage'));
+const PublicCompeteAndSellPage = lazy(() => import('../pages/LandingPage/PublicCompeteAndSellPage'));
 const PublicProcurementContactPage = lazy(() => import('../pages/LandingPage/PublicProcurementContactPage'));
-const PublicBuyTendersPage = lazy(() => import('../pages/LandingPage/PublicBuyTendersPage'));
+const PublicBuyTendersPage = lazy(() => import('../pages/LandingPage/PublicCompeteAndBuyPage'));
 const TenderDetailPage = lazy(() => import('../pages/LandingPage/TenderDetailPage'));
 const TenderManagePage = lazy(() => import('../pages/admin/TenderManagePage'));
 const SearchResultsPage = lazy(() => import('../pages/LandingPage/SearchResultsPage'));
-const RegularMarketPage = lazy(() => import('../pages/LandingPage/RegularMarketPage'));
 const SalesDashboard = lazy(() => import('../pages/sales/SalesDashboard'));
 const UnauthorizedPage  = lazy(() => import('../pages/auth/Unauthorized'));
 const NotFoundPage = lazy(() => import('../pages/shared/NotFoundPage'));
 const Loader = () => (
   <div style={{
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    height: '100vh', background: '#f8fafc',
-    fontFamily: 'Inter, sans-serif', color: '#2563eb',
-    fontSize: 15, gap: 10,
+    height: '100vh', background: '#ffffff',
   }}>
-    <span style={{ fontSize: 22 }}>⏳</span> Loading SUTANA…
+    <div style={{
+      width: 44, height: 44, borderRadius: '50%',
+      border: '4px solid rgba(37, 99, 235, 0.15)',
+      borderTopColor: '#2563eb',
+      animation: 'spin 0.75s linear infinite',
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </div>
 );
 const AppRoutes = () => {
@@ -95,13 +98,12 @@ const AppRoutes = () => {
         <Route path="/gallery/other" element={<PlaceholderPage />} />
 
 
-        <Route path="/marketplace/regular" element={<RegularMarketPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
 
         <Route path="/news" element={<NewsPage />} />
         <Route path="/news/:type" element={<NewsPage />} />
-        <Route path="/tenders" element={<PublicSmartTendersPage />} />
-        <Route path="/tenders/smart-bids" element={<PublicSmartTendersPage />} />
+        <Route path="/tenders" element={<PublicCompeteAndSellPage />} />
+        <Route path="/tenders/smart-bids" element={<PublicCompeteAndSellPage />} />
         <Route path="/tenders/buy" element={<PublicBuyTendersPage />} />
         <Route path="/tenders/:id" element={<TenderDetailPage />} />
         <Route path="/sales-contact" element={<PublicSalesContactPage />} />
