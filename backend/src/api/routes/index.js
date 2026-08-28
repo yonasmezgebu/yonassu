@@ -111,5 +111,7 @@ router.use('/audit-logs', require('./centralAudit.routes'));
 router.use('/vat-config', require('./vatConfig.routes'));
 router.use('/employee-tasks', require('./employeeTasks.routes'));
 router.use('/employee-reports', require('./employeeReports.routes'));
+router.use('/email-subscribers', require('./emailSubscriber.routes'));
+router.use('/purchase-returns', require('./purchaseReturn.routes'));
 
 module.exports = router;
