@@ -16,6 +16,7 @@ import DataImportExport from './DataImportExport';
 import Maintenance from './Maintenance';
 import Integrations from './Integrations';
 import DangerZone from './DangerZone';
+import EmailSubscribers from './EmailSubscribers';
 import ManagerChat from '../../components/ManagerChat';
 import styles from './AdminDashboard.module.css';
 
@@ -51,6 +52,7 @@ const AdminDashboard = () => {
     { label: 'Maintenance',     path: '/admin/maintenance',    icon: 'tool' },
     { label: 'Settings',       path: '/admin/settings',       icon: 'sliders' },
     { label: 'Integrations',   path: '/admin/integrations',   icon: 'git-branch' },
+    { label: 'Subscribers',    path: '/admin/subscribers',    icon: 'mail' },
     { type: 'divider' },
     { label: 'Danger Zone',    path: '/admin/danger-zone',    icon: 'alert-octagon', color: '#DC2626' },
     { type: 'divider' },
@@ -81,6 +83,7 @@ const AdminDashboard = () => {
             <Route path="backups" element={<BackupManagement />} />
             <Route path="settings" element={<SystemSettings />} />
             <Route path="integrations" element={<Integrations />} />
+            <Route path="subscribers" element={<EmailSubscribers />} />
             <Route path="danger-zone" element={<DangerZone />} />
             <Route path="/" element={<Navigate to="overview" replace />} />
           </Routes>
