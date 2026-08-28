@@ -164,21 +164,23 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
     }
   };
 
-  const handleQuickAction = async (e, actionType, reqId) => {
+  const handleQuickAction = async (e, actionType, group, detail) => {
     e.stopPropagation();
     try {
-      await apiClient.patch(`/procurement/requests/${reqId}/decision`, { 
+      await apiClient.patch(`/procurement/requests/${detail.id}/decision`, { 
         decision: actionType, 
         ceoNotes: actionType === 'CEO_REJECTED' ? 'Rejected from quick actions' : '' 
       });
-      // Trigger a refresh of the pending counts
-      if (refreshTrigger !== undefined) {
-        // If DashboardLayout provides a way to refresh, or we just call the fetch again.
-        // The load is dependent on refreshTrigger. But let's just trigger a full reload.
-        window.location.reload();
+      // Avoid page refresh! Just update local state
+      dismissCeoDetail(group, detail);
+      if (typeof showToast === 'function') {
+        showToast(`Successfully ${actionType === 'APPROVED' ? 'approved' : 'rejected'} request.`, 'success');
       }
     } catch (err) {
       console.error(err);
+      if (typeof showToast === 'function') {
+        showToast('Failed to apply action.', 'error');
+      }
     }
   };
 
@@ -451,8 +453,8 @@ const NotificationBell = ({ navigate, refreshTrigger, ceoPending, setCeoPending,
                       </div>
                       {detail.type === 'procurement' && (
                         <div style={{ display: 'flex', gap: 6, marginRight: 4 }}>
-                          <button onClick={(e) => handleQuickAction(e, 'APPROVED', detail.id)} style={{ background: '#10B981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>APPROVE</button>
-                          <button onClick={(e) => handleQuickAction(e, 'CEO_REJECTED', detail.id)} style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>REJECT</button>
+                          <button onClick={(e) => handleQuickAction(e, 'APPROVED', item, detail)} style={{ background: '#10B981', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>APPROVE</button>
+                          <button onClick={(e) => handleQuickAction(e, 'CEO_REJECTED', item, detail)} style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>REJECT</button>
                         </div>
                       )}
                       <NotifDismissBtn onClick={() => dismissCeoDetail(item, detail)} title="Dismiss this item" />
