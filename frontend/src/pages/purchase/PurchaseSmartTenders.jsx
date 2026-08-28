@@ -271,7 +271,8 @@ const PurchaseSmartTenders = () => {
     setLoadingTenders(true);
     try {
       const res = await api.get('/public-tenders/internal');
-      setTenders(res.data || []);
+      const data = Array.isArray(res) ? res : (res?.data?.data || res?.data || res || []);
+      setTenders(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
     finally { setLoadingTenders(false); }
   };
@@ -291,7 +292,8 @@ const PurchaseSmartTenders = () => {
     setLoadingBids(true);
     try {
       const res = await api.get(`/public-tenders/internal/${tender.id}/bids`);
-      setBidsData(res.data || []);
+      const data = Array.isArray(res) ? res : (res?.data?.data || res?.data || res || []);
+      setBidsData(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
     finally { setLoadingBids(false); }
   };
