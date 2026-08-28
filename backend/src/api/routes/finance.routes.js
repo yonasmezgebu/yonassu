@@ -283,4 +283,7 @@ router.get('/cash-handovers', authenticate, authorizeRoles(['Finance', 'Admin', 
 router.post('/cash-handovers/:id/approve', authenticate, authorizeRoles(['CEO']), FinanceController.approveCashHandover);
 router.post('/cash-handovers/:id/reject', authenticate, authorizeRoles(['CEO']), FinanceController.rejectCashHandover);
 
+// --- VAT & Profit Report ---
+router.get('/vat-profit-report', authenticate, authorizeRoles(['Finance Manager', 'Accountant', 'Admin', 'CEO']), FinanceController.getVatProfitReport);
+
 module.exports = router;
