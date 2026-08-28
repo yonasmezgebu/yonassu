@@ -148,6 +148,7 @@ const invoiceDocumentsFromSalesInvoices = async ({ source, sourceLabel, icon, co
       name: it.name,
       qty: it.qty,
       unitPrice: asNum(it.unit_price),
+      costPrice: it.cost_price != null ? asNum(it.cost_price) : null,
       rate: asNum(it.rate),
       treatment: it.treatment,
       vat: asNum(it.vat_amount),
@@ -380,12 +381,28 @@ const createSalesInvoice = async (trx, { source, saleId, saleType, invoiceNo, da
       name: l.name,
       qty: l.qty || 1,
       unit_price: round2(l.unitPrice),
+      cost_price: l.costPrice != null ? round2(l.costPrice) : null,
       treatment: r.treatment,
       rate: r.rate,
       vat_amount: round2(r.vat),
       subtotal: round2(l.amount),
       total: round2(l.amount + r.vat)
     });
+    if (round2(r.vat) > 0 || round2(l.amount) > 0) {
+      await trx('vat_transactions').insert({
+        type: 'output',
+        source,
+        source_id: saleId,
+        item_name: l.name,
+        qty: l.qty || 1,
+        selling_price: round2(l.unitPrice),
+        cost_price: l.costPrice != null ? round2(l.costPrice) : 0,
+        vat_rate: r.rate || 0,
+        vat_amount: round2(r.vat),
+        treatment: r.treatment || 'standard',
+        reference_no: invoiceNo
+      });
+    }
   }
 
   return { invoiceId, total };
