@@ -6,7 +6,7 @@ const { authenticate, authorizeRoles } = require('../middleware/auth.middleware'
 // All routes require authentication
 router.use(authenticate);
 
-// ── CEO Report ───────────────────────────────────────────
+// CEO Report
 // Pharmacy Manager: read-only | CEO: full (decide) | Finance: no access
 router.get(
   '/ceo',
@@ -33,7 +33,7 @@ router.post(
   ctrl.ceoDecideExpiredDrug
 );
 
-// ── Finance Review ───────────────────────────────────────
+// Finance Review
 // Finance: full | Pharmacy Manager: read-only | CEO: no access
 router.get(
   '/finance',
@@ -54,12 +54,32 @@ router.patch(
   ctrl.financeMarkDeliveryPaid
 );
 
-// ── Daily Summary ─────────────────────────────────────────
+// Daily Summary
 // Pharmacy Manager: full | CEO: read-only summary | Finance: read-only summary
 router.get(
   '/daily-summary',
   authorizeRoles(['Pharmacy Manager', 'CEO', 'Finance', 'Finance Manager', 'Admin']),
   ctrl.getDailySummary
+);
+
+// CEO Pharmacy Sales Reporting Pack (5 reports)
+router.get(
+  '/executive',
+  authorizeRoles(['CEO', 'Pharmacy Manager', 'Admin']),
+  ctrl.getExecutivePack
+);
+
+// Report targets
+router.get(
+  '/targets',
+  authorizeRoles(['CEO', 'Pharmacy Manager', 'Admin']),
+  ctrl.getTargets
+);
+
+router.put(
+  '/targets',
+  authorizeRoles(['CEO', 'Admin']),
+  ctrl.saveTargets
 );
 
 module.exports = router;
