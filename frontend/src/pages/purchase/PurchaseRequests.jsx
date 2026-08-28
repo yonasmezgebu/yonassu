@@ -1,154 +1,251 @@
-import React, { useState } from 'react';
-import { FileText, Download, CheckCircle, XCircle, Clock, ShoppingCart, RotateCcw } from 'lucide-react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { mockInventoryState } from '../../utils/storeTransactionService';
-import { createTenderFromRequest, createRFQFromRequest } from '../../utils/purchaseTransactionService';
-import { submitNotification } from '../../utils/pharmacyNotifications';
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, X, PlusCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import apiClient from '../../services/apiClient';
+import styles from './PurchaseRequests.module.css';
 
 const statusBadge = {
-  'Approved': { bg: '#dcfce7', color: '#166534' },
-  'Pending': { bg: '#fef3c7', color: '#92400e' },
-  'Hold': { bg: '#f1f5f9', color: '#475569' },
-  'Rejected': { bg: '#fee2e2', color: '#991b1b' },
-  'Tender Created': { bg: '#cffafe', color: '#164e63' },
-  'RFQ Created': { bg: '#e0e7ff', color: '#3730a3' }
+  'APPROVED': { bg: '#dcfce7', color: '#166534' },
+  'PENDING_DECISION': { bg: '#fef3c7', color: '#92400e' },
+  'WAIT': { bg: '#f1f5f9', color: '#475569' },
+  'REJECTED': { bg: '#fee2e2', color: '#991b1b' },
 };
 
 const PurchaseRequests = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const presetStatus = searchParams.get('status') || 'All';
-  const [requests, setRequests] = useState([...mockInventoryState.m20Requisitions]);
-  const [filterDept, setFilterDept] = useState('All');
+  
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [filterStatus, setFilterStatus] = useState(presetStatus);
+  
+  // Modal State for Tender Creation
+  const [tenderModal, setTenderModal] = useState(null); // null or request object
+  const [tenderForm, setTenderForm] = useState({ quantity: '', closing_at: '', delivery_type: 'VIA_STORE', terms: '' });
+  const [tenderLoading, setTenderLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Add dummy data for visual completeness since mockInventoryState was basic
-  const enhancedRequests = requests.map((r, i) => ({
-    ...r,
-    department: r.department || (i % 2 === 0 ? 'Pharmacy' : 'Store'),
-    item: r.item || 'Various Medical Supplies',
-    qty: r.qty || (i * 10 + 50),
-    requestedBy: r.requestedBy || 'Abebe Kebede',
-    date: r.date || '2026-06-25',
-    priority: r.priority || (i === 0 ? 'Urgent' : 'Normal')
-  }));
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
-  const handleAction = (reqId, actionType, req) => {
-    let newStatus = '';
+  const fetchRequests = async () => {
     try {
-      if (actionType === 'Tender') {
-        createTenderFromRequest(req);
-        newStatus = 'Tender Created';
-      } else if (actionType === 'RFQ') {
-        createRFQFromRequest(req);
-        newStatus = 'RFQ Created';
-      } else if (actionType === 'Hold') {
-        newStatus = 'Hold';
-        submitNotification('⏸ Request put on Hold', '⏸ M20 Request Status Updated', 'info.mp3');
-      } else if (actionType === 'Reject') {
-        const reason = prompt('Enter rejection reason:');
-        if (!reason) return;
-        newStatus = 'Rejected';
-        submitNotification('❌ Request Rejected', '❌ M20 Request Rejected', 'info.mp3');
-      }
-      
-      const idx = mockInventoryState.m20Requisitions.findIndex(r => r.id === reqId);
-      if (idx > -1) mockInventoryState.m20Requisitions[idx].status = newStatus;
-      setRequests([...mockInventoryState.m20Requisitions]);
-    } catch (e) { alert(e.message); }
+      setLoading(true);
+      const res = await apiClient.get('/purchase-flow/purchase-requests');
+      setRequests(res.data || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to load purchase requests');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filtered = enhancedRequests.filter(r => 
-    (filterDept === 'All' || r.department === filterDept) &&
-    (filterStatus === 'All' || r.status.includes(filterStatus))
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleOpenTenderModal = (r) => {
+    setTenderModal(r);
+    setTenderForm({
+      quantity: r.requested_qty || '',
+      closing_at: '',
+      delivery_type: 'VIA_STORE',
+      terms: ''
+    });
+  };
+
+  const handleCreateTender = async (e) => {
+    e.preventDefault();
+    if (!tenderForm.quantity || !tenderForm.closing_at || !tenderForm.delivery_type) {
+      showToast('Please fill all required fields', 'error');
+      return;
+    }
+    try {
+      setTenderLoading(true);
+      await apiClient.post('/purchase-flow/tenders', {
+        purchase_request_id: tenderModal.id,
+        ...tenderForm
+      });
+      showToast('Tender created successfully');
+      setTenderModal(null);
+      fetchRequests(); // refresh list
+    } catch (err) {
+      showToast(err.message || 'Failed to create tender', 'error');
+    } finally {
+      setTenderLoading(false);
+    }
+  };
+
+  const filtered = requests.filter(r => 
+    (filterStatus === 'All' || r.status === filterStatus)
   );
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#3b82f6' }}>
-            <FileText color="#3b82f6" size={28} /> PURCHASE REQUESTS (M20)
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.titleWrapper}>
+          <h1 className={styles.title}>
+            <FileText color="hsl(var(--primary))" size={28} /> PURCHASE REQUESTS
           </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Process requisitions from Pharmacy, Store, and other departments.</p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <FileText size={16} /> Purchase Request
-            </button>
-            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <ShoppingCart size={16} /> Purchase Order
-            </button>
-            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <RotateCcw size={16} /> Purchase Return
-            </button>
-          </div>
+          <p className={styles.subtitle}>Review approved purchase requests and initiate sourcing.</p>
         </div>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
+        <button className={styles.btnSecondary}>
           <Download size={16} /> Export
         </button>
       </div>
 
-      {/* Filters */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 16, marginBottom: 16, display: 'flex', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Department</label>
-          <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-            <option>All</option><option>Pharmacy</option><option>Store</option><option>Printing</option>
-          </select>
+      <div className={styles.card}>
+        <div className={styles.filterSection}>
+          <div className={styles.filterGroup}>
+            <label className={styles.label}>Status</label>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={styles.select}>
+              <option value="All">All</option>
+              <option value="APPROVED">Approved</option>
+              <option value="WAIT">Wait / Market Task</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Status</label>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-            <option>All</option><option>Approved</option><option>Pending</option><option>Hold</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <table className={styles.table}>
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['Request #', 'Department', 'Items Requested', 'Qty', 'Requested By', 'Date', 'Priority', 'Status', 'Actions'].map(col => (
-                <th key={col} style={{ padding: '12px 14px', textAlign: col === 'Qty' ? 'right' : 'left', color: '#475569', fontWeight: 600, fontSize: 13 }}>{col}</th>
-              ))}
+            <tr>
+              <th>Request #</th>
+              <th>Item Requested</th>
+              <th className={styles.textRight}>Qty</th>
+              <th>Date</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{r.id}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{r.department}</td>
-                <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 500 }}>{r.item}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{r.qty}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{r.requestedBy}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{r.date}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, color: r.priority === 'Urgent' ? '#ef4444' : '#64748b', background: r.priority === 'Urgent' ? '#fef2f2' : '#f1f5f9' }}>{r.priority}</span>
-                </td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: statusBadge[r.status]?.bg || '#f1f5f9', color: statusBadge[r.status]?.color || '#475569' }}>
-                    {r.status}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 14px' }}>
-                  {(r.status === 'Approved' || r.status === 'Pending') ? (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => handleAction(r.id, 'Tender', r)} style={{ padding: '4px 8px', fontSize: 11, background: '#0891b2', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Create Tender</button>
-                      <button onClick={() => handleAction(r.id, 'RFQ', r)} style={{ padding: '4px 8px', fontSize: 11, background: '#22c55e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Create RFQ</button>
-                      <button onClick={() => handleAction(r.id, 'Hold', r)} style={{ padding: '4px 8px', fontSize: 11, background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Hold</button>
-                      <button onClick={() => handleAction(r.id, 'Reject', r)} style={{ padding: '4px 8px', fontSize: 11, background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Reject</button>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Processed</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={9} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No purchase requests found.</td></tr>}
+            {loading ? (
+              <tr><td colSpan={7} className={styles.emptyState}>Loading requests...</td></tr>
+            ) : error ? (
+              <tr><td colSpan={7} className={styles.emptyState} style={{ color: '#ef4444' }}>{error}</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} className={styles.emptyState}>No purchase requests found.</td></tr>
+            ) : (
+              filtered.map(r => (
+                <tr key={r.id}>
+                  <td style={{ fontWeight: 600 }}>{r.request_code}</td>
+                  <td style={{ fontWeight: 500 }}>
+                    {r.is_new_drug ? r.new_drug_name : r.drug_name} 
+                    {r.is_new_drug ? <span style={{fontSize: '0.65rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px'}}>NEW</span> : null}
+                  </td>
+                  <td className={styles.textRight} style={{ fontWeight: 700 }}>{r.requested_qty}</td>
+                  <td style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <span className={styles.badge} style={{ color: r.urgency === 'URGENT' ? '#ef4444' : 'hsl(var(--muted-foreground))', background: r.urgency === 'URGENT' ? '#fef2f2' : 'hsl(var(--muted))' }}>{r.urgency || 'NORMAL'}</span>
+                  </td>
+                  <td>
+                    <span className={styles.badge} style={{ background: statusBadge[r.status]?.bg || 'hsl(var(--muted))', color: statusBadge[r.status]?.color || 'hsl(var(--muted-foreground))' }}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td>
+                    {r.status === 'APPROVED' ? (
+                      <button onClick={() => handleOpenTenderModal(r)} className={styles.btnPrimary} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
+                        <PlusCircle size={14} /> Create Tender
+                      </button>
+                    ) : r.status === 'WAIT' ? (
+                      <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 500 }}>Pending Market Task</span>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>Processed</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      {tenderModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Create Tender</h3>
+              <button onClick={() => setTenderModal(null)} className={styles.closeBtn}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateTender} className={styles.modalBody}>
+              <div className={styles.infoBox}>
+                <strong>Request:</strong> {tenderModal.request_code} <br/>
+                <strong>Item:</strong> {tenderModal.is_new_drug ? tenderModal.new_drug_name : tenderModal.drug_name}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Tender Quantity <span className={styles.required}>*</span></label>
+                <input 
+                  type="number" 
+                  value={tenderForm.quantity} 
+                  onChange={e => setTenderForm({...tenderForm, quantity: e.target.value})} 
+                  className={styles.inputField}
+                  required
+                  min="1"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Closing Date & Time <span className={styles.required}>*</span></label>
+                <input 
+                  type="datetime-local" 
+                  value={tenderForm.closing_at} 
+                  onChange={e => setTenderForm({...tenderForm, closing_at: e.target.value})} 
+                  className={styles.inputField}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Delivery Type <span className={styles.required}>*</span></label>
+                <select 
+                  value={tenderForm.delivery_type} 
+                  onChange={e => setTenderForm({...tenderForm, delivery_type: e.target.value})} 
+                  className={styles.select}
+                >
+                  <option value="VIA_STORE">Via Store</option>
+                  <option value="DIRECT_TO_PHARMACY">Direct to Pharmacy</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Terms / Notes</label>
+                <textarea 
+                  value={tenderForm.terms} 
+                  onChange={e => setTenderForm({...tenderForm, terms: e.target.value})} 
+                  className={styles.inputField}
+                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  placeholder="Additional instructions for bidders..."
+                />
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button type="button" onClick={() => setTenderModal(null)} className={styles.btnSecondary}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={tenderLoading} className={styles.btnPrimary}>
+                  {tenderLoading ? 'Processing...' : 'Create Tender'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
+          {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{toast.msg}</span>
+        </div>
+      )}
     </div>
   );
 };
