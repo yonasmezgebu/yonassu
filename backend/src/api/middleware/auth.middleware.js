@@ -203,6 +203,15 @@ const authorizeRoles = (requiredRoles) => {
     if (reqRolesLower.includes('finance') && !reqRolesLower.includes('accountant')) {
         reqRolesLower.push('accountant');
     }
+    
+    // Add Purchase Manager implicitly for Purchase-related roles
+    if (reqRolesLower.includes('purchase') && !reqRolesLower.includes('purchase manager')) {
+        reqRolesLower.push('purchase manager');
+    }
+    // Also map procurement
+    if (reqRolesLower.includes('purchase') && !reqRolesLower.includes('procurement')) {
+        reqRolesLower.push('procurement');
+    }
 
     const hasRole = reqRolesLower.some(role => userRolesLower.includes(role)) || userRolesLower.includes('admin');
     if (!hasRole) {
