@@ -4,7 +4,7 @@ import {
   Users, UserPlus, Search, RefreshCw, Mail, Phone, Building2, Tag,
   Download, Loader2, AlertCircle, Truck, CheckCircle2, XCircle,
   ShieldCheck, Clock, CheckSquare, X, CreditCard, MapPin, Globe,
-  Landmark, BadgeCheck, CircleDot
+  Landmark, BadgeCheck, CircleDot, Trash2, Ban, Eye
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -127,16 +127,15 @@ const STYLES = `
   .psl-toast-error   { border-left-color:#DC2626; }
   @keyframes psl-slide { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
-  /* ── Verification Drawer ── */
-  .vd-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; justify-content:flex-end; }
-  .vd-drawer { width:500px; max-width:100vw; background:#FFFFFF; height:100%; overflow-y:auto; box-shadow:-8px 0 32px rgba(0,0,0,0.1); display:flex; flex-direction:column; animation:vd-slide 0.3s cubic-bezier(0.16,1,0.3,1); }
-  @keyframes vd-slide { from { transform:translateX(100%); } to { transform:translateX(0); } }
-  .vd-head { padding:24px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#FFFFFF; z-index:10; }
+  /* ── Verification Modal ── */
+  .vd-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9000; display:flex; justify-content:center; align-items:center; padding: 20px; animation: psl-fade 0.2s ease; }
+  .vd-drawer { width:700px; max-width:100%; background:#FFFFFF; max-height:90vh; border-radius: 12px; overflow-y:auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); display:flex; flex-direction:column; animation:psl-pop 0.3s cubic-bezier(0.16,1,0.3,1); }
+  .vd-head { padding:24px; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; gap:12px; position:sticky; top:0; background:#FFFFFF; z-index:10; border-radius: 12px 12px 0 0; }
   .vd-head h2 { margin:0; font-size:20px; font-weight:600; color:#111827; flex:1; }
   .vd-close { background:transparent; border:none; cursor:pointer; color:#9CA3AF; padding:8px; border-radius:8px; display:flex; transition:all 150ms ease; }
   .vd-close:hover { background:#F3F4F6; color:#111827; }
 
-  /* Supplier identity in Drawer */
+  /* Supplier identity in Modal */
   .vd-supplier-bar { padding:20px 24px; background:#F9FAFB; border-bottom:1px solid #E5E7EB; display:flex; align-items:center; gap:16px; }
   .vd-avatar { width:48px; height:48px; border-radius:50%; background:#2563EB; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:18px; flex-shrink:0; }
   .vd-supplier-name { font-weight:600; color:#111827; font-size:16px; margin-bottom:4px; }
@@ -155,7 +154,7 @@ const STYLES = `
   .vd-select { appearance:none; background-image:url('data:image/svg+xml;utf8,<svg fill="none" stroke="%236B7280" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>'); background-repeat:no-repeat; background-position:right 12px center; background-size:14px; padding-right:32px; cursor:pointer;}
   .vd-select:hover { background-color: #F9FAFB; }
 
-  .vd-footer { padding:20px 24px; border-top:1px solid #E5E7EB; display:flex; justify-content:flex-end; gap:12px; position:sticky; bottom:0; background:#FFFFFF; z-index:10; }
+  .vd-footer { padding:20px 24px; border-top:1px solid #E5E7EB; display:flex; justify-content:flex-end; gap:12px; position:sticky; bottom:0; background:#FFFFFF; z-index:10; border-radius: 0 0 12px 12px; }
   .vd-btn-cancel { background:#FFFFFF; color:#6B7280; border:1px solid #E5E7EB; border-radius:8px; height:36px; padding:0 24px; font-size:14px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; transition:all 150ms ease; display:inline-flex; align-items:center; justify-content:center;}
   .vd-btn-cancel:hover { background:#D97706; color:#FFFFFF; border-color:#D97706; }
   .vd-btn-verify { background:#2563EB; color:#FFFFFF; border:none; border-radius:8px; height:36px; padding:0 24px; font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-family:'Inter',sans-serif; transition:all 150ms ease; flex:1; }
@@ -179,6 +178,58 @@ const STYLES = `
     display: flex; flex-direction: column; max-height: 90vh;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
   }
+
+  /* Icon-only action buttons */
+  .psl-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 6px; border: 1px solid transparent;
+    cursor: pointer; transition: all 0.15s ease; background: transparent; flex-shrink: 0;
+  }
+  .psl-icon-btn:focus { outline: none; }
+  .psl-icon-btn-view  { color: #2563EB; border-color: #BFDBFE; background: #EFF6FF; }
+  .psl-icon-btn-view:hover  { background: #2563EB; color: #fff; border-color: #2563EB; }
+  .psl-icon-btn-verify { color: #16A34A; border-color: #BBF7D0; background: #F0FDF4; }
+  .psl-icon-btn-verify:hover { background: #16A34A; color: #fff; border-color: #16A34A; }
+  .psl-icon-btn-ban  { color: #D97706; border-color: #FDE68A; background: #FFFBEB; }
+  .psl-icon-btn-ban:hover  { background: #D97706; color: #fff; border-color: #D97706; }
+  .psl-icon-btn-del  { color: #DC2626; border-color: #FECACA; background: #FEF2F2; }
+  .psl-icon-btn-del:hover  { background: #DC2626; color: #fff; border-color: #DC2626; }
+  .psl-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Confirm dialog overlay */
+  .psl-confirm-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    animation: psl-fade 0.15s ease;
+  }
+  @keyframes psl-fade { from { opacity:0; } to { opacity:1; } }
+  .psl-confirm-box {
+    background: #fff; border-radius: 16px; padding: 32px 28px;
+    max-width: 420px; width: 100%; box-shadow: 0 20px 40px -8px rgba(0,0,0,0.2);
+    animation: psl-pop 0.2s cubic-bezier(0.16,1,0.3,1);
+    text-align: center;
+  }
+  @keyframes psl-pop { from { transform:scale(0.9); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .psl-confirm-icon { display:flex; justify-content:center; margin-bottom:14px; }
+  .psl-confirm-title { margin:0 0 8px; font-size:18px; font-weight:700; color:#111827; }
+  .psl-confirm-msg { margin:0 0 24px; font-size:14px; color:#6B7280; line-height:1.6; }
+  .psl-confirm-actions { display:flex; gap:12px; justify-content:center; }
+  .psl-confirm-cancel {
+    flex:1; padding:10px 16px; background:#F3F4F6; color:#374151;
+    border:1px solid #E5E7EB; border-radius:8px; font-size:14px; font-weight:500;
+    cursor:pointer; transition:background 0.15s ease;
+  }
+  .psl-confirm-cancel:hover:not(:disabled) { background:#E5E7EB; }
+  .psl-confirm-ok {
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px 16px; border:none; border-radius:8px; font-size:14px; font-weight:600;
+    cursor:pointer; transition:background 0.15s ease; color:#fff;
+  }
+  .psl-confirm-ok-danger { background:#DC2626; }
+  .psl-confirm-ok-danger:hover:not(:disabled) { background:#B91C1C; }
+  .psl-confirm-ok-warning { background:#D97706; }
+  .psl-confirm-ok-warning:hover:not(:disabled) { background:#B45309; }
+  .psl-confirm-ok:disabled, .psl-confirm-cancel:disabled { opacity:0.5; cursor:not-allowed; }
 `;
 
 const COMPANY_NAME = 'SUTANA Trading PLC';
@@ -195,15 +246,15 @@ const statusBadge = (status) => {
 };
 
 /* ── Verification Drawer ── */
-const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
+const VerifyDrawer = ({ supplier, onClose, onVerified, viewOnly = false }) => {
   const [form, setForm] = useState({
     tax_id:        supplier.tax_id        || '',
     payment_terms: supplier.payment_terms || '',
     credit_limit:  supplier.credit_limit  || '',
     location_type: supplier.location_type || '',
     bank_name:     supplier.bank_name     || '',
-    bank_account:  supplier.bank_account  || '',
-    bank_holder:   supplier.bank_holder   || '',
+    bank_account:  supplier.bank_account  || supplier.bank_account_number || '',
+    bank_holder:   supplier.bank_holder   || supplier.bank_account_holder || '',
     website:       supplier.website       || '',
   });
   const [saving, setSaving] = useState(false);
@@ -215,10 +266,11 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
     setSaving(true);
     try {
       const res = await apiClient.put(`/suppliers/${supplier.id}/verify`, form);
-      onVerified(res.data.data);
+      // apiClient unwraps response.data → res.data is the updated supplier
+      onVerified(res.data || res);
       onClose();
     } catch (e) {
-      setToast(e.response?.data?.message || 'Failed to verify supplier');
+      setToast(e.message || 'Failed to verify supplier');
       setTimeout(() => setToast(null), 3500);
     } finally {
       setSaving(false);
@@ -227,13 +279,18 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
 
   const initials = supplier.full_name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
+  const fmt = v => v || '—';
+
   return (
     <div className="vd-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="vd-drawer">
         {/* Header */}
         <div className="vd-head">
-          <ShieldCheck size={22} color="#1565C0" />
-          <h2>Stage 2 — Verification</h2>
+          {viewOnly
+            ? <Eye size={22} color="#2563EB" />
+            : <ShieldCheck size={22} color="#1565C0" />
+          }
+          <h2>{viewOnly ? 'Supplier Profile' : 'Stage 2 — Verification'}</h2>
           <button className="vd-close" onClick={onClose}><X size={20}/></button>
         </div>
 
@@ -248,7 +305,7 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
         </div>
 
         <div className="vd-body">
-          {/* Stage 1 snapshot (read-only) */}
+          {/* Stage 1 snapshot (read-only) — always shown */}
           <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6B8E23', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Stage 1 — Self-Registered Info</p>
           <div className="vd-stage1">
             {[
@@ -266,7 +323,8 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
             ))}
           </div>
 
-          {/* Stage 2 fields (staff fills in) */}
+          {/* Stage 2 — verification details */}
+          {/* Editable stage-2 form (Always editable so staff can fill it later) */}
           <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShieldCheck size={13}/> Stage 2 — Verification Details (Staff Only)
           </p>
@@ -323,8 +381,8 @@ const VerifyDrawer = ({ supplier, onClose, onVerified }) => {
         <div className="vd-footer">
           <button className="vd-btn-cancel" onClick={onClose}>Cancel</button>
           <button className="vd-btn-verify" onClick={handleSubmit} disabled={saving}>
-            {saving ? <SegmentedSpinner size={16} /> : <ShieldCheck size={16}/>}
-            {saving ? 'Saving...' : 'Confirm Verified'}
+            {saving ? <SegmentedSpinner size={16} /> : (viewOnly ? <CheckCircle2 size={16}/> : <ShieldCheck size={16}/>)}
+            {saving ? 'Saving...' : (viewOnly ? 'Save Details' : 'Confirm Verified')}
           </button>
         </div>
 
@@ -350,6 +408,9 @@ const PurchaseSupplierList = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [toast, setToast] = useState(null);
   const [verifyTarget, setVerifyTarget] = useState(null);
+  const [viewTarget, setViewTarget] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -358,7 +419,9 @@ const PurchaseSupplierList = () => {
 
   const [showAddInternal, setShowAddInternal] = useState(false);
   const [internalForm, setInternalForm] = useState({
-    full_name: '', email: '', phone: '', company_name: '', category: ''
+    full_name: '', email: '', phone: '', company_name: '', category: '',
+    tax_id: '', payment_terms: '', credit_limit: '', location_type: '',
+    bank_name: '', bank_account: '', bank_holder: '', website: ''
   });
   const [savingInternal, setSavingInternal] = useState(false);
 
@@ -371,10 +434,11 @@ const PurchaseSupplierList = () => {
       if (filterStatus) params.append('status', filterStatus);
       if (activeTab === 'internal') params.append('source', 'Internal');
       const res = await apiClient.get(`/suppliers?${params.toString()}`);
-      setSuppliers(res.data?.data || []);
+      // apiClient unwraps response.data → res.data is the suppliers array directly
+      setSuppliers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Fetch suppliers error:', err?.response?.data || err.message);
-      setError(err?.response?.data?.message || 'Failed to load suppliers. Please try again.');
+      console.error('Fetch suppliers error:', err.message);
+      setError(err.message || 'Failed to load suppliers. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -392,10 +456,14 @@ const PurchaseSupplierList = () => {
       const res = await apiClient.post('/suppliers/internal', internalForm);
       showToast('Internal supplier registered successfully!');
       setShowAddInternal(false);
-      setInternalForm({ full_name: '', email: '', phone: '', company_name: '', category: '' });
+      setInternalForm({
+        full_name: '', email: '', phone: '', company_name: '', category: '',
+        tax_id: '', payment_terms: '', credit_limit: '', location_type: '',
+        bank_name: '', bank_account: '', bank_holder: '', website: ''
+      });
       fetchSuppliers();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to register internal supplier', 'error');
+      showToast(err.message || 'Failed to register internal supplier', 'error');
     } finally {
       setSavingInternal(false);
     }
@@ -434,11 +502,64 @@ const PurchaseSupplierList = () => {
   const handleActivate = async (s) => {
     try {
       const res = await apiClient.patch(`/suppliers/${s.id}/status`, { status: 'Active' });
-      setSuppliers(prev => prev.map(x => x.id === s.id ? { ...x, ...res.data.data } : x));
+      // apiClient unwraps response.data → res.data is the updated supplier
+      setSuppliers(prev => prev.map(x => x.id === s.id ? { ...x, ...(res.data || {}) } : x));
       showToast(`${s.full_name} is now Active.`);
-    } catch {
-      showToast('Failed to update status.', 'error');
+    } catch (err) {
+      showToast(err.message || 'Failed to update status.', 'error');
     }
+  };
+
+  /* ── Delete supplier ── */
+  const handleDeleteClick = (s) => {
+    setConfirmDialog({
+      icon: <Trash2 size={32} color="#DC2626" />,
+      title: 'Delete Supplier',
+      msg: `Permanently remove "${s.full_name}" from the supplier directory? This cannot be undone.`,
+      okLabel: 'Delete',
+      okClass: 'psl-confirm-ok-danger',
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await apiClient.delete(`/suppliers/${s.id}`);
+          setSuppliers(prev => prev.filter(x => x.id !== s.id));
+          showToast(`"${s.full_name}" has been deleted.`);
+        } catch (err) {
+          showToast(err.message || 'Delete failed.', 'error');
+        } finally {
+          setActionLoading(false);
+          setConfirmDialog(null);
+        }
+      },
+    });
+  };
+
+  /* ── Ban supplier ── */
+  const handleBanClick = (s) => {
+    const isBanned = s.status === 'Rejected';
+    setConfirmDialog({
+      icon: <Ban size={32} color={isBanned ? '#16A34A' : '#D97706'} />,
+      title: isBanned ? 'Unban Supplier' : 'Ban Supplier',
+      msg: isBanned
+        ? `Re-activate "${s.full_name}"? Their status will change back to Active.`
+        : `Ban "${s.full_name}"? Their status will change to Rejected and they will be hidden from active procurement.`,
+      okLabel: isBanned ? 'Yes, Unban' : 'Yes, Ban',
+      okClass: isBanned ? 'psl-confirm-ok-warning' : 'psl-confirm-ok-warning',
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          const newStatus = isBanned ? 'Active' : 'Rejected';
+          const res = await apiClient.patch(`/suppliers/${s.id}/status`, { status: newStatus });
+          setSuppliers(prev => prev.map(x => x.id === s.id ? { ...x, ...(res.data || {}), status: newStatus } : x));
+          showToast(isBanned ? `"${s.full_name}" has been re-activated.` : `"${s.full_name}" has been banned.`);
+        } catch (err) {
+          showToast(err.message || 'Failed to update status.', 'error');
+        } finally {
+          setActionLoading(false);
+          setConfirmDialog(null);
+        }
+      },
+    });
   };
 
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—';
@@ -450,11 +571,21 @@ const PurchaseSupplierList = () => {
   return (
     <>
       <style>{STYLES}</style>
+      {/* Stage-2 Verification Drawer */}
       {verifyTarget && (
         <VerifyDrawer
           supplier={verifyTarget}
           onClose={() => setVerifyTarget(null)}
           onVerified={handleVerified}
+        />
+      )}
+      {/* View-only Drawer (for Active / Rejected suppliers) */}
+      {viewTarget && (
+        <VerifyDrawer
+          supplier={viewTarget}
+          onClose={() => setViewTarget(null)}
+          onVerified={handleVerified}
+          viewOnly
         />
       )}
 
@@ -583,22 +714,45 @@ const PurchaseSupplierList = () => {
                       <td>{statusBadge(s.status)}</td>
                       <td className="psl-date">{fmtDate(s.created_at)}</td>
                       <td>
-                        <div style={{display:'flex',gap:6}}>
-                          {(s.status === 'Pending') && (
-                            <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
-                              <ShieldCheck size={13}/> Verify
-                            </button>
+                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                          {/* View — always visible */}
+                          <button
+                            className="psl-icon-btn psl-icon-btn-view"
+                            title="View supplier details"
+                            onClick={() => setViewTarget(s)}
+                          ><Eye size={14}/></button>
+
+                          {/* Verify (Pending only) */}
+                          {s.status === 'Pending' && (
+                            <button
+                              className="psl-icon-btn psl-icon-btn-verify"
+                              title="Stage 2 Verification"
+                              onClick={() => setVerifyTarget(s)}
+                            ><ShieldCheck size={14}/></button>
                           )}
+
+                          {/* Activate (Verified only) */}
                           {s.status === 'Verified' && (
-                            <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}>
-                              <CheckCircle2 size={13}/> Activate
-                            </button>
+                            <button
+                              className="psl-icon-btn psl-icon-btn-verify"
+                              title="Activate supplier"
+                              onClick={() => handleActivate(s)}
+                            ><CheckCircle2 size={14}/></button>
                           )}
-                          {(s.status === 'Active' || s.status === 'Rejected') && (
-                            <button className="psl-btn psl-btn-outline psl-btn-sm" onClick={()=>setVerifyTarget(s)}>
-                              <ShieldCheck size={13}/> View
-                            </button>
-                          )}
+
+                          {/* Ban / Unban */}
+                          <button
+                            className="psl-icon-btn psl-icon-btn-ban"
+                            title={s.status === 'Rejected' ? 'Unban supplier' : 'Ban supplier'}
+                            onClick={() => handleBanClick(s)}
+                          ><Ban size={14}/></button>
+
+                          {/* Delete */}
+                          <button
+                            className="psl-icon-btn psl-icon-btn-del"
+                            title="Delete supplier"
+                            onClick={() => handleDeleteClick(s)}
+                          ><Trash2 size={14}/></button>
                         </div>
                       </td>
                     </tr>
@@ -619,8 +773,13 @@ const PurchaseSupplierList = () => {
                     <p><Tag size={12} color="#6B7280" />{s.category}</p>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
                       {statusBadge(s.status)}
-                      {s.status==='Pending' && <button className="psl-btn psl-btn-verify psl-btn-sm" onClick={()=>setVerifyTarget(s)}><ShieldCheck size={12}/> Verify</button>}
-                      {s.status==='Verified' && <button className="psl-btn psl-btn-green psl-btn-sm" onClick={()=>handleActivate(s)}><CheckCircle2 size={12}/> Activate</button>}
+                      <div style={{display:'flex',gap:4}}>
+                        <button className="psl-icon-btn psl-icon-btn-view" title="View" onClick={() => setViewTarget(s)}><Eye size={13}/></button>
+                        {s.status==='Pending' && <button className="psl-icon-btn psl-icon-btn-verify" title="Verify" onClick={() => setVerifyTarget(s)}><ShieldCheck size={13}/></button>}
+                        {s.status==='Verified' && <button className="psl-icon-btn psl-icon-btn-verify" title="Activate" onClick={() => handleActivate(s)}><CheckCircle2 size={13}/></button>}
+                        <button className="psl-icon-btn psl-icon-btn-ban" title={s.status==='Rejected'?'Unban':'Ban'} onClick={() => handleBanClick(s)}><Ban size={13}/></button>
+                        <button className="psl-icon-btn psl-icon-btn-del" title="Delete" onClick={() => handleDeleteClick(s)}><Trash2 size={13}/></button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -675,6 +834,58 @@ const PurchaseSupplierList = () => {
                     </div>
                   </div>
                 </div>
+
+                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1565C0', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShieldCheck size={13}/> Stage 2 — Verification Details (Optional)
+                </p>
+
+                <div className="vd-grid vd-section">
+                  <div className="vd-field">
+                    <label className="vd-label"><Tag size={12} style={{verticalAlign:'middle',marginRight:4}}/>Tax ID</label>
+                    <input className="vd-input" value={internalForm.tax_id} onChange={e=>setInternalForm({...internalForm, tax_id: e.target.value})} placeholder="e.g. ETH-1234567" />
+                  </div>
+                  <div className="vd-field">
+                    <label className="vd-label"><CircleDot size={12} style={{verticalAlign:'middle',marginRight:4}}/>Payment Terms</label>
+                    <select className="vd-select" value={internalForm.payment_terms} onChange={e=>setInternalForm({...internalForm, payment_terms: e.target.value})}>
+                      <option value="">Select...</option>
+                      <option>Net 30</option>
+                      <option>Net 60</option>
+                      <option>COD</option>
+                      <option>Prepaid</option>
+                    </select>
+                  </div>
+                  <div className="vd-field">
+                    <label className="vd-label"><CreditCard size={12} style={{verticalAlign:'middle',marginRight:4}}/>Credit Limit (ETB)</label>
+                    <input className="vd-input" type="number" value={internalForm.credit_limit} onChange={e=>setInternalForm({...internalForm, credit_limit: e.target.value})} placeholder="0.00" />
+                  </div>
+                  <div className="vd-field">
+                    <label className="vd-label"><MapPin size={12} style={{verticalAlign:'middle',marginRight:4}}/>Location Type</label>
+                    <select className="vd-select" value={internalForm.location_type} onChange={e=>setInternalForm({...internalForm, location_type: e.target.value})}>
+                      <option value="">Select...</option>
+                      <option>Local</option>
+                      <option>International</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="vd-grid vd-section" style={{marginBottom: 0}}>
+                  <div className="vd-field">
+                    <label className="vd-label"><Landmark size={12} style={{verticalAlign:'middle',marginRight:4}}/>Bank Name</label>
+                    <input className="vd-input" value={internalForm.bank_name} onChange={e=>setInternalForm({...internalForm, bank_name: e.target.value})} placeholder="e.g. Commercial Bank of Ethiopia" />
+                  </div>
+                  <div className="vd-field">
+                    <label className="vd-label">Account Number</label>
+                    <input className="vd-input" value={internalForm.bank_account} onChange={e=>setInternalForm({...internalForm, bank_account: e.target.value})} placeholder="e.g. 1000123456789" />
+                  </div>
+                  <div className="vd-field full">
+                    <label className="vd-label">Account Holder Name</label>
+                    <input className="vd-input" value={internalForm.bank_holder} onChange={e=>setInternalForm({...internalForm, bank_holder: e.target.value})} placeholder="Legal name on the account" />
+                  </div>
+                  <div className="vd-field full">
+                    <label className="vd-label"><Globe size={12} style={{verticalAlign:'middle',marginRight:4}}/>Website (optional)</label>
+                    <input className="vd-input" value={internalForm.website} onChange={e=>setInternalForm({...internalForm, website: e.target.value})} placeholder="https://..." />
+                  </div>
+                </div>
               </div>
               <div className="vd-footer" style={{borderRadius: '0 0 12px 12px'}}>
                 <button type="button" className="vd-btn-cancel" onClick={() => setShowAddInternal(false)}>Cancel</button>
@@ -688,9 +899,38 @@ const PurchaseSupplierList = () => {
         </div>
       )}
 
+      {/* Toast */}
       {toast && (
         <div className={`psl-toast psl-toast-${toast.type}`}>
           {toast.type==='success'?<CheckCircle2 size={16}/>:<AlertCircle size={16}/>} {toast.msg}
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <div className="psl-confirm-overlay">
+          <div className="psl-confirm-box">
+            <div className="psl-confirm-icon">{confirmDialog.icon}</div>
+            <h3 className="psl-confirm-title">{confirmDialog.title}</h3>
+            <p className="psl-confirm-msg">{confirmDialog.msg}</p>
+            <div className="psl-confirm-actions">
+              <button
+                className="psl-confirm-cancel"
+                onClick={() => setConfirmDialog(null)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className={`psl-confirm-ok ${confirmDialog.okClass}`}
+                onClick={confirmDialog.onConfirm}
+                disabled={actionLoading}
+              >
+                {actionLoading ? <SegmentedSpinner size={14} /> : null}
+                {actionLoading ? 'Processing...' : confirmDialog.okLabel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
@@ -698,3 +938,4 @@ const PurchaseSupplierList = () => {
 };
 
 export default PurchaseSupplierList;
+
