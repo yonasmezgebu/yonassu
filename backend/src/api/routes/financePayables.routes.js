@@ -54,6 +54,20 @@ router.post('/', authenticate, async (req, res) => {
       payee_signature:    payeeSignature,
     });
 
+    // Record the paid expense in the cashbook so System Balance decreases correctly
+    try {
+      await knex('finance_cashbook').insert({
+        date,
+        type: 'EV',
+        reference: evNumber,
+        description: `Payment to ${paidTo}${description ? ': ' + description : ''}`,
+        receipts: 0,
+        payments: amountNum
+      });
+    } catch (e) {
+      console.error('finance_cashbook insert error (payables):', e.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Payment approved and recorded to Payables Book.',
