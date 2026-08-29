@@ -89,9 +89,9 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
   const lockedModule = fixedModule || (isHR ? 'HR' : (isPharmacy ? 'Pharmacy' : (isStore ? 'Store' : '')));
   const isLocked     = !!lockedModule;
 
-  // Finance dashboard mode — renders a clear, human-readable message for every
-  // activity (including transfers/payments) instead of the generic fallback.
-  const financeMode  = mode === 'finance';
+  // Finance / Pharmacy dashboard mode — renders a clear, human-readable message for every
+  // activity instead of the generic fallback.
+  const financeMode  = mode === 'finance' || mode === 'pharmacy';
 
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -271,6 +271,19 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
     ['RECEIVABLE',       'receivable'],
     ['CASH',             'cash'],
     ['BANK',             'bank'],
+    // Pharmacy / Medical
+    ['MEDICINE',         'medicine'],
+    ['PHARMACY_SALE',    'pharmacy sale'],
+    ['SALE',             'sale'],
+    ['STOCK',            'stock'],
+    ['SHIPMENT',         'shipment'],
+    ['PRESCRIPTION',     'prescription'],
+    ['REQUISITION',      'requisition'],
+    ['GRN',              'goods receiving note'],
+    ['DISPENSATION',     'dispensation'],
+    ['BATCH',            'batch'],
+    ['EXPIRY',           'expiry record'],
+    ['DRUG',             'drug'],
   ];
   const VERB_NAMES = {
     CREATED: 'created', ADDED: 'added', REGISTERED: 'registered', RECORDED: 'recorded',
@@ -327,11 +340,13 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
           <div>
             <div className={styles.badge}>
               <span className={styles.badgeDot} />
-              <span className={styles.badgeTxt}>Security &amp; Compliance</span>
+              <span className={styles.badgeTxt}>{fixedModule === 'Pharmacy' ? '💊 Pharmacy Module' : 'Security & Compliance'}</span>
             </div>
-            <h1 className={styles.pageTitle}>Central Audit Log</h1>
+            <h1 className={styles.pageTitle}>{fixedModule === 'Pharmacy' ? 'Pharmacy Audit Log' : 'Central Audit Log'}</h1>
             <p className={styles.pageSubtitle}>
-              {isHR
+              {fixedModule === 'Pharmacy'
+                ? 'Pharmacy activity log — medicines, sales, stock, procurement, expiry, batches, transfers and all staff actions within the pharmacy module.'
+                : isHR
                 ? 'HR department activity log — your department records only.'
                 : isStore
                 ? 'General Store activity log — your module records only.'
@@ -416,15 +431,22 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
           </select>
         )}
 
-        {!isSuperAdmin && !isCEO && !fixedModule && (
+        {(!isSuperAdmin && !isCEO && !fixedModule) || fixedModule === 'Pharmacy' ? (
           <div className={styles.lockedBadge}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            {isHR ? 'HR Module Only' : (isStore ? 'Store Module Only' : (isPharmacy ? 'Pharmacy Module Only' : (isPrinting ? 'Printing Module + Your Activity' : (isSales ? 'Sales Module + Your Activity' : 'Your Module Only'))))}
+            {fixedModule === 'Pharmacy'
+              ? '💊 Pharmacy Module Only (Medicines · Sales · Stock · Procurement · Expiry · Batches)'
+              : isHR ? 'HR Module Only'
+              : isStore ? 'Store Module Only'
+              : isPharmacy ? 'Pharmacy Module Only'
+              : isPrinting ? 'Printing Module + Your Activity'
+              : isSales ? 'Sales Module + Your Activity'
+              : 'Your Module Only'}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className={styles.bodyArea}>
@@ -490,106 +512,120 @@ const CentralAuditLog = ({ fixedModule, mode }) => {
                           };
                           const pObj = getObj(log.previous_value);
                           const nObj = getObj(log.new_value);
-                          
+
+                          // Build the diff rows if objects exist
+                          let diffContent = null;
                           if (pObj || nObj) {
                             const keys = Array.from(new Set([...Object.keys(pObj || {}), ...Object.keys(nObj || {})]))
                               .filter(k => !IGNORE_KEYS.has(k));
                             const changedKeys = pObj && nObj
                               ? keys.filter(k => String(pObj[k] ?? '') !== String(nObj[k] ?? ''))
                               : keys;
-                            return (
-                              <tr className={styles.detailsRow}>
-                                <td colSpan={isLocked ? 4 : 5}>
-                                  {changedKeys.length === 0 ? (
-                                    <div className={styles.diffBox} style={{ textAlign: 'center' }}>
-                                      <div className={styles.diffTitle}>Update Recorded — No Field Changes</div>
-                                      <p className={styles.diffSummary}>
-                                        <strong>{describeAction(log.action, log.record_identifier)}</strong> by {log.user_name} ({log.role})
-                                        {log.module ? ` · Module: ${log.module}` : ''} · {formatDate(log.created_at)}.
-                                      </p>
-                                      <pre className={styles.diffCode}>
-                                        This action was logged with identical before/after values, so no field-level
-                                        differences were captured. The recorded state is shown below so you can review
-                                        exactly what was saved.
-                                      </pre>
-                                      {nObj && (
-                                        <pre className={styles.diffCode} style={{ textAlign: 'left', marginTop: 10, background: '#F8FAFC', border: '1px solid var(--color-border)', borderRadius: 6, padding: 10 }}>
-                                          {safeParse(nObj)}
-                                        </pre>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className={styles.diffTableWrapper}>
-                                    <table className={styles.diffTable}>
-                                      <thead>
-                                        <tr>
-                                          <th>Field</th>
-                                          <th>Previous Value</th>
-                                          <th>New Value</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {changedKeys.map(key => {
-                                          const pv = pObj && pObj[key] !== undefined && pObj[key] !== null ? String(pObj[key]) : '—';
-                                          const nv = nObj && nObj[key] !== undefined && nObj[key] !== null ? String(nObj[key]) : '—';
-                                          const isChanged = pv !== nv && pObj !== null && nObj !== null;
-                                          return (
-                                            <tr key={key} className={isChanged ? styles.diffChangedRow : ''}>
-                                              <td className={styles.diffField}>{key}</td>
-                                              <td className={isChanged ? `${styles.diffValue} ${styles.diffPrev}` : styles.diffValue}>{pv}</td>
-                                              <td className={isChanged ? `${styles.diffValue} ${styles.diffNew}` : styles.diffValue}>{nv}</td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
+
+                            if (changedKeys.length > 0) {
+                              diffContent = (
+                                <div className={styles.diffTableWrapper}>
+                                  <table className={styles.diffTable}>
+                                    <thead>
+                                      <tr>
+                                        <th>Field</th>
+                                        <th>Previous Value</th>
+                                        <th>New Value</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {changedKeys.map(key => {
+                                        const pv = pObj && pObj[key] !== undefined && pObj[key] !== null ? String(pObj[key]) : '—';
+                                        const nv = nObj && nObj[key] !== undefined && nObj[key] !== null ? String(nObj[key]) : '—';
+                                        const isChanged = pv !== nv && pObj !== null && nObj !== null;
+                                        return (
+                                          <tr key={key} className={isChanged ? styles.diffChangedRow : ''}>
+                                            <td className={styles.diffField}>{key}</td>
+                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffPrev}` : styles.diffValue}>{pv}</td>
+                                            <td className={isChanged ? `${styles.diffValue} ${styles.diffNew}` : styles.diffValue}>{nv}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              );
+                            } else {
+                              // Objects exist but nothing changed — show snapshot
+                              diffContent = (
+                                <div className={styles.diffBox} style={{ marginTop: '1rem' }}>
+                                  <div className={styles.diffTitle}>Recorded State — No Field Changes</div>
+                                  <pre className={styles.diffCode} style={{ textAlign: 'left', marginTop: 8 }}>
+                                    {safeParse(nObj || pObj)}
+                                  </pre>
+                                </div>
+                              );
+                            }
+                          } else if (log.previous_value != null || log.new_value != null) {
+                            // Raw string / array payload
+                            diffContent = (
+                              <div className={styles.diffContainer}>
+                                {log.previous_value != null && (
+                                  <div className={styles.diffBox}>
+                                    <div className={styles.diffTitle}>Previous Value</div>
+                                    <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
+                                  </div>
+                                )}
+                                {log.new_value != null && (
+                                  <div className={styles.diffBox}>
+                                    <div className={styles.diffTitle}>{log.previous_value == null ? 'Action Payload (Snapshot)' : 'New Value'}</div>
+                                    <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
+                                  </div>
+                                )}
+                              </div>
                             );
                           }
 
-                          // Fallback for arrays or raw strings
-                          const hasAnyValue = log.previous_value != null || log.new_value != null;
                           return (
                             <tr className={styles.detailsRow}>
                               <td colSpan={isLocked ? 4 : 5}>
-                                {!hasAnyValue ? (
-                                  <div className={styles.diffBox} style={{ textAlign: 'center' }}>
-                                    <div className={styles.diffTitle}>Activity Detail</div>
-                                    {financeMode ? (
-                                      <>
-                                        <p className={styles.diffSummary}>{describeAction(log.action, log.record_identifier)}</p>
-                                        <pre className={styles.diffCode}>
-                                          Performed by {log.user_name} ({log.role}){log.department && log.department !== 'Unknown' ? ` · ${log.department}` : ''} · {formatDate(log.created_at)}
-                                          {log.ip_address ? ` · IP ${log.ip_address}` : ''}
-                                        </pre>
-                                      </>
-                                    ) : (
-                                      <pre className={styles.diffCode}>This is a simple event log. No extended payload or before/after snapshot was recorded for this specific action.</pre>
-                                    )}
+                                {/* ── Summary card: who / what / when ── */}
+                                <div style={{
+                                  display: 'flex', alignItems: 'flex-start', gap: '1rem',
+                                  background: '#F8FAFC', border: '1px solid #E2E8F0',
+                                  borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: diffContent ? '1rem' : 0
+                                }}>
+                                  {/* Tone dot */}
+                                  <div style={{
+                                    width: 10, height: 10, borderRadius: '50%', marginTop: 5, flexShrink: 0,
+                                    background: actionTone(log.action) === 'create' ? '#10B981'
+                                      : actionTone(log.action) === 'delete' ? '#EF4444'
+                                      : actionTone(log.action) === 'status' ? '#8B5CF6'
+                                      : '#3B82F6'
+                                  }} />
+                                  <div style={{ flex: 1 }}>
+                                    {/* What */}
+                                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0F172A', marginBottom: '0.25rem' }}>
+                                      {describeAction(log.action, log.record_identifier)}
+                                    </div>
+                                    {/* Who */}
+                                    <div style={{ fontSize: '0.85rem', color: '#475569', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                      <span>👤 <strong>{log.user_name}</strong></span>
+                                      {log.role && <span style={{ background: '#E0E7FF', color: '#3730A3', padding: '1px 8px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600 }}>{log.role}</span>}
+                                      {log.department && log.department !== 'Unknown' && (
+                                        <span style={{ background: '#E0F2FE', color: '#075985', padding: '1px 8px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600 }}>{log.department}</span>
+                                      )}
+                                    </div>
+                                    {/* When + Where */}
+                                    <div style={{ fontSize: '0.8rem', color: '#64748B', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                      <span>🕐 {formatDate(log.created_at)}</span>
+                                      {log.ip_address && <span>🌐 IP: {log.ip_address}</span>}
+                                      {log.module && <span>📦 Module: {log.module}</span>}
+                                    </div>
                                   </div>
-                                ) : (
-                                  <div className={styles.diffContainer}>
-                                    {log.previous_value != null && (
-                                      <div className={styles.diffBox}>
-                                        <div className={styles.diffTitle}>Previous Value</div>
-                                        <pre className={styles.diffCode}>{safeParse(log.previous_value)}</pre>
-                                      </div>
-                                    )}
-                                    {log.new_value != null && (
-                                      <div className={styles.diffBox}>
-                                        <div className={styles.diffTitle}>{log.previous_value == null ? 'Action Payload (Snapshot)' : 'New Value'}</div>
-                                        <pre className={styles.diffCode}>{safeParse(log.new_value)}</pre>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                </div>
+
+                                {/* ── Diff / payload ── */}
+                                {diffContent}
                               </td>
                             </tr>
                           );
-                         })()}
+                        })()}
                       </React.Fragment>
                       );
                     })
