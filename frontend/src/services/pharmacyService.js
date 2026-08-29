@@ -284,6 +284,11 @@ const pharmacyService = {
   // ── CEO Pharmacy Sales Reporting Pack (5 reports) ──
   getExecutivePack: async (params) =>
     await apiClient.get('/pharmacy-reports/executive', { params }),
+
+  // Complete manager report (all pharmacy sections + worker sales)
+  getCompleteReport: async (params) =>
+    await apiClient.get('/pharmacy-reports/complete', { params }),
+
   getTargets: async () =>
     await apiClient.get('/pharmacy-reports/targets'),
   saveTargets: async (data) =>
