@@ -286,6 +286,20 @@ exports.createPayment = catchAsync(async (req, res) => {
     await db('public_tenders').whereIn('id', tenderIds).update({ payment_status: 'PAID' });
     await db('public_fund_requests').where({ id: fundRequestId }).update({ status: 'PAID' });
 
+    // Record the paid expense in the cashbook so System Balance decreases correctly
+    try {
+      await db('finance_cashbook').insert({
+        date: new Date().toISOString().slice(0, 10),
+        type: 'EV',
+        reference: receiptCode,
+        description: `Drug/Stock procurement payment: ${request.request_code}${request.description ? ' — ' + request.description : ''}`,
+        receipts: 0,
+        payments: request.total_amount
+      });
+    } catch (e) {
+      console.error('finance_cashbook insert error (public procurement):', e.message);
+    }
+
     const paidTitle = '💳 Payment Confirmed – PAID';
     const paidMsg = `Payment for ${request.request_code} has been processed. Receipt: ${receiptCode}`;
 
