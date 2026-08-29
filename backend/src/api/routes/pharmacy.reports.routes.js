@@ -69,6 +69,13 @@ router.get(
   ctrl.getExecutivePack
 );
 
+// Complete manager report (covers all pharmacy sections + worker sales)
+router.get(
+  '/complete',
+  authorizeRoles(['CEO', 'Pharmacy Manager', 'Admin']),
+  ctrl.getCompleteReport
+);
+
 // Report targets
 router.get(
   '/targets',
