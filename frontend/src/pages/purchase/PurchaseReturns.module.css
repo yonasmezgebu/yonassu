@@ -52,6 +52,44 @@
   line-height: 1.625;
 }
 
+/* ── Top Tabs / Sub-nav ── */
+.navTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.navTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.navTabActive {
+  background-color: hsl(var(--orange));
+  color: #fff;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.navTabInactive {
+  background-color: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.navTabInactive:hover {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
 .headerActions {
   display: flex;
   align-items: center;
@@ -397,5 +435,8 @@
   .header {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .navTabs {
+    flex-wrap: wrap;
   }
 }
