@@ -171,7 +171,7 @@ const AppRoutes = () => {
         } />
         {}
         <Route path="/pharmacy/*" element={
-          <RoleBasedRoute role={['Pharmacy Manager', 'Admin', 'CEO']}>
+          <RoleBasedRoute role="Pharmacy Manager">
             <PharmacyDashboard />
           </RoleBasedRoute>
         } />
