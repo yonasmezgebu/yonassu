@@ -72,23 +72,12 @@ exports.createCRV = catchAsync(async (req, res) => {
 
   const [crvId] = await db('finance_crvs').insert(crvData);
 
-  // Record in Cashbook
-  await db('finance_cashbook').insert({
-    date,
-    type: 'CRV',
-    reference: crvNumber,
-    description: `Received from ${receivedFrom}: ${description}`,
-    receipts: amount,
-    payments: 0
-  });
-
-  notify(req, '💰 CRV Created', `New Receipt Voucher ${crvNumber} created`, '/finance/cash-book', 'success');
-  // Persist to the Finance bell (receipt/payment received)
+  notify(req, '💰 CRV Created', `New Receipt Voucher ${crvNumber} created`, '/finance/crv', 'success');
   sendFinanceNotification({
     title: 'Receipt Voucher Created',
     message: `CRV ${crvNumber}: ETB ${Number(amount || 0).toLocaleString()} received from ${receivedFrom}.`,
     type: 'finance',
-    link: '/finance/cash-book',
+    link: '/finance/crv',
     related_entity_id: crvId
   }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
 
