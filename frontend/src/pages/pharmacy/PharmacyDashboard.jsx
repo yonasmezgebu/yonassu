@@ -14,7 +14,6 @@ import ProcurementRequests from '../procurement/ProcurementRequests';
 import PharmacyReceive from '../procurement/PharmacyReceive';
 import PharmacyDirectDeliveries from './PharmacyDirectDeliveries';
 import CashierAuditLog from '../sales/CashierAuditLog';
-import SalesReports from '../sales/SalesReports';
 import ReturnsPage from '../sales/ReturnsPage';
 import PharmacyManagerControls from './PharmacyManagerControls';
 
@@ -168,7 +167,7 @@ const PharmacyDashboard = () => {
             <Route path="ceo-approvals" element={<CEOPendingApprovals />} />
             <Route path="contact"       element={<PharmacyContact />} />
             <Route path="chat"          element={<ManagerChat />} />
-            <Route path="audit-log"     element={<CentralAuditLog />} />
+            <Route path="audit-log"     element={<CentralAuditLog fixedModule="Pharmacy" mode="pharmacy" />} />
             <Route path="manager-sales" element={<PharmacyManagerSales />} />
             <Route path="reports"       element={<PharmacySalesReports />} />
 
