@@ -184,9 +184,23 @@ router.put('/bills/:id/payment', async (req, res) => {
     const status = newPaid >= total ? 'Paid' : (bill.due_date && new Date(bill.due_date) < new Date() ? 'Overdue' : 'Unpaid');
 
     const updates = { amount_paid: newPaid, status };
-    if (paymentMethod) updates.payment_method = paymentMethod;
+    if (paymentMethod) {
+      const hasCol = await knex.schema.hasColumn('finance_supplier_bills', 'payment_method');
+      if (hasCol) updates.payment_method = paymentMethod;
+    }
 
-    await knex('finance_supplier_bills').where({ id }).update(updates);
+    await knex.transaction(async trx => {
+      await trx('finance_supplier_bills').where({ id }).update(updates);
+      // Record the paid expense in the cashbook so System Balance decreases correctly
+      await trx('finance_cashbook').insert({
+        date: new Date().toISOString().slice(0, 10),
+        type: 'EV',
+        reference: bill.bill_number,
+        description: `Supplier bill payment to ${bill.supplier_name}${bill.po_reference ? ' (PO ' + bill.po_reference + ')' : ''}`,
+        receipts: 0,
+        payments: paidNow
+      });
+    });
     const updated = await knex('finance_supplier_bills').where({ id }).first();
 
     try {
