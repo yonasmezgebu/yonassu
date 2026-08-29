@@ -43,7 +43,6 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Expense', icon: 'wallet',
       children: [
-        { label: 'Receipts (CRV)',                path: '/finance/crv',                   icon: 'shopping-cart', color: '#10b981' },
         { label: 'Expense Vouchers (EV)',         path: '/finance/ev',                    icon: 'file-text',     color: '#f59e0b' },
         { label: 'Procurement (Drug/Stock)',       path: '/finance/procurement',           icon: 'package',       color: '#15803d' },
         { label: 'General Procurement',           path: '/finance/general-procurement',   icon: 'truck',         color: '#047857' },
@@ -57,6 +56,7 @@ const FinanceDashboard = () => {
     { type: 'divider' },
     { label: 'Revenue', icon: 'trending-up',
       children: [
+        { label: 'Receipts (CRV)',                path: '/finance/crv',                   icon: 'shopping-cart', color: '#10b981' },
         { label: 'Live Income (All Departments)', path: '/finance/pharmacy-sales', icon: 'trending-up', color: '#ef4444' },
         { label: 'Revenue Book',             path: '/finance/outstanding-ar', icon: 'book-open',   color: '#0284c7' },
         { label: 'Accounts Receivable',      path: '/finance/accounts-receivable', icon: 'users', color: '#3b82f6' },
