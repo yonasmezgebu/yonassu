@@ -323,6 +323,20 @@ exports.payRequest = catchAsync(async (req, res) => {
 
   const updated = await db('general_procurement_requests').where('id', req.params.id).first();
 
+  // Record the paid expense in the cashbook so System Balance decreases correctly
+  try {
+    await db('finance_cashbook').insert({
+      date: new Date().toISOString().slice(0, 10),
+      type: 'EV',
+      reference: updated.request_code,
+      description: `General procurement payment: ${updated.item_name}${updated.department ? ' — ' + updated.department : ''}`,
+      receipts: 0,
+      payments: updated.paid_amount || updated.requested_amount || updated.estimated_cost || 0
+    });
+  } catch (e) {
+    console.error('finance_cashbook insert error (general procurement):', e.message);
+  }
+
   await logAudit({
     userId: req.user ? req.user.id : 1,
     action: 'FINANCE_PAID_GENERAL_PROCUREMENT',
