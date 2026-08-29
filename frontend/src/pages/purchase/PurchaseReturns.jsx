@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Download, Plus, Send, X, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import { RotateCcw, Download, Plus, Send, X, AlertCircle, CheckCircle2, Trash2, FileText, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import styles from './PurchaseReturns.module.css';
 
@@ -21,6 +22,7 @@ const emptyForm = {
 };
 
 const PurchaseReturns = () => {
+  const navigate = useNavigate();
   const [returns, setReturns]           = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -106,6 +108,18 @@ const PurchaseReturns = () => {
             <RotateCcw size={26} /> PURCHASE RETURNS
           </h1>
           <p className={styles.subtitle}>Manage return of goods and trigger inventory/financial adjustments.</p>
+          
+          <div className={styles.navTabs}>
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/requests')}>
+              <FileText size={16} /> Purchase Requests
+            </button>
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/orders')}>
+              <ShoppingCart size={16} /> Purchase Orders
+            </button>
+            <button className={`${styles.navTab} ${styles.navTabActive}`} onClick={() => navigate('/purchase/returns')}>
+              <RotateCcw size={16} /> Purchase Returns
+            </button>
+          </div>
         </div>
         <div className={styles.headerActions}>
           <button className={styles.btnPrimary} onClick={handleOpenModal}>
