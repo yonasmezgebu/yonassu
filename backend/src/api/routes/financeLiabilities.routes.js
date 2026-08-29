@@ -9,24 +9,35 @@ const { authenticate } = require('../middleware/auth.middleware');
 ──────────────────────────────────────────── */
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
-    const rawTotal = await knex('erp_liabilities').sum('balance as total').first();
-    const totalLiabilities = rawTotal?.total || 0;
+    const today = new Date().toISOString().split('T')[0];
 
-    const rawAp = await knex('erp_liabilities').where('status', '!=', 'Paid').sum('balance as total').first();
-    const accountsPayable = rawAp?.total || 0;
+    const totalRow = await knex('erp_liabilities_v4').sum('balance as t').first();
+    const totalLiabilities = parseFloat(totalRow?.t || 0);
 
-    // We can simulate bank loans and taxes due for now, or just return 0 if not tracking those yet
-    const overdueCountRaw = await knex('erp_liabilities').where('status', 'Overdue').count('id as count').first();
-    const overdueCount = overdueCountRaw?.count || 0;
+    const byTypeRows = await knex('erp_liabilities_v4')
+      .select('liability_type')
+      .sum('balance as t')
+      .groupBy('liability_type');
+
+    const byType = {};
+    byTypeRows.forEach(r => { byType[r.liability_type] = parseFloat(r.t || 0); });
+
+    const overdueRow = await knex('erp_liabilities_v4')
+      .whereRaw('DATE(due_date) < ?', [today])
+      .where('balance', '>', 0)
+      .count('id as c')
+      .first();
 
     res.json({
       success: true,
       data: {
         totalLiabilities,
-        accountsPayable,
-        bankLoans: 0,
-        taxesDue: 0,
-        overdueCount
+        totalOwed: totalLiabilities,
+        accountsPayable: byType['ACCOUNTS_PAYABLE'] || 0,
+        bankLoans:       byType['BANK_LOAN']        || 0,
+        taxesDue:        byType['TAX']              || 0,
+        salaryOther:     (byType['SALARY'] || 0) + (byType['OTHER'] || 0),
+        overdueCount:    parseInt(overdueRow?.c || 0)
       }
     });
   } catch (error) {
@@ -142,6 +153,16 @@ router.post('/:id/pay', authenticate, async (req, res) => {
           balance: newBalance,
           status: newStatus
         });
+
+      // 3. Record the paid expense in the cashbook so System Balance decreases correctly
+      await trx('finance_cashbook').insert({
+        date: payment_date,
+        type: 'EV',
+        reference: liability.invoice_number || `LIAB-${liabilityId}`,
+        description: `Liability payment to ${liability.supplier_name}${liability.description ? ': ' + liability.description : ''}`,
+        receipts: 0,
+        payments: payAmt
+      });
     });
 
     res.json({ success: true, message: 'Payment recorded successfully.' });
