@@ -7,13 +7,6 @@ import CEOHome from './CEOHome';
 
 // Old CEO Modules that should be restored
 import ExecutiveReports from './ExecutiveReports';
-import CEOBoard from './CEOBoard';
-import CEORisk from './CEORisk';
-import ReportApprovals from './ReportApprovals';
-import CEOInventoryReport from './CEOInventoryReport';
-import CEOExpenses from './CEOExpenses';
-import SalesReports from '../sales/SalesReports';
-import CEOPurchaseWorkflow from './CEOPurchaseWorkflow';
 
 // 15 New CEO Modules
 import CEOSales from './CEOSales';
@@ -39,11 +32,6 @@ import CEOPayrollApproval from './CEOPayrollApproval';
 import CEOApprovalsHub from './CEOApprovalsHub';
 import CEOApprovedApprovals from './CEOApprovedApprovals';
 import CEORejectedApprovals from './CEORejectedApprovals';
-import CEOExecutiveReport from './CEOExecutiveReport';
-import CEOFinancialReport from './CEOFinancialReport';
-import CEOSalesReport from './CEOSalesReport';
-import CEOInventoryReportFull from './CEOInventoryReportFull';
-import CEOHRReport from './CEOHRReport';
 import CEOStoreApprovals from './CEOStoreApprovals';
 import CEOAuditLog from './CEOAuditLog';
 import CEOVatConfig from './CEOVatConfig';
@@ -107,14 +95,7 @@ const CEODashboard = () => {
       ]
     },
     { type: 'divider' },
-    { label: 'Reports', icon: 'file-text',
-      children: [
-        { label: 'Executive Report',  path: '/ceo/reports/executive',  icon: 'file-text' },
-        { label: 'Financial Report',  path: '/ceo/reports/financial',  icon: 'bar-chart' },
-        { label: 'Sales Report',      path: '/ceo/reports/sales',      icon: 'trending-up' },
-        { label: 'Inventory Report',  path: '/ceo/reports/inventory',  icon: 'package' },
-        { label: 'HR Report',         path: '/ceo/reports/hr',         icon: 'users' },
-      ] },
+    { label: 'Reports', path: '/ceo/reports', icon: 'file-text', color: '#3b82f6' },
     { type: 'divider' },
     { label: 'Setting', icon: 'settings', children: [
         { label: 'Chat', path: '/ceo/chat', icon: 'message-circle', color: '#6B8E23' },
@@ -176,22 +157,8 @@ const CEODashboard = () => {
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
 
             {/* Reports */}
-            <Route path="reports/executive" element={<CEOExecutiveReport />} />
-            <Route path="reports/financial" element={<CEOFinancialReport />} />
-            <Route path="reports/sales" element={<CEOSalesReport />} />
-            <Route path="reports/inventory" element={<CEOInventoryReportFull />} />
-            <Route path="reports/hr" element={<CEOHRReport />} />
-            <Route path="audit-logs" element={<CEOAuditLog />} />
-
-            {/* Legacy compatibility */}
             <Route path="reports"   element={<ExecutiveReports />} />
-            <Route path="inventory-report" element={<CEOInventoryReport />} />
-            <Route path="sales-report" element={<SalesReports />} />
-            <Route path="expenses"  element={<CEOExpenses />} />
-            <Route path="board"     element={<CEOBoard />} />
-            <Route path="report-approvals" element={<ReportApprovals />} />
-            <Route path="risk"      element={<CEORisk />} />
-            <Route path="budget-workflow" element={<CEOPurchaseWorkflow />} />
+            <Route path="audit-logs" element={<CEOAuditLog />} />
 
             <Route path="chat" element={<ManagerChat />} />
             <Route path="vat-config" element={<CEOVatConfig />} />
