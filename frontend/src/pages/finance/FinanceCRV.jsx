@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   CreditCard, CheckCircle, Printer, DollarSign, User, FileText, History,
-  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2
+  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, Eye, X
 } from 'lucide-react';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ─── Native Canvas Signature Pad ────────────────────────────── */
 const SigPad = ({ label, onSave }) => {
   const canvasRef = useRef(null);
   const isDrawing  = useRef(false);
   const lastPos    = useRef(null);
+  const hasInk     = useRef(false);
   const [saved, setSaved] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
 
@@ -33,9 +35,12 @@ const SigPad = ({ label, onSave }) => {
   const startDraw = useCallback((e) => {
     e.preventDefault();
     const canvas = canvasRef.current;
+    if (!canvas) return;
     isDrawing.current = true;
     lastPos.current = getPos(e, canvas);
+    hasInk.current    = true;
     setSaved(false);
+    setIsEmpty(false);
   }, []);
 
   const draw = useCallback((e) => {
@@ -53,13 +58,33 @@ const SigPad = ({ label, onSave }) => {
     ctx.lineJoin = 'round';
     ctx.stroke();
     lastPos.current = pos;
-    setIsEmpty(false);
   }, []);
+
+  const saveNow = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasInk.current) return;
+    const ctx = canvas.getContext('2d');
+    const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let hasPixel = false;
+    for (let i = 3; i < px.length; i += 4) {
+      if (px[i] !== 0) { hasPixel = true; break; }
+    }
+    if (!hasPixel) {
+      hasInk.current = false;
+      setSaved(false);
+      setIsEmpty(true);
+      return;
+    }
+    const dataUrl = canvas.toDataURL('image/png');
+    onSave(dataUrl);
+    setSaved(true);
+  }, [onSave]);
 
   const stopDraw = useCallback(() => {
     isDrawing.current = false;
     lastPos.current = null;
-  }, []);
+    saveNow();
+  }, [saveNow]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -75,18 +100,11 @@ const SigPad = ({ label, onSave }) => {
     };
   }, [startDraw, draw, stopDraw]);
 
-  const handleSave = () => {
-    if (isEmpty) return;
-    const canvas = canvasRef.current;
-    const dataUrl = canvas.toDataURL('image/png');
-    onSave(dataUrl);
-    setSaved(true);
-  };
-
   const handleClear = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasInk.current = false;
     setIsEmpty(true);
     setSaved(false);
     onSave(null);
@@ -118,11 +136,6 @@ const SigPad = ({ label, onSave }) => {
             style={{ fontSize: 11, padding: '3px 9px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', borderRadius: 5, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
             <Trash2 size={11} /> Clear
           </button>
-          <button type="button" onClick={handleSave}
-            disabled={isEmpty}
-            style={{ fontSize: 11, padding: '3px 9px', border: `1px solid ${isEmpty ? '#d1d5db' : '#86efac'}`, background: isEmpty ? '#f3f4f6' : '#dcfce7', color: isEmpty ? '#9ca3af' : '#16a34a', borderRadius: 5, cursor: isEmpty ? 'not-allowed' : 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-            <CheckCircle size={11} /> Save
-          </button>
         </div>
       </div>
 
@@ -139,7 +152,7 @@ const SigPad = ({ label, onSave }) => {
       />
 
       <div style={{ padding: '5px 10px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
-        {isEmpty ? 'Draw your signature, then press Save' : saved ? '✓ Signature captured' : 'Press Save to confirm signature'}
+        {isEmpty ? 'Draw your signature — it auto-saves when you finish' : saved ? '✓ Signature captured & saved' : 'Keep drawing...'}
       </div>
     </div>
   );
@@ -245,7 +258,6 @@ const CRVPrintView = ({ crv }) => (
     {/* Signature row */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 48 }}>
       <PrintSigBlock label="Prepared By"          name={crv.preparedBy}   sigImage={crv.preparedSignature} />
-      <PrintSigBlock label="Checked By"           name={crv.checkedBy}    sigImage={crv.checkedSignature} />
       <PrintSigBlock label="Receiver's Signature" name={crv.receiverName} sigImage={crv.receiverSignature} />
     </div>
   </div>
@@ -269,12 +281,12 @@ const FinanceCRV = () => {
   const [telebirrNumber, setTelebirrNumber] = useState('');
   const [telebirrName, setTelebirrName]     = useState('');
 
-  const [preparedBy, setPreparedBy]         = useState('');
-  const [checkedBy, setCheckedBy]           = useState('');
+  const { user } = useAuth();
+  const profileName = user?.fullName || user?.name || user?.full_name || '';
+  const [preparedBy, setPreparedBy]         = useState(profileName);
   const [receiverName, setReceiverName]     = useState('');
 
   const [preparedSig, setPreparedSig]       = useState(null);
-  const [checkedSig, setCheckedSig]         = useState(null);
   const [receiverSig, setReceiverSig]       = useState(null);
 
   const [submitted, setSubmitted] = useState(null);
@@ -286,6 +298,8 @@ const FinanceCRV = () => {
   const [crvList, setCrvList]       = useState([]);
   const [crvLoading, setCrvLoading] = useState(false);
   const [printTarget, setPrintTarget] = useState(null);
+  const [detailCrv, setDetailCrv]     = useState(null);
+  const [sigKey, setSigKey]           = useState(0);
 
   const loadHistory = useCallback(async () => {
     setCrvLoading(true);
@@ -314,6 +328,14 @@ const FinanceCRV = () => {
     setTimeout(() => window.print(), 150);
   };
 
+  const handleViewReceipt = (crv) => setDetailCrv(toPrintView(crv));
+
+  const printDetail = () => {
+    if (!detailCrv) return;
+    setPrintTarget(detailCrv);
+    setTimeout(() => window.print(), 150);
+  };
+
   const handleAmountChange = (e) => {
     setAmount(e.target.value);
     const v = parseFloat(e.target.value);
@@ -330,9 +352,8 @@ const FinanceCRV = () => {
         paymentMethod, description, referenceNo,
         bankDetails:     paymentMethod === 'Bank'     ? { bankName, accountHolder, accountNumber, chequeNo } : null,
         telebirrDetails: paymentMethod === 'Telebirr' ? { telebirrNumber, fullName: telebirrName }          : null,
-        preparedBy, checkedBy, receiverName,
+        preparedBy, receiverName,
         preparedSignature: preparedSig,
-        checkedSignature:  checkedSig,
         receiverSignature: receiverSig,
       };
       const res = await api.post('/finance-cash/crv', payload);
@@ -351,8 +372,9 @@ const FinanceCRV = () => {
     setReceivedFrom(''); setDescription('');
     setBankName(''); setAccountHolder(''); setAccountNumber(''); setChequeNo('');
     setTelebirrNumber(''); setTelebirrName('');
-    setPreparedBy(''); setCheckedBy(''); setReceiverName('');
-    setPreparedSig(null); setCheckedSig(null); setReceiverSig(null);
+    setReceiverName('');
+    setPreparedSig(null); setReceiverSig(null);
+    setSigKey(k => k + 1);
   };
 
   const input = (value, onChange, placeholder, required = false, type = 'text') => ({
@@ -453,9 +475,14 @@ const FinanceCRV = () => {
                     </td>
                     <td style={{ padding: '13px 16px', fontWeight: 700, color: '#059669', whiteSpace: 'nowrap' }}>ETB {parseFloat(crv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     <td style={{ padding: '13px 16px', textAlign: 'right' }}>
-                      <button type="button" className="no-print" onClick={() => handlePrintReceipt(crv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: '1px solid #86efac', borderRadius: 7, background: '#f0fdf4', color: '#15803d', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                        <Printer size={13} /> Print Receipt
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: 8 }}>
+                        <button type="button" className="no-print" onClick={() => handleViewReceipt(crv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: '1px solid #c7d2fe', borderRadius: 7, background: '#eef2ff', color: '#4338ca', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          <Eye size={13} /> View
+                        </button>
+                        <button type="button" className="no-print" onClick={() => handlePrintReceipt(crv)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: '1px solid #86efac', borderRadius: 7, background: '#f0fdf4', color: '#15803d', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          <Printer size={13} /> Print
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -466,6 +493,102 @@ const FinanceCRV = () => {
       )}
     </div>
   );
+
+  /* ─── Detail view (single receipt) ─────────────────────────────── */
+  const renderDetailModal = () => {
+    if (!detailCrv) return null;
+    const rows = [
+      ['Receipt No', detailCrv.crvNumber],
+      ['Date', new Date(detailCrv.date).toLocaleDateString('en-GB')],
+      ['Received From', detailCrv.receivedFrom],
+      ['Payment Method', detailCrv.paymentMethod],
+      ['Reference', detailCrv.referenceNo || 'N/A'],
+      ['Description', detailCrv.description || 'N/A'],
+    ];
+    return (
+      <div className="no-print" onClick={() => setDetailCrv(null)}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={e => e.stopPropagation()}
+          style={{ background: 'white', borderRadius: 18, maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,.4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Eye size={18} color="#4338ca" /> Receipt Details
+            </h3>
+            <button type="button" onClick={() => setDetailCrv(null)} style={{ border: 'none', background: '#eef2ff', color: '#4338ca', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <div style={{ padding: 24 }}>
+            <div style={{ background: '#f0fdf4', padding: 14, borderRadius: 12, border: '1px dashed #6ee7b7', textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 800, color: '#047857', letterSpacing: 1 }}>{detailCrv.crvNumber}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#059669', marginTop: 4 }}>
+                ETB {parseFloat(detailCrv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>{detailCrv.amountWords}</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px', marginBottom: 18 }}>
+              {rows.map(([k, v]) => (
+                <div key={k} style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.04em' }}>{k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {(detailCrv.paymentMethod === 'Bank' && detailCrv.bankDetails) && (
+              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: 14, marginBottom: 18 }}>
+                <b style={{ fontSize: 12, color: '#0369a1' }}>Bank Details</b>
+                <div style={{ fontSize: 13, color: '#334155', marginTop: 6, lineHeight: 1.6 }}>
+                  Bank: {detailCrv.bankDetails.bankName}<br />
+                  A/C Name: {detailCrv.bankDetails.accountHolder}<br />
+                  A/C No: {detailCrv.bankDetails.accountNumber}
+                  {detailCrv.bankDetails.chequeNo && <><br />Cheque No: {detailCrv.bankDetails.chequeNo}</>}
+                </div>
+              </div>
+            )}
+            {(detailCrv.paymentMethod === 'Telebirr' && detailCrv.telebirrDetails) && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginBottom: 18 }}>
+                <b style={{ fontSize: 12, color: '#b45309' }}>Telebirr Details</b>
+                <div style={{ fontSize: 13, color: '#334155', marginTop: 6, lineHeight: 1.6 }}>
+                  Mobile: {detailCrv.telebirrDetails.telebirrNumber}<br />
+                  Name: {detailCrv.telebirrDetails.fullName}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+              {[
+                { label: 'Prepared By',   name: detailCrv.preparedBy,   sig: detailCrv.preparedSignature },
+                { label: "Receiver's Sig.", name: detailCrv.receiverName, sig: detailCrv.receiverSignature },
+              ].map(({ label, name, sig }) => (
+                <div key={label} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ height: 60, border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                    {sig
+                      ? <img src={sig} alt={label} style={{ maxHeight: 56, maxWidth: '100%', objectFit: 'contain' }} />
+                      : <span style={{ color: '#cbd5e1', fontSize: 10 }}>—</span>
+                    }
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>{name || 'N/A'}</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={printDetail} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, background: '#0f172a', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+                <Printer size={16} /> Print Receipt
+              </button>
+              <button type="button" onClick={() => setDetailCrv(null)} style={{ flex: 1, padding: 12, background: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   /* ─── SUCCESS SCREEN ─── */
   if (submitted) {
@@ -498,7 +621,7 @@ const FinanceCRV = () => {
             <CheckCircle size={48} color="#10b981" />
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: '#064e3b', margin: '0 0 8px' }}>CRV Generated!</h2>
-          <p style={{ color: '#64748b', marginBottom: 24 }}>Recorded in cashbook successfully.</p>
+          <p style={{ color: '#64748b', marginBottom: 24 }}>Recorded in receipt history (revenue — not in the expense book).</p>
 
           <div style={{ background: '#f0fdf4', padding: 20, borderRadius: 12, border: '1px dashed #6ee7b7', textAlign: 'left', marginBottom: 24 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: '#047857', textAlign: 'center', letterSpacing: 2, marginBottom: 14 }}>{submitted.crvNumber}</div>
@@ -517,7 +640,6 @@ const FinanceCRV = () => {
           <div style={{ display: 'flex', justifyContent: 'space-around', gap: 8, marginBottom: 28 }}>
             {[
               { label: 'Prepared By',       name: submitted.preparedBy,   sig: submitted.preparedSignature },
-              { label: 'Checked By',        name: submitted.checkedBy,    sig: submitted.checkedSignature },
               { label: "Receiver's Sig.",   name: submitted.receiverName, sig: submitted.receiverSignature },
             ].map(({ label, name, sig }) => (
               <div key={label} style={{ flex: 1, textAlign: 'center' }}>
@@ -603,7 +725,6 @@ const FinanceCRV = () => {
           {/* Signature row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 48 }}>
             <PrintSigBlock label="Prepared By"          name={submitted.preparedBy}   sigImage={submitted.preparedSignature} />
-            <PrintSigBlock label="Checked By"           name={submitted.checkedBy}    sigImage={submitted.checkedSignature} />
             <PrintSigBlock label="Receiver's Signature" name={submitted.receiverName} sigImage={submitted.receiverSignature} />
           </div>
         </div>
@@ -619,6 +740,7 @@ const FinanceCRV = () => {
           }
         `}</style>
         {printTarget && <CRVPrintView crv={printTarget} />}
+        {detailCrv && renderDetailModal()}
       </div>
     );
   }
@@ -635,7 +757,7 @@ const FinanceCRV = () => {
           </span>
           Cash Receipt Voucher
         </h1>
-        <p style={{ color: '#64748b', margin: '8px 0 0', fontSize: 14 }}>Fill all fields, draw and save each signature, then generate the CRV.</p>
+        <p style={{ color: '#64748b', margin: '8px 0 0', fontSize: 14 }}>Fill all fields, draw the receiver's signature (auto-saved), then generate the CRV.</p>
         {renderTabBar()}
       </div>
 
@@ -747,32 +869,24 @@ const FinanceCRV = () => {
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}><PenTool size={16} color="#64748b" /> Signatures</h3>
           </div>
           <div style={{ padding: 28 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Prepared By (Name) *</label>
-                <input {...input(preparedBy, setPreparedBy, 'Accountant Name', true)} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, boxSizing: 'border-box', outline: 'none', fontSize: 14, marginBottom: 10, display: 'block' }} />
-                <SigPad label="Prepared By" onSave={setPreparedSig} />
-                {preparedSig && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#16a34a', fontWeight: 600 }}>✓ Signature ready</p>}
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Checked By (Name) *</label>
-                <input {...input(checkedBy, setCheckedBy, 'Manager Name', true)} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, boxSizing: 'border-box', outline: 'none', fontSize: 14, marginBottom: 10, display: 'block' }} />
-                <SigPad label="Checked By" onSave={setCheckedSig} />
-                {checkedSig && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#16a34a', fontWeight: 600 }}>✓ Signature ready</p>}
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Prepared By (Finance Person)</label>
+                <input {...input(preparedBy, setPreparedBy, 'Accountant Name')} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, boxSizing: 'border-box', outline: 'none', fontSize: 14, display: 'block' }} />
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#94a3b8' }}>Auto-filled from your profile</p>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 7 }}>Receiver's Name *</label>
                 <input {...input(receiverName, setReceiverName, 'Receiver Name', true)} style={{ width: '100%', padding: '10px 14px', border: '2px solid #e2e8f0', borderRadius: 9, boxSizing: 'border-box', outline: 'none', fontSize: 14, marginBottom: 10, display: 'block' }} />
-                <SigPad label="Receiver" onSave={setReceiverSig} />
-                {receiverSig && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#16a34a', fontWeight: 600 }}>✓ Signature ready</p>}
+                <SigPad key={sigKey} label="Receiver's Signature (auto-saves)" onSave={setReceiverSig} />
+                {receiverSig && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#16a34a', fontWeight: 600 }}>✓ Signature captured</p>}
               </div>
 
             </div>
             <p style={{ margin: '18px 0 0', color: '#94a3b8', fontSize: 11 }}>
-              ⓘ Draw on the white canvas with your mouse or finger, then click <b>Save</b> to confirm each signature before generating.
+              ⓘ Only the receiver's signature is required. Draw on the white canvas — it is saved automatically when you finish, no extra click.
             </p>
           </div>
         </div>
@@ -793,6 +907,7 @@ const FinanceCRV = () => {
       )}
 
       {printTarget && <CRVPrintView crv={printTarget} />}
+      {detailCrv && renderDetailModal()}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <style>{printCss}</style>
     </div>
