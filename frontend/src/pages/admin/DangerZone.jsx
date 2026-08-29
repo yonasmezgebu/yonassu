@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, Eraser } from 'lucide-react';
+import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, Eraser, AlertTriangle, X } from 'lucide-react';
 import adminService from '../../services/adminService';
 import styles from './DangerZone.module.css';
 import { playSound } from '../../services/notificationManager';
@@ -27,6 +27,10 @@ const DangerZone = () => {
   const [toast, setToast] = useState(null);
   const [showWipeable, setShowWipeable] = useState(false);
   const [clearingTable, setClearingTable] = useState(null);
+
+  // In-app confirm modal state
+  const [confirmModal, setConfirmModal] = useState(null);
+  // confirmModal shape: { table: string, resolve: fn }
 
   const load = useCallback(async () => {
     try {
@@ -69,8 +73,14 @@ const DangerZone = () => {
   const requests = overview?.recentRequests || [];
   const pending = overview?.pendingRequest;
 
+  /** Show in-app confirmation modal and return a promise that resolves true/false */
+  const askConfirm = (table) =>
+    new Promise((resolve) => setConfirmModal({ table, resolve }));
+
   const handleClearTable = async (table) => {
-    if (!window.confirm(`Clear ALL data inside table "${table}"?\n\nThe table itself will NOT be dropped — only its rows are deleted.`)) return;
+    const confirmed = await askConfirm(table);
+    setConfirmModal(null);
+    if (!confirmed) return;
     setClearingTable(table);
     try {
       const res = await adminService.clearDangerZoneTable(table);
@@ -85,6 +95,40 @@ const DangerZone = () => {
 
   return (
     <div className={styles.root}>
+
+      {/* ── In-app delete confirmation modal ─────────────── */}
+      {confirmModal && (
+        <div className={styles.confirmOverlay}>
+          <div className={styles.confirmBox}>
+            <div className={styles.confirmIconRow}>
+              <AlertTriangle size={36} className={styles.confirmIcon} />
+            </div>
+            <h3 className={styles.confirmTitle}>Clear Table Data?</h3>
+            <p className={styles.confirmMsg}>
+              You are about to permanently delete <strong>ALL rows</strong> inside&nbsp;
+              <code className={styles.confirmTable}>{confirmModal.table}</code>.
+            </p>
+            <p className={styles.confirmNote}>
+              The table structure is <strong>kept intact</strong> — only the data will be erased. This action cannot be undone.
+            </p>
+            <div className={styles.confirmActions}>
+              <button
+                className={styles.confirmCancel}
+                onClick={() => { confirmModal.resolve(false); setConfirmModal(null); }}
+              >
+                <X size={15} /> Cancel
+              </button>
+              <button
+                className={styles.confirmDelete}
+                onClick={() => { confirmModal.resolve(true); setConfirmModal(null); }}
+              >
+                <Eraser size={15} /> Yes, Clear Table
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
           <span>{toast.msg}</span>
