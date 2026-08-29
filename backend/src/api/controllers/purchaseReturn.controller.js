@@ -12,7 +12,7 @@ exports.getReturns = async (req, res) => {
       .leftJoin('users as creator', 'purchase_returns.created_by', 'creator.id')
       .select(
         'purchase_returns.*',
-        'creator.name as created_by_name'
+        'creator.full_name as created_by_name'
       )
       .orderBy('purchase_returns.created_at', 'desc');
 
@@ -22,6 +22,28 @@ exports.getReturns = async (req, res) => {
     const returns = await query;
     res.json({ status: 'success', data: returns });
   } catch (err) {
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+      try {
+        await db.schema.createTable('purchase_returns', (t) => {
+          t.increments('id').primary();
+          t.string('return_code', 30).notNullable();
+          t.string('po_ref', 100).notNullable();
+          t.string('supplier_name', 200).notNullable();
+          t.string('item', 300).notNullable();
+          t.integer('qty').unsigned().notNullable();
+          t.string('reason', 100).notNullable();
+          t.string('auth_number', 100).nullable();
+          t.string('method', 50).defaultTo('Ship');
+          t.text('notes').nullable();
+          t.string('status', 50).defaultTo('Pending');
+          t.integer('created_by').unsigned().nullable();
+          t.timestamps(true, true);
+        });
+        return res.json({ status: 'success', data: [] });
+      } catch (createErr) {
+        return res.status(500).json({ status: 'error', message: createErr.message });
+      }
+    }
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
