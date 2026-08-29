@@ -259,22 +259,26 @@
 }
 
 .kpiValue {
-  font-size: 1.625rem;        /* 26px */
+  font-size: clamp(1.375rem, 3.5vw, 1.875rem); /* 22–30px */
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: hsl(var(--foreground));
 }
 
 .kpiHeroValue {
-  font-size: 1.75rem;         /* 28px */
+  font-size: clamp(1.5rem, 4vw, 2.125rem); /* 24–34px, auto-fits container */
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: hsl(0 0% 100%);
 }
 
@@ -291,6 +295,35 @@
   font-weight: 500;
   color: hsl(0 0% 100% / 0.85);
   flex-wrap: wrap;
+}
+
+/* System Balance breakdown (hero) */
+.heroBreakdown {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.heroBreakdown span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(0 0% 100% / 0.92);
+  background: hsl(0 0% 100% / 0.12);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-1) var(--sp-2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroBreakdown svg {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .kpiSub {
@@ -317,8 +350,12 @@
 
 .grid3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 2fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.quickCard {
   margin-bottom: var(--sp-4);
 }
 
@@ -784,4 +821,162 @@
     margin-right: auto;
     max-width: 1560px;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   14. ASSETS VALUATION SUMMARY (ROW 4)
+   Uses the same design tokens + card pattern as the rest of the page
+   ═══════════════════════════════════════════════════════════════ */
+.assetCard {
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  margin-bottom: var(--sp-4);
+}
+
+/* Grid of category tiles — auto-fit for responsiveness */
+.assetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+
+.assetTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  min-width: 0;
+  transition: box-shadow var(--transition),
+              transform var(--transition),
+              border-color var(--transition);
+}
+
+.assetTile:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: hsl(var(--primary));
+}
+
+.assetTile:focus-visible {
+  outline: 2px solid hsl(var(--border-focus));
+  outline-offset: 2px;
+}
+
+.assetTile:active { transform: translateY(0); }
+
+.assetTileTop {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.assetIcon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9375rem;
+  flex-shrink: 0;
+}
+
+.assetLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.assetCount {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--foreground-3));
+  white-space: nowrap;
+}
+
+.assetValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-top: var(--sp-1);
+}
+
+/* Proportion bar — share of the grand total */
+.assetBar {
+  background: hsl(var(--border));
+  border-radius: 99px;
+  height: 0.5rem;
+  overflow: hidden;
+  min-width: 0;
+  margin-top: var(--sp-1);
+}
+
+.assetBarFill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.assetPct {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--foreground-3));
+}
+
+/* Footer — grand total row */
+.assetFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid hsl(var(--border));
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground-2));
+}
+
+.assetGrand {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground));
+}
+
+/* Responsive: reduce tile grid gracefully */
+@media (max-width: 1280px) {
+  .assetGrid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+}
+
+@media (max-width: 768px) {
+  .assetGrid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .assetValue { font-size: 1.25rem; }
+  .assetCount { display: none; }
+}
+
+@media (max-width: 480px) {
+  .assetValue { font-size: 1.125rem; }
+  .assetGrand { font-size: 1.125rem; }
 }
