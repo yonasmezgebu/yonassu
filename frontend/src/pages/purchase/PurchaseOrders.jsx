@@ -1,170 +1,311 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Download, Plus, Send, AlertTriangle, FileText, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Download, Plus, Send, AlertCircle, FileText, RotateCcw, X, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { purchaseState, createPurchaseOrder } from '../../utils/purchaseTransactionService';
-import { submitNotification } from '../../utils/pharmacyNotifications';
+import apiClient from '../../services/apiClient';
+import styles from './PurchaseOrders.module.css';
+
+const statusColors = {
+  Draft:     { bg: '#f1f5f9', color: '#475569' },
+  Pending:   { bg: '#fef3c7', color: '#92400e' },
+  Approved:  { bg: '#e0e7ff', color: '#3730a3' },
+  Sent:      { bg: '#eff6ff', color: '#2563eb' },
+  Received:  { bg: '#dcfce7', color: '#16a34a' },
+  Cancelled: { bg: '#fee2e2', color: '#991b1b' },
+};
+
+const emptyForm = {
+  supplierId: 1, // default for now, could be loaded from API
+  expectedDeliveryDate: '',
+  sectorId: 1,
+  notes: '',
+  items: [{ productName: '', quantityOrdered: '', unitPrice: '' }]
+};
 
 const PurchaseOrders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([...purchaseState.purchaseOrders]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterSupplier, setFilterSupplier] = useState('');
+  
   const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Form state
-  const [supplierName, setSupplierName] = useState('');
-  const [item, setItem] = useState('');
-  const [qty, setQty] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState('');
-  const [m9Ref, setM9Ref] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-  const handleCreatePO = (e) => {
-    e.preventDefault();
-    setErrorMsg('');
+  const fetchOrders = async () => {
     try {
-      createPurchaseOrder({
-        supplierName, item, qty: parseInt(qty, 10), unitPrice: parseFloat(unitPrice),
-        tax: 0, paymentTerms: 'Net 30', deliveryAddress: 'Main Store', shipMethod: 'Truck',
-        deliveryDate, m9Ref
-      });
-      setOrders([...purchaseState.purchaseOrders]);
-      setShowModal(false);
-    } catch (e) {
-      setErrorMsg(e.message); // Displays "Server Rejected: M9 Fund Request..."
+      setLoading(true);
+      const res = await apiClient.get('/purchase/orders');
+      const data = res.data;
+      const ordersArray = Array.isArray(data) ? data : (data?.orders || data?.purchaseOrders || []);
+      setOrders(ordersArray);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to load purchase orders');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filtered = orders.filter(o => 
-    (filterStatus === 'All' || o.status === filterStatus) &&
-    (!filterSupplier || o.supplierName.toLowerCase().includes(filterSupplier.toLowerCase()))
-  );
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleOpenModal = () => {
+    setForm(emptyForm);
+    setShowModal(true);
+  };
+
+  const handleCreatePO = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      // Format payload
+      const payload = {
+        ...form,
+        items: form.items.map(item => ({
+          productName: item.productName,
+          quantityOrdered: parseInt(item.quantityOrdered, 10),
+          unitPrice: parseFloat(item.unitPrice)
+        }))
+      };
+      await apiClient.post('/purchase/orders', payload);
+      showToast('Purchase Order created successfully');
+      setShowModal(false);
+      fetchOrders();
+    } catch (err) {
+      showToast(err.message || 'Failed to create PO', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filtered = orders.filter(o => {
+    const sName = o.supplier_name || 'Supplier';
+    return (filterStatus === 'All' || o.status_name === filterStatus) &&
+           (!filterSupplier || sName.toLowerCase().includes(filterSupplier.toLowerCase()));
+  });
+
+  const calcFormTotal = () => {
+    return form.items.reduce((sum, item) => {
+      const q = parseFloat(item.quantityOrdered) || 0;
+      const p = parseFloat(item.unitPrice) || 0;
+      return sum + (q * p);
+    }, 0);
+  };
 
   return (
-    <div style={{ padding: 24, background: '#f8fafc', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: '#8b5cf6' }}>
-            <ShoppingCart color="#8b5cf6" size={28} /> PURCHASE ORDERS
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.titleWrapper}>
+          <h1 className={styles.title}>
+            <ShoppingCart size={26} /> PURCHASE ORDERS
           </h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Create and track POs sent to suppliers.</p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-            <button onClick={() => navigate('/purchase/requests')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <FileText size={16} /> Purchase Request
+          <p className={styles.subtitle}>Create and track POs sent to suppliers.</p>
+          
+          <div className={styles.navTabs}>
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/requests')}>
+              <FileText size={16} /> Purchase Requests
             </button>
-            <button onClick={() => navigate('/purchase/orders')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <ShoppingCart size={16} /> Purchase Order
+            <button className={`${styles.navTab} ${styles.navTabActive}`} onClick={() => navigate('/purchase/orders')}>
+              <ShoppingCart size={16} /> Purchase Orders
             </button>
-            <button onClick={() => navigate('/purchase/returns')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#ea580c', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: '0.2s' }}>
-              <RotateCcw size={16} /> Purchase Return
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/returns')}>
+              <RotateCcw size={16} /> Purchase Returns
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+        <div className={styles.headerActions}>
+          <button className={styles.btnPrimary} onClick={handleOpenModal}>
             <Plus size={16} /> Create PO
           </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
+          <button className={styles.btnSecondary}>
             <Download size={16} /> Export
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', padding: 16, marginBottom: 16, display: 'flex', gap: 16 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Supplier Name</label>
-          <input placeholder="Search Supplier..." value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }} />
+      <div className={styles.card}>
+        <div className={styles.filterBar}>
+          <div className={styles.filterGroup}>
+            <label className={styles.label}>Supplier Name</label>
+            <input 
+              className={styles.inputFilter}
+              placeholder="Search Supplier..." 
+              value={filterSupplier} 
+              onChange={e => setFilterSupplier(e.target.value)} 
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <label className={styles.label}>Status</label>
+            <select className={styles.select} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="All">All</option>
+              <option value="Draft">Draft</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Sent">Sent</option>
+              <option value="Received">Received</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Status</label>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}>
-            <option>All</option><option>Draft</option><option>Sent</option><option>Confirmed</option><option>Received</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div style={{ background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <table className={styles.table}>
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['PO #', 'Date', 'Supplier', 'Item', 'Qty', 'Unit Price', 'Total Amount', 'Status', 'M9 Ref'].map(col => (
-                <th key={col} style={{ padding: '12px 14px', textAlign: col.includes('Price') || col === 'Qty' || col === 'Total Amount' ? 'right' : 'left', color: '#475569', fontWeight: 600, fontSize: 13 }}>{col}</th>
-              ))}
+            <tr>
+              <th>PO #</th>
+              <th>Date</th>
+              <th>Supplier</th>
+              <th className={styles.textRight}>Total Amount</th>
+              <th>Expected By</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(o => (
-              <tr key={o.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a' }}>{o.id}</td>
-                <td style={{ padding: '12px 14px', color: '#64748b' }}>{o.dateCreated}</td>
-                <td style={{ padding: '12px 14px', color: '#0f172a', fontWeight: 500 }}>{o.supplierName}</td>
-                <td style={{ padding: '12px 14px', color: '#475569' }}>{o.item}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold' }}>{o.qty}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', color: '#64748b' }}>ETB {o.unitPrice}</td>
-                <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>ETB {(o.qty * o.unitPrice).toLocaleString()}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: o.status === 'Sent' ? '#eff6ff' : o.status === 'Received' ? '#dcfce7' : '#f1f5f9', color: o.status === 'Sent' ? '#2563eb' : o.status === 'Received' ? '#16a34a' : '#475569' }}>
-                    {o.status}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 14px', color: '#8b5cf6', fontWeight: 600, fontSize: 12 }}>{o.m9Ref || '-'}</td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={9} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No purchase orders found.</td></tr>}
+            {loading ? (
+              <tr><td colSpan={6} className={styles.emptyState}>Loading orders...</td></tr>
+            ) : error ? (
+              <tr><td colSpan={6} className={styles.emptyState} style={{ color: '#ef4444' }}>{error}</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={6} className={styles.emptyState}>No purchase orders found.</td></tr>
+            ) : (
+              filtered.map(o => {
+                const sc = statusColors[o.status_name] || statusColors.Draft;
+                return (
+                  <tr key={o.id}>
+                    <td style={{ fontWeight: 600 }}>{o.po_number}</td>
+                    <td style={{ color: 'hsl(var(--muted-foreground))' }}>{new Date(o.order_date).toLocaleDateString()}</td>
+                    <td style={{ fontWeight: 500 }}>{o.supplier_name || 'Supplier'}</td>
+                    <td className={styles.textRight} style={{ fontWeight: 700 }}>ETB {parseFloat(o.total_amount).toLocaleString()}</td>
+                    <td style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      {o.expected_delivery_date ? new Date(o.expected_delivery_date).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td>
+                      <span className={styles.badge} style={{ background: sc.bg, color: sc.color }}>
+                        {o.status_name}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Add Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, width: '100%', maxWidth: 600 }}>
-            <h2 style={{ margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 8, color: '#8b5cf6' }}><ShoppingCart size={20} /> Create Purchase Order</h2>
-            
-            {errorMsg && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, color: '#991b1b', fontSize: 13 }}>
-                <AlertTriangle size={18} /> {errorMsg}
-              </div>
-            )}
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3><ShoppingCart size={20} /> Create Purchase Order</h3>
+              <button className={styles.closeBtn} onClick={() => setShowModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
 
             <form onSubmit={handleCreatePO}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Supplier Name *</label>
-                <input value={supplierName} onChange={e => setSupplierName(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Item / Purchase Details *</label>
-                <input value={item} onChange={e => setItem(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Quantity *</label>
-                <input type="number" value={qty} onChange={e => setQty(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Unit Price *</label>
-                <input type="number" step="0.01" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Delivery Date *</label>
-                <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} required style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Fund Request # (M9) Reference</label>
-                <input value={m9Ref} onChange={e => setM9Ref(e.target.value)} placeholder="e.g., M9-001" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: 6, boxSizing: 'border-box', background: '#f8fafc' }} /></div>
-              </div>
-              
-              <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, marginBottom: 24, textAlign: 'right', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: 13, color: '#64748b' }}>Total Amount</div>
-                <div style={{ fontSize: 24, fontWeight: 'bold', color: '#0f172a' }}>
-                  ${(parseFloat(qty||0) * parseFloat(unitPrice||0)).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              <div className={styles.modalBody}>
+                <div className={styles.formGrid2}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Expected Delivery Date <span className={styles.required}>*</span></label>
+                    <input 
+                      type="date" 
+                      className={styles.inputField} 
+                      value={form.expectedDeliveryDate} 
+                      onChange={e => setForm({...form, expectedDeliveryDate: e.target.value})}
+                      required 
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Item / Product Name <span className={styles.required}>*</span></label>
+                    <input 
+                      className={styles.inputField} 
+                      value={form.items[0].productName} 
+                      onChange={e => setForm({
+                        ...form, 
+                        items: [{...form.items[0], productName: e.target.value}]
+                      })}
+                      placeholder="Product details..."
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGrid2}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Quantity <span className={styles.required}>*</span></label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className={styles.inputField} 
+                      value={form.items[0].quantityOrdered} 
+                      onChange={e => setForm({
+                        ...form, 
+                        items: [{...form.items[0], quantityOrdered: e.target.value}]
+                      })}
+                      required 
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Unit Price (ETB) <span className={styles.required}>*</span></label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      min="0"
+                      className={styles.inputField} 
+                      value={form.items[0].unitPrice} 
+                      onChange={e => setForm({
+                        ...form, 
+                        items: [{...form.items[0], unitPrice: e.target.value}]
+                      })}
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Notes</label>
+                  <textarea 
+                    className={styles.inputField} 
+                    style={{ minHeight: '60px', resize: 'vertical' }}
+                    value={form.notes} 
+                    onChange={e => setForm({...form, notes: e.target.value})}
+                    placeholder="Additional details..."
+                  />
+                </div>
+                
+                <div className={styles.totalBox}>
+                  <div className={styles.totalBoxLabel}>Total Amount (Excl. Tax)</div>
+                  <div className={styles.totalBoxValue}>
+                    ETB {calcFormTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-                  <Send size={16} /> Send to Supplier
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecondary} onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className={styles.btnPrimary} disabled={submitting}>
+                  <Send size={15} /> {submitting ? 'Creating...' : 'Create PO'}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
+          {toast.type === 'error' ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
+          <span>{toast.msg}</span>
         </div>
       )}
     </div>
