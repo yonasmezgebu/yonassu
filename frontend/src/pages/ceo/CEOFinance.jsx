@@ -4,7 +4,8 @@ import {
   DollarSign, Download, CheckCircle, XCircle, FileText,
   ArrowDownRight, ArrowUpRight, Banknote, Eye, ChevronDown,
   ChevronUp, RefreshCw, Users, Clock, TrendingUp, TrendingDown,
-  AlertTriangle, CreditCard, Landmark, ShieldCheck
+  AlertTriangle, CreditCard, Landmark, ShieldCheck,
+  Truck, Package
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -663,6 +664,10 @@ const CEOFinance = () => {
   const [bankSummary, setBankSummary] = useState(null);
   const [recons,   setRecons]     = useState([]);
   const [receivables, setReceivables] = useState([]);
+  const [assetSummary,  setAssetSummary]  = useState(null);
+  const [equitySummary, setEquitySummary] = useState(null);
+  const [profitSummary, setProfitSummary] = useState(null);
+  const [liabSummary,   setLiabSummary]   = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [timeString, setTimeString] = useState('');
 
@@ -677,7 +682,7 @@ const CEOFinance = () => {
     setRefreshing(true);
     setFinLoading(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes] = await Promise.allSettled([
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] = await Promise.allSettled([
         api.get('/finance-cash/cashbook'),
         api.get('/finance-cash/crv'),
         api.get('/finance-cash/ev'),
@@ -685,6 +690,10 @@ const CEOFinance = () => {
         api.get('/finance-bank/cashbook/summary'),
         api.get('/finance-bank/reconciliations'),
         api.get('/finance-receivables/book'),
+        api.get('/asset-summary'),
+        api.get('/finance-equity/dashboard'),
+        api.get('/finance/vat-profit-report?period=all'),
+        api.get('/liabilities-v2/dashboard'),
       ]);
       if (cbRes.status === 'fulfilled')      setCashbook(cbRes.value?.data || []);
       if (crvRes.status === 'fulfilled')     setCrvs(crvRes.value?.data || []);
@@ -693,6 +702,22 @@ const CEOFinance = () => {
       if (bankSumRes.status === 'fulfilled') setBankSummary(bankSumRes.value?.data || null);
       if (reconRes.status === 'fulfilled')   setRecons(reconRes.value?.data || []);
       if (rcvRes.status === 'fulfilled')     setReceivables(rcvRes.value?.data || []);
+      if (assetRes.status === 'fulfilled') {
+        const ad = assetRes.value?.data || assetRes.value;
+        setAssetSummary(ad?.data || ad || null);
+      }
+      if (equityRes.status === 'fulfilled') {
+        const ed = equityRes.value?.data || equityRes.value;
+        setEquitySummary(ed?.data || ed || null);
+      }
+      if (profitRes.status === 'fulfilled') {
+        const pd = profitRes.value?.data || profitRes.value;
+        setProfitSummary(pd?.data || pd || null);
+      }
+      if (liabRes.status === 'fulfilled') {
+        const ld = liabRes.value?.data || liabRes.value;
+        setLiabSummary(ld?.data || ld || null);
+      }
     } catch (err) { }
     setRefreshing(false);
     setFinLoading(false);
@@ -837,6 +862,49 @@ const CEOFinance = () => {
   ].filter(b => b.count > 0);
   const maxBreakdownAmt = Math.max(...txBreakdown.map(b => b.amount), 1);
 
+  /* ── Mirrored Finance overview derived values (same as Finance Home) ── */
+  const assetCats = assetSummary?.categories || [];
+  const assetGrand = assetSummary?.grandTotal ?? assetCats.reduce((s, c) => s + parseFloat(c.value || 0), 0);
+  const catVal = (key) => { const c = assetCats.find(x => x.key === key); return parseFloat(c?.value || 0); };
+  const catCnt = (key) => { const c = assetCats.find(x => x.key === key); return parseInt(c?.count || 0, 10); };
+  const assetMachinery      = catVal('vehicles') + catVal('tractors') + catVal('printingMachines');
+  const assetMachineryCount = catCnt('vehicles') + catCnt('tractors') + catCnt('printingMachines');
+  const assetProducts       = catVal('generalStore') + catVal('pharmacy');
+  const assetProductsCount  = catCnt('generalStore') + catCnt('pharmacy');
+
+  const equityNetIn = parseFloat(equitySummary?.totalContributions || 0) - parseFloat(equitySummary?.totalWithdrawals || 0);
+  const netProfit = parseFloat(profitSummary?.summary?.netProfit ?? profitSummary?.netProfit ?? 0);
+
+  const liabAP       = parseFloat(liabSummary?.accountsPayable ?? 0);
+  const totalOwed    = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
+  const overdueCount = parseInt(liabSummary?.overdueCount || 0, 10);
+
+  const bankBookedRefs = new Set(evList.filter(e => (e.payment_method || '').toLowerCase().includes('bank')).map(e => e.ev_number));
+  const bankBookedOut = cbEntries
+    .filter(e => e.reference && bankBookedRefs.has(e.reference))
+    .reduce((s, e) => s + parseFloat(e.payments || 0), 0);
+  const expenseOut = Math.max(0, totalPayments - bankBookedOut);
+
+  const crvBankedIn = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
+  const unbankedCRV = Math.max(0, crvTotal - crvBankedIn);
+
+  const systemBalance =
+    parseFloat(bankBalance || 0) +
+    parseFloat(settledReceivable || 0) +
+    parseFloat(equityNetIn || 0) +
+    parseFloat(netProfit || 0) -
+    parseFloat(expenseOut || 0) +
+    parseFloat(unbankedCRV || 0);
+
+  const ceoKpiCards = [
+    { label: 'Balance + Finished Stock', value: fmtShort(systemBalance + assetProducts), meta: `Stock: ${fmtShort(assetProducts)}`, sub: 'System balance + products (stores + pharmacy)', icon: Banknote, color: '#059669', bg: 'var(--color-success-bg)' },
+    { label: 'Balance + Total Assets', value: fmtShort(systemBalance + assetGrand), meta: `Assets: ${fmtShort(assetGrand)}`, sub: 'System balance + all asset categories', icon: CreditCard, color: '#D97706', bg: 'var(--color-warning-bg)' },
+    { label: 'Liabilities & AP', value: fmtShort(totalOwed), meta: `${overdueCount} overdue · ${liabAP > 0 ? fmtShort(liabAP) : '0'} AP`, sub: 'Recorded liabilities (AP · loans · taxes)', icon: AlertTriangle, color: '#DC2626', bg: 'var(--color-danger-bg)' },
+    { label: 'Cars & Machinery', value: fmtShort(assetMachinery), meta: `${assetMachineryCount} assets · 3 types`, sub: 'Vehicles · tractors · printing machines', icon: Truck, color: '#1D4ED8', bg: 'var(--color-info-bg)' },
+    { label: 'Products (Stores + Pharmacy)', value: fmtShort(assetProducts), meta: `${assetProductsCount} items · 2 stores + pharmacy`, sub: 'Finished stock in stores & pharmacy', icon: Package, color: '#B45309', bg: 'rgba(180,83,9,0.12)' },
+    { label: 'Total Assets', value: fmtShort(assetGrand), meta: `${assetCats.reduce((s, c) => s + (parseInt(c.count, 10) || 0), 0)} assets / ${assetCats.length} categories`, sub: 'Cars & machinery + products', icon: Landmark, color: '#0F766E', bg: 'hsl(174 60% 90%)' },
+  ];
+
   return (
     <div className="cfin-page-wrapper">
       <FinanceGlobalStyles />
@@ -896,50 +964,40 @@ const CEOFinance = () => {
           <div style={{ cursor: 'default' }} className="ceo-view-only">
           {/* ROW 1: KPIs */}
           <div className={styles.kpiGrid}>
+
+            {/* System Balance — Hero card */}
             <div className={`${styles.kpiCard} ${styles.kpiCardHero}`}>
               <div className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>Cash Book Balance</span>
-                <span className={styles.kpiIconHero}>📓</span>
+                <span className={styles.kpiLabel}>System Balance</span>
+                <span className={styles.kpiIconHero}><Banknote color="white" size={18} /></span>
               </div>
-              <div className={styles.kpiHeroValue}>{fmtShort(cashBalance)}</div>
-              <div className={styles.kpiHeroMeta}>
-                <span>In: {fmtShort(totalReceipts)}</span>
-                <span>Out: {fmtShort(totalPayments)}</span>
+              <div className={styles.kpiHeroValue}>{fmtShort(systemBalance)}</div>
+              <div className={styles.heroBreakdown}>
+                <span>Accounts: {fmtShort(bankBalance)}</span>
+                <span>Receivable: {fmtShort(settledReceivable)}</span>
+                <span>Equity: {fmtShort(equityNetIn)}</span>
+                <span>Net Profit: {fmtShort(netProfit)}</span>
+                <span>Paid Out: −{fmtShort(expenseOut)}</span>
+                <span>Owed: {fmtShort(totalOwed)}</span>
               </div>
               <div className={styles.kpiHeroFoot}>
-                {cbEntries.length} verified ledger entries
+                {cbEntries.length} ledger entries · CRV revenue included
               </div>
             </div>
 
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>CRV Income</span>
-                <span className={styles.kpiIcon} style={{ background: 'var(--color-success-bg)' }}>📥</span>
+            {ceoKpiCards.map(k => (
+              <div className={styles.kpiCard} key={k.label}>
+                <div className={styles.kpiTop}>
+                  <span className={styles.kpiLabel}>{k.label}</span>
+                  <span className={styles.kpiIcon} style={{ background: k.bg, color: k.color }}>
+                    <k.icon size={16} />
+                  </span>
+                </div>
+                <div className={styles.kpiValue} style={{ color: k.color }}>{k.value}</div>
+                <div className={styles.kpiMeta}>{k.meta}</div>
+                <div className={styles.kpiSub}>{k.sub}</div>
               </div>
-              <div className={styles.kpiValue} style={{ color: G.forest }}>{fmtShort(crvTotal)}</div>
-              <div className={styles.kpiMeta}>{crvList.length} receipts</div>
-              <div className={styles.kpiSub}>Verified cash received</div>
-            </div>
-
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>EV Payments</span>
-                <span className={styles.kpiIcon} style={{ background: 'var(--color-warning-bg)' }}>📤</span>
-              </div>
-              <div className={styles.kpiValue} style={{ color: G.orange }}>{fmtShort(evTotal)}</div>
-              <div className={styles.kpiMeta}>{evList.length} vouchers</div>
-              <div className={styles.kpiSub}>Expense vouchers</div>
-            </div>
-
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiTop}>
-                <span className={styles.kpiLabel}>Bank Balance</span>
-                <span className={styles.kpiIcon} style={{ background: 'var(--color-info-bg)' }}>🏦</span>
-              </div>
-              <div className={styles.kpiValue} style={{ color: G.blue }}>{fmtShort(bankBalance)}</div>
-              <div className={styles.kpiMeta}>{bankList.length} account{bankList.length !== 1 ? 's' : ''}</div>
-              <div className={styles.kpiSub}>Total bank liquidity</div>
-            </div>
+            ))}
           </div>
 
           {/* ROW 2: BREAKDOWN + LEDGER */}
