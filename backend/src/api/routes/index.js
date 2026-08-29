@@ -98,6 +98,7 @@ router.use('/announcements', require('./announcements.routes'));
 router.use('/purchase-flow', require('./purchaseFlow.routes'));
 router.use('/liabilities-v2/legacy', require('./liabilitiesV2.routes'));
 router.use('/printing-assets', require('./printingAssets.routes'));
+router.use('/asset-summary', require('./assetSummary.routes'));
 router.use('/pharmacy-inventory', require('./pharmacyInventory.routes'));
 router.use('/pharmacy-reports', require('./pharmacy.reports.routes'));
 router.use('/store-sales-requests', require('./storeSalesRequest.routes'));
