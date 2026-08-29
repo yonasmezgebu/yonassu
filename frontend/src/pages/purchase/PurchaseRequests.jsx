@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, X, PlusCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { FileText, Download, X, PlusCircle, AlertCircle, CheckCircle2, ShoppingCart, RotateCcw } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../services/apiClient';
 import styles from './PurchaseRequests.module.css';
 
@@ -13,6 +13,7 @@ const statusBadge = {
 
 const PurchaseRequests = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const presetStatus = searchParams.get('status') || 'All';
   
   const [requests, setRequests] = useState([]);
@@ -93,6 +94,18 @@ const PurchaseRequests = () => {
             <FileText color="hsl(var(--primary))" size={28} /> PURCHASE REQUESTS
           </h1>
           <p className={styles.subtitle}>Review approved purchase requests and initiate sourcing.</p>
+          
+          <div className={styles.navTabs}>
+            <button className={`${styles.navTab} ${styles.navTabActive}`} onClick={() => navigate('/purchase/requests')}>
+              <FileText size={16} /> Purchase Requests
+            </button>
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/orders')}>
+              <ShoppingCart size={16} /> Purchase Orders
+            </button>
+            <button className={`${styles.navTab} ${styles.navTabInactive}`} onClick={() => navigate('/purchase/returns')}>
+              <RotateCcw size={16} /> Purchase Returns
+            </button>
+          </div>
         </div>
         <button className={styles.btnSecondary}>
           <Download size={16} /> Export
