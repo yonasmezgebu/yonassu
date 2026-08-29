@@ -42,6 +42,8 @@ const Icon = {
   refresh: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
   cash:    () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   clip:    () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  truck:   () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>,
+  box:     () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -59,6 +61,10 @@ const FinanceHome = () => {
   const [bankSummary,  setBankSummary]  = useState(null);
   const [recons,       setRecons]       = useState([]);
   const [receivables,  setReceivables]  = useState([]);
+  const [assetSummary, setAssetSummary] = useState(null);
+  const [equitySummary, setEquitySummary] = useState(null);
+  const [profitSummary, setProfitSummary] = useState(null);
+  const [liabSummary, setLiabSummary] = useState(null);
   const [refreshing,   setRefreshing]   = useState(false);
   const [timeString,   setTimeString]   = useState('');
 
@@ -75,7 +81,7 @@ const FinanceHome = () => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes] =
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] =
         await Promise.allSettled([
           api.get('/finance-cash/cashbook'),
           api.get('/finance-cash/crv'),
@@ -84,6 +90,10 @@ const FinanceHome = () => {
           api.get('/finance-bank/cashbook/summary'),
           api.get('/finance-bank/reconciliations'),
           api.get('/finance-receivables/book'),
+          api.get('/asset-summary'),
+          api.get('/finance-equity/dashboard'),
+          api.get('/finance/vat-profit-report?period=all'),
+          api.get('/finance-liabilities/dashboard'),
         ]);
       if (cbRes.status      === 'fulfilled') setCashbook(cbRes.value?.data || []);
       if (crvRes.status     === 'fulfilled') setCrvs(crvRes.value?.data || []);
@@ -93,6 +103,22 @@ const FinanceHome = () => {
         setBankSummary(bankSumRes.value?.data?.summary || bankSumRes.value?.data || null);
       if (reconRes.status   === 'fulfilled') setRecons(reconRes.value?.data || []);
       if (rcvRes.status     === 'fulfilled') setReceivables(rcvRes.value?.data || []);
+      if (assetRes.status   === 'fulfilled') {
+        const ad = assetRes.value?.data || assetRes.value;
+        setAssetSummary(ad?.data || ad || null);
+      }
+      if (equityRes.status   === 'fulfilled') {
+        const ed = equityRes.value?.data || equityRes.value;
+        setEquitySummary(ed?.data || ed || null);
+      }
+      if (profitRes.status   === 'fulfilled') {
+        const pd = profitRes.value?.data || profitRes.value;
+        setProfitSummary(pd?.data || pd || null);
+      }
+      if (liabRes.status    === 'fulfilled') {
+        const ld = liabRes.value?.data || liabRes.value;
+        setLiabSummary(ld?.data || ld || null);
+      }
     } catch (err) {
       console.error('Finance dashboard load error:', err);
     }
@@ -140,11 +166,95 @@ const FinanceHome = () => {
   ].filter(b => b.count > 0);
   const maxBreakdownAmt = Math.max(...txBreakdown.map(b => b.amount), 1);
 
+  /* ── Assets summary ─────────────────────────────────────────── */
+  const assetCats     = assetSummary?.categories || [];
+  const assetGrand    = assetSummary?.grandTotal
+    ?? assetCats.reduce((s, c) => s + parseFloat(c.value || 0), 0);
+  const assetCatCount = assetCats.length;
+  const assetItemCount = assetCats.reduce((s, c) => s + (parseInt(c.count, 10) || 0), 0);
+  const assetMeta = {
+    generalStore:     { label: 'General Store',   icon: <Icon.bank  />, color: '#228B22', path: '/finance/general-store-assets' },
+    printingMachines: { label: 'Printing Machines', icon: <Icon.clip  />, color: '#2E8B57', path: '/finance/printing-machines-assets' },
+    pharmacy:         { label: 'Pharmacy Stock',  icon: <Icon.inbox />, color: '#6B8E23', path: '/finance/pharmacy-assets' },
+    vehicles:         { label: 'Vehicles',        icon: <Icon.outbox/>, color: '#1B5E20', path: '/finance/vehicle-assets' },
+    tractors:         { label: 'Tractors',        icon: <Icon.trend />, color: '#8BC34A', path: '/finance/tractor-assets' },
+  };
+
+  /* Asset groups: Cars & Machinery vs Products (finished stock in stores & pharmacy) */
+  const catVal = (key) => {
+    const c = assetCats.find(x => x.key === key);
+    return parseFloat(c?.value || 0);
+  };
+  const catCnt = (key) => {
+    const c = assetCats.find(x => x.key === key);
+    return parseInt(c?.count || 0, 10);
+  };
+  const assetMachinery       = catVal('vehicles') + catVal('tractors') + catVal('printingMachines');
+  const assetMachineryCount  = catCnt('vehicles') + catCnt('tractors') + catCnt('printingMachines');
+  const assetProducts        = catVal('generalStore') + catVal('pharmacy');
+  const assetProductsCount   = catCnt('generalStore') + catCnt('pharmacy');
+
+  /* ── Equity & Capital (charts the money-flow: deposits ↑ / withdrawals ↓) ── */
+  const equityTotal = parseFloat(equitySummary?.totalEquity || 0);
+  const equityContrib  = parseFloat(equitySummary?.totalContributions || 0);
+  const equityWithdraw = parseFloat(equitySummary?.totalWithdrawals || 0);
+  const equityRetained = parseFloat(equitySummary?.retainedEarnings || 0);
+  const equityNetIn = equityContrib - equityWithdraw;
+
+  /* ── Receivables money-flow (settled payments add to money received) ── */
+  const moneyReceived = settledReceivable;   // every paid amount counts into money on hand
+  const moneyOwed     = outstandingBalance;  // what customers still owe (payable)
+  const moneyTotal    = totalReceivable;     // total invoiced across all accounts
+
+  /* ── Net profit (from invoices & receipts / P&L side) ───────── */
+  const netProfit = parseFloat(profitSummary?.summary?.netProfit ?? profitSummary?.netProfit ?? 0);
+
+  /* ── Liabilities & Accounts Payable (all money owed) ────────── */
+  const liabAP          = parseFloat(liabSummary?.accountsPayable ?? 0);
+  const totalOwed       = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
+  const overdueCount    = parseInt(liabSummary?.overdueCount || 0, 10);
+
+  /* ── Expense outflow ───────────────────────────────────────────
+     Every paid amount lands in the cashbook as a payment row.
+     Bank-paid EV expenses already reduce bankBalance (via finance_evs),
+     so subtract only the outlay NOT already booked to a bank account —
+     this makes EVERY paid expense decrease the System Balance exactly once. */
+  const bankBookedRefs = new Set(
+    evList
+      .filter(e => (e.payment_method || '').toLowerCase().includes('bank'))
+      .map(e => e.ev_number)
+  );
+  const bankBookedOut = cbEntries
+    .filter(e => e.reference && bankBookedRefs.has(e.reference))
+    .reduce((s, e) => s + parseFloat(e.payments || 0), 0);
+  const expenseOut = Math.max(0, totalPayments - bankBookedOut);
+
+  /* ── CRV / revenue inflow ───────────────────────────────────────
+     Every cash receipt (CRV) lives in the CRV history (finance_crvs),
+     not in the cashbook/expense book. Receipts already booked to a
+     bank/mobile account are inside bankBalance, so add only the CRV
+     money NOT matched to an account — every revenue entry increases
+     the System Balance exactly once. */
+  const crvBankedIn = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
+  const unbankedCRV = Math.max(0, crvTotal - crvBankedIn);
+
+  /* ── SYSTEM BALANCE: accounts + receivable money + owner flow + net profit − expenses paid + CRV cash ── */
+  const systemBalance =
+    parseFloat(bankBalance || 0) +
+    parseFloat(moneyReceived || 0) +
+    parseFloat(equityNetIn || 0) +
+    parseFloat(netProfit || 0) -
+    parseFloat(expenseOut || 0) +
+    parseFloat(unbankedCRV || 0);
+
   /* ── KPI data ────────────────────────────────────────────────── */
   const kpiCards = [
-    { label: 'CRV Income',    value: fmtShort(crvTotal),    meta: `${crvList.length} receipts`,    sub: 'Cash received',      icon: Icon.inbox,   color: '#059669', iconBg: 'hsl(142 76% 92%)', path: '/finance/crv' },
-    { label: 'EV Payments',   value: fmtShort(evTotal),     meta: `${evList.length} vouchers`,     sub: 'Expense vouchers',   icon: Icon.outbox,  color: '#D97706', iconBg: 'hsl(48 96% 89%)',  path: '/finance/ev' },
-    { label: 'Bank Balance',  value: fmtShort(bankBalance), meta: `${bankList.length} account${bankList.length !== 1 ? 's' : ''}`, sub: 'All bank accounts', icon: Icon.bank, color: '#2563EB', iconBg: 'hsl(199 89% 93%)', path: '/finance/bank-accounts' },
+    { label: 'Balance + Finished Stock', value: fmtShort(systemBalance + assetProducts), meta: `Stock: ${fmtShort(assetProducts)}`, sub: 'System balance + products (stores + pharmacy)', icon: Icon.cash, color: '#059669', iconBg: 'hsl(142 76% 92%)', path: '/finance/cash-book' },
+    { label: 'Balance + Total Assets', value: fmtShort(systemBalance + assetGrand), meta: `Assets: ${fmtShort(assetGrand)}`, sub: 'System balance + all asset categories', icon: Icon.bank, color: '#D97706', iconBg: 'hsl(48 96% 89%)', path: '/finance/tractor-assets' },
+    { label: 'Liabilities & AP', value: fmtShort(totalOwed), meta: `${overdueCount} overdue · ${liabAP > 0 ? fmtShort(liabAP) : '0'} AP`, sub: 'Recorded liabilities (AP · loans · taxes)', icon: Icon.scale, color: '#DC2626', iconBg: 'hsl(0 93% 94%)', path: '/finance/liabilities' },
+    { label: 'Cars & Machinery', value: fmtShort(assetMachinery), meta: `${assetMachineryCount} assets · 3 types`, sub: 'Vehicles · tractors · printing machines', icon: Icon.truck, color: '#1D4ED8', iconBg: 'hsl(222 85% 92%)', path: '/finance/vehicle-assets' },
+    { label: 'Products (Stores + Pharmacy)', value: fmtShort(assetProducts), meta: `${assetProductsCount} items · 2 stores + pharmacy`, sub: 'Finished stock in stores & pharmacy', icon: Icon.box, color: '#B45309', iconBg: 'hsl(32 92% 92%)', path: '/finance/general-store-assets' },
+    { label: 'Total Assets',  value: fmtShort(assetGrand),  meta: `${assetItemCount} assets / ${assetCatCount} categories`, sub: 'Cars & machinery + products',   icon: Icon.cash, color: '#0F766E', iconBg: 'hsl(174 60% 90%)', path: '/finance/tractor-assets' },
   ];
 
   const miniTiles = [
@@ -195,16 +305,20 @@ const FinanceHome = () => {
           onKeyDown={e => e.key === 'Enter' && nav('/finance/cash-book')}
         >
           <div className={styles.kpiTop}>
-            <span className={styles.kpiLabel}>Cash Book Balance</span>
-            <span className={styles.kpiIconHero}><Icon.book /></span>
+            <span className={styles.kpiLabel}>System Balance</span>
+            <span className={styles.kpiIconHero}><Icon.cash /></span>
           </div>
-          <div className={styles.kpiHeroValue}>{fmtShort(cashBalance)}</div>
-          <div className={styles.kpiHeroMeta}>
-            <span>In: {fmtShort(totalReceipts)}</span>
-            <span>Out: {fmtShort(totalPayments)}</span>
+          <div className={styles.kpiHeroValue}>{fmtShort(systemBalance)}</div>
+          <div className={styles.heroBreakdown}>
+            <span><Icon.bank /> Accounts: {fmtShort(bankBalance)}</span>
+            <span><Icon.inbox /> Receivable: {fmtShort(moneyReceived)}</span>
+            <span><Icon.trend /> Equity: {fmtShort(equityNetIn)}</span>
+            <span><Icon.chart /> Net Profit: {fmtShort(netProfit)}</span>
+            <span><Icon.outbox /> Paid Out: −{fmtShort(expenseOut)}</span>
+            <span><Icon.scale /> Owed: {fmtShort(totalOwed)}</span>
           </div>
           <div className={styles.kpiHeroFoot}>
-            {cbEntries.length} ledger entries total
+            {cbEntries.length} ledger entries · all balances summed
           </div>
         </div>
 
@@ -345,18 +459,18 @@ const FinanceHome = () => {
         </div>
       </div>
 
-      {/* ── ROW 3: RECEIVABLES + RECON + QUICK ACTIONS ─────────── */}
+      {/* ── ROW 3: RECEIVABLES + EQUITY + BANK RECON ───────────── */}
       <div className={styles.grid3}>
 
-        {/* Receivables Summary */}
+        {/* Accounts Receivable — money received vs still owed */}
         <div className={styles.card}>
-          <h3 className={styles.cardTitleNoIcon}>Receivable Book</h3>
-          <div className={styles.cardLabel}>Outstanding Balances</div>
+          <h3 className={styles.cardTitleNoIcon}>Accounts Receivable</h3>
+          <div className={styles.cardLabel}>Money received vs owed (payable)</div>
           <div className={styles.summaryList}>
             {[
-              { label: 'Total Invoiced', val: fmt(totalReceivable),   icon: <Icon.clip />,    iconBg: 'hsl(199 89% 93%)', color: '#2563EB', path: '/finance/outstanding-ar' },
-              { label: 'Settled',        val: fmt(settledReceivable), icon: '✅',              iconBg: 'hsl(142 76% 92%)', color: '#059669', path: '/finance/outstanding-ar' },
-              { label: 'Outstanding',    val: fmt(outstandingBalance), icon: <Icon.scale />,  iconBg: outstandingBalance > 0 ? 'hsl(0 93% 94%)' : 'hsl(142 76% 92%)', color: outstandingBalance > 0 ? '#DC2626' : '#059669', path: '/finance/outstanding-ar' },
+              { label: 'Total Invoiced',       val: fmt(moneyTotal),    icon: <Icon.clip />,  iconBg: 'hsl(199 89% 93%)', color: '#2563EB', path: '/finance/outstanding-ar' },
+              { label: 'Money Received',       val: fmt(moneyReceived), icon: <Icon.inbox/>,  iconBg: 'hsl(142 76% 92%)', color: '#059669', path: '/finance/outstanding-ar' },
+              { label: 'Outstanding (Owed)',   val: fmt(moneyOwed),     icon: <Icon.scale />,  iconBg: moneyOwed > 0 ? 'hsl(0 93% 94%)' : 'hsl(142 76% 92%)', color: moneyOwed > 0 ? '#DC2626' : '#059669', path: '/finance/outstanding-ar' },
             ].map(row => (
               <div
                 key={row.label}
@@ -381,7 +495,48 @@ const FinanceHome = () => {
               </div>
             ))}
           </div>
-          <div className={styles.summaryCount}>{rcvList.length} receivable books</div>
+          <div className={styles.summaryCount}>
+            {rcvList.length} receivable books · payments auto-add to Money Received
+          </div>
+        </div>
+
+        {/* Equity & Capital — deposits increase, withdrawals decrease */}
+        <div className={styles.card}>
+          <h3 className={styles.cardTitleNoIcon}>Equity & Capital</h3>
+          <div className={styles.cardLabel}>Deposits (↑) vs withdrawals (↓)</div>
+          <div className={styles.summaryList}>
+            {[
+              { label: 'Total Equity',      val: fmt(equityTotal),    icon: <Icon.scale />,  iconBg: 'hsl(221 83% 93%)',  color: '#2563EB', path: '/finance/equity' },
+              { label: 'Deposits In',       val: fmt(equityContrib),  icon: <Icon.inbox />,  iconBg: 'hsl(142 76% 92%)', color: '#059669', path: '/finance/equity' },
+              { label: 'Withdrawals Out',   val: fmt(equityWithdraw), icon: <Icon.outbox/>,  iconBg: 'hsl(0 93% 94%)',    color: '#DC2626', path: '/finance/equity' },
+              { label: 'Net Owner Flow',    val: fmt(equityNetIn),    icon: <Icon.trend />,  iconBg: equityNetIn >= 0 ? 'hsl(142 76% 92%)' : 'hsl(0 93% 94%)', color: equityNetIn >= 0 ? '#059669' : '#DC2626', path: '/finance/equity' },
+            ].map(row => (
+              <div
+                key={row.label}
+                className={styles.summaryRow}
+                onClick={() => nav(row.path)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && nav(row.path)}
+              >
+                <span
+                  className={styles.summaryIcon}
+                  style={{ background: row.iconBg, color: row.color }}
+                >
+                  {row.icon}
+                </span>
+                <div className={styles.summaryMain}>
+                  <div className={styles.summaryLabel}>{row.label}</div>
+                  <div className={styles.summaryValue} style={{ color: row.color }}>
+                    {row.val}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.summaryCount}>
+            Retained earnings {fmt(equityRetained)} · Owner equity = deposits + retained − withdrawals
+          </div>
         </div>
 
         {/* Bank Reconciliation */}
@@ -419,31 +574,83 @@ const FinanceHome = () => {
           </div>
           <div className={styles.summaryCount}>{reconList.length} reconciliation records</div>
         </div>
+      </div>
 
-        {/* Quick Operations */}
-        <div className={styles.card}>
-          <h3 className={styles.cardTitleNoIcon}>Quick Operations</h3>
-          <div className={styles.qaGrid}>
-            {quickOps.map(a => (
-              <div
-                key={a.label}
-                className={styles.qaTile}
-                onClick={() => nav(a.href)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && nav(a.href)}
+      {/* ── ROW 4: QUICK OPERATIONS ───────────────────────────── */}
+      <div className={`${styles.card} ${styles.quickCard}`}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardTitleIcon}><Icon.chart /></span>
+          <h3 className={styles.cardTitle}>Quick Operations</h3>
+        </div>
+        <div className={styles.qaGrid}>
+          {quickOps.map(a => (
+            <div
+              key={a.label}
+              className={styles.qaTile}
+              onClick={() => nav(a.href)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && nav(a.href)}
+            >
+              <span
+                className={styles.qaIcon}
+                style={{ background: a.iconBg, color: a.color }}
               >
-                <span
-                  className={styles.qaIcon}
-                  style={{ background: a.iconBg, color: a.color }}
+                <a.Icon />
+              </span>
+              <span className={styles.qaLabel}>{a.label}</span>
+              <span className={styles.qaSub}>{a.sub}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── ROW 5: ASSETS VALUATION SUMMARY ────────────────────── */}
+      <div className={styles.assetCard}>
+        <div className={styles.cardHeader}>
+          <span className={styles.cardTitleIcon}><Icon.bank /></span>
+          <h3 className={styles.cardTitle}>Assets Valuation</h3>
+          <span className={styles.cardSub}>All 5 categories · {fmtShort(assetGrand)}</span>
+        </div>
+
+        <div className={styles.assetGrid}>
+          {assetCats.map((a) => {
+            const meta = assetMeta[a.key] || { label: a.label, icon: <Icon.chart />, color: '#6B7280', path: null };
+            const pct = assetGrand > 0 ? (parseFloat(a.value || 0) / assetGrand) * 100 : 0;
+            return (
+              <div
+                key={a.key}
+                className={styles.assetTile}
+                onClick={meta.path ? () => nav(meta.path) : undefined}
+                role={meta.path ? 'button' : undefined}
+                tabIndex={meta.path ? 0 : undefined}
+                onKeyDown={meta.path ? e => e.key === 'Enter' && nav(meta.path) : undefined}
+              >
+                <div className={styles.assetTileTop}>
+                  <span className={styles.assetIcon} style={{ background: `hsl(0 0% 0% / 0.06)`, color: meta.color }}>
+                    {meta.icon}
+                  </span>
+                  <span className={styles.assetLabel}>{meta.label}</span>
+                  <span className={styles.assetCount}>{a.count} items</span>
+                </div>
+                <div
+                  className={styles.assetValue}
+                  style={{ color: meta.color }}
                 >
-                  <a.Icon />
-                </span>
-                <span className={styles.qaLabel}>{a.label}</span>
-                <span className={styles.qaSub}>{a.sub}</span>
+                  {fmtShort(a.value)}
+                </div>
+                <div className={styles.assetBar}>
+                  <div className={styles.assetBarFill} style={{ width: `${pct}%`, background: meta.color }} />
+                </div>
+                <div className={styles.assetPct}>{pct.toFixed(1)}% of total</div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+
+        <div className={styles.assetFooter}>
+          <span>Consolidated total asset valuation</span>
+          <span className={styles.assetGrand}>{fmt(assetGrand)}</span>
         </div>
       </div>
 
