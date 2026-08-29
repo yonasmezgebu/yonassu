@@ -592,6 +592,15 @@ exports.processPOMobilePayments = catchAsync(async (req, res) => {
         paid_amount: newPaidAmount,
         updated_at: db.fn.now()
       });
+    // Record the paid expense in the cashbook so System Balance decreases correctly
+    await trx('finance_cashbook').insert({
+      date: new Date().toISOString().slice(0, 10),
+      type: 'EV',
+      reference: referenceNumber || `PO-${purchaseOrder.po_number}`,
+      description: `Purchase order payment: ${purchaseOrder.po_number}${notes ? ' — ' + notes : ''}`,
+      receipts: 0,
+      payments: Number(amount)
+    });
   });
   await audit('PO_PAYMENT_PROCESSED', userId, {
     ip,
