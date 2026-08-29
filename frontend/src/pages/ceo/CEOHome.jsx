@@ -220,7 +220,7 @@ const CEOHome = () => {
 
         {/* 1. NUMBER REPRESENTATION (KPI HERO CARDS) */}
         <div className="ceo-grid-kpi">
-          <div className="ceo-card clickable" onClick={() => nav('/ceo/reports/executive')}>
+          <div className="ceo-card clickable" onClick={() => nav('/ceo/reports')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <span className="ceo-label-header">System Access</span>
               <div style={{ background: 'var(--color-success-bg)', borderRadius: 8, padding: 6, color: 'var(--color-success)' }}>
