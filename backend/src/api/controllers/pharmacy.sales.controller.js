@@ -120,6 +120,45 @@ const salesController = {
         status: payment.status || 'PAID', receipt_no: receiptNo
       });
 
+      // ── Auto-post to Finance CRV (Cash Receipt Voucher) ──────────────────
+      // Map pharmacy payment method → finance payment method label
+      const methodMap = {
+        CASH: 'Cash',
+        BANK_TRANSFER: 'Bank',
+        TELBIR: 'Telebirr',
+        TELEBIRR: 'Telebirr',
+      };
+      const financePayMethod = methodMap[(payment.method || 'CASH').toUpperCase()] || 'Cash';
+
+      const lastCrv = await trx('finance_crvs').orderBy('id', 'desc').first();
+      const nextSeq = (lastCrv?.id || 0) + 1;
+      const crvNumber = `CRV-${new Date().getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
+
+      const crvData = {
+        crv_number: crvNumber,
+        date: new Date(),
+        received_from: payment.recipient_name || 'Walk-in Customer',
+        amount: payment.amount || totalAmount,
+        payment_method: financePayMethod,
+        description: `Pharmacy Sale — Receipt ${receiptNo} (${branch.name || 'Pharmacy'})`,
+        reference_no: receiptNo,
+        prepared_by: payment.worker_name || (worker ? worker.name : 'Pharmacy Staff'),
+        receiver_name: payment.worker_name || (worker ? worker.name : 'Pharmacy Staff'),
+      };
+
+      // Attach bank or telebirr details so finance reconciles correctly
+      if (financePayMethod === 'Bank') {
+        crvData.bank_name = payment.bank_name || null;
+        crvData.account_holder = payment.account_holder || null;
+        crvData.account_number = payment.account_number || null;
+      }
+      if (financePayMethod === 'Telebirr') {
+        crvData.telebirr_number = payment.telbir_number || null;
+      }
+
+      await trx('finance_crvs').insert(crvData);
+      // ─────────────────────────────────────────────────────────────────────
+
       // Invoice + receipt are recorded at sale time — payment is collected here.
       const invoiceLines = items.map((it, idx) => ({
         itemId: it.drug_id || 0,
