@@ -85,7 +85,7 @@ router.get(
 
 router.put(
   '/targets',
-  authorizeRoles(['CEO', 'Admin']),
+  authorizeRoles(['CEO', 'Pharmacy Manager', 'Admin']),
   ctrl.saveTargets
 );
 
