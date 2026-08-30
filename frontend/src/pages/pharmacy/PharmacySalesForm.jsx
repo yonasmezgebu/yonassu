@@ -396,7 +396,7 @@ export default function PharmacySalesForm() {
         id: p.id,
         name: p.name,
         category: p.category_name || p.category || 'Uncategorized',
-        price: parseFloat(p.price || p.selling_price || p.unit_price || 0),
+        price: parseFloat(p.selling_price || p.price || p.unit_price || 0),
         stock: parseInt(p.stock_quantity ?? 0),          // ← from pharmacy_medications.stock_quantity
         reorder: parseInt(p.reorder_level || 10),
         image: p.drug_image || p.cover_image || null,
@@ -723,7 +723,7 @@ export default function PharmacySalesForm() {
                         const stockVal = item.stock !== undefined ? item.stock : (item.quantity || 0);
                         const stockLabel = stockVal <= 0 ? 'Oos' : stockVal <= (item.reorder_level || 10) ? 'Low' : 'Normal';
                         const stockText = stockVal <= 0 ? '0 Out of Stock' : stockVal <= (item.reorder_level || 10) ? `${stockVal} Low Stock` : `${stockVal} In Stock`;
-                        const priceVal = item.price || item.selling_price || item.unit_price || 0;
+                        const priceVal = item.selling_price || item.price || item.unit_price || 0;
                         
                         const imgSrc = (url) => {
                           if (!url) return null;
@@ -737,13 +737,7 @@ export default function PharmacySalesForm() {
                                 const imgs = [item.product_image, item.drug_image, item.cover_image].filter(Boolean);
                                 const uniqueImgs = [...new Set(imgs)];
                                 if (uniqueImgs.length === 0) return <Package size={36} color="#cbd5e1" />;
-                                if (uniqueImgs.length === 1) return <img src={imgSrc(uniqueImgs[0])} className={styles.productImg} alt={item.name} />;
-                                return (
-                                  <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-                                    <img src={imgSrc(uniqueImgs[0])} className={styles.productImg} alt={item.name} style={{ width: '50%', borderRight: '1px solid #E5E7EB' }} />
-                                    <img src={imgSrc(uniqueImgs[1])} className={styles.productImg} alt={item.name} style={{ width: '50%' }} />
-                                  </div>
-                                );
+                                return <img src={imgSrc(uniqueImgs[0])} className={styles.productImg} alt={item.name} />;
                               })()}
                               {(item.category || item.category_name) && <div className={styles.productCategoryBadge}>{item.category || item.category_name}</div>}
                               {stockVal <= 0 && <div className={styles.oosOverlay}>OUT OF STOCK</div>}
