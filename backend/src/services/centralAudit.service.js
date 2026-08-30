@@ -146,6 +146,38 @@ const captureLegacy = async (action, userId, details = {}) => {
       if (finalAction === 'DELETE') finalAction = 'EMPLOYEE_TASK_DELETED';
     } else if (details.resource === 'employee-reports') {
       if (finalAction === 'CREATE') finalAction = 'EMPLOYEE_REPORT_SUBMITTED';
+    } else {
+      // Generic CRUD → descriptive pharmacy/medicine actions based on resource path
+      const res = String(details.resource || details.path || '').toLowerCase();
+      const RESOURCE_MAP = {
+        'medicine': 'MEDICINE', 'medicines': 'MEDICINE', 'medication': 'MEDICINE', 'medications': 'MEDICINE',
+        'batch': 'BATCH', 'batches': 'BATCH',
+        'category': 'CATEGORY', 'categories': 'CATEGORY',
+        'branch': 'PHARMACY_BRANCH', 'branches': 'PHARMACY_BRANCH',
+        'stock': 'STOCK', 'stock-adjustment': 'STOCK',
+        'transfer': 'PHARMACY_TRANSFER', 'transfers': 'PHARMACY_TRANSFER',
+        'sale': 'PHARMACY_SALE', 'sales': 'PHARMACY_SALE',
+        'prescription': 'PRESCRIPTION', 'prescriptions': 'PRESCRIPTION',
+        'requisition': 'REQUISITION', 'requisitions': 'REQUISITION',
+        'grn': 'GRN', 'goods-receiving': 'GRN',
+        'expiry': 'EXPIRY', 'expiry-management': 'EXPIRY',
+        'drug': 'DRUG', 'drugs': 'DRUG',
+        'worker': 'PHARMACY_WORKER', 'workers': 'PHARMACY_WORKER',
+        'staff': 'PHARMACY_STAFF',
+        'shipment': 'SHIPMENT', 'shipments': 'SHIPMENT',
+        'warehouse': 'WAREHOUSE', 'warehouses': 'WAREHOUSE',
+      };
+      const VERB_MAP = { CREATE: 'CREATED', UPDATE: 'UPDATED', DELETE: 'DELETED', READ: 'VIEWED' };
+      // Check if this is a bare CRUD verb that can be made more specific
+      if (['CREATE', 'UPDATE', 'DELETE', 'READ'].includes(finalAction)) {
+        let matched = null;
+        for (const [key, val] of Object.entries(RESOURCE_MAP)) {
+          if (res.includes(key)) { matched = val; break; }
+        }
+        if (matched) {
+          finalAction = `${matched}_${VERB_MAP[finalAction] || finalAction}`;
+        }
+      }
     }
 
     await db('central_audit_logs').insert({
