@@ -27,6 +27,7 @@ const PharmacyProducts = () => {
     category_id: '',
     manufacturer: '',
     price: '',
+    selling_price: '',
     price_unit: '',
     stock_quantity: 0,
     reorder_level: 10,
@@ -99,6 +100,7 @@ const PharmacyProducts = () => {
         category_id: product.category_id || '',
         manufacturer: product.manufacturer || '',
         price: product.price || '',
+        selling_price: product.selling_price || '',
         price_unit: product.price_unit || '',
         stock_quantity: product.stock_quantity || 0,
         reorder_level: product.reorder_level || 10,
@@ -114,7 +116,7 @@ const PharmacyProducts = () => {
       setCurrentProduct(null);
       setFormData({
         name: '', generic_name: '', category_id: categories.length > 0 ? categories[0].id : '',
-        manufacturer: '', price: '', price_unit: '', stock_quantity: 0, reorder_level: 10,
+        manufacturer: '', price: '', selling_price: '', price_unit: '', stock_quantity: 0, reorder_level: 10,
         description: '', dosage_info: '', expiry_date: '',
         is_prescription_required: true, is_active: true
       });
@@ -245,6 +247,7 @@ const PharmacyProducts = () => {
                 <th>Product Details</th>
                 <th>Category</th>
                 <th>Cost Price</th>
+                <th>Selling Price</th>
                 <th>Status</th>
                 <th>Availability</th>
                 <th>Actions</th>
@@ -269,6 +272,9 @@ const PharmacyProducts = () => {
                   <td>
                     <div className={styles.price}>{prod.price} ETB</div>
                     <div className={styles.priceUnit}>{prod.price_unit}</div>
+                  </td>
+                  <td>
+                    <div className={styles.price}>{prod.selling_price || prod.price} ETB</div>
                   </td>
                   <td>
                     <div className={`${styles.stockBadge} ${
@@ -357,7 +363,11 @@ const PharmacyProducts = () => {
                   <input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} required />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Cost Price Unit (e.g. per strip)</label>
+                  <label>Selling Price (ETB) *</label>
+                  <input type="number" step="0.01" name="selling_price" value={formData.selling_price} onChange={handleInputChange} required />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Price Unit (e.g. per strip)</label>
                   <input type="text" name="price_unit" value={formData.price_unit} onChange={handleInputChange} />
                 </div>
               </div>
