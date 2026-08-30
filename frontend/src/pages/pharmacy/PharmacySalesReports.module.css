@@ -281,6 +281,15 @@
   border-bottom: 1px solid hsl(var(--border));
   color: hsl(var(--foreground));
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+.pushed {
+  text-align: right;
+}
+
+.right {
+  text-align: right;
 }
 
 .table tr:last-child td {
@@ -405,11 +414,6 @@
   background: hsl(221 83% 40% / 0.1);
 }
 
-.pushed {
-  text-align: right;
-  white-space: nowrap;
-}
-
 .footer {
   margin-top: 3rem;
   padding: 2rem;
@@ -462,4 +466,14 @@
     border: none;
     background: transparent;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
