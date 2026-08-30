@@ -415,8 +415,7 @@ const reportsController = {
 
     // ── 1. Sales basic aggregates ──
     const sales = await db('pharmacy_sales')
-      .where('created_at', '>=', start).where('created_at', '<=', end)
-      .where(function () { this.where('is_submitted', false).orWhereNull('is_submitted'); });
+      .where('created_at', '>=', start).where('created_at', '<=', end);
 
     let revenue = 0, transactions = 0, totalProducts = 0;
     const branchSales = {};
@@ -433,8 +432,7 @@ const reportsController = {
 
     // Previous-period sales for growth %
     const prevSales = await db('pharmacy_sales')
-      .where('created_at', '>=', prevStart).where('created_at', '<=', prevEnd)
-      .where(function () { this.where('is_submitted', false).orWhereNull('is_submitted'); });
+      .where('created_at', '>=', prevStart).where('created_at', '<=', prevEnd);
     let prevRevenue = 0;
     prevSales.forEach(s => { prevRevenue += parseFloat(s.total_amount || 0); });
 
@@ -451,7 +449,6 @@ const reportsController = {
         const cost = await getDrugCost(it.drug_name, it.drug_id);
         const lineCost = cost * qty;
         cogs += lineCost;
-        grossProfit += (rev - lineCost);
         const key = it.drug_name || 'Unknown';
         if (!productAgg[key]) productAgg[key] = { name: key, qty: 0, revenue: 0, cost: 0 };
         productAgg[key].qty += qty;
@@ -459,6 +456,7 @@ const reportsController = {
         productAgg[key].cost += lineCost;
       }
     }
+    grossProfit = revenue - cogs;
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
     const avgTransaction = transactions > 0 ? revenue / transactions : 0;
 
@@ -476,6 +474,7 @@ const reportsController = {
     let inventoryValue = 0;
     const stockHealth = [];
     const nearExpiry = [];
+    const already_expired = [];
     const outOfStock = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -511,6 +510,9 @@ const reportsController = {
         const exp = new Date(m.expiry_date);
         if (exp >= today && exp <= nearThreshold && qty > 0) {
           nearExpiry.push({ name: m.name, qty, expiry_date: exp, value: qty * cost, cost });
+        }
+        if (exp < today && qty > 0) {
+          already_expired.push({ name: m.name, qty, expiry_date: exp, value: qty * cost, cost });
         }
       }
     });
@@ -610,6 +612,7 @@ const reportsController = {
           overstocked: overstocked,
           out_of_stock: outOfStock,
           near_expiry: nearExpiry,
+          already_expired: already_expired,
           inventory_value: Math.round(inventoryValue * 100) / 100
         },
         profitability: {
@@ -642,8 +645,7 @@ const reportsController = {
 
     // ── 1. Sales within period (un-submitted = live sales) ──
     const sales = await db('pharmacy_sales')
-      .where('created_at', '>=', start).where('created_at', '<=', end)
-      .where(function () { this.where('is_submitted', false).orWhereNull('is_submitted'); });
+      .where('created_at', '>=', start).where('created_at', '<=', end);
     const scoped = branchFilter ? sales.filter(s => Number(s.branch_id) === branchFilter) : sales;
 
     let revenue = 0, transactions = 0, totalProducts = 0;
@@ -661,8 +663,7 @@ const reportsController = {
 
     // Previous-period sales (growth %)
     const prevSales = await db('pharmacy_sales')
-      .where('created_at', '>=', prevStart).where('created_at', '<=', prevEnd)
-      .where(function () { this.where('is_submitted', false).orWhereNull('is_submitted'); });
+      .where('created_at', '>=', prevStart).where('created_at', '<=', prevEnd);
     let prevRevenue = 0;
     prevSales.forEach(s => { if (!branchFilter || Number(s.branch_id) === branchFilter) prevRevenue += parseFloat(s.total_amount || 0); });
 
@@ -677,7 +678,6 @@ const reportsController = {
         const cost = await getDrugCost(it.drug_name, it.drug_id);
         const lineCost = cost * qty;
         cogs += lineCost;
-        grossProfit += (rev - lineCost);
         const key = it.drug_name || 'Unknown';
         if (!productAgg[key]) productAgg[key] = { name: key, qty: 0, revenue: 0, cost: 0 };
         productAgg[key].qty += qty;
@@ -685,6 +685,7 @@ const reportsController = {
         productAgg[key].cost += lineCost;
       }
     }
+    grossProfit = revenue - cogs;
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
     const avgTransaction = transactions > 0 ? revenue / transactions : 0;
 
@@ -702,6 +703,7 @@ const reportsController = {
     let inventoryValue = 0;
     const stockHealth = [];
     const nearExpiry = [];
+    const already_expired = [];
     const outOfStock = [];
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const nearThreshold = new Date(today); nearThreshold.setDate(nearThreshold.getDate() + 90);
@@ -728,6 +730,7 @@ const reportsController = {
       if (m.expiry_date) {
         const exp = new Date(m.expiry_date);
         if (exp >= today && exp <= nearThreshold && qty > 0) nearExpiry.push({ name: m.name, qty, expiry_date: exp, value: qty * cost, cost });
+        if (exp < today && qty > 0) already_expired.push({ name: m.name, qty, expiry_date: exp, value: qty * cost, cost });
       }
     });
     const expiredValue = stockHealth.filter(x => x && x.expiry_date && new Date(x.expiry_date) < today).reduce((s, x) => s + x.value, 0);
@@ -981,7 +984,7 @@ const reportsController = {
         branch_performance: branchPerf,
         product_health: {
           top_by_qty: topByQty, top_by_profit: topByProfit, slow_moving: slowMoving,
-          overstocked, out_of_stock: outOfStock, near_expiry: nearExpiry,
+          overstocked: overstocked, near_expiry: nearExpiry, already_expired: already_expired, out_of_stock: outOfStock,
           inventory_value: Math.round(inventoryValue * 100) / 100
         },
         profitability: {
@@ -1133,14 +1136,15 @@ async function computeBranchProfit(branchId, sales) {
   const branchSales = sales.filter(s => s.branch_id === branchId);
   if (!branchSales.length) return 0;
   const ids = branchSales.map(s => s.id);
+  const revenue = branchSales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
+  let cogs = 0;
   const items = await db('pharmacy_sale_items').whereIn('sale_id', ids);
   for (const it of items) {
     const qty = parseInt(it.quantity || 0);
-    const rev = parseFloat(it.total_price || 0);
     const cost = await getDrugCost(it.drug_name, it.drug_id);
-    gp += (rev - cost * qty);
+    cogs += cost * qty;
   }
-  return gp;
+  return revenue - cogs;
 }
 
 module.exports = reportsController;
