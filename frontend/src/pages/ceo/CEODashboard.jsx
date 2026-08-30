@@ -4,9 +4,8 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 
 // Core Dashboard Overview
 import CEOHome from './CEOHome';
-
-// Old CEO Modules that should be restored
-import ExecutiveReports from './ExecutiveReports';
+// Reports
+import PharmacySalesReports from '../pharmacy/PharmacySalesReports';
 
 // 15 New CEO Modules
 import CEOSales from './CEOSales';
@@ -157,7 +156,7 @@ const CEODashboard = () => {
             <Route path="approvals/rejected" element={<CEORejectedApprovals />} />
 
             {/* Reports */}
-            <Route path="reports"   element={<ExecutiveReports />} />
+            <Route path="reports" element={<PharmacySalesReports readOnly={true} />} />
             <Route path="audit-logs" element={<CEOAuditLog />} />
 
             <Route path="chat" element={<ManagerChat />} />
