@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Printer, Save } from 'lucide-react';
 import pharmacyService from '../../services/pharmacyService';
 import styles from './PharmacySalesReports.module.css';
@@ -42,12 +43,16 @@ function Stat({ label, value, sub }) {
   );
 }
 
-function Table({ headers, children }) {
+function Table({ headers, children, aligns }) {
   return (
     <div className={styles.tableWrap}>
       <table className={styles.table}>
         <thead className={styles.thead}>
-          <tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr>
+          <tr>
+            {headers.map((h, i) => (
+              <th key={i} style={{ textAlign: aligns?.[i] || 'left' }}>{h}</th>
+            ))}
+          </tr>
         </thead>
         <tbody>{children}</tbody>
       </table>
@@ -57,7 +62,7 @@ function Table({ headers, children }) {
 
 function Section({ num, title, caption, children }) {
   return (
-    <section className={styles.section}>
+    <section id={`report-section-${num}`} className={styles.section}>
       <h2 className={styles.sectionTitle}>
         <span className={styles.sectionNum}>{num}</span>
         {title}
@@ -72,7 +77,8 @@ function Empty({ text }) {
   return <p className={styles.empty}>{text}</p>;
 }
 
-export default function PharmacySalesReports() {
+export default function PharmacySalesReports({ readOnly = false }) {
+  const location = useLocation();
   const [period, setPeriod] = useState('month');
   const [from, setFrom] = useState(firstOfMonthStr);
   const [to, setTo] = useState(todayStr);
@@ -83,6 +89,24 @@ export default function PharmacySalesReports() {
   const [overallTarget, setOverallTarget] = useState('');
   const [branchTargets, setBranchTargets] = useState({});
   const [savedMsg, setSavedMsg] = useState('');
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | success | error
+  const [editingTargets, setEditingTargets] = useState(false);
+
+  // Scroll to the section specified in ?section=N query param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+    if (!section) return;
+    const tryScroll = (attempts = 0) => {
+      const el = document.getElementById(`report-section-${section}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (attempts < 10) {
+        setTimeout(() => tryScroll(attempts + 1), 300);
+      }
+    };
+    tryScroll();
+  }, [location.search, loading]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,18 +146,31 @@ export default function PharmacySalesReports() {
   }, []);
 
   const saveTargets = async () => {
-    const payload = [{ branch_id: null, sales_target: overallTarget, period: 'ALL' }];
+    if (saveStatus === 'saving') return;
+    const payload = [{ branch_id: null, sales_target: Number(overallTarget) || 0, period: 'ALL' }];
     (data?.branch_performance || []).forEach(bp => {
-      payload.push({ branch_id: bp.branch_id, sales_target: branchTargets[bp.branch_id] || 0, period: 'ALL' });
+      payload.push({ branch_id: bp.branch_id, sales_target: Number(branchTargets[bp.branch_id]) || 0, period: 'ALL' });
     });
+    setSaveStatus('saving');
+    setSavedMsg('');
     try {
       await pharmacyService.saveTargets({ targets: payload });
-      setSavedMsg('Saved');
-      setTimeout(() => setSavedMsg(''), 2500);
-      load();
+      setSaveStatus('success');
+      setSavedMsg('Targets saved successfully!');
+      setEditingTargets(false);
+      load(); // refresh report to reflect new achievement %
+      setTimeout(() => { setSaveStatus('idle'); setSavedMsg(''); }, 4000);
     } catch (e) {
       console.error('save error', e);
+      setSaveStatus('error');
+      setSavedMsg('Failed to save. Please try again.');
+      setTimeout(() => { setSaveStatus('idle'); setSavedMsg(''); }, 4000);
     }
+  };
+
+  const cancelEdit = () => {
+    setEditingTargets(false);
+    loadTargets(); // revert to saved values
   };
 
   const handlePrint = () => {
@@ -215,6 +252,64 @@ ${css}
 
       <hr className={styles.rule} />
 
+      {/* ── Section Quick-Jump Nav (visible to CEO for easy navigation) ── */}
+      <nav style={{
+        display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center',
+        padding: '10px 0 14px', borderBottom: '1px solid #e2e8f0', marginBottom: 16
+      }}>
+        {Array.from({ length: Math.ceil(15 / 7) }).map((_, rIdx) => {
+          const rowItems = [
+            { n: 1,  label: 'Executive Summary' },
+            { n: 2,  label: 'Branch Performance' },
+            { n: 3,  label: 'Products & Inventory' },
+            { n: 4,  label: 'Profitability' },
+            { n: 5,  label: 'Sales by Worker' },
+            { n: 6,  label: 'Store Inventory' },
+            { n: 7,  label: 'Pharmacy Stock' },
+            { n: 8,  label: 'Stock Movements' },
+            { n: 9,  label: 'Procurement & Deliveries' },
+            { n: 10, label: 'Expiry Management' },
+            { n: 11, label: 'Batch Management' },
+            { n: 12, label: 'Health Content' },
+            { n: 13, label: 'Audit Trail' },
+            { n: 14, label: 'Exceptions & Alerts' },
+            { n: 15, label: 'Sales Targets' }
+          ].slice(rIdx * 7, rIdx * 7 + 7);
+          
+          return (
+            <div key={rIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+              {rowItems.map((btn, bIdx) => {
+                const buttonEl = (
+                  <button
+                    key={btn.n}
+                    onClick={() => {
+                      const el = document.getElementById(`report-section-${btn.n}`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '4px 10px', borderRadius: 20,
+                      border: '1px solid #cbd5e1', background: '#f8fafc',
+                      fontSize: 12, fontWeight: 500, color: '#475569',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#3b82f6'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  >
+                    <span style={{ fontWeight: 700, color: 'inherit' }}>{btn.n}</span>
+                    {btn.label}
+                  </button>
+                );
+                
+                return bIdx < rowItems.length - 1
+                  ? [buttonEl, <div key={`sep-${btn.n}`} style={{ width: '1px', height: '18px', background: '#cbd5e1' }} />]
+                  : buttonEl;
+              })}
+            </div>
+          );
+        })}
+      </nav>
+
       {loading ? (
         <p className={styles.empty}>Loading…</p>
       ) : (
@@ -255,17 +350,20 @@ ${css}
               </div>
             ) : null}
             {branchPerf.length ? (
-              <Table headers={['Branch', 'Transactions', 'Products', 'Revenue', 'Gross Profit', 'Margin %', 'Target', 'Achievement']}>
+              <Table
+                headers={['Branch', 'Transactions', 'Products', 'Revenue', 'Gross Profit', 'Margin %', 'Target', 'Achievement']}
+                aligns={['left','right','right','right','right','right','right','right']}
+              >
                 {branchPerf.map(bp => (
                   <tr key={bp.branch_id}>
                     <td><strong>{bp.branch}</strong></td>
-                    <td>{bp.transactions}</td>
-                    <td>{bp.products}</td>
-                    <td className={styles.pushed}>{money(bp.revenue)}</td>
-                    <td className={styles.pushed}>{money(bp.gross_profit)}</td>
-                    <td>{bp.margin}%</td>
-                    <td className={styles.pushed}>{money(bp.target)}</td>
-                    <td>{bp.achievement !== null ? bp.achievement + '%' : '—'}</td>
+                    <td style={{textAlign:'right'}}>{bp.transactions}</td>
+                    <td style={{textAlign:'right'}}>{bp.products}</td>
+                    <td style={{textAlign:'right'}}>{money(bp.revenue)}</td>
+                    <td style={{textAlign:'right'}}>{money(bp.gross_profit)}</td>
+                    <td style={{textAlign:'right'}}>{bp.margin}%</td>
+                    <td style={{textAlign:'right'}}>{money(bp.target)}</td>
+                    <td style={{textAlign:'right'}}>{bp.achievement !== null ? bp.achievement + '%' : '—'}</td>
                   </tr>
                 ))}
               </Table>
@@ -284,17 +382,17 @@ ${css}
             </div>
             <h3 className={styles.subhead}>Top Selling Products</h3>
             {(product.top_by_qty || []).length ? (
-              <Table headers={['Product', 'Qty', 'Revenue']}>
+              <Table headers={['Product', 'Qty', 'Revenue']} aligns={['left','right','right']}>
                 {(product.top_by_qty || []).map((p, i) => (
-                  <tr key={i}><td>{p.name}</td><td>{p.qty}</td><td className={styles.pushed}>{money(p.revenue)}</td></tr>
+                  <tr key={i}><td>{p.name}</td><td style={{textAlign:'right'}}>{p.qty}</td><td style={{textAlign:'right'}}>{money(p.revenue)}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="Sales data will appear here once sales are recorded." />}
             <h3 className={styles.subhead}>Highest Profit Products</h3>
             {(product.top_by_profit || []).length ? (
-              <Table headers={['Product', 'Revenue', 'Profit']}>
+              <Table headers={['Product', 'Revenue', 'Profit']} aligns={['left','right','right']}>
                 {(product.top_by_profit || []).map((p, i) => (
-                  <tr key={i}><td>{p.name}</td><td className={styles.pushed}>{money(p.revenue)}</td><td className={styles.pushed}>{money(p.revenue - p.cost)}</td></tr>
+                  <tr key={i}><td>{p.name}</td><td style={{textAlign:'right'}}>{money(p.revenue)}</td><td style={{textAlign:'right'}}>{money(p.revenue - p.cost)}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="Profit data will appear here once sales are recorded." />}
@@ -378,15 +476,15 @@ ${css}
             {(d.worker_sales || {}).by_worker?.length ? (
               <>
                 <h3 className={styles.subhead}>By Worker</h3>
-                <Table headers={['Worker', 'Branch', 'Transactions', 'Products Sold', 'Revenue', 'Share']}>
+                <Table headers={['Worker', 'Branch', 'Transactions', 'Products Sold', 'Revenue', 'Share']} aligns={['left','left','right','right','right','right']}>
                   {(d.worker_sales || {}).by_worker.map((w, i) => (
                     <tr key={i}>
                       <td><strong>{w.worker_name}</strong></td>
                       <td>{w.branch_id || '—'}</td>
-                      <td>{w.transactions}</td>
-                      <td>{w.products}</td>
-                      <td className={styles.pushed}>{money(w.revenue)}</td>
-                      <td>{pct(w.revenue, (d.worker_sales.by_worker || []).reduce((s, x) => s + (x.revenue || 0), 0))}</td>
+                      <td style={{textAlign:'right'}}>{w.transactions}</td>
+                      <td style={{textAlign:'right'}}>{w.products}</td>
+                      <td style={{textAlign:'right'}}>{money(w.revenue)}</td>
+                      <td style={{textAlign:'right'}}>{pct(w.revenue, (d.worker_sales.by_worker || []).reduce((s, x) => s + (x.revenue || 0), 0))}</td>
                     </tr>
                   ))}
                 </Table>
@@ -395,13 +493,13 @@ ${css}
             {(d.worker_sales || {}).by_branch?.length ? (
               <>
                 <h3 className={styles.subhead}>By Branch</h3>
-                <Table headers={['Branch', 'Transactions', 'Products', 'Revenue']}>
+                <Table headers={['Branch', 'Transactions', 'Products', 'Revenue']} aligns={['left','right','right','right']}>
                   {(d.worker_sales || {}).by_branch.map((b, i) => (
                     <tr key={i}>
                       <td><strong>{b.branch}</strong></td>
-                      <td>{b.transactions}</td>
-                      <td>{b.products}</td>
-                      <td className={styles.pushed}>{money(b.revenue)}</td>
+                      <td style={{textAlign:'right'}}>{b.transactions}</td>
+                      <td style={{textAlign:'right'}}>{b.products}</td>
+                      <td style={{textAlign:'right'}}>{money(b.revenue)}</td>
                     </tr>
                   ))}
                 </Table>
@@ -409,12 +507,12 @@ ${css}
             ) : null}
             <h3 className={styles.subhead}>Payment Mix</h3>
             {payMix.length ? (
-              <Table headers={['Method', 'Amount', 'Share']}>
+              <Table headers={['Method', 'Amount', 'Share']} aligns={['left','right','right']}>
                 {payMix.map((m, i) => (
                   <tr key={i}>
                     <td><strong>{m.method || 'CASH'}</strong></td>
-                    <td className={styles.pushed}>{money(m.amount)}</td>
-                    <td>{pct(m.amount, exec.revenue)}</td>
+                    <td style={{textAlign:'right'}}>{money(m.amount)}</td>
+                    <td style={{textAlign:'right'}}>{pct(m.amount, exec.revenue)}</td>
                   </tr>
                 ))}
               </Table>
@@ -434,9 +532,9 @@ ${css}
             {(d.store_inventory || {}).by_category?.length ? (
               <>
                 <h3 className={styles.subhead}>Store Inventory by Category</h3>
-                <Table headers={['Category', 'SKUs', 'Units', 'Value']}>
+                <Table headers={['Category', 'SKUs', 'Units', 'Value']} aligns={['left','right','right','right']}>
                   {(d.store_inventory || {}).by_category.map((c, i) => (
-                    <tr key={i}><td><strong>{c.category}</strong></td><td>{c.skus}</td><td>{fmt(c.units)}</td><td className={styles.pushed}>{money(c.value)}</td></tr>
+                    <tr key={i}><td><strong>{c.category}</strong></td><td style={{textAlign:'right'}}>{c.skus}</td><td style={{textAlign:'right'}}>{fmt(c.units)}</td><td style={{textAlign:'right'}}>{money(c.value)}</td></tr>
                   ))}
                 </Table>
               </>
@@ -444,9 +542,9 @@ ${css}
             {(d.store_inventory || {}).top_by_value?.length ? (
               <>
                 <h3 className={styles.subhead}>Highest-Value Store Items</h3>
-                <Table headers={['Drug', 'Units', 'Value']}>
+                <Table headers={['Drug', 'Units', 'Value']} aligns={['left','right','right']}>
                   {(d.store_inventory || {}).top_by_value.map((x, i) => (
-                    <tr key={i}><td>{x.name}</td><td>{x.qty}</td><td className={styles.pushed}>{money(x.value)}</td></tr>
+                    <tr key={i}><td>{x.name}</td><td style={{textAlign:'right'}}>{x.qty}</td><td style={{textAlign:'right'}}>{money(x.value)}</td></tr>
                   ))}
                 </Table>
               </>
@@ -465,15 +563,15 @@ ${css}
             </div>
             <h3 className={styles.subhead}>Drugs Held Outside the Store, by Pharmacy Branch</h3>
             {(d.pharmacy_stock || {}).by_branch?.length ? (
-              <Table headers={['Branch', 'SKUs', 'Units', 'Value', 'Low Stock', 'Out of Stock']}>
+              <Table headers={['Branch', 'SKUs', 'Units', 'Value', 'Low Stock', 'Out of Stock']} aligns={['left','right','right','right','right','right']}>
                 {(d.pharmacy_stock || {}).by_branch.map((b, i) => (
                   <tr key={i}>
                     <td><strong>{b.branch}</strong></td>
-                    <td>{b.skus}</td>
-                    <td>{fmt(b.units)}</td>
-                    <td className={styles.pushed}>{money(b.value)}</td>
-                    <td>{b.low_stock}</td>
-                    <td>{b.out_of_stock}</td>
+                    <td style={{textAlign:'right'}}>{b.skus}</td>
+                    <td style={{textAlign:'right'}}>{fmt(b.units)}</td>
+                    <td style={{textAlign:'right'}}>{money(b.value)}</td>
+                    <td style={{textAlign:'right'}}>{b.low_stock}</td>
+                    <td style={{textAlign:'right'}}>{b.out_of_stock}</td>
                   </tr>
                 ))}
               </Table>
@@ -489,18 +587,18 @@ ${css}
             </div>
             <h3 className={styles.subhead}>Stock Movements / Adjustments</h3>
             {(d.stock_operations || {}).adjustments?.length ? (
-              <Table headers={['Reason', 'Entries', 'In', 'Out']}>
+              <Table headers={['Reason', 'Entries', 'In', 'Out']} aligns={['left','right','right','right']}>
                 {(d.stock_operations || {}).adjustments.map((a, i) => (
-                  <tr key={i}><td>{ellipsis(a.reason)}</td><td>{a.count}</td><td>{fmt(a.quantity_in)}</td><td>{fmt(a.quantity_out)}</td></tr>
+                  <tr key={i}><td>{ellipsis(a.reason)}</td><td style={{textAlign:'right'}}>{a.count}</td><td style={{textAlign:'right'}}>{fmt(a.quantity_in)}</td><td style={{textAlign:'right'}}>{fmt(a.quantity_out)}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="No stock movements in this period." />}
             <h3 className={styles.subhead}>Transfer Requests</h3>
             <p className={styles.meta} style={{ marginBottom: '0.75rem' }}>{((d.stock_operations || {}).transfers || {}).count || 0} requests in the selected period</p>
             {((d.stock_operations || {}).transfers || {}).by_status?.length ? (
-              <Table headers={['Status', 'Requests']}>
+              <Table headers={['Status', 'Requests']} aligns={['left','right']}>
                 {((d.stock_operations || {}).transfers || {}).by_status.map((s, i) => (
-                  <tr key={i}><td><strong>{s.status}</strong></td><td>{s.count}</td></tr>
+                  <tr key={i}><td><strong>{s.status}</strong></td><td style={{textAlign:'right'}}>{s.count}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="No transfer requests in this period." />}
@@ -518,17 +616,17 @@ ${css}
             </div>
             <h3 className={styles.subhead}>Procurement Requests by Status</h3>
             {((d.procurement || {}).requests || {}).by_status?.length ? (
-              <Table headers={['Status', 'Requests']}>
+              <Table headers={['Status', 'Requests']} aligns={['left','right']}>
                 {((d.procurement || {}).requests || {}).by_status.map((s, i) => (
-                  <tr key={i}><td><strong>{s.status}</strong></td><td>{s.count}</td></tr>
+                  <tr key={i}><td><strong>{s.status}</strong></td><td style={{textAlign:'right'}}>{s.count}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="No procurement requests in this period." />}
             <h3 className={styles.subhead}>Direct Deliveries by Status</h3>
             {((d.procurement || {}).direct_deliveries || {}).by_status?.length ? (
-              <Table headers={['Status', 'Deliveries']}>
+              <Table headers={['Status', 'Deliveries']} aligns={['left','right']}>
                 {((d.procurement || {}).direct_deliveries || {}).by_status.map((s, i) => (
-                  <tr key={i}><td><strong>{s.status}</strong></td><td>{s.count}</td></tr>
+                  <tr key={i}><td><strong>{s.status}</strong></td><td style={{textAlign:'right'}}>{s.count}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="No direct deliveries in this period." />}
@@ -541,29 +639,48 @@ ${css}
             <div className={styles.stats}>
               <Stat label="Reported Expired" value={fmt(((d.expiry || {}).reported || {}).count)} sub={`${fmt(((d.expiry || {}).reported || {}).total_quantity)} units`} />
               <Stat label="Expired Value Now" value={money(exec.expired_value)} />
+              <Stat label="Currently Expired" value={fmt((product.already_expired || []).length)} />
               <Stat label="Near Expiry (90d)" value={fmt((product.near_expiry || []).length)} />
             </div>
-            <h3 className={styles.subhead}>Expired Drug Reports (period)</h3>
-            {((d.expiry || {}).reported || {}).by_status?.length ? (
-              <Table headers={['Status', 'Reports']}>
-                {((d.expiry || {}).reported || {}).by_status.map((s, i) => (
-                  <tr key={i}><td><strong>{s.status}</strong></td><td>{s.count}</td></tr>
-                ))}
-              </Table>
-            ) : <Empty text="No expired-drug reports in this period." />}
+
+            <h3 className={styles.subhead}>Already Expired Stock (Action Required)</h3>
+            {(product.already_expired || []).length ? (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '2px', marginBottom: '1.5rem' }}>
+                <Table headers={['Drug', 'Qty', 'Expired On', 'Value']} aligns={['left','right','left','right']}>
+                  {(product.already_expired || []).map((n, i) => (
+                    <tr key={i}>
+                      <td><strong>{n.name}</strong></td>
+                      <td style={{textAlign:'right'}}>{n.qty}</td>
+                      <td style={{color: '#dc2626', fontWeight: 600}}>{new Date(n.expiry_date).toLocaleDateString()}</td>
+                      <td style={{textAlign:'right'}}>{money(n.value)}</td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            ) : <Empty text="No expired items in stock." />}
+
             <h3 className={styles.subhead}>Near-Expiry Watchlist</h3>
             {(product.near_expiry || []).length ? (
-              <Table headers={['Drug', 'Qty', 'Expiry', 'Value']}>
+              <Table headers={['Drug', 'Qty', 'Expiry', 'Value']} aligns={['left','right','left','right']}>
                 {(product.near_expiry || []).map((n, i) => (
                   <tr key={i}>
                     <td><strong>{n.name}</strong></td>
-                    <td>{n.qty}</td>
+                    <td style={{textAlign:'right'}}>{n.qty}</td>
                     <td>{new Date(n.expiry_date).toLocaleDateString()}</td>
-                    <td className={styles.pushed}>{money(n.value)}</td>
+                    <td style={{textAlign:'right'}}>{money(n.value)}</td>
                   </tr>
                 ))}
               </Table>
             ) : <Empty text="No items near expiry." />}
+
+            <h3 className={styles.subhead}>Expired Drug Reports (period)</h3>
+            {((d.expiry || {}).reported || {}).by_status?.length ? (
+              <Table headers={['Status', 'Reports']} aligns={['left','right']}>
+                {((d.expiry || {}).reported || {}).by_status.map((s, i) => (
+                  <tr key={i}><td><strong>{s.status}</strong></td><td style={{textAlign:'right'}}>{s.count}</td></tr>
+                ))}
+              </Table>
+            ) : <Empty text="No expired-drug reports in this period." />}
           </Section>
 
           <hr className={styles.rule} />
@@ -576,12 +693,12 @@ ${css}
               <Stat label="With Expired Stock" value={fmt((d.batches || {}).expired)} />
             </div>
             {(d.batches || {}).list?.length ? (
-              <Table headers={['Batch No', 'Drugs', 'Units', 'Status', 'Earliest Expiry']}>
+              <Table headers={['Batch No', 'Drugs', 'Units', 'Status', 'Earliest Expiry']} aligns={['left','right','right','left','left']}>
                 {(d.batches || {}).list.map((b, i) => (
                   <tr key={i}>
                     <td><strong>{b.batch_no}</strong></td>
-                    <td>{b.drugs}</td>
-                    <td>{fmt(b.units)}</td>
+                    <td style={{textAlign:'right'}}>{b.drugs}</td>
+                    <td style={{textAlign:'right'}}>{fmt(b.units)}</td>
                     <td>{b.expired > 0 ? 'Expired (part)' : 'Active'}</td>
                     <td>{b.expiry_min ? new Date(b.expiry_min).toLocaleDateString() : '—'}</td>
                   </tr>
@@ -599,10 +716,10 @@ ${css}
               <Stat label="Created in Period" value={fmt((d.health || {}).created_in_period)} />
               <Stat label="Total Drugs" value={fmt((d.health || {}).total_drugs)} />
             </div>
-            <Table headers={['Metric', 'Value']}>
-              <tr><td>Published posts</td><td>{fmt((d.health || {}).published)}</td></tr>
-              <tr><td>Created in selected period</td><td>{fmt((d.health || {}).created_in_period)}</td></tr>
-              <tr><td>Total medicines registered</td><td>{fmt((d.health || {}).total_drugs)}</td></tr>
+            <Table headers={['Metric', 'Value']} aligns={['left','right']}>
+              <tr><td>Published posts</td><td style={{textAlign:'right'}}>{fmt((d.health || {}).published)}</td></tr>
+              <tr><td>Created in selected period</td><td style={{textAlign:'right'}}>{fmt((d.health || {}).created_in_period)}</td></tr>
+              <tr><td>Total medicines registered</td><td style={{textAlign:'right'}}>{fmt((d.health || {}).total_drugs)}</td></tr>
             </Table>
           </Section>
 
@@ -617,22 +734,22 @@ ${css}
             </div>
             <h3 className={styles.subhead}>Activity by Action</h3>
             {(d.audit || {}).by_action?.length ? (
-              <Table headers={['Action', 'Entries', 'Amount']}>
+              <Table headers={['Action', 'Entries', 'Amount']} aligns={['left','right','right']}>
                 {(d.audit || {}).by_action.map((a, i) => (
-                  <tr key={i}><td><strong>{a.action}</strong></td><td>{a.count}</td><td className={styles.pushed}>{money(a.amount)}</td></tr>
+                  <tr key={i}><td><strong>{a.action}</strong></td><td style={{textAlign:'right'}}>{a.count}</td><td style={{textAlign:'right'}}>{money(a.amount)}</td></tr>
                 ))}
               </Table>
             ) : <Empty text="No audit activity in this period." />}
             <h3 className={styles.subhead}>Recent Audit Trail</h3>
             {(d.audit || {}).recent?.length ? (
-              <Table headers={['Date & Time', 'Action', 'Worker', 'Branch', 'Amount']}>
+              <Table headers={['Date & Time', 'Action', 'Worker', 'Branch', 'Amount']} aligns={['left','left','left','left','right']}>
                 {(d.audit || {}).recent.map((r, i) => (
                   <tr key={i}>
                     <td>{new Date(r.created_at).toLocaleString()}</td>
                     <td><strong>{r.action}</strong></td>
                     <td>{r.worker_name}</td>
                     <td>{r.branch_name}</td>
-                    <td className={styles.pushed}>{money(r.amount)}</td>
+                    <td style={{textAlign:'right'}}>{money(r.amount)}</td>
                   </tr>
                 ))}
               </Table>
@@ -661,25 +778,133 @@ ${css}
 
           {/* 15 — Sales Targets */}
           <hr className={styles.rule} />
-          <Section num="15" title="Sales Targets" caption="Targets used to compute achievement on this report.">
-            <div className={styles.targetForm}>
-              <div className={styles.targetRow}>
-                <span>Overall (ETB)</span>
-                <input type="number" value={overallTarget} onChange={e => setOverallTarget(e.target.value)} placeholder="e.g. 500000" />
-              </div>
-              {branchPerf.map(bp => (
-                <div className={styles.targetRow} key={bp.branch_id}>
-                  <span>{bp.branch}</span>
-                  <input type="number" value={branchTargets[bp.branch_id] || ''} onChange={e => setBranchTargets(prev => ({ ...prev, [bp.branch_id]: e.target.value }))} placeholder="e.g. 150000" />
+          <Section num="15" title="Sales Targets" caption="Monthly revenue targets used to compute achievement percentages across the report.">
+
+            {/* ── View mode: table showing current saved targets ── */}
+            {!editingTargets && (
+              <>
+                <Table headers={['Branch / Level', 'Sales Target (ETB)', 'Achievement']} aligns={['left','right','right']}>
+                  <tr>
+                    <td><strong>Overall</strong></td>
+                    <td style={{textAlign:'right'}}>{overallTarget ? Number(overallTarget).toLocaleString() : '—'}</td>
+                    <td style={{textAlign:'right'}}>
+                      {overallTarget && data?.executive
+                        ? Math.round((data.executive.revenue / Number(overallTarget)) * 1000) / 10 + '%'
+                        : '—'}
+                    </td>
+                  </tr>
+                  {branchPerf.map(bp => (
+                    <tr key={bp.branch_id}>
+                      <td>{bp.branch}</td>
+                      <td style={{textAlign:'right'}}>{branchTargets[bp.branch_id] ? Number(branchTargets[bp.branch_id]).toLocaleString() : '—'}</td>
+                      <td style={{textAlign:'right'}}>{bp.achievement !== null ? bp.achievement + '%' : '—'}</td>
+                    </tr>
+                  ))}
+                </Table>
+
+                {/* Save status toast shown after save (outside edit mode) */}
+                {savedMsg && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    marginTop: 12, padding: '8px 16px', borderRadius: 8,
+                    background: saveStatus === 'success' ? '#f0fdf4' : '#fef2f2',
+                    border: `1px solid ${saveStatus === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                    color: saveStatus === 'success' ? '#15803d' : '#dc2626',
+                    fontSize: 14, fontWeight: 500,
+                    animation: 'fadeIn 0.2s ease',
+                  }}>
+                    {saveStatus === 'success' ? '✓' : '✗'} {savedMsg}
+                  </div>
+                )}
+
+                {!readOnly && (
+                  <div style={{ marginTop: 16 }}>
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      onClick={() => setEditingTargets(true)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:4}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Update Targets
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ── Edit mode: inputs for each target ── */}
+            {editingTargets && !readOnly && (
+              <>
+                <div className={styles.targetForm}>
+                  <div className={styles.targetRow}>
+                    <span><strong>Overall</strong> (ETB)</span>
+                    <input
+                      type="number"
+                      value={overallTarget}
+                      onChange={e => setOverallTarget(e.target.value)}
+                      placeholder="e.g. 500000"
+                    />
+                  </div>
+                  {branchPerf.map(bp => (
+                    <div className={styles.targetRow} key={bp.branch_id}>
+                      <span>{bp.branch} (ETB)</span>
+                      <input
+                        type="number"
+                        value={branchTargets[bp.branch_id] || ''}
+                        onChange={e => setBranchTargets(prev => ({ ...prev, [bp.branch_id]: e.target.value }))}
+                        placeholder="e.g. 150000"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className={styles.targetActions}>
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={saveTargets}>
-                <Save size={16} /> Save Targets
-              </button>
-              {savedMsg && <span className={styles.meta} style={{ marginLeft: '0.75rem' }}>{savedMsg}</span>}
-            </div>
+
+                {/* Action bar: Save + Cancel + inline toast */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+                  <button
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    onClick={saveTargets}
+                    disabled={saveStatus === 'saving'}
+                    style={{ opacity: saveStatus === 'saving' ? 0.7 : 1 }}
+                  >
+                    {saveStatus === 'saving' ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:4, animation:'spin 1s linear infinite'}}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} style={{marginRight:4}} /> Save Targets
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={cancelEdit}
+                    disabled={saveStatus === 'saving'}
+                  >
+                    Cancel
+                  </button>
+
+                  {/* Inline confirmation toast */}
+                  {savedMsg && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '7px 14px', borderRadius: 8,
+                      background: saveStatus === 'success' ? '#f0fdf4' : '#fef2f2',
+                      border: `1px solid ${saveStatus === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                      color: saveStatus === 'success' ? '#15803d' : '#dc2626',
+                      fontSize: 13, fontWeight: 600,
+                    }}>
+                      {saveStatus === 'success'
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      }
+                      {savedMsg}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </Section>
         </>
       )}
@@ -693,9 +918,9 @@ ${css}
 
 function ExtStats({ items }) {
   return (
-    <Table headers={['Metric', 'Amount']}>
+    <Table headers={['Metric', 'Amount']} aligns={['left','right']}>
       {items.map(([label, value], i) => (
-        <tr key={i}><td>{label}</td><td className={styles.pushed}><strong>{value}</strong></td></tr>
+        <tr key={i}><td>{label}</td><td style={{textAlign:'right'}}><strong>{value}</strong></td></tr>
       ))}
     </Table>
   );
