@@ -376,11 +376,13 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
 
   const combinedTenders = [
     ...tenders.map(t => ({ ...t, _type: 'internal' })),
-    ...salesTenders.filter(t => ['awaiting_ceo_approval', 'awarded'].includes(t.status)).map(t => ({ ...t, _type: 'sales' }))
+    ...salesTenders.map(t => ({ ...t, _type: 'sales' }))
   ];
 
   const filteredTenders = combinedTenders.filter(t => {
     if (activeTab === 'All Tenders') return true;
+    if (activeTab === 'Purchase Tenders') return t._type === 'internal';
+    if (activeTab === 'Sales Tenders') return t._type === 'sales';
     if (activeTab === 'Awaiting CEO') return t.status === 'awaiting_ceo_approval';
     if (activeTab === 'Open') return t.status === 'published' || t.status === 'open';
     if (activeTab === 'Awarded') return t.status === 'awarded';
@@ -501,11 +503,14 @@ const CEOTenderManager = ({ isApprovalMode = false }) => {
 
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: `2px solid ${C.sage}`, flexWrap: 'wrap' }}>
-          {(isApprovalMode ? ['Awaiting CEO', 'Fund Requests'] : ['Open', 'All Tenders', 'Awarded']).map(tab => {
+          {(isApprovalMode ? ['Awaiting CEO', 'Fund Requests'] : ['All Tenders', 'Purchase Tenders', 'Sales Tenders', 'Open', 'Awaiting CEO', 'Awarded']).map(tab => {
             let count = 0;
+            if (tab === 'All Tenders') count = combinedTenders.length;
+            if (tab === 'Purchase Tenders') count = combinedTenders.filter(t => t._type === 'internal').length;
+            if (tab === 'Sales Tenders') count = combinedTenders.filter(t => t._type === 'sales').length;
             if (tab === 'Awaiting CEO') count = awaitingCount;
             if (tab === 'Open') count = openCount;
-            if (tab === 'Sales Bids') count = salesTenders.filter(t => ['open','closed'].includes(t.status) && t.id).length;
+            if (tab === 'Awarded') count = combinedTenders.filter(t => t.status === 'awarded').length;
             if (tab === 'Fund Requests') count = fundRequests.filter(f => f.status === 'PENDING_CEO').length;
 
             return (
