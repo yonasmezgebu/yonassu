@@ -73,7 +73,7 @@ const PharmacyMedicines = () => {
       const list = Array.isArray(raw) ? raw : raw?.data || raw?.products || [];
       setDrugs(list.map(p => ({
         id: p.id, name: p.name, category: p.category_name || p.category || 'Uncategorized',
-        price: parseFloat(p.price || p.selling_price || 0), stock: parseInt(p.stock_quantity || 0),
+        price: parseFloat(p.price || 0), selling_price: parseFloat(p.selling_price || p.price || 0), stock: parseInt(p.stock_quantity || 0),
         reorderLevel: parseInt(p.reorder_level || 10), expiryDate: p.expiry_date || '2027-01-01',
         batchNo: p.batch_number || '—', isHidden: !!p.is_hidden,
         image: p.drug_image || p.cover_image || null
@@ -285,6 +285,7 @@ const PharmacyMedicines = () => {
                   <Th col="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Drug Name</Th>
                   <Th col="category" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Category</Th>
                   <Th col="price" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Cost Price</Th>
+                  <Th col="selling_price" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Selling Price</Th>
                   <Th col="stock" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Stock</Th>
                   <Th col="expiryDate" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Expiry Date</Th>
                   <Th col="batchNo" sortKey={sortKey} sortDir={sortDir} onSort={onSort}>Batch #</Th>
@@ -333,6 +334,7 @@ const PharmacyMedicines = () => {
                         <span className="badge" style={{ background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{drug.category}</span>
                       </td>
                       <td className="amount">ETB {drug.price.toFixed(2)}</td>
+                      <td className="amount">ETB {drug.selling_price.toFixed(2)}</td>
                       <td>
                         <span className="badge" style={{ background: sm.bg, color: sm.color }}>
                           <SI size={12} /> {drug.stock} — {sm.label}
