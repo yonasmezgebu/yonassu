@@ -32,7 +32,7 @@ router.get('/product-posts/public', postsController.publicList);
 router.use(authenticate);
 
 // Customer: Submit & manage own requests
-router.post('/requests', uploads.generic.single('prescription_image'), handleUploadError, requestsController.createRequest);
+router.post('/requests', uploads.generic.fields([{ name: 'prescription_image', maxCount: 1 }, { name: 'paymentScreenshot', maxCount: 1 }]), handleUploadError, requestsController.createRequest);
 router.post('/requests/:id/upload', uploads.generic.single('prescription_image'), handleUploadError, requestsController.uploadPrescriptionImage);
 router.get('/requests/my-requests', requestsController.getMyRequests);
 router.delete('/requests/:id/cancel', requestsController.cancelRequest);
