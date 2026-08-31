@@ -937,14 +937,15 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   }
 
   let attachmentsStr = null;
-  if (req.file) {
+  const documentFile = req.files && req.files.document ? req.files.document[0] : (req.file ? req.file : null);
+  if (documentFile) {
     const newAttachment = {
       id: Date.now() + Math.random().toString(36).substr(2, 9),
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      mimeType: req.file.mimetype,
-      path: req.file.path,
+      filename: documentFile.filename,
+      originalName: documentFile.originalname,
+      size: documentFile.size,
+      mimeType: documentFile.mimetype,
+      path: documentFile.path,
       uploadedBy: userId,
       uploadedAt: new Date().toISOString()
     };
@@ -998,26 +999,30 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   });
 
   // Automatically send to Finance Live Income for verification
-  if (paymentMethod && paymentReference) {
+  const screenshotFile = req.files && req.files.paymentScreenshot ? req.files.paymentScreenshot[0] : null;
+  if (paymentMethod && (paymentReference || screenshotFile)) {
+    const details = {
+      order_id: orderId,
+      paymentMethod: paymentMethod,
+      receivedFrom: user.full_name || 'Customer'
+    };
+    if (screenshotFile) details.paymentScreenshot = screenshotFile.filename;
+
     await db('finance_income_submissions').insert({
       department: 'Printing',
       submitted_by: user.full_name || 'Customer Portal',
       amount: vatPricing.total,
-      reference_no: paymentReference,
+      reference_no: paymentReference || screenshotFile?.filename || 'N/A',
       description: `Customer Printing Order ${orderNumber} - ${user.full_name || 'Customer'}`,
       status: 'Pending',
-      manual_details: JSON.stringify({
-        order_id: orderId,
-        paymentMethod: paymentMethod,
-        receivedFrom: user.full_name || 'Customer'
-      }),
+      manual_details: JSON.stringify(details),
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     }).catch(err => console.error('Failed to submit to finance:', err.message));
 
     sendFinanceNotification({
       title: 'New Income Submission',
-      message: `ETB ${vatPricing.total.toLocaleString()} Printing (customer portal) income submitted for verification (Ref: ${paymentReference}).`,
+      message: `ETB ${vatPricing.total.toLocaleString()} Printing (customer portal) income submitted for verification.`,
       type: 'finance',
       link: '/finance/pharmacy-sales?tab=list',
       related_entity_id: orderId
