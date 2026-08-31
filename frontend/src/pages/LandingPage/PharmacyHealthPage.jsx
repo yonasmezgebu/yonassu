@@ -7,7 +7,7 @@ import axios from '../../services/apiClient';
 import {
   Search, Pill, Package, UploadCloud, X, ShoppingCart,
   ChevronDown, ChevronUp, Phone, Clock, MapPin, Star,
-  Shield, Award, Truck, CreditCard, Heart, AlertCircle
+  Shield, Award, Truck, CreditCard, Heart, AlertCircle, Wallet
 } from 'lucide-react';
 import pharmacyHero from '../../assets/hero-section/pharmacy.jpg';
 import licFikerte from '../../assets/license_fikerte.jpg';
@@ -859,15 +859,16 @@ const STYLES = `
   inset: 0;
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px);
-  z-index: 50;
+  z-index: 400; /* above sticky nav (z-index 300) */
   overflow-y: auto;
   padding: 1.5rem 1rem;
+  padding-top: calc(70px + 1.5rem); /* clear fixed navbar height */
   display: flex;
   align-items: flex-start;
   justify-content: center;
 }
 @media (min-width: 640px) {
-  .ph-overlay { align-items: center; }
+  .ph-overlay { align-items: flex-start; }
 }
 .ph-modal {
   margin: auto;
@@ -1132,6 +1133,30 @@ const PharmacyHealthPage = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  // Payment fields
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentReference, setPaymentRef] = useState('');
+  const [paymentScreenshot, setPaymentScreen] = useState(null);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
+
+  const loadFinanceAccounts = async () => {
+    try {
+      const result = await axios.get('/finance-bank');
+      if (result && result.success && Array.isArray(result.data)) setFinanceAccounts(result.data);
+      else if (Array.isArray(result)) setFinanceAccounts(result);
+      else if (result && Array.isArray(result.data)) setFinanceAccounts(result.data);
+    } catch (e) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const r2 = await axios.get('/finance-bank', { headers: { Authorization: `Bearer ${token}` } });
+          if (r2 && Array.isArray(r2.data)) setFinanceAccounts(r2.data);
+          else if (Array.isArray(r2)) setFinanceAccounts(r2);
+        } catch (e2) { console.error('[PharmacyPage] Finance accounts load failed:', e2.message); }
+      }
+    }
+  };
+
   /* Data fetch */
   useEffect(() => {
     const fetch = async () => {
@@ -1152,6 +1177,7 @@ const PharmacyHealthPage = () => {
       }
     };
     fetch();
+    loadFinanceAccounts();
   }, []);
 
   /* Auto-open refill from location state */
@@ -1191,12 +1217,37 @@ const PharmacyHealthPage = () => {
     setDeliveryOption('pickup');
     setDeliveryAddress('');
     setPrescriptionFile(null);
+    setPaymentMethod('');
+    setPaymentRef('');
+    setPaymentScreen(null);
   };
 
   const handleRefillSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError('');
+
+    // Payment validation
+    if (paymentMethod) {
+      const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+      if (acc && acc.account_type !== 'Cash') {
+        if (!paymentReference && !paymentScreenshot) {
+          setSubmitError('For Bank or Telebirr payments, please provide either a Transaction ID or a Payment Screenshot.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (paymentReference && paymentScreenshot) {
+          setSubmitError('Please provide either a Transaction ID OR a Payment Screenshot, but not both.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } else {
+      setSubmitError('Please select a payment method.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const fd = new FormData();
       fd.append('medication_id', selectedMedicine.id);
@@ -1204,6 +1255,13 @@ const PharmacyHealthPage = () => {
       fd.append('delivery_option', deliveryOption);
       if (deliveryOption === 'delivery') fd.append('delivery_address', deliveryAddress);
       if (prescriptionFile) fd.append('prescription_image', prescriptionFile);
+
+      // Payment
+      const selectedAcc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+      fd.append('paymentMethod', selectedAcc ? selectedAcc.account_name : paymentMethod);
+      fd.append('paymentReference', paymentReference);
+      if (paymentScreenshot) fd.append('paymentScreenshot', paymentScreenshot);
+
       await axios.post('/pharmacy/requests', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setSubmitSuccess(true);
       setTimeout(() => closeModal(), 2500);
@@ -1680,6 +1738,92 @@ const PharmacyHealthPage = () => {
                         onChange={e => setPrescriptionFile(e.target.files[0] || null)} />
                     </label>
                   </div>
+
+                  {/* ── Payment Details ── */}
+                  <div style={{ fontWeight: 700, fontSize: '0.875rem', borderBottom: '1px solid hsl(var(--ph-border))', paddingBottom: '0.5rem', marginTop: '1.25rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Wallet size={14} /> Payment Details
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="ph-form-group">
+                      <label className="ph-form-label">Payment Method *</label>
+                      {financeAccounts.length === 0 ? (
+                        <div style={{ padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 'var(--ph-radius)', fontSize: '0.875rem', color: '#92400e' }}>
+                          Loading payment accounts...
+                        </div>
+                      ) : (
+                        <select required className="ph-form-input"
+                          value={paymentMethod}
+                          onChange={e => setPaymentMethod(e.target.value)}
+                        >
+                          <option value="">- Select Payment Method -</option>
+                          {['Bank', 'Mobile Wallet', 'Cash'].map(type => {
+                            const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
+                            if (!group.length) return null;
+                            return (
+                              <optgroup key={type} label={type}>
+                                {group.map(acc => (
+                                  <option key={acc.id} value={acc.id}>
+                                    {acc.account_name}{acc.account_number ? ` - ${acc.account_number}` : ''}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })}
+                        </select>
+                      )}
+                    </div>
+                    <div className="ph-form-group">
+                      <label className="ph-form-label">Transaction Reference / ID</label>
+                      <input className="ph-form-input" type="text" placeholder="e.g. TXN-12345"
+                        value={paymentReference} onChange={e => setPaymentRef(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Account details panel */}
+                  {paymentMethod && (() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                    if (!acc) return null;
+                    const isCash = acc.account_type === 'Cash';
+                    return (
+                      <div style={{ background: 'hsl(var(--ph-primary) / 0.07)', padding: '0.75rem', borderRadius: 'var(--ph-radius)', border: '1px solid hsl(var(--ph-primary) / 0.2)', fontSize: '0.8125rem', marginTop: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                        <Wallet size={16} color="hsl(var(--ph-primary))" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'hsl(var(--ph-primary))', marginBottom: '0.35rem' }}>{isCash ? 'Pay in Cash at Branch:' : 'Transfer Payment To:'}</div>
+                          <div><strong>Account Name:</strong> {acc.account_name}</div>
+                          {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
+                          {acc.bank_provider && <div><strong>Provider:</strong> {acc.bank_provider}</div>}
+                          {!isCash && <div style={{ fontSize: '0.75rem', color: 'hsl(var(--ph-muted-fg))', marginTop: '0.35rem' }}>After payment, enter the Transaction ID above or upload a screenshot below.</div>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Screenshot upload — only for Bank / Mobile Wallet */}
+                  {paymentMethod && (() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                    if (acc && acc.account_type === 'Cash') return null;
+                    return (
+                      <div className="ph-form-group" style={{ marginTop: '0.75rem' }}>
+                        <label className="ph-form-label"><UploadCloud size={13} /> Payment Screenshot <span style={{ fontWeight: 400 }}>(Optional if Transaction Reference is provided)</span></label>
+                        <label style={{ cursor: 'pointer' }}>
+                          <div className="ph-file-upload">
+                            <UploadCloud size={22} color={paymentScreenshot ? 'hsl(var(--ph-primary))' : 'hsl(var(--ph-muted-fg))'} />
+                            <p style={{ margin: '4px 0 0', fontWeight: 600, fontSize: '0.875rem', color: paymentScreenshot ? 'hsl(var(--ph-primary))' : 'hsl(var(--ph-fg))' }}>
+                              {paymentScreenshot ? paymentScreenshot.name : 'Click to upload screenshot'}
+                            </p>
+                            <small>PNG, JPG accepted</small>
+                            {paymentScreenshot && (
+                              <button type="button" onClick={e => { e.preventDefault(); setPaymentScreen(null); }}
+                                style={{ marginTop: 6, padding: '2px 8px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setPaymentScreen(e.target.files[0] || null)} />
+                        </label>
+                      </div>
+                    );
+                  })()}
 
                   <div className="ph-total-row">
                     <span>Total Amount</span>
