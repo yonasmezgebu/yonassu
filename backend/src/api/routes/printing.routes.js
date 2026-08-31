@@ -132,7 +132,7 @@ router.get('/public/track/:orderNumber', PrintingController.trackOrder);
 router.post(
   '/customer/orders',
   authenticate,
-  uploads.singleOrderAttachment.single('document'),
+  uploads.singleOrderAttachment.fields([{ name: 'document', maxCount: 1 }, { name: 'paymentScreenshot', maxCount: 1 }]),
   handleUploadError,
   PrintingController.createCustomerOrder
 );
