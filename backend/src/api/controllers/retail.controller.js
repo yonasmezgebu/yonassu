@@ -322,6 +322,38 @@ exports.placeOrder = catchAsync(async (req, res) => {
     });
   } catch (e) { console.error('retail-order emit error:', e.message); }
 
+  // Submit to Finance Live Income for verification
+  if (payment_method && (resolvedPaymentRef || resolvedProofPath)) {
+    const details = {
+      order_id: result.orderId,
+      paymentMethod: payment_method,
+      receivedFrom: resolvedName || 'Customer'
+    };
+    if (resolvedProofPath && req.file) {
+      details.paymentScreenshot = req.file.filename;
+    }
+
+    await db('finance_income_submissions').insert({
+      department: 'Retail',
+      submitted_by: resolvedName || 'Customer Portal',
+      amount: total,
+      reference_no: resolvedPaymentRef || (req.file ? req.file.filename : 'N/A'),
+      description: `Customer Retail Order ${result.invoice_number} - ${resolvedName || 'Customer'}`,
+      status: 'Pending',
+      manual_details: JSON.stringify(details),
+      created_at: db.fn.now(),
+      updated_at: db.fn.now()
+    }).catch(err => console.error('Failed to submit retail to finance:', err.message));
+
+    sendFinanceNotification({
+      title: 'New Income Submission',
+      message: `ETB ${Number(total || 0).toLocaleString()} Retail (customer portal) income submitted for verification.`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: result.orderId
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+  }
+
   res.status(201).json({ status: 'success', message: 'Order placed!', data: result });
 });
 
