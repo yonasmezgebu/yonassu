@@ -15,7 +15,7 @@ import {
   ChevronUp, X, CheckCircle, UploadCloud, CreditCard, Truck,
   Phone, Mail, Shield, Info, CheckCircle2, User, Palette,
   Layers, AlignLeft, Calendar, AlertTriangle, Zap, Star,
-  ArrowRight, UserPlus, LogIn, Sparkles
+  ArrowRight, UserPlus, LogIn, Sparkles, Wallet
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════
@@ -910,6 +910,37 @@ export default function PrintingServicePage() {
   const [specialInstructions, setSpecial]     = useState('');
   const [docFile, setDocFile]                 = useState(null);
 
+  // Payment fields
+  const [paymentMethod, setPaymentMethod]     = useState('');
+  const [paymentReference, setPaymentRef]     = useState('');
+  const [paymentScreenshot, setPaymentScreen] = useState(null);
+  const [financeAccounts, setFinanceAccounts] = useState([]);
+
+  // Load finance accounts
+  const loadFinanceAccounts = async () => {
+    try {
+      const result = await axios.get('/finance-bank');
+      if (result && result.success && Array.isArray(result.data)) {
+        setFinanceAccounts(result.data);
+      } else if (Array.isArray(result)) {
+        setFinanceAccounts(result);
+      } else if (result && Array.isArray(result.data)) {
+        setFinanceAccounts(result.data);
+      }
+    } catch (e) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const result2 = await axios.get('/finance-bank', { headers: { Authorization: `Bearer ${token}` } });
+          if (result2 && Array.isArray(result2.data)) setFinanceAccounts(result2.data);
+          else if (Array.isArray(result2)) setFinanceAccounts(result2);
+        } catch (e2) {
+          console.error('[PrintingPage] Failed to load finance accounts:', e2.message);
+        }
+      }
+    }
+  };
+
   // Submission
   const [isSubmitting, setIsSubmitting]       = useState(false);
   const [submitSuccess, setSubmitSuccess]     = useState(false);
@@ -925,6 +956,7 @@ export default function PrintingServicePage() {
     const loggedIn = authService.isAuthenticated();
     setIsLoggedIn(loggedIn);
     if (loggedIn) setCurrentUser(authService.getCurrentUser());
+    loadFinanceAccounts();
   }, []);
 
   // Handle return from login page with pending order
@@ -984,6 +1016,28 @@ export default function PrintingServicePage() {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError('');
+
+    // Payment Validation
+    if (paymentMethod) {
+      const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+      if (acc && acc.account_type !== 'Cash') {
+        if (!paymentReference && !paymentScreenshot) {
+          setSubmitError('For Bank or Telebirr payments, you must provide either a Transaction Reference or a Payment Screenshot.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (paymentReference && paymentScreenshot) {
+          setSubmitError('Please provide either a Transaction Reference OR a Payment Screenshot, but not both.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    } else {
+      setSubmitError('Please select a payment method.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('productType', productType);
@@ -995,6 +1049,12 @@ export default function PrintingServicePage() {
       formData.append('dueDate', dueDate);
       formData.append('specialInstructions', specialInstructions);
       if (docFile) formData.append('document', docFile);
+
+      // Payment details
+      const selectedAcc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+      formData.append('paymentMethod', selectedAcc ? selectedAcc.account_name : paymentMethod);
+      formData.append('paymentReference', paymentReference);
+      if (paymentScreenshot) formData.append('paymentScreenshot', paymentScreenshot);
 
       const res = await axios.post('/printing/customer/orders', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -1523,8 +1583,103 @@ SUTANA Printing Services &nbsp;|&nbsp; Addis Ababa, Ethiopia<br/>
                     </p>
                   </div>
 
+                  {/* Payment Details */}
+                  <div className="psp-section-divider">
+                    <Wallet size={14} /> Payment details
+                  </div>
+                  <div className="psp-form-row">
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Payment Method *</label>
+                      {financeAccounts.length === 0 ? (
+                        <div style={{ padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 'var(--psp-radius)', fontSize: '0.875rem', color: '#92400e' }}>
+                          ⏳ Loading payment accounts...
+                        </div>
+                      ) : (
+                        <select required className="psp-form-input"
+                          value={paymentMethod}
+                          onChange={e => setPaymentMethod(e.target.value)}
+                        >
+                          <option value="">- Select Payment Account -</option>
+                          {['Bank', 'Mobile Wallet', 'Cash'].map(type => {
+                            const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
+                            if (group.length === 0) return null;
+                            return (
+                              <optgroup key={type} label={type}>
+                                {group.map(acc => (
+                                  <option key={acc.id} value={acc.id}>
+                                    {acc.account_name}{acc.account_number ? ` - ${acc.account_number}` : ''}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })}
+                        </select>
+                      )}
+                    </div>
+                    
+                    <div className="psp-form-group">
+                      <label className="psp-form-label">Transaction Reference</label>
+                      <input type="text" className="psp-form-input" placeholder="e.g. TXN-123456"
+                        value={paymentReference} onChange={e => setPaymentRef(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Auto-fill account details panel */}
+                  {paymentMethod && (() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                    if (!acc) return null;
+                    const isCash = acc.account_type === 'Cash';
+                    return (
+                      <div style={{ background: 'hsl(var(--psp-primary) / 0.07)', padding: '0.75rem 1rem', borderRadius: 'var(--psp-radius)', border: '1px solid hsl(var(--psp-primary) / 0.2)', fontSize: '0.875rem', color: 'hsl(var(--psp-fg))', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginTop: '1rem' }}>
+                        <Wallet size={18} color="hsl(var(--psp-primary))" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div>
+                          <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'hsl(var(--psp-primary))' }}>{isCash ? 'Pay in Cash at Branch:' : 'Transfer Payment To:'}</div>
+                          <div><strong>Account Name:</strong> {acc.account_name}</div>
+                          {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
+                          {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
+                          {acc.branch && <div><strong>Branch:</strong> {acc.branch}</div>}
+                          {!isCash && <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--psp-muted-fg))' }}>After payment, enter the transaction reference number above.</div>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Screenshot upload */}
+                  {paymentMethod && (() => {
+                      const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                      if (acc && acc.account_type === 'Cash') return null;
+                      return (
+                        <div className="psp-form-group" style={{ marginTop: '1rem' }}>
+                          <label className="psp-form-label"><UploadCloud size={14} /> Payment Screenshot <span style={{ fontWeight: 400 }}>(Optional if Transaction Reference is provided)</span></label>
+                          <label style={{ cursor: 'pointer' }}>
+                            <div className={`psp-file-upload${paymentScreenshot ? ' has-file' : ''}`}>
+                              <UploadCloud size={24} color={paymentScreenshot ? '#0D7C66' : '#94a3b8'} style={{ marginBottom: 4 }} />
+                              <p style={{ margin: 0, fontWeight: 700, color: paymentScreenshot ? '#0D7C66' : '#334155', fontSize: '0.875rem' }}>
+                                {paymentScreenshot ? paymentScreenshot.name : 'Click to upload payment screenshot'}
+                              </p>
+                              {paymentScreenshot && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); setPaymentScreen(null); }}
+                                  style={{ marginTop: 8, padding: '2px 8px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                                >
+                                  Remove Screenshot
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={e => setPaymentScreen(e.target.files[0] || null)}
+                            />
+                          </label>
+                        </div>
+                      )
+                  })()}
+
                   {/* ── Price Summary ── */}
-                  <div className="psp-price-summary">
+                  <div className="psp-price-summary" style={{ marginTop: '1.5rem' }}>
                     <div className="psp-section-divider" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
                       <Calculator size={14} /> Price Summary
                     </div>
