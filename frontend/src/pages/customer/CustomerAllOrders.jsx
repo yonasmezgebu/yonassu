@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import apiClient from "../../services/apiClient";
 import carService from "../../services/carService";
 import SegmentedSpinner from "../../components/ui/SegmentedSpinner";
+import { RefreshCw, Printer, Tractor, ShoppingBag, Car, Pill, Award, MessageCircle } from 'lucide-react';
 import styles from "./CustomerAllOrders.module.css";
 
 /* ─── Color Palette ─────────────────────────────────────────────────────── */
@@ -82,7 +83,7 @@ export default function CustomerAllOrders() {
                 amount: o.total_price,
                 description: `${o.product_type || ""}`,
                 navPath: "/customer/printing-orders",
-                icon: "🖨️",
+                icon: <Printer size={16} />,
                 color: G.olive,
               }),
             );
@@ -105,7 +106,7 @@ export default function CustomerAllOrders() {
                 amount: o.total_amount,
                 description: `${o.tractor_name || ""}`,
                 navPath: "/customer/farming-orders",
-                icon: "🚜",
+                icon: <Tractor size={16} />,
                 color: G.emerald,
               }),
             );
@@ -132,7 +133,7 @@ export default function CustomerAllOrders() {
                     .join(", ")
                     ?.slice(0, 80) || "",
                 navPath: "/customer/retail-orders",
-                icon: "🛍️",
+                icon: <ShoppingBag size={16} />,
                 color: G.orange,
               }),
             );
@@ -155,7 +156,7 @@ export default function CustomerAllOrders() {
                 amount: o.totalAmount,
                 description: `${o.carName || ""}`,
                 navPath: "/customer/rentals",
-                icon: "🚗",
+                icon: <Car size={16} />,
                 color: G.blue,
               }),
             );
@@ -179,7 +180,7 @@ export default function CustomerAllOrders() {
                 amount: o.total_amount,
                 description: o.medication_name,
                 navPath: "/customer/prescriptions",
-                icon: "💊",
+                icon: <Pill size={16} />,
                 color: G.pink,
               }),
             );
@@ -202,7 +203,7 @@ export default function CustomerAllOrders() {
                 amount: o.bid_amount,
                 description: o.tender_title || "Tender Bid",
                 navPath: "/customer/bids",
-                icon: "🏆",
+                icon: <Award size={16} />,
                 color: G.red,
               }),
             );
@@ -290,7 +291,7 @@ export default function CustomerAllOrders() {
             className={styles.btnPrimary}
             disabled={refreshing}
           >
-            {refreshing ? <SegmentedSpinner size={16} /> : <span>🔄</span>}
+            {refreshing ? <SegmentedSpinner size={16} /> : <RefreshCw size={14} />}
             Sync Data
           </button>
         </div>
@@ -528,42 +529,42 @@ export default function CustomerAllOrders() {
                 {
                   label: "Retail",
                   sub: "My Orders",
-                  icon: "🛍️",
+                  icon: <ShoppingBag size={24} />,
                   color: G.orange,
                   href: "/customer/retail-orders",
                 },
                 {
                   label: "AgriRent",
                   sub: "Equipment",
-                  icon: "🚜",
+                  icon: <Tractor size={24} />,
                   color: G.emerald,
                   href: "/customer/farming-orders",
                 },
                 {
                   label: "Pharmacy",
                   sub: "Prescriptions",
-                  icon: "💊",
+                  icon: <Pill size={24} />,
                   color: G.pink,
                   href: "/customer/prescriptions",
                 },
                 {
                   label: "Rentals",
                   sub: "Car Rentals",
-                  icon: "🚗",
+                  icon: <Car size={24} />,
                   color: G.blue,
                   href: "/customer/rentals",
                 },
                 {
                   label: "Printing",
                   sub: "Orders",
-                  icon: "🖨️",
+                  icon: <Printer size={24} />,
                   color: G.olive,
                   href: "/customer/printing-orders",
                 },
                 {
                   label: "Support",
                   sub: "Tickets",
-                  icon: "💬",
+                  icon: <MessageCircle size={24} />,
                   color: "hsl(var(--foreground))",
                   href: "/customer/support",
                 },
