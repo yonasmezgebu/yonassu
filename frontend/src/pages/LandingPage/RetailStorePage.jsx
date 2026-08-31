@@ -61,8 +61,27 @@ const RetailStorePage = () => {
   const [paymentProofPreview,setPaymentProofPreview]= useState('');
   const [paymentError,       setPaymentError]       = useState('');
   const [formError,          setFormError]          = useState('');
+  const [financeAccounts,    setFinanceAccounts]    = useState([]);
   const paymentProofInputRef = useRef(null);
   const submitErrorRef       = useRef(null);
+
+  const loadFinanceAccounts = async () => {
+    try {
+      const result = await axios.get('/finance-bank');
+      if (result && result.success && Array.isArray(result.data)) setFinanceAccounts(result.data);
+      else if (Array.isArray(result)) setFinanceAccounts(result);
+      else if (result && Array.isArray(result.data)) setFinanceAccounts(result.data);
+    } catch (e) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const r2 = await axios.get('/finance-bank', { headers: { Authorization: `Bearer ${token}` } });
+          if (r2 && Array.isArray(r2.data)) setFinanceAccounts(r2.data);
+          else if (Array.isArray(r2)) setFinanceAccounts(r2);
+        } catch (e2) { console.error('[RetailStorePage] Finance accounts load failed:', e2.message); }
+      }
+    }
+  };
 
   const scrollFormError = () => {
     setTimeout(() => {
@@ -151,6 +170,8 @@ const RetailStorePage = () => {
         sessionStorage.removeItem('pendingRetailCartItem');
       }
     }
+    
+    loadFinanceAccounts();
   }, [location]);
 
   const loadCart = () => {
@@ -204,12 +225,29 @@ const RetailStorePage = () => {
       return;
     }
     const ref = paymentRef.trim();
-    if (!ref && !paymentProofFile) {
-      setPaymentError('Payment ID or Payment Screenshot is required — please provide at least one.');
-      setFormError('Payment ID or Payment Screenshot is required — please provide at least one.');
+    if (paymentMethod) {
+      const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+      if (acc && acc.account_type !== 'Cash') {
+        if (!ref && !paymentProofFile) {
+          setPaymentError('For Bank or Telebirr payments, please provide either a Reference ID or a Payment Receipt.');
+          setFormError('For Bank or Telebirr payments, please provide either a Reference ID or a Payment Receipt.');
+          scrollFormError();
+          return;
+        }
+        if (ref && paymentProofFile) {
+          setPaymentError('Please provide either a Reference ID OR a Payment Receipt, but not both.');
+          setFormError('Please provide either a Reference ID OR a Payment Receipt, but not both.');
+          scrollFormError();
+          return;
+        }
+      }
+    } else {
+      setPaymentError('Please select a payment method.');
+      setFormError('Please select a payment method.');
       scrollFormError();
       return;
     }
+    
     setPlacingOrder(true);
     setPaymentError('');
     setFormError('');
@@ -641,65 +679,100 @@ const RetailStorePage = () => {
                     />
                   </div>
 
-                  {/* Payment Proof */}
+                  {/* Payment Verification */}
                   <div className="rsp-section-divider">
                     <Banknote size={14} /> Payment Verification
                   </div>
-                  <div className="rsp-payment-grid">
-                    <div className="rsp-form-group">
-                      <label className="rsp-form-label">Method *</label>
-                      <select
-                        className="rsp-form-input"
-                        value={paymentMethod}
-                        onChange={e => setPaymentMethod(e.target.value)}
-                      >
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="telebirr">Mobile Money (Telebirr)</option>
-                      </select>
-                    </div>
-                    <div className="rsp-form-group">
-                      <label className="rsp-form-label">Reference ID</label>
-                      <input
-                        type="text"
-                        className="rsp-form-input"
-                        placeholder="e.g. TRX-12345"
-                        value={paymentRef}
-                        onChange={e => { setPaymentRef(e.target.value); if (paymentError) setPaymentError(''); setFormError(''); }}
-                      />
-                    </div>
-                  </div>
-                  <div className="rsp-form-group">
-                    <label className="rsp-form-label">
-                      Payment Receipt
-                      <span> (ID or Receipt required)</span>
-                    </label>
-                    <div
-                      className={`rsp-upload-box${paymentProofFile ? ' has-file' : ''}`}
-                      onClick={() => paymentProofInputRef.current && paymentProofInputRef.current.click()}
+                  
+                  <div className="rsp-form-group" style={{ marginBottom: '1rem' }}>
+                    <label className="rsp-form-label">Payment Method *</label>
+                    <select
+                      className="rsp-form-input"
+                      value={paymentMethod}
+                      onChange={e => {
+                        setPaymentMethod(e.target.value);
+                        setPaymentError('');
+                        setFormError('');
+                      }}
                     >
-                      {paymentProofPreview ? (
-                        <img src={paymentProofPreview} alt="Payment proof" style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <>
-                          <UploadCloud size={24} color={paymentProofFile ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} />
-                          <span className="rsp-upload-label">Browse files (JPG/PNG/PDF)</span>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      ref={paymentProofInputRef}
-                      type="file"
-                      accept="image/*,.pdf"
-                      style={{ display: 'none' }}
-                      onChange={handlePaymentProofChange}
-                    />
-                    {paymentProofFile && (
-                      <button type="button" onClick={clearPaymentProof} className="rsp-remove-proof">
-                        <X size={14} /> Remove receipt
-                      </button>
-                    )}
-                    {paymentError && <div className="rsp-payment-error"><AlertTriangle size={14} /> {paymentError}</div>}
+                      <option value="">Select Payment Method...</option>
+                      {financeAccounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.account_type === 'Cash' ? 'Cash Payment' : `${acc.bank_name} - ${acc.account_number}`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
+                  {(() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                    if (acc && acc.account_type !== 'Cash') {
+                      return (
+                        <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Please transfer to:</p>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>
+                            <strong>Bank:</strong> {acc.bank_name} <br/>
+                            <strong>Account Name:</strong> {acc.account_name} <br/>
+                            <strong>Account Number:</strong> {acc.account_number}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {(() => {
+                    const acc = financeAccounts.find(a => String(a.id) === String(paymentMethod));
+                    if (acc && acc.account_type === 'Cash') return null;
+                    return (
+                      <>
+                        <div className="rsp-form-group" style={{ marginBottom: '1rem' }}>
+                          <label className="rsp-form-label">Transaction Reference</label>
+                          <input
+                            type="text"
+                            className="rsp-form-input"
+                            placeholder="e.g. FT123456789"
+                            value={paymentRef}
+                            onChange={e => { setPaymentRef(e.target.value); setPaymentError(''); setFormError(''); }}
+                          />
+                        </div>
+
+                        <div className="rsp-form-group">
+                          <label className="rsp-form-label">
+                            <UploadCloud size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> 
+                            Payment Screenshot <span style={{ fontWeight: 400 }}>(Optional if Transaction Reference is provided)</span>
+                          </label>
+                          <div
+                            className={`rsp-upload-box${paymentProofFile ? ' has-file' : ''}`}
+                            onClick={() => paymentProofInputRef.current && paymentProofInputRef.current.click()}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {paymentProofPreview ? (
+                              <img src={paymentProofPreview} alt="Payment proof" style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <>
+                                <UploadCloud size={24} color={paymentProofFile ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'} />
+                                <span className="rsp-upload-label">Browse files (JPG/PNG/PDF)</span>
+                              </>
+                            )}
+                          </div>
+                          <input
+                            ref={paymentProofInputRef}
+                            type="file"
+                            accept="image/*,.pdf"
+                            style={{ display: 'none' }}
+                            onChange={handlePaymentProofChange}
+                          />
+                          {paymentProofFile && (
+                            <button type="button" onClick={clearPaymentProof} className="rsp-remove-proof">
+                              <X size={14} /> Remove receipt
+                            </button>
+                          )}
+                          {paymentError && <div className="rsp-payment-error"><AlertTriangle size={14} /> {paymentError}</div>}
+                        </div>
+                      </>
+                    );
+                  })()}
 
                   {/* Price Summary */}
                   <div className="rsp-price-summary">
