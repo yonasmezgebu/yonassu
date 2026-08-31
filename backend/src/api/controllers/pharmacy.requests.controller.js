@@ -39,7 +39,15 @@ const requestsController = {
     const total_amount = subtotal + tax_amount + delivery_fee;
 
     let prescription_image = null;
-    if (req.file) {
+    let paymentScreenshotName = null;
+    if (req.files) {
+      if (req.files.prescription_image && req.files.prescription_image[0]) {
+        prescription_image = getFileInfo(req.files.prescription_image[0]).url;
+      }
+      if (req.files.paymentScreenshot && req.files.paymentScreenshot[0]) {
+        paymentScreenshotName = req.files.paymentScreenshot[0].filename;
+      }
+    } else if (req.file) { // Fallback if still using .single() for some reason
       prescription_image = getFileInfo(req.file).url;
     }
 
@@ -69,6 +77,29 @@ const requestsController = {
     });
 
     const request = await db('prescription_requests').where({ id }).first();
+
+    // Automatically send to Finance Live Income for verification
+    const { paymentMethod, paymentReference } = req.body;
+    if (paymentMethod && (paymentReference || paymentScreenshotName)) {
+      const details = {
+        request_id: id,
+        paymentMethod: paymentMethod,
+        receivedFrom: final_customer_name
+      };
+      if (paymentScreenshotName) details.paymentScreenshot = paymentScreenshotName;
+
+      await db('finance_income_submissions').insert({
+        department: 'Pharmacy',
+        submitted_by: final_customer_name || 'Customer Portal',
+        amount: total_amount,
+        reference_no: paymentReference || paymentScreenshotName || 'N/A',
+        description: `Customer Pharmacy Request ${request_number} - ${final_customer_name}`,
+        status: 'Pending',
+        manual_details: JSON.stringify(details),
+        created_at: db.fn.now(),
+        updated_at: db.fn.now()
+      }).catch(err => console.error('Failed to submit pharmacy to finance:', err.message));
+    }
 
     // Emit real-time socket event to pharmacist dashboard
     const io = req.app.get('io');
