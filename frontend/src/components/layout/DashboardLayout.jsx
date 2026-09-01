@@ -1932,7 +1932,9 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       socket.on('pharmacy-transfer', (data) => {
         const { title, message, type, link } = data || {};
         if (!(roleFlags.pharm || roleFlags.store)) return;
-        playSound(soundNameForType(type));
+        // No sound for sale/pos events — only for logistics events like shipment
+        const silentTypes = ['sale_created', 'pos', 'pharmacy', 'prescription', 'sales_report'];
+        if (!silentTypes.includes(type)) playSound(soundNameForType(type));
         sendPushNotification(title || 'Pharmacy Transfer', message || '', link || '');
         if (title) showToast(`${title}: ${message}`, type);
         setNotifRefresh(n => n + 1);
@@ -1941,7 +1943,7 @@ const DashboardLayout = ({ children, menuItems, title, hideTopbar, noPadding }) 
       socket.on('new-prescription-request', (data) => {
         if (!roleFlags.pharm) return;
         const { request_number, medication_name, quantity, customer_name } = data || {};
-        playSound('request');
+        // No sound — just toast and push notification
         sendPushNotification('New Online Order', `${customer_name} ordered ${medication_name} x${quantity}`, '/pharmacy-worker/sales');
         showToast(`New Online Order #${request_number}: ${customer_name} ordered ${medication_name}`, 'info');
         setNotifRefresh(n => n + 1);
