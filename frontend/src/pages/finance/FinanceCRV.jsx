@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CreditCard, CheckCircle, Printer, DollarSign, User, FileText, History,
-  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, Eye, X
+  Banknote, Building, Smartphone, Calendar, RefreshCw, PenTool, Trash2, Eye, X,
+  BookOpen
 } from 'lucide-react';
 import api from '../../services/apiClient';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -265,6 +267,7 @@ const CRVPrintView = ({ crv }) => (
 
 /* ─── Main CRV Form ───────────────────────────────────────────── */
 const FinanceCRV = () => {
+  const navigate = useNavigate();
   const [date, setDate]             = useState(new Date().toISOString().slice(0, 10));
   const [receivedFrom, setReceivedFrom] = useState('');
   const [amount, setAmount]         = useState('');
@@ -423,13 +426,8 @@ const FinanceCRV = () => {
       <button type="button" onClick={() => setActiveTab('form')} style={tabBtnStyle(activeTab === 'form')}>
         <PenTool size={16} /> New Receipt
       </button>
-      <button type="button" onClick={() => setActiveTab('history')} style={tabBtnStyle(activeTab === 'history')}>
-        <History size={16} /> Receipt History
-        {crvList.length > 0 && (
-          <span style={{ background: activeTab === 'history' ? '#dcfce7' : '#f1f5f9', color: activeTab === 'history' ? '#166534' : '#64748b', padding: '2px 8px', fontSize: 11, fontWeight: 800, borderRadius: 99 }}>
-            {crvList.length}
-          </span>
-        )}
+      <button type="button" onClick={() => navigate('/finance/outstanding-ar')} style={{ ...tabBtnStyle(false), flex: 0 }}>
+        <BookOpen size={16} /> Revenue Book
       </button>
     </div>
   );
