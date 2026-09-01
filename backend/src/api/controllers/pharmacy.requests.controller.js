@@ -181,10 +181,34 @@ const requestsController = {
   // PHARMACIST: Get all pending requests
   // ==============================
   getPendingRequests: catchAsync(async (req, res) => {
-    const requests = await db('prescription_requests')
-      .where({ status: 'pending' })
-      .orderBy('requested_at', 'asc');
-    res.json({ status: 'success', data: requests });
+    const requests = await db('prescription_requests as pr')
+      .leftJoin('finance_income_submissions as fis', function() {
+        this.on('fis.department', '=', db.raw('?', ['Pharmacy']))
+          .andOn(db.raw("JSON_EXTRACT(fis.manual_details, '$.request_id')"), '=', 'pr.id')
+      })
+      .select('pr.*', 'fis.reference_no as payment_reference', 'fis.manual_details as payment_manual_details')
+      .where({ 'pr.status': 'pending' })
+      .orderBy('pr.requested_at', 'asc');
+      
+    // Parse manual details to extract method and screenshot
+    const formattedRequests = requests.map(req => {
+      let method = null;
+      let screenshot = null;
+      if (req.payment_manual_details) {
+        try {
+          const details = typeof req.payment_manual_details === 'string' ? JSON.parse(req.payment_manual_details) : req.payment_manual_details;
+          method = details.paymentMethod;
+          screenshot = details.paymentScreenshot;
+        } catch (e) {}
+      }
+      return {
+        ...req,
+        payment_method: method || 'CASH',
+        payment_screenshot: screenshot
+      };
+    });
+
+    res.json({ status: 'success', data: formattedRequests });
   }),
 
   // ==============================
