@@ -18,7 +18,7 @@ import readySrc from '../assets/notification/ready.m4a';
 import receivedSrc from '../assets/notification/received.ogg';
 import rejectSrc from '../assets/notification/reject.mp3';
 import rejectedSrc from '../assets/notification/rejected.ogg';
-import successSrc from '../assets/notification/success.mp3';
+import successSrc from '../assets/notification/approved.ogg';
 
 // Fallbacks for missing files
 const cashOutSrc = successSrc;
@@ -73,18 +73,18 @@ export const SOUND_FOR_TYPE = {
   finance:      'request',   // income submitted to finance
   task:         'info',      // new task assigned
   payslip:      'ready',     // payslip generated
-  pharmacy:     'info',
-  pos:          'clump',
+  pharmacy:     null,        // no sound for pharmacy sale events
+  pos:          null,        // no sound for POS sale events
   general:      'info',
   approved:     'success',
   rejected:     'rejected',
   completed:    'received',
   shipment:     'received',
-  sale_created: 'clump',
+  sale_created: null,        // no sound on sale completion
   sales_report: 'info',
   report_rejected: 'rejected',
   expired_drug: 'expired',
-  prescription: 'request',
+  prescription: null,        // no sound for new prescription/online orders
   tender_approval: 'posted',
   new_bid: 'request',
   transfer_request: 'info',
@@ -175,6 +175,7 @@ const resolveSound = (name) => {
 };
 
 const playSound = (soundName) => {
+  if (!soundName) return; // null/undefined = intentionally silenced
   try {
     const src = resolveSound(soundName);
 
