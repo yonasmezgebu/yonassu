@@ -35,9 +35,9 @@ const PharmacyWorkerDashboard = () => {
     {
       label: 'Sales Section', icon: 'shopping-cart',
       children: [
-        { label: '🛒 New Sale',          path: '/pharmacy-worker/sales',              icon: 'shopping-cart', color: '#059669', className: 'executive' },
-        { label: 'Sales Return',         path: '/pharmacy-worker/sales-return',       icon: 'rotate-ccw' },
-        { label: '🌐 Health Publisher',  path: '/pharmacy-worker/health-publisher',   icon: 'globe',         color: '#224f94' },
+        { label: 'New Sale',         path: '/pharmacy-worker/sales',              icon: 'shopping-cart', color: '#059669', className: 'executive' },
+        { label: 'Sales Return',     path: '/pharmacy-worker/sales-return',       icon: 'rotate-ccw' },
+        { label: 'Health Publisher', path: '/pharmacy-worker/health-publisher',   icon: 'globe',         color: '#224f94' },
       ]
     },
     { type: 'divider' },
