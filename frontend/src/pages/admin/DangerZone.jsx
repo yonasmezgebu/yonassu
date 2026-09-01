@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, Eraser, AlertTriangle, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { AlertOctagon, Database, ShieldAlert, Trash2, CheckCircle2, XCircle, Clock, Loader2, Lock, TriangleAlert, ChevronDown, ChevronRight, Eraser, AlertTriangle, X, Search, Layers, HardDrive, Filter } from 'lucide-react';
 import adminService from '../../services/adminService';
 import styles from './DangerZone.module.css';
 import { playSound } from '../../services/notificationManager';
@@ -25,12 +25,37 @@ const DangerZone = () => {
   const [confirmText, setConfirmText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
-  const [showWipeable, setShowWipeable] = useState(false);
+  const [showWipeable, setShowWipeable] = useState(true);
   const [clearingTable, setClearingTable] = useState(null);
+  const [search, setSearch] = useState('');
+  const [showProtected, setShowProtected] = useState(false);
+  // module -> expanded state
+  const [expanded, setExpanded] = useState({});
+  const [collapsedZero, setCollapsedZero] = useState(true);
 
-  // In-app confirm modal state
-  const [confirmModal, setConfirmModal] = useState(null);
-  // confirmModal shape: { table: string, resolve: fn }
+  const toggleModule = (mod) => setExpanded((s) => ({ ...s, [mod]: !s[mod] }));
+
+  const wipeableGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (overview?.wipeableByModule || [])
+      .map((g) => {
+        const tables = g.tables.filter((t) => {
+          const n = (typeof t === 'string' ? t : t.name).toLowerCase();
+          return !q || n.includes(q);
+        });
+        return { ...g, tables };
+      })
+      .filter((g) => g.tables.length > 0);
+  }, [overview, search]);
+
+  const wipeableTotalRows = useMemo(
+    () => (overview?.wipeableByModule || []).reduce((s, g) =>
+      s + g.tables.reduce((a, t) => a + ((typeof t === 'object' && t.approxRows) || 0), 0), 0),
+    [overview]
+  );
+
+  // Confirm modal: store table name waiting for confirmation
+  const [confirmTable, setConfirmTable] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -73,14 +98,16 @@ const DangerZone = () => {
   const requests = overview?.recentRequests || [];
   const pending = overview?.pendingRequest;
 
-  /** Show in-app confirmation modal and return a promise that resolves true/false */
-  const askConfirm = (table) =>
-    new Promise((resolve) => setConfirmModal({ table, resolve }));
+  /** Called when user clicks the erase button on a table row */
+  const handleClearTable = (table) => {
+    setConfirmTable(table); // show modal
+  };
 
-  const handleClearTable = async (table) => {
-    const confirmed = await askConfirm(table);
-    setConfirmModal(null);
-    if (!confirmed) return;
+  /** Called when user confirms deletion in the modal */
+  const handleConfirmDelete = async () => {
+    const table = confirmTable;
+    setConfirmTable(null);
+    if (!table) return;
     setClearingTable(table);
     try {
       const res = await adminService.clearDangerZoneTable(table);
@@ -93,11 +120,12 @@ const DangerZone = () => {
     }
   };
 
+
   return (
     <div className={styles.root}>
 
       {/* ── In-app delete confirmation modal ─────────────── */}
-      {confirmModal && (
+      {confirmTable && (
         <div className={styles.confirmOverlay}>
           <div className={styles.confirmBox}>
             <div className={styles.confirmIconRow}>
@@ -106,7 +134,7 @@ const DangerZone = () => {
             <h3 className={styles.confirmTitle}>Clear Table Data?</h3>
             <p className={styles.confirmMsg}>
               You are about to permanently delete <strong>ALL rows</strong> inside&nbsp;
-              <code className={styles.confirmTable}>{confirmModal.table}</code>.
+              <code className={styles.confirmTable}>{confirmTable}</code>.
             </p>
             <p className={styles.confirmNote}>
               The table structure is <strong>kept intact</strong> — only the data will be erased. This action cannot be undone.
@@ -114,13 +142,13 @@ const DangerZone = () => {
             <div className={styles.confirmActions}>
               <button
                 className={styles.confirmCancel}
-                onClick={() => { confirmModal.resolve(false); setConfirmModal(null); }}
+                onClick={() => setConfirmTable(null)}
               >
                 <X size={15} /> Cancel
               </button>
               <button
                 className={styles.confirmDelete}
-                onClick={() => { confirmModal.resolve(true); setConfirmModal(null); }}
+                onClick={handleConfirmDelete}
               >
                 <Eraser size={15} /> Yes, Clear Table
               </button>
@@ -191,6 +219,108 @@ const DangerZone = () => {
               </div>
             </div>
           ) : null}
+
+          {/* 🔍 MONITOR & DELETE — Can Delete Data */}
+          <div className={styles.canDeleteCard}>
+            <div className={styles.canDeleteHead}>
+              <div className={styles.canDeleteTitleRow}>
+                <Trash2 size={20} className={styles.redIcon} />
+                <h2>Can Delete Data</h2>
+                <span className={styles.canDeleteCount}>{overview.wipeableTables ?? 0} tables</span>
+                <span className={styles.canDeleteRows}>~{wipeableTotalRows.toLocaleString()} rows</span>
+              </div>
+              <div className={styles.searchWrap}>
+                <Search size={16} className={styles.searchIcon} />
+                <input
+                  className={styles.searchInput}
+                  placeholder="Search tables… (e.g. pos, sales, crv)"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button className={styles.searchClear} onClick={() => setSearch('')} title="Clear search"><X size={14} /></button>
+                )}
+              </div>
+            </div>
+
+            <p className={styles.wipeNote}>
+              Data inside these tables can be deleted (structure is kept). Search to filter, then click <b>Delete Data</b> on any row.
+              Modules with <b>0 rows</b> are collapsed automatically to keep the list scannable.
+            </p>
+
+            <div className={styles.wipeToolbar}>
+              <button
+                className={`${styles.toggleBtn} ${search ? styles.toggleBtnActive : ''}`}
+                onClick={() => { setShowWipeable((v) => !v); }}
+              >
+                {showWipeable ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                {showWipeable ? 'Collapse all' : 'Expand all'}
+              </button>
+              <button
+                className={`${styles.toggleBtn} ${collapsedZero ? styles.toggleBtnActive : ''}`}
+                onClick={() => setCollapsedZero((v) => !v)}
+              >
+                <Filter size={15} />
+                {collapsedZero ? 'Auto-collapse empty (0 rows) — ON' : 'Auto-collapse empty (0 rows) — OFF'}
+              </button>
+            </div>
+
+            {showWipeable && (
+              <div className={styles.moduleList}>
+                {wipeableGroups.length === 0 ? (
+                  <p className={styles.empty}>No tables match your search.</p>
+                ) : (
+                  wipeableGroups.map((group) => {
+                    const moduleRows = group.tables.reduce((a, t) => a + ((typeof t === 'object' && t.approxRows) || 0), 0);
+                    const defaultExpanded = search ? true : !(collapsedZero && moduleRows === 0);
+                    const isOpen = expanded[group.module] ?? defaultExpanded;
+                    return (
+                      <div key={group.module} className={styles.moduleGroup}>
+                        <button className={styles.moduleHeader} onClick={() => toggleModule(group.module)}>
+                          {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                          <span className={styles.moduleName}>{group.module}</span>
+                          <span className={styles.moduleSub}>
+                            <Layers size={13} /> {group.tables.length}
+                            <HardDrive size={13} style={{ marginLeft: 8 }} /> ~{moduleRows.toLocaleString()} rows
+                          </span>
+                          <span className={`${styles.moduleCount} ${moduleRows === 0 ? styles.moduleCountZero : ''}`}>{moduleRows === 0 ? '0 rows' : `${group.tables.length} tables`}</span>
+                        </button>
+                        {isOpen && (
+                          <div className={styles.tableCols}>
+                            {group.tables.map((entry, i) => {
+                              const tName = typeof entry === 'string' ? entry : entry.name;
+                              const tRows = typeof entry === 'object' ? entry.approxRows : 0;
+                              return (
+                                <div key={tName} className={styles.colItem}>
+                                  <span className={`${styles.colNum} ${styles.colNumRed}`}>{i + 1}</span>
+                                  <div className={styles.colNameWrap}>
+                                    <span className={styles.colNameWipe}>{tName}</span>
+                                    <span className={`${styles.rowPill} ${tRows === 0 ? styles.rowPillZero : ''}`}>
+                                      {tRows > 0 ? `~${tRows.toLocaleString()} rows` : '0 rows'}
+                                    </span>
+                                  </div>
+                                  <button
+                                    className={styles.clearBtn}
+                                    title={`Delete all data inside "${tName}" (table structure is kept)`}
+                                    disabled={!!clearingTable}
+                                    onClick={() => handleClearTable(tName)}
+                                  >
+                                    {clearingTable === tName
+                                      ? <><Loader2 className={styles.spin} size={13} /> Deleting…</>
+                                      : <><Eraser size={13} /> Delete Data</>}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Request form */}
           <form className={styles.card} onSubmit={handleRequest}>
@@ -286,61 +416,40 @@ const DangerZone = () => {
             )}
           </div>
 
-          {/* Protected tables */}
+          {/* Protected tables — cannot be deleted */}
           <div className={styles.card}>
             <div className={styles.cardTitleRow}>
               <ShieldAlert size={20} className={styles.greenIcon} />
-              <h2>Protected System Tables — {overview.protectedTables?.length ?? 0} (never touched)</h2>
+              <h2>Cannot Delete Data — {overview.protectedTables?.length ?? 0} protected tables</h2>
             </div>
             <p className={styles.protectNote}>
               Auth, security, settings, lookups, catalogs, registries, runtime and the danger-zone ledger.
-              Only their data is kept — the rest of the database is cleared.
-            </p>
-            <div className={styles.tableCols}>
-              {(overview.protectedTables || []).map((t, i) => (
-                <div key={t} className={styles.colItem}>
-                  <span className={`${styles.colNum} ${styles.colNumGreen}`}>{i + 1}</span>
-                  <span className={styles.colName}>{t}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tables whose DATA will be cleared */}
-          <div className={styles.card}>
-            <div className={styles.cardTitleRow}>
-              <Trash2 size={20} className={styles.redIcon} />
-              <h2>Tables to be Emptied — {overview.wipeableTables ?? 0} (data only)</h2>
-            </div>
-            <p className={styles.wipeNote}>
-              The data inside these tables is deleted. The tables themselves remain with their structure intact.
-              Hover a row and click the eraser icon to clear just that single table's data.
+              Their data is never touched. Grouped by module, alphabetically within each module.
             </p>
             <button
               className={styles.toggleBtn}
-              onClick={() => setShowWipeable((v) => !v)}
+              onClick={() => setShowProtected((v) => !v)}
             >
-              <ChevronDown size={16} style={{ transform: showWipeable ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-              {showWipeable ? 'Hide list' : 'Show list of tables to be emptied'}
+              {showProtected ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              {showProtected ? 'Collapse protected tables' : 'Expand protected tables'}
             </button>
-            {showWipeable && (
-              <div className={styles.tableCols}>
-                {(overview.wipeableTablesList || []).map((t, i) => (
-                  <div key={t} className={styles.colItem}>
-                    <span className={`${styles.colNum} ${styles.colNumRed}`}>{i + 1}</span>
-                    <span className={styles.colNameWipe}>{t}</span>
-                    <button
-                      className={styles.clearBtn}
-                      title={`Clear all data inside "${t}" (table is kept)`}
-                      disabled={clearingTable === t}
-                      onClick={() => handleClearTable(t)}
-                    >
-                      {clearingTable === t ? <Loader2 className={styles.spin} size={13} /> : <Eraser size={13} />}
-                    </button>
+            {showProtected &&
+              (overview.protectedByModule || []).map((group) => (
+                <div key={group.module} className={styles.moduleGroup}>
+                  <h3 className={styles.moduleHeader}>
+                    {group.module}
+                    <span className={styles.moduleCount}>{group.tables.length}</span>
+                  </h3>
+                  <div className={styles.tableCols}>
+                    {group.tables.map((t, i) => (
+                      <div key={t} className={styles.colItem}>
+                        <span className={`${styles.colNum} ${styles.colNumGreen}`}>{i + 1}</span>
+                        <span className={styles.colName}>{t}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
           </div>
         </>
       )}
