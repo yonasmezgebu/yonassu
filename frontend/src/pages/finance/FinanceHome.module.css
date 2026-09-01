@@ -1,982 +1,182 @@
-/* ═══════════════════════════════════════════════════════════════
-   Finance Dashboard Overview — Complete Redesign
-   Following: The Ultimate General Design & CSS Master Note
-   • HSL design tokens  • 8-point grid  • Mobile-first responsive
-   • Utility-first patterns  • Accessible focus states
-   ═══════════════════════════════════════════════════════════════ */
+/* FinanceHome.module.css - Rebuilt with The Ultimate General Design & CSS Master Note */
 
-/* ── 1. Foundation: Global reset scoped to this page ─────────── */
-.page *,
-.page *::before,
-.page *::after {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* ── 2. Design tokens (HSL variables) ────────────────────────── */
 .page {
-  /* Colors — HSL triplets */
-  --bg:                 220 20% 97%;      /* #F5F6FA */
-  --surface:            0 0% 100%;        /* #FFFFFF */
-  --surface-2:          220 14% 96%;      /* subtle inner bg */
-  --border:             220 13% 91%;      /* #E4E7EF */
-  --border-focus:       221 83% 53%;      /* primary color */
+  /* Design Tokens as per the master note */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+  --radius: 0.5rem;
 
-  --foreground:         222 47% 11%;      /* #111827 dark */
-  --foreground-2:       215 16% 47%;      /* #6B7280 secondary */
-  --foreground-3:       215 14% 61%;      /* #9CA3AF muted */
-
-  --primary:            221 83% 53%;      /* #2563EB brand blue */
-  --primary-dark:       224 76% 44%;      /* #1D4ED8 hover */
-  --primary-light:      214 100% 97%;     /* #EFF6FF subtle bg */
-
-  --success:            142 71% 45%;      /* #16A34A green */
-  --success-bg:         142 76% 92%;      /* #DCFCE7 */
-  --warning:            32 95% 44%;       /* #D97706 orange */
-  --warning-bg:         48 96% 89%;       /* #FEF3C7 */
-  --danger:             0 72% 51%;        /* #DC2626 red */
-  --danger-bg:          0 93% 94%;        /* #FEE2E2 */
-  --info:               199 89% 48%;      /* #0891B2 sky */
-  --info-bg:            199 89% 93%;      /* #E0F2FE */
-  --purple:             258 90% 56%;      /* #7C3AED */
-  --purple-bg:          258 100% 96%;     /* #F3E5F5 */
-
-  /* Shadows */
-  --shadow-xs:   0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm:   0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-
-  /* Radius */
-  --radius-sm:  0.375rem;    /* 6px */
-  --radius:     0.625rem;    /* 10px */
-  --radius-lg:  0.875rem;    /* 14px */
-  --radius-xl:  1rem;        /* 16px */
-
-  /* Spacing: 8-point grid */
-  --sp-1:  0.25rem;   /* 4px */
-  --sp-2:  0.5rem;    /* 8px */
-  --sp-3:  0.75rem;   /* 12px */
-  --sp-4:  1rem;      /* 16px */
-  --sp-5:  1.25rem;   /* 20px */
-  --sp-6:  1.5rem;    /* 24px */
-  --sp-8:  2rem;      /* 32px */
-  --sp-10: 2.5rem;    /* 40px */
-
-  /* Transition */
-  --transition: 200ms ease-in-out;
-
-  /* ── Layout ── */
-  /* flush with DashboardLayout which pads 24px */
-  margin: -24px;
-  padding: var(--sp-6);
-  min-height: calc(100vh - 60px);
-  background: hsl(var(--bg));
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-               'Inter', Roboto, sans-serif;
-  font-size: 1rem;            /* 16px body baseline */
-  line-height: 1.625;
-  overflow-x: hidden;
+  min-height: calc(100vh - 60px);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   3. HEADER
-   ═══════════════════════════════════════════════════════════════ */
+/* Typography */
+.page h1, .page h2, .page h3 {
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.pageTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.pageSubtitle {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Header */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
-  margin-bottom: var(--sp-6);
+  margin-bottom: 2rem;
 }
 
-.titleBlock { min-width: 0; }
-
-.pageTitle {
-  font-size: 1.875rem;       /* H2 — 30px */
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  color: hsl(var(--foreground));
-}
-
-.welcomeEmoji {
-  font-size: 1.5rem;
-  margin-left: var(--sp-2);
-  vertical-align: middle;
-}
-
-.pageSubtitle {
-  font-size: 0.875rem;       /* 14px */
-  font-weight: 500;
-  color: hsl(var(--foreground-2));
-  margin-top: var(--sp-1);
-  line-height: 1.5;
-}
-
-/* ── Sync button ─────────────────────────────────────────────── */
-.syncBtn {
+/* Buttons */
+.btnPrimary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
-  padding: 0.5rem 1.25rem;
-  height: 2.5rem;             /* 40px */
-  background: hsl(var(--surface));
-  color: hsl(var(--foreground));
-  font-size: 0.875rem;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   font-weight: 500;
-  font-family: inherit;
-  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
+  transition: background-color 0.2s ease-in-out;
+  border: none;
   cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--transition),
-              border-color var(--transition),
-              box-shadow var(--transition),
-              transform var(--transition);
-  box-shadow: var(--shadow-xs);
+  font-size: 1rem;
 }
-
-.syncBtn:hover:not(:disabled) {
-  background: hsl(var(--primary));
-  border-color: hsl(var(--primary));
-  color: hsl(0 0% 100%);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+.btnPrimary:hover {
+  background-color: hsl(var(--primary) / 0.9);
 }
-
-.syncBtn:focus-visible {
-  outline: 2px solid hsl(var(--border-focus));
-  outline-offset: 2px;
-}
-
-.syncBtn:active:not(:disabled) { transform: translateY(0); }
-
-.syncBtn:disabled {
+.btnPrimary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   4. ROW 1 — KPI HERO GRID
-   ═══════════════════════════════════════════════════════════════ */
-.kpiGrid {
+/* Layouts */
+.gridContainer {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
 }
 
-/* ── Base KPI card ───────────────────────────────────────────── */
-.kpiCard {
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  padding: var(--sp-5);
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  min-width: 0;
-  transition: box-shadow var(--transition),
-              transform var(--transition),
-              border-color var(--transition);
-}
-
-.kpiCard:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-3px);
-  border-color: hsl(var(--primary));
-}
-
-.kpiCard:focus-visible {
-  outline: 2px solid hsl(var(--border-focus));
-  outline-offset: 2px;
-}
-
-/* ── Hero (blue) variant ─────────────────────────────────────── */
-.kpiCardHero {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--primary)) 0%,
-    hsl(var(--primary-dark)) 100%
-  );
-  border-color: hsl(var(--primary));
-  color: hsl(0 0% 100%);
-  box-shadow: 0 4px 14px 0 hsl(var(--primary) / 0.35);
-}
-
-.kpiCardHero:hover {
-  box-shadow: 0 8px 24px 0 hsl(var(--primary) / 0.45);
-  border-color: hsl(var(--primary-dark));
-}
-
-/* ── KPI internals ───────────────────────────────────────────── */
-.kpiTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.kpiLabel {
-  font-size: 0.75rem;         /* 12px */
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: hsl(var(--foreground-3));
-  line-height: 1.4;
-}
-
-.kpiCardHero .kpiLabel { color: hsl(0 0% 100% / 0.8); }
-
-.kpiIcon {
-  width: 2.5rem;              /* 40px */
-  height: 2.5rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.125rem;
-  flex-shrink: 0;
-}
-
-.kpiIconHero {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.125rem;
-  background: hsl(0 0% 100% / 0.2);
-  flex-shrink: 0;
-}
-
-.kpiValue {
-  font-size: clamp(1.375rem, 3.5vw, 1.875rem); /* 22–30px */
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  color: hsl(var(--foreground));
-}
-
-.kpiHeroValue {
-  font-size: clamp(1.5rem, 4vw, 2.125rem); /* 24–34px, auto-fits container */
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  color: hsl(0 0% 100%);
-}
-
-.kpiMeta {
-  font-size: 0.875rem;
-  color: hsl(var(--foreground-2));
-  font-weight: 500;
-}
-
-.kpiHeroMeta {
-  display: flex;
-  gap: var(--sp-4);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: hsl(0 0% 100% / 0.85);
-  flex-wrap: wrap;
-}
-
-/* System Balance breakdown (hero) */
-.heroBreakdown {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-2) var(--sp-3);
-  margin-top: var(--sp-2);
-}
-
-.heroBreakdown span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: hsl(0 0% 100% / 0.92);
-  background: hsl(0 0% 100% / 0.12);
-  border-radius: var(--radius-sm);
-  padding: var(--sp-1) var(--sp-2);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.heroBreakdown svg {
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-.kpiSub {
-  font-size: 0.75rem;
-  color: hsl(var(--foreground-3));
-  font-weight: 500;
-}
-
-.kpiHeroFoot {
-  font-size: 0.8125rem;
-  color: hsl(0 0% 100% / 0.7);
-  margin-top: var(--sp-1);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   5. ROW 2 & 3 — Content grids
-   ═══════════════════════════════════════════════════════════════ */
-.grid2 {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
-}
-
-.grid3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
-}
-
-.quickCard {
-  margin-bottom: var(--sp-4);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   6. CARD — Base component
-   ═══════════════════════════════════════════════════════════════ */
-.card {
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  padding: var(--sp-5);
-  box-shadow: var(--shadow-sm);
-  min-width: 0;
-  transition: box-shadow var(--transition);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-/* ── Card header ─────────────────────────────────────────────── */
-.cardHeader {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-4);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.cardTitleIcon {
-  font-size: 1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.cardTitle {
-  font-size: 1rem;            /* 16px */
-  font-weight: 600;
-  line-height: 1.3;
-  color: hsl(var(--foreground));
-  min-width: 0;
-}
-
-.cardTitleNoIcon {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: hsl(var(--foreground));
-  margin-bottom: var(--sp-3);
-  padding-bottom: var(--sp-3);
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.cardSub {
-  margin-left: auto;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: hsl(var(--foreground-3));
-  white-space: nowrap;
-}
-
-.cardLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: hsl(var(--foreground-3));
-  margin-bottom: var(--sp-3);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   7. MINI TILES (sub-KPIs inside breakdown card)
-   ═══════════════════════════════════════════════════════════════ */
-.miniGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
-}
-
-.miniTile {
-  background: hsl(var(--surface-2));
+/* Tables (The core tabular design) */
+.tableCard {
+  background-color: hsl(var(--background));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  padding: var(--sp-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  min-width: 0;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
-.miniTile:hover {
-  border-color: hsl(var(--primary) / 0.4);
-  box-shadow: var(--shadow-xs);
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
 }
 
-.miniTileTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
 }
 
-.miniTileIcon {
+.dataTable th,
+.dataTable td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
   font-size: 1rem;
-  line-height: 1;
+  line-height: 1.5;
 }
 
-.miniTileLabel {
-  font-size: 0.6875rem;       /* 11px */
+.dataTable th {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
   text-transform: uppercase;
+  font-size: 0.875rem;
   letter-spacing: 0.05em;
-  color: hsl(var(--foreground-3));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.miniTileValue {
-  font-size: 1.375rem;        /* 22px */
-  font-weight: 700;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
+.dataTable tr:last-child td {
+  border-bottom: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   8. BREAKDOWN LIST (table-style rows)
-   ═══════════════════════════════════════════════════════════════ */
-.listHeader {
-  display: grid;
-  grid-template-columns: 180px 1fr 120px;
-  gap: var(--sp-3);
-  align-items: center;
-  padding: var(--sp-2) var(--sp-3);
-  margin-bottom: var(--sp-1);
-  background: hsl(var(--surface-2));
-  border-radius: var(--radius-sm);
-  border: 1px solid hsl(var(--border));
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: hsl(var(--foreground-3));
-}
-
-.breakdownRow {
-  display: grid;
-  grid-template-columns: 180px 1fr 120px;
-  gap: var(--sp-3);
-  align-items: center;
-  padding: 0.6875rem var(--sp-3);
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
+.navRow {
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
+  transition: background-color 0.2s ease;
 }
 
-.breakdownRow:last-child { border-bottom: none; }
-
-.breakdownRow:hover { background: hsl(var(--surface-2)); }
-
-.catNameWrap {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
+.navRow:hover {
+  background-color: hsl(var(--muted) / 0.8);
 }
 
-.dot {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.catName {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── Progress bar ────────────────────────────────────────────── */
-.catBar {
-  background: hsl(var(--border));
-  border-radius: 99px;
-  height: 0.5rem;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.catBarFill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.catAmount {
-  font-size: 0.875rem;
-  font-weight: 600;
+.dataTable td.alignRight,
+.dataTable th.alignRight {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   9. RECENT LEDGER ENTRIES LIST
-   ═══════════════════════════════════════════════════════════════ */
-.ledgerList { margin: 0 calc(var(--sp-2) * -1); }
-
-.ledgerRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: 0.6875rem var(--sp-3);
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
-}
-
-.ledgerRow:last-child { border-bottom: none; }
-
-.ledgerRow:hover { background: hsl(var(--surface-2)); }
-
-.ledgerIcon {
-  width: 2.25rem;             /* 36px */
-  height: 2.25rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9375rem;
-  flex-shrink: 0;
-}
-
-.ledgerMain {
-  flex: 1;
-  min-width: 0;
-}
-
-.ledgerTitle {
-  font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
 }
 
-.ledgerRef {
+.dataTable td.highlight {
+  font-weight: 700;
   color: hsl(var(--primary));
-  font-weight: 600;
-  margin-right: var(--sp-2);
 }
 
-.ledgerDate {
-  font-size: 0.75rem;
-  color: hsl(var(--foreground-3));
-  margin-top: var(--sp-1);
-}
-
-.ledgerAmount {
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   10. SUMMARY LISTS (Receivables / Reconciliation)
-   ═══════════════════════════════════════════════════════════════ */
-.summaryList { margin: 0 calc(var(--sp-2) * -1); }
-
-.summaryRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
-}
-
-.summaryRow:last-child { border-bottom: none; }
-
-.summaryRow:hover { background: hsl(var(--surface-2)); }
-
-.summaryIcon {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9375rem;
-  flex-shrink: 0;
-}
-
-.summaryMain {
-  flex: 1;
-  min-width: 0;
-}
-
-.summaryLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: hsl(var(--foreground-3));
-}
-
-.summaryValue {
-  font-size: 0.9375rem;
+.dataTable tr.totalRow td {
+  background-color: hsl(var(--muted));
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  margin-top: var(--sp-1);
-  line-height: 1.3;
+  border-top: 2px solid hsl(var(--border));
 }
 
-.summaryCount {
-  font-size: 0.75rem;
-  color: hsl(var(--foreground-3));
-  padding: var(--sp-3) var(--sp-3) 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   11. QUICK OPERATIONS GRID
-   ═══════════════════════════════════════════════════════════════ */
-.qaGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-3);
-}
-
-.qaTile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-2);
-  padding: var(--sp-4) var(--sp-2);
-  min-height: 6rem;           /* 96px */
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  text-align: center;
-  transition: box-shadow var(--transition),
-              transform var(--transition),
-              border-color var(--transition),
-              background var(--transition);
-}
-
-.qaTile:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary-light));
-}
-
-.qaTile:focus-visible {
-  outline: 2px solid hsl(var(--border-focus));
-  outline-offset: 2px;
-}
-
-.qaTile:active { transform: translateY(0); }
-
-.qaIcon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.125rem;
-  transition: transform var(--transition);
-}
-
-.qaTile:hover .qaIcon { transform: scale(1.1); }
-
-.qaLabel {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  line-height: 1.4;
-}
-
-.qaSub {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground-3));
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   12. EMPTY STATE
-   ═══════════════════════════════════════════════════════════════ */
-.empty {
-  text-align: center;
-  padding: var(--sp-6) 0;
-  color: hsl(var(--foreground-3));
-  font-size: 0.875rem;
-  line-height: 1.75;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   13. RESPONSIVE — Mobile-first breakpoints
-   ═══════════════════════════════════════════════════════════════ */
-
-/* lg → 1024px: 2-column KPIs, stack grids */
-@media (max-width: 1280px) {
-  .grid3 { grid-template-columns: 1fr 1fr; }
-  .qaGrid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (max-width: 1024px) {
-  .page { margin: -16px; padding: var(--sp-4); }
-  .kpiGrid { grid-template-columns: repeat(2, 1fr); }
-  .grid2 { grid-template-columns: 1fr; }
-  .grid3 { grid-template-columns: 1fr; }
-  .miniGrid { grid-template-columns: repeat(4, 1fr); }
-  .pageTitle { font-size: 1.625rem; }
-}
-
-/* md → 768px: 2 cols for sub-grids, bigger touch targets */
-@media (max-width: 768px) {
-  .page { margin: -12px; padding: var(--sp-3); }
-  .miniGrid { grid-template-columns: repeat(2, 1fr); }
-  .qaGrid { grid-template-columns: repeat(3, 1fr); }
-  .listHeader { grid-template-columns: 1fr 80px; }
-  .listHeader span:nth-child(2) { display: none; }
-  .breakdownRow { grid-template-columns: 1fr 80px; }
-  .breakdownRow .catBar { display: none; }
-  .syncBtn { height: 2.75rem; padding: 0 1.5rem; } /* ≥44px tap */
-  .kpiCard { padding: var(--sp-4); }
-}
-
-/* sm → 480px: single column everything */
-@media (max-width: 480px) {
-  .pageTitle { font-size: 1.375rem; }
-  .header { flex-direction: column; align-items: stretch; }
-  .syncBtn { width: 100%; justify-content: center; }
-  .kpiGrid { grid-template-columns: 1fr; }
-  .miniGrid { grid-template-columns: repeat(2, 1fr); }
-  .qaGrid { grid-template-columns: repeat(2, 1fr); }
-  .kpiValue, .kpiHeroValue { font-size: 1.5rem; }
-  .qaTile { min-height: 5.5rem; }
-}
-
-/* xl+ → cap container width */
-@media (min-width: 1536px) {
+/* Responsive */
+@media (max-width: 639px) {
   .page {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 1560px;
+    padding: 1rem;
   }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   14. ASSETS VALUATION SUMMARY (ROW 4)
-   Uses the same design tokens + card pattern as the rest of the page
-   ═══════════════════════════════════════════════════════════════ */
-.assetCard {
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  padding: var(--sp-5);
-  box-shadow: var(--shadow-sm);
-  min-width: 0;
-  margin-bottom: var(--sp-4);
-}
-
-/* Grid of category tiles — auto-fit for responsiveness */
-.assetGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--sp-4);
-  margin-top: var(--sp-4);
-}
-
-.assetTile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-4);
-  background: hsl(var(--surface-2));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  min-width: 0;
-  transition: box-shadow var(--transition),
-              transform var(--transition),
-              border-color var(--transition);
-}
-
-.assetTile:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
-  border-color: hsl(var(--primary));
-}
-
-.assetTile:focus-visible {
-  outline: 2px solid hsl(var(--border-focus));
-  outline-offset: 2px;
-}
-
-.assetTile:active { transform: translateY(0); }
-
-.assetTileTop {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-}
-
-.assetIcon {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9375rem;
-  flex-shrink: 0;
-}
-
-.assetLabel {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.assetCount {
-  margin-left: auto;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: hsl(var(--foreground-3));
-  white-space: nowrap;
-}
-
-.assetValue {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  margin-top: var(--sp-1);
-}
-
-/* Proportion bar — share of the grand total */
-.assetBar {
-  background: hsl(var(--border));
-  border-radius: 99px;
-  height: 0.5rem;
-  overflow: hidden;
-  min-width: 0;
-  margin-top: var(--sp-1);
-}
-
-.assetBarFill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.assetPct {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: hsl(var(--foreground-3));
-}
-
-/* Footer — grand total row */
-.assetFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
-  margin-top: var(--sp-5);
-  padding-top: var(--sp-4);
-  border-top: 1px solid hsl(var(--border));
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: hsl(var(--foreground-2));
-}
-
-.assetGrand {
-  font-size: 1.375rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: hsl(var(--foreground));
-}
-
-/* Responsive: reduce tile grid gracefully */
-@media (max-width: 1280px) {
-  .assetGrid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-}
-
-@media (max-width: 768px) {
-  .assetGrid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-  .assetValue { font-size: 1.25rem; }
-  .assetCount { display: none; }
-}
-
-@media (max-width: 480px) {
-  .assetValue { font-size: 1.125rem; }
-  .assetGrand { font-size: 1.125rem; }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .btnPrimary {
+    width: 100%;
+  }
+  .gridContainer {
+    grid-template-columns: 1fr;
+  }
+  .dataTable th, .dataTable td {
+    padding: 0.75rem 1rem;
+  }
 }
