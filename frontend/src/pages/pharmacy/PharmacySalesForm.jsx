@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import apiClient from '../../services/apiClient';
 import pharmacyService from '../../services/pharmacyService';
 import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
@@ -72,6 +73,8 @@ export default function PharmacySalesForm() {
   const [posCart, setPosCart] = useState([]);
   const [posSearch, setPosSearch] = useState('');
   const [posPaymentMethod, setPosPaymentMethod] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
 
   const [navSearch, setNavSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -134,7 +137,19 @@ export default function PharmacySalesForm() {
       unit_price: item.price,
     }));
 
-    const payload = {
+    // For Bank/Telebirr, require either Reference ID or Screenshot
+    if (posPaymentMethod !== 'CASH') {
+      if (!paymentReference && !paymentScreenshot) {
+        showToast('Please provide either a Reference ID or a Payment Screenshot', 'warning');
+        return;
+      }
+      if (paymentReference && paymentScreenshot) {
+        showToast('Please provide either a Reference ID OR a Payment Screenshot, but not both', 'warning');
+        return;
+      }
+    }
+
+    const payloadObj = {
       branch_id: branchId ? parseInt(branchId) : (branches[0]?.id || 1),
       worker_id: workers[0]?.id || null,
       sale_type: saleType,
@@ -147,14 +162,25 @@ export default function PharmacySalesForm() {
         branch_name: selectedBranch?.name || selectedBranch?.branch_name || '',
         worker_name: workerName,
         status: paymentStatus || 'PAID',
+        reference_no: paymentReference,
         ...(posPaymentMethod === 'BANK_TRANSFER' && { bank_name: bankName, account_holder: accountHolder, account_number: accountNumber }),
         ...(posPaymentMethod === 'TELBIR' && { telbir_number: telbirNumber }),
       },
     };
 
+    const fd = new FormData();
+    fd.append('branch_id', payloadObj.branch_id);
+    if (payloadObj.worker_id) fd.append('worker_id', payloadObj.worker_id);
+    fd.append('sale_type', payloadObj.sale_type);
+    fd.append('items', JSON.stringify(payloadObj.items));
+    fd.append('payment', JSON.stringify(payloadObj.payment));
+    if (paymentScreenshot) fd.append('paymentScreenshot', paymentScreenshot);
+
     setLoading(true);
     try {
-      const res = await apiClient.post('/pharmacy/sales', payload);
+      const res = await apiClient.post('/pharmacy/sales', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       if (res.status === 'success' || res.data) {
         // If this came from an online order, mark prescription request as approved & ready
         if (prescriptionRequestId) {
@@ -301,7 +327,7 @@ export default function PharmacySalesForm() {
     }
   }, [posPaymentMethod, financeAccounts]);
 
-  useEffect(() => { loadBranches(); loadWorkers(); loadProducts(); loadSales(); loadFinanceAccounts(); }, []);
+  useEffect(() => { loadBranches(); loadWorkers(); loadProducts(); loadSales(); loadFinanceAccounts(); loadPendingOrders(); }, []);
 
   // Auto-switch to ONLINE tab when navigated from the bell notification (state OR ?tab=online in URL)
   useEffect(() => {
@@ -352,6 +378,28 @@ export default function PharmacySalesForm() {
       window.removeEventListener('dashboardRefresh', handleRefresh);
     };
   }, [posCart]);
+
+  // Real-time: listen for new online prescription requests via socket
+  // so the ONLINE badge updates instantly without any click
+  useEffect(() => {
+    const socket = io(
+      (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', ''),
+      { transports: ['polling', 'websocket'], withCredentials: true }
+    );
+
+    socket.on('new-prescription-request', () => {
+      // Reload the pending orders list so the badge count updates
+      loadPendingOrders();
+    });
+
+    // Also poll every 60s as a guaranteed fallback
+    const poll = setInterval(() => loadPendingOrders(), 60000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(poll);
+    };
+  }, []);
 
   const loadBranches = async () => {
     try { const res = await apiClient.get('/pharmacy/branches'); if (res.status === 'success') setBranches(res.data || []); } catch (e) { console.error(e); }
@@ -462,6 +510,9 @@ export default function PharmacySalesForm() {
         prescription_ref: req.request_number,
         created_at: req.requested_at,
         total_amount: req.total_amount,
+        payment_method: req.payment_method,
+        payment_reference: req.payment_reference,
+        payment_screenshot: req.payment_screenshot,
         items: [{
           drug_id: req.medication_id,
           drug_name: req.medication_name,
@@ -511,8 +562,16 @@ export default function PharmacySalesForm() {
       setBranchId(String(branches[0].id));
     }
 
-    // Auto-select CASH as default payment method
-    setPosPaymentMethod('CASH');
+    // Auto-select payment details that the customer provided
+    const pmMap = {
+      'Bank': 'BANK_TRANSFER',
+      'Mobile Wallet': 'TELBIR',
+      'Cash': 'CASH'
+    };
+    const method = pmMap[order.payment_method] || 'CASH';
+    setPosPaymentMethod(method);
+    setPaymentReference(order.payment_reference || '');
+    // Note: We can't easily auto-fill a File object for paymentScreenshot, but we can set the reference.
 
     setTab('walkin');
     setShowCart(true);
@@ -611,6 +670,8 @@ export default function PharmacySalesForm() {
     setSaleType('WALK-IN');
     setActiveOnlineOrder(null);
     setPrescriptionRequestId(null);
+    setPaymentReference('');
+    setPaymentScreenshot(null);
   };
 
   return (
@@ -854,201 +915,227 @@ export default function PharmacySalesForm() {
                              <label className={styles.sectionLabel}>Payment Method *</label>
                              <div className={styles.paymentMethods}>
                                {PAYMENT_METHODS.map(pm => (
-                                 <label key={pm.value} className={posPaymentMethod === pm.value ? styles.paymentMethodOptActive : styles.paymentMethodOpt}>
+                                 <label key={pm.value} className={posPaymentMethod === pm.value ? styles.paymentMethodOptActive : styles.paymentMethodOpt} style={{ opacity: saleType === 'ONLINE' && posPaymentMethod !== pm.value ? 0.5 : 1, cursor: saleType === 'ONLINE' ? 'not-allowed' : 'pointer', pointerEvents: saleType === 'ONLINE' ? 'none' : 'auto' }}>
                                    <input type="radio" name="posPaymentMethod" value={pm.value} checked={posPaymentMethod === pm.value}
-                                     onChange={() => setPosPaymentMethod(pm.value)} style={{ display: 'none' }} />
+                                     onChange={() => setPosPaymentMethod(pm.value)} style={{ display: 'none' }} disabled={saleType === 'ONLINE'} />
                                    {pm.icon} {pm.label}
                                  </label>
                                ))}
                              </div>
                            </div>
 
-                           {/* Payment Detail Fields — CASH */}
-                           {posPaymentMethod === 'CASH' && (
-                             <div className={styles.payPanelCash}>
-                               <h3 className={styles.payPanelTitle}>
-                                 <DollarSign size={16} color="#D97706" /> Cash Payment
-                               </h3>
-                               <div className={styles.formGrid3}>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Amount Received *</label>
-                                   <input type="number" step="0.01" min="0" value={paymentAmount}
-                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Recipient Full Name *</label>
-                                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
-                                     placeholder="Who received cash" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Recipient Phone</label>
-                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                     placeholder="Phone" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Branch *</label>
-                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
-                                     <option value="">— Select branch —</option>
-                                     {branches.map(b => (
-                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Worker Name *</label>
-                                   {autoFilledWorker ? (
-                                     <div>
-                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
-                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                               {/* Payment Detail Fields - CASH */}
+                               {posPaymentMethod === 'CASH' && (
+                                 <div className={styles.payPanelCash}>
+                                   <h3 className={styles.payPanelTitle}>
+                                     <DollarSign size={16} color="#10B981" /> Cash Payment Details
+                                   </h3>
+                                   <div className={styles.formGrid3}>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Amount Received *</label>
+                                       <input type="number" step="0.01" min="0" value={paymentAmount}
+                                         onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
                                      </div>
-                                   ) : (
-                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
-                                   )}
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Payer Name</label>
+                                       <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
+                                         placeholder="Optional" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Payer Phone</label>
+                                       <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                         placeholder="Optional" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Branch *</label>
+                                       <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                         <option value="">— Select branch —</option>
+                                         {branches.map(b => (
+                                           <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                         ))}
+                                       </select>
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Worker Name *</label>
+                                       {autoFilledWorker ? (
+                                         <div>
+                                           <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                           <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                         </div>
+                                       ) : (
+                                         <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                           placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                       )}
+                                     </div>
+                                   </div>
                                  </div>
-                               </div>
-                             </div>
-                           )}
+                               )}
 
-                           {/* Payment Detail Fields — BANK TRANSFER */}
-                           {posPaymentMethod === 'BANK_TRANSFER' && (
-                             <div className={styles.payPanelBank}>
-                               <h3 className={styles.payPanelTitle}>
-                                 <CreditCard size={16} color="#2563EB" /> Bank Transfer Payment
-                               </h3>
-                               <div className={styles.formGrid3}>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Amount Received *</label>
-                                   <input type="number" step="0.01" min="0" value={paymentAmount}
-                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Finance Account (Auto-fill)</label>
-                                   <select className={styles.formInput} onChange={(e) => {
-                                     const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                     if (acc) {
-                                       setBankName(acc.bank_provider || '');
-                                       setAccountHolder(acc.account_name || '');
-                                       setAccountNumber(acc.account_number || '');
-                                     }
-                                   }}>
-                                     <option value="">— Select Account —</option>
-                                     {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
-                                       <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider}) - {a.account_number}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Bank Name *</label>
-                                   <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
-                                     placeholder="e.g. CBE" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Account Holder *</label>
-                                   <input type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)}
-                                     placeholder="Full name on account" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Account Number *</label>
-                                   <input type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)}
-                                     placeholder="Account number" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Phone</label>
-                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                     placeholder="Phone" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Branch *</label>
-                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
-                                     <option value="">— Select branch —</option>
-                                     {branches.map(b => (
-                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Worker Name *</label>
-                                   {autoFilledWorker ? (
-                                     <div>
-                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
-                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                               {/* Payment Detail Fields - BANK TRANSFER */}
+                               {posPaymentMethod === 'BANK_TRANSFER' && (
+                                 <div className={styles.payPanelBank}>
+                                   <h3 className={styles.payPanelTitle}>
+                                     <CreditCard size={16} color="#2563EB" /> Bank Transfer Payment
+                                   </h3>
+                                   <div className={styles.formGrid3}>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Amount Received *</label>
+                                       <input type="number" step="0.01" min="0" value={paymentAmount}
+                                         onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
                                      </div>
-                                   ) : (
-                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
-                                   )}
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Finance Account (Auto-fill)</label>
+                                       <select className={styles.formInput} onChange={(e) => {
+                                         const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                         if (acc) {
+                                           setBankName(acc.bank_provider || '');
+                                           setAccountHolder(acc.account_name || '');
+                                           setAccountNumber(acc.account_number || '');
+                                         }
+                                       }}>
+                                         <option value="">— Select Account —</option>
+                                         {financeAccounts.filter(a => a.account_type === 'Bank').map(a => (
+                                           <option key={a.id} value={a.id}>{a.account_name} ({a.bank_provider}) - {a.account_number}</option>
+                                         ))}
+                                       </select>
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Bank Name *</label>
+                                       <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
+                                         placeholder="e.g. CBE" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Account Holder *</label>
+                                       <input type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)}
+                                         placeholder="Full name on account" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Account Number *</label>
+                                       <input type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)}
+                                         placeholder="Account number" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Phone</label>
+                                       <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                         placeholder="Phone" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Reference ID</label>
+                                       <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
+                                         placeholder="(Optional if Screenshot provided)" className={styles.formInput} />
+                                       {saleType === 'ONLINE' && paymentReference && paymentReference.includes('.') && (
+                                         <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '4px' }}>&#10003; Screenshot attached by customer</div>
+                                       )}
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Payment Screenshot</label>
+                                       <input type="file" accept="image/*" onChange={e => setPaymentScreenshot(e.target.files[0])}
+                                         className={styles.formInput} style={{ padding: '0.3rem' }} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Branch *</label>
+                                       <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                         <option value="">— Select branch —</option>
+                                         {branches.map(b => (
+                                           <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                         ))}
+                                       </select>
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Worker Name *</label>
+                                       {autoFilledWorker ? (
+                                         <div>
+                                           <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                           <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                         </div>
+                                       ) : (
+                                         <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                           placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                       )}
+                                     </div>
+                                   </div>
                                  </div>
-                               </div>
-                             </div>
-                           )}
+                               )}
 
-                           {/* Payment Detail Fields — TELBIR */}
-                           {posPaymentMethod === 'TELBIR' && (
-                             <div className={styles.payPanelTelbir}>
-                               <h3 className={styles.payPanelTitle}>
-                                 <Smartphone size={16} color="#7C3AED" /> Telbir Payment
-                               </h3>
-                               <div className={styles.formGrid3}>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Amount Received *</label>
-                                   <input type="number" step="0.01" min="0" value={paymentAmount}
-                                     onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Telebirr Account (Auto-fill)</label>
-                                   <select className={styles.formInput} onChange={(e) => {
-                                     const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
-                                     if (acc) {
-                                       setTelbirNumber(acc.account_number || '');
-                                       setPayerName(acc.account_name || '');
-                                     }
-                                   }}>
-                                     <option value="">— Select Telebirr —</option>
-                                     {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
-                                       <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Telbir Number *</label>
-                                   <input type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)}
-                                     placeholder="Telbir number" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Full Name *</label>
-                                   <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
-                                     placeholder="Sender full name" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Phone</label>
-                                   <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
-                                     placeholder="Phone" className={styles.formInput} />
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Branch *</label>
-                                   <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
-                                     <option value="">— Select branch —</option>
-                                     {branches.map(b => (
-                                       <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
-                                     ))}
-                                   </select>
-                                 </div>
-                                 <div className={styles.formGroup}>
-                                   <label className={styles.formLabel}>Worker Name *</label>
-                                   {autoFilledWorker ? (
-                                     <div>
-                                       <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
-                                       <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                               {/* Payment Detail Fields - TELBIR */}
+                               {posPaymentMethod === 'TELBIR' && (
+                                 <div className={styles.payPanelTelbir}>
+                                   <h3 className={styles.payPanelTitle}>
+                                     <Smartphone size={16} color="#7C3AED" /> Telbir Payment
+                                   </h3>
+                                   <div className={styles.formGrid3}>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Amount Received *</label>
+                                       <input type="number" step="0.01" min="0" value={paymentAmount}
+                                         onChange={e => setPaymentAmount(e.target.value)} className={styles.formInput} />
                                      </div>
-                                   ) : (
-                                     <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
-                                       placeholder="Select a branch to auto-fill" className={styles.formInput} />
-                                   )}
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Telebirr Account (Auto-fill)</label>
+                                       <select className={styles.formInput} onChange={(e) => {
+                                         const acc = financeAccounts.find(a => String(a.id) === String(e.target.value));
+                                         if (acc) {
+                                           setTelbirNumber(acc.account_number || '');
+                                           setPayerName(acc.account_name || '');
+                                         }
+                                       }}>
+                                         <option value="">— Select Telebirr —</option>
+                                         {financeAccounts.filter(a => a.bank_provider === 'telebirr' || a.account_type === 'Mobile Wallet').map(a => (
+                                           <option key={a.id} value={a.id}>{a.account_name} - {a.account_number}</option>
+                                         ))}
+                                       </select>
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Telbir Number *</label>
+                                       <input type="text" value={telbirNumber} onChange={e => setTelbirNumber(e.target.value)}
+                                         placeholder="Telbir number" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Full Name *</label>
+                                       <input type="text" value={payerName} onChange={e => setPayerName(e.target.value)}
+                                         placeholder="Sender full name" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Phone</label>
+                                       <input type="text" value={payerPhone} onChange={e => setPayerPhone(e.target.value)}
+                                         placeholder="Phone" className={styles.formInput} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Reference ID</label>
+                                       <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
+                                         placeholder="(Optional if Screenshot provided)" className={styles.formInput} />
+                                       {saleType === 'ONLINE' && paymentReference && paymentReference.includes('.') && (
+                                         <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '4px' }}>&#10003; Screenshot attached by customer</div>
+                                       )}
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Payment Screenshot</label>
+                                       <input type="file" accept="image/*" onChange={e => setPaymentScreenshot(e.target.files[0])}
+                                         className={styles.formInput} style={{ padding: '0.3rem' }} />
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Branch *</label>
+                                       <select value={branchId} onChange={e => setBranchId(e.target.value)} className={styles.formInput}>
+                                         <option value="">— Select branch —</option>
+                                         {branches.map(b => (
+                                           <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                                         ))}
+                                       </select>
+                                     </div>
+                                     <div className={styles.formGroup}>
+                                       <label className={styles.formLabel}>Worker Name *</label>
+                                       {autoFilledWorker ? (
+                                         <div>
+                                           <input type="text" value={workerName} readOnly className={styles.formInputReadonly} />
+                                           <div className={styles.autofillNote}>&#10003; Auto-filled {autoFilledWorker.sub_role ? `(${autoFilledWorker.sub_role})` : ''}</div>
+                                         </div>
+                                       ) : (
+                                         <input type="text" value={workerName} onChange={e => setWorkerName(e.target.value)}
+                                           placeholder="Select a branch to auto-fill" className={styles.formInput} />
+                                       )}
+                                     </div>
+                                   </div>
                                  </div>
-                               </div>
-                             </div>
-                           )}
+                               )}
 
                            {/* Payment Status Checkbox */}
                            <div className={styles.mb20}>
