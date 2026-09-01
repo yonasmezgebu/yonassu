@@ -19,9 +19,13 @@ export const NotificationProvider = ({ children, showToast }) => {
 
     socket.on('pharmacy-transfer', (data) => {
       const { title, message, type, link } = data || {};
-      const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', sale_created: 'info', sales_report: 'info', report_rejected: 'info', expired_drug: 'info', prescription: 'info' };
-      const soundType = soundMap[type] || 'info';
-      playSound(soundType);
+      // No sound for sale/pos events
+      const silentTypes = ['sale_created', 'pos', 'pharmacy', 'prescription', 'sales_report'];
+      if (!silentTypes.includes(type)) {
+        const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', report_rejected: 'info', expired_drug: 'info' };
+        const soundType = soundMap[type] || 'info';
+        playSound(soundType);
+      }
       sendPushNotification(title || 'Pharmacy Transfer', message || '', link || '');
       if (showToast && title) {
         showToast(`${title}: ${message}`, type);
@@ -32,8 +36,12 @@ export const NotificationProvider = ({ children, showToast }) => {
   }, [showToast]);
 
   const notify = (title, message, type = 'notification', link = '') => {
-    const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', sale_created: 'info', sales_report: 'info', report_rejected: 'info', expired_drug: 'info', prescription: 'info' };
-    playSound(soundMap[type] || 'info');
+    // No sound for sale/pos events
+    const silentTypes = ['sale_created', 'pos', 'pharmacy', 'prescription', 'sales_report'];
+    if (!silentTypes.includes(type)) {
+      const soundMap = { approved: 'info', rejected: 'info', completed: 'success', shipment: 'success', report_rejected: 'info', expired_drug: 'info' };
+      playSound(soundMap[type] || 'info');
+    }
     sendPushNotification(title, message, link);
     if (showToast) {
       showToast(`${title}: ${message}`, type);
