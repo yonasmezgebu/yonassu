@@ -1,6 +1,6 @@
 // frontend/src/utils/ceoNotifications.js
 import infoAudio from '../assets/notification/info.mp3';
-import successAudio from '../assets/notification/success.mp3';
+import successAudio from '../assets/notification/approved.ogg';
 
 export const playNotification = (type = 'info') => {
   try {
