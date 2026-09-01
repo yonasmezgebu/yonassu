@@ -4,7 +4,7 @@
 
 const playSound = (type) => {
   try {
-    const file = type === 'success' ? '/sounds/success.mp3' : '/sounds/info.mp3';
+    const file = type === 'success' ? '/sounds/info.mp3' : '/sounds/info.mp3';
     const audio = new Audio(file);
     audio.volume = 0.5;
     audio.play().catch(() => {});
