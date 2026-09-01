@@ -4,12 +4,24 @@ const ctrl = require('../controllers/pharmacy.sales.controller');
 const { authenticate, authorizeRoles } = require('../middleware/auth.middleware');
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const { uploads, handleUploadError } = require('../../config/multer');
 
 router.use(authenticate);
 
-// ── Sales (A2/A3) ──
+// Parse JSON fields if request is multipart
+const parseMultipartJSON = (req, res, next) => {
+  if (req.is('multipart/form-data')) {
+    try {
+      if (req.body.items) req.body.items = JSON.parse(req.body.items);
+      if (req.body.payment) req.body.payment = JSON.parse(req.body.payment);
+    } catch (e) {
+      // let express-validator catch invalid JSON
+    }
+  }
+  next();
+};
+
+// 🛒 Sales (A2/A3) 🛒
 const saleValidation = [
   body('branch_id').isInt().withMessage('branch_id is required'),
   body('worker_id').optional({ nullable: true }).isInt().withMessage('worker_id must be an integer'),
@@ -21,7 +33,7 @@ const saleValidation = [
   body('payment.method').optional().isIn(['CASH', 'BANK_TRANSFER', 'TELBIR']),
   body('payment.status').optional().isIn(['PAID', 'CASHOUT'])
 ];
-router.post('/sales', saleValidation, validate, ctrl.createSale);
+router.post('/sales', uploads.generic.single('paymentScreenshot'), handleUploadError, parseMultipartJSON, saleValidation, validate, ctrl.createSale);
 router.post('/sales/submit-daily', ctrl.submitDaily);
 router.get('/sales', ctrl.listSales);
 router.get('/sales/:id', ctrl.getSale);
@@ -78,7 +90,7 @@ router.post('/queries', [
 router.get('/queries', ctrl.listCustomerQueries);
 
 // ── Prescriptions (B7/B9) ──
-router.post('/prescriptions', upload.single('prescription_file'), [
+router.post('/prescriptions', uploads.generic.single('prescription_file'), [
   body('customer_name').notEmpty().withMessage('customer_name required'),
   body('drug_name').notEmpty().withMessage('drug_name required'),
   body('quantity').isInt({ min: 1 }).withMessage('quantity required'),
