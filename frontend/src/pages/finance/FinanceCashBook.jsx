@@ -570,15 +570,18 @@ const FinanceCashBook = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true); setNotif(null);
     try {
-      const [cbRes, evRes] = await Promise.all([
+      const [cbRes, evRes, crRes] = await Promise.all([
         api.get('/finance-cash/cashbook'),
         api.get('/finance-cash/ev'),
+        api.get('/finance-cash/crv'),
       ]);
       const cashbook = cbRes?.data || [];
       const evs      = evRes?.data || [];
+      const crvs     = crRes?.data || [];
 
       const map = {};
       (Array.isArray(evs) ? evs : []).forEach(e => { map[e.ev_number] = { ...e, docType: 'EV' }; });
+      (Array.isArray(crvs) ? crvs : []).forEach(c => { map[c.crv_number] = { ...c, docType: 'CRV' }; });
 
       setEntries(Array.isArray(cashbook) ? cashbook : []);
       setRecordMap(map);
@@ -824,7 +827,7 @@ const FinanceCashBook = () => {
                   <div style={{ fontWeight: 600, fontSize: 16 }}>{entries.length === 0 ? 'No transactions yet.' : 'No results match your filters.'}</div>
                 </td></tr>
               ) : paginated.map((entry) => {
-                const hasRecord = entry.type === 'EV' && recordMap[entry.reference];
+                const hasRecord = recordMap[entry.reference];
                 return (
                   <tr key={entry.id} className="cb-tr">
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
@@ -834,7 +837,15 @@ const FinanceCashBook = () => {
                       <span style={typeBadge(entry.type)}>{entry.type}</span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: 13 }}>{entry.reference}</td>
-                    <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>{entry.description}</td>
+                    <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>
+                      {entry.description}
+                      {entry.account_name && (
+                        <span style={{ marginLeft: 6, color: 'var(--color-info)', fontStyle: 'italic' }}>· {entry.account_name}</span>
+                      )}
+                      {entry.source && (
+                        <span style={{ marginLeft: 6, color: 'var(--color-text-muted)' }}>({entry.source})</span>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
                       {entry.receipts > 0 ? `+ ${fmt(entry.receipts)}` : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                     </td>
