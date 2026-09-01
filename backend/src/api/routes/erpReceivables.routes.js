@@ -12,10 +12,23 @@ router.get('/dashboard', authenticate, async (req, res) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const today        = now.toISOString().split('T')[0];
 
-    // Total outstanding balance
+    // Total invoiced (ALL records, regardless of status)
+    const totalInvoicedRaw = await knex('erp_receivables')
+      .sum('amount as total')
+      .first();
+    const totalInvoiced = parseFloat(totalInvoicedRaw?.total || 0);
+
+    // Total collected / received (ALL time, from payments table)
+    const totalCollectedRaw = await knex('erp_receivable_payments')
+      .sum('amount as total')
+      .first();
+    const totalCollected = parseFloat(totalCollectedRaw?.total || 0);
+
+    // Total outstanding balance (only unpaid/partial)
     const totalRaw = await knex('erp_receivables')
-      .where('status', '!=', 'Received')
+      .where('balance', '>', 0)
       .sum('balance as total')
       .first();
     const totalReceivables = parseFloat(totalRaw?.total || 0);
@@ -34,8 +47,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
       .first();
     const receivedThisMonth = parseFloat(receivedRaw?.total || 0);
 
-    // Overdue receivables
-    const today = now.toISOString().split('T')[0];
+    // Overdue receivables (balance > 0 and due date passed)
     const overdueRaw = await knex('erp_receivables')
       .where('due_date', '<', today)
       .where('balance', '>', 0)
@@ -53,11 +65,13 @@ router.get('/dashboard', authenticate, async (req, res) => {
     res.json({
       success: true,
       data: {
+        totalInvoiced,
+        totalCollected,
         totalReceivables,
         invoicedThisMonth,
         receivedThisMonth,
         overdueReceivables,
-        customersWithBalance
+        customersWithBalance,
       }
     });
   } catch (error) {
