@@ -121,7 +121,6 @@ const salesController = {
       });
 
       // ── Auto-post to Finance CRV (Cash Receipt Voucher) ──────────────────
-      // Map pharmacy payment method → finance payment method label
       const methodMap = {
         CASH: 'Cash',
         BANK_TRANSFER: 'Bank',
@@ -133,6 +132,8 @@ const salesController = {
       const lastCrv = await trx('finance_crvs').orderBy('id', 'desc').first();
       const nextSeq = (lastCrv?.id || 0) + 1;
       const crvNumber = `CRV-${new Date().getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
+      
+      const paymentRef = payment.reference_no || (req.file ? req.file.filename : receiptNo);
 
       const crvData = {
         crv_number: crvNumber,
@@ -141,7 +142,7 @@ const salesController = {
         amount: payment.amount || totalAmount,
         payment_method: financePayMethod,
         description: `Pharmacy Sale — Receipt ${receiptNo} (${branch.name || 'Pharmacy'})`,
-        reference_no: receiptNo,
+        reference_no: paymentRef,
         prepared_by: payment.worker_name || (worker ? worker.name : 'Pharmacy Staff'),
         receiver_name: payment.worker_name || (worker ? worker.name : 'Pharmacy Staff'),
       };
@@ -155,9 +156,15 @@ const salesController = {
       if (financePayMethod === 'Telebirr') {
         crvData.telebirr_number = payment.telbir_number || null;
       }
+      
+      // Save screenshot in manual_details if uploaded
+      if (req.file) {
+        crvData.manual_details = JSON.stringify({ paymentScreenshot: req.file.filename });
+      }
 
       await trx('finance_crvs').insert(crvData);
       // ─────────────────────────────────────────────────────────────────────
+
 
       // Invoice + receipt are recorded at sale time — payment is collected here.
       const invoiceLines = items.map((it, idx) => ({
