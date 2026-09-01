@@ -2,6 +2,7 @@ const { db } = require('../../config/database');
 const { catchAsync } = require('../../utils/catchAsync');
 const AppError = require('../../utils/AppError');
 const { sendCeoNotification, sendFinanceNotification } = require('../../services/notification.service');
+const { normalizePaymentMethod, resolveLedgerAccount, recordIncomeToLedger } = require('../../utils/financeIncome.service');
 
 // Helper to notify clients (if needed)
 const notify = (req, title, message, link, type = 'info') => {
@@ -37,40 +38,29 @@ exports.createCRV = catchAsync(async (req, res) => {
     throw AppError.badRequest('Missing required CRV fields');
   }
 
-  // Generate CRV Number
-  const lastCrv = await db('finance_crvs').orderBy('id', 'desc').first();
-  const nextSeq = (lastCrv?.id || 0) + 1;
-  const crvNumber = `CRV-${new Date(date).getFullYear()}-${String(nextSeq).padStart(4, '0')}`;
-
-  const crvData = {
-    crv_number: crvNumber,
+  // Record income into the canonical ledger (CRV + cashbook + revenue book) so
+  // it always shows up in the Revenue Book, the Accounts overview and the
+  // Reconciliation page.
+  const method = normalizePaymentMethod(paymentMethod);
+  const { crvId, crvNumber } = await recordIncomeToLedger({
     date,
-    received_from: receivedFrom,
+    receivedFrom,
     amount,
-    payment_method: paymentMethod,
+    paymentMethod,
     description,
-    reference_no: referenceNo || null,
-    prepared_by: preparedBy || null,
-    checked_by: checkedBy || null,
-    receiver_name: receiverName || null,
-    prepared_signature: preparedSignature || null,
-    checked_signature: checkedSignature || null,
-    receiver_signature: receiverSignature || null,
-  };
-
-  if (paymentMethod === 'Bank' && bankDetails) {
-    crvData.bank_name = bankDetails.bankName;
-    crvData.account_holder = bankDetails.accountHolder;
-    crvData.account_number = bankDetails.accountNumber;
-    crvData.cheque_no = bankDetails.chequeNo;
-  }
-
-  if (paymentMethod === 'Telebirr' && telebirrDetails) {
-    crvData.telebirr_number = telebirrDetails.telebirrNumber;
-    crvData.telebirr_name = telebirrDetails.fullName;
-  }
-
-  const [crvId] = await db('finance_crvs').insert(crvData);
+    referenceNo,
+    bankDetails,
+    telebirrDetails: method === 'Telebirr' ? telebirrDetails : undefined,
+    department: 'Manual CRV',
+    extraCrvFields: {
+      prepared_by: preparedBy || null,
+      checked_by: checkedBy || null,
+      receiver_name: receiverName || null,
+      prepared_signature: preparedSignature || null,
+      checked_signature: checkedSignature || null,
+      receiver_signature: receiverSignature || null,
+    },
+  });
 
   notify(req, '💰 CRV Created', `New Receipt Voucher ${crvNumber} created`, '/finance/crv', 'success');
   sendFinanceNotification({
@@ -250,14 +240,22 @@ exports.finalizeEV = catchAsync(async (req, res) => {
 
   await db('finance_evs').where({ id }).update({ status: 'completed' });
 
-  // Record in Cashbook only when finalized (single consistent rule)
+  // Record in Cashbook only when finalized (single consistent rule), attributed
+  // to the same finance account the payment was made from.
+  const method = normalizePaymentMethod(ev.payment_method);
+  const account = await resolveLedgerAccount(db, method, { bankName: ev.bank_name, accountNumber: ev.account_number });
   await db('finance_cashbook').insert({
     date: ev.date,
     type: 'EV',
     reference: ev.ev_number,
     description: `Paid to ${ev.paid_to}: ${ev.description}`,
     receipts: 0,
-    payments: ev.amount
+    payments: ev.amount,
+    payment_method: method,
+    account_id: account ? account.id : null,
+    account_name: account ? account.account_name : null,
+    source: 'Manual EV',
+    received_from: ev.paid_to,
   });
 
   notify(req, '✅ Expense Voucher Completed', `Expense Voucher ${ev.ev_number} has been finalized and recorded in the cashbook by Finance.`, '/ceo/finance', 'success');
