@@ -552,23 +552,54 @@ export default () => {
                                     className="tdp-input" />
                                 </div>
                               </div>
-
-                              {message && (
-                                <div className={`tdp-alert ${message.type}`} style={{ marginTop: '1rem' }}>
-                                  {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                                  {message.text}
-                                </div>
-                              )}
-
-                              <button type="submit" disabled={submitting} className="tdp-btn-primary" style={{ marginTop: '1.5rem' }}>
-                                {submitting ? '⏳ Submitting...' : <><Award size={18} /> Submit Multi-Item Bid</>}
-                              </button>
                             </div>
                           )}
-                          {!user && isOpen && (
-                            <Link to={`/login?redirect=/tenders/${tender.id}`} className="tdp-multi-login">
-                              <Lock size={16} style={{ verticalAlign: 'middle', marginRight: '0.25rem' }} /> <strong>Sign in</strong> to submit your bid on these items.
-                            </Link>
+
+                          {!isOpen && <div className="tdp-status closed">This tender is closed. No new bids can be submitted.</div>}
+
+                          {/* CTA Section */}
+                          {isOpen && (
+                            <div style={{ background: 'linear-gradient(135deg, hsl(142 76% 25%), hsl(142 76% 18%))', borderRadius: '0.75rem', padding: '1.75rem', textAlign: 'center', marginTop: '1.5rem' }}>
+                              <Award size={32} color="rgba(255,255,255,0.85)" style={{ marginBottom: '0.75rem' }} />
+                              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', margin: '0 0 0.5rem' }}>Ready to Submit Your Bid?</h3>
+                              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.75)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
+                                {user
+                                  ? `You are signed in as ${user?.name || user?.full_name || user?.email}. Fill in your prices above and click submit.`
+                                  : 'Sign in to your account or create a free account to participate in this tender.'}
+                              </p>
+                              
+                              {!user ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '340px', margin: '0 auto' }}>
+                                  <Link
+                                    to={`/login?redirect=/tenders/${tender.id}`}
+                                    className="tdp-btn-primary"
+                                    style={{ background: 'white', color: 'hsl(var(--primary))', fontWeight: 800, textDecoration: 'none', display: 'flex', justifyContent: 'center' }}
+                                  >
+                                    <Lock size={16} /> Sign In to Bid <ChevronRight size={16} />
+                                  </Link>
+                                  <Link
+                                    to="/auth/register"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.9)', fontSize: '0.9375rem', fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' }}
+                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <User size={16} /> Create Free Account
+                                  </Link>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '340px', margin: '0 auto' }}>
+                                  {message && (
+                                    <div className={`tdp-alert ${message.type}`}>
+                                      {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                                      {message.text}
+                                    </div>
+                                  )}
+                                  <button type="submit" disabled={submitting} className="tdp-btn-primary" style={{ background: 'white', color: 'hsl(var(--primary))', fontWeight: 800 }}>
+                                    {submitting ? '⏳ Submitting...' : <><Award size={18} /> Submit Multi-Item Bid <ChevronRight size={16} /></>}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </form>
                       </div>
