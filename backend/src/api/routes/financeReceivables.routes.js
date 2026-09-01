@@ -3,6 +3,130 @@ const router = express.Router();
 const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
 const { sendFinanceNotification, sendPrintingNotification } = require('../../services/notification.service');
+const { recordIncomeToLedger, normalizePaymentMethod } = require('../../utils/financeIncome.service');
+const { generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
+
+// Record an approved income into the canonical finance ledger (CRV + cashbook +
+// revenue book) so it shows up in the Revenue Book, Accounts and Reconciliation.
+const recordLedgerIncome = async (trx, { amount, department, manualDetails, receivedFrom, referenceNo, receivableExtras = {} }) => {
+  try {
+    const md = manualDetails || {};
+    const method = md.paymentMethod || 'Cash';
+    const bankDetails = (String(method).toLowerCase().includes('bank') && (md.bankName || md.accountNumber))
+      ? { bankName: md.bankName, accountHolder: md.accountHolder, accountNumber: md.accountNumber, chequeNo: md.chequeNo }
+      : undefined;
+    const telebirrDetails = (String(method).toLowerCase().includes('telebirr') && md.telebirrNumber)
+      ? { telebirrNumber: md.telebirrNumber, fullName: md.fullName || receivedFrom || md.receivedFrom }
+      : undefined;
+
+    await recordIncomeToLedger({
+      trx,
+      date: new Date().toISOString().slice(0, 10),
+      receivedFrom: receivedFrom || md.receivedFrom || 'Walk-in Customer',
+      amount: parseFloat(amount || 0),
+      paymentMethod: method,
+      description: `${department} income${receivedFrom || md.receivedFrom ? ` — ${receivedFrom || md.receivedFrom}` : ''}`,
+      referenceNo: referenceNo || md.paymentReference || null,
+      bankDetails,
+      telebirrDetails,
+      department,
+      extraReceivableDetails: receivableExtras,
+    });
+  } catch (e) {
+    console.error('Failed to record income into ledger (CRV + cashbook + revenue book):', e.message);
+  }
+};
+
+// Departments/orders whose module already creates its own sales_invoices /
+// sales_receipts at sale time — approving their income must NOT mint a second
+// (duplicate) invoice.
+const SELF_INVOICING_DEPARTMENTS = new Set([
+  'pharmacy', 'retail', 'retail pos', 'printing', 'car rental', 'agrirent',
+]);
+
+// Create a sales_invoice + sales_receipt for approved income that has no
+// underlying invoiced order (manual / walk-in / general inflow), so it appears
+// on the Sales Invoice & Receipt page. Idempotent.
+const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, paymentMethod, paymentReference, description, receivedBy }) => {
+  try {
+    const existing = await trx('sales_invoices')
+      .where({ source, sale_id: saleId })
+      .andWhereNot('status', 'cancelled')
+      .first();
+    if (existing) {
+      const receipt = await trx('sales_receipts')
+        .where({ invoice_id: existing.id })
+        .andWhereNot('status', 'cancelled')
+        .first();
+      if (!receipt) {
+        await trx('sales_receipts').insert({
+          id: `REC-${existing.id}-${Date.now().toString().slice(-4)}`,
+          receipt_no: await generateReceiptNumber(),
+          invoice_id: existing.id,
+          amount_paid: amount,
+          payment_method: paymentMethod || 'Cash',
+          payment_reference: paymentReference || null,
+          received_by_name: receivedBy || 'Finance',
+          status: 'active',
+        });
+      }
+      return existing.id;
+    }
+
+    const invoiceId = `${source}-${saleId}-${Date.now().toString().slice(-4)}`;
+    const invoiceNo = await generateInvoiceNumber();
+    const saleType = normalizePaymentMethod(paymentMethod) === 'Cash' ? 'walk_in' : 'online';
+
+    await trx('sales_invoices').insert({
+      id: invoiceId,
+      invoice_no: invoiceNo,
+      source,
+      sale_id: saleId,
+      customer_name: customer || 'Walk-in Customer',
+      customer_tin: null,
+      subtotal: amount,
+      vat_standard: 0,
+      vat_standard_rate: 0.15,
+      vat_exempt: 0,
+      vat_zero_rated: 0,
+      vat_total: 0,
+      total_amount: amount,
+      status: 'active',
+      created_by_name: receivedBy || 'Finance',
+      sale_type: saleType,
+    });
+
+    await trx('sales_invoice_items').insert({
+      invoice_id: invoiceId,
+      item_id: saleId,
+      name: (description || 'Approved Income').slice(0, 255),
+      qty: 1,
+      unit_price: amount,
+      cost_price: 0,
+      treatment: 'zero_rated',
+      rate: 0,
+      vat_amount: 0,
+      subtotal: amount,
+      total: amount,
+    });
+
+    await trx('sales_receipts').insert({
+      id: `REC-${invoiceId}-${Date.now().toString().slice(-4)}`,
+      receipt_no: await generateReceiptNumber(),
+      invoice_id: invoiceId,
+      amount_paid: amount,
+      payment_method: paymentMethod || 'Cash',
+      payment_reference: paymentReference || null,
+      received_by_name: receivedBy || 'Finance',
+      status: 'active',
+    });
+
+    return invoiceId;
+  } catch (e) {
+    console.error('Failed to mint invoice/receipt for approved income:', e.message);
+    return null;
+  }
+};
 
 // ── GET all pending/all submissions ──────────────────────────────
 router.get('/live-income', authenticate, async (req, res) => {
@@ -409,36 +533,20 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           updated_at: knex.fn.now()
         });
 
-        await trx('finance_receivables').insert({
-          customer_name: order.customer_name || 'Car Rental Customer',
-          invoice_no: `CAR-${order.order_number}`,
-          invoice_date: knex.fn.now(),
-          due_date: knex.fn.now(),
-          total_amount: systemTotal,
-          amount_paid: systemTotal,
-          outstanding_balance: 0,
-          status: 'Paid',
-          department_source: 'Car Rental',
-          manual_details: JSON.stringify({ order_id: String(order.id), orderNumber: order.order_number })
+        // Record approved income into the canonical ledger (CRV + cashbook + revenue book)
+        await recordLedgerIncome(trx, {
+          amount: systemTotal,
+          department: 'Car Rental',
+          manualDetails: { paymentMethod: order.payment_method || 'Bank/Telebirr', paymentReference: order.payment_reference },
+          receivedFrom: order.customer_name || 'Car Rental Customer',
+          referenceNo: order.payment_reference || `RENTAL-${order.order_number}`,
+          receivableExtras: {
+            order_id: String(order.id),
+            orderNumber: order.order_number,
+            financeSignature: finance_signature || null,
+            financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+          },
         });
-
-        try {
-          const crypto = require('crypto');
-          await trx('bank_payments').insert({
-            payment_id: crypto.randomUUID(),
-            reference: order.payment_reference || `RENTAL-${order.order_number}-${Date.now()}`,
-            amount: systemTotal,
-            customer_name: order.customer_name,
-            customer_phone: order.customer_phone,
-            bank_code: 'CBE',
-            status: 'completed',
-            description: `Rental payment - Order ${order.order_number}`,
-            completed_at: knex.fn.now(),
-            created_at: knex.fn.now()
-          });
-        } catch (bankErr) {
-          console.error('Failed to record rental payment to bank_payments:', bankErr.message);
-        }
       });
 
       sendFinanceNotification({
@@ -457,6 +565,8 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       const cart = await knex('retail_pos_carts').where({ id: cartId }).first();
       if (!cart) return res.status(404).json({ success: false, message: 'POS Cart not found' });
       if (cart.status !== 'PENDING_FINANCE') return res.status(400).json({ success: false, message: 'Cart is not pending finance' });
+
+      const amount = parseFloat(cart.payment_amount || cart.total_amount || 0);
 
       await knex.transaction(async trx => {
         // Update cart status to PENDING_STORE so the sales manager can send it to the store
@@ -490,7 +600,6 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         }
 
         // Insert a real submission record so it shows as Approved in history
-        const amount = parseFloat(cart.payment_amount || cart.total_amount || 0);
         await trx('finance_income_submissions').insert({
           department: 'Retail POS',
           submitted_by: cart.cashier_name || 'POS System',
@@ -510,18 +619,26 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           updated_at: knex.fn.now()
         });
 
-        // Insert into receivables for audit
-        await trx('finance_receivables').insert({
-          customer_name: cart.customer_name || 'Walk-in Customer',
-          invoice_no: `POS-${cart.cart_code || cartId}`,
-          invoice_date: knex.fn.now(),
-          due_date: knex.fn.now(),
-          total_amount: amount,
-          amount_paid: amount,
-          outstanding_balance: 0,
-          status: 'Paid',
-          department_source: 'Retail POS',
-          manual_details: JSON.stringify({ cart_id: String(cart.id), cart_code: cart.cart_code })
+        // Record approved income into the canonical ledger (CRV + cashbook + revenue book)
+        await recordLedgerIncome(trx, {
+          amount,
+          department: 'Retail POS',
+          manualDetails: {
+            paymentMethod: cart.payment_method,
+            paymentReference: cart.txn_id || cart.payment_reference,
+            receivedFrom: cart.customer_name || 'Walk-in',
+            bankName: cart.bank_name,
+            accountNumber: cart.account_number,
+            telebirrNumber: cart.telbir_number
+          },
+          receivedFrom: cart.customer_name || 'Walk-in',
+          referenceNo: cart.txn_id || cart.payment_reference || cart.cart_code,
+          receivableExtras: {
+            cart_id: String(cart.id),
+            cart_code: cart.cart_code,
+            financeSignature: finance_signature || null,
+            financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+          },
         });
       });
 
@@ -544,13 +661,10 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Submission is already processed' });
     }
 
-    let systemTotal = parseFloat(submission.amount);
-    if (submission.department === 'Pharmacy' && !submission.manual_details) {
-      const result = await knex('pharmacy_sales')
-        .where('is_submitted', true)
-        .sum('total_amount as total');
-      systemTotal = parseFloat(result[0].total || 0);
-    }
+    // The submission amount is the system truth — the amount recorded here must
+    // match the booking, Accounts and Reconciliation exactly. (Previously this
+    // re-summed pharmacy_sales, which double-counted against per-sale invoices.)
+    const systemTotal = parseFloat(submission.amount);
 
     // ── Reconciliation check ──────────────────────────────────────
     if (cash_count !== undefined && cash_count !== null && cash_count !== '') {
@@ -589,18 +703,38 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         customerName = manualDetails.receivedFrom;
       }
 
-      await trx('finance_receivables').insert({
-        customer_name: customerName,
-        invoice_no: submission.reference_no || `REC-${Date.now()}`,
-        invoice_date: knex.fn.now(),
-        due_date: knex.fn.now(),
-        total_amount: systemTotal,
-        amount_paid: systemTotal,
-        outstanding_balance: 0,
-        status: 'Paid',
-        department_source: submission.department,
-        manual_details: JSON.stringify(manualDetails)
+      // Record approved income into the canonical ledger (CRV + cashbook +
+      // revenue book) — includes the Receivables Book row via the service.
+      await recordLedgerIncome(trx, {
+        amount: systemTotal,
+        department: submission.department,
+        manualDetails,
+        receivedFrom: customerName,
+        referenceNo: submission.reference_no,
+        receivableExtras: {
+          departmentSource: submission.department,
+          financeSignature: manualDetails.financeSignature || finance_signature || null,
+          financeName: manualDetails.financeName || finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+        },
       });
+
+      // Departments whose modules already create their own invoice + receipt at
+      // sale time are excluded so approving income never double-counts them.
+      // Everything else gets a synthetic invoice + receipt so the income still
+      // appears on the Sales Invoice & Receipt page.
+      const deptKey = String(submission.department || '').toLowerCase();
+      if (!SELF_INVOICING_DEPARTMENTS.has(deptKey)) {
+        await ensureInvoiceAndReceipt(trx, {
+          source: 'manual',
+          saleId: 500000000 + parseInt(id, 10),
+          customer: customerName,
+          amount: systemTotal,
+          paymentMethod: manualDetails.paymentMethod || 'Cash',
+          paymentReference: submission.reference_no || manualDetails.paymentReference || null,
+          description: submission.description,
+          receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
+        });
+      }
 
       // Update Printing order payment_status ONLY — do NOT touch status_id
       // (Changing status_id here resets the order's workflow position which causes data loss)
