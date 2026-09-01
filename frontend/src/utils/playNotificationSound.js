@@ -1,4 +1,4 @@
-import successSoundFile from '../assets/notification/success.mp3';
+import successSoundFile from '../assets/notification/approved.ogg';
 import infoSoundFile from '../assets/notification/info.mp3';
 
 let successAudio = null;
