@@ -448,9 +448,9 @@ export default function FinanceAccountsReceivable() {
       {/* ── KPI Cards ── */}
       <div className="ar-kpi">
         {[
-          { label: 'Total Receivables',    val: fmt(dashboard.totalReceivables),   icon: DollarSign, color: G.dark    },
-          { label: 'Invoiced This Month',  val: fmt(dashboard.invoicedThisMonth),  icon: FileText,   color: G.forest  },
-          { label: 'Received This Month',  val: fmt(dashboard.receivedThisMonth),  icon: TrendingUp, color: G.emerald },
+          { label: 'Total Invoiced (All Time)',    val: fmt(dashboard.totalInvoiced),   icon: FileText, color: G.dark    },
+          { label: 'Total Collected (All Time)',  val: fmt(dashboard.totalCollected),  icon: TrendingUp,   color: G.emerald  },
+          { label: 'Unpaid Outstanding Balance',  val: fmt(dashboard.totalReceivables),  icon: DollarSign, color: G.warning || '#D97706' },
           { label: 'Overdue Receivables',  val: fmt(dashboard.overdueReceivables), icon: Clock,      color: G.error   },
           { label: 'Customers w/ Balance', val: dashboard.customersWithBalance || 0, icon: Users,    color: G.olive   },
         ].map(c => (
