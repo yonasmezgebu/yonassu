@@ -2,43 +2,58 @@ const { db } = require('../../config/database');
 
 // ─── ACCOUNTS ────────────────────────────────────────────────────────────────
 
+// Does a cashbook row belong to this account? Accounting is keyed on account_id
+// for new records; legacy rows without account_id fall back to payment method
+// (+ provider for bank) so nothing silently disappears.
+const matchesAccount = (row, acc) => {
+  if (row.account_id != null && String(row.account_id) === String(acc.id)) return true;
+  if (row.account_id != null) return false;
+
+  const method = acc.account_type === 'Bank' ? 'Bank'
+    : acc.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Cash';
+  const rowMethod = String(row.payment_method || '').toLowerCase();
+  if (rowMethod !== method.toLowerCase()) return false;
+
+  if (acc.account_type === 'Bank' && acc.bank_provider) {
+    const provider = String(acc.bank_provider).toLowerCase();
+    if (provider !== '-' && rowMethod === 'bank') {
+      // Without a bank_name on the row, attribute to the account silently only
+      // if it is the only bank account of that provider family.
+      return true;
+    }
+  }
+  return true;
+};
+
+const accountMethod = (acc) => (acc.account_type === 'Bank' ? 'Bank'
+  : acc.account_type === 'Mobile Wallet' ? 'Telebirr' : 'Cash');
+
 exports.getAccounts = async (req, res) => {
   try {
     const accounts = await db('finance_accounts').orderBy('account_type').orderBy('account_name');
 
-    const allCrvs = await db('finance_crvs');
-    const allEvs  = await db('finance_evs');
+    // finance_cashbook is the single source of truth for money movement.
+    const ledger = await db('finance_cashbook');
 
     const enriched = accounts.map(acc => {
-      let method = 'Cash';
-      if (acc.account_type === 'Bank') method = 'Bank';
-      if (acc.account_type === 'Mobile Wallet') method = 'Telebirr';
-
-      let acrvs = allCrvs.filter(r => (r.payment_method || '').includes(method));
-      let aevs  = allEvs.filter(r => (r.payment_method || '').includes(method));
-
-      if (acc.account_type === 'Bank' && acc.bank_provider) {
-        const provider = acc.bank_provider.toLowerCase();
-        acrvs = acrvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-        aevs  = aevs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-      }
-
-      const totalIn = acrvs.reduce((s, r) => s + parseFloat(r.amount||0), 0);
-      const totalOut = aevs.reduce((s, r) => s + parseFloat(r.amount||0), 0);
-      
+      const rows = ledger.filter(r => matchesAccount(r, acc));
+      const totalIn  = rows.filter(r => r.type === 'CRV').reduce((s, r) => s + parseFloat(r.receipts||0), 0);
+      const totalOut = rows.filter(r => r.type === 'EV').reduce((s, r)  => s + parseFloat(r.payments||0), 0);
       const netBalance = parseFloat(acc.opening_balance || 0) + totalIn - totalOut;
-
-      return { ...acc, totalIn, totalOut, netBalance };
+      const pendingRecon = rows.filter(r => !r.is_reconciled);
+      return {
+        ...acc, totalIn, totalOut, netBalance,
+        pendingReconCount: pendingRecon.length,
+        pendingReconTotal: pendingRecon.reduce((s, r) => s + (parseFloat(r.receipts||0) - parseFloat(r.payments||0)), 0),
+      };
     });
 
-    // Provide the overall cashbook summary logic
-    const cashbook = await db('finance_cashbook');
     const summary = {
-      totalCRV:    cashbook.filter(cb => cb.type === 'CRV').reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
-      totalEV:     cashbook.filter(cb => cb.type === 'EV').reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
-      totalIncome: cashbook.reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
-      totalOut:    cashbook.reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
-      netBalance:  cashbook.reduce((s, cb) => s + parseFloat(cb.receipts||0) - parseFloat(cb.payments||0), 0),
+      totalCRV:    ledger.filter(cb => cb.type === 'CRV').reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
+      totalEV:     ledger.filter(cb => cb.type === 'EV').reduce((s, cb)  => s + parseFloat(cb.payments||0), 0),
+      totalIncome: ledger.reduce((s, cb) => s + parseFloat(cb.receipts||0), 0),
+      totalOut:    ledger.reduce((s, cb) => s + parseFloat(cb.payments||0), 0),
+      netBalance:  ledger.reduce((s, cb) => s + parseFloat(cb.receipts||0) - parseFloat(cb.payments||0), 0),
     };
 
     res.json({ success: true, data: enriched, summary });
@@ -132,38 +147,25 @@ exports.getCashbookSummary = async (req, res) => {
 exports.getAccountTransactions = async (req, res) => {
   try {
     const { id } = req.params;
-    const { from, to } = req.query;
+    const { from, to, reconcile } = req.query;
 
     const acc = await db('finance_accounts').where({ id }).first();
     if (!acc) return res.status(404).json({ success: false, message: 'Account not found' });
 
-    let method = 'Cash';
-    if (acc.account_type === 'Bank') method = 'Bank';
-    if (acc.account_type === 'Mobile Wallet') method = 'Telebirr';
+    const method = accountMethod(acc);
 
-    let crvs = await db('finance_crvs').where('payment_method', 'like', `%${method}%`);
-    let evs  = await db('finance_evs').where('payment_method', 'like', `%${method}%`);
-
-    // Further filter by bank provider if it's a Bank account and provider is specified
-    if (acc.account_type === 'Bank' && acc.bank_provider) {
-      const provider = acc.bank_provider.toLowerCase();
-      crvs = crvs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-      evs  = evs.filter(r => (r.bank_name || '').toLowerCase().includes(provider));
-    }
-
-    const refs = [
-      ...crvs.map(r => r.crv_number),
-      ...evs.map(r => r.ev_number)
-    ];
-
-    let q = db('finance_cashbook');
-    if (refs.length > 0) {
-      q = q.whereIn('reference', refs);
-    } else {
-      q = q.whereRaw('1 = 0'); // No matches
-    }
-
-    const allRows = await q.orderBy('date', 'asc');
+    // finance_cashbook is the single source of truth: rows are attributed via
+    // account_id when present, else by payment method for legacy rows.
+    const allRows = await db('finance_cashbook')
+      .where(function () {
+        this.where('account_id', acc.id);
+        this.orWhere(function () {
+          this.whereNull('account_id');
+          this.where('payment_method', method);
+        });
+      })
+      .orderBy('date', 'asc')
+      .orderBy('id', 'asc');
 
     let running = parseFloat(acc.opening_balance || 0);
     const enrichedRows = allRows.map(r => {
@@ -174,6 +176,11 @@ exports.getAccountTransactions = async (req, res) => {
     let filteredRows = enrichedRows;
     if (from) filteredRows = filteredRows.filter(r => r.date >= from);
     if (to)   filteredRows = filteredRows.filter(r => r.date <= to);
+
+    // Reconcile mode → only rows not yet reconciled
+    if (reconcile === '1' || reconcile === 'true') {
+      filteredRows = enrichedRows.filter(r => !r.is_reconciled);
+    }
 
     let erpBalance = parseFloat(acc.opening_balance || 0);
     const rowsUpToTo = enrichedRows.filter(r => !to || r.date <= to);
@@ -206,13 +213,52 @@ exports.createReconciliation = async (req, res) => {
   try {
     const { account_id, period_from, period_to, erp_balance, actual_balance, notes, items } = req.body;
 
-    if (!account_id || !period_from || !period_to || actual_balance === undefined) {
+    if (!account_id || actual_balance === undefined) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const difference = req.body.override_difference !== undefined 
-      ? parseFloat(req.body.override_difference) 
+    const acc = await db('finance_accounts').where({ id: account_id }).first();
+    if (!acc) return res.status(404).json({ success: false, message: 'Account not found' });
+
+    const difference = req.body.override_difference !== undefined
+      ? parseFloat(req.body.override_difference)
       : parseFloat(actual_balance) - parseFloat(erp_balance || 0);
+
+    // Determine which cashbook rows are being reconciled now.
+    const targetRefs = [];
+    if (items && items.length > 0) {
+      for (const it of items) {
+        if (!it.reference) return res.status(400).json({ success: false, message: 'Reconciliation items require a reference' });
+        targetRefs.push({ reference: it.reference, type: it.type || 'CRV' });
+      }
+    } else {
+      // No items → default to all non-reconciled rows for this account
+      const method = accountMethod(acc);
+      const pendingRows = await db('finance_cashbook')
+        .where('is_reconciled', false)
+        .where(function () {
+          this.where('account_id', account_id);
+          this.orWhere(function () {
+            this.whereNull('account_id');
+            this.where('payment_method', method);
+          });
+        })
+        .select('reference', 'type');
+      for (const r of pendingRows) targetRefs.push({ reference: r.reference, type: r.type || 'CRV' });
+    }
+
+    // Derive the period from the rows being reconciled when not supplied
+    let pFrom = period_from;
+    let pTo = period_to;
+    if (!pFrom || !pTo) {
+      const refList = targetRefs.map(t => t.reference);
+      const dateRows = refList.length
+        ? await db('finance_cashbook').whereIn('reference', refList).select(db.raw('MIN(date) as min_date'), db.raw('MAX(date) as max_date')).first()
+        : null;
+      const today = new Date().toISOString().slice(0, 10);
+      pFrom = pFrom || (dateRows && dateRows.min_date) || today;
+      pTo = pTo || (dateRows && dateRows.max_date) || today;
+    }
 
     const count = await db('finance_reconciliations').count('* as c').first();
     const reconNo = `REC-${new Date().getFullYear()}-${String(parseInt(count.c || 0) + 1).padStart(4, '0')}`;
@@ -222,8 +268,8 @@ exports.createReconciliation = async (req, res) => {
       [reconId] = await trx('finance_reconciliations').insert({
         reconciliation_no: reconNo,
         account_id,
-        period_from,
-        period_to,
+        period_from: pFrom,
+        period_to: pTo,
         erp_balance: erp_balance || 0,
         actual_balance,
         difference,
@@ -244,9 +290,18 @@ exports.createReconciliation = async (req, res) => {
           match_status:      it.match_status
         })));
       }
+
+      // Mark the reconciled cashbook rows as reconciled
+      if (targetRefs.length > 0) {
+        for (const t of targetRefs) {
+          await trx('finance_cashbook')
+            .where({ reference: t.reference, type: t.type })
+            .update({ is_reconciled: true, reconciled_at: trx.fn.now() });
+        }
+      }
     });
 
-    res.json({ success: true, data: { id: reconId, reconciliation_no: reconNo } });
+    res.json({ success: true, data: { id: reconId, reconciliation_no: reconNo }, reconciledCount: targetRefs.length });
   } catch (err) {
     console.error('createReconciliation error:', err);
     res.status(500).json({ success: false, message: err.message });
@@ -257,14 +312,29 @@ exports.createGlobalReconciliation = async (req, res) => {
   try {
     const { period_from, period_to, accounts_data } = req.body;
     
-    if (!period_from || !period_to || !accounts_data || !Array.isArray(accounts_data)) {
+    if (!accounts_data || !Array.isArray(accounts_data)) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Always reconcile every non-reconciled cashbook record. When no period was
+    // provided, derive it from the soon-to-be-reconciled rows.
+    let pFrom = period_from;
+    let pTo = period_to;
+    if (!pFrom || !pTo) {
+      const dateRow = await db('finance_cashbook')
+        .where('is_reconciled', false)
+        .select(db.raw('MIN(date) as min_date'), db.raw('MAX(date) as max_date'))
+        .first();
+      const today = new Date().toISOString().slice(0, 10);
+      pFrom = pFrom || (dateRow && dateRow.min_date) || today;
+      pTo = pTo || (dateRow && dateRow.max_date) || today;
     }
 
     const crypto = require('crypto');
     const groupId = crypto.randomUUID();
 
     let createdIds = [];
+    let reconciledCount = 0;
     await db.transaction(async trx => {
       const countRes = await trx('finance_reconciliations').count('* as c').first();
       let baseCount = parseInt(countRes.c || 0);
@@ -273,23 +343,32 @@ exports.createGlobalReconciliation = async (req, res) => {
         const item = accounts_data[i];
         baseCount++;
         const reconNo = `REC-${new Date().getFullYear()}-${String(baseCount).padStart(4, '0')}`;
-        
+        const diff = item.difference !== undefined && item.difference !== null
+          ? parseFloat(item.difference)
+          : parseFloat(item.actual_balance || 0) - parseFloat(item.erp_balance || 0);
+
         const [reconId] = await trx('finance_reconciliations').insert({
           reconciliation_no: reconNo,
           account_id: item.account_id,
-          period_from,
-          period_to,
+          period_from: pFrom,
+          period_to: pTo,
           erp_balance: item.erp_balance || 0,
           actual_balance: item.actual_balance || 0,
-          difference: item.difference || 0,
+          difference: diff,
           status: 'Completed',
           notes: `GLOBAL_SUMMARY:${groupId}`
         });
         createdIds.push(reconId);
       }
+
+      // Mark every non-reconciled cashbook record as reconciled
+      const updateRes = await trx('finance_cashbook')
+        .where('is_reconciled', false)
+        .update({ is_reconciled: true, reconciled_at: trx.fn.now() });
+      reconciledCount = updateRes;
     });
 
-    res.json({ success: true, data: createdIds });
+    res.json({ success: true, data: createdIds, reconciledCount });
   } catch (err) {
     console.error('createGlobalReconciliation error:', err);
     res.status(500).json({ success: false, message: err.message });
