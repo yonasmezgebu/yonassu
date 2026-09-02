@@ -361,23 +361,9 @@ const PrintingOrders = () => {
                           </div>
                         )}
                         {isPendingPayment && (
-                          <div style={{ fontSize: 10, color: '#c2410c', marginTop: 3, fontWeight: 700 }}>
-                            ⚠ Not yet verified
+                          <div style={{ fontSize: 11, color: '#c2410c', marginTop: 4, fontWeight: 700 }}>
+                            ⏳ Awaiting Finance Confirmation
                           </div>
-                        )}
-                        {isPendingPayment && (
-                          <button
-                            onClick={() => verifyPayment(o)}
-                            disabled={verifyingId === o.id}
-                            style={{
-                              marginTop: 6, padding: '4px 10px', borderRadius: 7,
-                              background: '#065f46', color: '#fff', border: 'none',
-                              fontSize: 10, fontWeight: 700, cursor: verifyingId === o.id ? 'default' : 'pointer',
-                              opacity: verifyingId === o.id ? 0.6 : 1
-                            }}
-                          >
-                            {verifyingId === o.id ? 'Verifying…' : '✓ Verify payment'}
-                          </button>
                         )}
                       </td>
 
