@@ -957,8 +957,56 @@ const FinanceReceiptsDashboard = () => {
 
           {vatReport && (() => {
             const s = vatReport.summary || {};
-            const hr = s.hrCosts || {};
+            
+            // Apply exact requested formulas to avoid incorrect backend data (e.g. HR deductions)
+            const totalRev = parseFloat(s.totalRevenue || 0);
+            const cogs = parseFloat(s.totalCogs || 0);
+            const grossProf = totalRev - cogs;
+            const opExpenses = parseFloat(s.totalExpenses || 0);
+            const opProf = grossProf - opExpenses;
+            const taxesInt = parseFloat(s.taxesAndInterest || 0); // Add taxes/interest if available
+            const netProf = opProf - taxesInt;
+            const profMargin = totalRev > 0 ? ((netProf / totalRev) * 100).toFixed(1) : '0.0';
+
           return (<>
+            {/* ── Key Calculations Reference ── */}
+            <div className={styles.card} style={{ marginBottom: 20 }}>
+              <div className={styles.cardHeader} style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                <span className={styles.cardTitleIcon}><Icon.barChart /></span>
+                <h3 className={styles.cardTitle}>Key Calculations</h3>
+              </div>
+              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Total Revenue</div>
+                  <div style={{ fontSize: 12, color: '#4B5563' }}>This is all the money earned from sales before any costs are deducted.</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Cost of Goods Sold (COGS)</div>
+                  <div style={{ fontSize: 12, color: '#4B5563' }}>Direct costs of producing goods or services (materials, labor, etc.).</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Gross Profit</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Gross Profit = Total Revenue − COGS</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Operating Expenses</div>
+                  <div style={{ fontSize: 12, color: '#4B5563' }}>Costs of running the business (rent, salaries, utilities, marketing).</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Operating Profit</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Operating Profit = Gross Profit − Operating Expenses</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Net Profit</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Net Profit = Operating Profit − Taxes and Interest</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Profit Margin</div>
+                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Profit Margin = (Net Profit / Total Revenue) × 100</div>
+                </div>
+              </div>
+            </div>
+
             {/* ── VAT Summary Cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
               <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', borderRadius: 12, padding: '16px 18px', border: '1px solid #A7F3D0' }}>
@@ -986,8 +1034,8 @@ const FinanceReceiptsDashboard = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#92400E' }}>Net Profit</span><span><Icon.money /></span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: s.netProfit >= 0 ? '#059669' : '#DC2626' }}>{fmt(s.netProfit)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>After COGS + Expenses + HR</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: netProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(netProf)}</div>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>After COGS, Expenses, Taxes & Interest</div>
               </div>
             </div>
 
@@ -996,21 +1044,17 @@ const FinanceReceiptsDashboard = () => {
               <div className={styles.cardHeader}>
                 <span className={styles.cardTitleIcon}><Icon.clipboard /></span>
                 <h3 className={styles.cardTitle}>Profit & Loss Statement</h3>
-                <span className={styles.cardSub}>Revenue - COGS - Expenses - HR = Net Profit</span>
               </div>
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: 'Total Revenue (Sales)', value: s.totalRevenue, color: '#059669', indent: 0 },
-                  { label: 'Cost of Goods Sold (COGS)', value: -s.totalCogs, color: '#DC2626', indent: 0 },
-                  { label: 'Gross Profit', value: s.grossProfit, color: '#2563EB', indent: 0, bold: true },
-                  { label: 'Operating Expenses', value: -s.totalExpenses, color: '#DC2626', indent: 16 },
-                  { label: 'Operating Profit', value: s.operatingProfit, color: '#2563EB', indent: 0, bold: true },
-                  { label: `HR Costs (${hr.employeeCount || 0} employees, ${fmt(hr.monthlySalaryTotal)}/mo)`, value: -hr.netPay, color: '#DC2626', indent: 16 },
-                  { label: '    Base Salaries', value: hr.grossPay, color: '#9CA3AF', indent: 32, small: true },
-                  { label: '    Deductions (tax/pension)', value: -hr.deductions, color: '#9CA3AF', indent: 32, small: true },
-                  { label: '    Overtime Pay', value: hr.overtime, color: '#9CA3AF', indent: 32, small: true },
-                  { label: 'NET PROFIT', value: s.netProfit, color: s.netProfit >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true },
-                  { label: 'Profit Margin', value: s.margin + '%', color: '#374151', indent: 0, isText: true }
+                  { label: 'Total Revenue', value: totalRev, color: '#059669', indent: 0 },
+                  { label: 'Cost of Goods Sold (COGS)', value: -cogs, color: '#DC2626', indent: 0 },
+                  { label: 'Gross Profit', value: grossProf, color: '#2563EB', indent: 0, bold: true },
+                  { label: 'Operating Expenses', value: -opExpenses, color: '#DC2626', indent: 16 },
+                  { label: 'Operating Profit', value: opProf, color: '#2563EB', indent: 0, bold: true },
+                  { label: 'Taxes and Interest', value: -taxesInt, color: '#DC2626', indent: 16 },
+                  { label: 'NET PROFIT', value: netProf, color: netProf >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true },
+                  { label: 'Profit Margin', value: profMargin + '%', color: '#374151', indent: 0, isText: true }
                 ].map((row, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: row.indent,
                     padding: `${row.large ? '10' : '4'}px ${row.large ? '12' : '8'}px`, marginLeft: row.indent,
@@ -1025,29 +1069,6 @@ const FinanceReceiptsDashboard = () => {
               </div>
             </div>
 
-            {/* ── HR Breakdown ── */}
-            {hr.employeeCount > 0 && (
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardTitleIcon}><Icon.users /></span>
-                  <h3 className={styles.cardTitle}>HR Costs ({hr.employeeCount} Active Employees)</h3>
-                  <span className={styles.cardSub}>Monthly salary total: {fmt(hr.monthlySalaryTotal)}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, padding: '12px 20px' }}>
-                  {[
-                    { label: 'Gross Pay', value: hr.grossPay, color: '#2563EB', bg: '#EFF6FF' },
-                    { label: 'Net Pay', value: hr.netPay, color: '#059669', bg: '#ECFDF5' },
-                    { label: 'Deductions', value: hr.deductions, color: '#DC2626', bg: '#FEF2F2' },
-                    { label: 'Overtime', value: hr.overtime, color: '#D97706', bg: '#FFFBEB' }
-                  ].map((c, i) => (
-                    <div key={i} style={{ background: c.bg, borderRadius: 8, padding: '12px 14px' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: c.color, marginBottom: 4 }}>{c.label}</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: c.color }}>{fmt(c.value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* ── Breakdown by Department ── */}
             {vatReport.bySource && vatReport.bySource.length > 0 && (
@@ -1055,6 +1076,7 @@ const FinanceReceiptsDashboard = () => {
                 <div className={styles.cardHeader}>
                   <span className={styles.cardTitleIcon}><Icon.barChart /></span>
                   <h3 className={styles.cardTitle}>Revenue by Department</h3>
+                  <span className={styles.cardSub}>{vatReport.bySource.length} sources</span>
                 </div>
                 <div className={styles.table}>
                   <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
@@ -1075,77 +1097,35 @@ const FinanceReceiptsDashboard = () => {
                       <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(src.outputVat)}</span>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Monthly Trend ── */}
-            {vatReport.byMonth && vatReport.byMonth.length > 0 && (
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardTitleIcon}><Icon.trendUp /></span>
-                  <h3 className={styles.cardTitle}>Monthly Trend</h3>
-                </div>
-                <div className={styles.table}>
-                  <div className={styles.tHead} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}>
-                    <span>Month</span>
-                    <span style={{ textAlign: 'right' }}>Revenue</span>
-                    <span style={{ textAlign: 'right' }}>Cost</span>
-                    <span style={{ textAlign: 'right' }}>Profit</span>
-                    <span style={{ textAlign: 'right' }}>Output VAT</span>
-                    <span style={{ textAlign: 'right' }}>Margin</span>
-                  </div>
-                  {vatReport.byMonth.map((m, i) => (
-                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr 1fr' }}>
-                      <span style={{ fontWeight: 600 }}>{m.month}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(m.revenue)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{fmt(m.cost)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: m.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(m.profit)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(m.outputVat)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{m.margin || 0}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Top Products ── */}
-            {vatReport.topProducts && vatReport.topProducts.length > 0 && (
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardTitleIcon}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
-                  </span>
-                  <h3 className={styles.cardTitle}>Top Products</h3>
-                  <span className={styles.cardSub}>{vatReport.topProducts.length} products · Sell Price − Cost = Profit</span>
-                </div>
-                <div className={styles.table}>
-                  <div className={styles.tHead} style={{ gridTemplateColumns: '36px 2fr 1fr 0.6fr 1fr 1fr 1fr 0.8fr' }}>
-                    <span>#</span><span>Product</span><span>Source</span>
-                    <span style={{ textAlign: 'right' }}>Qty</span>
-                    <span style={{ textAlign: 'right' }}>Revenue</span>
-                    <span style={{ textAlign: 'right' }}>Cost</span>
-                    <span style={{ textAlign: 'right' }}>Profit</span>
-                    <span style={{ textAlign: 'right' }}>Margin</span>
-                  </div>
-                  {vatReport.topProducts.map((p, i) => (
-                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '36px 2fr 1fr 0.6fr 1fr 1fr 1fr 0.8fr' }}>
-                      <span className={styles.rowNum}>{i + 1}</span>
-                      <span style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{p.name || 'Unknown'}</span>
-                      <span style={{ textTransform: 'capitalize', fontSize: '0.75rem', color: '#6B7280' }}>{p.source}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{p.qtySold}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(p.revenue)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(p.cost)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: p.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(p.profit)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{p.margin}%</span>
-                    </div>
-                  ))}
+                  {/* Summary totals row */}
+                  {(() => {
+                    const totRevenue = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+                    const totCost    = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
+                    const totProfit  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.profit || 0), 0);
+                    const totVat     = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
+                    const totMargin  = totRevenue > 0 ? ((totProfit / totRevenue) * 100).toFixed(1) : '0.0';
+                    return (
+                      <div className={styles.tRow} style={{
+                        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr',
+                        borderTop: '2px solid #D1D5DB',
+                        background: '#F9FAFB',
+                        fontWeight: 700,
+                      }}>
+                        <span style={{ fontWeight: 700 }}>TOTAL</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totRevenue)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totCost)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totProfit >= 0 ? '#059669' : '#DC2626' }}>{fmt(totProfit)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{totMargin}%</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED', fontWeight: 700 }}>{fmt(totVat)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
 
             <div className={styles.note}>
-              <strong>Live data:</strong> Output VAT from sales invoices · Input VAT from purchase orders + expenses · COGS from invoice item cost prices · HR costs from payroll salary components. Profit = Revenue - COGS - Expenses - HR Costs.
+              <strong>Live data:</strong> Output VAT from sales invoices · Input VAT from purchase orders + expenses · COGS from invoice item cost prices. Profit = Revenue − COGS − Expenses.
             </div>
           </>); })()}
         </div>
