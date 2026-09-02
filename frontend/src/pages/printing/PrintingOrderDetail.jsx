@@ -158,14 +158,15 @@ const PrintingOrderDetail = () => {
             {STATUS_FLOW.map((s, i) => {
               const done = i <= statusIdx;
               const isNext = i === statusIdx + 1;
+              const canProceed = isNext && order.payment_status === 'Confirmed';
 
               return (
-                <button key={s} onClick={() => isNext && updateStatus(s)} disabled={!isNext || updating}
+                <button key={s} onClick={() => canProceed && updateStatus(s)} disabled={!canProceed || updating}
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600,
-                    background: done ? '#059669' : (isNext ? '#2563eb' : '#f1f5f9'),
-                    color: done ? 'white' : (isNext ? 'white' : '#94a3b8'),
-                    cursor: (isNext && !updating) ? 'pointer' : 'not-allowed',
+                    background: done ? '#059669' : (canProceed ? '#2563eb' : '#f1f5f9'),
+                    color: done ? 'white' : (canProceed ? 'white' : '#94a3b8'),
+                    cursor: (canProceed && !updating) ? 'pointer' : 'not-allowed',
                   }}>
                   {STATUS_LABELS[s] || s.replace(/_/g, ' ')}
                 </button>
