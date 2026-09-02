@@ -211,7 +211,7 @@ exports.placeOrder = catchAsync(async (req, res) => {
     const [orderId] = await trx('retail_orders').insert({
       customer_id: req.user.id,
       invoice_number: retail_order_number, subtotal, tax, delivery_fee, total_amount: total,
-      status: 'PROCESSING', payment_status: isPaid ? 'CONFIRMED' : 'AWAITING_PAYMENT',
+      status: 'PROCESSING', payment_status: isPaid ? 'PAID' : 'AWAITING_PAYMENT',
       delivery_type: delivery_type || 'pickup',
       delivery_address: delivery_address || null,
       notes: notes || null,
