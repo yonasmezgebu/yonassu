@@ -957,111 +957,155 @@ const FinanceReceiptsDashboard = () => {
 
           {vatReport && (() => {
             const s = vatReport.summary || {};
-            
-            // Apply exact requested formulas to avoid incorrect backend data (e.g. HR deductions)
-            const totalRev = parseFloat(s.totalRevenue || 0);
-            const cogs = parseFloat(s.totalCogs || 0);
-            const grossProf = totalRev - cogs;
+
+            // ── Core 3 calculations (from actual sales data) ──
+            const totalRev   = parseFloat(s.totalRevenue || 0);
+            const cogs       = parseFloat(s.totalCogs || 0);
+            const grossProf  = totalRev - cogs;
+
+            // ── Extended P&L (backend may or may not provide these) ──
             const opExpenses = parseFloat(s.totalExpenses || 0);
-            const opProf = grossProf - opExpenses;
-            const taxesInt = parseFloat(s.taxesAndInterest || 0); // Add taxes/interest if available
-            const netProf = opProf - taxesInt;
+            const opProf     = grossProf - opExpenses;
+            const taxesInt   = parseFloat(s.taxesAndInterest || 0);
+            const netProf    = opProf - taxesInt;
             const profMargin = totalRev > 0 ? ((netProf / totalRev) * 100).toFixed(1) : '0.0';
 
+            // ── VAT figures ──
+            const outputVat  = parseFloat(s.outputVat || 0);
+            const inputVat   = parseFloat(s.inputVat || 0);
+            const payableVat = outputVat - inputVat;
+
           return (<>
-            {/* ── Key Calculations Reference ── */}
+            {/* ── Key Calculations (3 only, as requested) ── */}
             <div className={styles.card} style={{ marginBottom: 20 }}>
               <div className={styles.cardHeader} style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                 <span className={styles.cardTitleIcon}><Icon.barChart /></span>
                 <h3 className={styles.cardTitle}>Key Calculations</h3>
+                <span className={styles.cardSub}>Formula reference — how each figure is computed</span>
               </div>
-              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Total Revenue</div>
-                  <div style={{ fontSize: 12, color: '#4B5563' }}>This is all the money earned from sales before any costs are deducted.</div>
+              <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+                {/* 1 */}
+                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                  <div style={{ fontWeight: 700, color: '#065F46', marginBottom: 4, fontSize: 14 }}>1. Total Revenue</div>
+                  <div style={{ fontSize: 12, color: '#374151' }}>All the money earned from sales before any costs are deducted.</div>
+                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#D1FAE5', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#065F46', fontWeight: 700, display: 'inline-block' }}>= Sum of all department sales</div>
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Cost of Goods Sold (COGS)</div>
-                  <div style={{ fontSize: 12, color: '#4B5563' }}>Direct costs of producing goods or services (materials, labor, etc.).</div>
+                {/* 2 */}
+                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                  <div style={{ fontWeight: 700, color: '#991B1B', marginBottom: 4, fontSize: 14 }}>2. Cost of Goods Sold (COGS)</div>
+                  <div style={{ fontSize: 12, color: '#374151' }}>Direct costs of producing goods or services (materials, labor, etc.).</div>
+                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#FEE2E2', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#991B1B', fontWeight: 700, display: 'inline-block' }}>= Sum of item cost prices × qty sold</div>
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Gross Profit</div>
-                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Gross Profit = Total Revenue − COGS</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Operating Expenses</div>
-                  <div style={{ fontSize: 12, color: '#4B5563' }}>Costs of running the business (rent, salaries, utilities, marketing).</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Operating Profit</div>
-                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Operating Profit = Gross Profit − Operating Expenses</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Net Profit</div>
-                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Net Profit = Operating Profit − Taxes and Interest</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Profit Margin</div>
-                  <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace', background: '#F3F4F6', padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>Profit Margin = (Net Profit / Total Revenue) × 100</div>
+                {/* 3 */}
+                <div style={{ padding: '14px 16px', borderRadius: 8, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                  <div style={{ fontWeight: 700, color: '#1E3A8A', marginBottom: 4, fontSize: 14 }}>3. Gross Profit</div>
+                  <div style={{ fontSize: 12, color: '#374151' }}>Profit after deducting only the direct cost of goods.</div>
+                  <div style={{ marginTop: 8, fontFamily: 'monospace', background: '#DBEAFE', padding: '4px 8px', borderRadius: 4, fontSize: 12, color: '#1E3A8A', fontWeight: 700, display: 'inline-block' }}>Gross Profit = Total Revenue − COGS</div>
                 </div>
               </div>
             </div>
 
-            {/* ── VAT Summary Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-              <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', borderRadius: 12, padding: '16px 18px', border: '1px solid #A7F3D0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#065F46' }}>Output VAT (Sales)</span><span><Icon.trendUp /></span>
+            {/* ── VAT Summary Cards (clean, per department) ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+              {/* Output VAT */}
+              <div style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', borderRadius: 12, padding: '18px 20px', border: '1px solid #A7F3D0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Output VAT</div>
+                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Collected from customers at point of sale</div>
+                  </div>
+                  <span><Icon.trendUp /></span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#059669' }}>{fmt(s.outputVat)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>VAT collected from customers</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>{fmt(outputVat)}</div>
+                <div style={{ fontSize: 10, color: '#065F46', marginTop: 6, padding: '4px 8px', background: '#A7F3D0', borderRadius: 4, display: 'inline-block' }}>
+                  From {vatReport.bySource?.length || 0} department(s)
+                </div>
               </div>
-              <div style={{ background: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', borderRadius: 12, padding: '16px 18px', border: '1px solid #FECACA' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#991B1B' }}>Input VAT (Purchases)</span><span><Icon.trendDown /></span>
+
+              {/* Input VAT */}
+              <div style={{ background: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', borderRadius: 12, padding: '18px 20px', border: '1px solid #FECACA' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Input VAT</div>
+                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Paid to suppliers on purchases</div>
+                  </div>
+                  <span><Icon.trendDown /></span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#DC2626' }}>{fmt(s.inputVat)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>PO: {fmt(s.inputVatFromPurchases)} + Exp: {fmt(s.inputVatFromExpenses)}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>{fmt(inputVat)}</div>
+                <div style={{ fontSize: 10, color: '#991B1B', marginTop: 6, padding: '4px 8px', background: '#FECACA', borderRadius: 4, display: 'inline-block' }}>
+                  PO: {fmt(s.inputVatFromPurchases || 0)} + Expenses: {fmt(s.inputVatFromExpenses || 0)}
+                </div>
               </div>
-              <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', borderRadius: 12, padding: '16px 18px', border: '1px solid #BFDBFE' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#1E3A8A' }}>Payable VAT</span><span><Icon.court /></span>
+
+              {/* Payable VAT */}
+              <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', borderRadius: 12, padding: '18px 20px', border: '1px solid #BFDBFE' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#1E3A8A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payable VAT</div>
+                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Output VAT − Input VAT</div>
+                  </div>
+                  <span><Icon.court /></span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: s.payableVat >= 0 ? '#2563EB' : '#DC2626' }}>{s.payableVat >= 0 ? '+' : ''}{fmt(s.payableVat)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>{s.payableVat >= 0 ? 'Amount payable to govt' : 'Refund due from govt'}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: payableVat >= 0 ? '#2563EB' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                  {payableVat >= 0 ? '+' : ''}{fmt(payableVat)}
+                </div>
+                <div style={{ fontSize: 10, marginTop: 6, padding: '4px 8px', borderRadius: 4, display: 'inline-block',
+                  background: payableVat >= 0 ? '#BFDBFE' : '#FECACA',
+                  color: payableVat >= 0 ? '#1E3A8A' : '#991B1B' }}>
+                  {payableVat >= 0 ? '↑ Amount payable to government' : '↓ Refund due from government'}
+                </div>
               </div>
-              <div style={{ background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', borderRadius: 12, padding: '16px 18px', border: '1px solid #FDE68A' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#92400E' }}>Net Profit</span><span><Icon.money /></span>
+
+              {/* Gross Profit card */}
+              <div style={{ background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', borderRadius: 12, padding: '18px 20px', border: '1px solid #FDE68A' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gross Profit</div>
+                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>Revenue − COGS</div>
+                  </div>
+                  <span><Icon.money /></span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: netProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(netProf)}</div>
-                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3 }}>After COGS, Expenses, Taxes & Interest</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: grossProf >= 0 ? '#059669' : '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                  {grossProf >= 0 ? '+' : ''}{fmt(grossProf)}
+                </div>
+                <div style={{ fontSize: 10, color: '#92400E', marginTop: 6, padding: '4px 8px', background: '#FDE68A', borderRadius: 4, display: 'inline-block' }}>
+                  Margin: {totalRev > 0 ? ((grossProf / totalRev) * 100).toFixed(1) : '0.0'}%
+                </div>
               </div>
             </div>
 
-            {/* ── P&L Statement Cards ── */}
+            {/* ── P&L Statement (all 7 rows as shown in image; first 3 live-calculated) ── */}
             <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <span className={styles.cardTitleIcon}><Icon.clipboard /></span>
-                <h3 className={styles.cardTitle}>Profit & Loss Statement</h3>
+                <h3 className={styles.cardTitle}>Profit &amp; Loss Statement</h3>
+                <span className={styles.cardSub}>Live data from all departments</span>
               </div>
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {[
-                  { label: 'Total Revenue', value: totalRev, color: '#059669', indent: 0 },
-                  { label: 'Cost of Goods Sold (COGS)', value: -cogs, color: '#DC2626', indent: 0 },
-                  { label: 'Gross Profit', value: grossProf, color: '#2563EB', indent: 0, bold: true },
-                  { label: 'Operating Expenses', value: -opExpenses, color: '#DC2626', indent: 16 },
-                  { label: 'Operating Profit', value: opProf, color: '#2563EB', indent: 0, bold: true },
-                  { label: 'Taxes and Interest', value: -taxesInt, color: '#DC2626', indent: 16 },
-                  { label: 'NET PROFIT', value: netProf, color: netProf >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true },
-                  { label: 'Profit Margin', value: profMargin + '%', color: '#374151', indent: 0, isText: true }
+                  { label: 'Total Revenue',              value: totalRev,    color: '#059669', indent: 0,  bold: false, desc: 'All money earned from sales before any costs' },
+                  { label: 'Cost of Goods Sold (COGS)',  value: -cogs,       color: '#DC2626', indent: 0,  bold: false, desc: 'Direct costs of producing goods/services' },
+                  { label: 'Gross Profit',               value: grossProf,   color: '#2563EB', indent: 0,  bold: true,  separator: true },
+                  { label: 'Operating Expenses',         value: -opExpenses, color: '#DC2626', indent: 20, bold: false, desc: 'Costs of running the business (rent, salaries, utilities)' },
+                  { label: 'Operating Profit',           value: opProf,      color: '#2563EB', indent: 0,  bold: true },
+                  { label: 'Taxes and Interest',         value: -taxesInt,   color: '#DC2626', indent: 20, bold: false, desc: 'Income tax, interest on loans' },
+                  { label: 'NET PROFIT',                 value: netProf,     color: netProf >= 0 ? '#059669' : '#DC2626', indent: 0, bold: true, large: true, separator: true },
+                  { label: 'Profit Margin',              value: profMargin + '%', color: '#374151', indent: 0, bold: false, isText: true },
                 ].map((row, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: row.indent,
-                    padding: `${row.large ? '10' : '4'}px ${row.large ? '12' : '8'}px`, marginLeft: row.indent,
-                    borderRadius: row.bold ? 6 : 0, background: row.bold ? '#F9FAFB' : 'transparent',
-                    borderTop: row.bold && row.large ? '2px solid #D1D5DB' : 'none' }}>
-                    <span style={{ fontSize: row.small ? 11 : row.large ? 14 : 13, fontWeight: row.bold ? 700 : 400, color: row.color }}>{row.label}</span>
-                    <span style={{ fontSize: row.large ? 16 : row.small ? 11 : 13, fontWeight: row.bold ? 800 : 400, color: row.color, fontFamily: 'monospace' }}>
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: `${row.large ? '12' : '8'}px ${row.large ? '14' : '10'}px`,
+                    marginLeft: row.indent,
+                    borderRadius: row.bold ? 6 : 0,
+                    background: row.large ? '#F9FAFB' : row.bold ? '#F9FAFB' : 'transparent',
+                    borderTop: row.separator ? '2px solid #D1D5DB' : 'none',
+                    marginTop: row.separator ? 6 : 0,
+                  }}>
+                    <div>
+                      <span style={{ fontSize: row.large ? 14 : 13, fontWeight: row.bold ? 700 : 400, color: row.color }}>{row.label}</span>
+                      {row.desc && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{row.desc}</div>}
+                    </div>
+                    <span style={{ fontSize: row.large ? 16 : 13, fontWeight: row.bold ? 800 : 500, color: row.color, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                       {row.isText ? row.value : (row.value >= 0 ? '+' : '') + fmt(row.value)}
                     </span>
                   </div>
@@ -1069,53 +1113,53 @@ const FinanceReceiptsDashboard = () => {
               </div>
             </div>
 
-
-            {/* ── Breakdown by Department ── */}
+            {/* ── Revenue by Department ── */}
             {vatReport.bySource && vatReport.bySource.length > 0 && (
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
                   <span className={styles.cardTitleIcon}><Icon.barChart /></span>
                   <h3 className={styles.cardTitle}>Revenue by Department</h3>
-                  <span className={styles.cardSub}>{vatReport.bySource.length} sources</span>
+                  <span className={styles.cardSub}>{vatReport.bySource.length} source{vatReport.bySource.length !== 1 ? 's' : ''} · each department's sales recorded separately</span>
                 </div>
                 <div className={styles.table}>
                   <div className={styles.tHead} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
                     <span>Department</span>
                     <span style={{ textAlign: 'right' }}>Revenue</span>
                     <span style={{ textAlign: 'right' }}>COGS</span>
-                    <span style={{ textAlign: 'right' }}>Profit</span>
+                    <span style={{ textAlign: 'right' }}>Gross Profit</span>
                     <span style={{ textAlign: 'right' }}>Margin</span>
                     <span style={{ textAlign: 'right' }}>Output VAT</span>
                   </div>
-                  {vatReport.bySource.map((src, i) => (
-                    <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
-                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(src.revenue)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(src.cost)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: src.profit >= 0 ? '#059669' : '#DC2626' }}>{fmt(src.profit)}</span>
-                      <span className={styles.num} style={{ textAlign: 'right' }}>{src.margin || 0}%</span>
-                      <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(src.outputVat)}</span>
-                    </div>
-                  ))}
-                  {/* Summary totals row */}
-                  {(() => {
-                    const totRevenue = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
-                    const totCost    = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
-                    const totProfit  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.profit || 0), 0);
-                    const totVat     = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
-                    const totMargin  = totRevenue > 0 ? ((totProfit / totRevenue) * 100).toFixed(1) : '0.0';
+                  {vatReport.bySource.map((src, i) => {
+                    const dRev  = parseFloat(src.revenue || 0);
+                    const dCost = parseFloat(src.cost || 0);
+                    const dProf = dRev - dCost;
+                    const dMgn  = dRev > 0 ? ((dProf / dRev) * 100).toFixed(1) : '0.0';
                     return (
-                      <div className={styles.tRow} style={{
-                        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr',
-                        borderTop: '2px solid #D1D5DB',
-                        background: '#F9FAFB',
-                        fontWeight: 700,
-                      }}>
+                      <div key={i} className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+                        <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{src.label || src.source}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669' }}>{fmt(dRev)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626' }}>{fmt(dCost)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: dProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(dProf)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right' }}>{dMgn}%</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED' }}>{fmt(src.outputVat || 0)}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Totals row */}
+                  {(() => {
+                    const totRev  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+                    const totCost = vatReport.bySource.reduce((s, r) => s + parseFloat(r.cost || 0), 0);
+                    const totProf = totRev - totCost;
+                    const totVat  = vatReport.bySource.reduce((s, r) => s + parseFloat(r.outputVat || 0), 0);
+                    const totMgn  = totRev > 0 ? ((totProf / totRev) * 100).toFixed(1) : '0.0';
+                    return (
+                      <div className={styles.tRow} style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', borderTop: '2px solid #D1D5DB', background: '#F9FAFB', fontWeight: 700 }}>
                         <span style={{ fontWeight: 700 }}>TOTAL</span>
-                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totRevenue)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', color: '#059669', fontWeight: 700 }}>{fmt(totRev)}</span>
                         <span className={styles.num} style={{ textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>{fmt(totCost)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totProfit >= 0 ? '#059669' : '#DC2626' }}>{fmt(totProfit)}</span>
-                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{totMargin}%</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700, color: totProf >= 0 ? '#059669' : '#DC2626' }}>{fmt(totProf)}</span>
+                        <span className={styles.num} style={{ textAlign: 'right', fontWeight: 700 }}>{totMgn}%</span>
                         <span className={styles.num} style={{ textAlign: 'right', color: '#7C3AED', fontWeight: 700 }}>{fmt(totVat)}</span>
                       </div>
                     );
@@ -1125,7 +1169,12 @@ const FinanceReceiptsDashboard = () => {
             )}
 
             <div className={styles.note}>
-              <strong>Live data:</strong> Output VAT from sales invoices · Input VAT from purchase orders + expenses · COGS from invoice item cost prices. Profit = Revenue − COGS − Expenses.
+              <strong>How data flows:</strong> Every sale in every department (Printing, Car Rental, Pharmacy, Sales, etc.) auto-generates a Sales Invoice → Sales Receipt. This page aggregates all those receipts:
+              &nbsp;<strong>Total Revenue</strong> = sum of all invoice amounts across departments ·
+              &nbsp;<strong>COGS</strong> = sum of item cost prices × qty ·
+              &nbsp;<strong>Output VAT</strong> = VAT collected from customers ·
+              &nbsp;<strong>Input VAT</strong> = VAT paid to suppliers on purchases ·
+              &nbsp;<strong>Payable VAT</strong> = Output − Input (what goes to government).
             </div>
           </>); })()}
         </div>
