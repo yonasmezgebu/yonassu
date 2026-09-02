@@ -186,7 +186,7 @@ exports.createOrder = catchAsync(async (req, res) => {
   const pricing = orderModel.calculatePrice();
   const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
-  const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
+  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
   const invoiceLines = await buildPrintingInvoiceLines({
     productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
   });
@@ -211,7 +211,7 @@ exports.createOrder = catchAsync(async (req, res) => {
       status_id: initialStatus?.id || 1,
       payment_method: paymentMethod || null,
       payment_reference: paymentReference || null,
-      payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
+      payment_status: 'Pending',
       created_by: userId,
       created_at: db.fn.now(),
       updated_at: db.fn.now()
@@ -233,17 +233,19 @@ exports.createOrder = catchAsync(async (req, res) => {
   });
 
   // Automatically send to Finance Live Income for verification
-  if (paymentMethod && paymentReference) {
+  if (paymentMethod) {
+    const refForFinance = paymentReference || 'Cash/POS';
     await db('finance_income_submissions').insert({
       department: 'Printing',
       submitted_by: req.user.full_name || req.user.name || 'Printing Cashier',
       amount: vatPricing.total,
-      reference_no: paymentReference,
+      reference_no: refForFinance,
       description: `Printing Order ${orderNumber} - ${customer?.name || 'Walk-in'}`,
       status: 'Pending',
       manual_details: JSON.stringify({
         order_id: orderId,
         paymentMethod: paymentMethod,
+        paymentReference: paymentReference || null,
         receivedFrom: customer?.name || 'Walk-in Customer'
       }),
       created_at: db.fn.now(),
@@ -252,7 +254,7 @@ exports.createOrder = catchAsync(async (req, res) => {
 
     sendFinanceNotification({
       title: 'New Income Submission',
-      message: `ETB ${vatPricing.total.toLocaleString()} Printing income submitted for verification (Ref: ${paymentReference}).`,
+      message: `ETB ${vatPricing.total.toLocaleString()} Printing income submitted for verification (Ref: ${refForFinance}).`,
       type: 'finance',
       link: '/finance/pharmacy-sales?tab=list',
       related_entity_id: orderId
@@ -321,6 +323,11 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
       .first();
   }
   if (!statusRow) throw new AppError(`Status '${status || statusId}' not found`, 400);
+
+  if (statusRow.status_code !== 'cancelled' && statusRow.status_code !== 'received' && order.payment_status !== 'Confirmed') {
+    throw new AppError('Cannot process order until payment is confirmed by Finance.', 400);
+  }
+
   const newStatusId = statusRow.id;
   const deliveredStatus = await db('order_statuses').where('status_code', 'delivered').first();
   const deliveredId = deliveredStatus?.id || 8;
@@ -916,7 +923,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
   const pricing = orderModel.calculatePrice();
   const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
-  const initialStatus = await db('order_statuses').where('status_code', 'in_queue').first();
+  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
 
   const user = await db('users').where('id', userId).first();
   let customerId = null;
