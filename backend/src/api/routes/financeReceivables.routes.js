@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db: knex } = require('../../config/database');
 const { authenticate } = require('../middleware/auth.middleware');
-const { sendFinanceNotification, sendPrintingNotification } = require('../../services/notification.service');
+const { sendFinanceNotification, sendPrintingNotification, sendCustomerNotification } = require('../../services/notification.service');
 const { recordIncomeToLedger, normalizePaymentMethod } = require('../../utils/financeIncome.service');
 const { generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
 
@@ -736,23 +736,25 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         });
       }
 
-      // Update Printing order payment_status ONLY — do NOT touch status_id
-      // (Changing status_id here resets the order's workflow position which causes data loss)
       if (submission.department === 'Printing' && submission.manual_details) {
         try {
           const parsed = JSON.parse(submission.manual_details);
           if (parsed.order_id) {
-            // Find the in_queue status so confirmed order enters the print job queue
-            const inQueueStatus = await trx('order_statuses').where('status_code', 'in_queue').first();
-
+            const currentOrder = await trx('printing_orders').where({ id: parsed.order_id }).first();
+            
             const updatePayload = {
               payment_status: 'Confirmed',
               updated_at: knex.fn.now()
             };
 
-            // Auto-advance to Job Queue so supervisor can see and process
-            if (inQueueStatus) {
+            // Only auto-advance to Job Queue if it is currently 'received' (awaiting payment)
+            const receivedStatus = await trx('order_statuses').where('status_code', 'received').first();
+            const inQueueStatus = await trx('order_statuses').where('status_code', 'in_queue').first();
+            
+            let statusChanged = false;
+            if (currentOrder && receivedStatus && inQueueStatus && currentOrder.status_id === receivedStatus.id) {
               updatePayload.status_id = inQueueStatus.id;
+              statusChanged = true;
             }
 
             await trx('printing_orders')
@@ -760,13 +762,31 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
               .update(updatePayload);
 
             // Log history
-            if (inQueueStatus) {
+            if (statusChanged) {
               await trx('order_status_history').insert({
                 order_id: parsed.order_id,
                 status_id: inQueueStatus.id,
                 changed_by: req.user ? req.user.id : null,
                 notes: 'Payment confirmed by Finance — moved to Job Queue for printing'
               });
+            }
+
+            // Notify Customer
+            if (currentOrder && currentOrder.customer_id) {
+              const cust = await trx('customers').where('id', currentOrder.customer_id).first();
+              if (cust && cust.phone) {
+                const portalUser = await trx('users').where('phone', cust.phone).first();
+                if (portalUser) {
+                  sendCustomerNotification({
+                    user_id: portalUser.id,
+                    title: 'Print Order Payment Confirmed ✅',
+                    message: `Your payment for order ${currentOrder.order_number} was confirmed by Finance. Production is starting.`,
+                    type: 'payment_confirmed',
+                    link: '/customer/printing-orders',
+                    related_entity_id: parsed.order_id
+                  }, req.app?.get('io')).catch(() => {});
+                }
+              }
             }
           }
         } catch(e) {
