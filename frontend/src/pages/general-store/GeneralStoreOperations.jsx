@@ -789,21 +789,77 @@ export const GSInventory = () => {
             <div>
               <div className="gsi-fieldset-title">Inventory &amp; Pricing</div>
               <div className="gsi-grid-2">
-                {[['unit', 'Unit (e.g. roll)', 'text'], ['quantity_in_store', 'Qty in Store', 'number'], ['unit_value', 'Price/Unit (ETB)', 'number'], ['reorder_level', 'Reorder Level', 'number']].map(([k, lbl, type]) => (
+                {[['unit', 'Unit (e.g. roll)', 'text'], ['quantity_in_store', 'Qty in Store', 'number'], ['unit_value', 'Cost Price/Unit (ETB)', 'number'], ['reorder_level', 'Reorder Level', 'number']].map(([k, lbl, type]) => (
                   <div key={k} className="gsi-field">
                     <label className="gsi-label">{lbl}</label>
                     <input className="gsi-input" type={type} value={updatingItem[k]} onChange={e => setUpdatingItem({ ...updatingItem, [k]: e.target.value })} />
                   </div>
                 ))}
               </div>
+
+              {/* Input VAT config */}
+              <div style={{ marginTop: 16, padding: '12px 16px', background: '#FFFBEB', border: '1.5px solid #FDE68A', borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <input
+                    type="checkbox"
+                    id="upd_vat_toggle"
+                    checked={!!updatingItem.has_input_vat}
+                    onChange={e => setUpdatingItem({ ...updatingItem, has_input_vat: e.target.checked })}
+                    style={{ width: 15, height: 15, accentColor: '#D97706', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="upd_vat_toggle" style={{ fontSize: 13, fontWeight: 700, color: '#92400E', cursor: 'pointer' }}>
+                    🧾 Purchased with Input VAT (VAT-registered supplier)
+                  </label>
+                </div>
+                {updatingItem.has_input_vat && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="gsi-field" style={{ marginBottom: 0 }}>
+                      <label className="gsi-label">VAT Rate (%)</label>
+                      <select className="gsi-input" value={updatingItem.vat_rate || 15} onChange={e => setUpdatingItem({ ...updatingItem, vat_rate: parseFloat(e.target.value) })}>
+                        <option value={15}>15% (Standard)</option>
+                        <option value={10}>10%</option>
+                        <option value={5}>5%</option>
+                        <option value={0}>0% (Exempt)</option>
+                      </select>
+                    </div>
+                    <div className="gsi-field" style={{ marginBottom: 0 }}>
+                      <label className="gsi-label">Input VAT per Unit (ETB)</label>
+                      <input
+                        className="gsi-input"
+                        type="number"
+                        readOnly
+                        value={(price * ((updatingItem.vat_rate || 15) / 100)).toFixed(2)}
+                        style={{ background: '#FEF3C7', color: '#92400E', fontWeight: 700 }}
+                      />
+                    </div>
+                    <div className="gsi-field" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                      <label className="gsi-label" style={{ color: '#92400E' }}>Total Input VAT this batch (Qty × VAT/unit)</label>
+                      <input
+                        className="gsi-input"
+                        type="number"
+                        readOnly
+                        value={(total * ((updatingItem.vat_rate || 15) / 100)).toFixed(2)}
+                        style={{ background: '#FEF3C7', color: '#B45309', fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="gsi-modal-foot">
             <div className="gsi-total">
-              <span className="gsi-total-label">Live Calculation</span>
+              <span className="gsi-total-label">
+                {updatingItem.has_input_vat ? 'Stock Value (excl. VAT)' : 'Live Calculation'}
+              </span>
               <span className="gsi-total-value">ETB {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
+            {updatingItem.has_input_vat && (
+              <div style={{ fontSize: 13, color: '#D97706', fontWeight: 600, padding: '4px 0' }}>
+                🧾 Input VAT: ETB {(total * ((updatingItem.vat_rate || 15) / 100)).toFixed(2)} &nbsp;|&nbsp; Total incl. VAT: ETB {(total * (1 + (updatingItem.vat_rate || 15) / 100)).toFixed(2)}
+              </div>
+            )}
             <button className="gsi-save" onClick={submitUpdate} disabled={saving}>
               {saving && <SegmentedSpinner size={16} color="#fff" />}
               <span>{saving ? 'UPDATING...' : 'SAVE CHANGES'}</span>
@@ -829,7 +885,7 @@ export const GSInventory = () => {
     { label: 'Filtered', value: filtered.length, icon: '🔍', c: '#0284C7' },
     { label: 'Departments', value: [...new Set(items.map(m => m.department))].length, icon: '🏢', c: '#16A34A' },
   ];
-  const numCols = ['IN STORE', 'REORDER', 'UNIT', 'UNIT PRICE', 'TOTAL VALUE'];
+  const numCols = ['IN STORE', 'REORDER', 'UNIT', 'COST PRICE', 'TOTAL VALUE'];
 
   const handlePrint = () => {
     const totalVal = filtered.reduce((s, m) => s + parseFloat(m.total_value || 0), 0);
@@ -871,7 +927,7 @@ export const GSInventory = () => {
               <th class="num">In Store</th>
               <th class="num">Reorder</th>
               <th>Unit</th>
-              <th class="num">Unit Price (ETB)</th>
+              <th class="num">Cost Price (ETB)</th>
               <th class="num">Total Value (ETB)</th>
             </tr>
           </thead>
@@ -916,7 +972,6 @@ export const GSInventory = () => {
       <div className="gsi-header">
         <div>
           <h1 className="gsi-title">📦 Consumables Inventory</h1>
-          <p className="gsi-subtitle">University General Store · All Departments · All Materials</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="gsi-print" onClick={handlePrint}>
@@ -979,7 +1034,7 @@ export const GSInventory = () => {
         <div className="gsi-table-card">
           <div className="gsi-table-wrap">
             <div className="gsi-thead">
-              {['NO', 'ITEM NAME', 'CATEGORY', 'DEPARTMENT', 'IN STORE', 'REORDER', 'UNIT', 'UNIT PRICE', 'TOTAL VALUE', 'STATUS', 'ACTION'].map(h => (
+              {['NO', 'ITEM NAME', 'CATEGORY', 'DEPARTMENT', 'IN STORE', 'REORDER', 'UNIT', 'COST PRICE', 'TOTAL VALUE', 'STATUS', 'ACTION'].map(h => (
                 <div key={h} className={`gsi-th${numCols.includes(h) ? ' gsi-th--num' : ''}`}>{h}</div>
               ))}
             </div>
@@ -1136,7 +1191,7 @@ const GSR_CSS = `
 `;
 
 export const GSRegisterItem = () => {
-  const [form, setForm]   = useState({ material_name: '', category: 'Paper', unit: 'roll', quantity_in_store: 0, department: 'Printing', unit_value: 0, reorder_level: 10 });
+  const [form, setForm]   = useState({ material_name: '', category: 'Paper', unit: 'roll', quantity_in_store: 0, department: 'Printing', unit_value: 0, reorder_level: 10, has_input_vat: false, vat_rate: 15 });
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState(null);
   const [focused, setFocused] = useState(null);
@@ -1157,7 +1212,7 @@ export const GSRegisterItem = () => {
     try {
       await api.post('/api/v1/printing-assets/store/materials', form);
       showToast('success', `"${form.material_name}" registered — ETB ${total.toLocaleString(undefined,{minimumFractionDigits:2})} total`);
-      setForm({ material_name: '', category: 'Paper', unit: 'roll', quantity_in_store: 0, department: 'Printing', unit_value: 0, reorder_level: 10 });
+      setForm({ material_name: '', category: 'Paper', unit: 'roll', quantity_in_store: 0, department: 'Printing', unit_value: 0, reorder_level: 10, has_input_vat: false, vat_rate: 15 });
       setCustomDept(false);
     } catch (e) { showToast('error', e.response?.data?.message || 'Registration failed'); }
     setSaving(false);
@@ -1231,17 +1286,58 @@ export const GSRegisterItem = () => {
             </div>
           </div>
 
-          {/* 3. Pricing & Reorder */}
+          {/* 3. Pricing, VAT & Reorder */}
           <div className="gsr-card">
-            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>💰</span><span className="gsr-card-title">Pricing & Reorder Control</span></div>
+            <div className="gsr-card-head"><span style={{ fontSize: 16 }}>💰</span><span className="gsr-card-title">Pricing, VAT & Reorder Control</span></div>
             <div className="gsr-card-body">
               <div className="gsr-grid-2">
-                {[['unit_value', 'Price of 1 Unit (ETB)'], ['reorder_level', 'Reorder Level (min qty)']].map(([k, lbl]) => (
-                  <div key={k} className="gsr-field">
-                    <label className="gsr-label">{lbl}</label>
-                    <input className="gsr-input gsr-input--money" type="number" min="0" step={k === 'unit_value' ? '0.01' : '1'} value={form[k]} onChange={e => set(k, e.target.value)} />
+                <div className="gsr-field">
+                  <label className="gsr-label">Cost Price of 1 Unit (ETB)</label>
+                  <input className="gsr-input gsr-input--money" type="number" min="0" step="0.01" value={form.unit_value} onChange={e => set('unit_value', e.target.value)} />
+                </div>
+                <div className="gsr-field">
+                  <label className="gsr-label">Reorder Level (min qty)</label>
+                  <input className="gsr-input gsr-input--money" type="number" min="0" step="1" value={form.reorder_level} onChange={e => set('reorder_level', e.target.value)} />
+                </div>
+              </div>
+
+              {/* Input VAT Config */}
+              <div style={{ marginTop: 16, padding: '14px 16px', background: '#FFFBEB', border: '1.5px solid #FDE68A', borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <input
+                    type="checkbox"
+                    id="vat_toggle"
+                    checked={!!form.has_input_vat}
+                    onChange={e => set('has_input_vat', e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: '#D97706', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="vat_toggle" style={{ fontSize: 13, fontWeight: 700, color: '#92400E', cursor: 'pointer' }}>
+                    🧾 This item is purchased with Input VAT (VAT-registered supplier)
+                  </label>
+                </div>
+                {form.has_input_vat && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="gsr-field" style={{ marginBottom: 0 }}>
+                      <label className="gsr-label">VAT Rate (%)</label>
+                      <select className="gsr-input" value={form.vat_rate || 15} onChange={e => set('vat_rate', parseFloat(e.target.value))}>
+                        <option value={15}>15% (Standard)</option>
+                        <option value={10}>10%</option>
+                        <option value={5}>5%</option>
+                        <option value={0}>0% (Exempt)</option>
+                      </select>
+                    </div>
+                    <div className="gsr-field" style={{ marginBottom: 0 }}>
+                      <label className="gsr-label">Input VAT per Unit (ETB)</label>
+                      <input
+                        className="gsr-input gsr-input--money"
+                        type="number"
+                        readOnly
+                        value={(price * ((form.vat_rate || 15) / 100)).toFixed(2)}
+                        style={{ background: '#FEF3C7', color: '#92400E', fontWeight: 700 }}
+                      />
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -1261,11 +1357,23 @@ export const GSRegisterItem = () => {
             <div className="gsr-card-head"><span style={{ fontSize: 16 }}>📊</span><span className="gsr-card-title">Live Calculation</span></div>
             <div className="gsr-card-body">
               <div className="gsr-calc-row">
-                <span className="gsr-calc-label">Qty × Unit Price</span>
+                <span className="gsr-calc-label">Qty × Cost Price</span>
                 <span className="gsr-calc-value">{qty} × ETB {price.toFixed(2)}</span>
               </div>
+              {form.has_input_vat && (
+                <>
+                  <div className="gsr-calc-row" style={{ color: '#D97706' }}>
+                    <span className="gsr-calc-label">Input VAT ({form.vat_rate || 15}%)</span>
+                    <span className="gsr-calc-value">+ ETB {(total * ((form.vat_rate || 15) / 100)).toFixed(2)}</span>
+                  </div>
+                  <div className="gsr-calc-row" style={{ borderTop: '1px dashed #FDE68A', paddingTop: 6 }}>
+                    <span className="gsr-calc-label" style={{ fontWeight: 700 }}>Total incl. VAT</span>
+                    <span className="gsr-calc-value" style={{ fontWeight: 700, color: '#D97706' }}>ETB {(total * (1 + (form.vat_rate || 15) / 100)).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <div className="gsr-calc-total">
-                <span className="gsr-calc-total-label">Total Value</span>
+                <span className="gsr-calc-total-label">Stock Value (excl. VAT)</span>
                 <span className="gsr-calc-total-value">ETB {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="gsr-reorder-note">
@@ -1278,10 +1386,18 @@ export const GSRegisterItem = () => {
           <div className="gsr-card">
             <div className="gsr-card-head"><span style={{ fontSize: 16 }}>🌿</span><span className="gsr-card-title">Item Preview</span></div>
             <div className="gsr-card-body">
-              {[['Name', form.material_name || '—', true], ['Category', form.category], ['Department', form.department || '—'], ['Unit', form.unit || '—'], ['Qty', qty.toLocaleString()], ['Unit Price', `ETB ${price.toFixed(2)}`]].map(([lbl, val, bold]) => (
+              {[
+                ['Name', form.material_name || '—', true],
+                ['Category', form.category],
+                ['Department', form.department || '—'],
+                ['Unit', form.unit || '—'],
+                ['Qty', qty.toLocaleString()],
+                ['Cost Price', `ETB ${price.toFixed(2)}`],
+                ...(form.has_input_vat ? [['Input VAT', `${form.vat_rate || 15}% = ETB ${(price * (form.vat_rate || 15) / 100).toFixed(2)}`]] : []),
+              ].map(([lbl, val, bold]) => (
                 <div key={lbl} className="gsr-preview-row">
                   <span className="gsr-preview-label">{lbl}</span>
-                  <span className={`gsr-preview-value${bold ? ' gsr-preview-value--strong' : ''}`}>{val}</span>
+                  <span className={`gsr-preview-value${bold ? ' gsr-preview-value--strong' : ''}${lbl === 'Input VAT' ? ' gsr-preview-value--vat' : ''}`}>{val}</span>
                 </div>
               ))}
             </div>
