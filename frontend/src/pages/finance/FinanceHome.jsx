@@ -23,6 +23,7 @@ const FinanceHome = () => {
   const [bankSummary,  setBankSummary]  = useState(null);
   const [recons,       setRecons]       = useState([]);
   const [receivables,  setReceivables]  = useState([]);
+  const [erpReceivables, setErpReceivables] = useState(null);
   const [assetSummary, setAssetSummary] = useState(null);
   const [equitySummary, setEquitySummary] = useState(null);
   const [profitSummary, setProfitSummary] = useState(null);
@@ -33,7 +34,7 @@ const FinanceHome = () => {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] =
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes, erpRes] =
         await Promise.allSettled([
           api.get('/finance-cash/cashbook'),
           api.get('/finance-cash/crv'),
@@ -46,6 +47,7 @@ const FinanceHome = () => {
           api.get('/finance-equity/dashboard'),
           api.get('/finance/vat-profit-report?period=all'),
           api.get('/finance-liabilities/dashboard'),
+          api.get('/erp-receivables/dashboard'),
         ]);
       if (cbRes.status      === 'fulfilled') setCashbook(cbRes.value?.data || []);
       if (crvRes.status     === 'fulfilled') setCrvs(crvRes.value?.data || []);
@@ -55,6 +57,7 @@ const FinanceHome = () => {
         setBankSummary(bankSumRes.value?.data?.summary || bankSumRes.value?.data || null);
       if (reconRes.status   === 'fulfilled') setRecons(reconRes.value?.data || []);
       if (rcvRes.status     === 'fulfilled') setReceivables(rcvRes.value?.data || []);
+      if (erpRes.status     === 'fulfilled') setErpReceivables(erpRes.value?.data?.data || erpRes.value?.data || null);
       if (assetRes.status   === 'fulfilled') {
         const ad = assetRes.value?.data || assetRes.value;
         setAssetSummary(ad?.data || ad || null);
@@ -130,10 +133,17 @@ const FinanceHome = () => {
   const equityWithdraw = parseFloat(equitySummary?.totalWithdrawals || 0);
   const equityNetIn = equityContrib - equityWithdraw;
 
-  /* ── Receivables ────────────────────────────────────────────── */
-  const moneyReceived = settledReceivable;
-  const moneyOwed     = outstandingBalance;
-  const moneyTotal    = totalReceivable;
+  /* ── Revenue Book (finance_receivables) ─────────────────────── */
+  const revenueBookTotal = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
+  const revenueBookOwed  = rcvList.reduce((s, r) => s + parseFloat(
+    r.outstanding_balance ?? Math.max(0, (r.total_amount || r.amount || 0) - (r.amount_paid || r.paid_amount || 0))
+  ), 0);
+  const revenueBookCollected = revenueBookTotal - revenueBookOwed;
+
+  /* ── Accounts Receivable (erp_receivables) ──────────────────── */
+  const moneyTotal    = parseFloat(erpReceivables?.totalInvoiced || 0);
+  const moneyReceived = parseFloat(erpReceivables?.totalCollected || 0);
+  const moneyOwed     = parseFloat(erpReceivables?.totalReceivables || 0);
 
   /* ── Net profit ─────────────────────────────────────────────── */
   const netProfit = parseFloat(profitSummary?.summary?.netProfit ?? profitSummary?.netProfit ?? 0);
@@ -159,11 +169,11 @@ const FinanceHome = () => {
   /* ── SYSTEM BALANCE ─────────────────────────────────────────── */
   const systemBalance =
     parseFloat(bankBalance || 0) +
-    parseFloat(moneyReceived || 0) +
-    parseFloat(equityNetIn || 0) +
-    parseFloat(netProfit || 0) -
-    parseFloat(expenseOut || 0) +
-    parseFloat(unbankedCRV || 0);
+    parseFloat(unbankedCRV || 0) +
+    parseFloat(revenueBookOwed || 0) +
+    parseFloat(moneyOwed || 0) +
+    parseFloat(assetMachinery || 0) +
+    parseFloat(assetProducts || 0);
 
   return (
     <div className={styles.page}>
@@ -188,70 +198,46 @@ const FinanceHome = () => {
                 <tr>
                   <th>Component</th>
                   <th className={styles.alignRight}>Amount</th>
+                  <th className={styles.alignRight}>Cumulative Total</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/bank-accounts')}>
-                  <td>Bank Accounts</td>
-                  <td className={styles.alignRight}>{fmt(bankBalance)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/outstanding-ar')}>
-                  <td>Money Received (Receivables)</td>
-                  <td className={styles.alignRight}>{fmt(moneyReceived)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/equity')}>
-                  <td>Net Owner Flow (Equity)</td>
-                  <td className={styles.alignRight}>{fmt(equityNetIn)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/profit-loss')}>
-                  <td>Net Profit</td>
-                  <td className={styles.alignRight}>{fmt(netProfit)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/ev')}>
-                  <td>Paid Out (Expenses)</td>
-                  <td className={styles.alignRight}>−{fmt(expenseOut)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/crv')}>
-                  <td>Unbanked CRV (Cash)</td>
-                  <td className={styles.alignRight}>{fmt(unbankedCRV)}</td>
-                </tr>
-                <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/cash-book')}>
-                  <td>Total System Balance</td>
-                  <td className={styles.alignRight}>{fmt(systemBalance)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* TABLE 2: CASHBOOK */}
-        <div className={styles.tableCard}>
-          <h3 className={styles.sectionTitle} style={{ padding: '1.5rem 1.5rem 0' }}>Cashbook Ledger</h3>
-          <div className={styles.tableWrapper}>
-            <table className={styles.dataTable}>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th className={styles.alignRight}>Count</th>
-                  <th className={styles.alignRight}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/crv')}>
-                  <td>Receipts (CRV)</td>
-                  <td className={styles.alignRight}>{crvList.length}</td>
-                  <td className={styles.alignRight}>{fmt(totalReceipts)}</td>
-                </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/ev')}>
-                  <td>Payments (EV)</td>
-                  <td className={styles.alignRight}>{evList.length}</td>
-                  <td className={styles.alignRight}>−{fmt(totalPayments)}</td>
-                </tr>
-                <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/cash-book')}>
-                  <td>Net Cash Balance</td>
-                  <td className={styles.alignRight}>{cbEntries.length}</td>
-                  <td className={styles.alignRight}>{fmt(cashBalance)}</td>
-                </tr>
+                 {(() => {
+                  const rows = [
+                    { label: 'Bank Accounts (Cash in Bank)', val: bankBalance, nav: '/finance/bank-accounts' },
+                    { label: 'Unbanked Cash (CRV on Hand)', val: unbankedCRV, nav: '/finance/crv' },
+                    { label: 'Net Owner Flow (Equity)', val: equityNetIn, nav: '/finance/equity' },
+                    { label: 'Collected / Paid So Far (Accounts Receivable)', val: moneyReceived, nav: '/finance/accounts-receivable' },
+                    { label: 'Outstanding Receivables (Revenue Book)', val: revenueBookOwed, nav: '/finance/outstanding-ar' },
+                    { label: 'Outstanding Receivables (Invoiced)', val: moneyOwed, nav: '/finance/accounts-receivable' },
+                    { label: 'Fixed Assets (Cars & Machinery)', val: assetMachinery, nav: '/finance/assets' },
+                    { label: 'Inventory (Products & Stock)', val: assetProducts, nav: '/finance/assets' }
+                  ];
+                  let runningTotal = 0;
+                  return (
+                    <>
+                      {rows.map((r, i) => {
+                        runningTotal += parseFloat(r.val || 0);
+                        const isAsset = i >= 6;
+                        return (
+                          <tr key={i}
+                            onClick={() => r.nav && navigate(r.nav)}
+                            style={isAsset ? { background: '#EFF6FF', color: '#1E40AF', cursor: 'pointer' } : { cursor: 'pointer' }}
+                            className={isAsset ? '' : styles.navRow}>
+                            <td style={isAsset ? { color: '#1E40AF', fontWeight: 600 } : {}}>{r.label}</td>
+                            <td className={styles.alignRight} style={isAsset ? { color: '#2563EB', fontWeight: 600 } : {}}>{fmt(r.val)}</td>
+                            <td className={styles.alignRight} style={{ fontWeight: 600, color: isAsset ? '#1D4ED8' : '#059669' }}>{fmt(runningTotal)}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className={styles.noHover} style={{ background: '#1E40AF' }}>
+                        <td style={{ color: '#FFFFFF', fontWeight: 700, padding: '10px 12px' }}>Total System Balance (Calculated Sum)</td>
+                        <td className={styles.alignRight}></td>
+                        <td className={styles.alignRight} style={{ color: '#FFFFFF', fontSize: '1.1rem', fontWeight: 800, padding: '10px 12px' }}>{fmt(runningTotal)}</td>
+                      </tr>
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -269,15 +255,15 @@ const FinanceHome = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/outstanding-ar')}>
+                <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Total Invoiced (All Records)</td>
                   <td className={styles.alignRight}>{fmt(moneyTotal)}</td>
                 </tr>
-                <tr className={styles.navRow} onClick={() => navigate('/finance/outstanding-ar')}>
+                <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Collected / Paid So Far</td>
                   <td className={styles.alignRight}>{fmt(moneyReceived)}</td>
                 </tr>
-                <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/outstanding-ar')}>
+                <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Still Outstanding (Not Yet Received)</td>
                   <td className={styles.alignRight}>{fmt(moneyOwed)}</td>
                 </tr>
