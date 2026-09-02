@@ -258,7 +258,40 @@ const Badge = ({ status }) => {
 
 const fmt = n => `ETB ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// ─── MAIN COMPONENT ──────────────────────────────────────────────────
+// Shared invoice form JSX
+const InvFormFields = ({ invForm, setInvForm }) => (
+  <>
+    <div className="ar-form-group">
+      <label className="ar-label">Customer Name *</label>
+      <input required className="ar-input" placeholder="e.g. Kebede Store" value={invForm.customer_name} onChange={e => setInvForm(f => ({ ...f, customer_name: e.target.value }))} />
+    </div>
+    <div className="ar-form-grid">
+      <div className="ar-form-group">
+        <label className="ar-label">Invoice No. *</label>
+        <input required className="ar-input" placeholder="INV-101" value={invForm.invoice_number} onChange={e => setInvForm(f => ({ ...f, invoice_number: e.target.value }))} />
+      </div>
+      <div className="ar-form-group">
+        <label className="ar-label">Amount (ETB) *</label>
+        <input required type="number" min="0" step="0.01" className="ar-input" placeholder="5000.00" value={invForm.amount} onChange={e => setInvForm(f => ({ ...f, amount: e.target.value }))} />
+      </div>
+    </div>
+    <div className="ar-form-grid">
+      <div className="ar-form-group">
+        <label className="ar-label">Invoice Date *</label>
+        <input required type="date" className="ar-input" value={invForm.invoice_date} onChange={e => setInvForm(f => ({ ...f, invoice_date: e.target.value }))} />
+      </div>
+      <div className="ar-form-group">
+        <label className="ar-label">Due Date *</label>
+        <input required type="date" className="ar-input" value={invForm.due_date} onChange={e => setInvForm(f => ({ ...f, due_date: e.target.value }))} />
+      </div>
+    </div>
+    <div className="ar-form-group">
+      <label className="ar-label">Description</label>
+      <input className="ar-input" placeholder="e.g. Medicine sold on credit" value={invForm.description} onChange={e => setInvForm(f => ({ ...f, description: e.target.value }))} />
+    </div>
+  </>
+);
+
 export default function FinanceAccountsReceivable() {
   const [receivables, setReceivables] = useState([]);
   const [dashboard, setDashboard] = useState({ totalReceivables: 0, invoicedThisMonth: 0, receivedThisMonth: 0, overdueReceivables: 0, customersWithBalance: 0 });
@@ -392,40 +425,6 @@ export default function FinanceAccountsReceivable() {
 
   const dateStr = v => v ? v.split('T')[0] : '—';
 
-  // Shared invoice form JSX
-  const InvFormFields = () => (
-    <>
-      <div className="ar-form-group">
-        <label className="ar-label">Customer Name *</label>
-        <input required className="ar-input" placeholder="e.g. Kebede Store" value={invForm.customer_name} onChange={e => setInvForm(f => ({ ...f, customer_name: e.target.value }))} />
-      </div>
-      <div className="ar-form-grid">
-        <div className="ar-form-group">
-          <label className="ar-label">Invoice No. *</label>
-          <input required className="ar-input" placeholder="INV-101" value={invForm.invoice_number} onChange={e => setInvForm(f => ({ ...f, invoice_number: e.target.value }))} />
-        </div>
-        <div className="ar-form-group">
-          <label className="ar-label">Amount (ETB) *</label>
-          <input required type="number" min="0" step="0.01" className="ar-input" placeholder="5000.00" value={invForm.amount} onChange={e => setInvForm(f => ({ ...f, amount: e.target.value }))} />
-        </div>
-      </div>
-      <div className="ar-form-grid">
-        <div className="ar-form-group">
-          <label className="ar-label">Invoice Date *</label>
-          <input required type="date" className="ar-input" value={invForm.invoice_date} onChange={e => setInvForm(f => ({ ...f, invoice_date: e.target.value }))} />
-        </div>
-        <div className="ar-form-group">
-          <label className="ar-label">Due Date *</label>
-          <input required type="date" className="ar-input" value={invForm.due_date} onChange={e => setInvForm(f => ({ ...f, due_date: e.target.value }))} />
-        </div>
-      </div>
-      <div className="ar-form-group">
-        <label className="ar-label">Description</label>
-        <input className="ar-input" placeholder="e.g. Medicine sold on credit" value={invForm.description} onChange={e => setInvForm(f => ({ ...f, description: e.target.value }))} />
-      </div>
-    </>
-  );
-
   return (
     <div className="ar-wrap">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -553,7 +552,7 @@ export default function FinanceAccountsReceivable() {
             </div>
             <div className="ar-modal-body">
               <form onSubmit={handleAdd}>
-                <InvFormFields />
+                <InvFormFields invForm={invForm} setInvForm={setInvForm} />
                 <div className="ar-form-footer">
                   <button type="button" className="ar-btn outline" onClick={() => setAddModal(false)}>Cancel</button>
                   <button type="submit" className="ar-btn" disabled={submitting}>{submitting ? 'Saving…' : 'Save Invoice'}</button>
@@ -582,7 +581,7 @@ export default function FinanceAccountsReceivable() {
                 </div>
               )}
               <form onSubmit={handleEdit}>
-                <InvFormFields />
+                <InvFormFields invForm={invForm} setInvForm={setInvForm} />
                 <div className="ar-form-footer">
                   <button type="button" className="ar-btn outline" onClick={() => setEditItem(null)}>Cancel</button>
                   <button type="submit" className="ar-btn edit" disabled={submitting}>{submitting ? 'Updating…' : 'Update Invoice'}</button>
