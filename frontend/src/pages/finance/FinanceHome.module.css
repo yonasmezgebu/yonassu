@@ -160,6 +160,11 @@
   border-top: 2px solid hsl(var(--border));
 }
 
+.noHover:hover td,
+.noHover td {
+  background-color: inherit !important;
+}
+
 /* Responsive */
 @media (max-width: 639px) {
   .page {
