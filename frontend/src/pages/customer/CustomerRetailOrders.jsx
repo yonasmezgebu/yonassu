@@ -4,7 +4,7 @@ import axios from '../../services/apiClient';
 import {
   ClipboardList, Clock, CheckCircle, XCircle, RefreshCw,
   ArrowLeft, Calendar, DollarSign, Truck, Package,
-  ShoppingCart, Eye, MapPin, CreditCard, Phone, Mail, User, Hash, FileText
+  ShoppingCart, Eye, MapPin, CreditCard, Phone, Mail, User, Hash, FileText, Trash2
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerRetailOrders.module.css';
@@ -31,7 +31,8 @@ const ORDER_STATUS = {
 
 const PAYMENT_STATUS = {
   AWAITING_PAYMENT: { label: 'Awaiting Payment', bg: 'hsl(36 100% 90%)', color: 'hsl(36 100% 35%)' },
-  PAID:             { label: 'Paid',             bg: 'hsl(142 70% 86%)', color: 'hsl(142 70% 22%)' },
+  PENDING:          { label: 'Pending Finance',  bg: 'hsl(45 100% 90%)', color: 'hsl(45 100% 35%)' },
+  PAID:             { label: 'Paid & Verified',  bg: 'hsl(142 70% 86%)', color: 'hsl(142 70% 22%)' },
   OVERDUE:          { label: 'Overdue',          bg: 'hsl(0 72% 92%)',   color: 'hsl(0 72% 38%)' },
 };
 
@@ -72,6 +73,18 @@ export default function CustomerRetailOrders() {
       setLoading(false);
     }
   }, []);
+
+  const handleHideOrder = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this completed order from your dashboard?')) return;
+    try {
+      await axios.delete(`/retail/orders/my-orders/${id}`);
+      setOrders(prev => prev.filter(o => o.id !== id));
+      alert('Order removed successfully');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove order');
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -451,12 +464,23 @@ export default function CustomerRetailOrders() {
                         </span>
                       </td>
                       <td className={styles.colRight}>
-                        <button
-                          className={`${styles.btnSecondary} ${styles.btnSm}`}
-                          onClick={(e) => { e.stopPropagation(); setSelected(order); }}
-                        >
-                          <Eye size={14} /> View
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status) && (
+                            <button 
+                              onClick={(e) => handleHideOrder(e, order.id)} 
+                              style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                              title="Delete from dashboard"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                          <button
+                            className={`${styles.btnSecondary} ${styles.btnSm}`}
+                            onClick={(e) => { e.stopPropagation(); setSelected(order); }}
+                          >
+                            <Eye size={14} /> View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
