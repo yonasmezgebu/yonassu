@@ -358,6 +358,9 @@ exports.getCustomerBids = catchAsync(async (req, res) => {
   const bids = await db('public_bids')
     .join('public_tenders', 'public_bids.public_tender_id', 'public_tenders.id')
     .where('public_bids.email', email)
+    .where(function() {
+      this.where('public_bids.is_deleted_by_customer', false).orWhereNull('public_bids.is_deleted_by_customer');
+    })
     .select(
       'public_bids.*',
       'public_tenders.title as tender_title',
