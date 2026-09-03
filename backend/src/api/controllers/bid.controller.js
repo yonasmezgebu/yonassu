@@ -162,6 +162,9 @@ exports.getMyBids = catchAsync(async (req, res) => {
   const bids = await db('bids')
     .join('tenders', 'bids.tender_id', 'tenders.id')
     .where('bids.customer_id', req.user.id)
+    .where(function() {
+      this.where('bids.is_deleted_by_customer', false).orWhereNull('bids.is_deleted_by_customer');
+    })
     .select('bids.*', 'tenders.title as tender_title', 'tenders.reference_number',
       'tenders.status as tender_status', 'tenders.deadline', 'tenders.item_name')
     .orderBy('bids.submitted_at', 'desc')
