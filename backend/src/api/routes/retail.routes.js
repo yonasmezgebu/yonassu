@@ -23,6 +23,14 @@ router.delete('/cart', retailController.clearCart);
 
 router.post('/orders/place', authenticate, uploads.singlePaymentProof.single('payment_proof'), handleUploadError, retailController.placeOrder);
 router.get('/orders/my-orders', authenticate, retailController.getMyOrders);
+router.delete('/orders/my-orders/:id', authenticate, async (req, res) => {
+  const { db } = require('../../config/database');
+  const order = await db('retail_orders').where({ id: req.params.id, customer_id: req.user.id }).first();
+  if (!order) return res.status(404).json({ message: 'Order not found' });
+  if (!['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status)) return res.status(400).json({ message: 'Only completed orders can be removed' });
+  await db('retail_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+  res.json({ message: 'Order removed from your dashboard' });
+});
 
 // ── Cashier (Admin, CEO) ───────────────────────────────────────
 const cashierAuth = [authenticate, authorizeRoles(cashierRoles)];
