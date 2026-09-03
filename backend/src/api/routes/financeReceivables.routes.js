@@ -718,23 +718,24 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         },
       });
 
-      // Departments whose modules already create their own invoice + receipt at
-      // sale time are excluded so approving income never double-counts them.
-      // Everything else gets a synthetic invoice + receipt so the income still
-      // appears on the Sales Invoice & Receipt page.
-      const deptKey = String(submission.department || '').toLowerCase();
-      if (!SELF_INVOICING_DEPARTMENTS.has(deptKey)) {
-        await ensureInvoiceAndReceipt(trx, {
-          source: 'manual',
-          saleId: 500000000 + parseInt(id, 10),
-          customer: customerName,
-          amount: systemTotal,
-          paymentMethod: manualDetails.paymentMethod || 'Cash',
-          paymentReference: submission.reference_no || manualDetails.paymentReference || null,
-          description: submission.description,
-          receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
-        });
-      }
+      // Mint + link a Sales Invoice and Receipt for the approved income so it always
+// shows on the Sales Invoice & Receipt page. Departments whose modules already
+// create their own invoice + receipt at sale time are skipped so approving never
+// creates a duplicate. Everything else (manual walk-ins / general inflow) gets
+// the synthetic invoice. Idempotent (keyed on source + sale_id).
+const deptKey = String(submission.department || '').toLowerCase();
+if (!SELF_INVOICING_DEPARTMENTS.has(deptKey)) {
+  await ensureInvoiceAndReceipt(trx, {
+    source: 'manual',
+    saleId: 500000000 + parseInt(id, 10),
+    customer: customerName,
+    amount: systemTotal,
+    paymentMethod: manualDetails.paymentMethod || 'Cash',
+    paymentReference: submission.reference_no || manualDetails.paymentReference || null,
+    description: submission.description,
+    receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
+  });
+}
 
       if (submission.department === 'Printing' && submission.manual_details) {
         try {
@@ -791,6 +792,23 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
           }
         } catch(e) {
           console.error('Failed to update printing order payment status:', e);
+        }
+      }
+
+      // Update Retail order payment_status
+      if (submission.department === 'Retail' && submission.manual_details) {
+        try {
+          const parsed = JSON.parse(submission.manual_details);
+          if (parsed.order_id) {
+            await trx('retail_orders')
+              .where({ id: parsed.order_id })
+              .update({
+                payment_status: 'PAID',
+                updated_at: knex.fn.now()
+              });
+          }
+        } catch(e) {
+          console.error('Failed to update retail order payment status:', e);
         }
       }
 
@@ -901,6 +919,66 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to approve income' });
   }
 });
+// Map an income submission's department to the sales_invoices.source key it is
+// recorded under (invoice at order time). Receipts are only added on approval.
+const DEPARTMENT_TO_SOURCE = {
+  'pharmacy': 'pharmacy',
+  'printing': 'printing',
+  'retail': 'retail',
+  'retail pos': 'pos',
+  'retailpos': 'pos',
+  'car rental': 'car_rental',
+  'agrirent': 'agrirent',
+};
+
+// Cancel (clean) any sales_invoice recorded for a submission that has now been
+// rejected, together with its receipt. Provisionally-created invoices keyed on
+// source + sale_id (either from the module's own order, or the synthetic
+// 'manual' invoice minted via ensureInvoiceAndReceipt). Idempotent.
+const cancelInvoiceForSubmission = async (trx, submission) => {
+  const deptKey = String(submission.department || '').toLowerCase().trim();
+
+  // 1) Invoices keyed by the underlying order (source + order_id) — the common
+  //    case for departments whose module recorded an invoice at order time.
+  let md = {};
+  try {
+    md = typeof submission.manual_details === 'string'
+      ? JSON.parse(submission.manual_details)
+      : (submission.manual_details || {});
+  } catch (e) { md = {}; }
+
+  const keyed = [];
+  if (md.order_id && DEPARTMENT_TO_SOURCE[deptKey]) {
+    keyed.push({ source: DEPARTMENT_TO_SOURCE[deptKey], sale_id: String(md.order_id) });
+    if (deptKey === 'retail' || deptKey === 'retail pos' || deptKey === 'retailpos') {
+      keyed.push({ source: 'retail', sale_id: String(md.order_id) });
+    }
+    if (deptKey === 'retail pos' || deptKey === 'retailpos') {
+      keyed.push({ source: 'pos', sale_id: String(md.order_id) });
+    }
+  }
+  // 2) Synthetic manual invoices minted on approval keyed to this submission id.
+  keyed.push({ source: 'manual', sale_id: String(500000000 + parseInt(submission.id, 10)) });
+
+  for (const k of keyed) {
+    const invoices = await trx('sales_invoices')
+      .where('source', k.source)
+      .where('sale_id', k.sale_id)
+      .whereNot('status', 'cancelled')
+      .select('id');
+    for (const inv of invoices) {
+      await trx('sales_invoices').where({ id: inv.id }).update({
+        status: 'cancelled',
+        updated_at: trx.fn.now(),
+      });
+      await trx('sales_receipts').where({ invoice_id: inv.id }).update({
+        status: 'cancelled',
+        updated_at: trx.fn.now(),
+      });
+    }
+  }
+};
+
 // ── PUT /live-income/:id/reject — Finance rejects a submission ────
 router.put('/live-income/:id/reject', authenticate, async (req, res) => {
   try {
@@ -920,6 +998,11 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         finance_notes: reason,
         updated_at: knex.fn.now()
       });
+      await cancelInvoiceForSubmission(knex, {
+        id: String(rentalId),
+        department: 'Car Rental',
+        manual_details: JSON.stringify({ order_id: String(rentalId) })
+      });
       sendFinanceNotification({
         title: 'Income Rejected',
         message: `Car Rental payment for Order ${order.order_number} rejected: ${reason}`,
@@ -936,6 +1019,11 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
         status: 'REJECTED_BY_FINANCE',
         notes: `Finance Rejected: ${reason}`,
         updated_at: knex.fn.now()
+      });
+      await cancelInvoiceForSubmission(knex, {
+        id: String(cartId),
+        department: 'Retail POS',
+        manual_details: JSON.stringify({ order_id: String(cartId) })
       });
       sendFinanceNotification({
         title: 'Income Rejected',
@@ -974,6 +1062,14 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
       rejection_reason: reason,
       updated_at: knex.fn.now()
     });
+
+    // Clean the Sales & Invoice page — cancel any invoice previously recorded
+    // for this submission (and its receipt) so it no longer appears as unpaid.
+    try {
+      await cancelInvoiceForSubmission(knex, submission);
+    } catch (e) {
+      console.error('Failed to cancel invoice for rejected submission:', e.message);
+    }
     sendFinanceNotification({
       title: 'Income Rejected',
       message: `ETB ${Number(submission.amount || 0).toLocaleString()} income for ${submission.department} rejected: ${reason}`,
@@ -984,6 +1080,20 @@ router.put('/live-income/:id/reject', authenticate, async (req, res) => {
 
     // Printing department follows its own income through the bell
     if (String(submission.department || '').toLowerCase() === 'printing') {
+      try {
+        const md = typeof submission.manual_details === 'string'
+          ? JSON.parse(submission.manual_details)
+          : (submission.manual_details || {});
+        if (md && md.order_id) {
+          await knex('printing_orders').where({ id: md.order_id }).update({
+            payment_status: 'Rejected',
+            finance_notes: reason,
+            updated_at: knex.fn.now()
+          });
+        }
+      } catch (e) {
+        console.error('Failed to propagate printing rejection:', e.message);
+      }
       sendPrintingNotification({
         title: 'Income Rejected by Finance',
         message: `ETB ${Number(submission.amount || 0).toLocaleString()} Printing income was rejected by Finance. Reason: ${reason}`,
