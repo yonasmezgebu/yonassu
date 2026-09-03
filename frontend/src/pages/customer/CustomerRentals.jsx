@@ -4,7 +4,7 @@ import {
   Car, Clock, CheckSquare, XSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, DollarSign, Image as ImageIcon,
   Upload, Plus, XCircle, User, Phone, Mail, CreditCard,
-  FileText, MapPin, Hash, Wrench, AlertTriangle
+  FileText, MapPin, Hash, Wrench, AlertTriangle, Trash2
 } from 'lucide-react';
 import carService from '../../services/carService';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
@@ -95,6 +95,19 @@ export default function CustomerRentals() {
   }, [selected]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleHideOrder = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this completed order from your dashboard?')) return;
+    try {
+      const axios = require('../../services/apiClient').default;
+      await axios.delete(`/api/v1/rentals/my-orders/${id}/hide`);
+      setOrders(prev => prev.filter(o => o.id !== id));
+      alert('Order removed successfully');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove order');
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -641,8 +654,9 @@ export default function CustomerRentals() {
           </div>
         ) : (
           <div className={styles.list}>
-            {filtered.map(order => {
+              {filtered.map(order => {
               const ost = ORDER_STATUS[order.status] || ORDER_STATUS.PENDING_APPROVAL;
+              const pst = PAYMENT_STATUS[order.paymentStatus] || null;
               return (
                 <div
                   key={order.id}
@@ -651,25 +665,48 @@ export default function CustomerRentals() {
                   tabIndex={0}
                   onKeyDown={e => e.key === 'Enter' && openDetail(order)}
                 >
+                  {/* Left: order number + status */}
                   <div className={styles.cardHeader}>
-                    <span className={styles.orderNum}>#{order.orderNumber}</span>
+                    <span className={styles.orderNum}>#{order.orderNumber || order.id}</span>
                     <span className={styles.badge} style={{ backgroundColor: ost.bg, color: ost.color }}>
                       {ost.label}
                     </span>
+                    {pst && (
+                      <span className={styles.badge} style={{ backgroundColor: pst.bg, color: pst.color }}>
+                        {pst.label}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Vehicle name — grows */}
                   <h3 className={styles.cardTitle}>{order.carName || 'Vehicle'}</h3>
-                  <div className={styles.cardMeta}>
-                    <span><Calendar size={14} /> {fmtDate(order.createdAt)}</span>
-                    <span><DollarSign size={14} /> {fmtMoney(order.totalAmount)} ETB</span>
-                  </div>
+
+                  {/* Dates */}
                   <div className={styles.cardDates}>
                     {fmtDate(order.pickupDate)} → {fmtDate(order.returnDate)}
-                    <span style={{ marginLeft: '0.5rem', fontWeight: 400, color: 'hsl(var(--primary))' }}>
+                    <span style={{ marginLeft: '0.4rem', fontWeight: 400, color: 'hsl(var(--primary))' }}>
                       ({order.totalDays}d)
                     </span>
                   </div>
-                  <div className={styles.cardFooter}>
-                    <span className={styles.viewLink}>View Details →</span>
+
+                  {/* Amount + booked date */}
+                  <div className={styles.cardMeta}>
+                    <span><DollarSign size={13} /> {fmtMoney(order.totalAmount)} ETB</span>
+                    <span><Calendar size={13} /> {fmtDate(order.createdAt)}</span>
+                  </div>
+
+                  {/* View link */}
+                  <div className={styles.cardFooter} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {(order.status === 'COMPLETED' || order.status === 'completed') && (
+                      <button 
+                        onClick={(e) => handleHideOrder(e, order.id)} 
+                        style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                        title="Delete from dashboard"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    <span className={styles.viewLink}>View →</span>
                   </div>
                 </div>
               );
