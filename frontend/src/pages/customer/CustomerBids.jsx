@@ -446,9 +446,18 @@ export default function CustomerBids() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [successMessage, setSuccessMessage] = useState('');
-  const handleHideBid = async (e, id, type) => {
+  const [errorMessage, setErrorMessage] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, label, type }
+
+  const handleHideBid = (e, id, type, label) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to remove this completed bid from your dashboard?')) return;
+    setConfirmDelete({ id, type, label });
+  };
+
+  const confirmHideBid = async () => {
+    if (!confirmDelete) return;
+    const { id, type } = confirmDelete;
+    setConfirmDelete(null);
     try {
       if (type === 'public') {
         await apiClient.delete(`/public-tenders/customer/bids/${id}/hide`);
@@ -460,7 +469,8 @@ export default function CustomerBids() {
       setSuccessMessage('Bid removed successfully!');
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove bid');
+      setErrorMessage(err.response?.data?.message || 'Failed to remove bid');
+      setTimeout(() => setErrorMessage(''), 4000);
     }
   };
 
@@ -500,6 +510,7 @@ export default function CustomerBids() {
   const showSales  = activeTab === 'all' || activeTab === 'sales';
 
   return (
+    <>
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.wrap}>
@@ -559,7 +570,7 @@ export default function CustomerBids() {
             {showPublic && publicBids.length > 0 && (
               <div style={{ marginBottom: '2rem' }}>
                 {activeTab === 'all' && <h3 className={styles.sectionTitle} style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Compete & Sell Bids</h3>}
-                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'public')} />)}
+                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'public', b.item_name || `Bid #${b.id}`)} />)}
               </div>
             )}
 
@@ -567,12 +578,41 @@ export default function CustomerBids() {
             {showSales && salesBids.length > 0 && (
               <div>
                 {activeTab === 'all' && <h3 className={styles.sectionTitle} style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Compete & Buy Bids</h3>}
-                {salesBids.map(b => <SalesBidCard key={`sale-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'sales')} />)}
+                {salesBids.map(b => <SalesBidCard key={`sale-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'sales', b.tender_title || b.item_name || `Bid #${b.id}`)} />)}
               </div>
             )}
           </div>
         )}
       </div>
     </div>
+
+    {/* ── In-app confirmation dialog ── */}
+    {confirmDelete && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🗑️</div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Remove Bid?</h3>
+          <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+            <strong>{confirmDelete.label}</strong> will be removed from your dashboard.<br />
+            This only hides it for you — the tender records remain intact.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button
+              onClick={() => setConfirmDelete(null)}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmHideBid}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Yes, Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
