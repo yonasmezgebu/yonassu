@@ -1,43 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { PenTool, Upload, CheckCircle } from 'lucide-react';
-import { printingState, updateJobStage, updateDesignProgress } from '../../utils/printingTransactionService';
-import { playSound } from '../../utils/printingSound';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PenTool, RefreshCw, ArrowRight } from 'lucide-react';
+import apiClient from '../../services/apiClient';
+import { StatusBadge } from './StageShared';
 import { StageStyles } from './printingStageStyles';
 import StageNav from './StageNav';
+import StageConfirmModal from './StageConfirmModal';
 
 const PrintingDesign = () => {
-  const [jobs, setJobs] = useState([]);
-  const [filterDesigner, setFilterDesigner] = useState('All');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [movingId, setMovingId] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const navigate = useNavigate();
 
-  const refreshJobs = () => setJobs([...printingState.jobs.filter(j => j.status === 'Design')]);
-
-  useEffect(() => {
-    refreshJobs();
-    playSound('info'); // "🎨 Design Stage Updated"
+  const load = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/printing/orders', { params: { limit: 200 } });
+      const raw = res.data?.orders || res.data || [];
+      setOrders(raw.filter(o => ['in_design'].includes(o.status_code)));
+    } catch (err) {
+      console.error('Failed to load design orders', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleProgressChange = (id, val) => {
-    updateDesignProgress(id, parseInt(val));
-    refreshJobs();
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleUpload = (id) => {
-    playSound('success');
-    alert(`File uploaded and attached to ${id}`);
-    // Simulate attaching file
-    const job = printingState.jobs.find(j => j.id === id);
-    if(job) job.files.push({ name: `design_final_${id}.pdf`, status: 'Pending' });
-    refreshJobs();
-  };
+  const handleRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const handleComplete = (id) => {
-    updateJobStage(id, 'Prepress');
-    playSound('success');
-    refreshJobs();
+  const doMove = async (order) => {
+    setMovingId(order.id);
+    try {
+      await apiClient.put(`/printing/orders/${order.id}/status`, { status: 'file_check' });
+      await load();
+    } catch (err) {
+      alert(err?.message || 'Failed to move order to Prepress.');
+    } finally {
+      setMovingId(null);
+      setConfirm(null);
+    }
   };
-
-  const filtered = jobs.filter(j => filterDesigner === 'All' || j.assignedDesigner === filterDesigner);
-  const designers = ['All', ...new Set(jobs.map(j => j.assignedDesigner).filter(Boolean))];
 
   return (
     <div className="stg-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
@@ -47,56 +52,73 @@ const PrintingDesign = () => {
         <h1 className="stg-title">
           <PenTool color="#7C3AED" /> IN DESIGN
         </h1>
-        <p className="stg-sub">Track jobs currently in the design stage.</p>
+        <p className="stg-sub">Orders currently in the design stage. Confirm to advance an order to Prepress (File Check).</p>
       </div>
 
       <div className="stg-toolbar">
-        <div className="stg-field">
-          <label className="stg-label">Assigned Designer</label>
-          <select className="stg-select" value={filterDesigner} onChange={e => setFilterDesigner(e.target.value)}>
-            {designers.map(d => <option key={d}>{d}</option>)}
-          </select>
+        <div className="stg-field" style={{ alignSelf: 'flex-end' }}>
+          <button className="stg-btn stg-btn--soft-blue stg-btn--sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={14} style={{ marginRight: 4 }} /> {refreshing ? '...' : 'Refresh'}
+          </button>
         </div>
       </div>
 
       <div className="stg-table-card">
-        <div className="stg-table-scroll">
-          <table className="stg-table">
-            <thead>
-              <tr>
-                {['Job #', 'Customer', 'Job Type', 'Assigned Designer', 'Started Date', 'Deadline', 'Progress (%)', 'Actions'].map(col => (
-                  <th key={col} className="stg-th">{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(j => (
-                <tr key={j.id}>
-                  <td className="stg-td stg-strong">{j.id}</td>
-                  <td className="stg-td">{j.customerName}</td>
-                  <td className="stg-td stg-muted">{j.jobType}</td>
-                  <td className="stg-td stg-accent" style={{ color: '#7C3AED' }}>{j.assignedDesigner || 'Unassigned'}</td>
-                  <td className="stg-td stg-muted">{j.startedDesignDate || '-'}</td>
-                  <td className="stg-td stg-accent" style={{ color: '#DC2626' }}>{new Date(j.deadline).toLocaleDateString()}</td>
-                  <td className="stg-td">
-                    <div className="stg-progress">
-                      <input type="range" min="0" max="100" value={j.designProgress || 0} onChange={(e) => handleProgressChange(j.id, e.target.value)} className="stg-range" />
-                      <span className="stg-range-val">{j.designProgress || 0}%</span>
-                    </div>
-                  </td>
-                  <td className="stg-td">
-                    <div className="stg-cell-btns">
-                      <button onClick={() => handleUpload(j.id)} className="stg-btn stg-btn--ghost stg-btn--sm"><Upload size={14} /> Upload Design</button>
-                      <button onClick={() => handleComplete(j.id)} className="stg-btn stg-btn--soft-violet stg-btn--sm"><CheckCircle size={14} /> Complete (Prepress)</button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Loading orders...</div>
+        ) : (
+          <div className="stg-table-scroll">
+            <table className="stg-table">
+              <thead>
+                <tr>
+                  {['Order #', 'Customer', 'Service', 'Qty', 'Total (ETB)', 'Payment', 'Status', 'Due Date', 'Action'].map(col => (
+                    <th key={col} className={`stg-th${col === 'Qty' || col.includes('Total') ? ' stg-th--num' : ''}`}>{col}</th>
+                  ))}
                 </tr>
-              ))}
-              {filtered.length === 0 && <tr><td className="stg-td" colSpan={8}><div className="stg-empty">No jobs currently in design.</div></td></tr>}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {orders.map(order => (
+                  <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
+                    <td className="stg-td stg-strong">{order.order_number}</td>
+                    <td className="stg-td">{order.customer_name || 'Walk-in'}</td>
+                    <td className="stg-td stg-muted">{order.product_type || '—'}</td>
+                    <td className="stg-td stg-num" style={{ textAlign: 'right' }}>{order.quantity}</td>
+                    <td className="stg-td stg-num" style={{ textAlign: 'right', fontWeight: 700 }}>{parseFloat(order.total_price || 0).toLocaleString('en-ET', { minimumFractionDigits: 2 })}</td>
+                    <td className="stg-td" style={{ cursor: 'default' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, background: order.payment_status === 'Confirmed' ? '#dcfce7' : '#fffbeb', color: order.payment_status === 'Confirmed' ? '#14532d' : '#92400e', fontWeight: 700, fontSize: 12 }}>
+                        {order.payment_status === 'Confirmed' ? '✅ Confirmed' : '⏳ Pending'}
+                      </span>
+                    </td>
+                    <td className="stg-td" style={{ cursor: 'default' }}><StatusBadge code={order.status_code} name={order.status_name} /></td>
+                    <td className="stg-td">{order.due_date ? new Date(order.due_date).toLocaleDateString() : '—'}</td>
+                    <td className="stg-td" onClick={e => e.stopPropagation()}>
+                      {movingId === order.id ? (
+                        <span className="stg-note">Moving...</span>
+                      ) : (
+                        <button className="stg-btn stg-btn--soft-violet stg-btn--sm" onClick={() => setConfirm(order)}>
+                          <ArrowRight size={14} /> → Prepress
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {orders.length === 0 && <tr><td className="stg-td" colSpan={9}><div className="stg-empty">No orders currently in Design.</div></td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <StageConfirmModal
+        open={!!confirm}
+        title={`Move Order ${confirm?.order_number || ''} to Prepress`}
+        message="Confirm the design is complete. This order will advance to the File Check (Prepress) stage."
+        details={confirm ? `Customer: ${confirm.customer_name || 'Walk-in'} · Total: ETB ${parseFloat(confirm.total_price || 0).toLocaleString()}` : ''}
+        confirmLabel="Move to Prepress"
+        busy={movingId === confirm?.id}
+        onConfirm={() => confirm && doMove(confirm)}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   );
 };
