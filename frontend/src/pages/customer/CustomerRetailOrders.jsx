@@ -53,6 +53,7 @@ export default function CustomerRetailOrders() {
   const [activeTab, setActiveTab]     = useState('ALL');
   const [refreshing, setRefreshing]   = useState(false);
   const [notification, setNotif]      = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, label }
   const navigate = useNavigate();
 
   const toast = (msg, type = 'success') => {
@@ -74,15 +75,21 @@ export default function CustomerRetailOrders() {
     }
   }, []);
 
-  const handleHideOrder = async (e, id) => {
+  const handleHideOrder = (e, id, label) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to remove this completed order from your dashboard?')) return;
+    setConfirmDelete({ id, label });
+  };
+
+  const confirmHideOrder = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
+    setConfirmDelete(null);
     try {
       await axios.delete(`/retail/orders/my-orders/${id}`);
       setOrders(prev => prev.filter(o => o.id !== id));
-      alert('Order removed successfully');
+      toast('Order removed from your dashboard.', 'success');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove order');
+      toast(err.response?.data?.message || 'Failed to remove order.', 'error');
     }
   };
 
@@ -353,6 +360,7 @@ export default function CustomerRetailOrders() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
+    <>
     <div className={styles.page}>
       {notification && (
         <div className={`${styles.toast} ${
@@ -467,7 +475,7 @@ export default function CustomerRetailOrders() {
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
                           {['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status) && (
                             <button 
-                              onClick={(e) => handleHideOrder(e, order.id)} 
+                              onClick={(e) => handleHideOrder(e, order.id, order.retail_order_number || order.invoice_number || `Order #${order.id}`)}
                               style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
                               title="Delete from dashboard"
                             >
@@ -491,5 +499,34 @@ export default function CustomerRetailOrders() {
         )}
       </div>
     </div>
+
+    {/* ── In-app confirmation dialog ── */}
+    {confirmDelete && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🗑️</div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Remove Order?</h3>
+          <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+            <strong>{confirmDelete.label}</strong> will be removed from your dashboard.<br />
+            This only hides it for you — the store still has your order record.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button
+              onClick={() => setConfirmDelete(null)}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmHideOrder}
+              style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Yes, Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
