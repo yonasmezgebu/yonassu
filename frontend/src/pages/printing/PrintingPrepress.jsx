@@ -1,62 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { CheckSquare, AlertTriangle, Send, Check } from 'lucide-react';
-import { printingState, approvePrepress, updateJobStage } from '../../utils/printingTransactionService';
-import { playSound } from '../../utils/printingSound';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CheckSquare, RefreshCw, Send } from 'lucide-react';
+import apiClient from '../../services/apiClient';
+import { StatusBadge, PaymentBadge, DueCell } from './StageShared';
 import { StageStyles } from './printingStageStyles';
 import StageNav from './StageNav';
+import StageConfirmModal from './StageConfirmModal';
+
+const FILE_CHECKS = [
+  { key: 'bleed', label: 'Bleed Checked' },
+  { key: 'res', label: 'Resolution 300dpi+' },
+  { key: 'color', label: 'Color Mode CMYK' },
+  { key: 'fonts', label: 'Fonts Embedded' },
+  { key: 'size', label: 'Final Size Correct' },
+];
 
 const PrintingPrepress = () => {
-  const [jobs, setJobs] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [checklists, setChecklists] = useState({});
-  const [fixNotes, setFixNotes] = useState({});
+  const [movingId, setMovingId] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const navigate = useNavigate();
 
-  const refreshJobs = () => {
-    const prepressJobs = printingState.jobs.filter(j => j.status === 'Prepress');
-    setJobs([...prepressJobs]);
-
-    // Initialize checklists if not present
-    const initChecks = { ...checklists };
-    prepressJobs.forEach(j => {
-      if (!initChecks[j.id]) {
-        initChecks[j.id] = { bleed: false, res: false, color: false, fonts: false, size: false };
-      }
-    });
-    setChecklists(initChecks);
-  };
-
-  useEffect(() => {
-    refreshJobs();
-    playSound('info'); // "📄 File Check Updated"
+  const load = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/printing/orders', { params: { limit: 200 } });
+      const raw = res.data?.orders || res.data || [];
+      const list = raw.filter(o => ['file_check'].includes(o.status_code));
+      setOrders(list);
+      const init = {};
+      list.forEach(o => { if (!checklists[o.id]) init[o.id] = { bleed: false, res: false, color: false, fonts: false, size: false }; });
+      if (Object.keys(init).length) setChecklists(prev => ({ ...prev, ...init }));
+    } catch (err) {
+      console.error('Failed to load prepress orders', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const toggleCheck = (jobId, field) => {
-    setChecklists(prev => ({
-      ...prev,
-      [jobId]: { ...prev[jobId], [field]: !prev[jobId][field] }
-    }));
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const isAllChecked = (jobId) => {
-    const checks = checklists[jobId];
-    return checks && checks.bleed && checks.res && checks.color && checks.fonts && checks.size;
-  };
+  const handleRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const handleApprove = (id) => {
-    approvePrepress(id);
-    playSound('success');
-    refreshJobs();
-  };
+  const toggleCheck = (id, field) => setChecklists(prev => ({ ...prev, [id]: { ...prev[id], [field]: !prev[id][field] } }));
+  const isAllChecked = (id) => { const c = checklists[id] || {}; return c.bleed && c.res && c.color && c.fonts && c.size; };
 
-  const handleRequestFix = (id) => {
-    if (!fixNotes[id]) {
-      alert("Please provide notes for the requested fix.");
-      return;
+  const doMove = async (order) => {
+    setMovingId(order.id);
+    try {
+      await apiClient.put(`/printing/orders/${order.id}/status`, { status: 'in_printing' });
+      await load();
+    } catch (err) {
+      alert(err?.message || 'Failed to send order to Printing.');
+    } finally {
+      setMovingId(null);
+      setConfirm(null);
     }
-    // Update audit trail and send back to Design
-    updateJobStage(id, 'Design', `Prepress: Needs Fix - ${fixNotes[id]}`);
-    playSound('success');
-    setFixNotes(prev => ({...prev, [id]: ''}));
-    refreshJobs();
   };
 
   return (
@@ -67,89 +68,85 @@ const PrintingPrepress = () => {
         <h1 className="stg-title">
           <CheckSquare color="#D97706" /> FILE CHECK / PREPRESS
         </h1>
-        <p className="stg-sub">Quality-check design files. All checks must pass before sending to print.</p>
+        <p className="stg-sub">Quality-check design files. All checks must pass before sending an order to Print.</p>
       </div>
 
-      <div className="stg-card-grid">
-        {jobs.map(j => {
-          const checks = checklists[j.id] || {};
-          const passed = isAllChecked(j.id);
-          const file = j.files && j.files.length > 0 ? j.files[j.files.length - 1].name : 'No file attached';
+      <div className="stg-toolbar">
+        <div className="stg-field" style={{ alignSelf: 'flex-end' }}>
+          <button className="stg-btn stg-btn--soft-blue stg-btn--sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={14} style={{ marginRight: 4 }} /> {refreshing ? '...' : 'Refresh'}
+          </button>
+        </div>
+      </div>
 
-          return (
-            <div key={j.id} className="stg-job-card">
-
-              {/* Job Info */}
-              <div>
-                <div className="stg-job-id">{j.id}</div>
-                <div className="stg-job-meta"><strong>Customer:</strong> {j.customerName}</div>
-                <div className="stg-job-meta"><strong>Type:</strong> {j.jobType}</div>
-                <div className="stg-job-file"><strong>File:</strong> <a href="#">{file}</a></div>
-                <span className="stg-pill" style={{ background: passed ? '#DCFCE7' : '#FEF3C7', color: passed ? '#16A34A' : '#D97706' }}>
-                  {passed ? 'Ready for Print' : 'Pending Checklist'}
-                </span>
-              </div>
-
-              {/* Checklist */}
-              <div className="stg-checklist">
-                <h4 className="stg-check-title">Mandatory Checklist</h4>
-                <div className="stg-check-grid">
-                  {[
-                    { key: 'bleed', label: 'Bleed Checked' },
-                    { key: 'res', label: 'Resolution Checked (300dpi+)' },
-                    { key: 'color', label: 'Color Mode Checked (CMYK)' },
-                    { key: 'fonts', label: 'Fonts Embedded/Outlined' },
-                    { key: 'size', label: 'Final Size Correct' }
-                  ].map(c => (
-                    <label key={c.key} className={`stg-check-item${checks[c.key] ? ' stg-checked' : ''}`}>
-                      <input type="checkbox" checked={checks[c.key] || false} onChange={() => toggleCheck(j.id, c.key)} />
-                      {c.label}
-                    </label>
+      <div className="stg-table-card">
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Loading orders...</div>
+        ) : (
+          <div className="stg-table-scroll">
+            <table className="stg-table">
+              <thead>
+                <tr>
+                  {['Order #', 'Customer', 'Service', 'Payment', 'Status', 'Due Date', 'Quality Checklist', 'Action'].map(col => (
+                    <th key={col} className="stg-th">{col}</th>
                   ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="stg-actions-col">
-                <button
-                  onClick={() => handleApprove(j.id)}
-                  disabled={!passed}
-                  className="stg-btn stg-btn--success stg-btn--block"
-                >
-                  <Check size={16} /> Approve File
-                </button>
-                <button
-                  disabled={!passed}
-                  onClick={() => { updateJobStage(j.id, 'Printing'); playSound('success'); refreshJobs(); }}
-                  className="stg-btn stg-btn--cyan stg-btn--block"
-                >
-                  <Send size={16} /> Send to Print
-                </button>
-
-                <hr className="stg-divider" />
-
-                <div>
-                  <input
-                    placeholder="Notes for Designer..."
-                    value={fixNotes[j.id] || ''}
-                    onChange={(e) => setFixNotes(p => ({...p, [j.id]: e.target.value}))}
-                    className="stg-textarea"
-                    style={{ marginBottom: 8 }}
-                  />
-                  <button
-                    onClick={() => handleRequestFix(j.id)}
-                    className="stg-btn stg-btn--soft-red stg-btn--block"
-                  >
-                    <AlertTriangle size={14} /> Request Fix
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          );
-        })}
-        {jobs.length === 0 && <div className="stg-empty stg-empty--card">No jobs currently in Prepress.</div>}
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(order => {
+                  const passed = isAllChecked(order.id);
+                  return (
+                    <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
+                      <td className="stg-td stg-strong">{order.order_number}</td>
+                      <td className="stg-td">{order.customer_name || 'Walk-in'}</td>
+                      <td className="stg-td stg-muted">{order.product_type || '—'}</td>
+                      <td className="stg-td" style={{ cursor: 'default' }}><PaymentBadge order={order} /></td>
+                      <td className="stg-td" style={{ cursor: 'default' }}><StatusBadge code={order.status_code} name={order.status_name} /></td>
+                      <td className="stg-td"><DueCell due_date={order.due_date} /></td>
+                      <td className="stg-td" style={{ minWidth: 280 }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                          {FILE_CHECKS.map(c => (
+                            <label key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: checklists[order.id]?.[c.key] ? '#16a34a' : '#6B7280', fontWeight: checklists[order.id]?.[c.key] ? 600 : 400 }}>
+                              <input
+                                type="checkbox"
+                                checked={checklists[order.id]?.[c.key] || false}
+                                onChange={() => toggleCheck(order.id, c.key)}
+                                style={{ width: 15, height: 15, accentColor: '#16a34a', cursor: 'pointer' }}
+                              />
+                              {c.label}
+                            </label>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="stg-td" onClick={e => e.stopPropagation()}>
+                        {movingId === order.id ? (
+                          <span className="stg-note">Sending...</span>
+                        ) : (
+                          <button className="stg-btn stg-btn--soft-cyan stg-btn--sm" disabled={!passed} onClick={() => setConfirm(order)}>
+                            <Send size={14} /> {passed ? '→ Print' : 'Checklist Required'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {orders.length === 0 && <tr><td className="stg-td" colSpan={8}><div className="stg-empty">No orders currently in Prepress.</div></td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <StageConfirmModal
+        open={!!confirm}
+        title={`Send Order ${confirm?.order_number || ''} to Print`}
+        message="All file checks are complete. Confirm to advance this order to the Printing stage."
+        details={confirm ? `Customer: ${confirm.customer_name || 'Walk-in'} · Qty: ${confirm.quantity} · Total: ETB ${parseFloat(confirm.total_price || 0).toLocaleString()}` : ''}
+        confirmLabel="Send to Printing"
+        busy={movingId === confirm?.id}
+        onConfirm={() => confirm && doMove(confirm)}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   );
 };
