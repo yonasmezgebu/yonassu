@@ -76,7 +76,7 @@ const PrintingOrderDetail = () => {
 
   return (
     <div style={{ padding: '2rem', maxWidth: 900, margin: '0 auto' }}>
-      <button onClick={() => navigate('/printing/orders')}
+      <button onClick={() => navigate('/printing-manager/jobs/queue')}
         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, marginBottom: '1rem', padding: 0 }}>
         <ArrowLeft size={16} /> Back to Orders
       </button>
@@ -134,6 +134,20 @@ const PrintingOrderDetail = () => {
           <div><span style={{ fontSize: 12, color: '#64748b' }}>Binding Cost</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.binding_cost || 0).toFixed(2)} ETB</div></div>
           <div><span style={{ fontSize: 12, color: '#64748b' }}>VAT Amount</span><div style={{ fontSize: 16, fontWeight: 700 }}>{parseFloat(order.vat_amount || 0).toFixed(2)} ETB</div></div>
           <div><span style={{ fontSize: 12, color: '#64748b' }}>Total (incl. VAT)</span><div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
+        </div>
+      </div>
+
+      <div style={{ background: 'white', borderRadius: 10, padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <h4 style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Payment / Finance View</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Status</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: order.payment_status === 'Confirmed' ? '#16a34a' : order.payment_status === 'Rejected' ? '#ef4444' : '#ea580c' }}>
+              {order.payment_status === 'Confirmed' ? '✅ Confirmed' : order.payment_status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
+            </div>
+          </div>
+          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Method</span><div style={{ fontSize: 14, fontWeight: 600 }}>{order.payment_method || '—'}</div></div>
+          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Payment Reference</span><div style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace' }}>{order.payment_reference || '—'}</div></div>
+          <div><span style={{ fontSize: 12, color: '#94a3b8' }}>Amount (incl. VAT)</span><div style={{ fontSize: 16, fontWeight: 700, color: '#059669' }}>{parseFloat(order.total_price || 0).toLocaleString()} ETB</div></div>
         </div>
       </div>
 
