@@ -211,7 +211,7 @@ exports.placeOrder = catchAsync(async (req, res) => {
     const [orderId] = await trx('retail_orders').insert({
       customer_id: req.user.id,
       invoice_number: retail_order_number, subtotal, tax, delivery_fee, total_amount: total,
-      status: 'PROCESSING', payment_status: isPaid ? 'PAID' : 'AWAITING_PAYMENT',
+      status: 'PROCESSING', payment_status: isPaid ? 'PENDING' : 'AWAITING_PAYMENT',
       delivery_type: delivery_type || 'pickup',
       delivery_address: delivery_address || null,
       notes: notes || null,
@@ -358,7 +358,11 @@ exports.placeOrder = catchAsync(async (req, res) => {
 });
 
 exports.getMyOrders = catchAsync(async (req, res) => {
-  const orders = await db('retail_orders').where({ customer_id: req.user.id }).orderBy('created_at', 'desc');
+  const orders = await db('retail_orders').where({ customer_id: req.user.id })
+    .where(function() {
+      this.where('is_deleted_by_customer', false).orWhereNull('is_deleted_by_customer');
+    })
+    .orderBy('created_at', 'desc');
   for (const order of orders) {
     order.items = await db('retail_order_items')
       .select('retail_order_items.*', 'retail_products.name as product_name', 'retail_products.product_image')
