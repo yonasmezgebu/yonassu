@@ -278,7 +278,7 @@ ${successData.orderNumber?`<p style="text-align:center;font-family:monospace;let
                       onChange={e => setOrderForm(p => ({ ...p, paymentMethod: e.target.value }))}
                     >
                       <option value="">— Select Payment Account —</option>
-                      {['Bank', 'Mobile Wallet', 'Cash'].map(type => {
+                      {['Bank', 'Mobile Wallet'].map(type => {
                         const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
                         if (group.length === 0) return null;
                         return (
