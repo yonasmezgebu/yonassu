@@ -674,6 +674,19 @@ export default function PharmacySalesForm() {
     setPaymentScreenshot(null);
   };
 
+  const handleDeleteOrder = async (order) => {
+    if (!window.confirm(`Soft-delete online order ${order.sale_code || `#${order.id}`}? It will be cancelled and removed from pending orders but kept in history.`)) return;
+    try {
+      const res = await apiClient.delete(`/pharmacy/requests/${order.id}`);
+      if (res.status === 'success') {
+        setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+        showToast('Order deleted', 'success');
+      }
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Failed to delete order', 'error');
+    }
+  };
+
   return (
     <>
       <div className={styles.pageWrapper}>
@@ -1334,9 +1347,18 @@ export default function PharmacySalesForm() {
                             <div className={styles.orderDate}>{new Date(order.created_at).toLocaleString()}</div>
                             <div className={styles.orderTotal}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
                           </div>
-                          <button onClick={() => processOnlineOrder(order)} className={styles.processBtn}>
-                            Process Payment →
-                          </button>
+                          <div className={styles.orderActions}>
+                            <button
+                              onClick={() => handleDeleteOrder(order)}
+                              className={styles.deleteBtn}
+                              title="Delete order (soft delete)"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <button onClick={() => processOnlineOrder(order)} className={styles.processBtn}>
+                              Process Payment →
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
