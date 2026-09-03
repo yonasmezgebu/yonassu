@@ -1756,7 +1756,7 @@ const PharmacyHealthPage = () => {
                           onChange={e => setPaymentMethod(e.target.value)}
                         >
                           <option value="">- Select Payment Method -</option>
-                          {['Bank', 'Mobile Wallet', 'Cash'].map(type => {
+                          {['Bank', 'Mobile Wallet'].map(type => {
                             const group = financeAccounts.filter(a => a.account_type === type && a.status === 'Active');
                             if (!group.length) return null;
                             return (
