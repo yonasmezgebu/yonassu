@@ -4,7 +4,7 @@ import axios from '../../services/apiClient';
 import {
   Tractor, Clock, CheckSquare, PlaySquare, RefreshCw,
   ArrowLeft, Calendar, MapPin, DollarSign, Image as ImageIcon,
-  Activity, Eye,
+  Activity, Eye, Trash2
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerFarmingOrders.module.css';
@@ -61,6 +61,18 @@ export default function CustomerFarmingOrders() {
       setLoading(false);
     }
   }, []);
+
+  const handleHideOrder = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this completed order from your dashboard?')) return;
+    try {
+      await axios.delete(`/agrirent-orders/my-orders/${id}`);
+      setOrders(prev => prev.filter(o => o.id !== id));
+      alert('Order removed successfully');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove order');
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -397,12 +409,23 @@ export default function CustomerFarmingOrders() {
                         </span>
                       </td>
                       <td className={styles.colRight}>
-                        <button
-                          className={`${styles.btnSecondary} ${styles.btnSm}`}
-                          onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
-                        >
-                          <Eye size={14} /> View
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {(order.status === 'COMPLETED' || order.status === 'completed') && (
+                            <button 
+                              onClick={(e) => handleHideOrder(e, order.id)} 
+                              style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                              title="Delete from dashboard"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                          <button
+                            className={`${styles.btnSecondary} ${styles.btnSm}`}
+                            onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
+                          >
+                            <Eye size={14} /> View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
