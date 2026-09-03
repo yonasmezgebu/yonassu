@@ -1,46 +1,14 @@
 ﻿import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../services/apiClient";
-import { List, RefreshCw, Lock } from "lucide-react";
+import { List, RefreshCw, Lock, Trash2 } from "lucide-react";
 import { StageStyles } from "./printingStageStyles";
 import StageNav from "./StageNav";
+import StageConfirmModal from "./StageConfirmModal";
+import { NEXT_STATUS, getStatusStyle, STATUS_LABELS } from "./printingStageConfig";
 
 const priorityColors = { Normal: "#64748b", Urgent: "#f59e0b", Rush: "#dc2626" };
 const priorityRank   = { Rush: 1, Urgent: 2, Normal: 3 };
-
-const STATUS_LABELS = {
-  received:    "Received",
-  in_queue:    "Job Queue",
-  in_design:   "In Design",
-  file_check:  "File Check",
-  in_printing: "In Printing",
-  finishing:   "Finishing",
-  ready:       "Ready for Delivery",
-  delivered:   "Delivered",
-  cancelled:   "Cancelled",
-};
-const STATUS_COLORS = {
-  received:    { bg: "#fffbeb", color: "#92400e" },
-  in_queue:    { bg: "#eff6ff", color: "#1e40af" },
-  in_design:   { bg: "#f5f3ff", color: "#5b21b6" },
-  file_check:  { bg: "#fff7ed", color: "#92400e" },
-  in_printing: { bg: "#ecfdf5", color: "#065f46" },
-  finishing:   { bg: "#f0fdf4", color: "#065f46" },
-  ready:       { bg: "#dcfce7", color: "#14532d" },
-  delivered:   { bg: "#d1fae5", color: "#14532d" },
-  cancelled:   { bg: "#fef2f2", color: "#7f1d1d" },
-};
-const getStatusStyle = (code) => STATUS_COLORS[code] || { bg: "#f1f5f9", color: "#475569" };
-
-const NEXT_STATUS = {
-  received:    "in_queue",
-  in_queue:    "in_design",
-  in_design:   "file_check",
-  file_check:  "in_printing",
-  in_printing: "finishing",
-  finishing:   "ready",
-  ready:       "delivered",
-};
 
 const getDaysRemaining = (due_date) => {
   if (!due_date) return null;
@@ -52,7 +20,11 @@ const PrintingQueue = () => {
   const [orders, setOrders]           = useState([]);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
-  const [movingId, setMovingId]       = useState(null);
+const [movingId, setMovingId]       = useState(null);
+  const [confirm, setConfirm]         = useState(null);
+  const [lockNotice, setLockNotice]   = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingId, setDeletingId]   = useState(null);
   const [filterStatus, setFilterStatus]     = useState("All");
   const [filterPayment, setFilterPayment]   = useState("All");
   const [search, setSearch]           = useState("");
@@ -78,22 +50,48 @@ const PrintingQueue = () => {
     setRefreshing(false);
   };
 
-  const handleMove = async (order) => {
+const handleMove = async (order) => {
     const nextStatus = NEXT_STATUS[order.status_code];
     if (!nextStatus) return;
     if (order.payment_status !== "Confirmed") {
-      alert("Cannot advance order: Payment has not been confirmed by Finance yet.\n\nPlease wait for Finance to approve the payment first.");
+      setLockNotice(order);
       return;
     }
-    if (!window.confirm(`Move order ${order.order_number} to "${STATUS_LABELS[nextStatus] || nextStatus}"?`)) return;
+    setConfirm(order);
+  };
+
+  const doConfirmMove = async () => {
+    if (!confirm) return;
+    const order = confirm;
     setMovingId(order.id);
     try {
-      await apiClient.put(`/printing/orders/${order.id}/status`, { status: nextStatus });
+      await apiClient.put(`/printing/orders/${order.id}/status`, { status: NEXT_STATUS[order.status_code] });
       await load();
     } catch (err) {
       alert(err?.message || "Failed to update order status.");
     } finally {
       setMovingId(null);
+      setConfirm(null);
+    }
+  };
+
+  const handleDeleteRequest = (order) => {
+    if (order.payment_status === "Confirmed" || order.payment_status === "PAID") return;
+    setDeleteTarget(order);
+  };
+
+  const doConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeletingId(id);
+    try {
+      await apiClient.delete(`/printing/orders/${id}`);
+      await load();
+    } catch (err) {
+      alert(err?.message || "Failed to delete order.");
+    } finally {
+      setDeletingId(null);
+      setDeleteTarget(null);
     }
   };
 
@@ -183,25 +181,44 @@ const PrintingQueue = () => {
                   const isMoving = movingId === order.id;
 
                   return (
-                    <tr key={order.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/printing/orders/${order.id}`)}>
+                    <tr key={order.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
                       <td className="stg-td stg-strong" onClick={e => e.stopPropagation()} style={{ cursor: "default" }}>{order.order_number}</td>
                       <td className="stg-td">{order.customer_name || "Walk-in"}</td>
                       <td className="stg-td stg-muted">{order.product_type || "—"}</td>
                       <td className="stg-td" style={{ textAlign: "right" }}>{order.quantity}</td>
                       <td className="stg-td" style={{ textAlign: "right", fontWeight: 700 }}>{parseFloat(order.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })}</td>
 
-                      {/* Payment status */}
-                      <td className="stg-td" onClick={e => e.stopPropagation()} style={{ cursor: "default", background: isPaid ? "rgba(220,252,231,0.3)" : "rgba(255,237,213,0.4)", minWidth: 170 }}>
+{/* Payment status */}
+                      <td className="stg-td" onClick={e => e.stopPropagation()} style={{ cursor: "default", background: isPaid ? "rgba(220,252,231,0.3)" : order.payment_status === "Rejected" ? "rgba(254,226,226,0.4)" : "rgba(255,237,213,0.4)", minWidth: 190 }}>
                         {isPaid ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "#dcfce7", color: "#14532d", fontWeight: 700, fontSize: 12 }}>
-                            ✅ Confirmed
-                          </span>
+                          <div>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "#dcfce7", color: "#14532d", fontWeight: 700, fontSize: 12 }}>
+                              ✅ Confirmed
+                            </span>
+                            {order.payment_method && (
+                              <div style={{ fontSize: 10, color: "#15803d", marginTop: 4, fontWeight: 700 }}>💳 {order.payment_method}{order.payment_reference ? ` · ${order.payment_reference}` : ''}</div>
+                            )}
+                          </div>
+                        ) : order.payment_status === "Rejected" ? (
+                          <div>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "#fee2e2", color: "#7f1d1d", fontWeight: 700, fontSize: 12 }}>
+                              ❌ Rejected
+                            </span>
+                            {order.payment_method && (
+                              <div style={{ fontSize: 10, color: "#b91c1c", marginTop: 4, fontWeight: 700 }}>💳 {order.payment_method}{order.payment_reference ? ` · ${order.payment_reference}` : ''}</div>
+                            )}
+                          </div>
                         ) : (
                           <div>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "#fffbeb", color: "#92400e", fontWeight: 700, fontSize: 12 }}>
                               ⏳ Awaiting Finance
                             </span>
-                            <div style={{ fontSize: 10, color: "#c2410c", marginTop: 4, fontWeight: 700 }}>
+                            {order.payment_method ? (
+                              <div style={{ fontSize: 10, color: "#c2410c", marginTop: 4, fontWeight: 700 }}>
+                                💳 {order.payment_method}{order.payment_reference ? ` · ${order.payment_reference}` : ''}
+                              </div>
+                            ) : null}
+                            <div style={{ fontSize: 10, color: "#c2410c", marginTop: 3, fontWeight: 700 }}>
                               <Lock size={10} style={{ verticalAlign: "middle", marginRight: 2 }} />
                               Cannot process yet
                             </div>
@@ -225,25 +242,38 @@ const PrintingQueue = () => {
                         ) : "—"}
                       </td>
 
-                      {/* Action */}
-                      <td className="stg-td" onClick={e => e.stopPropagation()}>
-                        {nextSt ? (
-                          isPaid ? (
-                            <button
-                              className="stg-btn stg-btn--soft-blue stg-btn--sm"
-                              disabled={isMoving}
-                              onClick={() => handleMove(order)}
-                            >
-                              {isMoving ? "Moving..." : `→ ${STATUS_LABELS[nextSt] || nextSt}`}
-                            </button>
+{/* Action */}
+                      <td className="stg-td" onClick={e => e.stopPropagation()} style={{ whiteSpace: "nowrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {nextSt ? (
+                            isPaid ? (
+                              <button
+                                className="stg-btn stg-btn--soft-blue stg-btn--sm"
+                                disabled={isMoving}
+                                onClick={() => handleMove(order)}
+                              >
+                                {isMoving ? "Moving..." : `→ ${STATUS_LABELS[nextSt] || nextSt}`}
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+                                <Lock size={12} /> Locked
+                              </span>
+                            )
                           ) : (
-                            <span style={{ fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
-                              <Lock size={12} /> Locked
-                            </span>
-                          )
-                        ) : (
-                          <span className="stg-note">—</span>
-                        )}
+                            <span className="stg-note">—</span>
+                          )}
+                          {!isPaid && (
+                            <button
+                              className="stg-btn stg-btn--danger stg-btn--sm"
+                              disabled={deletingId === order.id}
+                              title="Delete order (only allowed while payment is NOT confirmed)"
+                              onClick={() => handleDeleteRequest(order)}
+                            >
+                              <Trash2 size={13} style={{ marginRight: 4 }} />
+                              {deletingId === order.id ? "Deleting..." : "Delete"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -256,10 +286,42 @@ const PrintingQueue = () => {
                   </tr>
                 )}
               </tbody>
-            </table>
+</table>
           </div>
         )}
       </div>
+
+      <StageConfirmModal
+        open={!!lockNotice}
+        title={`Payment Not Confirmed — Order ${lockNotice?.order_number || ''} Locked`}
+        message="This order cannot be moved to the next stage yet because Finance has not confirmed its payment. Please wait for Finance to approve the payment first."
+        details={lockNotice ? `Service: ${lockNotice.product_type || '—'} · Total: ETB ${parseFloat(lockNotice.total_price || 0).toLocaleString()}` : ''}
+        confirmLabel="OK"
+        onConfirm={() => setLockNotice(null)}
+        onClose={() => setLockNotice(null)}
+      />
+
+      <StageConfirmModal
+        open={!!confirm}
+        title={`Move Order ${confirm?.order_number || ''} to "${confirm ? (STATUS_LABELS[NEXT_STATUS[confirm.status_code]] || NEXT_STATUS[confirm.status_code] || '') : ''}"`}
+        message={`Confirm moving order ${confirm?.order_number || ''} to the next stage. This advances it through the printing pipeline.`}
+        details={confirm ? `Customer: ${confirm.customer_name || 'Walk-in'} · Service: ${confirm.product_type || '—'} · Total: ETB ${parseFloat(confirm.total_price || 0).toLocaleString()}` : ''}
+        confirmLabel="Confirm Advance"
+        busy={movingId === confirm?.id}
+        onConfirm={doConfirmMove}
+        onClose={() => setConfirm(null)}
+      />
+
+      <StageConfirmModal
+        open={!!deleteTarget}
+        title={`Delete Order ${deleteTarget?.order_number || ''}?`}
+        message="This order's payment has NOT been confirmed. It will be permanently removed from the Job Queue and its invoice cancelled. This cannot be undone."
+        details={deleteTarget ? `Customer: ${deleteTarget.customer_name || 'Walk-in'} · Service: ${deleteTarget.product_type || '—'} · Total: ETB ${parseFloat(deleteTarget.total_price || 0).toLocaleString()}` : ''}
+        confirmLabel="Delete Order"
+        busy={deletingId === deleteTarget?.id}
+        onConfirm={doConfirmDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };
