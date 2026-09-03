@@ -36,6 +36,15 @@ router.post('/requests', uploads.generic.fields([{ name: 'prescription_image', m
 router.post('/requests/:id/upload', uploads.generic.single('prescription_image'), handleUploadError, requestsController.uploadPrescriptionImage);
 router.get('/requests/my-requests', requestsController.getMyRequests);
 router.delete('/requests/:id/cancel', requestsController.cancelRequest);
+router.delete('/requests/:id/hide', async (req, res) => {
+  const { db } = require('../../config/database');
+  const { authenticate: auth } = require('../middleware/auth.middleware');
+  const order = await db('prescription_requests').where({ id: req.params.id }).first();
+  if (!order) return res.status(404).json({ message: 'Request not found' });
+  if (!['delivered', 'picked_up', 'completed'].includes((order.status || '').toLowerCase())) return res.status(400).json({ message: 'Only completed orders can be removed' });
+  await db('prescription_requests').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+  res.json({ message: 'Order removed from your dashboard' });
+});
 
 // POS Checkout (Pharmacy Manager)
 router.post('/pos/checkout', pharmacyController.posCheckout);
@@ -108,6 +117,7 @@ router.get('/requests', requestsController.getAllRequests);
 router.get('/requests/pending', requestsController.getPendingRequests);
 router.post('/requests/:id/approve', requestsController.approveRequest);
 router.post('/requests/:id/reject', requestsController.rejectRequest);
+router.delete('/requests/:id', requestsController.deleteRequestByPharmacy);
 router.put('/requests/:id/ready', requestsController.markReady);
 router.put('/requests/:id/complete', requestsController.markComplete);
 
