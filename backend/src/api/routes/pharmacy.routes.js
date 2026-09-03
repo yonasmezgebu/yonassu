@@ -37,13 +37,27 @@ router.post('/requests/:id/upload', uploads.generic.single('prescription_image')
 router.get('/requests/my-requests', requestsController.getMyRequests);
 router.delete('/requests/:id/cancel', requestsController.cancelRequest);
 router.delete('/requests/:id/hide', async (req, res) => {
-  const { db } = require('../../config/database');
-  const { authenticate: auth } = require('../middleware/auth.middleware');
-  const order = await db('prescription_requests').where({ id: req.params.id }).first();
-  if (!order) return res.status(404).json({ message: 'Request not found' });
-  if (!['delivered', 'picked_up', 'completed'].includes((order.status || '').toLowerCase())) return res.status(400).json({ message: 'Only completed orders can be removed' });
-  await db('prescription_requests').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
-  res.json({ message: 'Order removed from your dashboard' });
+  try {
+    const { db } = require('../../config/database');
+    const order = await db('prescription_requests').where({ id: req.params.id }).first();
+    
+    if (!order) return res.status(404).json({ message: 'Request not found' });
+    
+    // Check if order belongs to current user
+    if (order.customer_id !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to hide this order' });
+    }
+    
+    if (!['delivered', 'picked_up', 'completed', 'ready_for_pickup'].includes((order.status || '').toLowerCase())) {
+      return res.status(400).json({ message: 'Only completed orders can be removed' });
+    }
+    
+    await db('prescription_requests').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+    res.json({ message: 'Order removed from your dashboard' });
+  } catch (error) {
+    console.error('Error hiding prescription request:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 // POS Checkout (Pharmacy Manager)
