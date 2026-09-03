@@ -520,6 +520,7 @@ export default function CustomerPrescriptions() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
+    <>
     <div className="cp-page">
       <style>{STYLES}</style>
       {notification && <div className={`cp-toast ${notification.type}`}>{notification.msg}</div>}
@@ -633,5 +634,6 @@ export default function CustomerPrescriptions() {
         </div>
       )}
     </div>
+    </>
   );
 }
