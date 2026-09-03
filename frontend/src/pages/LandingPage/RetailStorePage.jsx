@@ -696,11 +696,13 @@ const RetailStorePage = () => {
                       }}
                     >
                       <option value="">Select Payment Method...</option>
-                      {financeAccounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.account_type === 'Cash' ? 'Cash Payment' : `${acc.bank_name} - ${acc.account_number}`}
-                        </option>
-                      ))}
+                      {financeAccounts
+                        .filter(a => a.account_type !== 'Cash')
+                        .map(acc => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.account_name}{acc.account_number ? ` - ${acc.account_number}` : ''}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -711,7 +713,7 @@ const RetailStorePage = () => {
                         <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
                           <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Please transfer to:</p>
                           <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>
-                            <strong>Bank:</strong> {acc.bank_name} <br/>
+                            <strong>Bank:</strong> {acc.bank_provider || acc.account_type || 'Bank'} <br/>
                             <strong>Account Name:</strong> {acc.account_name} <br/>
                             <strong>Account Number:</strong> {acc.account_number}
                           </p>
