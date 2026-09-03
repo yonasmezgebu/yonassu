@@ -1,34 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { Printer, FastForward } from 'lucide-react';
-import { printingState, updateJobStage } from '../../utils/printingTransactionService';
-import { playSound } from '../../utils/printingSound';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Printer, RefreshCw, FastForward } from 'lucide-react';
+import apiClient from '../../services/apiClient';
+import { StatusBadge, PaymentBadge, DueCell } from './StageShared';
 import { StageStyles } from './printingStageStyles';
 import StageNav from './StageNav';
+import StageConfirmModal from './StageConfirmModal';
 
 const PrintingInPrint = () => {
-  const [jobs, setJobs] = useState([]);
-  const [filterMachine, setFilterMachine] = useState('All');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [movingId, setMovingId] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [printProgress, setPrintProgress] = useState({});
+  const navigate = useNavigate();
 
-  const refreshJobs = () => setJobs([...printingState.jobs.filter(j => j.status === 'Printing')]);
-
-  useEffect(() => {
-    refreshJobs();
-    playSound('info'); // "🖨️ Printing Stage Updated"
+  const load = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/printing/orders', { params: { limit: 200 } });
+      const raw = res.data?.orders || res.data || [];
+      const list = raw.filter(o => ['in_printing', 'in_progress'].includes(o.status_code));
+      setOrders(list);
+      const prog = {};
+      list.forEach(o => { prog[o.id] = printProgress[o.id] ?? 0; });
+      setPrintProgress(prog);
+    } catch (err) {
+      console.error('Failed to load printing orders', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleUpdate = (id, field, val) => {
-    const job = printingState.jobs.find(j => j.id === id);
-    if(job) job[field] = val;
-    refreshJobs();
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleComplete = (id) => {
-    updateJobStage(id, 'Finishing');
-    playSound('success');
-    refreshJobs();
-  };
+  const handleRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const filtered = jobs.filter(j => filterMachine === 'All' || j.machineAssigned === filterMachine);
+  const doMove = async (order) => {
+    setMovingId(order.id);
+    try {
+      await apiClient.put(`/printing/orders/${order.id}/status`, { status: 'finishing' });
+      await load();
+    } catch (err) {
+      alert(err?.message || 'Failed to move order to Finishing.');
+    } finally {
+      setMovingId(null);
+      setConfirm(null);
+    }
+  };
 
   return (
     <div className="stg-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
@@ -38,65 +57,75 @@ const PrintingInPrint = () => {
         <h1 className="stg-title">
           <Printer color="#0891B2" /> IN PRINTING
         </h1>
-        <p className="stg-sub">Track jobs currently on press.</p>
+        <p className="stg-sub">Orders currently on press. Confirm to advance an order toward Finishing.</p>
       </div>
 
       <div className="stg-toolbar">
-        <div className="stg-field">
-          <label className="stg-label">Filter by Machine</label>
-          <select className="stg-select" value={filterMachine} onChange={e => setFilterMachine(e.target.value)}>
-            <option>All</option><option>Press A</option><option>Press B</option><option>Digital Printer 1</option><option>Wide Format</option>
-          </select>
+        <div className="stg-field" style={{ alignSelf: 'flex-end' }}>
+          <button className="stg-btn stg-btn--soft-blue stg-btn--sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw size={14} style={{ marginRight: 4 }} /> {refreshing ? '...' : 'Refresh'}
+          </button>
         </div>
       </div>
 
       <div className="stg-table-card">
-        <div className="stg-table-scroll">
-          <table className="stg-table">
-            <thead>
-              <tr>
-                {['Job #', 'Customer', 'Quantity', 'Machine', 'Operator', 'Started', 'Progress (%)', 'Est. Completion', 'Actions'].map(col => (
-                  <th key={col} className={`stg-th${col === 'Quantity' ? ' stg-th--num' : ''}`}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(j => (
-                <tr key={j.id}>
-                  <td className="stg-td stg-strong">{j.id}</td>
-                  <td className="stg-td">{j.customerName}</td>
-                  <td className="stg-td stg-num stg-strong">{j.quantity.toLocaleString()}</td>
-                  <td className="stg-td">
-                    <select value={j.machineAssigned || ''} onChange={(e) => handleUpdate(j.id, 'machineAssigned', e.target.value)} className="stg-select stg-input--sm" style={{ width: 150 }}>
-                      <option value="">Assign Machine</option><option>Press A</option><option>Press B</option><option>Digital Printer 1</option>
-                    </select>
-                  </td>
-                  <td className="stg-td">
-                    <input placeholder="Operator" value={j.operator || ''} onChange={(e) => handleUpdate(j.id, 'operator', e.target.value)} className="stg-input stg-input--sm" style={{ width: 110 }} />
-                  </td>
-                  <td className="stg-td stg-muted">{j.printStarted || '-'}</td>
-                  <td className="stg-td">
-                    <div className="stg-progress">
-                      <input type="range" min="0" max="100" value={j.printProgress || 0} onChange={(e) => handleUpdate(j.id, 'printProgress', parseInt(e.target.value))} className="stg-range" />
-                      <span className="stg-range-val">{j.printProgress || 0}%</span>
-                    </div>
-                  </td>
-                  <td className="stg-td">
-                    <input type="datetime-local" value={j.estimatedPrintCompletion || ''} onChange={(e) => handleUpdate(j.id, 'estimatedPrintCompletion', e.target.value)} className="stg-input stg-input--sm" style={{ width: 170 }} />
-                  </td>
-                  <td className="stg-td">
-                    <div className="stg-cell-btns">
-                      <button onClick={() => { playSound('success'); }} className="stg-btn stg-btn--ghost stg-btn--sm">Update</button>
-                      <button onClick={() => handleComplete(j.id)} className="stg-btn stg-btn--soft-purple stg-btn--sm"><FastForward size={14} /> Finish</button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Loading orders...</div>
+        ) : (
+          <div className="stg-table-scroll">
+            <table className="stg-table">
+              <thead>
+                <tr>
+                  {['Order #', 'Customer', 'Service', 'Qty', 'Payment', 'Status', 'Progress', 'Due Date', 'Action'].map(col => (
+                    <th key={col} className={`stg-th${col === 'Qty' ? ' stg-th--num' : ''}`}>{col}</th>
+                  ))}
                 </tr>
-              ))}
-              {filtered.length === 0 && <tr><td className="stg-td" colSpan={9}><div className="stg-empty">No jobs currently in Printing.</div></td></tr>}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {orders.map(order => (
+                  <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/printing-manager/orders/${order.id}`)}>
+                    <td className="stg-td stg-strong">{order.order_number}</td>
+                    <td className="stg-td">{order.customer_name || 'Walk-in'}</td>
+                    <td className="stg-td stg-muted">{order.product_type || '—'}</td>
+                    <td className="stg-td stg-num" style={{ textAlign: 'right' }}>{order.quantity}</td>
+                    <td className="stg-td" style={{ cursor: 'default' }}><PaymentBadge order={order} /></td>
+                    <td className="stg-td" style={{ cursor: 'default' }}><StatusBadge code={order.status_code} name={order.status_name} /></td>
+                    <td className="stg-td" onClick={e => e.stopPropagation()} style={{ minWidth: 160 }}>
+                      <div className="stg-progress">
+                        <input type="range" min="0" max="100" value={printProgress[order.id] || 0}
+                          onChange={e => setPrintProgress(p => ({ ...p, [order.id]: parseInt(e.target.value) }))} className="stg-range" />
+                        <span className="stg-range-val">{printProgress[order.id] || 0}%</span>
+                      </div>
+                    </td>
+                    <td className="stg-td"><DueCell due_date={order.due_date} /></td>
+                    <td className="stg-td" onClick={e => e.stopPropagation()}>
+                      {movingId === order.id ? (
+                        <span className="stg-note">Moving...</span>
+                      ) : (
+                        <button className="stg-btn stg-btn--soft-purple stg-btn--sm" onClick={() => setConfirm(order)}>
+                          <FastForward size={14} /> → Finishing
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {orders.length === 0 && <tr><td className="stg-td" colSpan={9}><div className="stg-empty">No orders currently in Printing.</div></td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <StageConfirmModal
+        open={!!confirm}
+        title={`Move Order ${confirm?.order_number || ''} to Finishing`}
+        message="Confirm printing production is complete. This order will advance to the Finishing stage."
+        details={confirm ? `Customer: ${confirm.customer_name || 'Walk-in'} · Qty: ${confirm.quantity}` : ''}
+        confirmLabel="Move to Finishing"
+        busy={movingId === confirm?.id}
+        onConfirm={() => confirm && doMove(confirm)}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   );
 };
