@@ -23,18 +23,18 @@ const FinanceHome = () => {
   const [bankSummary,  setBankSummary]  = useState(null);
   const [recons,       setRecons]       = useState([]);
   const [receivables,  setReceivables]  = useState([]);
-  const [erpReceivables, setErpReceivables] = useState(null);
   const [assetSummary, setAssetSummary] = useState(null);
   const [equitySummary, setEquitySummary] = useState(null);
   const [profitSummary, setProfitSummary] = useState(null);
   const [liabSummary, setLiabSummary] = useState(null);
   const [refreshing,   setRefreshing]   = useState(false);
 
-  /* ── Load data ───────────────────────────────────────────────── */
+  /* ── Load data — mirrors the CFO/CEO Finance Command Center so the
+        Finance overview shows the EXACT same summary numbers. ───── */
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes, erpRes] =
+      const [cbRes, crvRes, evRes, bankRes, bankSumRes, reconRes, rcvRes, assetRes, equityRes, profitRes, liabRes] =
         await Promise.allSettled([
           api.get('/finance-cash/cashbook'),
           api.get('/finance-cash/crv'),
@@ -46,18 +46,16 @@ const FinanceHome = () => {
           api.get('/asset-summary'),
           api.get('/finance-equity/dashboard'),
           api.get('/finance/vat-profit-report?period=all'),
-          api.get('/finance-liabilities/dashboard'),
-          api.get('/erp-receivables/dashboard'),
+          api.get('/liabilities-v2/dashboard'),
         ]);
       if (cbRes.status      === 'fulfilled') setCashbook(cbRes.value?.data || []);
       if (crvRes.status     === 'fulfilled') setCrvs(crvRes.value?.data || []);
       if (evRes.status      === 'fulfilled') setEvs(evRes.value?.data || []);
       if (bankRes.status    === 'fulfilled') setBanks(bankRes.value?.data || []);
       if (bankSumRes.status === 'fulfilled')
-        setBankSummary(bankSumRes.value?.data?.summary || bankSumRes.value?.data || null);
+        setBankSummary(bankSumRes.value?.data || null);
       if (reconRes.status   === 'fulfilled') setRecons(reconRes.value?.data || []);
       if (rcvRes.status     === 'fulfilled') setReceivables(rcvRes.value?.data || []);
-      if (erpRes.status     === 'fulfilled') setErpReceivables(erpRes.value?.data?.data || erpRes.value?.data || null);
       if (assetRes.status   === 'fulfilled') {
         const ad = assetRes.value?.data || assetRes.value;
         setAssetSummary(ad?.data || ad || null);
@@ -82,7 +80,7 @@ const FinanceHome = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  /* ── Derived values ──────────────────────────────────────────── */
+  /* ── Derived values — mirrors CFO/CEO Finance Command Center ── */
   const cbEntries  = Array.isArray(cashbook)     ? cashbook     : [];
   const crvList    = Array.isArray(crvs)         ? crvs         : [];
   const evList     = Array.isArray(evs)          ? evs          : [];
@@ -100,18 +98,19 @@ const FinanceHome = () => {
   const bankOpeningTotal = bankList.reduce((s, b) => s + parseFloat(b.opening_balance || 0), 0);
   const bankInTotal      = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
   const bankOutTotal     = bankList.reduce((s, b) => s + parseFloat(b.totalOut || 0), 0);
-  const bankBalance = bankList.length
-    ? bankList.reduce((s, b) => s + parseFloat(b.netBalance ?? b.balance ?? b.opening_balance ?? 0), 0)
-    : parseFloat(bankSummary?.netBalance || bankSummary?.total_balance || 0);
+  // Each finance account carries its computed current balance in netBalance
+  // (matches the Bank Accounts page "Grand Total > Net Balance"). Prefer that,
+  // then fall back to the cashbook summary balance.
+  const accountBalance = bankList.reduce((s, b) => s + parseFloat(b.netBalance ?? b.balance ?? b.current_balance ?? 0), 0);
+  const bankBalance = bankList.length > 0
+    ? accountBalance
+    : parseFloat(bankSummary?.netBalance || bankSummary?.total_balance || bankSummary?.balance || 0);
 
-  // Use outstanding_balance directly from each record (same as the AR page).
-  // amount_paid on the finance_receivables table reflects the amount already
-  // collected; outstanding_balance is the remainder still owed.
+  // CFO/CEO computes settled & outstanding straight from paid_amount||settled
+  // (receivables book). Matches the Command Center exactly.
   const totalReceivable    = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
-  const outstandingBalance = rcvList.reduce((s, r) => s + parseFloat(
-    r.outstanding_balance ?? Math.max(0, (r.total_amount || r.amount || 0) - (r.amount_paid || r.paid_amount || 0))
-  ), 0);
-  const settledReceivable  = totalReceivable - outstandingBalance;
+  const settledReceivable  = rcvList.reduce((s, r) => s + parseFloat(r.paid_amount || r.settled || 0), 0);
+  const outstandingBalance = totalReceivable - settledReceivable;
 
   const unreconCount = reconList.filter(r => r.status !== 'reconciled' && r.status !== 'completed').length;
   const firstName    = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || 'Manager';
@@ -120,7 +119,7 @@ const FinanceHome = () => {
   const assetCats     = assetSummary?.categories || [];
   const assetGrand    = assetSummary?.grandTotal
     ?? assetCats.reduce((s, c) => s + parseFloat(c.value || 0), 0);
-  
+
   const catVal = (key) => {
     const c = assetCats.find(x => x.key === key);
     return parseFloat(c?.value || 0);
@@ -133,23 +132,11 @@ const FinanceHome = () => {
   const equityWithdraw = parseFloat(equitySummary?.totalWithdrawals || 0);
   const equityNetIn = equityContrib - equityWithdraw;
 
-  /* ── Revenue Book (finance_receivables) ─────────────────────── */
-  const revenueBookTotal = rcvList.reduce((s, r) => s + parseFloat(r.total_amount || r.amount || 0), 0);
-  const revenueBookOwed  = rcvList.reduce((s, r) => s + parseFloat(
-    r.outstanding_balance ?? Math.max(0, (r.total_amount || r.amount || 0) - (r.amount_paid || r.paid_amount || 0))
-  ), 0);
-  const revenueBookCollected = revenueBookTotal - revenueBookOwed;
-
-  /* ── Accounts Receivable (erp_receivables) ──────────────────── */
-  const moneyTotal    = parseFloat(erpReceivables?.totalInvoiced || 0);
-  const moneyReceived = parseFloat(erpReceivables?.totalCollected || 0);
-  const moneyOwed     = parseFloat(erpReceivables?.totalReceivables || 0);
-
   /* ── Net profit ─────────────────────────────────────────────── */
   const netProfit = parseFloat(profitSummary?.summary?.netProfit ?? profitSummary?.netProfit ?? 0);
 
-  /* ── Liabilities ────────────────────────────────────────────── */
-  const totalOwed = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
+  /* ── Liabilities (v2 dashboard) ─────────────────────────────── */
+  const totalOwed    = parseFloat(liabSummary?.totalOwed ?? liabSummary?.totalLiabilities ?? 0);
 
   /* ── Expense outflow ─────────────────────────────────────────── */
   const bankBookedRefs = new Set(
@@ -166,14 +153,14 @@ const FinanceHome = () => {
   const crvBankedIn = bankList.reduce((s, b) => s + parseFloat(b.totalIn || 0), 0);
   const unbankedCRV = Math.max(0, crvTotal - crvBankedIn);
 
-  /* ── SYSTEM BALANCE ─────────────────────────────────────────── */
+  /* ── SYSTEM BALANCE — exact same formula as Command Center ───── */
   const systemBalance =
     parseFloat(bankBalance || 0) +
-    parseFloat(unbankedCRV || 0) +
-    parseFloat(revenueBookOwed || 0) +
-    parseFloat(moneyOwed || 0) +
-    parseFloat(assetMachinery || 0) +
-    parseFloat(assetProducts || 0);
+    parseFloat(settledReceivable || 0) +
+    parseFloat(equityNetIn || 0) +
+    parseFloat(netProfit || 0) -
+    parseFloat(expenseOut || 0) +
+    parseFloat(unbankedCRV || 0);
 
   return (
     <div className={styles.page}>
@@ -207,26 +194,23 @@ const FinanceHome = () => {
                     { label: 'Bank Accounts (Cash in Bank)', val: bankBalance, nav: '/finance/bank-accounts' },
                     { label: 'Unbanked Cash (CRV on Hand)', val: unbankedCRV, nav: '/finance/crv' },
                     { label: 'Net Owner Flow (Equity)', val: equityNetIn, nav: '/finance/equity' },
-                    { label: 'Collected / Paid So Far (Accounts Receivable)', val: moneyReceived, nav: '/finance/accounts-receivable' },
-                    { label: 'Outstanding Receivables (Revenue Book)', val: revenueBookOwed, nav: '/finance/outstanding-ar' },
-                    { label: 'Outstanding Receivables (Invoiced)', val: moneyOwed, nav: '/finance/accounts-receivable' },
-                    { label: 'Fixed Assets (Cars & Machinery)', val: assetMachinery, nav: '/finance/assets' },
-                    { label: 'Inventory (Products & Stock)', val: assetProducts, nav: '/finance/assets' }
+                    { label: 'Collected / Paid So Far (Accounts Receivable)', val: settledReceivable, nav: '/finance/accounts-receivable' },
+                    { label: 'Net Profit (Income Statement)', val: netProfit, nav: '/finance/profit-loss' },
+                    { label: 'Paid Out (Expenses)', val: -expenseOut, nav: '/finance/ev' }
                   ];
                   let runningTotal = 0;
                   return (
                     <>
                       {rows.map((r, i) => {
                         runningTotal += parseFloat(r.val || 0);
-                        const isAsset = i >= 6;
                         return (
                           <tr key={i}
                             onClick={() => r.nav && navigate(r.nav)}
-                            style={isAsset ? { background: '#EFF6FF', color: '#1E40AF', cursor: 'pointer' } : { cursor: 'pointer' }}
-                            className={isAsset ? '' : styles.navRow}>
-                            <td style={isAsset ? { color: '#1E40AF', fontWeight: 600 } : {}}>{r.label}</td>
-                            <td className={styles.alignRight} style={isAsset ? { color: '#2563EB', fontWeight: 600 } : {}}>{fmt(r.val)}</td>
-                            <td className={styles.alignRight} style={{ fontWeight: 600, color: isAsset ? '#1D4ED8' : '#059669' }}>{fmt(runningTotal)}</td>
+                            style={{ cursor: 'pointer' }}
+                            className={styles.navRow}>
+                            <td>{r.label}</td>
+                            <td className={styles.alignRight}>{fmt(r.val)}</td>
+                            <td className={styles.alignRight} style={{ fontWeight: 600, color: '#059669' }}>{fmt(runningTotal)}</td>
                           </tr>
                         );
                       })}
@@ -257,15 +241,15 @@ const FinanceHome = () => {
               <tbody>
                 <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Total Invoiced (All Records)</td>
-                  <td className={styles.alignRight}>{fmt(moneyTotal)}</td>
+                  <td className={styles.alignRight}>{fmt(totalReceivable)}</td>
                 </tr>
                 <tr className={styles.navRow} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Collected / Paid So Far</td>
-                  <td className={styles.alignRight}>{fmt(moneyReceived)}</td>
+                  <td className={styles.alignRight}>{fmt(settledReceivable)}</td>
                 </tr>
                 <tr className={`${styles.totalRow} ${styles.navRow}`} onClick={() => navigate('/finance/accounts-receivable')}>
                   <td>Still Outstanding (Not Yet Received)</td>
-                  <td className={styles.alignRight}>{fmt(moneyOwed)}</td>
+                  <td className={styles.alignRight}>{fmt(outstandingBalance)}</td>
                 </tr>
               </tbody>
             </table>
