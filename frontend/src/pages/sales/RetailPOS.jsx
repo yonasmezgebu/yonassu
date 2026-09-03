@@ -490,7 +490,8 @@ const addToCart = (item) => {
         txn_id: txnId,
         signature: cartSignature,
         notes: cartNotes || null,
-        cashier_name: user?.fullName || user?.name || 'Cashier'
+        cashier_name: user?.fullName || user?.name || 'Cashier',
+        order_request_id: orderRequestId,
       });
 
       const reqId = res?.data?.id || res?.data?.request_id || res?.data?.store_request_id || cartCode;
@@ -546,6 +547,7 @@ const addToCart = (item) => {
         vat_amount: posCartVat,
         total_amount: posCartTotal,
         items: posCart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, category: i.category })),
+        order_request_id: orderRequestId,
       };
 
       await apiClient.post('/pos/cart/submit-finance', payload);
@@ -596,6 +598,7 @@ const addToCart = (item) => {
               sale_type: overrideItem ? (overrideItem.saleType || 'walk_in') : (saleType || 'walk_in'),
               items: saleItems,
               cart_id: overrideItem ? overrideItem.id : null,
+              order_request_id: orderRequestId,
               payment: {
                 method: paymentMethodSrc,
                 amount: totalSrc,
