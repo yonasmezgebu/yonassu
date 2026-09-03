@@ -730,7 +730,7 @@ const addToCart = (item) => {
     }
   }, [posPaymentMethod, financeAccounts]);
 
-  useEffect(() => { loadProducts(); loadSales(); loadFinanceAccounts(); loadPendingQueue(); }, []);
+  useEffect(() => { loadProducts(); loadSales(); loadFinanceAccounts(); loadPendingQueue(); loadPendingOrders(); }, []);
 
   // Auto-switch to ONLINE tab when navigated from the bell notification
   useEffect(() => {
@@ -946,7 +946,7 @@ const addToCart = (item) => {
     setPayerName(order.customer_name || '');
     setPayerPhone(order.customer_phone || '');
     setPaymentAmount(parseFloat(order.total_amount || 0).toFixed(2));
-    setPaymentStatus('PAID');
+    setPaymentStatus(order.payment_status || 'PAID');
     setPosPaymentMethod('CASH');
     setTab('retail-walkin');
     setShowCart(true);
@@ -1734,6 +1734,42 @@ const addToCart = (item) => {
                       No Order
                     </div>
                   )}
+
+                  {/* Badge on TRANSACTIONS tab */}
+                  {t.key === 'list' && sales.length > 0 && (
+                    <div
+                      title={`${sales.length} unsubmitted transaction(s)`}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        marginLeft: 6,
+                        background: '#10B981',
+                        color: '#fff',
+                        borderRadius: 999,
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {sales.length} · {sales.reduce((s, t) => s + parseFloat(t.total_amount || 0), 0).toLocaleString('en-ET', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ETB
+                    </div>
+                  )}
+                  {t.key === 'list' && sales.length === 0 && (
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginLeft: 6,
+                        background: 'rgba(255,255,255,0.15)',
+                        color: 'rgba(255,255,255,0.75)',
+                        borderRadius: 999,
+                        padding: '2px 8px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      0 txn
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -2218,38 +2254,49 @@ const addToCart = (item) => {
                           </div>
                         )}
 
-                        {/* Payment Confirmation Checkbox — only for CASH */}
-                        {posPaymentMethod === 'CASH' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: paymentStatus === 'PAID' ? '#EFF6FF' : '#FEF3C7', border: `1px solid ${paymentStatus === 'PAID' ? '#BFDBFE' : '#FCD34D'}` }}>
-                            <input
-                              type="checkbox"
-                              id="paidCheckboxPOS"
-                              checked={paymentStatus === 'PAID'}
-                              onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
-                              style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
-                            />
-                            <label htmlFor="paidCheckboxPOS" style={{ fontWeight: 600, fontSize: 14, color: paymentStatus === 'PAID' ? 'var(--header)' : '#92400E', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
-                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? 'var(--primary)' : '#F59E0B'} />
-                              {paymentStatus === 'PAID' ? 'Cash Received & Confirmed' : 'Confirm Cash Received'}
-                            </label>
+                        {saleType === 'ONLINE' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: '#ECFDF5', border: '1px solid #A7F3D0', marginTop: 16 }}>
+                            <CheckCircle size={20} color="#10B981" />
+                            <div style={{ fontWeight: 600, fontSize: 14, color: '#065F46' }}>
+                              Payment Verified by Finance
+                            </div>
                           </div>
-                        )}
+                        ) : (
+                          <>
+                            {/* Payment Confirmation Checkbox — only for CASH */}
+                            {posPaymentMethod === 'CASH' && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: paymentStatus === 'PAID' ? '#EFF6FF' : '#FEF3C7', border: `1px solid ${paymentStatus === 'PAID' ? '#BFDBFE' : '#FCD34D'}` }}>
+                                <input
+                                  type="checkbox"
+                                  id="paidCheckboxPOS"
+                                  checked={paymentStatus === 'PAID'}
+                                  onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
+                                  style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', flexShrink: 0 }}
+                                />
+                                <label htmlFor="paidCheckboxPOS" style={{ fontWeight: 600, fontSize: 14, color: paymentStatus === 'PAID' ? 'var(--header)' : '#92400E', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+                                  <CheckCircle size={16} color={paymentStatus === 'PAID' ? 'var(--primary)' : '#F59E0B'} />
+                                  {paymentStatus === 'PAID' ? 'Cash Received & Confirmed' : 'Confirm Cash Received'}
+                                </label>
+                              </div>
+                            )}
 
-                        {/* For Bank/Telebirr — auto-confirm checkbox */}
-                        {(posPaymentMethod === 'BANK_TRANSFER' || posPaymentMethod === 'TELBIR') && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: '#E3F2FD', border: '1px solid #90CAF9' }}>
-                            <input
-                              type="checkbox"
-                              id="digitalPayConfirm"
-                              checked={paymentStatus === 'PAID'}
-                              onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
-                              style={{ width: 18, height: 18, cursor: 'pointer', accentColor: posPaymentMethod === 'TELBIR' ? '#7B1FA2' : '#1565C0', flexShrink: 0 }}
-                            />
-                            <label htmlFor="digitalPayConfirm" style={{ fontWeight: 600, fontSize: 14, color: '#1565C0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
-                              <CheckCircle size={16} color={paymentStatus === 'PAID' ? '#1565C0' : '#F59E0B'} />
-                              {paymentStatus === 'PAID' ? 'Payment details confirmed — ready to submit for Finance' : 'Confirm payment details are correct'}
-                            </label>
-                          </div>
+                            {/* For Bank/Telebirr — auto-confirm checkbox */}
+                            {(posPaymentMethod === 'BANK_TRANSFER' || posPaymentMethod === 'TELBIR') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 8, background: '#E3F2FD', border: '1px solid #90CAF9' }}>
+                                <input
+                                  type="checkbox"
+                                  id="digitalPayConfirm"
+                                  checked={paymentStatus === 'PAID'}
+                                  onChange={e => setPaymentStatus(e.target.checked ? 'PAID' : 'PENDING')}
+                                  style={{ width: 18, height: 18, cursor: 'pointer', accentColor: posPaymentMethod === 'TELBIR' ? '#7B1FA2' : '#1565C0', flexShrink: 0 }}
+                                />
+                                <label htmlFor="digitalPayConfirm" style={{ fontWeight: 600, fontSize: 14, color: '#1565C0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+                                  <CheckCircle size={16} color={paymentStatus === 'PAID' ? '#1565C0' : '#F59E0B'} />
+                                  {paymentStatus === 'PAID' ? 'Payment details confirmed — ready to submit for Finance' : 'Confirm payment details are correct'}
+                                </label>
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {/* Signature — CASH only */}
@@ -2679,6 +2726,11 @@ const addToCart = (item) => {
                       <div>
                         <div style={{ fontSize: 11, color: '#9ca3af' }}>{new Date(order.created_at).toLocaleString()}</div>
                         <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                        {order.payment_status === 'PAID' ? (
+                          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginTop: 4 }}>✅ Verified by Finance</div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, marginTop: 4 }}>⏳ Awaiting Finance</div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button 
@@ -2690,9 +2742,10 @@ const addToCart = (item) => {
                         </button>
                         <button 
                           onClick={() => processOnlineOrder(order)} 
-                          style={{ background: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}
+                          disabled={order.payment_status !== 'PAID'}
+                          style={{ background: order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af', color: 'white', border: `1px solid ${order.payment_status === 'PAID' ? 'var(--primary)' : '#9ca3af'}`, padding: '10px 20px', borderRadius: 8, cursor: order.payment_status === 'PAID' ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}
                         >
-                          Process Payment →
+                          {order.payment_status === 'PAID' ? 'Process Order →' : 'Locked 🔒'}
                         </button>
                       </div>
                     </div>
@@ -2984,7 +3037,7 @@ const addToCart = (item) => {
             </div>
             <h3 style={{ fontSize: 19, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Delete Order?</h3>
             <p style={{ color: '#4B5563', marginBottom: 24, fontSize: 14 }}>
-              Are you sure you want to completely delete this online order? It will be removed permanently from the customer page as well.
+              This will soft-delete (cancel) this online order. It will be removed from pending orders but kept in the order history for audit purposes.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
