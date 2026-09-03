@@ -4,7 +4,7 @@ import axios from '../../services/apiClient';
 import {
   ClipboardList, Clock, CheckSquare, XSquare, Package, RefreshCw,
   ArrowLeft, User, Mail, Phone, MapPin, Truck, Hash, Calendar,
-  DollarSign, Image as ImageIcon, AlertCircle, Upload, FileText, CheckCircle
+  DollarSign, Image as ImageIcon, AlertCircle, Upload, FileText, CheckCircle, Trash2
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 
@@ -62,17 +62,22 @@ const STYLES = `
   .cp-tab.active { color: #228B22; border-bottom: 3px solid #228B22; }
   .cp-tab:hover:not(.active) { color: #228B22; }
 
-  /* card list */
-  .cp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-  .cp-card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s ease; display: flex; flex-direction: column; gap: 12px; }
-  .cp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-  .cp-card-header { display: flex; justify-content: space-between; align-items: center; }
-  .cp-order-num { font-size: 0.8rem; font-weight: 700; color: #8D6E63; text-transform: uppercase; letter-spacing: 0.05em; }
-  .cp-card-title { font-size: 1.15rem; font-weight: 700; color: #1B5E20; margin: 0; }
-  .cp-card-meta { display: flex; gap: 16px; font-size: 0.9rem; color: #424242; flex-wrap: wrap; }
-  .cp-card-meta span { display: flex; align-items: center; gap: 5px; }
-  .cp-card-footer { border-top: 1px solid #F5F5F5; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; }
-  .cp-view-link { color: #2E8B57; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }
+  /* card list (row layout) */
+  .cp-list { display: flex; flex-direction: column; gap: 8px; }
+  .cp-card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 8px; padding: 14px 20px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .cp-card:hover { background: #F5F5F5; border-color: #2E8B57; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  
+  .cp-card-header { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+  .cp-order-num { font-size: 0.75rem; font-weight: 700; color: #8D6E63; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  
+  .cp-card-title { flex: 1; font-size: 0.9375rem; font-weight: 700; color: #1B5E20; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  .cp-card-meta { display: flex; gap: 20px; font-size: 0.8125rem; color: #424242; flex-shrink: 0; flex-wrap: nowrap; }
+  .cp-card-meta span { display: flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 500; }
+  
+  .cp-card-footer { flex-shrink: 0; margin-left: auto; display: flex; align-items: center; }
+  .cp-view-link { color: #2E8B57; font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+
 
   /* empty state */
   .cp-empty { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 64px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -203,6 +208,18 @@ export default function CustomerPrescriptions() {
   }, [selectedOrder]);
 
   useEffect(() => { fetchRequests(); }, []); // eslint-disable-line
+
+  const handleHideRequest = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this completed order from your dashboard?')) return;
+    try {
+      await axios.delete(`/pharmacy/requests/${id}/hide`);
+      setRequests(prev => prev.filter(r => r.id !== id));
+      alert('Order removed successfully');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove order');
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -542,20 +559,38 @@ export default function CustomerPrescriptions() {
             const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
             return (
               <div key={req.id} className="cp-card" onClick={() => openDetail(req)}>
+                {/* Left: order number + status */}
                 <div className="cp-card-header">
                   <span className="cp-order-num">#{req.request_number || req.id}</span>
                   <span className="cp-badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                 </div>
-                <h3 className="cp-card-title">{req.medication_name}</h3>
+                
+                {/* Medication name — grows */}
+                <h3 className="cp-card-title">{req.medication_name || 'Prescription'}</h3>
+                
+                {/* Quantity & Delivery mode */}
+                <div style={{ fontSize: '0.8125rem', color: '#424242', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Package size={13} color="#6B8E23" /> Qty: {req.quantity || 1} • {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
+                </div>
+
+                {/* Amount + Booked date */}
                 <div className="cp-card-meta">
-                  <span><Calendar size={14} /> {fmtDate(req.requested_at)}</span>
-                  <span><DollarSign size={14} /> {fmtMoney(req.total_amount)} ETB</span>
+                  <span><DollarSign size={13} /> {fmtMoney(req.total_amount)} ETB</span>
+                  <span><Calendar size={13} /> {fmtDate(req.requested_at)}</span>
                 </div>
-                <div style={{ fontSize: '0.9rem', color: '#424242', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Package size={14} color="#6B8E23" /> Qty: {req.quantity} • {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
-                </div>
-                <div className="cp-card-footer">
-                  <span className="cp-view-link">View Details →</span>
+
+                {/* View link */}
+                <div className="cp-card-footer" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {['delivered', 'picked_up', 'completed', 'ready_for_pickup'].includes((req.status || '').toLowerCase()) && (
+                    <button 
+                      onClick={(e) => handleHideRequest(e, req.id)} 
+                      style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                      title="Delete from dashboard"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  <span className="cp-view-link">View →</span>
                 </div>
               </div>
             );
