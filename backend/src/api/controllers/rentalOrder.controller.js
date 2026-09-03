@@ -231,10 +231,11 @@ exports.getOrderById = async (req, res, next) => {
 
 exports.getCustomerOrders = async (req, res, next) => {
   try {
-    const orders = await rentalOrderRepository.findAll({ filters: { customerId: req.user.id } });
+    const allOrders = await rentalOrderRepository.findAll({ filters: { customerId: req.user.id } });
+    const orders = allOrders.filter(o => !o.is_deleted_by_customer);
     res.status(200).json({
       status: 'success',
-      data: orders.map(o => o.toJSON())
+      data: orders.map(o => o.toJSON ? o.toJSON() : o)
     });
   } catch (error) {
     logger.error('Error fetching customer rental orders:', error);
