@@ -1,10 +1,10 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../services/apiClient";
 import {
   XCircle, Printer, RefreshCw,
   ArrowLeft, Calendar, FileText, BookOpen,
-  CreditCard, CheckCircle2, Clock, AlertTriangle,
+  CreditCard, CheckCircle2, Clock, AlertTriangle, Trash2
 } from "lucide-react";
 import SegmentedSpinner from "../../components/ui/SegmentedSpinner";
 import styles from "./CustomerPrintingOrders.module.css";
@@ -74,6 +74,18 @@ export default function CustomerPrintingOrders() {
   };
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleHideOrder = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to remove this completed order from your dashboard?")) return;
+    try {
+      await axios.delete(`/printing/customer/orders/${id}`);
+      setOrders(prev => prev.filter(o => o.id !== id));
+      alert("Order removed successfully");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to remove order");
+    }
+  };
 
   const handleCancel = async (id) => {
     if (!window.confirm("Cancel this printing order?")) return;
@@ -305,10 +317,21 @@ export default function CustomerPrintingOrders() {
                         <Calendar size={12} />
                         {new Date(order.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                       </div>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: jCfg.bg, color: jCfg.color, fontWeight: 700, fontSize: 12 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: jCfg.dot, display: "inline-block" }} />
-                        {jCfg.label}
-                      </span>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: jCfg.bg, color: jCfg.color, fontWeight: 700, fontSize: 12 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: jCfg.dot, display: "inline-block" }} />
+                          {jCfg.label}
+                        </span>
+                        {['delivered', 'completed', 'ready', 'ready_for_pickup'].includes((order.status_code || '').toLowerCase()) && (
+                          <button 
+                            onClick={(e) => handleHideOrder(e, order.id)} 
+                            style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                            title="Delete from dashboard"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
