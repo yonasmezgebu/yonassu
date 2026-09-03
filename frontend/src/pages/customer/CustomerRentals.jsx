@@ -705,9 +705,9 @@ export default function CustomerRentals() {
 
                   {/* View link */}
                   <div className={styles.cardFooter} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {(order.status === 'COMPLETED' || order.status === 'completed') && (
+                    {['COMPLETED', 'completed', 'REJECTED', 'rejected', 'CANCELLED', 'cancelled', 'ABANDONED', 'abandoned'].includes(order.status) && (
                       <button 
-                        onClick={(e) => handleHideOrder(e, order.id, order.vehicle_model || `Booking #${order.id}`)}
+                        onClick={(e) => handleHideOrder(e, order.id, order.carName || order.vehicle_model || `Booking #${order.id}`)}
                         style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
                         title="Delete from dashboard"
                       >
