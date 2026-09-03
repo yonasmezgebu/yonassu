@@ -346,6 +346,9 @@ exports.getMyOrders = async (req, res) => {
         't.image1 as tractor_image'
       )
       .where('ao.customer_id', req.user.id)
+      .where(function() {
+        this.where('ao.is_deleted_by_customer', false).orWhereNull('ao.is_deleted_by_customer');
+      })
       .whereNull('ao.deleted_at')
       .orderBy('ao.created_at', 'desc');
 
