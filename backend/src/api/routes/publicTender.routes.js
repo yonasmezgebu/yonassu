@@ -16,6 +16,15 @@ router.get('/customer/bids', publicTenderController.getCustomerBids);
 
 // Customer: update own pending bid
 router.put('/customer/bids/:bidId', publicTenderController.updateMyPublicBid);
+router.delete('/customer/bids/:bidId/hide', authenticate, async (req, res) => {
+  const { db } = require('../../config/database');
+  const bid = await db('public_bids').where({ id: req.params.bidId, customer_id: req.user.id }).first();
+  if (!bid) return res.status(404).json({ message: 'Bid not found' });
+  const completedStatuses = ['awarded', 'rejected', 'disqualified', 'closed', 'expired', 'accepted', 'approved'];
+  if (!completedStatuses.includes((bid.bid_status || '').toLowerCase())) return res.status(400).json({ message: 'Only closed/completed bids can be removed' });
+  await db('public_bids').where({ id: req.params.bidId }).update({ is_deleted_by_customer: true });
+  res.json({ message: 'Bid removed from your dashboard' });
+});
 
 // Purchase / Admin: create, read, manage tenders
 router.post('/internal', authorizeRoles(['Purchase', 'Admin']), publicTenderController.createTender);
