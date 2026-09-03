@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FilePlus, UserPlus, Globe, ArrowRight, CheckCircle } from 'lucide-react';
-import { printingState, createJob, convertOrderToJob } from '../../utils/printingTransactionService';
-import { playSound } from '../../utils/printingSound';
+import { FilePlus, UserPlus, Globe, ArrowRight, CheckCircle, RefreshCw } from 'lucide-react';
+import apiClient from '../../services/apiClient';
 import { StageStyles } from './printingStageStyles';
 import StageNav from './StageNav';
 
-const PRODUCT_TYPES = ['Book', 'Module', 'Exam Paper', 'Brochure', 'Tax Receipt'];
+const PRODUCT_TYPES = ['Book', 'Module', 'Exam', 'Brochure', 'TaxReceipt'];
 const PAPER_TYPES = ['A4', 'A3', 'A5'];
 const BINDING_TYPES = ['None', 'Spiral', 'Thermal'];
 const PRIORITIES = ['Normal', 'Urgent', 'Rush'];
@@ -14,62 +13,76 @@ const PRIORITIES = ['Normal', 'Urgent', 'Rush'];
 const PrintingNewJob = () => {
   const navigate = useNavigate();
   const [onlineOrders, setOnlineOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [form, setForm] = useState({
     customerName: '', customerPhone: '', productType: 'Book', paperType: 'A4',
     pagesPerCopy: 1, quantity: 1, colorPrinting: false, bindingType: 'None',
     priority: 'Normal', dueDate: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [creating, setCreating] = useState(false);
-  const [converting, setConverting] = useState(null);
+  const [accepting, setAccepting] = useState(null);
 
-  useEffect(() => {
-    setOnlineOrders(printingState.orders.filter(o => o.type === 'Online' && !o.jobId));
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/printing/orders', { params: { limit: 200 } });
+      const raw = res.data?.orders || res.data || [];
+      // Online orders start in 'received' status. Show ones still awaiting intake into production.
+      setOnlineOrders(raw.filter(o => o.status_code === 'received'));
+    } catch (err) {
+      console.error('Failed to load online orders', err);
+    } finally {
+      setLoadingOrders(false);
+    }
   }, []);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
 
   const set = (name, value) => setForm(f => ({ ...f, [name]: value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(''); setSuccess('');
     if (!form.customerName) { setError('Customer name is required for a manual order.'); return; }
     if (!form.dueDate) { setError('Due date is required.'); return; }
     setCreating(true);
     try {
-      createJob({
-        customerName: form.customerName,
-        customerPhone: form.customerPhone || '-',
-        jobType: `${form.productType} (${form.paperType})`,
+      const res = await apiClient.post('/printing/orders', {
+        productType: form.productType,
         quantity: parseInt(form.quantity, 10) || 1,
-        pagesCopies: parseInt(form.pagesPerCopy, 10) || 1,
-        color: form.colorPrinting ? 'Full Color' : 'B&W',
+        paperType: form.paperType,
+        pagesPerCopy: parseInt(form.pagesPerCopy, 10) || 1,
+        colorPrinting: form.colorPrinting,
         bindingType: form.bindingType,
+        dueDate: form.dueDate,
         priority: form.priority,
-        deadline: form.dueDate,
-        totalCost: 0,
-        depositPaid: 0
+        specialInstructions: undefined,
+        customer: { name: form.customerName, phone: form.customerPhone || '0900000000', customerTypeId: 1 }
       });
-      playSound('success');
-      navigate('/printing-manager/jobs/queue');
+      setSuccess(`Order ${res.data?.orderNumber || ''} created and added to the queue.`);
+      setForm(f => ({ ...f, customerName: '', customerPhone: '', quantity: 1, pagesPerCopy: 1, dueDate: '' }));
+      await loadOrders();
     } catch (err) {
-      setError(err.message || 'Failed to create job.');
+      setError(err?.message || 'Failed to create order.');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleAccept = (orderId) => {
-    setError('');
-    setConverting(orderId);
+  const handleAccept = async (order) => {
+    setError(''); setSuccess('');
+    setAccepting(order.id);
     try {
-      convertOrderToJob(orderId);
-      playSound('success');
-      setOnlineOrders(printingState.orders.filter(o => o.type === 'Online' && !o.jobId));
-      navigate('/printing-manager/jobs/queue');
+      // Accepting an online order = advancing it into production (queue → design).
+      await apiClient.put(`/printing/orders/${order.id}/status`, { status: 'in_design' });
+      setSuccess(`Order ${order.order_number} accepted into production.`);
+      await loadOrders();
     } catch (err) {
-      setError(err.message || 'Failed to accept order.');
+      setError(err?.message || 'Failed to accept order.');
     } finally {
-      setConverting(null);
+      setAccepting(null);
     }
   };
 
@@ -83,10 +96,13 @@ const PrintingNewJob = () => {
         <h1 className="stg-title">
           <FilePlus color="#2563EB" /> NEW JOB / ORDER INTAKE
         </h1>
-        <p className="stg-sub">Enter manual (walk-in) orders or accept online orders — both enter the Job Process queue.</p>
+        <p className="stg-sub">Enter manual (walk-in) orders or accept online orders — both enter the production pipeline.</p>
       </div>
 
       {error && <div className="stg-alert">{error}</div>}
+      {success && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#DCFCE7', color: '#166534', border: '1px solid #BBF7D0', fontWeight: 500, fontSize: 13, margin: '0 0 16px' }}>{success}</div>
+      )}
 
       <div className="stg-intake-grid">
 
@@ -152,7 +168,7 @@ const PrintingNewJob = () => {
             </div>
             <div className="stg-actions-col" style={{ marginTop: 16 }}>
               <button type="submit" className="stg-btn stg-btn--primary stg-btn--block" disabled={creating}>
-                <ArrowRight size={15} /> {creating ? 'Creating Job...' : 'Create Job → Queue'}
+                <ArrowRight size={15} /> {creating ? 'Creating Order...' : 'Create Order → Queue'}
               </button>
             </div>
           </form>
@@ -163,27 +179,32 @@ const PrintingNewJob = () => {
           <div className="stg-card-head">
             <span className="stg-card-icon"><Globe color="#0284C7" size={18} /></span>
             <h3 className="stg-card-title">Online Orders</h3>
+            <button className="stg-btn stg-btn--ghost stg-btn--sm" style={{ marginLeft: 'auto' }} onClick={() => { setRefreshing(true); loadOrders().finally(() => setRefreshing(false)); }} disabled={refreshing}>
+              <RefreshCw size={14} /> {refreshing ? '...' : 'Refresh'}
+            </button>
           </div>
-          {onlineOrders.length === 0 ? (
-            <div className="stg-empty">No pending online orders. All accepted orders are already in the queue.</div>
+          {loadingOrders ? (
+            <div className="stg-empty">Loading orders...</div>
+          ) : onlineOrders.length === 0 ? (
+            <div className="stg-empty">No pending online orders awaiting intake.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {onlineOrders.map(o => (
                 <div key={o.id} className="stg-order-row">
                   <div className="stg-order-main">
-                    <div className="stg-order-id">{o.id} · {o.customerName}</div>
+                    <div className="stg-order-id">{o.order_number} · {o.customer_name || 'Online Customer'}</div>
                     <div className="stg-order-sub">
-                      {o.items} · ETB {(o.totalAmount || 0).toLocaleString()} · Due {o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString() : '—'}
+                      {o.product_type || '—'} · ETB {(parseFloat(o.total_price || 0)).toLocaleString()} · Due {o.due_date ? new Date(o.due_date).toLocaleDateString() : '—'}
                     </div>
                   </div>
-                  <span className="stg-pill" style={{ background: '#E0F2FE', color: '#0284C7' }}>Online</span>
+                  <span className="stg-pill" style={{ background: '#E0F2FE', color: '#0284C7' }}>{o.payment_status === 'Confirmed' ? 'Paid' : 'Pending Payment'}</span>
                   <button
                     type="button"
-                    onClick={() => handleAccept(o.id)}
-                    disabled={converting === o.id}
+                    onClick={() => handleAccept(o)}
+                    disabled={accepting === o.id || o.payment_status !== 'Confirmed'}
                     className="stg-btn stg-btn--soft-blue stg-btn--sm"
                   >
-                    <CheckCircle size={14} /> {converting === o.id ? 'Accepting...' : 'Accept → Queue'}
+                    <CheckCircle size={14} /> {accepting === o.id ? 'Accepting...' : 'Accept → Production'}
                   </button>
                 </div>
               ))}
