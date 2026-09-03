@@ -1692,9 +1692,9 @@ exports.collectOnlineOrder = catchAsync(async (req, res) => {
       });
     }
 
-    /* Mark original order as COMPLETED */
+    /* Mark original order as DELIVERED so it leaves the Pending Online Orders list */
     await trx(orderSource).where('id', orderId).update({
-      status: 'COMPLETED',
+      status: 'DELIVERED',
       updated_at: db.fn.now()
     });
 
@@ -2447,7 +2447,7 @@ exports.submitDaily = catchAsync(async (req, res) => {
 
 
 exports.checkoutRetail = catchAsync(async (req, res) => {
-  const { sale_type, items, payment, cart_id } = req.body;
+  const { sale_type, items, payment, cart_id, order_request_id } = req.body;
   if (!items || items.length === 0) throw new AppError('Cart is empty', 400);
 
   let subtotal = 0;
@@ -2614,6 +2614,19 @@ exports.checkoutRetail = catchAsync(async (req, res) => {
       await trx('retail_pos_carts').where('id', cart_id).update({ status: 'FINALIZED', updated_at: new Date() }).catch(() => {});
     }
 
+    // If this sale originates from an online retail order, move it out of the
+    // Pending Online Orders list (status PROCESSING/PENDING) so it is not repeated.
+    if (order_request_id) {
+      const src = await trx('retail_orders').where('id', order_request_id).first();
+      if (src && ['PROCESSING', 'PENDING'].includes(src.status)) {
+        await trx('retail_orders').where('id', order_request_id).update({
+          status: 'DELIVERED',
+          payment_status: 'PAID',
+          updated_at: db.fn.now()
+        });
+      }
+    }
+
     return { id: saleId, invoice_number: invoiceNumber, invoice_id: invoiceId, receipt_no: receiptNumber };
   });
 
@@ -2649,8 +2662,8 @@ exports.deleteRetailOrder = catchAsync(async (req, res) => {
   // audit) rather than permanently destroying it. A cancelled status drops it out
   // of the pending online orders list (which only shows PROCESSING/PENDING).
   await db('retail_orders').where({ id }).update({
-    status: 'cancelled',
-    payment_status: 'CANCELLED',
+    status: 'CANCELLED',
+    payment_status: order.payment_status === 'PAID' ? 'AWAITING_PAYMENT' : order.payment_status,
     updated_at: db.fn.now()
   });
 
@@ -2662,7 +2675,7 @@ exports.deleteRetailOrder = catchAsync(async (req, res) => {
 
 exports.submitCartToFinance = async (req, res) => {
   try {
-    const { cart_code, customer_name, customer_phone, payment_method, payment_amount, payment_reference, bank_name, account_number, telbir_number, txn_id, total_amount, items, cashier_name } = req.body;
+    const { cart_code, customer_name, customer_phone, payment_method, payment_amount, payment_reference, bank_name, account_number, telbir_number, txn_id, total_amount, items, cashier_name, order_request_id } = req.body;
     const { db } = require('../../config/database');
 
     const [cartId] = await db('retail_pos_carts').insert({
@@ -2674,6 +2687,20 @@ exports.submitCartToFinance = async (req, res) => {
       total_amount, items: JSON.stringify(items || []),
       status: 'PENDING_FINANCE', created_at: new Date(), updated_at: new Date()
     });
+
+    // If this cart originates from an online retail order, move that order out of
+    // the Pending Online Orders list (status PROCESSING/PENDING) so it is not
+    // repeated. The order is collected/recorded once it leaves the waiting step.
+    if (order_request_id) {
+      const src = await db('retail_orders').where('id', order_request_id).first();
+      if (src && ['PROCESSING', 'PENDING'].includes(src.status)) {
+        await db('retail_orders').where('id', order_request_id).update({
+          status: 'DELIVERED',
+          payment_status: 'PAID',
+          updated_at: db.fn.now()
+        });
+      }
+    }
 
     res.json({ status: 'success', data: { cart_id: cartId } });
   } catch (error) {
@@ -2801,7 +2828,7 @@ exports.financeApproveCart = async (req, res) => {
 exports.signAndRequestStore = async (req, res) => {
   try {
     const { db } = require('../../config/database');
-    const { cart_code, customer_name, customer_phone, signature, notes, items, total_amount, payment_method, payment_amount, txn_id, cashier_name } = req.body;
+    const { cart_code, customer_name, customer_phone, signature, notes, items, total_amount, payment_method, payment_amount, txn_id, cashier_name, order_request_id } = req.body;
 
     const request_code = cart_code || `CART-${Date.now().toString(36).toUpperCase()}`;
 
@@ -2819,6 +2846,19 @@ exports.signAndRequestStore = async (req, res) => {
         notes: notes || null,
         created_at: new Date(), updated_at: new Date()
       });
+
+      // Online order placed into the waiting/store pipeline: remove it from the
+      // Pending Online Orders list now so it cannot be re-processed or re-submitted.
+      if (order_request_id) {
+        const src = await trx('retail_orders').where('id', order_request_id).first();
+        if (src && ['PROCESSING', 'PENDING'].includes(src.status)) {
+          await trx('retail_orders').where('id', order_request_id).update({
+            status: 'DELIVERED',
+            payment_status: 'PAID',
+            updated_at: db.fn.now()
+          });
+        }
+      }
 
       // 2. Insert items directly into store_sales_requests
       for (let i = 0; i < items.length; i++) {
