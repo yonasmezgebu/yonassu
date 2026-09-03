@@ -32,6 +32,15 @@ router.get('/public/:id', tenderController.getPublic);
 
 // Customer (authenticated)
 router.get('/my-bids', authenticate, bidController.getMyBids);
+router.delete('/my-bids/:id/hide', authenticate, async (req, res) => {
+  const { db } = require('../../config/database');
+  const bid = await db('bids').where({ id: req.params.id, customer_id: req.user.id }).first();
+  if (!bid) return res.status(404).json({ message: 'Bid not found' });
+  const completedStatuses = ['awarded', 'rejected', 'disqualified', 'closed', 'expired'];
+  if (!completedStatuses.includes((bid.status || '').toLowerCase())) return res.status(400).json({ message: 'Only closed/completed bids can be removed' });
+  await db('bids').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+  res.json({ message: 'Bid removed from your dashboard' });
+});
 router.post('/:tenderId/bid', authenticate, bidController.submitBid);
 router.put('/:tenderId/bid', authenticate, bidController.updateMyBid);
 router.get('/:tenderId/my-bid', authenticate, bidController.getMyBid);
