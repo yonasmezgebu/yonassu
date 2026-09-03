@@ -71,6 +71,7 @@ exports.getAllOrders = catchAsync(async (req, res) => {
       'po.product_type', 'po.paper_type', 'po.color_printing', 'po.pages_per_copy',
       'po.due_date', 'po.binding_type', 'po.special_instructions',
       'po.attachments', 'po.subtotal', 'po.vat_amount',
+      'po.payment_status', 'po.payment_method', 'po.payment_reference',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex',
       'c.name as customer_name', 'c.phone as customer_phone',
@@ -532,6 +533,64 @@ exports.verifyPayment = catchAsync(async (req, res) => {
   res.json({ status: 'success', message: 'Payment verified and receipt recorded', data: { orderId: id, payment_status: 'Confirmed' } });
 });
 
+// Delete an order from the printing supervisor's queue. Only allowed while the
+// payment is NOT yet confirmed (no money received) — once payment is confirmed
+// the order is locked for production and cannot be removed.
+exports.deleteOrder = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const order = await db('printing_orders').where('id', id).whereNull('deleted_at').first();
+  if (!order) throw new AppError('Order not found', 404);
+
+  if (['Confirmed', 'PAID'].includes(order.payment_status)) {
+    throw new AppError('This order is already confirmed/paid and cannot be deleted', 400);
+  }
+
+  await db.transaction(async (trx) => {
+    // Hard-cancel any previously recorded invoice + receipt for this order so
+    // it is cleaned from the Sales & Invoice page too.
+    try {
+      const invoices = await trx('sales_invoices')
+        .where('source', 'printing')
+        .where('sale_id', id)
+        .whereNot('status', 'cancelled')
+        .select('id');
+      for (const inv of invoices) {
+        await trx('sales_invoices').where({ id: inv.id }).update({ status: 'cancelled', updated_at: trx.fn.now() });
+        await trx('sales_receipts').where({ invoice_id: inv.id }).update({ status: 'cancelled', updated_at: trx.fn.now() });
+      }
+    } catch (e) {
+      console.error('Failed to cancel printing invoice on delete:', e.message);
+    }
+
+    await trx('printing_orders').where('id', id).update({
+      deleted_at: trx.fn.now(),
+      updated_at: trx.fn.now()
+    });
+  });
+
+  await audit('PRINTING_ORDER_DELETED', req.user.id, {
+    ip: req.ip,
+    resourceId: id,
+    details: {
+      order_number: order.order_number,
+      total_price: order.total_price,
+      payment_status: order.payment_status,
+      confirmed: false
+    }
+  });
+  if (req.res) req.res.locals.__centralAudited = true;
+
+  sendPrintingNotification({
+    title: 'Order Deleted (Payment Not Confirmed)',
+    message: `Order ${order.order_number} (ETB ${Number(order.total_price || 0).toLocaleString()}) was deleted from the Job Queue because its payment was not confirmed.`,
+    type: 'order_deleted',
+    link: '/printing-manager/jobs/queue',
+    related_entity_id: id
+  }, req.app?.get('io')).catch(e => console.error('Failed to notify printing:', e.message));
+
+  res.json({ status: 'success', message: 'Order deleted from Job Queue (payment was not confirmed)' });
+});
+
 exports.uploadAttachments = catchAsync(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
@@ -983,7 +1042,7 @@ exports.createCustomerOrder = catchAsync(async (req, res) => {
       status_id: initialStatus?.id || 1,
       payment_method: paymentMethod || null,
       payment_reference: paymentReference || null,
-      payment_status: paymentMethod && paymentReference ? 'Pending' : 'Pending',
+      payment_status: 'Pending',
       attachments: attachmentsStr,
       created_by: userId,
       created_at: db.fn.now(),
@@ -1086,6 +1145,9 @@ exports.getCustomerOrders = catchAsync(async (req, res) => {
     .leftJoin('order_statuses as os', 'po.status_id', 'os.id')
     .select('po.*', 'os.status_name', 'os.status_code', 'os.color_hex')
     .where('po.customer_id', customer.id)
+    .where(function() {
+      this.where('po.is_deleted_by_customer', false).orWhereNull('po.is_deleted_by_customer');
+    })
     .whereNull('po.deleted_at')
     .orderBy('po.created_at', 'desc');
 
@@ -1199,6 +1261,7 @@ exports.trackOrder = catchAsync(async (req, res) => {
     .select(
       'po.order_number', 'po.product_type', 'po.quantity', 'po.paper_type',
       'po.color_printing', 'po.binding_type', 'po.due_date', 'po.total_price',
+      'po.payment_status', 'po.payment_method', 'po.payment_reference',
       'po.created_at', 'po.completed_at', 'po.updated_at',
       'os.status_name', 'os.status_code', 'os.color_hex', 'os.sort_order',
       'c.name as customer_name'
