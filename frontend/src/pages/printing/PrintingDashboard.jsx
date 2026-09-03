@@ -7,6 +7,7 @@ import PrintingTasks from './PrintingTasks';
 // Jobs (1-8)
 import PrintingNewJob from './PrintingNewJob';
 import PrintingQueue from './PrintingQueue';
+import PrintingOrderDetail from './PrintingOrderDetail';
 import PrintingDesign from './PrintingDesign';
 import PrintingPrepress from './PrintingPrepress';
 import PrintingInPrint from './PrintingInPrint';
@@ -99,6 +100,7 @@ const PrintingDashboard = () => {
             <Route path="jobs/tasks" element={<PrintingTasks />} />
             <Route path="jobs/new" element={<PrintingNewJob />} />
             <Route path="jobs/queue" element={<PrintingQueue />} />
+            <Route path="orders/:id" element={<PrintingOrderDetail />} />
             <Route path="jobs/design" element={<PrintingDesign />} />
             <Route path="jobs/prepress" element={<PrintingPrepress />} />
             <Route path="jobs/printing" element={<PrintingInPrint />} />
