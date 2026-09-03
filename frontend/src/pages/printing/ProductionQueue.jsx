@@ -201,11 +201,11 @@ const ProductionQueue = () => {
                           </span>
                           <span style={{
                             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                            background: order.payment_status === 'Confirmed' ? '#dcfce7' : '#fff7ed',
-                            color: order.payment_status === 'Confirmed' ? '#16a34a' : '#c2410c',
-                            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : '#fed7aa'}`
+                            background: order.payment_status === 'Confirmed' ? '#dcfce7' : order.payment_status === 'Rejected' ? '#fee2e2' : '#fff7ed',
+                            color: order.payment_status === 'Confirmed' ? '#16a34a' : order.payment_status === 'Rejected' ? '#dc2626' : '#c2410c',
+                            border: `1px solid ${order.payment_status === 'Confirmed' ? '#86efac' : order.payment_status === 'Rejected' ? '#fca5a5' : '#fed7aa'}`
                           }}>
-                            {order.payment_status === 'Confirmed' ? '✅ Paid' : '⏳ Pending'}
+                            {order.payment_status === 'Confirmed' ? '✅ Paid' : order.payment_status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
                           </span>
                         </div>
 
