@@ -1162,6 +1162,16 @@
   box-shadow: 0 2px 8px rgba(22,163,74,.2);
 }
 .processBtn:hover { background: #FBBF24; color: #111827; box-shadow: none; }
+.orderActions { display: flex; align-items: center; gap: 8px; }
+.deleteBtn {
+  composes: btnBase;
+  background: transparent;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+  box-shadow: none;
+  padding: 8px;
+}
+.deleteBtn:hover { background: #FEF2F2; color: #B91C1C; box-shadow: none; }
 
 /* ── AUDIT TRAIL TABLE ───────────────────────────────── */
 .auditTable {
