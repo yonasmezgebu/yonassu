@@ -151,6 +151,9 @@ const requestsController = {
       .leftJoin('pharmacy_medications as pm', 'pr.medication_id', 'pm.id')
       .select('pr.*', 'pm.drug_image as medication_image')
       .where({ 'pr.customer_id': req.user.id })
+      .where(function() {
+        this.where('pr.is_deleted_by_customer', false).orWhereNull('pr.is_deleted_by_customer');
+      })
       .orderBy('pr.requested_at', 'desc');
 
     res.json({ status: 'success', data: requests });
@@ -436,6 +439,22 @@ const requestsController = {
     await db('prescription_requests').where({ id }).update({ status: 'rejected', rejection_reason: 'Cancelled by customer' });
 
     res.json({ status: 'success', message: 'Request cancelled' });
+  }),
+
+  // Soft delete a pending online order (pharmacy worker). Keeps the record for
+  // history/audit but removes it from the Pending Online Orders list (status pending).
+  deleteRequestByPharmacy: catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    const request = await db('prescription_requests').where({ id }).first();
+    if (!request) throw new AppError('Request not found', 404);
+    if (request.status !== 'pending') throw new AppError('Only pending orders can be deleted', 400);
+
+    await db('prescription_requests')
+      .where({ id })
+      .update({ status: 'rejected', rejection_reason: 'Deleted by pharmacy' });
+
+    res.json({ status: 'success', message: 'Order deleted' });
   })
 };
 
