@@ -4,7 +4,7 @@ import apiClient from '../../services/apiClient';
 import {
   FileText, Calendar, Clock, CheckCircle, XCircle, Activity,
   RefreshCw, Edit3, Save, X, ChevronDown, ChevronUp,
-  ExternalLink, User, Building
+  ExternalLink, User, Building, Trash2
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
 import styles from './CustomerBids.module.css';
@@ -238,7 +238,7 @@ const UpdateSaleBidForm = ({ bid, onClose, onSaved }) => {
 };
 
 // ─── Public Bid Card (General Tenders) ──────────────────────────────────────
-const PublicBidCard = ({ bid, onUpdate }) => {
+const PublicBidCard = ({ bid, onUpdate, onHide }) => {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const canUpdate = bid.bid_status === 'pending';
@@ -281,6 +281,15 @@ const PublicBidCard = ({ bid, onUpdate }) => {
               {canUpdate && (
                 <button onClick={() => setEditing(true)} className={styles.btnSmall}>
                   <Edit3 size={14} /> Update Bid
+                </button>
+              )}
+              {['awarded', 'accepted', 'approved'].includes((bid.bid_status || '').toLowerCase()) && (
+                <button 
+                  onClick={(e) => onHide(e, bid.id)} 
+                  style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                  title="Delete from dashboard"
+                >
+                  <Trash2 size={16} />
                 </button>
               )}
               <button onClick={() => setExpanded(!expanded)} className={styles.btnSmall} style={{ padding: '0.375rem 0.5rem' }}>
@@ -329,7 +338,7 @@ const PublicBidCard = ({ bid, onUpdate }) => {
 };
 
 // ─── Direct Sales Bid Card ────────────────────────────────────────────────
-const SalesBidCard = ({ bid, onUpdate }) => {
+const SalesBidCard = ({ bid, onUpdate, onHide }) => {
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
@@ -372,6 +381,15 @@ const SalesBidCard = ({ bid, onUpdate }) => {
               {canUpdate && (
                 <button onClick={() => setEditing(true)} className={styles.btnSmall}>
                   <Edit3 size={14} /> Update Bid
+                </button>
+              )}
+              {['awarded', 'accepted', 'approved'].includes((bid.status || '').toLowerCase()) && (
+                <button 
+                  onClick={(e) => onHide(e, bid.id)} 
+                  style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
+                  title="Delete from dashboard"
+                >
+                  <Trash2 size={16} />
                 </button>
               )}
               <button onClick={() => setExpanded(!expanded)} className={styles.btnSmall} style={{ padding: '0.375rem 0.5rem' }}>
@@ -428,6 +446,23 @@ export default function CustomerBids() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [successMessage, setSuccessMessage] = useState('');
+  const handleHideBid = async (e, id, type) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to remove this completed bid from your dashboard?')) return;
+    try {
+      if (type === 'public') {
+        await apiClient.delete(`/public-tenders/customer/bids/${id}/hide`);
+        setPublicBids(prev => prev.filter(b => b.id !== id));
+      } else {
+        await apiClient.delete(`/tenders/my-bids/${id}/hide`);
+        setSalesBids(prev => prev.filter(b => b.id !== id));
+      }
+      setSuccessMessage('Bid removed successfully!');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove bid');
+    }
+  };
 
   const handleBidUpdated = () => {
     fetchBids();
@@ -524,7 +559,7 @@ export default function CustomerBids() {
             {showPublic && publicBids.length > 0 && (
               <div style={{ marginBottom: '2rem' }}>
                 {activeTab === 'all' && <h3 className={styles.sectionTitle} style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Compete & Sell Bids</h3>}
-                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} />)}
+                {publicBids.map(b => <PublicBidCard key={`pub-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'public')} />)}
               </div>
             )}
 
@@ -532,7 +567,7 @@ export default function CustomerBids() {
             {showSales && salesBids.length > 0 && (
               <div>
                 {activeTab === 'all' && <h3 className={styles.sectionTitle} style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Compete & Buy Bids</h3>}
-                {salesBids.map(b => <SalesBidCard key={`sale-${b.id}`} bid={b} onUpdate={handleBidUpdated} />)}
+                {salesBids.map(b => <SalesBidCard key={`sale-${b.id}`} bid={b} onUpdate={handleBidUpdated} onHide={(e, id) => handleHideBid(e, id, 'sales')} />)}
               </div>
             )}
           </div>
