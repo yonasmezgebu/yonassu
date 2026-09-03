@@ -2645,13 +2645,16 @@ exports.deleteRetailOrder = catchAsync(async (req, res) => {
     throw new AppError('Order not found', 404);
   }
 
-  // Hard delete items first (due to foreign keys)
-  await db('retail_order_items').where({ order_id: id }).del();
-  
-  // Hard delete the order
-  await db('retail_orders').where({ id }).del();
+  // Soft delete: mark the order cancelled (keeps the record + items for history/
+  // audit) rather than permanently destroying it. A cancelled status drops it out
+  // of the pending online orders list (which only shows PROCESSING/PENDING).
+  await db('retail_orders').where({ id }).update({
+    status: 'cancelled',
+    payment_status: 'CANCELLED',
+    updated_at: db.fn.now()
+  });
 
-  res.json({ status: 'success', message: 'Order completely deleted' });
+  res.json({ status: 'success', message: 'Order deleted' });
 });
 
 
