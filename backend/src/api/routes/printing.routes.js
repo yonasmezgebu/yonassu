@@ -82,7 +82,7 @@ const listOrdersValidation = [
     .toInt(),
   query('limit')
     .optional()
-    .isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100')
+    .isInt({ min: 1, max: 1000 }).withMessage('Limit must be between 1 and 1000')
     .toInt(),
   query('status')
     .optional()
@@ -137,6 +137,14 @@ router.post(
   PrintingController.createCustomerOrder
 );
 router.get('/customer/orders', authenticate, PrintingController.getCustomerOrders);
+router.delete('/customer/orders/:id', authenticate, async (req, res) => {
+  const { db } = require('../../config/database');
+  const order = await db('printing_orders').where({ id: req.params.id, customer_id: req.user.id }).first();
+  if (!order) return res.status(404).json({ message: 'Order not found' });
+  if (!['DELIVERED', 'COMPLETED', 'delivered', 'completed', 'ready', 'ready_for_pickup'].includes(order.status)) return res.status(400).json({ message: 'Only completed orders can be removed' });
+  await db('printing_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
+  res.json({ message: 'Order removed from your dashboard' });
+});
 
 // ── Worker / Manager (role required) ──────────────────────────
 router.get(
@@ -186,6 +194,14 @@ router.post(
   orderIdParamValidation,
   validate,
   PrintingController.verifyPayment
+);
+router.delete(
+  '/orders/:id',
+  authenticate,
+  authorize(['orders:update']),
+  orderIdParamValidation,
+  validate,
+  PrintingController.deleteOrder
 );
 router.post(
   '/orders/:id/attachments',
