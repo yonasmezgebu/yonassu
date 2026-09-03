@@ -11,7 +11,7 @@ router.delete('/my-orders/:id/hide', authenticate, async (req, res) => {
   const { db } = require('../../config/database');
   const order = await db('rental_orders').where({ id: req.params.id, customer_id: req.user.id }).first();
   if (!order) return res.status(404).json({ message: 'Order not found' });
-  if (!['COMPLETED', 'completed'].includes(order.status)) return res.status(400).json({ message: 'Only completed orders can be removed' });
+  if (!['COMPLETED', 'completed', 'REJECTED', 'rejected', 'CANCELLED', 'cancelled', 'ABANDONED', 'abandoned'].includes(order.status)) return res.status(400).json({ message: 'Only completed, rejected, cancelled or abandoned orders can be removed' });
   await db('rental_orders').where({ id: req.params.id }).update({ is_deleted_by_customer: true });
   res.json({ message: 'Order removed from your dashboard' });
 });
