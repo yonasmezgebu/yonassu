@@ -231,82 +231,10 @@ exports.placeOrder = catchAsync(async (req, res) => {
       });
     }
 
-    const invoiceId = 'INV-' + orderId + '-' + Date.now().toString().slice(-4);
-    await trx('sales_invoices').insert({
-      id: invoiceId,
-      invoice_no: invoice_number,
-      source: 'retail',
-      sale_type: 'online',
-      sale_id: orderId,
-      customer_name: resolvedName,
-      customer_tin: null, // Usually not provided in retail
-      subtotal,
-      vat_standard,
-      vat_standard_rate: std_rate,
-      vat_exempt,
-      vat_zero_rated,
-      vat_total: tax,
-      total_amount: total, // For retail, invoice amount matches total (including delivery? wait, delivery fee might not be in vatCalc. If we want it in invoice, we should add it to subtotal. The user's spec didn't mention delivery fee, so we leave it in retail_orders only, but the total on invoice should match. Let's make subtotal = subtotal + delivery_fee, and zero-rate the delivery fee)
-      status: 'active',
-      created_by_name: req.user.full_name || req.user.fullName || 'System',
-      created_at: db.fn.now(),
-      updated_at: db.fn.now()
-    });
-
-    for (let i = 0; i < cartItems.length; i++) {
-      const item = cartItems[i];
-      const r = vatCalc.rows[i];
-      const prod = await trx('retail_products').where({ id: item.product_id }).first();
-      await trx('sales_invoice_items').insert({
-        invoice_id: invoiceId,
-        item_id: item.product_id,
-        name: item.name,
-        qty: item.quantity,
-        unit_price: item.price,
-        cost_price: prod ? parseFloat(prod.cost_price || 0) : null,
-        treatment: r.treatment,
-        rate: r.rate,
-        vat_amount: r.vat,
-        subtotal: r.sub,
-        total: r.sub + r.vat
-      });
-    }
-    
-    if (parseFloat(delivery_fee) > 0) {
-      await trx('sales_invoice_items').insert({
-        invoice_id: invoiceId,
-        item_id: 0,
-        name: 'Delivery Fee',
-        qty: 1,
-        unit_price: delivery_fee,
-        treatment: 'zero_rated',
-        rate: 0,
-        vat_amount: 0,
-        subtotal: delivery_fee,
-        total: delivery_fee
-      });
-      // also update invoice subtotal
-      await trx('sales_invoices').where('id', invoiceId).update({
-        subtotal: db.raw('subtotal + ?', [delivery_fee]),
-        vat_zero_rated: db.raw('vat_zero_rated + ?', [0])
-      });
-    }
-
-    if (isPaid) {
-      const receipt_no = await generateReceiptNumber();
-      await trx('sales_receipts').insert({
-        id: 'REC-' + orderId + '-' + Date.now().toString().slice(-4),
-        receipt_no,
-        invoice_id: invoiceId,
-        amount_paid: total,
-        payment_method: payment_method,
-        payment_reference: resolvedPaymentRef,
-        received_by_name: 'Online Payment',
-        status: 'active',
-        created_at: db.fn.now(),
-        updated_at: db.fn.now()
-      });
-    }
+    // NOTE: Online order placement records ONLY the pending order (retail_orders +
+    // retail_order_items). It deliberately does NOT create a sales_invoice or
+    // sales_receipt here — that avoids double-recording. The invoice + receipt are
+    // created once at the POS waiting/collection step, where the order is recorded.
 
     await trx('retail_cart_items').where({ user_id: req.user.id }).delete();
     return { orderId, invoice_number: retail_order_number, total_amount: total };
