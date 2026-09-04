@@ -212,6 +212,185 @@ exports.getAllOrders = async (req, res, next) => {
   }
 };
 
+// ── ARCHIVE / HISTORY / DELETE (Manager) ──────────────────────────────────────
+const RENTAL_TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+
+exports.getArchivedOrders = async (req, res, next) => {
+  try {
+    const orders = await rentalOrderRepository.findAll({ archived: true });
+    // Manual (walk-in) orders live in the rental list already — don't duplicate them in history.
+    const nonManual = orders.filter(o => !o.isManual && !o.is_manual);
+    res.status(200).json({
+      status: 'success',
+      data: nonManual.map(o => o.toJSON())
+    });
+  } catch (error) {
+    logger.error('Error fetching archived rental orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch rental order history' });
+  }
+};
+
+exports.archiveOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const order = await rentalOrderRepository.findById(id);
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+    if (order.isManual || order.is_manual) {
+      return res.status(400).json({ status: 'error', message: 'Manual orders stay in the rental list and are not moved to history' });
+    }
+    if (!RENTAL_TERMINAL_STATUSES.includes(order.status)) {
+      return res.status(400).json({ status: 'error', message: 'Only completed, cancelled or rejected orders can be moved to history' });
+    }
+    if (order.archivedAt) {
+      return res.status(400).json({ status: 'error', message: 'Order already in history' });
+    }
+    const updated = await rentalOrderRepository.update(id, { archived_at: db.fn.now() });
+    carRentalAudit.log(req, 'Rental order moved to history', order.orderNumber,
+      { status: order.status, car_id: order.carId },
+      { archived_at: new Date() }
+    );
+    res.status(200).json({
+      status: 'success',
+      message: 'Order moved to history',
+      data: updated.toJSON()
+    });
+  } catch (error) {
+    logger.error('Error archiving rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to move order to history' });
+  }
+};
+
+exports.bulkArchiveOrders = async (req, res, next) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const orders = await db('rental_orders').whereIn('id', ids).whereNull('deleted_at');
+    const invalid = orders
+      .filter(o => !(o.is_manual || o.isManual))
+      .filter(o => !RENTAL_TERMINAL_STATUSES.includes(o.status));
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Only completed, cancelled or rejected orders can be moved to history`,
+        invalidIds: invalid.map(o => o.id)
+      });
+    }
+    const archiveIds = orders
+      .filter(o => !(o.is_manual || o.isManual))
+      .map(o => o.id);
+    const moved = await db('rental_orders')
+      .whereIn('id', archiveIds)
+      .update({ archived_at: db.fn.now(), updated_at: db.fn.now() });
+    carRentalAudit.log(req, `${moved} rental order(s) moved to history`, null,
+      { ids },
+      { archived_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${moved} order(s) moved to history`, moved });
+  } catch (error) {
+    logger.error('Error bulk archiving rental orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to move orders to history' });
+  }
+};
+
+exports.restoreOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+    const updated = await rentalOrderRepository.update(id, { archived_at: null });
+    carRentalAudit.log(req, 'Rental order restored from history', order.orderNumber,
+      { status: order.status },
+      { restored_at: new Date() }
+    );
+    res.status(200).json({
+      status: 'success',
+      message: 'Order restored from history',
+      data: updated.toJSON()
+    });
+  } catch (error) {
+    logger.error('Error restoring rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to restore order' });
+  }
+};
+
+exports.bulkRestoreOrders = async (req, res, next) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const restored = await db('rental_orders')
+      .whereIn('id', ids)
+      .whereNull('deleted_at')
+      .update({ archived_at: null, updated_at: db.fn.now() });
+    carRentalAudit.log(req, `${restored} rental order(s) restored from history`, null,
+      { ids },
+      { restored_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${restored} order(s) restored`, restored });
+  } catch (error) {
+    logger.error('Error bulk restoring rental orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to restore orders' });
+  }
+};
+
+exports.deleteOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const order = await rentalOrderRepository.findById(id, { includeArchived: true });
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+    if (!RENTAL_TERMINAL_STATUSES.includes(order.status)) {
+      return res.status(400).json({ status: 'error', message: 'Only completed, cancelled or rejected orders can be deleted' });
+    }
+    await db('rental_orders').where('id', id).update({ deleted_at: db.fn.now(), updated_at: db.fn.now() });
+    carRentalAudit.log(req, 'Rental order deleted', order.orderNumber,
+      { status: order.status },
+      { deleted_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: 'Order deleted' });
+  } catch (error) {
+    logger.error('Error deleting rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to delete order' });
+  }
+};
+
+exports.bulkDeleteOrders = async (req, res, next) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const orders = await db('rental_orders').whereIn('id', ids).whereNull('deleted_at');
+    const invalid = orders.filter(o => !RENTAL_TERMINAL_STATUSES.includes(o.status));
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Only completed, cancelled or rejected orders can be deleted`,
+        invalidIds: invalid.map(o => o.id)
+      });
+    }
+    const deleted = await db('rental_orders')
+      .whereIn('id', ids)
+      .update({ deleted_at: db.fn.now(), updated_at: db.fn.now() });
+    carRentalAudit.log(req, `${deleted} rental order(s) deleted`, null,
+      { ids },
+      { deleted_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${deleted} order(s) deleted`, deleted });
+  } catch (error) {
+    logger.error('Error bulk deleting rental orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to delete orders' });
+  }
+};
+
 exports.getOrderById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -258,6 +437,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     
     if (status === 'APPROVED') extraData.approved_at = new Date();
     if (status === 'REJECTED') extraData.rejected_at = new Date();
+    if (status === 'ACTIVE' && !order.rentalStartTime) extraData.rental_start_time = new Date();
 
     const updated = await rentalOrderRepository.updateStatus(id, status, extraData);
 
@@ -281,6 +461,60 @@ exports.updateOrderStatus = async (req, res, next) => {
   } catch (error) {
     logger.error('Error updating rental order status:', error);
     res.status(500).json({ status: 'error', message: 'Failed to update order status' });
+  }
+};
+
+// ── MANAGER: Start the rental (car handed over → ACTIVE, day counter begins) ──
+exports.startRental = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body || {};
+
+    const order = await rentalOrderRepository.findById(id);
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+    if (['COMPLETED', 'CANCELLED', 'REJECTED', 'CLOSED'].includes(order.status)) {
+      return res.status(400).json({ status: 'error', message: 'This order is already finished and cannot be started' });
+    }
+    if (order.status === 'ACTIVE') {
+      return res.status(400).json({ status: 'error', message: 'This rental is already active' });
+    }
+
+    const extra = {};
+    if (order.manager_note) extra.manager_note = order.manager_note;
+    if (notes) extra.manager_note = `${extra.manager_note ? extra.manager_note + '\n' : ''}[Started] ${notes}`;
+
+    const updated = await rentalOrderRepository.update(id, {
+      status: 'ACTIVE',
+      rental_start_time: new Date(),
+      ...extra
+    });
+
+    if (order.carId) {
+      await carRepository.update(order.carId, { availability: 'Booked' });
+    }
+
+    carRentalAudit.log(req, 'Rental Started', order.orderNumber,
+      { status: order.status, car_id: order.carId },
+      { status: 'ACTIVE', rental_start_time: new Date(), notes: notes || null });
+
+    try {
+      await notificationRepository.create({
+        userId: order.customerId,
+        title: 'Rental Started',
+        message: `Your rental ${order.orderNumber} is officially started. Enjoy your trip! Expected return: ${new Date(order.returnDate).toLocaleDateString()}.`
+      });
+    } catch (e) { /* non-fatal */ }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Rental started — day counter is now running',
+      data: updated.toJSON()
+    });
+  } catch (error) {
+    logger.error('Error starting rental:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to start rental' });
   }
 };
 
@@ -725,6 +959,25 @@ exports.verifyPayment = async (req, res) => {
       } catch (err) {
         logger.error('Failed to record car rental receipt:', err.message);
       }
+
+      // ── Record income into the canonical ledger (CRV + cashbook + revenue book) ──
+      // Keyed by order number so the revenue-book row merges with any row already
+      // synced via syncRentalToFinance instead of double-counting the Revenue Book.
+      try {
+        const { recordIncomeToLedger } = require('../../utils/financeIncome.service');
+        await recordIncomeToLedger({
+          receivedFrom: order.customerName || 'Car Rental Customer',
+          amount: verifiedAmount,
+          paymentMethod: order.paymentMethod || order.payment_method || 'Cash',
+          description: `Car Rental income — ${order.orderNumber}`,
+          referenceNo: referenceNumber || `RENTAL-${order.orderNumber}`,
+          receivableInvoiceNo: order.orderNumber,
+          department: 'Car Rental',
+          extraReceivableDetails: { order_id: String(order.id), orderNumber: order.orderNumber },
+        });
+      } catch (err) {
+        logger.error('Failed to record rental income into ledger:', err.message);
+      }
     }
 
     const updated = await rentalOrderRepository.update(id, updateData);
@@ -747,8 +1000,10 @@ exports.cancelOrder = async (req, res) => {
     const order = await rentalOrderRepository.findById(id);
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
     
-    const isManager = req.user.roles && req.user.roles.some(r => ['Admin', 'CEO', 'Manager', 'Car Rental Manager'].includes(r));
-    if (order.customerId !== req.user.id && req.user.department_id !== 2 && !isManager) {
+    const isManager = req.user.roles && req.user.roles.some(r =>
+      ['Admin', 'CEO', 'Car Rental Manager', 'Car Renting Manager', 'Agri Rental Manager'].includes(r)
+    );
+    if (order.customerId !== req.user.id && req.user.departmentId !== 2 && !isManager) {
       return res.status(403).json({ status: 'error', message: 'Not authorized' });
     }
 
