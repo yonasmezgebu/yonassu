@@ -3,168 +3,167 @@ import axios from '../../../services/apiClient';
 import carService from '../../../services/carService';
 import authService from '../../../services/authService';
 import {
-  ArrowLeft, Printer, RefreshCw, Car, User, Calendar,
-  DollarSign, CheckCircle, Clock, XCircle, FileText,
-  Phone, Mail, Hash, Leaf, AlertTriangle, Package, Star,
-  MapPin, Key, Shield, Fuel, ToggleLeft, Banknote
+  ArrowLeft, RefreshCw, Printer, Car, User, Calendar, Clock,
+  DollarSign, Download, BadgeCheck, Receipt, Play, RotateCcw,
+  Ban, ListChecks, Archive, Trash2, FileText, Hash,
 } from 'lucide-react';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
+import './CarRentalOrderDetail.css';
+import './RentalOrders.css';
 
-/* ─────────────── COLOR TOKENS ─────────────── */
-const C = {
-  darkGreen:    '#1B5E20',
-  forestGreen:  '#228B22',
-  emerald:      '#2E8B57',
-  leafGreen:    '#4CAF50',
-  sage:         '#A5D6A7',
-  earthBrown:   '#8D6E63',
-  lightSage:    '#E8F5E9',
-  white:        '#FFFFFF',
-  offWhite:     '#FAFAF8',
-  lightGray:    '#F5F5F5',
-  midGray:      '#E0E0E0',
-  darkGray:     '#424242',
-  textSec:      '#616161',
-  orange:       '#FF9800',
-  red:          '#C62828',
-  blue:         '#1565C0',
+/* ─────────────── STATUS CONFIG ─────────────── */
+const STATUS_LABELS = {
+  PENDING_APPROVAL: 'Pending Approval',
+  APPROVED:         'Approved',
+  CONFIRMED:        'Confirmed',
+  ACTIVE:           'On Rent',
+  COMPLETED:        'Completed',
+  CANCELLED:        'Cancelled',
+  REJECTED:         'Rejected',
 };
 
-/* ─────────────── HELPERS ─────────────── */
-const fmt    = n  => parseFloat(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = d => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); };
-const fmtDT   = d => { if (!d) return '—'; return new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+const STATUS_MOD = {
+  PENDING_APPROVAL: 'pending',
+  APPROVED:         'approved',
+  CONFIRMED:        'approved',
+  ACTIVE:           'active',
+  COMPLETED:        'done',
+  CANCELLED:        'danger',
+  REJECTED:         'danger',
+};
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+const STARTABLE_STATUSES = ['APPROVED', 'CONFIRMED'];
+const DAY_MS = 86400000;
+
+/* ─────────────── HELPERS ─────────────── */
+const fmt    = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = d => { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); } catch { return '—'; } };
+const fmtDT   = d => { if (!d) return '—'; try { return new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } };
+
+const ord = (order, ...keys) => {
+  for (const k of keys) { const v = order?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
+  return null;
+};
+
+/* field reads — model toJSON emits camelCase, DB rows emit snake_case */
+const f = (order, keys) => ord(order, ...keys);
+
 const getImgUrl = p => {
   if (!p) return null;
   if (p.startsWith('http')) return p;
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   return `${API_BASE}/${p.replace(/^\/+/, '')}`;
 };
 
-const STATUS_CFG = {
-  PENDING_APPROVAL: { bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', label: 'PENDING APPROVAL' },
-  APPROVED:         { bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', label: 'APPROVED' },
-  ACTIVE:           { bg: '#E3F2FD', color: '#0D47A1', border: '#90CAF9', label: 'ACTIVE' },
-  COMPLETED:        { bg: '#F3E5F5', color: '#4A148C', border: '#CE93D8', label: 'COMPLETED' },
-  CANCELLED:        { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', label: 'CANCELLED' },
-  REJECTED:         { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', label: 'REJECTED' },
+const rentalStats = (order) => {
+  const start = new Date(f(order, 'pickupDate', 'start_date', 'startDate', 'pickupDateTime'));
+  const end = new Date(f(order, 'returnDate', 'end_date', 'endDate', 'returnDateTime'));
+  const totalDays = Number(f(order, 'totalDays', 'total_days', 'days') || Math.max(1, Math.ceil((end - start) / DAY_MS)));
+  const begun = f(order, 'rentalStartTime', 'rental_start_time', 'activatedAt');
+  const now = Date.now();
+  const elapsedDays = begun ? Math.max(0, Math.floor((now - new Date(begun).getTime()) / DAY_MS)) : 0;
+  const diff = end.getTime() - now;
+  const overdue = diff < 0;
+  const remaining = diff < 0 ? Math.abs(Math.ceil(diff / DAY_MS)) : Math.ceil(diff / DAY_MS);
+  const pct = totalDays > 0 ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100))) : 0;
+  return { start, end, totalDays, began: begun, elapsedDays, remaining, overdue, pct };
 };
 
-const PAY_CFG = {
-  PENDING:   { bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', label: 'AWAITING PAYMENT', Icon: Clock },
-  PAID:      { bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', label: 'PAYMENT CONFIRMED', Icon: CheckCircle },
-  REJECTED:  { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', label: 'PAYMENT REJECTED',  Icon: XCircle },
-  Pending:   { bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', label: 'AWAITING PAYMENT', Icon: Clock },
-  Confirmed: { bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', label: 'PAYMENT CONFIRMED', Icon: CheckCircle },
-  Rejected:  { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', label: 'PAYMENT REJECTED',  Icon: XCircle },
+/* ─────────────── BADGES / TOASTS ─────────────── */
+const StatusBadge = ({ code }) => (
+  <span className={`ro2-badge ro2-badge--${STATUS_MOD[code] || 'approved'}`}>
+    <span className="ro2-badge__dot" />
+    {STATUS_LABELS[code] || code}
+  </span>
+);
+
+const PayBadge = ({ status }) => {
+  let mod = 'pending';
+  let label = 'Awaiting Payment';
+  let Icon = Clock;
+  if (status === 'PAID' || status === 'Confirmed') { mod = 'success'; label = 'Payment Confirmed'; Icon = BadgeCheck; }
+  else if (status === 'REJECTED' || status === 'Rejected') { mod = 'danger'; label = 'Payment Rejected'; Icon = Ban; }
+  return (
+    <span className={`ro2-badge ro2-badge--${mod}`}>
+      <Icon size={12} /> {label}
+    </span>
+  );
 };
 
-/* ─────────────── SUB-COMPONENTS ─────────────── */
-const SectionHeader = ({ icon, title, accent = C.darkGreen }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: `2px solid ${accent}`, paddingBottom: 10, marginBottom: 18 }}>
-    <div style={{ background: accent, color: '#fff', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      {icon}
-    </div>
-    <h3 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{title}</h3>
-  </div>
-);
-
-const DataRow = ({ label, value, highlight = false, accent = false }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '9px 12px', background: highlight ? '#F0FDF4' : 'transparent', borderBottom: `1px solid ${C.midGray}`, gap: 16 }}>
-    <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>{label}</span>
-    <span style={{ fontSize: 13, fontWeight: highlight ? 800 : 600, color: accent ? C.darkGreen : C.darkGray, textAlign: 'right', wordBreak: 'break-word' }}>{value || '—'}</span>
-  </div>
-);
-
-const InfoCard = ({ label, value, icon, accent = C.darkGreen, large = false }) => (
-  <div style={{ background: C.lightGray, border: `1.5px solid ${C.midGray}`, borderLeft: `4px solid ${accent}`, padding: '12px 16px', flex: '1 1 150px' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, color: C.textSec, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-      {icon} {label}
-    </div>
-    <div style={{ fontSize: large ? 20 : 14, fontWeight: 900, color: accent, wordBreak: 'break-word' }}>{value || '—'}</div>
-  </div>
-);
-
-/* ─────────────── TOAST ─────────────── */
-const useToasts = () => {
-  const [toasts, setToasts] = useState([]);
-  const toast = (message, type = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
-  };
-  const remove = id => setToasts(p => p.filter(t => t.id !== id));
-  return { toasts, toast, remove };
-};
-
-const ToastContainer = ({ toasts, remove }) => (
-  <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
+const Toast = ({ toasts, remove }) => (
+  <div className="ro2-toast-wrap">
     {toasts.map(t => (
-      <div key={t.id} style={{ background: t.type === 'success' ? '#4CAF50' : t.type === 'error' ? '#F44336' : C.darkGreen, color: '#fff', padding: '12px 18px', boxShadow: '4px 4px 0px rgba(0,0,0,0.25)', fontSize: 13, fontWeight: 600, minWidth: 240, maxWidth: 340, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+      <div key={t.id} className={`ro2-toast ro2-toast--${t.type}`}>
         <span>{t.message}</span>
-        <button onClick={() => remove(t.id)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16 }}>×</button>
+        <button className="ro2-toast__close" onClick={() => remove(t.id)} aria-label="Dismiss">×</button>
       </div>
     ))}
   </div>
 );
 
-/* ─────────────── REASON MODAL ─────────────── */
-const ReasonModal = ({ title, placeholder, onConfirm, onClose }) => {
-  const [value, setValue] = useState('');
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: '32px 36px', maxWidth: 440, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', fontFamily: '"Inter", sans-serif' }}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: C.darkGray }}>{title}</h3>
-        <textarea
-          autoFocus
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          placeholder={placeholder || 'Enter reason...'}
-          rows={4}
-          style={{ width: '100%', padding: '10px 14px', fontSize: 13, border: `1.5px solid ${C.midGray}`, borderRadius: 8, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ padding: '9px 20px', border: `1px solid ${C.midGray}`, background: '#fff', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', color: C.darkGray }}>Cancel</button>
-          <button
-            onClick={() => { if (value.trim()) { onConfirm(value.trim()); } }}
-            disabled={!value.trim()}
-            style={{ padding: '9px 24px', background: value.trim() ? C.darkGreen : C.midGray, color: value.trim() ? '#fff' : '#9E9E9E', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: value.trim() ? 'pointer' : 'not-allowed' }}
-          >Confirm</button>
-        </div>
+/* ─────────────── MODAL ─────────────── */
+const ActionModal = ({ title, icon, children, confirmLabel, confirmDisabled, loading, onConfirm, onClose }) => (
+  <div className="ro2-overlay" onClick={onClose}>
+    <div className="ro2-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+      <div className="ro2-modal__head">
+        <h3 className="ro2-title">{icon} {title}</h3>
+        <button className="ro2-close" onClick={onClose} aria-label="Close">×</button>
+      </div>
+      <div className="ro2-modal__body">{children}</div>
+      <div className="ro2-modal__actions">
+        <button className="ro2-btn ro2-btn--ghost" onClick={onClose}>Cancel</button>
+        <button
+          className="ro2-btn ro2-btn--primary"
+          onClick={onConfirm}
+          disabled={confirmDisabled || loading}
+        >
+          {loading ? <SegmentedSpinner size={13} /> : null} {confirmLabel}
+        </button>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 /* ─────────────── MAIN COMPONENT ─────────────── */
 const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const printRef = useRef();
-  const [order, setOrder]   = useState(null);
+  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
   const [actLoading, setActLoading] = useState('');
-  const { toasts, toast, remove } = useToasts();
-  const [modal, setModal] = useState(null); // { title, placeholder, onConfirm }
+  const [toasts, setToasts] = useState([]);
+  const [modal, setModal] = useState(null); // null | { type }
+  const [form, setForm] = useState({
+    reason: '', status: '', statusNote: '', startNote: '',
+    odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '',
+  });
+
+  const toast = (message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts(p => [...p, { id, message, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4500);
+  };
+  const removeToast = id => setToasts(p => p.filter(t => t.id !== id));
 
   const user = authService.getUser?.() || authService.getCurrentUser?.() || {};
-  const userRoles = user.roles || (user.role ? [user.role] : []);
-  const isFinance = userRoles.includes('Finance') || userRoles.includes('Finance Manager') || userRoles.includes('Admin') || userRoles.includes('CEO');
+  const userRoles = (user.roles || (user.role ? [user.role] : [])).map(r => String(r).toLowerCase());
+  const isFinance = ['finance', 'finance manager', 'admin', 'ceo'].some(r => userRoles.includes(r));
 
   const load = async () => {
     try {
       setLoading(true); setError('');
       const res = await axios.get(`/rental-orders/${orderId}`);
-      const data = res.data || res;
+      const data = (res && (res.data && res.data.data)) || res?.data || res;
       setOrder(data);
     } catch (e) {
-      setError(e.message || 'Failed to load order.');
+      setError(e?.response?.data?.message || e.message || 'Failed to load order.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [orderId]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [orderId]);
 
   const doAction = async (key, fn, successMsg) => {
     try {
@@ -179,30 +178,36 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
     }
   };
 
-  const handleApprove  = () => doAction('approve',  () => carService.updateRentalOrderStatus(orderId, { status: 'APPROVED' }),   'Order approved successfully.');
-  const handleActivate = () => doAction('activate', () => carService.updateRentalOrderStatus(orderId, { status: 'ACTIVE' }),    'Order activated — car is now rented.');
-  const handleComplete = () => doAction('complete', () => carService.updateRentalOrderStatus(orderId, { status: 'COMPLETED' }), 'Order marked as completed.');
-  const handleCancel = () => {
-    setModal({
-      title: '✕ Cancel Order — Enter Reason',
-      placeholder: 'e.g. Customer no-show, duplicate booking, vehicle issue...',
-      onConfirm: (reason) => {
-        setModal(null);
-        doAction('cancel', () => carService.cancelRentalOrder(orderId, reason), 'Order cancelled.');
-      }
-    });
+  const openModal = type => { setForm({ reason: '', status: '', statusNote: '', startNote: '', odometer: '', damageFee: '', fuelFee: '', lateFee: '', notes: '' }); setModal({ type }); };
+
+  const handleConfirm = async () => {
+    const { type } = modal || {};
+    if (type === 'cancel') {
+      if (!form.reason.trim()) return;
+      await doAction('cancel', () => carService.cancelRentalOrder(orderId, form.reason.trim()), 'Order cancelled.');
+    } else if (type === 'return') {
+      await doAction('return', () => carService.processReturn(orderId, {
+        odometer: form.odometer ? Number(form.odometer) : null,
+        damageFee: form.damageFee ? Number(form.damageFee) : 0,
+        fuelFee: form.fuelFee ? Number(form.fuelFee) : 0,
+        lateFee: form.lateFee ? Number(form.lateFee) : 0,
+        notes: form.notes.trim() || undefined,
+      }), 'Rental completed — car released.');
+    } else if (type === 'start') {
+      await doAction('start', () => axios.post(`/rental-orders/${orderId}/start`, { note: form.startNote.trim() || undefined }), 'Rental started — car is now rented.');
+    } else if (type === 'status') {
+      await doAction('status', () => carService.updateRentalOrderStatus(orderId, { status: form.status, note: form.statusNote.trim() || undefined }), 'Order status updated.');
+    } else if (type === 'archive') {
+      await doAction('archive', () => axios.post(`/rental-orders/${orderId}/archive`), 'Order moved to history.');
+    } else if (type === 'delete') {
+      await doAction('delete', () => axios.delete(`/rental-orders/${orderId}`), 'Order deleted.');
+    }
+    setModal(null);
   };
+
+  const handleApprove = () => doAction('approve', () => carService.updateRentalOrderStatus(orderId, { status: 'APPROVED' }), 'Order approved.');
   const handleConfirmPayment = () => doAction('pay_confirm', () => carService.verifyPayment(orderId, { isVerified: true, verifiedAmount: order.totalAmount, notes: 'Confirmed from details' }), 'Payment confirmed.');
-  const handleRejectPayment = () => {
-    setModal({
-      title: '✕ Reject Payment — Enter Reason',
-      placeholder: 'e.g. Screenshot invalid, amount mismatch, wrong reference...',
-      onConfirm: (notes) => {
-        setModal(null);
-        doAction('pay_reject', () => carService.verifyPayment(orderId, { isVerified: false, notes }), 'Payment rejected.');
-      }
-    });
-  };
+  const handleRejectPayment = () => doAction('pay_reject', () => carService.verifyPayment(orderId, { isVerified: false, notes: form.reason.trim() || 'Rejected from details' }), 'Payment rejected.');
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -210,29 +215,24 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
     w.document.write(`
       <html>
         <head>
-          <title>Car Rental Contract - ${order?.orderNumber || orderId}</title>
+          <title>SUTANA — Rental Contract ${order?.orderNumber || ''}</title>
           <style>
-            @page { margin: 15mm; size: A4; }
+            @page { margin: 14mm; size: A4; }
             * { box-sizing: border-box; }
-            body { font-family: 'Times New Roman', serif; color: #000; margin: 0; background: #fff; }
-            h1,h2,h3,h4 { margin: 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th { background: #1B5E20; color: #fff; padding: 8px 12px; font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: 0.05em; }
-            td { border: 1px solid #ccc; padding: 8px 12px; font-size: 12px; }
-            .section { margin-bottom: 24px; }
-            .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #1B5E20; border-bottom: 2px solid #1B5E20; padding-bottom: 6px; margin-bottom: 12px; }
-            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-            .info-card { border: 1.5px solid #ccc; border-left: 4px solid #1B5E20; padding: 10px 14px; }
-            .info-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #616161; margin-bottom: 3px; }
-            .info-value { font-size: 14px; font-weight: 900; color: #1B5E20; }
-            .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-30deg); font-size: 80px; color: rgba(27,94,32,0.06); font-weight: 900; pointer-events: none; z-index: 0; white-space: nowrap; }
-            .sig-block { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-            .sig-line { border-top: 1.5px solid #000; padding-top: 6px; font-size: 10px; color: #424242; }
-            .footer-bar { border-top: 2px solid #1B5E20; padding-top: 12px; font-size: 9px; color: #616161; text-align: center; margin-top: 30px; }
+            body { font-family: 'Inter', 'Segoe UI', sans-serif; line-height: 1.6; color: #1e293b; background: #fff; margin: 0; }
+            button, input, select, textarea { display: none !important; }
+            .d2-header, .d2-actions, .d2-side, .ro2-toast-wrap { display: none !important; }
+            .d2 { background: #fff !important; padding: 0 !important; }
+            .d2-grid { grid-template-columns: 1fr !important; }
+            .d2-badges { gap: 8px; margin: 0 0 16px; }
+            .d2-section { box-shadow: none !important; break-inside: avoid; margin-bottom: 14px; }
+            .d2-kv { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+            .d2-img { max-height: 220px; }
+            img { max-width: 100%; }
+            .d2-progress, .ro2-progress { display: none !important; }
           </style>
         </head>
         <body>
-          <div class="watermark">SUTANA ENTERPRISE</div>
           ${printRef.current.innerHTML}
         </body>
       </html>
@@ -241,314 +241,461 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
     setTimeout(() => w.print(), 400);
   };
 
-  /* ── Loading ── */
+  /* ── Loading / Error ── */
   if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, fontFamily: '"Inter", sans-serif' }}>
+    <div className="d2 d2-loading">
       <SegmentedSpinner size={32} />
-      <span style={{ color: C.textSec, fontWeight: 600 }}>Loading order details...</span>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <span>Loading order details...</span>
     </div>
   );
 
-  /* ── Error ── */
   if (error || !order) return (
-    <div style={{ padding: 40, fontFamily: '"Inter", sans-serif', textAlign: 'center' }}>
-      <AlertTriangle size={40} color={C.red} style={{ marginBottom: 12 }} />
-      <p style={{ color: C.red, fontWeight: 700, fontSize: 16 }}>{error || 'Order not found.'}</p>
-      <button onClick={onBack} style={{ marginTop: 16, padding: '10px 24px', background: C.darkGreen, color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-        ← Back to Orders
-      </button>
+    <div className="d2">
+      <div className="d2-section d2-error">
+        <p className="ro2-empty__title" style={{ color: 'hsl(var(--danger))' }}>{error || 'Order not found.'}</p>
+        <button className="ro2-btn ro2-btn--primary" onClick={onBack}>
+          <ArrowLeft size={15} /> Back to Orders
+        </button>
+      </div>
     </div>
   );
 
-  const statusCfg  = STATUS_CFG[order.status] || { bg: '#F5F5F5', color: C.darkGray, border: C.midGray, label: (order.status || '').toUpperCase() };
-  const payCfg     = PAY_CFG[order.paymentStatus] || PAY_CFG.PENDING;
-  const PayIcon    = payCfg.Icon;
-  const totalDays  = parseInt(order.totalDays || order.days || 0);
-  const dailyRate  = parseFloat(order.dailyRate || order.daily_rate || 0);
-  const totalAmt   = parseFloat(order.totalAmount || order.total_amount || 0);
-  const vatAmt     = parseFloat(order.vatAmount || order.vat_amount || 0);
-  const subAmt     = parseFloat(order.subtotal) || Math.max(0, totalAmt - vatAmt - (parseFloat(order.securityDeposit || order.security_deposit || 0)));
-  const carName    = order.carName || order.car?.brand ? `${order.car?.brand} ${order.car?.model}` : 'N/A';
-  const carImgUrl  = getImgUrl(order.carImage || order.car?.images?.[0]);
+  /* ── Derived data (fixed field mapping) ── */
+  const paid = order.paymentStatus === 'PAID' || order.paymentStatus === 'Confirmed';
+  const isTerminal = TERMINAL_STATUSES.includes(order.status);
+  const startable = STARTABLE_STATUSES.includes(order.status);
 
-  /* ── Action buttons ── */
-  const Btn = ({ id, label, onClick, bg, border, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled || actLoading === id}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-        padding: '9px 18px',
-        background: disabled || actLoading === id ? '#E0E0E0' : bg,
-        color: disabled || actLoading === id ? '#9E9E9E' : '#fff',
-        border: `1px solid ${disabled || actLoading === id ? '#BDBDBD' : border}`,
-        fontWeight: 700, fontSize: 12, cursor: disabled || actLoading === id ? 'not-allowed' : 'pointer',
-        boxShadow: disabled || actLoading === id ? 'none' : `0 3px 0 ${border}`,
-        transition: 'all 0.12s',
-      }}
-      onMouseDown={e => { if (!disabled && actLoading !== id) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; } }}
-      onMouseUp={e => { if (!disabled && actLoading !== id) { e.currentTarget.style.boxShadow = `0 3px 0 ${border}`; e.currentTarget.style.transform = 'translateY(0)'; } }}
-    >
-      {actLoading === id ? <SegmentedSpinner size={13} /> : null}
-      {label}
-    </button>
+  const customerName  = f(order, 'customerName', 'customer_name') || 'Walk-In Customer';
+  const customerPhone = f(order, 'customerPhone', 'customer_phone');
+  const customerEmail = f(order, 'customerEmail', 'customer_email');
+
+  const carName = f(order, 'carName', 'car_name')
+    || `${f(order, 'carBrand', 'car_brand') || ''} ${f(order, 'carModel', 'car_model') || ''}`.trim()
+    || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : '')
+    || 'Vehicle';
+  const carImgUrl = getImgUrl(f(order, 'carImage', 'car_image') || order.car?.image1 || order.car?.images?.[0]);
+  const licensePlate = f(order, 'carLicensePlate', 'car_license_plate') || order.car?.licensePlate;
+  const fuelType     = f(order, 'carFuelType', 'car_fuel_type') || order.car?.fuelType;
+  const transmission = f(order, 'carTransmission', 'car_transmission') || order.car?.transmission;
+  const carSeats     = f(order, 'carSeats', 'car_seats') || order.car?.seats;
+
+  const pickupDate = f(order, 'pickupDate', 'pickup_date', 'start_date', 'startDate');
+  const returnDate = f(order, 'returnDate', 'return_date', 'end_date', 'endDate');
+  const totalDays  = Number(f(order, 'totalDays', 'total_days', 'days') || 0);
+  const dailyRate  = Number(f(order, 'dailyRate', 'daily_rate') || 0);
+  const totalAmt   = Number(f(order, 'totalAmount', 'total_amount') || 0);
+  const vatAmt     = Number(f(order, 'vatAmount', 'vat_amount') || 0);
+  const deposit    = Number(f(order, 'securityDeposit', 'security_deposit') || 0);
+  const subAmt     = Number(f(order, 'subtotal', 'sub_total')) || Math.max(0, totalAmt - vatAmt - deposit);
+
+  const proofUrl   = getImgUrl(f(order, 'paymentProofUrl', 'payment_proof_url', 'paymentProof', 'payment_screenshot'));
+  const paymentRef = f(order, 'paymentReference', 'payment_reference');
+  const payMethod  = f(order, 'paymentMethod', 'payment_method');
+  const pickupLoc  = f(order, 'pickupLocation', 'pickup_location');
+  const notes      = f(order, 'specialRequests', 'special_requests', 'notes', 'manager_note');
+
+  const createdOn   = f(order, 'createdAt', 'created_at');
+  const approvedOn  = f(order, 'approvedAt', 'approved_at');
+  const startedOn   = f(order, 'rentalStartTime', 'rental_start_time', 'activatedAt', 'activated_at');
+  const returnedOn  = f(order, 'actualReturnTime', 'actual_return_time', 'completedAt', 'completed_at');
+  const cancelReason = f(order, 'cancellationReason', 'cancellation_reason', 'cancelReason', 'cancel_reason');
+  const cancelTime   = f(order, 'cancelledAt', 'cancelled_at');
+
+  const isManual = order.isManual || order.is_manual;
+  const r = order.status === 'ACTIVE' ? rentalStats(order) : null;
+
+  const PayIcon = paid ? BadgeCheck : (order.paymentStatus === 'REJECTED' || order.paymentStatus === 'Rejected' ? Ban : Clock);
+
+  /* ── Section header ── */
+  const SectionHead = ({ icon, title }) => (
+    <div className="d2-section__head">
+      <span className="d2-section__icon">{icon}</span>
+      <h3 className="d2-section__title">{title}</h3>
+    </div>
+  );
+
+  const Row = ({ label, value, accent, amount, full }) => (
+    <div className={`d2-row${full ? ' d2-row__full' : ''}`}>
+      <div className="d2-row__label">{label}</div>
+      <div className={`d2-row__value${accent ? ' d2-row__value--accent' : ''}${amount ? ' d2-row__value--amount' : ''}`}>{value || '—'}</div>
+    </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F0F0F0', fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray }}>
-      <ToastContainer toasts={toasts} remove={remove} />
-      {modal && <ReasonModal title={modal.title} placeholder={modal.placeholder} onConfirm={modal.onConfirm} onClose={() => setModal(null)} />}
+    <div className="d2">
+      <Toast toasts={toasts} remove={removeToast} />
 
-      {/* ── TOP BAR ── */}
-      <div style={{ background: C.darkGreen, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64, borderBottom: `3px solid ${C.earthBrown}`, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 3px 0 rgba(0,0,0,0.3)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}>
-            <ArrowLeft size={15} /> Back to Orders
+      {/* ══ HEADER ══ */}
+      <div className="d2-header">
+        <div className="d2-header__left">
+          <button className="ro2-btn ro2-btn--ghost" onClick={onBack} style={{ padding: '0.5rem 0.875rem' }}>
+            <ArrowLeft size={16} /> Back
           </button>
+          <span className="d2-header__icon"><Car size={20} /></span>
           <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 18 }}>Order Detail</div>
-            <div style={{ color: C.sage, fontSize: 12, fontWeight: 500 }}>Car Rental Contract</div>
+            <h1 className="d2-heading">Order Detail</h1>
+            <p className="d2-sub">Car Rental Contract · {order.orderNumber}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingBottom: 4 }}>
-          <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 3px 0 rgba(0,0,0,0.3)' }}>
-            <RefreshCw size={14} /> Refresh
+        <div className="d2-actions">
+          <button className="ro2-btn ro2-btn--ghost" onClick={load}>
+            <RefreshCw size={15} className={loading ? 'ro2-spin' : ''} /> Refresh
           </button>
-          <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 20px', background: C.forestGreen, color: '#fff', border: `1px solid ${C.darkGreen}`, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 4px 0 ${C.darkGreen}` }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.emerald; }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.forestGreen; }}>
+          <button className="ro2-btn ro2-btn--primary" onClick={handlePrint}>
             <Printer size={15} /> Print Contract
           </button>
         </div>
       </div>
 
-      {/* ── ACTION BUTTONS ── */}
-      <div style={{ background: '#fff', borderBottom: `1px solid ${C.midGray}`, padding: '12px 32px', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 4 }}>Actions:</span>
-        {order.status === 'PENDING_APPROVAL' && <Btn id="approve"  label="✓ Approve"       onClick={handleApprove}  bg="#2E7D32" border="#1B5E20" disabled={order.paymentStatus !== 'PAID' && order.paymentStatus !== 'Confirmed'} />}
-        {order.status === 'APPROVED'         && <Btn id="activate" label="▶ Activate Rental" onClick={handleActivate} bg="#0D47A1" border="#0a3370" disabled={order.paymentStatus !== 'PAID' && order.paymentStatus !== 'Confirmed'} />}
-        {order.status === 'ACTIVE'           && <Btn id="complete" label="✓ Mark Completed"  onClick={handleComplete} bg="#4A148C" border="#38006b" disabled={order.paymentStatus !== 'PAID' && order.paymentStatus !== 'Confirmed'} />}
-        {!['COMPLETED','CANCELLED','REJECTED'].includes(order.status) && <Btn id="cancel" label="✕ Cancel Order" onClick={handleCancel} bg="#B71C1C" border="#880e0e" />}
-        {isFinance && order.paymentStatus !== 'PAID' && order.paymentStatus !== 'Confirmed' && !['CANCELLED','REJECTED'].includes(order.status) && (
-          <>
-            <span style={{ width: 1, height: 24, background: C.midGray, margin: '0 4px' }} />
-            <Btn id="pay_confirm" label="💳 Confirm Payment" onClick={handleConfirmPayment} bg="#2E8B57" border="#1B5E20" />
-            <Btn id="pay_reject"  label="✕ Reject Payment"  onClick={handleRejectPayment}  bg="#C62828" border="#880e0e" />
-          </>
+      {/* ══ BADGES ══ */}
+      <div className="d2-badges">
+        <StatusBadge code={order.status} />
+        <PayBadge status={order.paymentStatus} />
+        {isManual && (
+          <span className="ro2-badge ro2-badge--approved"><span className="ro2-badge__dot" /> Manual Entry</span>
         )}
       </div>
 
-      {/* ── PRINTABLE AREA ── */}
-      <div style={{ maxWidth: 960, margin: '32px auto', padding: '0 20px 60px' }}>
-        <div ref={printRef}>
+      <div className="d2-grid">
+        {/* ── MAIN COLUMN ── */}
+        <div className="d2-main">
+          <div ref={printRef} style={{ display: 'contents' }}>
+            {/* ══ KEY NUMBERS ══ */}
+            <div className="ro2-stats">
+              <div className="ro2-stat"><div className="ro2-stat__label"><DollarSign size={12} /> Total Amount</div><div className="ro2-stat__num">ETB {fmt(totalAmt)}</div></div>
+              <div className="ro2-stat ro2-stat--info"><div className="ro2-stat__label"><Receipt size={12} /> VAT (15%)</div><div className="ro2-stat__num">ETB {fmt(vatAmt)}</div></div>
+              <div className="ro2-stat ro2-stat--warn"><div className="ro2-stat__label"><Calendar size={12} /> Rental Days</div><div className="ro2-stat__num">{totalDays}</div></div>
+              <div className="ro2-stat ro2-stat--success"><div className="ro2-stat__label"><Clock size={12} /> Daily Rate</div><div className="ro2-stat__num">ETB {fmt(dailyRate)}</div></div>
+            </div>
 
-          {/* ══ CONTRACT HEADER ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, marginBottom: 4, padding: '36px 44px 28px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            {/* Letterhead */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `3px double ${C.darkGreen}`, paddingBottom: 22, marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <Leaf size={28} color={C.forestGreen} />
-                  <h1 style={{ fontSize: 28, fontWeight: 900, color: C.darkGreen, letterSpacing: '-0.5px', textTransform: 'uppercase' }}>SUTANA Enterprise</h1>
+            {/* ══ ACTIVE COUNTDOWN ══ */}
+            {r && (
+              <div className="d2-section">
+                <SectionHead icon={<Clock size={15} />} title="Rental Countdown" />
+                <div className="d2-row"><div className="d2-row__label">Started</div><div className="d2-row__value d2-row__value--accent">{fmtDT(r.began)}</div></div>
+                <div className="d2-row"><div className="d2-row__label">Ends</div><div className="d2-row__value d2-row__value--accent">{fmtDT(r.end)}</div></div>
+                <div className={`ro2-progress`} style={{ marginTop: '0.75rem' }}>
+                  <div className="ro2-bar-label">
+                    <span>{r.elapsedDays} of {r.totalDays} days elapsed</span>
+                    <span>
+                      {r.overdue ? (
+                        <strong className="ro2-days-overdue">{r.remaining} day{r.remaining !== 1 ? 's' : ''} overdue</strong>
+                      ) : (
+                        <strong className="ro2-days-remain">{r.remaining} day{r.remaining !== 1 ? 's' : ''} remaining</strong>
+                      )}
+                    </span>
+                  </div>
+                  <div className="ro2-progress">
+                    <div className={`ro2-progress__bar ${r.overdue ? 'ro2-progress__bar--overdue' : ''}`} style={{ width: `${r.pct}%` }} />
+                  </div>
                 </div>
-                <p style={{ margin: 0, color: C.textSec, fontSize: 13 }}>Vehicle Rental Division</p>
-                <p style={{ margin: '2px 0 0', color: C.textSec, fontSize: 12 }}>Integrated Business Management System</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 900, color: C.darkGreen, letterSpacing: 2 }}>{order.orderNumber}</div>
-                <div style={{ fontSize: 11, color: C.textSec, marginTop: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Rental Contract</div>
-                <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>Issued: {fmtDT(order.createdAt || order.created_at)}</div>
-              </div>
-            </div>
-
-            {/* Document Title */}
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <h2 style={{ fontSize: 14, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2.5, color: C.darkGreen, margin: '0 0 6px', borderBottom: `1px solid ${C.sage}`, paddingBottom: 10, display: 'inline-block', paddingLeft: 24, paddingRight: 24 }}>
-                Vehicle Rental Agreement
-              </h2>
-            </div>
-
-            {/* Status Badges */}
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', background: statusCfg.bg, color: statusCfg.color, border: `2px solid ${statusCfg.border}`, fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                <span style={{ width: 8, height: 8, background: statusCfg.color, display: 'inline-block', flexShrink: 0 }} />
-                Order Status: {statusCfg.label}
-              </div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', background: payCfg.bg, color: payCfg.color, border: `2px solid ${payCfg.border}`, fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                <PayIcon size={13} /> {payCfg.label}
-              </div>
-              {order.isManual && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', background: '#E3F2FD', color: '#1565C0', border: '2px solid #90CAF9', fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>
-                  MANUAL ENTRY
-                </div>
-              )}
-            </div>
-
-            {/* Key Stats */}
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <InfoCard label="Total Amount"   value={`ETB ${fmt(totalAmt)}`}     icon={<DollarSign size={11} />} accent={C.darkGreen} large />
-              <InfoCard label="VAT Amount"     value={`ETB ${fmt(vatAmt)}`}       icon={<Banknote size={11} />}  accent={C.earthBrown} />
-              <InfoCard label="Rental Days"    value={`${totalDays} days`}         icon={<Calendar size={11} />}   accent={C.emerald} />
-              <InfoCard label="Daily Rate"     value={`ETB ${fmt(dailyRate)} /day`} icon={<Star size={11} />}       accent={C.forestGreen} />
-              <InfoCard label="Payment Method" value={order.paymentMethod}          icon={<Package size={11} />}    accent={C.earthBrown} />
-            </div>
-          </div>
-
-          {/* ══ SECTION 1: CUSTOMER ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px', marginBottom: 4 }}>
-            <SectionHeader icon={<User size={15} />} title="Customer / Client Information" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0 }}>
-              <DataRow label="Full Name"     value={order.customerName}  accent />
-              <DataRow label="Phone Number"  value={order.customerPhone} />
-              <DataRow label="Email Address" value={order.customerEmail} />
-              <DataRow label="Customer ID"   value={order.customerId ? `#${order.customerId}` : 'Walk-In / Manual'} />
-            </div>
-          </div>
-
-          {/* ══ SECTION 2: VEHICLE ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px', marginBottom: 4 }}>
-            <SectionHeader icon={<Car size={15} />} title="Vehicle Details" accent={C.emerald} />
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 16 }}>
-              {carImgUrl && (
-                <img src={carImgUrl} alt={carName} onError={e => { e.target.style.display = 'none'; }}
-                  style={{ width: 180, height: 120, objectFit: 'cover', border: `2px solid ${C.sage}`, flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 0, alignContent: 'start' }}>
-                <DataRow label="Vehicle"       value={carName}                          accent />
-                <DataRow label="License Plate" value={order.car?.licensePlate || order.licensePlate} />
-                <DataRow label="Fuel Type"     value={order.car?.fuelType || order.fuelType} />
-                <DataRow label="Transmission"  value={order.car?.transmission || order.transmission} />
-                <DataRow label="Seats"         value={order.car?.seats ? `${order.car.seats} seats` : ''} />
-                <DataRow label="Vehicle ID"    value={order.carId ? `#${order.carId}` : '—'} />
-              </div>
-            </div>
-          </div>
-
-          {/* ══ SECTION 3: RENTAL PERIOD ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px', marginBottom: 4 }}>
-            <SectionHeader icon={<Calendar size={15} />} title="Rental Period" accent={C.forestGreen} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0 }}>
-              <DataRow label="Start Date"    value={fmtDate(order.startDate || order.start_date)} accent />
-              <DataRow label="End Date"      value={fmtDate(order.endDate   || order.end_date)}   accent />
-              <DataRow label="Total Duration" value={`${totalDays} day${totalDays !== 1 ? 's' : ''}`} highlight />
-              <DataRow label="Pickup Location" value={order.pickupLocation} />
-              {order.notes && (
-                <div style={{ gridColumn: '1 / -1', padding: '12px 12px', borderBottom: `1px solid ${C.midGray}` }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Special Notes</div>
-                  <div style={{ fontSize: 13, color: C.darkGray, lineHeight: 1.6, fontStyle: 'italic' }}>{order.notes}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ══ SECTION 4: FINANCIAL SUMMARY ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px', marginBottom: 4 }}>
-            <SectionHeader icon={<DollarSign size={15} />} title="Financial Summary" accent={C.darkGreen} />
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-              <thead>
-                <tr style={{ background: C.darkGreen }}>
-                  {['Description', 'Days', 'Unit Rate (ETB)', 'Total (ETB)'].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', textAlign: h === 'Description' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>{carName} Rental Fee</td>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }}>{totalDays} days</td>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }}>{fmt(dailyRate)}</td>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(dailyRate * totalDays)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>Subtotal</td>
-                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(subAmt)}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, fontSize: 13, fontWeight: 600, color: C.darkGray }}>VAT Amount</td>
-                  <td colSpan={2} style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13 }} />
-                  <td style={{ padding: '12px 14px', borderBottom: `1px solid ${C.midGray}`, textAlign: 'right', fontSize: 13, fontWeight: 700 }}>{fmt(vatAmt)}</td>
-                </tr>
-                <tr style={{ background: C.lightSage }}>
-                  <td colSpan={3} style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 14, color: C.darkGreen }}>TOTAL AMOUNT DUE (incl. VAT)</td>
-                  <td style={{ padding: '14px', textAlign: 'right', fontWeight: 900, fontSize: 18, color: C.darkGreen }}>ETB {fmt(totalAmt)}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0, border: `1px solid ${C.midGray}` }}>
-              <DataRow label="Payment Method"    value={order.paymentMethod} />
-              <DataRow label="Payment Status"    value={payCfg.label} />
-              <DataRow label="Payment Reference" value={order.paymentReference || order.payment_reference} accent />
-            </div>
-            {/* Payment proof image */}
-            {(order.paymentProof || order.payment_screenshot) && (
-              <div style={{ marginTop: 20, padding: 16, border: `1.5px solid ${C.sage}`, background: C.lightSage }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Attached Payment Proof</div>
-                <img src={getImgUrl(order.paymentProof || order.payment_screenshot)} alt="Payment Proof"
-                  style={{ maxWidth: '100%', maxHeight: 360, border: `2px solid ${C.sage}`, display: 'block' }}
-                  onError={e => { e.target.style.display = 'none'; }} />
               </div>
             )}
-          </div>
 
-          {/* ══ SECTION 5: TIMELINE ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px', marginBottom: 4 }}>
-            <SectionHeader icon={<Clock size={15} />} title="Order Timeline" accent={C.earthBrown} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0 }}>
-              <DataRow label="Order Created"  value={fmtDT(order.createdAt || order.created_at)} />
-              <DataRow label="Order Number"   value={order.orderNumber}   accent />
-              {order.approvedAt  && <DataRow label="Approved On"       value={fmtDT(order.approvedAt)} />}
-              {order.activatedAt && <DataRow label="Activated On"      value={fmtDT(order.activatedAt)} />}
-              {order.completedAt && <DataRow label="Completed On"      value={fmtDT(order.completedAt)} />}
-              {order.cancelledAt && <DataRow label="Cancelled On"      value={fmtDT(order.cancelledAt)} />}
-              {order.cancelReason && (
-                <div style={{ gridColumn: '1 / -1', padding: '12px', borderBottom: `1px solid ${C.midGray}`, background: '#FFF8E1' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#E65100', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>Cancellation Reason</div>
-                  <div style={{ fontSize: 13, color: C.darkGray, fontStyle: 'italic' }}>{order.cancelReason}</div>
+            {/* ══ CUSTOMER ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<User size={15} />} title="Customer Information" />
+              <div className="d2-kv">
+                <Row label="Full Name" value={customerName} accent />
+                <Row label="Phone" value={customerPhone} />
+                <Row label="Email" value={customerEmail} />
+                <Row label="Customer ID" value={order.customerId ? `#${order.customerId}` : 'Walk-In / Manual'} />
+              </div>
+            </div>
+
+            {/* ══ VEHICLE ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<Car size={15} />} title="Vehicle Details" />
+              {carImgUrl && <img className="d2-img" src={carImgUrl} alt={carName} onError={e => { e.target.style.display = 'none'; }} />}
+              <div className="d2-kv">
+                <Row label="Vehicle" value={carName} accent />
+                <Row label="License Plate" value={licensePlate} />
+                <Row label="Fuel Type" value={fuelType} />
+                <Row label="Transmission" value={transmission} />
+                <Row label="Seats" value={carSeats ? `${carSeats} seats` : ''} />
+                <Row label="Vehicle ID" value={order.carId ? `#${order.carId}` : ''} />
+              </div>
+            </div>
+
+            {/* ══ RENTAL PERIOD ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<Calendar size={15} />} title="Rental Period" />
+              <div className="d2-kv">
+                <Row label="Start Date" value={fmtDate(pickupDate)} accent />
+                <Row label="End Date" value={fmtDate(returnDate)} accent />
+                <Row label="Duration" value={`${totalDays} day${totalDays !== 1 ? 's' : ''}`} />
+                <Row label="Pickup Location" value={pickupLoc} />
+              </div>
+              {notes && (
+                <figure className="d2-quote" style={{ marginTop: '0.75rem' }}>
+                  <strong style={{ color: 'hsl(var(--fg))' }}>Special Notes — </strong>{notes}
+                </figure>
+              )}
+            </div>
+
+            {/* ══ FINANCIAL SUMMARY ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<DollarSign size={15} />} title="Financial Summary" />
+              <table className="d2-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th className="num">Days</th>
+                    <th className="num">Rate (ETB)</th>
+                    <th className="num">Total (ETB)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{carName} Rental Fee</td>
+                    <td className="num">{totalDays}</td>
+                    <td className="num">{fmt(dailyRate)}</td>
+                    <td className="num">{fmt(dailyRate * totalDays)}</td>
+                  </tr>
+                  <tr>
+                    <td>Subtotal</td>
+                    <td className="num" colSpan="2"></td>
+                    <td className="num">{fmt(subAmt)}</td>
+                  </tr>
+                  <tr>
+                    <td>VAT Amount</td>
+                    <td className="num" colSpan="2"></td>
+                    <td className="num">{fmt(vatAmt)}</td>
+                  </tr>
+                  <tr className="d2-table__total">
+                    <td colSpan="3">TOTAL AMOUNT DUE (incl. VAT)</td>
+                    <td className="num">ETB {fmt(totalAmt)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="d2-kv" style={{ marginTop: '0.75rem' }}>
+                <Row label="Security Deposit" value={`ETB ${fmt(deposit)}`} />
+                <Row label="Payment Method" value={payMethod} />
+                <Row label="Payment Reference" value={paymentRef} accent />
+                <Row label="Payment Status" value={STATUS_LABELS[order.paymentStatus] || order.paymentStatus} />
+              </div>
+              {proofUrl && (
+                <div className="d2-proof">
+                  <div className="d2-row__label" style={{ color: 'hsl(var(--muted-strong))' }}>Attached Payment Proof</div>
+                  <img src={proofUrl} alt="Payment Proof" onError={e => { e.target.style.display = 'none'; }} />
                 </div>
+              )}
+            </div>
+
+            {/* ══ TIMELINE ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<Clock size={15} />} title="Order Timeline" />
+              <div className="d2-kv">
+                <Row label="Order Created" value={fmtDT(createdOn)} />
+                <Row label="Order Number" value={order.orderNumber} accent />
+                {approvedOn && <Row label="Approved On" value={fmtDT(approvedOn)} />}
+                {startedOn && <Row label="Rental Started" value={fmtDT(startedOn)} />}
+                {returnedOn && <Row label="Returned On" value={fmtDT(returnedOn)} />}
+                {cancelTime && <Row label="Cancelled On" value={fmtDT(cancelTime)} />}
+              </div>
+              {cancelReason && (
+                <figure className="d2-quote" style={{ marginTop: '0.75rem', borderColor: 'hsl(var(--danger))', background: 'hsl(var(--danger-soft))' }}>
+                  <strong style={{ color: 'hsl(var(--danger))' }}>Cancellation Reason — </strong>{cancelReason}
+                </figure>
+              )}
+            </div>
+
+            {/* ══ SIGNATURES ══ */}
+            <div className="d2-section">
+              <SectionHead icon={<FileText size={15} />} title="Authorization & Signatures" />
+              <p className="d2-quote" style={{ marginBottom: '1.5rem' }}>
+                By signing below, both parties confirm that all rental terms described in this contract have been agreed upon,
+                and the vehicle referenced above will be / has been deployed for the agreed period.
+              </p>
+              <div className="d2-sigs">
+                {[{ role: 'Client / Renter', name: customerName, title: 'Authorized Signatory' },
+                  { role: 'Sutana Enterprise', name: 'Car Rental Manager', title: 'Vehicle Rental Division Representative' }].map(s => (
+                  <div key={s.role}>
+                    <div className="d2-sig__role">{s.role}</div>
+                    <div className="d2-sig__line"></div>
+                    <div className="d2-sig__name">{s.name}</div>
+                    <div className="d2-sig__title">{s.title}</div>
+                    <div className="d2-sig__title" style={{ marginTop: '0.25rem' }}>Date: ______________</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SIDE PANEL: ACTIONS ── */}
+        <div className="d2-side">
+          <div className="d2-section">
+            <SectionHead icon={<ListChecks size={15} />} title="Actions" />
+            <div className="d2-panel__actions">
+              {order.status === 'PENDING_APPROVAL' && (
+                <button className="ro2-btn ro2-btn--success ro2-btn--block" disabled={actLoading === 'approve'} onClick={handleApprove}>
+                  {actLoading === 'approve' ? <SegmentedSpinner size={13} /> : <BadgeCheck size={15} />} Approve Order
+                </button>
+              )}
+              {startable && (
+                <button className="ro2-btn ro2-btn--primary ro2-btn--block" disabled={actLoading === 'start' || !paid} onClick={() => openModal('start')}>
+                  {actLoading === 'start' ? <SegmentedSpinner size={13} /> : <Play size={15} />} Start Rental
+                </button>
+              )}
+              {order.status === 'ACTIVE' && (
+                <button className="ro2-btn ro2-btn--success ro2-btn--block" disabled={actLoading === 'return'} onClick={() => openModal('return')}>
+                  {actLoading === 'return' ? <SegmentedSpinner size={13} /> : <RotateCcw size={15} />} Complete & Release Car
+                </button>
+              )}
+              {!isTerminal && (
+                <button className="ro2-btn ro2-btn--danger ro2-btn--block" disabled={actLoading === 'cancel'} onClick={() => openModal('cancel')}>
+                  {actLoading === 'cancel' ? <SegmentedSpinner size={13} /> : <Ban size={15} />} Cancel Order
+                </button>
+              )}
+              {!isTerminal && (
+                <button className="ro2-btn ro2-btn--outline ro2-btn--block" onClick={() => openModal('status')}>
+                  <ListChecks size={15} /> Set Status
+                </button>
               )}
             </div>
           </div>
 
-          {/* ══ SIGNATURES ══ */}
-          <div style={{ background: C.white, border: `1.5px solid ${C.midGray}`, borderTop: 'none', padding: '28px 44px 36px' }}>
-            <SectionHeader icon={<FileText size={15} />} title="Authorization & Signatures" accent={C.darkGreen} />
-            <p style={{ fontSize: 12, color: C.textSec, lineHeight: 1.7, margin: '0 0 28px', fontStyle: 'italic' }}>
-              By signing below, both parties confirm that all rental terms and conditions described in this contract have been agreed upon,
-              and the vehicle referenced above will be/has been deployed for the agreed period.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 20 }}>
-              {[
-                { role: 'CLIENT / RENTER', name: order.customerName, title: 'Authorized Signatory' },
-                { role: 'SUTANA ENTERPRISE', name: 'Car Rental Manager', title: 'Vehicle Rental Division Representative' },
-              ].map(({ role, name, title }) => (
-                <div key={role}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{role}</div>
-                  <div style={{ borderBottom: `1.5px solid ${C.darkGray}`, height: 40, marginBottom: 6, position: 'relative' }}>
-                    <div style={{ position: 'absolute', bottom: 4, left: 0, fontSize: 11, color: '#9E9E9E', fontStyle: 'italic' }}>Signature</div>
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.darkGray }}>{name}</div>
-                  <div style={{ fontSize: 11, color: C.textSec }}>{title}</div>
-                  <div style={{ fontSize: 10, color: C.textSec, marginTop: 4 }}>Date: _______________________</div>
-                </div>
-              ))}
+          {isFinance && !paid && !isTerminal && (
+            <div className="d2-section">
+              <SectionHead icon={<DollarSign size={15} />} title="Payment Review" />
+              <div className="d2-panel__actions">
+                <button className="ro2-btn ro2-btn--success ro2-btn--block" disabled={actLoading === 'pay_confirm'} onClick={handleConfirmPayment}>
+                  {actLoading === 'pay_confirm' ? <SegmentedSpinner size={13} /> : <BadgeCheck size={15} />} Confirm Payment
+                </button>
+                <button className="ro2-btn ro2-btn--danger ro2-btn--block" disabled={actLoading === 'pay_reject'} onClick={() => openModal('pay_reject')}>
+                  {actLoading === 'pay_reject' ? <SegmentedSpinner size={13} /> : <Ban size={15} />} Reject Payment
+                </button>
+              </div>
             </div>
-            <div style={{ borderTop: `2px solid ${C.darkGreen}`, marginTop: 36, paddingTop: 14, textAlign: 'center', fontSize: 11, color: C.textSec }}>
-              <div style={{ fontWeight: 800, color: C.darkGreen, marginBottom: 3 }}>SUTANA ENTERPRISE — Vehicle Rental Division</div>
-              <div>This document is computer-generated and valid without a physical seal · Contract No: {order.orderNumber} · Generated: {fmtDT(new Date())}</div>
-            </div>
-          </div>
+          )}
 
-        </div>{/* end printRef */}
+          {isTerminal && (
+            <div className="d2-section">
+              <SectionHead icon={<Archive size={15} />} title="History" />
+              <div className="d2-panel__actions">
+                <button className="ro2-btn ro2-btn--outline ro2-btn--block" disabled={actLoading === 'archive' || !!isManual} onClick={() => openModal('archive')}>
+                  {actLoading === 'archive' ? <SegmentedSpinner size={13} /> : <Archive size={15} />} Move to History
+                </button>
+                {isManual && <p className="ro2-hint">Manual orders stay in the rental list.</p>}
+                <div className="d2-panel__divider" />
+                <button className="ro2-btn ro2-btn--danger ro2-btn--block" disabled={actLoading === 'delete'} onClick={() => openModal('delete')}>
+                  {actLoading === 'delete' ? <SegmentedSpinner size={13} /> : <Trash2 size={15} />} Delete Order
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="d2-section">
+            <SectionHead icon={<FileText size={15} />} title="Reference" />
+            <p className="ro2-meta" style={{ gap: '0.375rem' }}><Hash size={13} /> {order.orderNumber}</p>
+            <p className="ro2-meta"><Calendar size={13} /> Issued: {fmtDT(createdOn)}</p>
+            <p className="ro2-meta"><FileText size={13} /> Type: Car Rental{isManual ? ' · Manual' : ''}</p>
+            <p className="ro2-meta" style={{ color: 'hsl(var(--primary-strong))' }}><Download size={13} /> Use "Print Contract" for PDF</p>
+          </div>
+        </div>
       </div>
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @media print { body { background: #fff; } button { display: none !important; } }
-      `}</style>
+      {/* ══ MODALS ══ */}
+      {modal?.type === 'cancel' && (
+        <ActionModal title="Cancel Order" icon={<Ban size={15} />} confirmLabel="Confirm Cancel"
+          confirmDisabled={!form.reason.trim()} loading={actLoading === 'cancel'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <div className="ro2-field">
+            <label className="ro2-label">Reason (required)</label>
+            <textarea className="ro2-textarea" rows="4" autoFocus placeholder="e.g. Customer no-show, duplicate booking, vehicle issue..."
+              value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'start' && (
+        <ActionModal title="Start Rental" icon={<Play size={15} />} confirmLabel="Start Rental"
+          loading={actLoading === 'start'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <p>Confirm the rental is starting now. {carName} will be marked as <strong>Booked</strong> and the day counter begins.</p>
+          <div className="ro2-field">
+            <label className="ro2-label">Start Note (optional)</label>
+            <textarea className="ro2-textarea" rows="3" placeholder="e.g. Handover odometer reading, keys handed, inspection ok..."
+              value={form.startNote} onChange={e => setForm(p => ({ ...p, startNote: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'return' && (
+        <ActionModal title="Complete & Release Car" icon={<RotateCcw size={15} />} confirmLabel="Complete Return"
+          loading={actLoading === 'return'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <p>Finalize the rental return. The car will be released and marked <strong>Available</strong>.</p>
+          <div className="ro2-field">
+            <label className="ro2-label">Odometer Reading (km)</label>
+            <input className="ro2-input" type="number" min="0" placeholder="e.g. 45230"
+              value={form.odometer} onChange={e => setForm(p => ({ ...p, odometer: e.target.value }))} />
+          </div>
+          <div className="ro2-field">
+            <label className="ro2-label">Damage Fee (ETB)</label>
+            <input className="ro2-input" type="number" min="0" placeholder="0"
+              value={form.damageFee} onChange={e => setForm(p => ({ ...p, damageFee: e.target.value }))} />
+          </div>
+          <div className="ro2-field">
+            <label className="ro2-label">Fuel Fee (ETB)</label>
+            <input className="ro2-input" type="number" min="0" placeholder="0"
+              value={form.fuelFee} onChange={e => setForm(p => ({ ...p, fuelFee: e.target.value }))} />
+          </div>
+          <div className="ro2-field">
+            <label className="ro2-label">Late Return Fee (ETB)</label>
+            <input className="ro2-input" type="number" min="0" placeholder="0"
+              value={form.lateFee} onChange={e => setForm(p => ({ ...p, lateFee: e.target.value }))} />
+          </div>
+          <div className="ro2-field">
+            <label className="ro2-label">Return Notes (optional)</label>
+            <textarea className="ro2-textarea" rows="2" placeholder="Inspection results, fuel level, condition..."
+              value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'status' && (
+        <ActionModal title="Set Order Status" icon={<ListChecks size={15} />} confirmLabel="Update Status"
+          confirmDisabled={!form.status} loading={actLoading === 'status'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <div className="ro2-field">
+            <label className="ro2-label">New Status (required)</label>
+            <select className="ro2-select" style={{ width: '100%' }} value={form.status}
+              onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+              <option value="">Select status...</option>
+              {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          {form.status === 'ACTIVE' && <p className="ro2-hint">You can use the dedicated "Start Rental" action to also stamp the start time and book the car.</p>}
+          <div className="ro2-field">
+            <label className="ro2-label">Note (optional)</label>
+            <textarea className="ro2-textarea" rows="2" placeholder="Reason for the change..."
+              value={form.statusNote} onChange={e => setForm(p => ({ ...p, statusNote: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'archive' && (
+        <ActionModal title="Move to History" icon={<Archive size={15} />} confirmLabel="Move to History"
+          loading={actLoading === 'archive'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <p>Move <strong>{order.orderNumber}</strong> to the history archive? It can be restored from the History page.</p>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'delete' && (
+        <ActionModal title="Delete Order" icon={<Trash2 size={15} />} confirmLabel="Delete Permanently"
+          loading={actLoading === 'delete'} onConfirm={handleConfirm} onClose={() => setModal(null)}>
+          <p style={{ color: 'hsl(var(--danger))' }}>This will permanently remove <strong>{order.orderNumber}</strong>. This cannot be undone.</p>
+        </ActionModal>
+      )}
+
+      {modal?.type === 'pay_reject' && (
+        <ActionModal title="Reject Payment" icon={<Ban size={15} />} confirmLabel="Reject Payment"
+          confirmDisabled={!form.reason.trim()} loading={actLoading === 'pay_reject'} onConfirm={handleRejectPayment} onClose={() => setModal(null)}>
+          <div className="ro2-field">
+            <label className="ro2-label">Reason (required)</label>
+            <textarea className="ro2-textarea" rows="3" autoFocus placeholder="e.g. Screenshot invalid, amount mismatch, wrong reference..."
+              value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
+          </div>
+        </ActionModal>
+      )}
     </div>
   );
 };
