@@ -7,6 +7,8 @@ import {
   DollarSign, Image as ImageIcon, AlertCircle, Upload, FileText, CheckCircle, Trash2
 } from 'lucide-react';
 import SegmentedSpinner from '../../components/ui/SegmentedSpinner';
+import { useToast } from '../../components/Toast';
+import styles from './CustomerPrescriptions.module.css';
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace('/api/v1', '');
 
@@ -20,14 +22,13 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numer
 const fmtDateTime = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtMoney = (n) => parseFloat(n || 0).toFixed(2);
 
-/* ─── status maps ─────────────────────────────────────────── */
 const STATUS_CONFIG = {
-  pending:          { label: 'Pending Review',   color: '#FFFFFF', bg: '#8D6E63' },
-  approved:         { label: 'Approved',         color: '#FFFFFF', bg: '#8BC34A' }, // lime green badge
-  rejected:         { label: 'Rejected',         color: '#FFFFFF', bg: '#F44336' },
-  ready_for_pickup: { label: 'Ready for Pickup', color: '#FFFFFF', bg: '#2E8B57' },
-  picked_up:        { label: 'Picked Up',        color: '#FFFFFF', bg: '#228B22' },
-  delivered:        { label: 'Delivered',        color: '#FFFFFF', bg: '#228B22' },
+  pending:          { label: 'Pending Review',   styleClass: styles.statusPending },
+  approved:         { label: 'Approved',         styleClass: styles.statusApproved },
+  rejected:         { label: 'Rejected',         styleClass: styles.statusRejected },
+  ready_for_pickup: { label: 'Ready for Pickup', styleClass: styles.statusReady },
+  picked_up:        { label: 'Picked Up',        styleClass: styles.statusDelivered },
+  delivered:        { label: 'Delivered',        styleClass: styles.statusDelivered },
 };
 
 const STATUS_TABS = [
@@ -37,143 +38,15 @@ const STATUS_TABS = [
   { key: 'delivered', label: 'Delivered',  Icon: Truck },
 ];
 
-/* ─── shared CSS ──────────────────────────────────────────── */
-const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-  .cp-page {
-    padding: 32px;
-    background: #F5F5F5;
-    min-height: calc(100vh - 60px);
-    box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
-    color: #424242;
-  }
-  @media (max-width: 720px) { .cp-page { padding: 16px; } }
-
-  /* header row */
-  .cp-page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
-  .cp-page-title  { font-size: 2rem; font-weight: 700; color: #1B5E20; margin: 0; }
-  .cp-page-sub    { font-size: 0.95rem; color: #424242; margin: 6px 0 0; }
-
-  /* tabs */
-  .cp-tabs { display: flex; gap: 0; border-bottom: 1px solid #8D6E63; margin-bottom: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .cp-tab  { background: transparent; border: none; border-bottom: 3px solid transparent; padding: 12px 24px; color: #424242; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease; font-size: 0.95rem; white-space: nowrap; }
-  .cp-tab.active { color: #228B22; border-bottom: 3px solid #228B22; }
-  .cp-tab:hover:not(.active) { color: #228B22; }
-
-  /* card list (row layout) */
-  .cp-list { display: flex; flex-direction: column; gap: 8px; }
-  .cp-card { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 8px; padding: 14px 20px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .cp-card:hover { background: #F5F5F5; border-color: #2E8B57; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-  
-  .cp-card-header { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
-  .cp-order-num { font-size: 0.75rem; font-weight: 700; color: #8D6E63; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  
-  .cp-card-title { flex: 1; font-size: 0.9375rem; font-weight: 700; color: #1B5E20; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  
-  .cp-card-meta { display: flex; gap: 20px; font-size: 0.8125rem; color: #424242; flex-shrink: 0; flex-wrap: nowrap; }
-  .cp-card-meta span { display: flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 500; }
-  
-  .cp-card-footer { flex-shrink: 0; margin-left: auto; display: flex; align-items: center; }
-  .cp-view-link { color: #2E8B57; font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-
-
-  /* empty state */
-  .cp-empty { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; padding: 64px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-
-  /* ─── DETAIL PANEL ─── */
-  .cp-detail-wrap { background: #FFFFFF; border: 1px solid #8D6E63; border-radius: 12px; overflow: hidden; }
-
-  .cp-detail-top {
-    background: #1B5E20;
-    padding: 28px 32px;
-    display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;
-  }
-  @media (max-width: 600px) { .cp-detail-top { padding: 20px 16px; } }
-  .cp-detail-inv { font-size: 1.6rem; font-weight: 700; color: #FFFFFF; margin: 0 0 6px; }
-  .cp-detail-date { font-size: 0.9rem; color: rgba(255,255,255,0.75); display: flex; align-items: center; gap: 6px; }
-  .cp-detail-total-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-  .cp-detail-total-amt { font-size: 2rem; font-weight: 700; color: #FFFFFF; line-height: 1; }
-
-  .cp-status-bar { background: #F5F5F5; border-bottom: 1px solid #e0e0e0; padding: 14px 32px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .cp-status-lbl { font-size: 0.85rem; color: #757575; margin-right: 2px; }
-
-  .cp-body { padding: 32px; }
-  @media (max-width: 600px) { .cp-body { padding: 16px; } }
-
-  .cp-section { margin-bottom: 32px; }
-  .cp-section:last-child { margin-bottom: 0; }
-  .cp-section-title { font-size: 0.8rem; font-weight: 700; color: #228B22; text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid #F5F5F5; }
-
-  .cp-info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #F5F5F5; gap: 16px; }
-  .cp-info-row:last-child { border-bottom: none; }
-  .cp-info-label { font-size: 0.9rem; color: #757575; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .cp-info-value { font-size: 0.95rem; font-weight: 600; color: #424242; text-align: right; }
-
-  /* two-col grid for sections side by side */
-  .cp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-  @media (max-width: 760px) { .cp-two-col { grid-template-columns: 1fr; } }
-
-  /* drug image */
-  .cp-drug-image-wrap { width: 100%; height: 220px; border-radius: 10px; overflow: hidden; background: #F5F5F5; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; padding: 12px; }
-  .cp-drug-image { width: 100%; height: 100%; object-fit: contain; }
-
-  /* prescription image */
-  .cp-rx-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F5F5F5; border: 1px dashed #8D6E63; border-radius: 10px; min-height: 220px; padding: 24px; text-align: center; }
-  .cp-rx-img { width: 100%; max-height: 400px; object-fit: contain; cursor: zoom-in; border-radius: 8px; transition: transform 0.15s ease; }
-  .cp-rx-img:hover { transform: scale(1.02); }
-
-  /* totals rows */
-  .cp-total-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F5F5F5; font-size: 0.95rem; }
-  .cp-total-line.grand { border-bottom: none; border-top: 2px solid #1B5E20; margin-top: 4px; padding-top: 14px; font-size: 1.1rem; font-weight: 700; color: #1B5E20; }
-
-  /* action forms */
-  .cp-action-section { background: #F5F5F5; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
-  .cp-input { padding: 10px 12px; border: 1px solid #8D6E63; border-radius: 6px; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; transition: all 0.15s ease; background: #FFFFFF; color: #424242; }
-  .cp-input:focus { border-color: #2E8B57; box-shadow: 0 0 0 3px rgba(46,139,87,0.15); outline: none; }
-
-  /* badge */
-  .cp-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-
-  /* divider */
-  .cp-divider { border: none; border-top: 1px solid #F5F5F5; margin: 24px 0; }
-
-  /* buttons */
-  .cp-btn-primary   { background: #2E8B57; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
-  .cp-btn-primary:hover:not(:disabled)   { background: #267347; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
-  .cp-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
-  .cp-btn-secondary { background: #6B8E23; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
-  .cp-btn-secondary:hover:not(:disabled) { background: #55721c; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
-  .cp-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
-  .cp-btn-danger    { background: #F44336; color: #FFFFFF; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s ease; }
-  .cp-btn-danger:hover:not(:disabled)    { background: #d32f2f; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
-  .cp-btn-danger:disabled { opacity: 0.55; cursor: not-allowed; }
-  
-  /* toast */
-  .cp-toast { position: fixed; top: 24px; right: 24px; z-index: 9999; border-radius: 10px; color: #FFFFFF; padding: 16px 24px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.18); animation: cpSlide 0.3s ease-out forwards; }
-  .cp-toast.success { background: #4CAF50; }
-  .cp-toast.error   { background: #F44336; }
-  .cp-toast.warning { background: #FF9800; }
-
-  /* modal */
-  .cp-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 32px; }
-  .cp-modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; cursor: pointer; }
-  .cp-modal-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-
-  .cp-spin { animation: cpSpin 1s linear infinite; }
-  @keyframes cpSpin  { 100% { transform: rotate(360deg); } }
-  @keyframes cpSlide { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-`;
-
 export default function CustomerPrescriptions() {
   const navigate = useNavigate();
+  const { showToast, ToastContainer } = useToast();
+  
   const [requests, setRequests]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab]   = useState('all');
   const [refreshing, setRefreshing] = useState(false);
-  const [notification, setNotif]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, label }
   
   const [imgError, setImgError]     = useState(false);
@@ -184,11 +57,6 @@ export default function CustomerPrescriptions() {
   const [uploading, setUploading]       = useState(false);
   const [cancelOpen, setCancelOpen]     = useState(false);
   const fileRef = useRef(null);
-
-  const toast = (msg, type = 'success') => {
-    setNotif({ msg, type });
-    setTimeout(() => setNotif(null), 4500);
-  };
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -202,11 +70,11 @@ export default function CustomerPrescriptions() {
       }
     } catch (err) {
       console.error('Failed to load prescription requests', err);
-      toast('Failed to load prescription requests.', 'error');
+      showToast('Failed to load prescription requests.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedOrder]);
+  }, [selectedOrder, showToast]);
 
   useEffect(() => { fetchRequests(); }, []); // eslint-disable-line
 
@@ -222,9 +90,10 @@ export default function CustomerPrescriptions() {
     try {
       await axios.delete(`/pharmacy/requests/${id}/hide`);
       setRequests(prev => prev.filter(r => r.id !== id));
-      toast('Order removed from your dashboard.', 'success');
+      showToast('Order removed from your dashboard.', 'success');
+      if (selectedOrder?.id === id) setSelectedOrder(null);
     } catch (err) {
-      toast(err.response?.data?.message || 'Failed to remove order.', 'error');
+      showToast(err.response?.data?.message || 'Failed to remove order.', 'error');
     }
   };
 
@@ -238,9 +107,9 @@ export default function CustomerPrescriptions() {
         const updated = (Array.isArray(list) ? list : []).find(r => r.id === selectedOrder.id);
         if (updated) setSelectedOrder(updated);
       }
-      toast('Orders refreshed.');
+      showToast('Orders refreshed.', 'success');
     } catch {
-      toast('Failed to refresh.', 'error');
+      showToast('Failed to refresh.', 'error');
     } finally {
       setRefreshing(false);
     }
@@ -249,13 +118,13 @@ export default function CustomerPrescriptions() {
   const handleCancel = async () => {
     try {
       await axios.delete(`/pharmacy/requests/${selectedOrder.id}/cancel`);
-      toast('Request cancelled successfully.');
+      showToast('Request cancelled successfully.', 'success');
       setCancelOpen(false);
       fetchRequests();
       setSelectedOrder(null);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to cancel request.';
-      toast(msg, 'error');
+      showToast(msg, 'error');
     }
   };
 
@@ -265,14 +134,14 @@ export default function CustomerPrescriptions() {
     try {
       const formData = new FormData();
       formData.append('prescription_image', selectedFile);
-      const res = await axios.post(`/pharmacy/requests/${selectedOrder.id}/upload`, formData);
-      toast('Prescription image uploaded!');
+      await axios.post(`/pharmacy/requests/${selectedOrder.id}/upload`, formData);
+      showToast('Prescription image uploaded!', 'success');
       setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = '';
       fetchRequests();
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to upload image.';
-      toast(msg, 'error');
+      showToast(msg, 'error');
     } finally {
       setUploading(false);
     }
@@ -288,7 +157,7 @@ export default function CustomerPrescriptions() {
   const filtered = activeTab === 'all' ? requests : requests.filter(r => r.status === activeTab);
 
   /* ═══════════════════════════════════════════════════════════
-     DETAIL VIEW — single full page
+     DETAIL VIEW
   ═══════════════════════════════════════════════════════════ */
   if (selectedOrder) {
     const o = selectedOrder;
@@ -301,215 +170,214 @@ export default function CustomerPrescriptions() {
     const canUpload = o.status === 'pending' || o.status === 'approved';
 
     return (
-      <div className="cp-page">
-        <style>{STYLES}</style>
-        {notification && <div className={`cp-toast ${notification.type}`}>{notification.msg}</div>}
-
-        {/* top nav row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-          <button className="cp-btn-secondary" onClick={() => setSelectedOrder(null)}>
+      <div className={styles.page}>
+        <ToastContainer />
+        <div className={styles.wrap}>
+          
+          <button className={styles.backBtn} onClick={() => setSelectedOrder(null)}>
             <ArrowLeft size={16} /> Back to Orders
           </button>
-          {canCancel && !cancelOpen && (
-            <button className="cp-btn-danger" onClick={() => setCancelOpen(true)}>
-              <XSquare size={16} /> Cancel Order
-            </button>
-          )}
-        </div>
 
-        <div className="cp-detail-wrap">
-          {/* ── dark green top strip ── */}
-          <div className="cp-detail-top">
+          <div className={styles.header}>
             <div>
-              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Pharmacy Order</div>
-              <h1 className="cp-detail-inv">#{o.request_number || o.id}</h1>
-              <div className="cp-detail-date"><Calendar size={14} /> Requested on {fmtDateTime(o.requested_at)}</div>
+              <h1 className={styles.title}>#{o.request_number || o.id}</h1>
+              <p className={styles.subtitle}>Requested on {fmtDateTime(o.requested_at)}</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div className="cp-detail-total-label">Total Amount</div>
-              <div className="cp-detail-total-amt">{fmtMoney(o.total_amount)} ETB</div>
+            <div className={styles.headerActions}>
+              <span className={`${styles.badge} ${cfg.styleClass}`}>
+                <span className={styles.badgeDot}></span>
+                {cfg.label}
+              </span>
+              {canCancel && !cancelOpen && (
+                <button className={styles.btnDanger} onClick={() => setCancelOpen(true)}>
+                  <XSquare size={16} /> Cancel Order
+                </button>
+              )}
             </div>
           </div>
 
-          {/* status bar */}
-          <div className="cp-status-bar">
-            <span className="cp-status-lbl">Order Status:</span>
-            <span className="cp-badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-          </div>
-
-          {/* ── body ── */}
-          <div className="cp-body">
-            
-            {/* SECTION 1 — Medication Details */}
-            <div className="cp-section">
-              <div className="cp-section-title"><Package size={16} /> Medication Details</div>
-              <div className="cp-two-col">
-                {/* left: image + name */}
-                <div>
-                  <div className="cp-drug-image-wrap">
-                    {medImgSrc ? (
-                      <img src={medImgSrc} alt={o.medication_name} className="cp-drug-image" />
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#8D6E63' }}>
-                        <ImageIcon size={40} />
-                        <span style={{ fontSize: '0.85rem' }}>No Image Available</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1B5E20', marginBottom: '4px' }}>{o.medication_name || '—'}</div>
+          <div className={styles.detailGrid}>
+            {/* LEFT COLUMN */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Medication Details Card */}
+              <div className={styles.detailCard}>
+                <div className={styles.detailSectionTitle}>
+                  <Package size={20} className={styles.emptyIcon} style={{ margin: 0 }} /> 
+                  Medication Details
                 </div>
-                {/* right: info rows */}
-                <div>
-                  <div className="cp-info-row">
-                    <span className="cp-info-label">Quantity</span>
-                    <span className="cp-info-value">{o.quantity} unit(s)</span>
+                
+                <div className={styles.imageContainer}>
+                  {medImgSrc ? (
+                    <img src={medImgSrc} alt={o.medication_name} />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'hsl(var(--muted-foreground))' }}>
+                      <ImageIcon size={48} />
+                      <span style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>No Image Available</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Medication</span>
+                    <span className={styles.infoValueLarge}>{o.medication_name || '—'}</span>
                   </div>
-                  <div className="cp-info-row">
-                    <span className="cp-info-label">Unit Price</span>
-                    <span className="cp-info-value">{fmtMoney(o.price_per_unit)} ETB</span>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Quantity</span>
+                    <span className={styles.infoValue}>{o.quantity} unit(s)</span>
                   </div>
-                  <div className="cp-info-row">
-                    <span className="cp-info-label"><Truck size={14} /> Delivery Option</span>
-                    <span className="cp-info-value" style={{ textTransform: 'capitalize' }}>
-                      {o.delivery_option || 'Pickup'}
-                    </span>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Unit Price</span>
+                    <span className={styles.infoValue}>{fmtMoney(o.price_per_unit)} ETB</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}><Truck size={14} /> Delivery Option</span>
+                    <span className={styles.infoValue} style={{ textTransform: 'capitalize' }}>{o.delivery_option || 'Pickup'}</span>
                   </div>
                   {o.delivery_address && (
-                    <div className="cp-info-row">
-                      <span className="cp-info-label"><MapPin size={14} /> Delivery Address</span>
-                      <span className="cp-info-value" style={{ maxWidth: '220px', textAlign: 'right' }}>{o.delivery_address}</span>
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}><MapPin size={14} /> Delivery Address</span>
+                      <span className={styles.infoValue}>{o.delivery_address}</span>
                     </div>
                   )}
-                  
-                  {/* Payment Summary */}
-                  <div style={{ marginTop: '24px' }}>
-                    <div className="cp-total-line">
-                      <span>Subtotal ({o.quantity} units)</span>
-                      <span>{fmtMoney(o.quantity * (o.price_per_unit || 0))} ETB</span>
-                    </div>
-                    {(o.delivery_fee > 0) && (
-                      <div className="cp-total-line">
-                        <span>Delivery Fee</span>
-                        <span>{fmtMoney(o.delivery_fee)} ETB</span>
-                      </div>
-                    )}
-                    <div className="cp-total-line grand">
-                      <span>Total Due</span>
-                      <span>{fmtMoney(o.total_amount)} ETB</span>
-                    </div>
-                  </div>
                 </div>
               </div>
-            </div>
 
-            <hr className="cp-divider" />
-
-            {/* SECTION 2 — Customer & Prescription */}
-            <div className="cp-two-col">
-              
-              {/* Customer Info */}
-              <div className="cp-section">
-                <div className="cp-section-title"><User size={16} /> Customer Information</div>
-                <div className="cp-info-row">
-                  <span className="cp-info-label"><User size={14} /> Name</span>
-                  <span className="cp-info-value">{o.customer_name || '—'}</span>
+              {/* Prescription Image Card */}
+              <div className={styles.detailCard}>
+                <div className={styles.detailSectionTitle}>
+                  <FileText size={20} className={styles.emptyIcon} style={{ margin: 0 }} /> 
+                  Prescription Image
                 </div>
-                <div className="cp-info-row">
-                  <span className="cp-info-label"><Mail size={14} /> Email</span>
-                  <span className="cp-info-value">{o.customer_email || '—'}</span>
-                </div>
-                <div className="cp-info-row">
-                  <span className="cp-info-label"><Phone size={14} /> Phone</span>
-                  <span className="cp-info-value">{o.customer_phone || '—'}</span>
-                </div>
-
-                {/* Rejection Reason if any */}
-                {o.rejection_reason && (
-                  <div style={{ marginTop: '24px' }}>
-                    <div className="cp-section-title" style={{ color: '#F44336' }}><AlertCircle size={16} /> Rejection Reason</div>
-                    <div style={{ background: '#FFEBEE', padding: '12px', borderRadius: '6px', color: '#C62828', fontSize: '0.95rem' }}>
-                      {o.rejection_reason}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Prescription Image */}
-              <div className="cp-section">
-                <div className="cp-section-title"><FileText size={16} /> Prescription Image</div>
-                <div className="cp-rx-wrap" style={{ border: rxImgSrc ? '1px solid #e0e0e0' : '1px dashed #8D6E63' }}>
+                
+                <div className={styles.rxImageContainer} onClick={() => rxImgSrc && !imgError && setLightbox(rxImgSrc)}>
                   {!rxImgSrc ? (
-                    <>
-                      <FileText size={40} color="#8D6E63" style={{ marginBottom: '12px' }} />
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#424242', marginBottom: '8px' }}>No Prescription Attached</div>
-                      <div style={{ fontSize: '0.9rem', color: '#757575', maxWidth: '240px' }}>
-                        If a physical prescription is required, you can upload it here or present it upon pickup.
-                      </div>
-                    </>
+                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
+                       <FileText size={48} className={styles.emptyIcon} />
+                       <div style={{ fontWeight: 600, color: 'hsl(var(--foreground))' }}>No Prescription Attached</div>
+                       <div style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', maxWidth: '240px', marginTop: '0.5rem' }}>
+                         If a physical prescription is required, upload it here or present it upon pickup.
+                       </div>
+                     </div>
                   ) : imgError ? (
-                    <>
-                      <AlertCircle size={40} color="#F44336" style={{ marginBottom: '12px' }} />
-                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#424242', marginBottom: '8px' }}>Image Failed to Load</div>
-                      <a href={rxImgSrc} target="_blank" rel="noreferrer" style={{ color: '#2E8B57', fontSize: '0.9rem', textDecoration: 'underline' }}>Open Image Directly</a>
-                    </>
+                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
+                       <AlertCircle size={48} color="hsl(0 72% 50%)" />
+                       <div style={{ fontWeight: 600, color: 'hsl(var(--foreground))', margin: '0.5rem 0' }}>Image Failed to Load</div>
+                       <a href={rxImgSrc} target="_blank" rel="noreferrer" style={{ color: 'hsl(var(--primary))', fontSize: '0.875rem', textDecoration: 'underline' }}>Open Image Directly</a>
+                     </div>
                   ) : (
-                    <img 
-                      src={rxImgSrc} 
-                      alt="Prescription" 
-                      className="cp-rx-img"
-                      onError={() => setImgError(true)}
-                      onClick={() => setLightbox(rxImgSrc)}
-                    />
+                    <img src={rxImgSrc} alt="Prescription" onError={() => setImgError(true)} />
                   )}
                 </div>
 
-                {/* Upload action directly under image */}
                 {canUpload && (
-                  <div style={{ marginTop: '16px' }}>
+                  <div style={{ marginTop: '1.5rem' }}>
                     <input
                       type="file"
                       ref={fileRef}
                       accept="image/*,.pdf"
                       onChange={e => setSelectedFile(e.target.files[0])}
-                      className="cp-input"
-                      style={{ padding: '8px 12px', cursor: 'pointer', marginBottom: '12px' }}
+                      className={styles.inputFile}
                     />
                     <button
-                      className="cp-btn-primary"
+                      className={styles.btnPrimary}
                       style={{ width: '100%' }}
                       onClick={handleUpload}
                       disabled={!selectedFile || uploading}
                     >
-                      <Upload size={15} /> {uploading ? 'Uploading…' : (rxImgSrc ? 'Update Prescription' : 'Upload Prescription')}
+                      <Upload size={16} /> {uploading ? 'Uploading…' : (rxImgSrc ? 'Update Prescription' : 'Upload Prescription')}
                     </button>
                   </div>
                 )}
               </div>
+
             </div>
 
-            {/* ── ACTIONS ── */}
-            {canCancel && cancelOpen && (
-              <>
-                <hr className="cp-divider" />
-                <div className="cp-action-section" style={{ border: '1px solid #F44336' }}>
-                  <div className="cp-section-title" style={{ marginBottom: '14px', color: '#F44336' }}><XSquare size={16} /> Cancel Order</div>
-                  <div style={{ fontSize: '0.95rem', color: '#424242', marginBottom: '16px' }}>Are you sure you want to cancel this pharmacy order? This action cannot be undone.</div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="cp-btn-danger" onClick={handleCancel}>Confirm Cancellation</button>
-                    <button className="cp-btn-secondary" onClick={() => setCancelOpen(false)}>Back</button>
+            {/* RIGHT COLUMN */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Payment Summary */}
+              <div className={styles.detailCard}>
+                <div className={styles.detailSectionTitle}>
+                  <DollarSign size={20} className={styles.emptyIcon} style={{ margin: 0 }} /> 
+                  Payment Summary
+                </div>
+                
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Subtotal ({o.quantity} units)</span>
+                    <span className={styles.infoValue}>{fmtMoney(o.quantity * (o.price_per_unit || 0))} ETB</span>
+                  </div>
+                  {o.delivery_fee > 0 && (
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Delivery Fee</span>
+                      <span className={styles.infoValue}>{fmtMoney(o.delivery_fee)} ETB</span>
+                    </div>
+                  )}
+                  <div className={styles.infoRow} style={{ borderTop: '2px solid hsl(var(--border))', marginTop: '0.5rem', paddingTop: '1rem', borderBottom: 'none' }}>
+                    <span className={styles.infoLabel} style={{ fontWeight: 600, color: 'hsl(var(--foreground))' }}>Total Due</span>
+                    <span className={styles.infoTotal}>{fmtMoney(o.total_amount)} ETB</span>
                   </div>
                 </div>
-              </>
-            )}
+              </div>
 
-          </div>{/* /cp-body */}
-        </div>{/* /cp-detail-wrap */}
+              {/* Customer Info */}
+              <div className={styles.detailCard}>
+                <div className={styles.detailSectionTitle}>
+                  <User size={20} className={styles.emptyIcon} style={{ margin: 0 }} /> 
+                  Customer Info
+                </div>
+                
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Name</span>
+                    <span className={styles.infoValue}>{o.customer_name || '—'}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Email</span>
+                    <span className={styles.infoValue} style={{ wordBreak: 'break-all' }}>{o.customer_email || '—'}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Phone</span>
+                    <span className={styles.infoValue}>{o.customer_phone || '—'}</span>
+                  </div>
+                </div>
 
-        {/* lightbox */}
+                {o.rejection_reason && (
+                  <div className={styles.alertError} style={{ marginTop: '1.5rem', marginBottom: 0 }}>
+                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <AlertCircle size={16} /> Rejection Reason
+                    </div>
+                    {o.rejection_reason}
+                  </div>
+                )}
+              </div>
+
+              {/* Cancel Action Box */}
+              {canCancel && cancelOpen && (
+                <div className={styles.detailCard} style={{ borderColor: 'hsl(0 72% 80%)', backgroundColor: 'hsl(0 86% 98%)' }}>
+                  <div className={styles.detailSectionTitle} style={{ color: 'hsl(0 72% 38%)' }}>
+                    <AlertCircle size={20} /> Cancel Order?
+                  </div>
+                  <p style={{ fontSize: '0.875rem', color: 'hsl(0 72% 38%)', marginBottom: '1.5rem' }}>
+                    Are you sure you want to cancel this pharmacy order? This action cannot be undone.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button className={styles.btnDanger} onClick={handleCancel}>Confirm Cancel</button>
+                    <button className={styles.btnSecondary} onClick={() => setCancelOpen(false)}>Back</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Lightbox */}
         {lightbox && (
-          <div className="cp-modal" onClick={() => setLightbox(null)}>
-            <button className="cp-modal-close" onClick={() => setLightbox(null)}><XSquare size={32} /></button>
-            <img src={lightbox} alt="Full view" className="cp-modal-img" onClick={e => e.stopPropagation()} />
+          <div className={styles.modal} onClick={() => setLightbox(null)}>
+            <button className={styles.modalClose} onClick={() => setLightbox(null)}><XSquare size={32} /></button>
+            <img src={lightbox} alt="Full view" className={styles.modalImage} onClick={e => e.stopPropagation()} />
           </div>
         )}
       </div>
@@ -520,120 +388,191 @@ export default function CustomerPrescriptions() {
      LIST VIEW
   ═══════════════════════════════════════════════════════════ */
   return (
-    <>
-    <div className="cp-page">
-      <style>{STYLES}</style>
-      {notification && <div className={`cp-toast ${notification.type}`}>{notification.msg}</div>}
-
-      {/* header */}
-      <div className="cp-page-header">
-        <div>
-          <h1 className="cp-page-title">Pharmacy Orders</h1>
-          <p className="cp-page-sub">Track and manage your medication requests</p>
+    <div className={styles.page}>
+      <ToastContainer />
+      <div className={styles.wrap}>
+        
+        {/* Header */}
+        <div className={styles.header}>
+          <div>
+            <h1 className={styles.title}>Pharmacy Orders</h1>
+            <p className={styles.subtitle}>Track and manage your medication requests</p>
+          </div>
+          <div className={styles.headerActions}>
+            <button className={styles.btnSecondary} onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw size={16} className={refreshing ? styles.spin : ''} />
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+            <button className={styles.btnPrimary} onClick={() => navigate('/services/pharmacy')}>
+              Browse Medications
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="cp-btn-primary" onClick={() => navigate('/services/pharmacy')}>
-            Browse Medications
-          </button>
-          <button className="cp-btn-secondary" onClick={handleRefresh} disabled={refreshing}>
-            <SegmentedSpinner size={16} />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+
+        {/* Tabs */}
+        <div className={styles.tabs}>
+          {STATUS_TABS.map(({ key, label, Icon }) => (
+            <button 
+              key={key} 
+              className={`${styles.tab} ${activeTab === key ? styles.tabActive : ''}`} 
+              onClick={() => setActiveTab(key)}
+            >
+              <Icon size={16} /> {label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* tabs */}
-      <div className="cp-tabs">
-        {STATUS_TABS.map(({ key, label, Icon }) => (
-          <button key={key} className={`cp-tab ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>
-            <Icon size={16} /> {label}
-          </button>
-        ))}
-      </div>
-
-      {/* list */}
-      {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: '#757575' }}>Loading orders…</div>
-      ) : filtered.length === 0 ? (
-        <div className="cp-empty">
-          <ClipboardList size={48} color="#A5D6A7" />
-          <h2 style={{ fontSize: '1.4rem', color: '#1B5E20', margin: 0 }}>No Orders Found</h2>
-          <p style={{ color: '#757575', margin: 0 }}>You don't have any pharmacy requests in this category.</p>
-          <button className="cp-btn-primary" onClick={() => navigate('/services/pharmacy')}>Browse Medications</button>
-        </div>
-      ) : (
-        <div className="cp-list">
-          {filtered.map(req => {
-            const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
-            return (
-              <div key={req.id} className="cp-card" onClick={() => openDetail(req)}>
-                {/* Left: order number + status */}
-                <div className="cp-card-header">
-                  <span className="cp-order-num">#{req.request_number || req.id}</span>
-                  <span className="cp-badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                </div>
-                
-                {/* Medication name — grows */}
-                <h3 className="cp-card-title">{req.medication_name || 'Prescription'}</h3>
-                
-                {/* Quantity & Delivery mode */}
-                <div style={{ fontSize: '0.8125rem', color: '#424242', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  <Package size={13} color="#6B8E23" /> Qty: {req.quantity || 1} • {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
-                </div>
-
-                {/* Amount + Booked date */}
-                <div className="cp-card-meta">
-                  <span><DollarSign size={13} /> {fmtMoney(req.total_amount)} ETB</span>
-                  <span><Calendar size={13} /> {fmtDate(req.requested_at)}</span>
-                </div>
-
-                {/* View link */}
-                <div className="cp-card-footer" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  {['delivered', 'picked_up', 'completed', 'ready_for_pickup'].includes((req.status || '').toLowerCase()) && (
-                    <button 
-                      onClick={(e) => handleHideRequest(e, req.id, req.tracking_number || `Request #${req.id}`)}
-                      style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
-                      title="Delete from dashboard"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                  <span className="cp-view-link">View →</span>
-                </div>
+        {/* Content */}
+        {loading ? (
+          <div className={styles.emptyState}>
+            <SegmentedSpinner size={32} />
+            <p style={{ marginTop: '1rem', color: 'hsl(var(--muted-foreground))' }}>Loading orders...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className={styles.emptyState}>
+            <ClipboardList size={48} className={styles.emptyIcon} />
+            <h2 className={styles.emptyTitle}>No Orders Found</h2>
+            <p className={styles.emptyDesc}>You don't have any pharmacy requests in this category.</p>
+            <button className={styles.btnPrimary} onClick={() => navigate('/services/pharmacy')}>Browse Medications</button>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className={styles.tableContainer}>
+              <div className={styles.tableHeader}>
+                <div>Order</div>
+                <div>Medication</div>
+                <div>Delivery</div>
+                <div>Amount & Date</div>
+                <div>Status</div>
+                <div style={{ textAlign: 'right' }}>Actions</div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {filtered.map(req => {
+                const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
+                const canDelete = ['delivered', 'picked_up', 'completed', 'ready_for_pickup'].includes((req.status || '').toLowerCase());
+                
+                return (
+                  <div key={req.id} className={styles.tableRow} onClick={() => openDetail(req)}>
+                    <div className={styles.tableCol}>
+                      <span className={styles.textPrimary}>#{req.request_number || req.id}</span>
+                    </div>
+                    
+                    <div className={styles.tableCol}>
+                      <span className={styles.textPrimary} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {req.medication_name || 'Prescription'}
+                      </span>
+                      <span className={styles.textSecondary}>Qty: {req.quantity || 1}</span>
+                    </div>
 
-      {/* ── In-app confirmation dialog ── */}
+                    <div className={styles.tableCol}>
+                      <span className={styles.textPrimary} style={{ textTransform: 'capitalize' }}>
+                        {req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}
+                      </span>
+                    </div>
+
+                    <div className={styles.tableCol}>
+                      <span className={styles.textPrice}>{fmtMoney(req.total_amount)} ETB</span>
+                      <span className={styles.textSecondary}>{fmtDate(req.requested_at)}</span>
+                    </div>
+
+                    <div className={styles.tableCol}>
+                      <span className={`${styles.badge} ${cfg.styleClass}`}>
+                        <span className={styles.badgeDot}></span>
+                        {cfg.label}
+                      </span>
+                    </div>
+
+                    <div className={styles.tableCol} style={{ alignItems: 'flex-end' }}>
+                      {canDelete && (
+                        <button 
+                          onClick={(e) => handleHideRequest(e, req.id, req.tracking_number || `Request #${req.id}`)}
+                          className={`${styles.btnIcon} ${styles.btnIconDanger}`}
+                          title="Remove from dashboard"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Mobile Card View */}
+            <div className={styles.cardList}>
+              {filtered.map(req => {
+                const cfg = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
+                const canDelete = ['delivered', 'picked_up', 'completed', 'ready_for_pickup'].includes((req.status || '').toLowerCase());
+
+                return (
+                  <div key={req.id} className={styles.card} onClick={() => openDetail(req)}>
+                    <div className={styles.cardHeader}>
+                      <div>
+                        <div className={styles.cardTitle}>{req.medication_name || 'Prescription'}</div>
+                        <div className={styles.cardSub}>#{req.request_number || req.id}</div>
+                      </div>
+                      <span className={`${styles.badge} ${cfg.styleClass}`}>
+                        <span className={styles.badgeDot}></span>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    
+                    <div className={styles.cardMeta}>
+                      <div className={styles.cardMetaRow}>
+                        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Delivery</span>
+                        <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{req.delivery_option === 'delivery' ? 'Delivery' : 'Pickup'}</span>
+                      </div>
+                      <div className={styles.cardMetaRow}>
+                        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Quantity</span>
+                        <span style={{ fontWeight: 500 }}>{req.quantity || 1} units</span>
+                      </div>
+                      <div className={styles.cardMetaRow}>
+                        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Date</span>
+                        <span style={{ fontWeight: 500 }}>{fmtDate(req.requested_at)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className={styles.cardFooter}>
+                      <div className={styles.textPrice} style={{ fontSize: '1rem' }}>{fmtMoney(req.total_amount)} ETB</div>
+                      {canDelete && (
+                        <button 
+                          onClick={(e) => handleHideRequest(e, req.id, req.tracking_number || `Request #${req.id}`)}
+                          className={`${styles.btnIcon} ${styles.btnIconDanger}`}
+                          title="Remove from dashboard"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal Overlay */}
       {confirmDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🗑️</div>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Remove Order?</h3>
-            <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
-              <strong>{confirmDelete.label}</strong> will be removed from your dashboard.<br />
-              This only hides it for you — the pharmacy still has your request record.
+        <div className={styles.modal}>
+          <div className={styles.detailCard} style={{ width: '100%', maxWidth: '400px' }}>
+            <div className={styles.detailSectionTitle} style={{ color: 'hsl(var(--foreground))', marginBottom: '0.5rem' }}>
+              <Trash2 size={20} /> Remove Order?
+            </div>
+            <p style={{ fontSize: '0.875rem', color: 'hsl(var(--muted-foreground))', marginBottom: '1.5rem' }}>
+              Are you sure you want to remove <strong>{confirmDelete.label}</strong> from your dashboard? This won't cancel the order if it's already in progress.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button
-                onClick={() => setConfirmDelete(null)}
-                style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
+            <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+              <button className={styles.btnSecondary} style={{ flex: 1 }} onClick={() => setConfirmDelete(null)}>
                 Cancel
               </button>
-              <button
-                onClick={confirmHideRequest}
-                style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Yes, Remove
+              <button className={styles.btnDanger} style={{ flex: 1, backgroundColor: 'hsl(0 86% 97%)' }} onClick={confirmHideRequest}>
+                Remove
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-    </>
   );
 }
