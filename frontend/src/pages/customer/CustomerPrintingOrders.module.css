@@ -609,3 +609,84 @@
 @keyframes spin {
   100% { transform: rotate(360deg); }
 }
+/* -- 14. TABLE / ROW LAYOUT --------------------------------------- */
+.tableContainer {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: minmax(130px,2fr) minmax(100px,1.5fr) minmax(90px,1fr) minmax(130px,1.5fr) minmax(110px,1.2fr) 96px;
+  padding: 0.625rem 1.25rem;
+  background-color: hsl(210 40% 96.1%);
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  gap: 0.75rem;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: minmax(130px,2fr) minmax(100px,1.5fr) minmax(90px,1fr) minmax(130px,1.5fr) minmax(110px,1.2fr) 96px;
+  padding: 0.875rem 1.25rem;
+  gap: 0.75rem;
+  align-items: center;
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.tableRow:hover {
+  background-color: hsl(210 40% 98.5%);
+}
+
+.tableCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.textPrimary {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: hsl(222.2 84% 4.9%); /* foreground */
+}
+
+.textSecondary {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.textPrice {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: hsl(142.1 70% 35%); /* primary */
+}
+
+/* On small screens, hide the table and show the .list cards */
+@media (max-width: 768px) {
+  .tableContainer {
+    display: none;
+  }
+}
+/* On desktop, hide the cards */
+@media (min-width: 769px) {
+  .list {
+    display: none;
+  }
+}
