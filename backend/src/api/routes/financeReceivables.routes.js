@@ -128,6 +128,90 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
   }
 };
 
+// For self-invoicing departments the module already created its own
+// sales_invoice (with correct VAT) at order time. On finance approval we only
+// attach a receipt to that invoice so it shows as PAID (balance 0) on the
+// Sales Invoice & Receipt page — approving must never mint a duplicate invoice.
+// If the underlying invoice is missing/errored, back-fill a synthetic one so the
+// approved submission still appears. Idempotent (keyed on source + sale_id).
+const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetails, amount, receivedBy }) => {
+  try {
+    const deptKey = String(department || '').toLowerCase().trim();
+    const md = manualDetails || {};
+    const source = DEPARTMENT_TO_SOURCE[deptKey];
+    const orderId = md.order_id;
+    if (!source || orderId === undefined || orderId === null) {
+      return null;
+    }
+
+    let invoice = await trx('sales_invoices')
+      .where({ source, sale_id: String(orderId) })
+      .andWhereNot('status', 'cancelled')
+      .first();
+
+    if (!invoice) {
+      const invoiceId = `${source}-${orderId}-${Date.now().toString().slice(-4)}`;
+      const invoiceNo = await generateInvoiceNumber();
+      const saleType = normalizePaymentMethod(md.paymentMethod || 'Cash') === 'Cash' ? 'walk_in' : 'online';
+      await trx('sales_invoices').insert({
+        id: invoiceId,
+        invoice_no: invoiceNo,
+        source,
+        sale_id: String(orderId),
+        customer_name: md.receivedFrom || `Internal - ${department}`,
+        customer_tin: null,
+        subtotal: amount,
+        vat_standard: 0,
+        vat_standard_rate: 0.15,
+        vat_exempt: 0,
+        vat_zero_rated: 0,
+        vat_total: 0,
+        total_amount: amount,
+        status: 'active',
+        created_by_name: receivedBy || 'Finance',
+        sale_type: saleType,
+      });
+      await trx('sales_invoice_items').insert({
+        invoice_id: invoiceId,
+        item_id: orderId,
+        name: (`${department} income`).slice(0, 255),
+        qty: 1,
+        unit_price: amount,
+        cost_price: 0,
+        treatment: 'zero_rated',
+        rate: 0,
+        vat_amount: 0,
+        subtotal: amount,
+        total: amount,
+      });
+      invoice = await trx('sales_invoices').where({ id: invoiceId }).first();
+    }
+
+    const existingReceipt = await trx('sales_receipts')
+      .where({ invoice_id: invoice.id })
+      .andWhereNot('status', 'cancelled')
+      .first();
+    if (!existingReceipt) {
+      await trx('sales_receipts').insert({
+        id: `REC-${invoice.id}-${Date.now().toString().slice(-4)}`,
+        receipt_no: await generateReceiptNumber(),
+        invoice_id: invoice.id,
+        amount_paid: parseFloat(amount || 0),
+        payment_method: md.paymentMethod || 'Cash',
+        payment_reference: md.paymentReference || null,
+        received_by_name: receivedBy || md.financeName || 'Finance',
+        status: 'active',
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now(),
+      });
+    }
+    return invoice.id;
+  } catch (e) {
+    console.error('Failed to attach receipt for approved income:', e.message);
+    return null;
+  }
+};
+
 // ── GET all pending/all submissions ──────────────────────────────
 router.get('/live-income', authenticate, async (req, res) => {
   try {
@@ -733,6 +817,16 @@ if (!SELF_INVOICING_DEPARTMENTS.has(deptKey)) {
     paymentMethod: manualDetails.paymentMethod || 'Cash',
     paymentReference: submission.reference_no || manualDetails.paymentReference || null,
     description: submission.description,
+    receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
+  });
+} else {
+  // Self-invoicing module already recorded the invoice (with VAT) at order
+  // time. Approval only attaches the receipt so the invoice shows PAID with
+  // balance/owed = 0 — never a second invoice.
+  await ensureReceiptForInvoicedSubmission(trx, {
+    department: submission.department,
+    manualDetails: manualDetails || {},
+    amount: systemTotal,
     receivedBy: manualDetails.financeName || (req.user && req.user.fullName) || 'Finance Officer',
   });
 }
