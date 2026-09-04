@@ -8,16 +8,23 @@ class RentalOrderRepository extends BaseRepository {
   }
 
   async findAll(options = {}) {
-    const { filters = {}, status } = options;
+    const { filters = {}, status, archived } = options;
     try {
       let query = db('rental_orders as ro')
         .leftJoin('cars as c', 'ro.car_id', 'c.id')
         .select(
           'ro.*',
           'c.name as car_name',
-          'c.image1 as car_image'
+          'c.image1 as car_image',
+          'c.fuel_type as car_fuel_type',
+          'c.transmission as car_transmission',
+          'c.seats as car_seats'
         )
         .whereNull('ro.deleted_at')
+        .modify((q) => {
+          if (archived) q.whereNotNull('ro.archived_at');
+          else q.whereNull('ro.archived_at');
+        })
         .orderBy('ro.created_at', 'desc');
 
       if (status) query = query.where('ro.status', status);
@@ -59,11 +66,22 @@ class RentalOrderRepository extends BaseRepository {
     }
   }
 
-  async findById(id) {
+  async findById(id, options = {}) {
     const row = await db('rental_orders as ro')
       .leftJoin('cars as c', 'ro.car_id', 'c.id')
-      .select('ro.*', 'c.name as car_name', 'c.image1 as car_image')
+      .select(
+        'ro.*',
+        'c.name as car_name',
+        'c.image1 as car_image',
+        'c.fuel_type as car_fuel_type',
+        'c.transmission as car_transmission',
+        'c.seats as car_seats'
+      )
       .where('ro.id', id)
+      .modify((q) => {
+        if (options.includeArchived) q.whereNull('ro.deleted_at');
+        else q.whereNull('ro.deleted_at').whereNull('ro.archived_at');
+      })
       .first();
     return row ? RentalOrder.fromDatabase(row) : null;
   }
