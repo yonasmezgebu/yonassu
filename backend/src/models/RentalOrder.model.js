@@ -20,6 +20,7 @@ class RentalOrder {
     this.totalAmount = parseFloat(data.total_amount || data.totalAmount || 0);
     this.paymentMethod = data.payment_method || data.paymentMethod || 'Cash';
     this.status = data.status || 'PENDING_APPROVAL';
+    this.isManual = !!(data.is_manual || data.isManual);
     this.paymentStatus = data.payment_status || data.paymentStatus || 'UNPAID';
     this.paymentProofUrl = data.payment_proof_url || data.paymentProofUrl || null;
     this.paymentReference = data.payment_reference || data.paymentReference || '';
@@ -29,13 +30,24 @@ class RentalOrder {
     this.specialRequests = data.special_requests || data.specialRequests || '';
     this.managerNote = data.manager_note || data.managerNote || '';
     this.pickupRemarks = data.pickup_remarks || data.pickupRemarks || '';
+    this.pickupLocation = data.pickup_location || data.pickupLocation || '';
     this.approvedAt = data.approved_at || data.approvedAt || null;
     this.rejectedAt = data.rejected_at || data.rejectedAt || null;
+    this.rentalStartTime = data.rental_start_time || data.rentalStartTime || null;
     this.createdAt = data.created_at || data.createdAt || null;
     this.updatedAt = data.updated_at || data.updatedAt || null;
     // joined car info
     this.carName = data.car_name || data.carName || '';
     this.carImage = data.car_image || data.carImage || '';
+    this.carBrand = data.car_brand || data.carBrand || '';
+    this.carModel = data.car_model || data.carModel || '';
+    this.carLicensePlate = data.car_license_plate || data.carLicensePlate || '';
+    this.carFuelType = data.car_fuel_type || data.carFuelType || '';
+    this.carTransmission = data.car_transmission || data.carTransmission || '';
+    this.carSeats = data.car_seats || data.carSeats || null;
+    if (!this.carName && (this.carBrand || this.carModel)) {
+      this.carName = `${this.carBrand} ${this.carModel}`.trim();
+    }
     // Lifecycle fields
     this.isCancellationRequested = !!(data.is_cancellation_requested || data.isCancellationRequested);
     this.cancellationReason = data.cancellation_reason || data.cancellationReason || null;
@@ -80,6 +92,7 @@ class RentalOrder {
       totalAmount: this.totalAmount,
       paymentMethod: this.paymentMethod,
       status: this.status,
+      isManual: this.isManual,
       paymentStatus: this.paymentStatus,
       paymentProofUrl: this.paymentProofUrl,
       paymentReference: this.paymentReference,
@@ -89,12 +102,20 @@ class RentalOrder {
       specialRequests: this.specialRequests,
       managerNote: this.managerNote,
       pickupRemarks: this.pickupRemarks,
+      pickupLocation: this.pickupLocation,
       approvedAt: this.approvedAt,
       rejectedAt: this.rejectedAt,
+      rentalStartTime: this.rentalStartTime,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       carName: this.carName,
       carImage: this.carImage,
+      carBrand: this.carBrand,
+      carModel: this.carModel,
+      carLicensePlate: this.carLicensePlate,
+      carFuelType: this.carFuelType,
+      carTransmission: this.carTransmission,
+      carSeats: this.carSeats,
       isCancellationRequested: this.isCancellationRequested,
       cancellationReason: this.cancellationReason,
       pendingExtensionDays: this.pendingExtensionDays,
