@@ -187,7 +187,12 @@ exports.createOrder = catchAsync(async (req, res) => {
   const pricing = orderModel.calculatePrice();
   const vatPricing = await applyPrintingVat(productType || 'Book', pricing.totalPrice);
   const orderNumber = await generateOrderNumber('PRT');
-  const initialStatus = await db('order_statuses').where('status_code', 'received').first();
+  // Cash walk-in orders are paid at the counter — they enter the job queue
+  // immediately and must NOT go through Finance Live Income verification.
+  const isCashPayment = String(paymentMethod || '').toLowerCase() === 'cash'
+    || String(paymentMethod || '').toLowerCase().startsWith('cash');
+  const initialStatusCode = isCashPayment ? 'in_queue' : 'received';
+  const initialStatus = await db('order_statuses').where('status_code', initialStatusCode).first();
   const invoiceLines = await buildPrintingInvoiceLines({
     productType, paperType, pagesPerCopy, colorPrinting, bindingType, quantity, pricing, vatPricing
   });
@@ -212,7 +217,7 @@ exports.createOrder = catchAsync(async (req, res) => {
       status_id: initialStatus?.id || 1,
       payment_method: paymentMethod || null,
       payment_reference: paymentReference || null,
-      payment_status: 'Pending',
+      payment_status: isCashPayment ? 'Confirmed' : 'Pending',
       created_by: userId,
       created_at: db.fn.now(),
       updated_at: db.fn.now()
@@ -233,9 +238,22 @@ exports.createOrder = catchAsync(async (req, res) => {
     return oid;
   });
 
-  // Automatically send to Finance Live Income for verification
-  if (paymentMethod) {
-    const refForFinance = paymentReference || 'Cash/POS';
+  // Walk-in screenshot proof (multipart) — mirrored from the online order form.
+  const screenshotFile = req.files && req.files.paymentScreenshot ? req.files.paymentScreenshot[0] : null;
+
+  // Automatically send to Finance Live Income for verification — EXCEPT cash
+  // walk-in orders, which are already collected at the counter so they skip
+  // finance and go straight into the job queue (fully paid).
+  if (paymentMethod && !isCashPayment) {
+    const refForFinance = paymentReference || screenshotFile?.filename || 'Cash/POS';
+    const manualDetails = {
+      order_id: orderId,
+      paymentMethod: paymentMethod,
+      paymentReference: paymentReference || null,
+      receivedFrom: customer?.name || 'Walk-in Customer'
+    };
+    if (screenshotFile) manualDetails.paymentScreenshot = screenshotFile.filename;
+
     await db('finance_income_submissions').insert({
       department: 'Printing',
       submitted_by: req.user.full_name || req.user.name || 'Printing Cashier',
@@ -243,12 +261,7 @@ exports.createOrder = catchAsync(async (req, res) => {
       reference_no: refForFinance,
       description: `Printing Order ${orderNumber} - ${customer?.name || 'Walk-in'}`,
       status: 'Pending',
-      manual_details: JSON.stringify({
-        order_id: orderId,
-        paymentMethod: paymentMethod,
-        paymentReference: paymentReference || null,
-        receivedFrom: customer?.name || 'Walk-in Customer'
-      }),
+      manual_details: JSON.stringify(manualDetails),
       created_at: db.fn.now(),
       updated_at: db.fn.now()
     }).catch(err => console.error('Failed to submit to finance:', err.message));
@@ -260,6 +273,23 @@ exports.createOrder = catchAsync(async (req, res) => {
       link: '/finance/pharmacy-sales?tab=list',
       related_entity_id: orderId
     }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+  } else if (isCashPayment) {
+    // Cash was collected at the counter — record the receipt against the
+    // invoice so it shows PAID (balance 0) on the Sales & Invoice page.
+    try {
+      const invoice = await findInvoiceForOrder(db, 'printing', orderId);
+      if (invoice) {
+        await recordReceiptForOrder(db, {
+          invoiceId: invoice.id,
+          amountPaid: parseFloat(vatPricing.total) || 0,
+          paymentMethod: 'Cash',
+          paymentReference: paymentReference || null,
+          receivedBy: req.user.full_name || req.user.fullName || 'Printing Cashier'
+        });
+      }
+    } catch (e) {
+      console.error('Failed to record cash receipt for printing order:', e.message);
+    }
   }
 
   await audit('PRINTING_ORDER_CREATED', userId, {
@@ -545,6 +575,7 @@ exports.deleteOrder = catchAsync(async (req, res) => {
     throw new AppError('This order is already confirmed/paid and cannot be deleted', 400);
   }
 
+  let removedSubmissionCount = 0;
   await db.transaction(async (trx) => {
     // Hard-cancel any previously recorded invoice + receipt for this order so
     // it is cleaned from the Sales & Invoice page too.
@@ -560,6 +591,29 @@ exports.deleteOrder = catchAsync(async (req, res) => {
       }
     } catch (e) {
       console.error('Failed to cancel printing invoice on delete:', e.message);
+    }
+
+    // Remove any finance income submission that is still pending verification
+    // for this order. Once finance has verified/approved the payment the order
+    // is Confirmed (blocked above), so only un-verified rows can remain — they
+    // should disappear with the order so finance never approves a deleted one.
+    try {
+      const pendingSubs = await trx('finance_income_submissions')
+        .where('department', 'Printing')
+        .where('status', 'Pending')
+        .select('id', 'manual_details');
+      for (const sub of pendingSubs) {
+        let oid = null;
+        if (sub.manual_details) {
+          try { oid = JSON.parse(sub.manual_details).order_id; } catch { oid = null; }
+        }
+        if (Number(oid) === Number(id)) {
+          await trx('finance_income_submissions').where('id', sub.id).del();
+          removedSubmissionCount += 1;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to delete pending finance submission on order delete:', e.message);
     }
 
     await trx('printing_orders').where('id', id).update({
@@ -587,6 +641,16 @@ exports.deleteOrder = catchAsync(async (req, res) => {
     link: '/printing-manager/jobs/queue',
     related_entity_id: id
   }, req.app?.get('io')).catch(e => console.error('Failed to notify printing:', e.message));
+
+  if (removedSubmissionCount > 0) {
+    sendFinanceNotification({
+      title: 'Pending Income Submission Removed',
+      message: `Printing Order ${order.order_number} (ETB ${Number(order.total_price || 0).toLocaleString()}) was deleted before verification — ${removedSubmissionCount} pending finance income submission(s) removed.`,
+      type: 'finance',
+      link: '/finance/pharmacy-sales?tab=list',
+      related_entity_id: id
+    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+  }
 
   res.json({ status: 'success', message: 'Order deleted from Job Queue (payment was not confirmed)' });
 });
