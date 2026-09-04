@@ -4,7 +4,8 @@ import axios from '../../../services/apiClient';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Tractor, User,
-  Calendar, FileText, MapPin, Plus, Leaf
+  Calendar, FileText, MapPin, Plus, Leaf,
+  Archive, Trash2, AlertTriangle,
 } from 'lucide-react';
 import AgriRentOrderDetail from './AgriRentOrderDetail';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
@@ -296,6 +297,33 @@ const AgriRentOrders = () => {
   const [toasts, setToasts] = useState([]);
   const [spinning, setSpinning] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // { variant, id, orderNumber }
+
+  const TERMINAL_STATUSES = ['completed', 'cancelled'];
+  const terminalOrders = orders.filter(o => TERMINAL_STATUSES.includes(o.status) && !o.is_manual);
+
+  const runConfirm = async () => {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (!action) return;
+
+    const ids = action.variant.startsWith('bulk')
+      ? terminalOrders.map(o => o.id)
+      : [action.id];
+
+    try {
+      if (action.variant === 'archive' || action.variant === 'bulkArchive') {
+        const res = await axios.post('/agrirent-orders/bulk-archive', { ids });
+        toast(res.message || `${ids.length} order(s) moved to history`, 'success');
+      } else if (action.variant === 'delete' || action.variant === 'bulkDelete') {
+        const res = await axios.delete('/agrirent-orders/bulk', { data: { ids } });
+        toast(res.message || `${ids.length} order(s) deleted`, 'success');
+      }
+      load(filter);
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    }
+  };
 
   const toast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -425,6 +453,13 @@ const AgriRentOrders = () => {
             title="Refresh"
           >
             <SegmentedSpinner size={17} />
+          </button>
+          <button
+            style={{ ...S.btnRefresh, width: 'auto', padding: '0 16px', gap: 6 }}
+            onClick={() => navigate('/car-renting/manager/agri-history')}
+            title="Open agri rent order history"
+          >
+            <Archive size={15} /> History
           </button>
           <button
             style={S.btnGreen}
@@ -631,25 +666,53 @@ const AgriRentOrders = () => {
 
                 {/* Actions */}
                 <td style={{ ...S.td, textAlign: 'center' }}>
-                  <button
-                    onClick={() => setSelectedOrderId(order.id)}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '7px 16px',
-                      background: C.darkGreen, color: '#fff',
-                      border: `1px solid ${C.forestGreen}`,
-                      fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                      boxShadow: `0 3px 0 rgba(27,94,32,0.5)`,
-                      transition: 'all 0.12s',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.emerald; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = C.darkGreen; }}
-                    onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-                    onMouseUp={e => { e.currentTarget.style.boxShadow = `0 3px 0 rgba(27,94,32,0.5)`; e.currentTarget.style.transform = 'translateY(0)'; }}
-                  >
-                    <FileText size={12} /> View Detail
-                  </button>
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'stretch' }}>
+                    <button
+                      onClick={() => setSelectedOrderId(order.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '7px 16px',
+                        background: C.darkGreen, color: '#fff',
+                        border: `1px solid ${C.forestGreen}`,
+                        fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                        boxShadow: `0 3px 0 rgba(27,94,32,0.5)`,
+                        transition: 'all 0.12s',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = C.emerald; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = C.darkGreen; }}
+                      onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                      onMouseUp={e => { e.currentTarget.style.boxShadow = `0 3px 0 rgba(27,94,32,0.5)`; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      <FileText size={12} /> View Detail
+                    </button>
+                    {TERMINAL_STATUSES.includes(order.status) && !order.is_manual && (
+                      <>
+                        <button
+                          onClick={() => setConfirmAction({ variant: 'archive', id: order.id, orderNumber: order.order_number })}
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#6D4C41', color: '#fff', border: '1px solid #4E342E', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(78,52,46,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#795548'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#6D4C41'; }}
+                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(78,52,46,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          title="Move completed / cancelled order to history"
+                        >
+                          <Archive size={12} /> To History
+                        </button>
+                        <button
+                          onClick={() => setConfirmAction({ variant: 'delete', id: order.id, orderNumber: order.order_number })}
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#C62828', color: '#fff', border: '1px solid #8E0000', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(142,0,0,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#D32F2F'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#C62828'; }}
+                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(142,0,0,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          title="Delete completed / cancelled order"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -685,6 +748,50 @@ const AgriRentOrders = () => {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* ── CONFIRM MODAL ── */}
+      {confirmAction && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', maxWidth: 460, width: '100%', border: `2px solid ${C.border}`, boxShadow: '8px 8px 0 rgba(0,0,0,0.2)', padding: '28px 26px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <AlertTriangle size={22} color={confirmAction.variant.includes('Delete') ? C.red : '#6D4C41'} />
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.darkGray }}>
+                {confirmAction.variant.includes('Delete') ? 'Delete orders?' : 'Move orders to history?'}
+              </h3>
+            </div>
+            <p style={{ fontSize: 14, color: C.textSec, lineHeight: 1.55, marginBottom: 4 }}>
+              {confirmAction.variant.startsWith('bulk') ? (
+                <>This will affect <strong style={{ color: C.darkGray }}>{terminalOrders.length} order(s)</strong> that are completed or cancelled.</>
+              ) : (
+                <>Order <strong style={{ color: C.darkGray }}>{confirmAction.orderNumber || `#${confirmAction.id}`}</strong> is completed or cancelled.</>
+              )}
+            </p>
+            {confirmAction.variant.includes('Delete') ? (
+              <p style={{ fontSize: 13, color: C.red, fontWeight: 600, margin: 0 }}>
+                Deleted orders are hidden from the dashboard and cannot be viewed again.
+              </p>
+            ) : (
+              <p style={{ fontSize: 13, color: C.textSec, margin: 0 }}>
+                Orders can be restored later from the History page.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+              <button
+                onClick={() => setConfirmAction(null)}
+                style={{ flex: 1, padding: '11px 0', background: C.lightGray, color: C.darkGray, border: `1px solid ${C.border}`, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runConfirm}
+                style={{ flex: 1, padding: '11px 0', background: confirmAction.variant.includes('Delete') ? '#C62828' : '#6D4C41', color: '#fff', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 3px 0 ${confirmAction.variant.includes('Delete') ? '#8E0000' : '#4E342E'}` }}
+              >
+                {confirmAction.variant.includes('Delete') ? 'Yes, Delete' : 'Yes, Move to History'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
