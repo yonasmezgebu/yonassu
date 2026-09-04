@@ -243,8 +243,8 @@ export default function PrintingHome() {
   if (!data) return (
     <div className="ph-root" style={{ margin: '-24px', minHeight: 'calc(100vh - 64px)' }}>
       <GlobalStyles />
-      <div className="ph-loading">
-        <SegmentedSpinner size={40} label="Loading dashboard..." />
+      <div className="ph-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 'calc(100vh - 64px)' }}>
+        <SegmentedSpinner size={48} label="Loading dashboard..." center />
       </div>
     </div>
   );
