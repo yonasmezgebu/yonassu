@@ -31,6 +31,7 @@ const EMPTY_ITEM = { drug_id: null, drug_name: '', quantity: '', unit_price: '' 
 
 export default function PharmacySalesForm() {
   const { user } = useAuth();
+  const isManager = user?.roles?.some(r => ['Pharmacy Manager', 'Admin', 'CEO'].includes(r));
   const { showToast, ToastContainer } = useToast();
   const location = useLocation();
   const [tab, setTab] = useState('walkin');
@@ -513,6 +514,7 @@ export default function PharmacySalesForm() {
         payment_method: req.payment_method,
         payment_reference: req.payment_reference,
         payment_screenshot: req.payment_screenshot,
+        finance_payment_status: req.finance_payment_status,
         items: [{
           drug_id: req.medication_id,
           drug_name: req.medication_name,
@@ -1286,14 +1288,16 @@ export default function PharmacySalesForm() {
                      <div className={styles.summaryText}>
                         <strong className={styles.summaryStrong}>{sales.length}</strong> transactions · <strong className={styles.summaryGreen}>{sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB</strong> total
                      </div>
-                     <button 
-                       onClick={() => setShowSubmitConfirm(true)}
-                       disabled={loading}
-                       className={styles.btnSuccess}
-                     >
-                       <CheckCircle size={16} />
-                       {loading ? 'Submitting...' : 'Submit to Finance'}
-                     </button>
+                     {isManager && (
+                       <button 
+                         onClick={() => setShowSubmitConfirm(true)}
+                         disabled={loading}
+                         className={styles.btnSuccess}
+                       >
+                         <CheckCircle size={16} />
+                         {loading ? 'Moving...' : 'Move to Audit'}
+                       </button>
+                     )}
                    </div>
                  )}
               </div>
@@ -1321,47 +1325,76 @@ export default function PharmacySalesForm() {
                   <div className={styles.ordersGrid}>
                     {pendingOrders
                       .filter(o => !navSearch || o.customer_name?.toLowerCase().includes(navSearch.toLowerCase()) || o.patient_name?.toLowerCase().includes(navSearch.toLowerCase()) || String(o.id).includes(navSearch) || o.sale_code?.toLowerCase().includes(navSearch.toLowerCase()))
-                      .map(order => (
-                      <div key={order.id} className={styles.orderCard}>
-                        <div className={styles.orderCardTop}>
-                          <span className={styles.orderCode}>{order.sale_code || `ORD-${order.id}`}</span>
-                          <span className={styles.badgeOnline}>ONLINE</span>
-                        </div>
-                        <div className={styles.orderCustomer}>
-                          👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
-                          {order.customer_phone && <span className={styles.orderPhone}>· {order.customer_phone}</span>}
-                        </div>
-                        {order.prescription_ref && (
-                          <div className={styles.orderRx}>📋 Rx: {order.prescription_ref}</div>
-                        )}
-                        <div className={styles.orderItems}>
-                          {(order.items || []).map(item => (
-                            <div key={item.id || item.drug_id} className={styles.orderItemRow}>
-                              <span>💊 {item.drug_name} × {item.quantity}</span>
-                              <span className={styles.orderItemAmt}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
+                      .map(order => {
+                        const isVerified = order.finance_payment_status === 'Approved' || order.finance_payment_status === null;
+                        const isRejected = order.finance_payment_status === 'Rejected';
+                        return (
+                          <div key={order.id} className={styles.orderCard}>
+                            <div className={styles.orderCardTop}>
+                              <span className={styles.orderCode}>{order.sale_code || `ORD-${order.id}`}</span>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <span className={styles.badgeOnline}>ONLINE</span>
+                                {order.finance_payment_status && (
+                                  <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: 'bold',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: order.finance_payment_status === 'Approved' ? '#dcfce7' : order.finance_payment_status === 'Rejected' ? '#fee2e2' : '#fef3c7',
+                                    color: order.finance_payment_status === 'Approved' ? '#166534' : order.finance_payment_status === 'Rejected' ? '#991b1b' : '#92400e',
+                                    border: `1px solid ${order.finance_payment_status === 'Approved' ? '#bbf7d0' : order.finance_payment_status === 'Rejected' ? '#fecaca' : '#fde68a'}`
+                                  }}>
+                                    Finance: {order.finance_payment_status}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                        <div className={styles.orderFooter}>
-                          <div>
-                            <div className={styles.orderDate}>{new Date(order.created_at).toLocaleString()}</div>
-                            <div className={styles.orderTotal}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                            <div className={styles.orderCustomer}>
+                              👤 <strong>{order.customer_name || 'Guest Customer'}</strong>
+                              {order.customer_phone && <span className={styles.orderPhone}>· {order.customer_phone}</span>}
+                            </div>
+                            {order.prescription_ref && (
+                              <div className={styles.orderRx}>📋 Rx: {order.prescription_ref}</div>
+                            )}
+                            <div className={styles.orderItems}>
+                              {(order.items || []).map(item => (
+                                <div key={item.id || item.drug_id} className={styles.orderItemRow}>
+                                  <span>💊 {item.drug_name} × {item.quantity}</span>
+                                  <span className={styles.orderItemAmt}>{parseFloat(item.line_total || (item.quantity * item.unit_price)).toFixed(2)} ETB</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className={styles.orderFooter}>
+                              <div>
+                                <div className={styles.orderDate}>{new Date(order.created_at).toLocaleString()}</div>
+                                <div className={styles.orderTotal}>{parseFloat(order.total_amount).toFixed(2)} ETB</div>
+                              </div>
+                              <div className={styles.orderActions}>
+                                <button
+                                  onClick={() => handleDeleteOrder(order)}
+                                  className={styles.deleteBtn}
+                                  title="Delete order (soft delete)"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => processOnlineOrder(order)}
+                                  className={styles.processBtn}
+                                  disabled={!isVerified}
+                                  style={{
+                                    opacity: !isVerified ? 0.5 : 1,
+                                    cursor: !isVerified ? 'not-allowed' : 'pointer',
+                                    background: isRejected ? '#ef4444' : undefined
+                                  }}
+                                  title={!isVerified ? 'Payment verification pending by Finance' : 'Move to Sales Form'}
+                                >
+                                  {!isVerified ? '🔒 Locked' : 'Move to Sales →'}
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className={styles.orderActions}>
-                            <button
-                              onClick={() => handleDeleteOrder(order)}
-                              className={styles.deleteBtn}
-                              title="Delete order (soft delete)"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                            <button onClick={() => processOnlineOrder(order)} className={styles.processBtn}>
-                              Process Payment →
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -1519,15 +1552,15 @@ export default function PharmacySalesForm() {
             <div className={styles.modalIcon}>
               <CheckCircle size={32} color="#16A34A" />
             </div>
-            <h3 className={styles.modalTitle}>Submit Daily Sales?</h3>
+            <h3 className={styles.modalTitle}>Move to Audit?</h3>
             <p className={styles.modalBody}>
-              You are about to submit <strong style={{ color: '#111827' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
+              You are about to move <strong style={{ color: '#111827' }}>{sales.length} transaction{sales.length !== 1 ? 's' : ''}</strong> totalling
             </p>
             <p className={styles.modalAmount}>
               {sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB
             </p>
             <p className={styles.modalNote}>
-              This will be recorded in the audit log and sent to Finance. The sales list will be cleared after submission.
+              This will record the transactions in the audit log and clear the current sales list.
             </p>
             <div className={styles.modalBtns}>
               <button
@@ -1544,12 +1577,12 @@ export default function PharmacySalesForm() {
                     setLoading(true);
                     await apiClient.post('/pharmacy/sales/submit-daily', {});
                     setShowSubmitConfirm(false);
-                    submitNotification('Sales Submitted', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB submitted to Finance.`);
-                    showToast('✅ Full day data submitted to Finance', 'success');
+                    submitNotification('Moved to Audit', `${sales.length} transaction(s) totalling ${sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0).toFixed(2)} ETB moved to Audit.`);
+                    showToast('✅ Transactions moved to Audit', 'success');
                     loadSales();
                   } catch (err) {
                     setShowSubmitConfirm(false);
-                    showToast(err.message || 'Failed to submit data', 'error');
+                    showToast(err.message || 'Failed to move data', 'error');
                   } finally {
                     setLoading(false);
                   }
@@ -1559,7 +1592,7 @@ export default function PharmacySalesForm() {
                 style={{ flex: 1, height: '44px' }}
               >
                 <CheckCircle size={18} />
-                {loading ? 'Submitting...' : 'Yes, Submit'}
+                {loading ? 'Moving...' : 'Yes, Move'}
               </button>
             </div>
           </div>
