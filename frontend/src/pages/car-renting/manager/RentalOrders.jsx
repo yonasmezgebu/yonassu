@@ -4,149 +4,88 @@ import axios from '../../../services/apiClient';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Car, User,
-  Calendar, FileText, Plus,
+  Calendar, FileText, Plus, Archive, Trash2, AlertTriangle,
+  Play, Ban, RotateCcw, ListChecks, X,
 } from 'lucide-react';
 import CarRentalOrderDetail  from './CarRentalOrderDetail';
 import CarRentalCreateOrder  from './CarRentalCreateOrder';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
 import './RentalOrders.css';
 
-/* ─────────────── COLOR TOKENS ─────────────── */
-const C = {
-  forestGreen: '#228B22',
-  darkGreen:   '#1B5E20',
-  emerald:     '#2E8B57',
-  leafGreen:   '#4CAF50',
-  sage:        '#A5D6A7',
-  earthBrown:  '#8D6E63',
-  white:       '#FFFFFF',
-  lightGray:   '#F5F5F5',
-  darkGray:    '#424242',
-  orange:      '#FF9800',
-  red:         '#F44336',
-  border:      '#8D6E63',
-  textSec:     '#616161',
-  surfaceAlt:  '#FAFAF8',
-};
-
 /* ─────────────── STATUS CONFIG ─────────────── */
 const STATUS_LABELS = {
   PENDING_APPROVAL: 'Pending Approval',
   APPROVED:         'Approved',
-  ACTIVE:           'Active',
+  CONFIRMED:        'Confirmed',
+  ACTIVE:           'On Rent',
   COMPLETED:        'Completed',
   CANCELLED:        'Cancelled',
   REJECTED:         'Rejected',
 };
 
-const STATUS_CFG = {
-  PENDING_APPROVAL: { bg: '#FFF3E0', color: '#E65100', border: '#FFCC80' },
-  APPROVED:         { bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7' },
-  ACTIVE:           { bg: '#E3F2FD', color: '#0D47A1', border: '#90CAF9' },
-  COMPLETED:        { bg: '#F3E5F5', color: '#4A148C', border: '#CE93D8' },
-  CANCELLED:        { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A' },
-  REJECTED:         { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A' },
+const STATUS_MOD = {
+  PENDING_APPROVAL: 'pending',
+  APPROVED:         'approved',
+  CONFIRMED:        'approved',
+  ACTIVE:           'active',
+  COMPLETED:        'done',
+  CANCELLED:        'danger',
+  REJECTED:         'danger',
 };
 
-const PAY_CFG = {
-  PENDING:   { label: 'Awaiting Payment',   bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', Icon: Clock },
-  PAID:      { label: 'Payment Confirmed',  bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', Icon: CheckCircle },
-  REJECTED:  { label: 'Payment Rejected',   bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', Icon: XCircle },
-  Pending:   { label: 'Awaiting Payment',   bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', Icon: Clock },
-  Confirmed: { label: 'Payment Confirmed',  bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', Icon: CheckCircle },
-  Rejected:  { label: 'Payment Rejected',   bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', Icon: XCircle },
-};
+const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+const STARTABLE_STATUSES = ['APPROVED', 'CONFIRMED'];
 
 /* ─────────────── BADGE COMPONENTS ─────────────── */
-const StatusBadge = ({ code }) => {
-  const cfg = STATUS_CFG[code] || { bg: '#F5F5F5', color: '#424242', border: '#BDBDBD' };
-
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '4px 10px',
-      background: cfg.bg, color: cfg.color,
-      border: `1.5px solid ${cfg.border}`,
-      fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
-      textTransform: 'uppercase', whiteSpace: 'nowrap',
-    }}>
-      <span style={{ width: 7, height: 7, background: cfg.color, display: 'inline-block', flexShrink: 0 }} />
-      {STATUS_LABELS[code] || code}
-    </span>
-  );
-};
+const StatusBadge = ({ code }) => (
+  <span className={`ro2-badge ro2-badge--${STATUS_MOD[code] || 'approved'}`}>
+    <span className="ro2-badge__dot" />
+    {STATUS_LABELS[code] || code}
+  </span>
+);
 
 const PayBadge = ({ status }) => {
-  const cfg = PAY_CFG[status] || PAY_CFG.PENDING;
-  const Icon = cfg.Icon;
+  let mod = 'pending';
+  let label = 'Awaiting Payment';
+  let Icon = Clock;
+  if (status === 'PAID' || status === 'Confirmed') { mod = 'success'; label = 'Payment Confirmed'; Icon = CheckCircle; }
+  else if (status === 'REJECTED' || status === 'Rejected') { mod = 'danger'; label = 'Payment Rejected'; Icon = XCircle; }
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '4px 10px',
-      background: cfg.bg, color: cfg.color,
-      border: `1.5px solid ${cfg.border}`,
-      fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
-    }}>
-      <Icon size={12} /> {cfg.label}
+    <span className={`ro2-badge ro2-badge--${mod}`}>
+      <Icon size={12} /> {label}
     </span>
   );
 };
 
 /* ─────────────── TOAST ─────────────── */
 const Toast = ({ toasts, remove }) => (
-  <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
-    {toasts.map(t => {
-      const bg = t.type === 'success' ? C.leafGreen : t.type === 'error' ? C.red : C.darkGreen;
-      return (
-        <div key={t.id} style={{
-          background: bg, color: '#fff', padding: '12px 18px',
-          boxShadow: '4px 4px 0px rgba(0,0,0,0.25)',
-          fontSize: 13, fontWeight: 600, minWidth: 240, maxWidth: 340,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-        }}>
-          <span>{t.message}</span>
-          <button onClick={() => remove(t.id)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16 }}>×</button>
-        </div>
-      );
-    })}
-    <style>{`@keyframes slideIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+  <div className="ro2-toast-wrap">
+    {toasts.map(t => (
+      <div key={t.id} className={`ro2-toast ro2-toast--${t.type}`}>
+        <span>{t.message}</span>
+        <button className="ro2-toast__close" onClick={() => remove(t.id)} aria-label="Dismiss">×</button>
+      </div>
+    ))}
   </div>
 );
 
-/* ─────────────── INLINE STYLES ─────────────── */
-const S = {
-  page: { width: '100%', minHeight: '100vh', background: C.white, fontFamily: '"Inter", system-ui, sans-serif', color: C.darkGray, boxSizing: 'border-box' },
-  banner: { background: C.darkGreen, borderBottom: `3px solid ${C.earthBrown}`, padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', minHeight: 70 },
-  bannerLeft: { display: 'flex', alignItems: 'center', gap: 12 },
-  bannerTitle: { color: '#fff', fontSize: '1.35rem', fontWeight: 800, letterSpacing: '0.01em', margin: 0 },
-  bannerSub: { color: C.sage, fontSize: '0.8rem', margin: '2px 0 0', fontWeight: 500 },
-  btnGreen: { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 20px', background: C.forestGreen, color: '#fff', border: `1px solid ${C.darkGreen}`, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 4px 0 ${C.darkGreen}`, transition: 'all 0.12s' },
-  btnRefresh: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', boxShadow: '0 3px 0 rgba(0,0,0,0.3)', transition: 'all 0.12s' },
-  filterBar: { background: C.white, border: `1px solid ${C.border}`, borderTop: 'none', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', boxShadow: '0 2px 0px rgba(0,0,0,0.08)' },
-  searchWrap: { flex: '1 1 240px', position: 'relative' },
-  searchInput: { width: '100%', padding: '9px 12px 9px 36px', border: `1.5px solid ${C.border}`, outline: 'none', fontSize: 13, boxSizing: 'border-box', background: C.lightGray, color: C.darkGray, transition: 'border 0.15s' },
-  select: { flex: '0 1 190px', padding: '9px 12px', border: `1.5px solid ${C.border}`, outline: 'none', fontSize: 13, background: C.lightGray, color: C.darkGray, cursor: 'pointer' },
-  btnSearch: { padding: '9px 22px', background: C.emerald, color: '#fff', border: `1px solid ${C.darkGreen}`, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 3px 0 ${C.darkGreen}`, transition: 'all 0.12s' },
-  tableWrap: { background: C.white, border: `1px solid ${C.border}`, borderTop: 'none', overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: 900 },
-  thead: { background: C.darkGreen },
-  th: { padding: '13px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', borderRight: `1px solid ${C.emerald}`, whiteSpace: 'nowrap' },
-  td: { padding: '13px 14px', borderBottom: `1px solid #E0E0E0`, borderRight: `1px solid #F5F5F5`, verticalAlign: 'top', fontSize: 13 },
-  statsRow: { display: 'flex', padding: '1.25rem 1.5rem', background: C.white, border: `1px solid ${C.border}`, borderTop: 'none', borderBottom: 'none', flexWrap: 'wrap', gap: '1rem' },
-  statCard: (accent, active) => ({
-    flex: '1 1 180px', padding: '18px 24px',
-    background: active ? `${accent}12` : '#FAFAFA',
-    border: `2px solid ${accent}`, cursor: 'pointer',
-    transition: 'all 0.15s',
-    boxShadow: active ? `0 4px 0 ${accent}` : '0 2px 0 rgba(0,0,0,0.06)',
-    transform: active ? 'translateY(-2px)' : 'none',
-    userSelect: 'none',
-  }),
-  statNum: accent => ({ fontSize: '2rem', fontWeight: 900, color: accent, lineHeight: 1 }),
-  statLabel: { fontSize: 11, color: C.textSec, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 6 },
-  pagination: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 1.5rem', background: C.surfaceAlt, border: `1px solid ${C.border}`, borderTop: `1px solid #E0E0E0` },
-  pgBtn: disabled => ({ padding: '7px 14px', background: disabled ? '#E0E0E0' : C.white, color: disabled ? '#9E9E9E' : C.darkGray, border: `1px solid ${disabled ? '#E0E0E0' : C.border}`, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 13, boxShadow: disabled ? 'none' : '0 3px 0 rgba(0,0,0,0.12)', transition: 'all 0.12s', display: 'inline-flex', alignItems: 'center', gap: 4 }),
-  empty: { padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+/* ─────────────── HELPERS ─────────────── */
+const DAY_MS = 86400000;
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
+const fmtMoney = (v) => Number(v || 0).toLocaleString();
+
+const rentalStats = (order) => {
+  const start = new Date(order.pickupDate || order.pickup_date || order.start_date || order.startDate);
+  const end = new Date(order.returnDate || order.return_date || order.endDate || order.end_date);
+  const totalDays = Number(order.totalDays || order.total_days || order.days || Math.max(1, Math.ceil((end - start) / DAY_MS)));
+  const begun = order.rentalStartTime || order.rental_start_time;
+  const now = Date.now();
+  const elapsedDays = begun ? Math.max(0, Math.floor((now - new Date(begun).getTime()) / DAY_MS)) : 0;
+  const diff = end.getTime() - now;
+  const overdue = diff < 0;
+  const remaining = diff < 0 ? Math.abs(Math.ceil(diff / DAY_MS)) : Math.ceil(diff / DAY_MS);
+  const pct = totalDays > 0 ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100))) : 0;
+  return { start, end, totalDays, began: begun, elapsedDays, remaining, overdue, pct };
 };
 
 /* ─────────────── MAIN COMPONENT ─────────────── */
@@ -161,6 +100,11 @@ const RentalOrders = () => {
   const [spinning,   setSpinning]   = useState(false);
   const [view,       setView]       = useState('list'); // 'list' | 'detail' | 'create'
   const [selectedId, setSelectedId] = useState(null);
+  const [modal,      setModal]      = useState(null);   // { type, order }
+  const [form,       setForm]       = useState({
+    startNote: '', damageFee: '', fuelFee: '', lateFee: '', odometer: '',
+    notes: '', cancelReason: '', status: '', statusNote: '',
+  });
 
   const toast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -177,7 +121,6 @@ const RentalOrders = () => {
       if (f.search)        params.search        = f.search;
       if (f.paymentStatus) params.paymentStatus = f.paymentStatus;
       const res = await axios.get('/rental-orders', { params });
-      // Support both paginated and flat array responses
       if (res.status === 'success') {
         const payload = res.data;
         if (Array.isArray(payload)) {
@@ -214,24 +157,14 @@ const RentalOrders = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (location.state?.autoSelectSearchItem) {
       const item = location.state.autoSelectSearchItem.item;
       if (item && (item.order_number || item.id || item.plate_number || item.name)) {
         const q = String(item.order_number || item.plate_number || item.name || item.id).toLowerCase();
-        
-        // Handle filter object (Orders)
-        if (typeof setFilter === 'function') {
-          setFilter(f => ({ ...f, search: q, page: 1 }));
-          if (typeof load === 'function') load({ ...filter, search: q, page: 1 });
-        } 
-        // Handle searchQuery string (Fleet)
-        else if (typeof setSearchQuery === 'function') {
-          setSearchQuery(q);
-        }
+        setFilter(f => ({ ...f, search: q, page: 1 }));
+        if (typeof load === 'function') load({ ...filter, search: q, page: 1 });
       }
-      
-      // Clear state so refresh doesn't trigger it again
       navigate(location.pathname, { replace: true, state: {} });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,6 +181,49 @@ const RentalOrders = () => {
     await load(filter);
     setTimeout(() => setSpinning(false), 600);
     toast('Orders refreshed.', 'success');
+  };
+
+  const openModal = (type, order) => {
+    setForm({ startNote: '', damageFee: '', fuelFee: '', lateFee: '', odometer: '', notes: '', cancelReason: '', status: '', statusNote: '' });
+    setModal({ type, order });
+  };
+
+  const runModal = async () => {
+    const m = modal;
+    if (!m) return;
+    const id = m.order.id;
+    const oNum = m.order.orderNumber || m.order.order_number;
+    try {
+      if (m.type === 'start') {
+        const res = await axios.post(`/rental-orders/${id}/start`, { notes: form.startNote });
+        toast(res.message || `${oNum} started`, 'success');
+      } else if (m.type === 'return') {
+        const res = await axios.post(`/rental-orders/${id}/process-return`, {
+          damageFee: form.damageFee || 0,
+          fuelFee:   form.fuelFee   || 0,
+          lateFee:   form.lateFee   || 0,
+          odometer:  form.odometer  || null,
+          notes:     form.notes     || '',
+        });
+        toast(res.message || `${oNum} completed — car released`, 'success');
+      } else if (m.type === 'cancel') {
+        const res = await axios.post(`/rental-orders/${id}/cancel`, { reason: form.cancelReason });
+        toast(res.message || `${oNum} cancelled`, 'success');
+      } else if (m.type === 'status') {
+        const res = await axios.put(`/rental-orders/${id}/status`, { status: form.status, managerNote: form.statusNote });
+        toast(res.message || `Status updated to ${form.status}`, 'success');
+      } else if (m.type === 'archive') {
+        const res = await axios.post(`/rental-orders/${id}/archive`);
+        toast(res.message || `${oNum} moved to history`, 'success');
+      } else if (m.type === 'delete') {
+        const res = await axios.delete(`/rental-orders/${id}`);
+        toast(res.message || `${oNum} deleted`, 'success');
+      }
+      setModal(null);
+      load(filter);
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    }
   };
 
   /* ── Stats ── */
@@ -277,236 +253,371 @@ const RentalOrders = () => {
     );
   }
 
-
   /* ── LIST VIEW ── */
-  const filteredOrders = filter.search
-    ? orders.filter(o => {
-        const q = filter.search.toLowerCase();
-        return (
-          (o.order_number || o.orderNumber || '').toLowerCase().includes(q) ||
-          String(o.id || '').includes(q) ||
-          (o.customer_name || o.customerName || '').toLowerCase().includes(q) ||
-          (o.customer_phone || o.customerPhone || '').toLowerCase().includes(q)
-        );
-      })
+  const q = filter.search.trim().toLowerCase();
+  const filteredOrders = q
+    ? orders.filter(o =>
+        (o.order_number || o.orderNumber || '').toLowerCase().includes(q) ||
+        String(o.id || '').includes(q) ||
+        (o.customer_name || o.customerName || '').toLowerCase().includes(q) ||
+        (o.customer_phone || o.customerPhone || '').toLowerCase().includes(q)
+      )
     : orders;
 
-  return (
-    <div className="ro-page" style={S.page}>
-      <Toast toasts={toasts} remove={removeToast} />
+  const renderModal = () => {
+    if (!modal) return null;
+    const m = modal;
+    const o = m.order;
+    const oNum = o.orderNumber || o.order_number;
+    const carName = o.carName || (o.car ? `${o.car.brand || ''} ${o.car.model || ''}`.trim() : 'N/A');
 
-      {/* ── TOP BANNER ── */}
-      <div style={S.banner}>
-        <div style={S.bannerLeft}>
-          <Car size={26} color={C.sage} />
-          <div>
-            <h1 style={S.bannerTitle}>Car Rental Orders</h1>
-            <p style={S.bannerSub}>Manage vehicle rental bookings and lifecycle</p>
+    const titleMap = {
+      start:   'Start Rental',
+      return:  'Complete Rental & Release Car',
+      cancel:  'Cancel Order',
+      status:  'Change Order Status',
+      archive: 'Move Order to History',
+      delete:  'Delete Order',
+    };
+    const iconMap = { start: Play, return: RotateCcw, cancel: Ban, status: ListChecks, archive: Archive, delete: Trash2 };
+    const Icon = iconMap[m.type];
+
+    return (
+      <div className="ro2-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setModal(null); }}>
+        <div className="ro2-modal" role="dialog" aria-modal="true" aria-label={titleMap[m.type]}>
+          <div className="ro2-modal__head">
+            <h3 className="ro2-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Icon size={18} style={{ color: 'hsl(var(--primary-strong))' }} /> {titleMap[m.type]}
+            </h3>
+            <button className="ro2-close" onClick={() => setModal(null)} aria-label="Close"><X size={16} /></button>
+          </div>
+
+          <div className="ro2-modal__body">
+            <p>
+              <strong>{oNum}</strong> · {carName} · {fmtDate(o.pickupDate || o.pickup_date)} → {fmtDate(o.returnDate || o.return_date)}
+            </p>
+
+            {m.type === 'start' && (
+              <>
+                <p>Confirm that the car has been handed over. The day counter starts now and the vehicle is marked as rented.</p>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="start-note">Handover note (optional)</label>
+                  <textarea id="start-note" className="ro2-textarea" value={form.startNote} onChange={e => setForm(f => ({ ...f, startNote: e.target.value }))} placeholder="Odometer reading, condition notes, driver remarks…" />
+                </div>
+              </>
+            )}
+
+            {m.type === 'return' && (
+              <>
+                <p>Record the return details. Additional charges are settled against the security deposit; the car is released back to <strong>Available</strong>.</p>
+                <div className="ro2-field">
+                  <label className="ro2-label">Extra charges (optional)</label>
+                  <div className="ro2-input-num">
+                    <input className="ro2-input" type="number" min="0" placeholder="Damage ETB" value={form.damageFee} onChange={e => setForm(f => ({ ...f, damageFee: e.target.value }))} />
+                    <input className="ro2-input" type="number" min="0" placeholder="Fuel ETB" value={form.fuelFee} onChange={e => setForm(f => ({ ...f, fuelFee: e.target.value }))} />
+                    <input className="ro2-input" type="number" min="0" placeholder="Late ETB" value={form.lateFee} onChange={e => setForm(f => ({ ...f, lateFee: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="ro2-field">
+                  <div className="ro2-input-num">
+                    <input className="ro2-input" type="number" min="0" placeholder="Return odometer (km)" value={form.odometer} onChange={e => setForm(f => ({ ...f, odometer: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="ret-notes">Return notes (optional)</label>
+                  <textarea id="ret-notes" className="ro2-textarea" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Condition, scratches, fuel level…" />
+                </div>
+              </>
+            )}
+
+            {m.type === 'cancel' && (
+              <>
+                <p>The car will be released back to <strong>Available</strong> immediately.</p>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="cancel-reason">Cancellation reason (required)</label>
+                  <textarea id="cancel-reason" className="ro2-textarea" value={form.cancelReason} onChange={e => setForm(f => ({ ...f, cancelReason: e.target.value }))} placeholder="Customer request, no-show, payment issue…" />
+                </div>
+                <p className="ro2-hint ro2-hint--danger"><AlertTriangle size={14} style={{ verticalAlign: 'text-bottom' }} /> This cannot be undone from the manager page.</p>
+              </>
+            )}
+
+            {m.type === 'status' && (
+              <>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="stat-sel">Set status to</label>
+                  <select id="stat-sel" className="ro2-select" style={{ width: '100%' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="" disabled>Select a status…</option>
+                    {Object.entries(STATUS_LABELS)
+                      .filter(([k]) => k !== o.status)
+                      .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="stat-note">Manager note (optional)</label>
+                  <textarea id="stat-note" className="ro2-textarea" value={form.statusNote} onChange={e => setForm(f => ({ ...f, statusNote: e.target.value }))} placeholder="Why is the status changing?" />
+                </div>
+                <p className="ro2-hint">Car availability is kept in sync automatically when you move bookings to On Rent or complete them.</p>
+              </>
+            )}
+
+            {m.type === 'archive' && (
+              <>
+                <p>Move <strong>{oNum}</strong> to history? It can be restored later from the History page.</p>
+              </>
+            )}
+
+            {m.type === 'delete' && (
+              <>
+                <p>Delete <strong>{oNum}</strong> permanently? Deleted orders are hidden and cannot be viewed again.</p>
+                <p className="ro2-hint ro2-hint--danger"><AlertTriangle size={14} style={{ verticalAlign: 'text-bottom' }} /> This action is irreversible.</p>
+              </>
+            )}
+          </div>
+
+          <div className="ro2-modal__actions">
+            <button className="ro2-btn ro2-btn--ghost" onClick={() => setModal(null)}>Cancel</button>
+            {m.type === 'cancel' && (
+              <button
+                className="ro2-btn ro2-btn--danger"
+                disabled={!form.cancelReason.trim()}
+                onClick={runModal}
+              >
+                Cancel Order
+              </button>
+            )}
+            {m.type === 'status' && (
+              <button className="ro2-btn ro2-btn--primary" disabled={!form.status} onClick={runModal}>Update Status</button>
+            )}
+            {m.type === 'archive' && (
+              <button className="ro2-btn ro2-btn--primary" onClick={runModal}>Move to History</button>
+            )}
+            {m.type === 'delete' && (
+              <button className="ro2-btn ro2-btn--danger" onClick={runModal}>Yes, Delete</button>
+            )}
+            {m.type === 'start' && (
+              <button className="ro2-btn ro2-btn--success" onClick={runModal}><Play size={15} /> Start Rental</button>
+            )}
+            {m.type === 'return' && (
+              <button className="ro2-btn ro2-btn--primary" onClick={runModal}><RotateCcw size={15} /> Complete & Release</button>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingBottom: 4 }}>
-          <button
-            style={S.btnRefresh}
-            onClick={handleRefresh}
-            title="Refresh"
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
-            onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-            onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(0,0,0,0.3)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            <SegmentedSpinner size={17} />
+      </div>
+    );
+  };
+
+  return (
+    <div className="ro2">
+      <Toast toasts={toasts} remove={removeToast} />
+
+      {/* ── HEADER ── */}
+      <header className="ro2-card ro2-header">
+        <div className="ro2-header__left">
+          <span className="ro2-header__icon"><Car size={22} /></span>
+          <div>
+            <h1 className="ro2-heading">Car Rental Orders</h1>
+            <p className="ro2-sub">Bookings, live rental lifecycle and vehicle handover</p>
+          </div>
+        </div>
+        <div className="ro2-actions">
+          <button className="ro2-icon-btn" onClick={handleRefresh} title="Refresh" aria-label="Refresh">
+            <RefreshCw size={16} className={spinning ? 'ro2-spin' : ''} />
           </button>
-          <button
-            style={S.btnGreen}
-            onClick={() => setView('create')}
-            onMouseEnter={e => { e.currentTarget.style.background = C.emerald; }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.forestGreen; }}
-            onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(4px)'; }}
-            onMouseUp={e => { e.currentTarget.style.boxShadow = `0 4px 0 ${C.darkGreen}`; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
+          <button className="ro2-btn ro2-btn--ghost" onClick={() => navigate('/car-renting/manager/orders-history')}>
+            <Archive size={15} /> History
+          </button>
+          <button className="ro2-btn ro2-btn--primary" onClick={() => setView('create')}>
             <Plus size={16} /> New Manual Order
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* ── CLICKABLE STAT CARDS ── */}
-      <div style={S.statsRow}>
+      {/* ── KPI STATS ── */}
+      <section className="ro2-stats">
         {[
-          { label: 'TOTAL ORDERS',     val: stats.total,      accent: C.darkGreen, filterKey: null,            filterVal: '' },
-          { label: 'PENDING APPROVAL', val: stats.pending,    accent: '#E65100',   filterKey: 'status',        filterVal: 'PENDING_APPROVAL' },
-          { label: 'ACTIVE RENTALS',   val: stats.active,     accent: '#0288D1',   filterKey: 'status',        filterVal: 'ACTIVE' },
-          { label: 'AWAITING PAYMENT', val: stats.payPending, accent: C.red,       filterKey: 'paymentStatus', filterVal: 'PENDING' },
+          { label: 'Total Orders',     val: stats.total,      cls: '',                    isActive: filter.status === '' && filter.paymentStatus === '', reset: true },
+          { label: 'Pending Approval', val: stats.pending,    cls: 'ro2-stat--warn',      isActive: filter.status === 'PENDING_APPROVAL', filterKey: 'status', filterVal: 'PENDING_APPROVAL' },
+          { label: 'On Rent Now',      val: stats.active,     cls: 'ro2-stat--info',      isActive: filter.status === 'ACTIVE', filterKey: 'status', filterVal: 'ACTIVE' },
+          { label: 'Awaiting Payment', val: stats.payPending, cls: 'ro2-stat--danger',    isActive: filter.paymentStatus === 'PENDING', filterKey: 'paymentStatus', filterVal: 'PENDING' },
         ].map(s => {
-          const isActive = s.filterKey
-            ? filter[s.filterKey] === s.filterVal
-            : (filter.status === '' && filter.paymentStatus === '');
+          const active = s.reset
+            ? s.isActive
+            : filter[s.filterKey] === s.filterVal;
           return (
-            <div
+            <button
               key={s.label}
-              style={S.statCard(s.accent, isActive)}
+              className={`ro2-stat ${s.cls} ${active ? 'ro2-stat--active' : ''}`}
               onClick={() => {
-                if (s.filterKey) {
-                  setFilter(f => ({ ...f, status: '', paymentStatus: '', page: 1, [s.filterKey]: s.filterVal }));
-                } else {
-                  setFilter(f => ({ ...f, status: '', paymentStatus: '', page: 1 }));
-                }
+                if (s.reset) setFilter(f => ({ ...f, status: '', paymentStatus: '', page: 1 }));
+                else setFilter(f => ({ ...f, status: '', paymentStatus: '', page: 1, [s.filterKey]: s.filterVal }));
               }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${s.accent}0D`; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#FAFAFA'; }}
             >
-              <div style={S.statNum(s.accent)}>{s.val}</div>
-              <div style={S.statLabel}>{s.label}</div>
-            </div>
+              <div className="ro2-stat__num">{s.val}</div>
+              <div className="ro2-stat__label">{s.label}</div>
+            </button>
           );
         })}
-      </div>
+      </section>
 
       {/* ── FILTER BAR ── */}
-      <div style={S.filterBar}>
-        <div style={S.searchWrap}>
-          <Search size={15} color={C.earthBrown} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
+      <div className="ro2-card ro2-filters">
+        <div className="ro2-search">
+          <Search size={15} className="ro2-search__icon" />
           <input
-            placeholder="Search by Order #, Customer, Phone..."
+            className="ro2-input"
+            placeholder="Search by Order #, Customer, Phone…"
             value={filter.search}
             onChange={e => setFilter(f => ({ ...f, search: e.target.value, page: 1 }))}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            style={S.searchInput}
-            onFocus={e => { e.target.style.border = `1.5px solid ${C.forestGreen}`; }}
-            onBlur={e  => { e.target.style.border = `1.5px solid ${C.border}`; }}
+            aria-label="Search orders"
           />
         </div>
-        <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value, page: 1 }))} style={S.select}>
+        <select className="ro2-select" value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value, page: 1 }))} aria-label="Filter by status">
           <option value="">All Statuses</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select value={filter.paymentStatus} onChange={e => setFilter(f => ({ ...f, paymentStatus: e.target.value, page: 1 }))} style={S.select}>
+        <select className="ro2-select" value={filter.paymentStatus} onChange={e => setFilter(f => ({ ...f, paymentStatus: e.target.value, page: 1 }))} aria-label="Filter by payment">
           <option value="">All Payments</option>
           <option value="PENDING">Pending</option>
           <option value="PAID">Paid / Confirmed</option>
           <option value="REJECTED">Rejected</option>
         </select>
-        <button
-          style={S.btnSearch}
-          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-          onMouseUp={e => { e.currentTarget.style.boxShadow = `0 3px 0 ${C.darkGreen}`; e.currentTarget.style.transform = 'translateY(0)'; }}
-          onClick={handleSearch}
-        >
-          Search
-        </button>
+        <button className="ro2-btn ro2-btn--primary" onClick={handleSearch}><Search size={15} /> Search</button>
       </div>
 
       {/* ── TABLE ── */}
-      <div style={S.tableWrap}>
-        <table style={S.table}>
-          <thead style={S.thead}>
+      <div className="ro2-card ro2-table-wrap">
+        <table className="ro2-table">
+          <thead>
             <tr>
-              {['#', 'Order Info', 'Customer', 'Vehicle / Dates', 'Financials', 'Status', 'Actions'].map((h, i) => (
-                <th key={h} style={{ ...S.th, textAlign: i === 6 ? 'center' : 'left', width: i === 0 ? 40 : 'auto' }}>{h}</th>
-              ))}
+              <th>#</th>
+              <th>Order Info</th>
+              <th>Customer</th>
+              <th>Vehicle / Rental Days</th>
+              <th>Financials</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ ...S.td, textAlign: 'center', padding: '3.5rem', color: C.emerald, fontWeight: 700 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                    <SegmentedSpinner size={28} />
-                    Loading orders...
+                <td colSpan={7}>
+                  <div className="ro2-loading">
+                    <SegmentedSpinner size={26} /> Loading orders…
                   </div>
                 </td>
               </tr>
             ) : filteredOrders.length === 0 ? (
               <tr>
                 <td colSpan={7}>
-                  <div style={S.empty}>
-                    <FileText size={52} style={{ color: '#BDBDBD' }} />
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#757575' }}>No orders found</p>
-                    <p style={{ fontSize: 13, color: '#9E9E9E' }}>Try adjusting your filters or create a new manual order.</p>
-                    <button style={{ ...S.btnGreen, marginTop: 8 }} onClick={() => setView('create')}>
+                  <div className="ro2-empty">
+                    <FileText size={44} style={{ color: 'hsl(var(--muted))' }} />
+                    <p className="ro2-empty__title">No orders found</p>
+                    <p className="ro2-empty__hint">Try adjusting your filters or create a new manual order.</p>
+                    <button className="ro2-btn ro2-btn--primary" style={{ marginTop: '0.5rem' }} onClick={() => setView('create')}>
                       <Plus size={15} /> Create First Order
                     </button>
                   </div>
                 </td>
               </tr>
             ) : filteredOrders.map((order, idx) => {
+              const isManualOrder = !!(order.isManual || order.is_manual);
+              const isTerminal = TERMINAL_STATUSES.includes(order.status);
+              const isStartable = STARTABLE_STATUSES.includes(order.status);
+              const r = rentalStats(order);
               const carName = order.carName || (order.car ? `${order.car.brand || ''} ${order.car.model || ''}`.trim() : 'N/A');
-              const startD  = order.startDate || order.start_date;
-              const endD    = order.endDate   || order.end_date;
               return (
-                <tr
-                  key={order.id}
-                  style={{ background: idx % 2 === 0 ? C.white : C.lightGray, transition: 'background 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#E8F5E9'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? C.white : C.lightGray; }}
-                >
-                  {/* Row # */}
-                  <td style={{ ...S.td, color: C.textSec, fontSize: 12, fontWeight: 700 }}>{(pagination.page - 1) * 25 + idx + 1}</td>
+                <tr key={order.id}>
+                  <td className="ro2-rownum">{(pagination.page - 1) * 25 + idx + 1}</td>
 
-                  {/* Order Info */}
-                  <td style={S.td}>
-                    <div style={{ fontWeight: 800, color: C.darkGreen, fontSize: 14, marginBottom: 3 }}>
-                      {order.orderNumber || order.order_number}
-                      {(order.isManual || order.is_manual) && (
-                        <span style={{ marginLeft: 7, fontSize: 9, background: '#E3F2FD', color: '#1565C0', padding: '2px 6px', fontWeight: 700, letterSpacing: '0.04em' }}>MANUAL</span>
+                  <td>
+                    <div className="ro2-order">
+                      <span className="ro2-order__id">{order.orderNumber || order.order_number}</span>
+                      {isManualOrder && <span className="ro2-tag ro2-tag--manual">MANUAL</span>}
+                    </div>
+                    <div className="ro2-meta"><Calendar size={12} /> {fmtDate(order.createdAt || order.created_at)}</div>
+                  </td>
+
+                  <td>
+                    <div className="ro2-name"><User size={13} /> {order.customerName || order.customer_name}</div>
+                    <div className="ro2-meta ro2-muted">{order.customerPhone || order.customer_phone}</div>
+                  </td>
+
+                  <td>
+                    <div className="ro2-name"><Car size={13} /> {carName}</div>
+                    <div className="ro2-meta">
+                      {fmtDate(r.start)} → {fmtDate(r.end)}
+                    </div>
+                    <div className="ro2-rental">
+                      <div className="ro2-bar-label">
+                        <span><strong>{order.status === 'ACTIVE' && r.began ? `Day ${r.elapsedDays + 1}` : r.totalDays + ' days'}</strong>
+                          {order.status === 'ACTIVE' && r.began && ` of ${r.totalDays} days`}
+                        </span>
+                        {order.status === 'ACTIVE' && r.began && (
+                          r.overdue
+                            ? <span className="ro2-days-remain ro2-days-overdue">Overdue {r.remaining} day(s)</span>
+                            : <span className="ro2-days-remain"><Clock size={12} /> {r.remaining} day(s) left</span>
+                        )}
+                      </div>
+                      {order.status === 'ACTIVE' && r.began && (
+                        <div className="ro2-progress">
+                          <div className={`ro2-progress__bar ${r.overdue ? 'ro2-progress__bar--overdue' : ''}`} style={{ width: `${r.pct}%` }} title={`${r.pct}% elapsed`} />
+                        </div>
+                      )}
+                      {order.status === 'ACTIVE' && !r.began && (
+                        <span className="ro2-days-remain"><Clock size={12} /> Not started — awaiting handover</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: C.textSec, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={11} /> {new Date(order.createdAt || order.created_at).toLocaleDateString()}
-                    </div>
                   </td>
 
-                  {/* Customer */}
-                  <td style={S.td}>
-                    <div style={{ fontWeight: 700, color: C.darkGray, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <User size={13} color={C.forestGreen} /> {order.customerName || order.customer_name}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.textSec }}>{order.customerPhone || order.customer_phone}</div>
-                  </td>
-
-                  {/* Vehicle / Dates */}
-                  <td style={S.td}>
-                    <div style={{ fontWeight: 700, color: C.darkGray, fontSize: 13, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Car size={13} color={C.emerald} /> {carName}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.textSec }}>
-                      {startD ? new Date(startD).toLocaleDateString() : '—'} → {endD ? new Date(endD).toLocaleDateString() : '—'}
-                      &nbsp;·&nbsp;<strong>{order.totalDays || order.days || '—'} days</strong>
-                    </div>
-                  </td>
-
-                  {/* Financials */}
-                  <td style={S.td}>
-                    <div style={{ fontWeight: 900, color: C.forestGreen, fontSize: 15, marginBottom: 5 }}>
-                      {parseFloat(order.totalAmount || order.total_amount || 0).toLocaleString()} ETB
-                    </div>
-                    <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>
-                      VAT: {parseFloat(order.vatAmount || order.vat_amount || 0).toLocaleString()} ETB
-                    </div>
-                    <div style={{ marginBottom: 4 }}>
-                      <PayBadge status={order.paymentStatus || order.payment_status} />
-                    </div>
+                  <td>
+                    <div className="ro2-amount">{fmtMoney(order.totalAmount || order.total_amount)} ETB</div>
+                    <div className="ro2-meta ro2-muted">VAT: {fmtMoney(order.vatAmount || order.vat_amount)} ETB</div>
+                    <div style={{ margin: '0.375rem 0' }}><PayBadge status={order.paymentStatus || order.payment_status} /></div>
                     {(order.paymentReference || order.payment_reference) && (
-                      <div style={{ fontSize: 10, color: '#9E9E9E' }}>Ref: {order.paymentReference || order.payment_reference}</div>
+                      <div className="ro2-ref">Ref: {order.paymentReference || order.payment_reference}</div>
                     )}
                   </td>
 
-                  {/* Status */}
-                  <td style={S.td}>
-                    <StatusBadge code={order.status} />
-                  </td>
+                  <td><StatusBadge code={order.status} /></td>
 
-                  {/* Actions */}
-                  <td style={{ ...S.td, textAlign: 'center' }}>
-                    <button
-                      onClick={() => { setSelectedId(order.id); setView('detail'); }}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: C.darkGreen, color: '#fff', border: `1px solid ${C.forestGreen}`, fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: `0 3px 0 rgba(27,94,32,0.5)`, transition: 'all 0.12s', whiteSpace: 'nowrap' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = C.emerald; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = C.darkGreen; }}
-                      onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
-                      onMouseUp={e => { e.currentTarget.style.boxShadow = `0 3px 0 rgba(27,94,32,0.5)`; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      <FileText size={12} /> View Detail
-                    </button>
+                  <td>
+                    <div className="ro2-actions-cell">
+                      <button className="ro2-btn ro2-btn--ghost ro2-btn--sm" onClick={() => { setSelectedId(order.id); setView('detail'); }}>
+                        <FileText size={13} /> View Detail
+                      </button>
+                      {isStartable && (
+                        <button className="ro2-btn ro2-btn--success ro2-btn--sm" onClick={() => openModal('start', order)}>
+                          <Play size={13} /> Start Rental
+                        </button>
+                      )}
+                      {order.status === 'ACTIVE' && (
+                        <button className="ro2-btn ro2-btn--primary ro2-btn--sm" onClick={() => openModal('return', order)}>
+                          <RotateCcw size={13} /> Complete / Return
+                        </button>
+                      )}
+                      {!isTerminal && (
+                        <button className="ro2-btn ro2-btn--danger ro2-btn--sm" onClick={() => openModal('cancel', order)}>
+                          <Ban size={13} /> Cancel
+                        </button>
+                      )}
+                      {!isTerminal && (
+                        <button className="ro2-btn ro2-btn--outline ro2-btn--sm" onClick={() => openModal('status', order)}>
+                          <ListChecks size={13} /> Set Status
+                        </button>
+                      )}
+                      {isTerminal && !isManualOrder && (
+                        <>
+                          <button className="ro2-btn ro2-btn--ghost ro2-btn--sm" onClick={() => openModal('archive', order)}>
+                            <Archive size={13} /> To History
+                          </button>
+                          <button className="ro2-btn ro2-btn--danger ro2-btn--sm" onClick={() => openModal('delete', order)}>
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -517,24 +628,23 @@ const RentalOrders = () => {
 
       {/* ── PAGINATION ── */}
       {!loading && pagination.totalPages > 1 && (
-        <div style={S.pagination}>
-          <span style={{ fontSize: 13, color: C.textSec, fontWeight: 500 }}>
-            Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong>&nbsp;·&nbsp;{pagination.total} total orders
+        <div className="ro2-card ro2-footer">
+          <span className="ro2-footer__info">
+            Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> · {pagination.total} total orders
           </span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button disabled={pagination.page === 1} onClick={() => setFilter(f => ({ ...f, page: f.page - 1 }))} style={S.pgBtn(pagination.page === 1)}>
+          <div className="ro2-pagination">
+            <button className="ro2-btn ro2-btn--ghost ro2-btn--sm" disabled={pagination.page === 1} onClick={() => setFilter(f => ({ ...f, page: f.page - 1 }))}>
               <ChevronLeft size={15} /> Previous
             </button>
-            <button disabled={pagination.page === pagination.totalPages} onClick={() => setFilter(f => ({ ...f, page: f.page + 1 }))} style={S.pgBtn(pagination.page === pagination.totalPages)}>
+            <button className="ro2-btn ro2-btn--ghost ro2-btn--sm" disabled={pagination.page === pagination.totalPages} onClick={() => setFilter(f => ({ ...f, page: f.page + 1 }))}>
               Next <ChevronRight size={15} />
             </button>
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      {/* ── MODAL ── */}
+      {renderModal()}
     </div>
   );
 };
