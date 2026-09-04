@@ -28,7 +28,7 @@ export const getStatusStyle = (code) => STATUS_COLORS[code] || { bg: '#f1f5f9', 
 
 // Which status_codes belong to each of the 6 stage buttons.
 export const STAGE_BUTTONS = [
-  { id: 'queue',     label: 'Pending',   path: '/printing-manager/jobs/queue',    statuses: ['received', 'in_queue'] },
+  { id: 'queue',     label: 'Pending',   path: '/printing-manager/jobs/queue',    statuses: ['received', 'in_queue', 'in_design', 'file_check', 'in_printing', 'in_progress', 'finishing', 'ready', 'payment_confirmed'] },
   { id: 'design',    label: 'Design',    path: '/printing-manager/jobs/design',   statuses: ['in_design'] },
   { id: 'prepress',  label: 'Prepress',  path: '/printing-manager/jobs/prepress', statuses: ['file_check'] },
   { id: 'printing',  label: 'Printing',  path: '/printing-manager/jobs/printing', statuses: ['in_printing', 'in_progress'] },
