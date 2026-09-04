@@ -14,24 +14,20 @@
 :root {
   --background:          0 0% 100%;
   --foreground:          222.2 84% 4.9%;
-  --primary:             142.1 70% 30%;    /* Forest Green */
-  --primary-dark:        142.1 70% 20%;
-  --primary-foreground:  0 0% 100%;
-  --secondary:           77 55% 35%;       /* Olive Green */
-  --secondary-foreground: 0 0% 100%;
-  --danger:              0 72% 51%;
-  --danger-dark:         0 72% 40%;
-  --danger-foreground:   0 0% 100%;
-  --success:             142 60% 42%;
-  --warning:             36 100% 50%;
-  --warning-foreground:  0 0% 100%;
+  --primary:             221.2 83.2% 53.3%;   /* Brand Blue */
+  --primary-dark:        221.2 83.2% 42%;
+  --primary-foreground:  210 40% 98%;
   --muted:               210 40% 96.1%;
   --muted-foreground:    215.4 16.3% 46.9%;
   --border:              214.3 31.8% 91.4%;
   --radius:              0.5rem;
   --radius-lg:           0.75rem;
+  --danger:              0 72% 51%;
+  --danger-dark:         0 72% 40%;
+  --success:             142 60% 42%;
+  --warning:             36 100% 45%;
 
-  /* Status palette — HSL values for badge system */
+  /* Status palette */
   --status-pending-bg:    28 40% 88%;
   --status-pending-fg:    28 50% 30%;
   --status-approved-bg:   77 55% 88%;
@@ -75,48 +71,10 @@
   .wrap { padding: 2rem 1.5rem; }
 }
 @media (min-width: 1024px) {
-  .wrap { padding: 2rem; }
+  .wrap { padding: 2rem 2rem; }
 }
 
-/* ── 3. PAGE HEADER ─────────────────────────────────────────────── */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.headerMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.pageTitle {
-  font-size: 1.875rem;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: hsl(var(--primary-dark));
-  margin: 0;
-}
-@media (min-width: 640px) {
-  .pageTitle { font-size: 2.25rem; }
-}
-.pageSubtitle {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  margin: 0;
-  line-height: 1.5;
-}
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-/* ── 4. BACK BUTTON ─────────────────────────────────────────────── */
+/* ── 3. BACK BUTTON ─────────────────────────────────────────────── */
 .backBtn {
   display: inline-flex;
   align-items: center;
@@ -134,372 +92,509 @@
 .backBtn:hover { color: hsl(var(--primary-dark)); }
 .backBtn:focus {
   outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
   border-radius: var(--radius);
+}
+
+/* ── 4. PAGE HEADER ─────────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+@media (min-width: 768px) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+.subtitle {
+  font-size: 1rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 /* ── 5. BUTTONS ─────────────────────────────────────────────────── */
-.btnPrimary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1.5rem;
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-weight: 500;
-  font-size: 0.875rem;
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
-}
-.btnPrimary:hover:not(:disabled) {
-  background-color: hsl(var(--primary) / 0.9);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgb(0 0 0 / 0.15);
-}
-.btnPrimary:focus { outline: none; box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3); }
-.btnPrimary:disabled { opacity: 0.6; cursor: wait; transform: none; box-shadow: none; }
-
-.btnSecondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1.5rem;
-  background-color: hsl(var(--background));
-  color: hsl(var(--primary));
-  font-weight: 500;
-  font-size: 0.875rem;
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
-}
-.btnSecondary:hover:not(:disabled) {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--primary-dark));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgb(0 0 0 / 0.08);
-}
-.btnSecondary:focus { outline: none; box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25); }
-.btnSecondary:disabled { opacity: 0.6; cursor: wait; }
-
+.btnPrimary,
+.btnSecondary,
 .btnDanger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1.5rem;
-  background-color: hsl(var(--danger));
-  color: hsl(var(--danger-foreground));
-  font-weight: 500;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
+  font-weight: 500;
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  transition: all 0.2s ease-in-out;
+  border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
 }
-.btnDanger:hover {
-  background-color: hsl(var(--danger-dark));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgb(0 0 0 / 0.15);
+.btnPrimary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
-.btnDanger:focus { outline: none; box-shadow: 0 0 0 2px hsl(var(--danger) / 0.3); }
+.btnPrimary:hover:not(:disabled) {
+  background-color: hsl(var(--primary-dark));
+}
 
-/* ── 6. STATUS BADGE ────────────────────────────────────────────── */
+.btnSecondary {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+}
+.btnSecondary:hover:not(:disabled) {
+  background-color: hsl(var(--muted));
+}
+
+.btnDanger {
+  background-color: hsl(var(--danger));
+  color: white;
+}
+.btnDanger:hover:not(:disabled) {
+  background-color: hsl(var(--danger-dark));
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled,
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem;
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btnIconDanger {
+  color: hsl(var(--danger));
+}
+.btnIcon:hover {
+  background-color: hsl(var(--muted));
+}
+.btnIconDanger:hover {
+  background-color: hsl(var(--status-cancelled-bg));
+}
+
+/* ── 6. STATUS BADGES ───────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.3125rem 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: var(--radius);
+  font-weight: 500;
   white-space: nowrap;
 }
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Order status variants */
+.statusPending    { background-color: hsl(var(--status-pending-bg));   color: hsl(var(--status-pending-fg)); }
+.statusApproved   { background-color: hsl(var(--status-approved-bg));  color: hsl(var(--status-approved-fg)); }
+.statusConfirmed  { background-color: hsl(var(--status-confirmed-bg)); color: hsl(var(--status-confirmed-fg)); }
+.statusActive     { background-color: hsl(var(--status-active-bg));    color: hsl(var(--status-active-fg)); }
+.statusCompleted  { background-color: hsl(var(--status-completed-bg)); color: hsl(var(--status-completed-fg)); }
+.statusCancelled  { background-color: hsl(var(--status-cancelled-bg)); color: hsl(var(--status-cancelled-fg)); }
+
+/* Payment status */
+.payUnpaid   { background-color: hsl(var(--pay-unpaid-bg));   color: hsl(var(--pay-unpaid-fg)); }
+.payPaid     { background-color: hsl(var(--pay-paid-bg));     color: hsl(var(--pay-paid-fg)); }
+.payPartial  { background-color: hsl(var(--pay-partial-bg));  color: hsl(var(--pay-partial-fg)); }
 
 /* ── 7. TABS ────────────────────────────────────────────────────── */
 .tabs {
   display: flex;
-  border-bottom: 2px solid hsl(var(--border));
-  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 2rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  gap: 0;
 }
 .tabs::-webkit-scrollbar { display: none; }
+
 .tab {
-  background: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  background: transparent;
   border: none;
-  padding: 0.75rem 1.25rem;
+  border-bottom: 2px solid transparent;
+  color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  position: relative;
   white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  transition: color 0.2s ease-in-out;
+  transition: color 0.2s;
+  margin-bottom: -1px;
 }
-.tab:hover { color: hsl(var(--primary)); }
-.tab:focus { outline: none; box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) inset; }
-.tabActive { color: hsl(var(--primary)); font-weight: 600; }
-.tabActive::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background-color: hsl(var(--primary));
-  border-radius: var(--radius) var(--radius) 0 0;
+.tab:hover:not(.tabActive) {
+  color: hsl(var(--foreground));
+}
+.tabActive {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
-/* ── 8. CARD LIST VIEW ──────────────────────────────────────────── */
-/* ── 8. LIST ROWS ──────────────────────────────────────────────── */
-.list {
+/* ── 8. EMPTY STATE ─────────────────────────────────────────────── */
+.emptyState {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.card {
-  background-color: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  padding: 0.875rem 1.25rem;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
-  display: flex;
   align-items: center;
-  gap: 1rem;
-}
-.card:hover {
-  background-color: hsl(var(--muted));
-  border-color: hsl(var(--primary) / 0.35);
-  box-shadow: 0 2px 8px -1px rgb(0 0 0 / 0.08);
-}
-.card:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
-}
-
-/* order number pill */
-.cardHeader {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.orderNum {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: hsl(var(--muted-foreground));
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-
-/* vehicle name — grow to fill space */
-.cardTitle {
-  flex: 1;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: hsl(var(--primary-dark));
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* date/amount meta row */
-.cardMeta {
-  display: flex;
-  gap: 1.25rem;
-  font-size: 0.8125rem;
-  color: hsl(var(--muted-foreground));
-  flex-shrink: 0;
-  flex-wrap: nowrap;
-}
-.cardMeta span {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
-}
-
-/* pickup → return dates */
-.cardDates {
-  font-size: 0.8125rem;
-  color: hsl(var(--primary-dark));
-  font-weight: 600;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* "View Details →" aligned right */
-.cardFooter {
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.viewLink {
-  color: hsl(var(--primary));
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* ── 9. EMPTY STATE ─────────────────────────────────────────────── */
-.empty {
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 2rem;
   background-color: hsl(var(--background));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
-  padding: 4rem 1.5rem;
-  text-align: center;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07);
 }
-.emptyIcon { opacity: 0.5; margin-bottom: 1rem; }
+.emptyIcon {
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
 .emptyTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: hsl(var(--primary-dark));
-  line-height: 1.2;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
   margin-bottom: 0.5rem;
 }
 .emptyDesc {
   font-size: 0.875rem;
   color: hsl(var(--muted-foreground));
   margin-bottom: 1.5rem;
+  max-width: 24rem;
 }
 
-/* ── 10. DETAIL VIEW ────────────────────────────────────────────── */
-.detailTopBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.detailWrap {
+/* ── 9. TABLE VIEW (Desktop) ─────────────────────────────────────── */
+.tableContainer {
   background-color: hsl(var(--background));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  display: none;
+}
+@media (min-width: 768px) {
+  .tableContainer { display: block; }
 }
 
-.detailTop {
-  background-color: hsl(var(--primary-dark));
-  padding: 1.75rem 2rem;
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1.5fr 1fr 1.5fr 40px;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background-color: hsl(var(--muted) / 0.5);
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.05em;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1.5fr 1fr 1.5fr 40px;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-items: center;
+  border-bottom: 1px solid hsl(var(--border));
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.tableRow:last-child {
+  border-bottom: none;
+}
+.tableRow:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.tableCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+.textPrimary {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+}
+.textSecondary {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  margin-top: 0.125rem;
+}
+.textPrice {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+/* ── 10. CARD LIST (Mobile) ─────────────────────────────────────── */
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .cardList { display: none; }
+}
+
+.card {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+.card:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+}
+
+.cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 1.25rem;
 }
-@media (max-width: 639px) {
-  .detailTop { padding: 1.25rem 1rem; }
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+.cardSub {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+.cardBadges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+.cardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.875rem;
+}
+.cardMetaRow {
+  display: flex;
+  justify-content: space-between;
+}
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.detailInvLabel {
-  font-size: 0.8125rem;
-  color: hsl(0 0% 100% / 0.6);
+/* ── 11. DETAIL VIEW (Single-Page Panel) ────────────────────────── */
+.detailPanel {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Hero strip at top of detail */
+.detailHero {
+  background: linear-gradient(135deg, hsl(221.2 83.2% 42%), hsl(221.2 83.2% 53.3%));
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+@media (min-width: 640px) {
+  .detailHero {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.detailHeroLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
   margin-bottom: 0.375rem;
 }
-.detailInvNumber {
-  font-size: 1.625rem;
+.detailHeroTitle {
+  font-size: 1.875rem;
   font-weight: 700;
-  color: hsl(0 0% 100%);
-  margin: 0 0 0.375rem;
   line-height: 1.1;
+  color: white;
+  margin-bottom: 0.5rem;
 }
-.detailInvDate {
+.detailHeroDate {
   font-size: 0.875rem;
-  color: hsl(0 0% 100% / 0.75);
+  color: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;
   gap: 0.375rem;
 }
-.totalBox { text-align: right; }
-.totalLabel {
-  font-size: 0.8125rem;
-  color: hsl(0 0% 100% / 0.7);
+
+.detailHeroAmount {
+  text-align: left;
+}
+@media (min-width: 640px) {
+  .detailHeroAmount { text-align: right; }
+}
+.detailHeroAmountLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.65);
   margin-bottom: 0.25rem;
 }
-.totalAmt {
-  font-size: 2rem;
+.detailHeroAmountValue {
+  font-size: 2.25rem;
   font-weight: 700;
-  color: hsl(0 0% 100%);
-  line-height: 1.1;
+  line-height: 1;
+  color: white;
 }
 
-/* ── 11. DETAIL VIEW — STATUS BAR ──────────────────────────────── */
-.statusBar {
-  background-color: hsl(var(--muted));
-  border-bottom: 1px solid hsl(var(--border));
-  padding: 0.875rem 2rem;
+/* Status bar below hero */
+.detailStatusBar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.875rem 2rem;
+  background-color: hsl(var(--muted) / 0.6);
+  border-bottom: 1px solid hsl(var(--border));
 }
-@media (max-width: 639px) {
-  .statusBar { padding: 0.75rem 1rem; }
-}
-.statusLabel {
-  font-size: 0.875rem;
+.statusBarLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: hsl(var(--muted-foreground));
-  margin-right: 0.25rem;
 }
-.statusDivider {
+.statusBarDivider {
   width: 1px;
-  height: 1rem;
+  height: 16px;
   background-color: hsl(var(--border));
-  margin: 0 0.75rem;
 }
 
-/* ── 12. DETAIL VIEW — BODY ────────────────────────────────────── */
-.detailBody { padding: 2rem; }
-@media (max-width: 639px) {
-  .detailBody { padding: 1rem; }
+/* Detail body */
+.detailBody {
+  padding: 2rem;
+}
+@media (max-width: 640px) {
+  .detailBody { padding: 1.5rem 1rem; }
 }
 
-.section { margin-bottom: 2rem; }
-.section:last-child { margin-bottom: 0; }
+/* Car image */
+.carImageWrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  cursor: zoom-in;
+}
+.carImageWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Proof image thumbnail */
+.proofThumb {
+  height: 80px;
+  width: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  border: 1px solid hsl(var(--border));
+  transition: opacity 0.2s;
+}
+.proofThumb:hover {
+  opacity: 0.85;
+}
+
+/* ── 12. SECTION DIVIDERS & LAYOUT ─────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  margin: 2rem 0;
+}
+
 .sectionTitle {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: hsl(var(--primary));
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0 0 1rem;
-  padding-bottom: 0.625rem;
-  border-bottom: 1px solid hsl(var(--muted));
+  margin-bottom: 1.25rem;
 }
 
-.twoColGrid {
+/* Two-col layout for detail sections */
+.twoCol {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17.5rem, 1fr));
+  grid-template-columns: 1fr;
   gap: 2rem;
 }
+@media (min-width: 768px) {
+  .twoCol { grid-template-columns: 1fr 1fr; }
+}
 
-/* ── 13. DETAIL VIEW — INFO ROWS ───────────────────────────────── */
+/* Info rows */
 .infoRow {
   display: flex;
   justify-content: space-between;
@@ -508,7 +603,9 @@
   border-bottom: 1px solid hsl(var(--muted));
   gap: 1rem;
 }
-.infoRow:last-child { border-bottom: none; }
+.infoRow:last-child {
+  border-bottom: none;
+}
 .infoLabel {
   font-size: 0.875rem;
   color: hsl(var(--muted-foreground));
@@ -518,95 +615,49 @@
   white-space: nowrap;
 }
 .infoValue {
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: hsl(var(--foreground));
   text-align: right;
-  line-height: 1.5;
+  max-width: 60%;
+  word-break: break-word;
 }
 
-/* ── 14. DETAIL VIEW — VEHICLE IMAGE ───────────────────────────── */
-.carImageWrap {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius);
-  overflow: hidden;
-  background-color: hsl(var(--muted));
-  border: 1px solid hsl(var(--border));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.25rem;
-}
-.carImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  cursor: zoom-in;
-  transition: transform 0.2s ease;
-}
-.carImage:hover { transform: scale(1.03); }
-
-.proofImg {
-  width: 5rem;
-  height: 3.75rem;
-  object-fit: cover;
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  cursor: zoom-in;
-  transition: transform 0.2s ease;
-}
-.proofImg:hover { transform: scale(1.03); }
-
-/* ── 15. DETAIL VIEW — TOTALS BOX ──────────────────────────────── */
+/* Total lines */
 .totalLine {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid hsl(var(--muted));
   font-size: 0.9375rem;
+  border-bottom: 1px solid hsl(var(--muted));
+}
+.totalLine:last-child {
+  border-bottom: none;
 }
 .totalLineGrand {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.875rem 0;
-  border-bottom: none;
-  border-top: 2px solid hsl(var(--primary-dark));
-  margin-top: 0.25rem;
   font-size: 1.125rem;
   font-weight: 700;
-  color: hsl(var(--primary-dark));
+  border-top: 2px solid hsl(var(--border));
+  margin-top: 0.5rem;
+  color: hsl(var(--primary));
 }
 
-/* ── 16. DETAIL VIEW — FORMS / ACTIONS ─────────────────────────── */
-.actionSection {
-  background-color: hsl(var(--muted));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-}
-.actionSectionDanger {
-  border-color: hsl(var(--danger));
-}
-.formLabel {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-bottom: 0.5rem;
-  display: block;
-}
+/* ── 13. FORM INPUTS ─────────────────────────────────────────────── */
 .input {
-  padding: 0.625rem 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-size: 0.9375rem;
-  width: 100%;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: transparent;
+  font-size: 1rem;
   font-family: inherit;
+  color: hsl(var(--foreground));
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .input:focus {
   outline: none;
@@ -614,41 +665,33 @@
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-.divider {
-  border: none;
-  border-top: 1px solid hsl(var(--muted));
-  margin: 1.5rem 0;
-}
-
-/* ── 17. TOAST NOTIFICATION ─────────────────────────────────────── */
-.toast {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 50;
-  border-radius: var(--radius-lg);
-  color: hsl(0 0% 100%);
-  padding: 1rem 1.5rem;
+.formLabel {
   font-size: 0.875rem;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-  animation: slideIn 0.3s ease-out forwards;
-  max-width: 20rem;
-  line-height: 1.5;
-}
-.toastSuccess { background-color: hsl(var(--success)); }
-.toastError   { background-color: hsl(var(--danger)); }
-.toastWarning { background-color: hsl(var(--warning)); }
-@keyframes slideIn {
-  from { transform: translateX(110%); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+  display: block;
 }
 
-/* ── 18. MODAL (LIGHTBOX) ───────────────────────────────────────── */
+.actionBox {
+  padding: 1.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background-color: hsl(var(--muted) / 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.actionBoxDanger {
+  border-color: hsl(var(--danger) / 0.4);
+  background-color: hsl(0 86% 97%);
+}
+
+/* ── 14. MODAL LIGHTBOX ─────────────────────────────────────────── */
 .modal {
   position: fixed;
   inset: 0;
-  background-color: rgb(0 0 0 / 0.88);
+  background-color: rgba(0, 0, 0, 0.85);
   z-index: 50;
   display: flex;
   align-items: center;
@@ -657,23 +700,67 @@
 }
 .modalClose {
   position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
+  top: 1.5rem;
+  right: 1.5rem;
   background: none;
   border: none;
-  color: hsl(0 0% 100%);
+  color: white;
   cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-.modalClose:hover { opacity: 0.8; }
-.modalClose:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px hsl(0 0% 100% / 0.5);
-  border-radius: var(--radius);
+  z-index: 51;
 }
 .modalImg {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
   border-radius: var(--radius);
+}
+
+/* ── 15. CONFIRM DIALOG (overlay) ───────────────────────────────── */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.confirmBox {
+  background-color: hsl(var(--background));
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.2);
+}
+.confirmIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.confirmTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+.confirmDesc {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.625;
+  margin-bottom: 1.5rem;
+}
+.confirmActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+/* ── 16. SPIN ANIMATION ─────────────────────────────────────────── */
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
