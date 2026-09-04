@@ -91,6 +91,7 @@ const recordIncomeToLedger = async ({
   paymentMethod,
   description,
   referenceNo,
+  receivableInvoiceNo,
   bankDetails,
   telebirrDetails,
   department = 'Manual CRV',
@@ -146,7 +147,7 @@ const recordIncomeToLedger = async ({
     received_from: crvData.received_from,
   });
 
-  const receivableInvoiceNo = referenceNo || crvNumber;
+  const receivableKey = receivableInvoiceNo || referenceNo || crvNumber;
   const manualDetails = {
     paymentMethod: method,
     receivedFrom: crvData.received_from,
@@ -157,18 +158,44 @@ const recordIncomeToLedger = async ({
     ...extraReceivableDetails,
   };
 
-  const [receivableId] = await conn('finance_receivables').insert({
-    customer_name: crvData.received_from,
-    invoice_no: receivableInvoiceNo,
-    invoice_date: crvData.date,
-    due_date: crvData.date,
-    total_amount: crvData.amount,
-    amount_paid: crvData.amount,
-    outstanding_balance: 0,
-    status: 'Paid',
-    department_source: department,
-    manual_details: JSON.stringify(manualDetails),
-  });
+  // Revenue Book (finance_receivables) — never duplicate a row for the same
+  // department + invoice number. Modules that pre-charge an order (e.g. Car
+  // Rental booking) may already have synced a row keyed by their order number;
+  // approving the income must UPDATE that row to Paid instead of inserting a
+  // second one (which would double-count the Revenue Book / outstanding AR).
+  const existingReceivable = await conn('finance_receivables')
+    .where('invoice_no', receivableKey)
+    .andWhere('department_source', department)
+    .first();
+
+  let receivableId = null;
+  if (existingReceivable) {
+    await conn('finance_receivables').where('id', existingReceivable.id).update({
+      customer_name: crvData.received_from,
+      invoice_date: crvData.date,
+      due_date: crvData.date,
+      amount_paid: crvData.amount,
+      outstanding_balance: 0,
+      status: 'Paid',
+      manual_details: JSON.stringify(manualDetails),
+      updated_at: new Date(),
+    });
+    receivableId = existingReceivable.id;
+  } else {
+    const [insertedId] = await conn('finance_receivables').insert({
+      customer_name: crvData.received_from,
+      invoice_no: receivableInvoiceNo,
+      invoice_date: crvData.date,
+      due_date: crvData.date,
+      total_amount: crvData.amount,
+      amount_paid: crvData.amount,
+      outstanding_balance: 0,
+      status: 'Paid',
+      department_source: department,
+      manual_details: JSON.stringify(manualDetails),
+    });
+    receivableId = insertedId;
+  }
 
   return {
     crvId,
