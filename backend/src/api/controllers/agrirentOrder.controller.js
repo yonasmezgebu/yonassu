@@ -404,6 +404,178 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// ── ARCHIVE / HISTORY / DELETE (Manager) ──────────────────────────────────────
+const AGRI_TERMINAL_STATUSES = ['completed', 'cancelled'];
+
+const agriOrderSelect = () => db('agrirent_orders as ao')
+  .leftJoin('tractors as t', 'ao.tractor_id', 't.id')
+  .select(
+    'ao.*',
+    't.name as tractor_name',
+    't.tractor_type as tractor_type_label',
+    't.image1 as tractor_image'
+  )
+  .whereNull('ao.deleted_at');
+
+exports.getArchivedOrders = async (req, res) => {
+  try {
+    // Manual (walk-in) orders live in the rental list already — don't duplicate them in history.
+    const orders = await agriOrderSelect()
+      .whereNotNull('ao.archived_at')
+      .whereNot('ao.is_manual', true)
+      .orderBy('ao.created_at', 'desc');
+    res.status(200).json({ status: 'success', data: orders });
+  } catch (error) {
+    logger.error('Error fetching archived agrirent orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch agri rent history' });
+  }
+};
+
+exports.archiveOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('agrirent_orders').where({ id }).whereNull('deleted_at').first();
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
+    if (order.is_manual) {
+      return res.status(400).json({ status: 'error', message: 'Manual orders stay in the rental list and are not moved to history' });
+    }
+    if (!AGRI_TERMINAL_STATUSES.includes(order.status)) {
+      return res.status(400).json({ status: 'error', message: 'Only completed or cancelled orders can be moved to history' });
+    }
+    if (order.archived_at) {
+      return res.status(400).json({ status: 'error', message: 'Order already in history' });
+    }
+    await db('agrirent_orders').where('id', id).update({ archived_at: db.fn.now(), updated_at: new Date() });
+    carRentalAudit.log(req, 'AgriRent order moved to history', order.order_number,
+      { status: order.status, tractor_id: order.tractor_id },
+      { archived_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: 'Order moved to history' });
+  } catch (error) {
+    logger.error('Error archiving agrirent order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to move order to history' });
+  }
+};
+
+exports.bulkArchiveOrders = async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const orders = await db('agrirent_orders').whereIn('id', ids).whereNull('deleted_at');
+    const invalid = orders
+      .filter(o => !o.is_manual)
+      .filter(o => !AGRI_TERMINAL_STATUSES.includes(o.status));
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Only completed or cancelled orders can be moved to history',
+        invalidIds: invalid.map(o => o.id)
+      });
+    }
+    const archiveIds = orders.filter(o => !o.is_manual).map(o => o.id);
+    const moved = await db('agrirent_orders')
+      .whereIn('id', archiveIds)
+      .update({ archived_at: db.fn.now(), updated_at: new Date() });
+    carRentalAudit.log(req, `${moved} agrirent order(s) moved to history`, null,
+      { ids },
+      { archived_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${moved} order(s) moved to history`, moved });
+  } catch (error) {
+    logger.error('Error bulk archiving agrirent orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to move orders to history' });
+  }
+};
+
+exports.restoreOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('agrirent_orders').where({ id }).whereNull('deleted_at').first();
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
+    await db('agrirent_orders').where('id', id).update({ archived_at: null, updated_at: new Date() });
+    carRentalAudit.log(req, 'AgriRent order restored from history', order.order_number,
+      { status: order.status },
+      { restored_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: 'Order restored from history' });
+  } catch (error) {
+    logger.error('Error restoring agrirent order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to restore order' });
+  }
+};
+
+exports.bulkRestoreOrders = async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const restored = await db('agrirent_orders')
+      .whereIn('id', ids)
+      .whereNull('deleted_at')
+      .update({ archived_at: null, updated_at: new Date() });
+    carRentalAudit.log(req, `${restored} agrirent order(s) restored from history`, null,
+      { ids },
+      { restored_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${restored} order(s) restored`, restored });
+  } catch (error) {
+    logger.error('Error bulk restoring agrirent orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to restore orders' });
+  }
+};
+
+exports.deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('agrirent_orders').where({ id }).whereNull('deleted_at').first();
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
+    if (!AGRI_TERMINAL_STATUSES.includes(order.status)) {
+      return res.status(400).json({ status: 'error', message: 'Only completed or cancelled orders can be deleted' });
+    }
+    await db('agrirent_orders').where('id', id).update({ deleted_at: db.fn.now(), updated_at: new Date() });
+    carRentalAudit.log(req, 'AgriRent order deleted', order.order_number,
+      { status: order.status },
+      { deleted_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: 'Order deleted' });
+  } catch (error) {
+    logger.error('Error deleting agrirent order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to delete order' });
+  }
+};
+
+exports.bulkDeleteOrders = async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No order ids provided' });
+    }
+    const orders = await db('agrirent_orders').whereIn('id', ids).whereNull('deleted_at');
+    const invalid = orders.filter(o => !AGRI_TERMINAL_STATUSES.includes(o.status));
+    if (invalid.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Only completed or cancelled orders can be deleted',
+        invalidIds: invalid.map(o => o.id)
+      });
+    }
+    const deleted = await db('agrirent_orders')
+      .whereIn('id', ids)
+      .update({ deleted_at: db.fn.now(), updated_at: new Date() });
+    carRentalAudit.log(req, `${deleted} agrirent order(s) deleted`, null,
+      { ids },
+      { deleted_at: new Date() }
+    );
+    res.status(200).json({ status: 'success', message: `${deleted} order(s) deleted`, deleted });
+  } catch (error) {
+    logger.error('Error bulk deleting agrirent orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to delete orders' });
+  }
+};
+
 // ── MANAGER: Update order status ──────────────────────────────────────────────
 exports.updateOrderStatus = async (req, res) => {
   try {
