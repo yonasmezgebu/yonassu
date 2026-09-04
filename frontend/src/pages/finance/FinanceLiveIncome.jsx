@@ -478,6 +478,15 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
 
   const isPrinting = (submission.department || '').toLowerCase() === 'printing';
   const isRetail = (submission.department || '').toLowerCase().includes('retail');
+  const isPharmacy = (submission.department || '').toLowerCase() === 'pharmacy';
+  const isCarRental = (submission.department || '').toLowerCase() === 'car rental';
+  const isAgrirent = (submission.department || '').toLowerCase().includes('agrirent')
+    || (submission.department || '').toLowerCase().includes('agri rent')
+    || (submission.department || '').toLowerCase() === 'agrirent';
+  // Module-based departments that record their own invoice/payment details —
+  // these always show the exact Bank/Telebirr/Cash verification (like Printing)
+  // instead of a generic checkbox list or cash-count flow.
+  const isModuleDept = isPrinting || isRetail || isPharmacy || isCarRental || isAgrirent;
   const proofUrl = getImageUrl(manualDetails?.proofImagePath || manualDetails?.payment_screenshot);
 
   // ── Smart payment-detail derivation ─────────────────────────────
@@ -508,7 +517,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const isTelebirr = payMethod === 'telebirr' || payMethod.includes('telebirr') || payMethod === 'telbir' || payMethod.includes('wallet');
   const isAwash = payMethod.includes('awash');
   const isBankTransfer = payMethod.includes('bank') || isCBE || isAwash || payMethod === 'bank_transfer';
-  const isCash = payMethod === 'cash' || payMethod === 'cash_on_delivery' || hasTxnPayment && !Object.keys(usedMethods).some(m => isBankTransfer || isTelebirr);
+  const isCashMethod = payMethod === 'cash' || payMethod === 'cash_on_delivery' || payMethod.includes('cash');
+  // Across all transactions: cash only when NONE of them is bank/telebirr.
+  const isCash = isCashMethod || (hasTxnPayment && !Object.keys(usedMethods).some(m => m.includes('bank') || m.includes('tele') || m.includes('wallet') || m.includes('cbe') || m.includes('awash') || m.includes('transfer')));
 
   // The exact numbers to verify against (first available wins)
   const bankName = firstTxnPayment?.bank_name || manualDetails?.bankName || manualDetails?.bankDetails?.bankName;
@@ -522,12 +533,13 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   // or reference to verify (bank/telebirr number, transaction method, etc.).
   // Otherwise fall back to the generic checklist for summary submissions.
   const hasExactDetail = !!txPayMethod || !!mdPayMethod || !!telebirrNum || !!bankAcct || !!manualDetails?.paymentReference || !!manualDetails?.paymentAccount;
-  const isExactVerify = isPrinting || isRetail || hasExactDetail;
+  const isExactVerify = isModuleDept || hasExactDetail;
 
-  // A submission goes through the cash-count flow ONLY when it is genuinely
-  // cash (no bank/telebirr number to verify). Digital retail/other payments
-  // with exact details must use the exact-detail verification instead.
-  const isDigitalPayment = hasExactDetail && !isCash;
+  // Module-based departments always use the exact-detail verification (Bank/
+  // Telebirr/Cash shown cleanly, single confirm — like Printing) rather than
+  // the generic checkbox list or the cash-count flow.
+  const isDigitalPayment = (isModuleDept || hasExactDetail) && (isModuleDept || !isCash);
+  const showExactPayment = isModuleDept || isDigitalPayment;
 
   const anyCheckDone = verifyChecks.bankChecked || verifyChecks.telebirrChecked || verifyChecks.confirmedInPerson;
   const readyToVerify = financeName && financeSignature && submission.status === 'Pending'
@@ -882,7 +894,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
       </div>{/* end printRef */}
 
       {/* ══ DEPARTMENT-AWARE VERIFICATION SECTION ══ */}
-      {isDigitalPayment ? (
+      {showExactPayment ? (
         /* Digital Payment Verification */
         <div className="fli-card">
           <div className="fli-card-header">
@@ -956,13 +968,18 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
               (() => {
                 const firstTxn = Array.isArray(transactions) && transactions[0] ? transactions[0] : null;
                 const txnMethod = String(firstTxn?.payment_method || '').toLowerCase().trim();
-                const method = txnMethod || mdPayMethod;
-                const isTele = isTelebirr || method.includes('tele') || method.includes('telebirr') || method.includes('wallet');
-                const isBank = isBankTransfer || method.includes('bank') || isCBE || isAwash;
+                const method = txnMethod || mdPayMethod || String(manualDetails?.paymentMethod || '').toLowerCase().trim();
+                // Prefer aggregated transaction methods when available (bulk
+                // sales), falling back to the single manual method.
+                const aggKey = Object.keys(usedMethods).map(k => k.toLowerCase());
+                const aggIsTele = aggKey.some(m => /tele|telbir|wallet/.test(m));
+                const aggIsBank = aggKey.some(m => /bank|cbe|awash|transfer/.test(m));
+                const isTele = aggIsTele || isTelebirr || /tele|telbir|wallet/.test(method);
+                const isBank = aggIsBank || isBankTransfer || isCBE || isAwash || /bank|cbe|awash/.test(method);
                 const txRef = paymentRef;
-                const payerDetail = telebirrNum || bankAcct || firstTxn?.recipient_phone || firstTxn?.sender_phone || '';
+                const payerDetail = telebirrNum || bankAcct || firstTxn?.recipient_phone || firstTxn?.sender_phone || manualDetails?.telebirrNumber || manualDetails?.accountNumber || '';
                 const custName = manualDetails?.receivedFrom || firstTxn?.recipient_name || '';
-                const isCashVerify = !isPrinting && (isCash || method.includes('cash'));
+                const isCashVerify = !isPrinting && (isCash || /cash/.test(method) || (aggKey.length > 0 && !aggIsTele && !aggIsBank));
                 return (
                   <div style={{ background: 'var(--color-bg-page)', padding: '20px', marginBottom: 20, border: '1.5px solid var(--color-primary)', borderRadius: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
