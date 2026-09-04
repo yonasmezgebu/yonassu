@@ -173,6 +173,20 @@ router.post(
   '/orders',
   authenticate,
   authorize(['orders:create']),
+  uploads.singleOrderAttachment.fields([{ name: 'paymentScreenshot', maxCount: 1 }]),
+  handleUploadError,
+  // multipart/form-data arrives from the walk-in form — JSON-typed fields come
+  // through as strings, so normalize them back before validation runs.
+  (req, _res, next) => {
+    if (!req.body || typeof req.body !== 'object') return next();
+    if (typeof req.body.customer === 'string' && req.body.customer.trim()) {
+      try { req.body.customer = JSON.parse(req.body.customer); }
+      catch { req.body.customer = undefined; }
+    }
+    if (req.body.colorPrinting === 'true') req.body.colorPrinting = true;
+    else if (req.body.colorPrinting === 'false') req.body.colorPrinting = false;
+    return next();
+  },
   createOrderValidation,
   validate,
   limiters.checkout,
