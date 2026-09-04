@@ -22,6 +22,16 @@ router.delete('/my-orders/:id', authenticate, async (req, res) => {
 // Manager
 router.post('/manual', authenticate, authorizeRoles(MANAGER_ROLES), uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.createManualOrder);
 router.get('/', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.getAllOrders);
+
+// Archive / History / Delete (Manager) — defined before /:id routes
+router.get('/history', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.getArchivedOrders);
+router.post('/bulk-archive', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.bulkArchiveOrders);
+router.post('/bulk-restore', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.bulkRestoreOrders);
+router.delete('/bulk', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.bulkDeleteOrders);
+router.post('/:id/archive', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.archiveOrder);
+router.post('/:id/restore', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.restoreOrder);
+router.delete('/:id', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.deleteOrder);
+
 router.get('/:id', authenticate, authorizeRoles([...MANAGER_ROLES, ...FINANCE_ROLES]), ctrl.getOrderById);
 router.patch('/:id/status', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.updateOrderStatus);
 router.patch('/:id/payment-status', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.updatePaymentStatus);
