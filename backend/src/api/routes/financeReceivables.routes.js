@@ -8,7 +8,7 @@ const { generateInvoiceNumber, generateReceiptNumber } = require('../../utils/or
 
 // Record an approved income into the canonical finance ledger (CRV + cashbook +
 // revenue book) so it shows up in the Revenue Book, Accounts and Reconciliation.
-const recordLedgerIncome = async (trx, { amount, department, manualDetails, receivedFrom, referenceNo, receivableExtras = {} }) => {
+const recordLedgerIncome = async (trx, { amount, department, manualDetails, receivedFrom, referenceNo, receivableInvoiceNo, receivableExtras = {} }) => {
   try {
     const md = manualDetails || {};
     const method = md.paymentMethod || 'Cash';
@@ -27,6 +27,7 @@ const recordLedgerIncome = async (trx, { amount, department, manualDetails, rece
       paymentMethod: method,
       description: `${department} income${receivedFrom || md.receivedFrom ? ` — ${receivedFrom || md.receivedFrom}` : ''}`,
       referenceNo: referenceNo || md.paymentReference || null,
+      receivableInvoiceNo,
       bankDetails,
       telebirrDetails,
       department,
@@ -134,7 +135,7 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
 // Sales Invoice & Receipt page — approving must never mint a duplicate invoice.
 // If the underlying invoice is missing/errored, back-fill a synthetic one so the
 // approved submission still appears. Idempotent (keyed on source + sale_id).
-const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetails, amount, receivedBy }) => {
+const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetails, amount, receivedBy, allowAdditional = false }) => {
   try {
     const deptKey = String(department || '').toLowerCase().trim();
     const md = manualDetails || {};
@@ -191,9 +192,9 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
       .where({ invoice_id: invoice.id })
       .andWhereNot('status', 'cancelled')
       .first();
-    if (!existingReceipt) {
+    if (!existingReceipt || allowAdditional) {
       await trx('sales_receipts').insert({
-        id: `REC-${invoice.id}-${Date.now().toString().slice(-4)}`,
+        id: `REC-${invoice.id}-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 900 + 100)}`,
         receipt_no: await generateReceiptNumber(),
         invoice_id: invoice.id,
         amount_paid: parseFloat(amount || 0),
@@ -596,6 +597,8 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         
         await trx('rental_orders').where({ id: rentalId }).update(updateData);
 
+        const financeName = finance_name || (req.user && req.user.fullName) || 'Finance Officer';
+
         // Insert a real submission record so it shows as Approved in history
         const [newSubId] = await trx('finance_income_submissions').insert({
           department: 'Car Rental',
@@ -611,26 +614,66 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
             amount: systemTotal,
             receivedFrom: order.customer_name || 'Car Rental Customer',
             financeSignature: finance_signature || null,
-            financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer'
+            financeName: financeName
           }),
           created_at: knex.fn.now(),
           updated_at: knex.fn.now()
         });
 
-        // Record approved income into the canonical ledger (CRV + cashbook + revenue book)
+        // Attach a sales_receipt to the existing car_rental sales_invoice so the
+        // invoice → receipt transfer completes on the Sales Invoice & Receipt page
+        // (invoice is created at booking time with correct VAT). Idempotent.
+        await ensureReceiptForInvoicedSubmission(trx, {
+          department: 'Car Rental',
+          manualDetails: {
+            order_id: String(order.id),
+            paymentMethod: order.payment_method || 'Bank/Telebirr',
+            paymentReference: order.payment_reference,
+            receivedFrom: order.customer_name || 'Car Rental Customer',
+          },
+          amount: systemTotal,
+          receivedBy: financeName,
+          allowAdditional: extraCharges > 0,
+        });
+
+        // Cancel the security deposit's invoices/activations must NOT apply here;
+        // record the approved income into the canonical ledger (CRV + cashbook +
+        // revenue book), keying the revenue-book row by order number so it merges
+        // with (instead of duplicating) the row synced by syncRentalToFinance.
         await recordLedgerIncome(trx, {
           amount: systemTotal,
           department: 'Car Rental',
           manualDetails: { paymentMethod: order.payment_method || 'Bank/Telebirr', paymentReference: order.payment_reference },
           receivedFrom: order.customer_name || 'Car Rental Customer',
           referenceNo: order.payment_reference || `RENTAL-${order.order_number}`,
+          receivableInvoiceNo: order.order_number,
           receivableExtras: {
             order_id: String(order.id),
             orderNumber: order.order_number,
             financeSignature: finance_signature || null,
-            financeName: finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+            financeName: financeName,
           },
         });
+
+        // Record the approved payment in bank_payments for reconciliation (keeps
+        // Live Income approval consistent with verifyPayment + other departments).
+        try {
+          const crypto = require('crypto');
+          await trx('bank_payments').insert({
+            payment_id: crypto.randomUUID(),
+            reference: order.payment_reference || `RENTAL-${order.order_number}-${Date.now()}`,
+            amount: systemTotal,
+            customer_name: order.customer_name || 'Car Rental Customer',
+            customer_phone: order.customer_phone || null,
+            bank_code: normalizePaymentMethod(order.payment_method || 'Cash') === 'Cash' ? 'CASH' : 'CBE',
+            status: 'completed',
+            description: `Rental payment - Order ${order.order_number}`,
+            completed_at: knex.fn.now(),
+            created_at: knex.fn.now()
+          });
+        } catch (e) {
+          console.error('Failed to record rental payment in bank_payments:', e.message);
+        }
       });
 
       sendFinanceNotification({
