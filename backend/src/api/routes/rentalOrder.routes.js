@@ -24,6 +24,17 @@ router.post('/manual', authenticate, authorizeRoles(['Car Renting Manager', 'Adm
 
 // Manager routes
 router.get('/', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getAllOrders);
+
+// Archive / History / Delete (Manager) — defined before /:id routes
+router.get('/history', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getArchivedOrders);
+router.post('/bulk-archive', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.bulkArchiveOrders);
+router.post('/bulk-restore', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.bulkRestoreOrders);
+router.delete('/bulk', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.bulkDeleteOrders);
+router.post('/:id/archive', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.archiveOrder);
+router.post('/:id/restore', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.restoreOrder);
+router.delete('/:id', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.deleteOrder);
+
+router.post('/:id/start', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.startRental);
 router.get('/:id', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO', 'Finance', 'Finance Manager']), rentalOrderController.getOrderById);
 router.put('/:id/status', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.updateOrderStatus);
 router.patch('/:id/status', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.updateOrderStatus);
