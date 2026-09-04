@@ -189,7 +189,12 @@ const requestsController = {
         this.on('fis.department', '=', db.raw('?', ['Pharmacy']))
           .andOn(db.raw("JSON_EXTRACT(fis.manual_details, '$.request_id')"), '=', 'pr.id')
       })
-      .select('pr.*', 'fis.reference_no as payment_reference', 'fis.manual_details as payment_manual_details')
+      .select(
+        'pr.*',
+        'fis.reference_no as payment_reference',
+        'fis.manual_details as payment_manual_details',
+        'fis.status as finance_payment_status'   // <-- Approved / Pending / Rejected from Finance
+      )
       .where({ 'pr.status': 'pending' })
       .orderBy('pr.requested_at', 'asc');
       
@@ -207,12 +212,14 @@ const requestsController = {
       return {
         ...req,
         payment_method: method || 'CASH',
-        payment_screenshot: screenshot
+        payment_screenshot: screenshot,
+        finance_payment_status: req.finance_payment_status || null  // null means no Finance entry (cash/walk-in)
       };
     });
 
     res.json({ status: 'success', data: formattedRequests });
   }),
+
 
   // ==============================
   // PHARMACIST: Get ALL requests with filter
