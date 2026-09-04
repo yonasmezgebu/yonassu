@@ -11,6 +11,8 @@ import CentralAuditLog from '../admin/CentralAuditLog';
 import TractorRegister from './manager/TractorRegister';
 import AgriRentList from './manager/AgriRentList';
 import AgriRentOrders from './manager/AgriRentOrders';
+import RentalOrdersHistory from './manager/RentalOrdersHistory';
+import AgriRentOrdersHistory from './manager/AgriRentOrdersHistory';
 import AgriRentCreateOrder from './manager/AgriRentCreateOrder';
 import AssetRegister from './manager/AssetRegister';
 import AddAsset from './manager/AddAsset';
@@ -34,6 +36,8 @@ const CarRentingDashboard = () => {
       children: [
         { label: 'Rental Order',     path: '/car-renting/manager/orders',      icon: 'clipboard',   color: '#0ea5e9' },
         { label: 'Agri Rent Order',  path: '/car-renting/manager/agri-orders', icon: 'leaf',        color: '#22c55e' },
+        { label: 'Rental Order History', path: '/car-renting/manager/orders-history', icon: 'archive', color: '#64748b' },
+        { label: 'Agri Rent History',    path: '/car-renting/manager/agri-history',   icon: 'archive', color: '#64748b' },
         { label: 'Store Request',    path: '/car-renting/manager/store-request', icon: 'package',     color: '#f59e0b' },
         { label: 'Procurement Request', path: '/car-renting/manager/procurement-request', icon: 'file-plus', color: '#8b5cf6' }
       ]
@@ -93,6 +97,8 @@ const CarRentingDashboard = () => {
           {/* Operations */}
           <Route path="manager/tasks"       element={<CarRentingTasks />} />
           <Route path="manager/orders"      element={<RentalOrders />} />
+          <Route path="manager/orders-history" element={<RentalOrdersHistory />} />
+          <Route path="manager/agri-history"   element={<AgriRentOrdersHistory />} />
           <Route path="manager/agri-orders" element={<AgriRentOrders />} />
           <Route path="manager/agri-orders/new" element={<AgriRentCreateOrder />} />
           <Route path="manager/store-request" element={<CarRentingStoreRequest />} />
