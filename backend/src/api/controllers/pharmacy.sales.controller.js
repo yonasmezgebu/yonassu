@@ -297,30 +297,13 @@ const salesController = {
         .where('is_submitted', false)
         .orWhereNull('is_submitted')
         .update({ is_submitted: true });
-
-      // Send to Finance Live Income for Receivables Book
-      const refNo = `PHARM-${Date.now().toString().slice(-6)}`;
-      await trx('finance_income_submissions').insert({
-        department: 'Pharmacy',
-        submitted_by: validWorker ? validWorker.name : 'Pharmacy Staff',
-        amount: totalAmount,
-        reference_no: refNo,
-        description: `Daily Pharmacy Sales - ${totalTransactions} transactions`,
-        status: 'Pending'
-      });
-
-      sendFinanceNotification({
-        title: 'New Income Submission',
-        message: `ETB ${Number(totalAmount || 0).toLocaleString()} Pharmacy daily sales (${totalTransactions} txns) submitted for verification (Ref: ${refNo}).`,
-        type: 'finance',
-        link: '/finance/pharmacy-sales?tab=list',
-        related_entity_id: refNo
-      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+        
+      // Avoid sending to Finance Live Income again to prevent double submission
     });
 
     res.json({
       status: 'success',
-      data: { message: 'Daily sales submitted successfully', totalTransactions, totalAmount }
+      data: { message: 'Daily sales moved to audit successfully', totalTransactions, totalAmount }
     });
   },
 
