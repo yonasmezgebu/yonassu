@@ -4,33 +4,35 @@ import axios from "../../services/apiClient";
 import {
   XCircle, Printer, RefreshCw,
   ArrowLeft, Calendar, FileText, BookOpen,
-  CreditCard, CheckCircle2, Clock, AlertTriangle, Trash2
+  CreditCard, CheckCircle2, Clock, AlertTriangle, Trash2, Package
 } from "lucide-react";
 import SegmentedSpinner from "../../components/ui/SegmentedSpinner";
 import styles from "./CustomerPrintingOrders.module.css";
 
-const BASE = "http://localhost:5000";
+const BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
 
 const JOB_STATUS_CONFIG = {
-  received:    { label: "Received — Awaiting Finance",  color: "#92400e", bg: "#fffbeb", dot: "#d97706" },
-  in_queue:    { label: "Job Queue — In Production",    color: "#1e40af", bg: "#eff6ff", dot: "#3b82f6" },
-  in_design:   { label: "In Design",                    color: "#5b21b6", bg: "#f5f3ff", dot: "#7c3aed" },
-  file_check:  { label: "File Check",                   color: "#92400e", bg: "#fff7ed", dot: "#f59e0b" },
-  in_printing: { label: "In Printing",                  color: "#065f46", bg: "#ecfdf5", dot: "#059669" },
-  finishing:   { label: "Finishing",                    color: "#065f46", bg: "#f0fdf4", dot: "#16a34a" },
-  ready:       { label: "Ready for Pickup",             color: "#14532d", bg: "#dcfce7", dot: "#22c55e" },
-  delivered:   { label: "Delivered",                    color: "#14532d", bg: "#d1fae5", dot: "#10b981" },
-  cancelled:   { label: "Cancelled",                    color: "#7f1d1d", bg: "#fef2f2", dot: "#ef4444" },
+  received:    { label: "Received",          color: "#92400e", bg: "#fffbeb", dot: "#d97706" },
+  in_queue:    { label: "In Production",      color: "#1e40af", bg: "#eff6ff", dot: "#3b82f6" },
+  in_design:   { label: "In Design",          color: "#5b21b6", bg: "#f5f3ff", dot: "#7c3aed" },
+  file_check:  { label: "File Check",         color: "#92400e", bg: "#fff7ed", dot: "#f59e0b" },
+  in_printing: { label: "Printing",           color: "#065f46", bg: "#ecfdf5", dot: "#059669" },
+  finishing:   { label: "Finishing",          color: "#065f46", bg: "#f0fdf4", dot: "#16a34a" },
+  ready:       { label: "Ready for Pickup",   color: "#14532d", bg: "#dcfce7", dot: "#22c55e" },
+  delivered:   { label: "Delivered",          color: "#14532d", bg: "#d1fae5", dot: "#10b981" },
+  cancelled:   { label: "Cancelled",          color: "#7f1d1d", bg: "#fef2f2", dot: "#ef4444" },
 };
 
 const getJobCfg = (code) => JOB_STATUS_CONFIG[code] || JOB_STATUS_CONFIG.received;
 
 const PAY_CFG = {
-  Confirmed: { label: "Payment Confirmed by Finance", color: "#14532d", bg: "#dcfce7", border: "#86efac" },
-  Pending:   { label: "Awaiting Finance Confirmation", color: "#92400e", bg: "#fffbeb", border: "#fcd34d" },
-  Rejected:  { label: "Payment Rejected by Finance",  color: "#7f1d1d", bg: "#fef2f2", border: "#fca5a5" },
+  Confirmed: { label: "Payment Confirmed",  color: "#14532d", bg: "#dcfce7", border: "#86efac" },
+  Pending:   { label: "Awaiting Finance",   color: "#92400e", bg: "#fffbeb", border: "#fcd34d" },
+  Rejected:  { label: "Payment Rejected",   color: "#7f1d1d", bg: "#fef2f2", border: "#fca5a5" },
 };
 const getPayCfg = (s) => PAY_CFG[s] || PAY_CFG.Pending;
+
+const TERMINAL = ["delivered", "completed", "ready", "ready_for_pickup", "cancelled"];
 
 const STATUS_TABS = [
   { key: "all",       label: "All Orders" },
@@ -40,6 +42,10 @@ const STATUS_TABS = [
   { key: "delivered", label: "Delivered" },
 ];
 
+const fmtDate = (d) => d
+  ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  : "—";
+
 export default function CustomerPrintingOrders() {
   const [orders, setOrders]               = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -48,8 +54,8 @@ export default function CustomerPrintingOrders() {
   const [imgError, setImgError]           = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [refreshing, setRefreshing]       = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null); // { id, orderNumber }
-  const [toast, setToast]                 = useState(null); // { msg, type }
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [toast, setToast]                 = useState(null);
   const navigate = useNavigate();
 
   const fetchOrders = useCallback(async () => {
@@ -77,7 +83,7 @@ export default function CustomerPrintingOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -94,20 +100,20 @@ export default function CustomerPrintingOrders() {
     try {
       await axios.delete(`/printing/customer/orders/${id}`);
       setOrders(prev => prev.filter(o => o.id !== id));
-      showToast('Order removed from your dashboard.', 'success');
+      showToast("Order removed from your dashboard.", "success");
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to remove order.', 'error');
+      showToast(err.response?.data?.message || "Failed to remove order.", "error");
     }
   };
 
   const handleCancel = async (id) => {
-    if (!window.confirm("Cancel this printing order?")) return;
     try {
       await axios.delete(`/printing/orders/${id}/cancel`);
       fetchOrders();
       setSelectedOrder(null);
+      showToast("Order cancelled successfully.");
     } catch (err) {
-      alert(err.response?.data?.message || "Cancellation requires contacting support for printing orders.");
+      showToast(err.response?.data?.message || "Cancellation failed — contact support.", "error");
     }
   };
 
@@ -115,266 +121,490 @@ export default function CustomerPrintingOrders() {
     ? orders
     : orders.filter(o =>
         activeTab === "in_queue"
-          ? ["in_queue","in_design","file_check","in_printing","finishing"].includes(o.status_code)
+          ? ["in_queue", "in_design", "file_check", "in_printing", "finishing"].includes(o.status_code)
           : o.status_code === activeTab
       );
 
-  const o      = selectedOrder;
-  const jobCfg = o ? getJobCfg(o.status_code) : null;
-  const payCfg = o ? getPayCfg(o.payment_status) : null;
-  let attachment = null, docSrc = null, isImage = false;
-  if (o && o.attachments) {
-    try {
-      const atts = JSON.parse(o.attachments);
-      if (atts && atts.length > 0) attachment = atts[0];
-    } catch (_) {}
-    if (attachment?.path) {
-      docSrc = attachment.path.startsWith("http")
-        ? attachment.path
-        : `${BASE}/${attachment.path.replace(/\\/g, "/")}`;
+  /* ─── DETAIL VIEW ─────────────────────────────────────────────── */
+  if (selectedOrder) {
+    const o       = selectedOrder;
+    const jobCfg  = getJobCfg(o.status_code);
+    const payCfg  = getPayCfg(o.payment_status);
+
+    let attachment = null, docSrc = null, isImage = false;
+    if (o.attachments) {
+      try {
+        const atts = JSON.parse(o.attachments);
+        if (atts?.length > 0) attachment = atts[0];
+      } catch (_) {}
+      if (attachment?.path) {
+        docSrc = attachment.path.startsWith("http")
+          ? attachment.path
+          : `${BASE}/${attachment.path.replace(/\\/g, "/")}`;
+      }
+      isImage = !!(attachment && attachment.mimeType?.startsWith("image/"));
     }
-    isImage = !!(attachment && attachment.mimeType?.startsWith("image/"));
-  }
 
-  const S = {
-    page: { minHeight: "100vh", background: "#f8fafc", padding: "0 0 48px" },
-    wrap: { maxWidth: 920, margin: "0 auto", padding: "24px 20px" },
-    hdr: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, gap: 12, flexWrap: "wrap" },
-    title: { margin: 0, fontSize: 22, fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: 10 },
-    backBtn: { display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, marginBottom: 16, padding: 0 },
-    actRow: { display: "flex", gap: 10, alignItems: "center" },
-    btnPri: { padding: "9px 18px", borderRadius: 9, background: "#2563eb", color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" },
-    btnDgr: { padding: "9px 18px", borderRadius: 9, background: "#dc2626", color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
-    btnIco: { padding: 8, borderRadius: 9, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center" },
-    tabs: { display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" },
-    list: { display: "flex", flexDirection: "column", gap: 14 },
-    sec: { background: "#fff", borderRadius: 14, border: "1.5px solid #e2e8f0", padding: 20, marginBottom: 16 },
-    secTit: { margin: "0 0 14px", fontSize: 12, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 },
-    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px" },
-    it: { display: "flex", flexDirection: "column", gap: 3 },
-    itF: { display: "flex", flexDirection: "column", gap: 3, gridColumn: "1 / -1" },
-    lbl: { fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
-    val: { fontSize: 14, color: "#1e293b", fontWeight: 600 },
-    valLg: { fontSize: 20, color: "#059669", fontWeight: 800 },
-    chip: { display: "inline-block", marginLeft: 8, padding: "2px 8px", borderRadius: 6, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 600, verticalAlign: "middle" },
-    empty: { textAlign: "center", padding: "60px 20px", color: "#94a3b8" },
-  };
-
-  const tabStyle = (a) => ({
-    padding: "7px 16px", borderRadius: 8,
-    border: `1.5px solid ${a ? "#2563eb" : "#e2e8f0"}`,
-    background: a ? "#eff6ff" : "#fff",
-    color: a ? "#2563eb" : "#64748b",
-    fontWeight: 700, fontSize: 13, cursor: "pointer"
-  });
-
-  return (
-    <div style={S.page}>
-      {selectedImage && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setSelectedImage(null)}>
-          <button style={{ position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "#fff", cursor: "pointer" }} onClick={() => setSelectedImage(null)}>
-            <XCircle size={32} />
-          </button>
-          <img src={selectedImage} alt="Doc" style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8 }} onClick={e => e.stopPropagation()} />
-        </div>
-      )}
-
-      {selectedOrder ? (
-        <div style={S.wrap}>
-          <button style={S.backBtn} onClick={() => setSelectedOrder(null)}>
-            <ArrowLeft size={16} /> Back to Printing Orders
-          </button>
-          <div style={S.hdr}>
-            <h1 style={S.title}><Printer size={22} /> Order #{o.order_number}</h1>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, background: jobCfg.bg, color: jobCfg.color, fontWeight: 700, fontSize: 13 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: jobCfg.dot, display: "inline-block" }} />
-              {jobCfg.label}
-            </span>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 18px", borderRadius: 12, background: payCfg.bg, border: `1.5px solid ${payCfg.border}`, color: payCfg.color, fontWeight: 700, fontSize: 14, marginBottom: 20 }}>
-            {o.payment_status === "Confirmed" ? <CheckCircle2 size={20} style={{ flexShrink: 0 }} /> : o.payment_status === "Rejected" ? <AlertTriangle size={20} style={{ flexShrink: 0 }} /> : <Clock size={20} style={{ flexShrink: 0 }} />}
-            <div>
-              {o.payment_status === "Confirmed"
-                ? "✅ Payment Confirmed by Finance — Your order is being processed by the printing team."
-                : o.payment_status === "Rejected"
-                ? "❌ Payment Rejected by Finance — Please contact support."
-                : "⏳ Awaiting Finance Confirmation — Your payment is under review. Printing will start once Finance approves."}
-            </div>
-          </div>
-
-          <div style={S.sec}>
-            <h3 style={S.secTit}><BookOpen size={16} /> Printing Details</h3>
-            <div style={S.grid2}>
-              <div style={S.it}><div style={S.lbl}>Service Type</div><div style={S.val}>{o.product_type}</div></div>
-              <div style={S.it}><div style={S.lbl}>Paper Type</div><div style={S.val}>{o.paper_type}</div></div>
-              <div style={S.it}><div style={S.lbl}>Binding</div><div style={S.val}>{o.binding_type || "None"}</div></div>
-              <div style={S.it}><div style={S.lbl}>Color Printing</div><div style={S.val}>{o.color_printing ? "Yes — Color" : "No — Black & White"}</div></div>
-              <div style={S.it}><div style={S.lbl}>Quantity</div><div style={S.val}>{o.quantity} copy × {o.pages_per_copy} pages</div></div>
-              <div style={S.it}><div style={S.lbl}>Due Date</div><div style={S.val}>{o.due_date ? new Date(o.due_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Not set"}</div></div>
-              <div style={S.it}><div style={S.lbl}>Subtotal</div><div style={S.val}>{parseFloat(o.subtotal || 0).toFixed(2)} ETB</div></div>
-              <div style={S.it}><div style={S.lbl}>VAT</div><div style={S.val}>{parseFloat(o.vat_amount || 0).toFixed(2)} ETB</div></div>
-              <div style={S.itF}>
-                <div style={S.lbl}>Total Amount (incl. VAT)</div>
-                <div style={S.valLg}>{parseFloat(o.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })} ETB</div>
-              </div>
-              {o.special_instructions && (
-                <div style={S.itF}>
-                  <div style={S.lbl}>Special Instructions</div>
-                  <div style={{ ...S.val, color: "#92400e", background: "#fffbeb", padding: "8px 12px", borderRadius: 8 }}>{o.special_instructions}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={S.sec}>
-            <h3 style={S.secTit}><CreditCard size={16} /> Payment Details</h3>
-            <div style={S.grid2}>
-              <div style={S.it}><div style={S.lbl}>Payment Method</div><div style={S.val}>{o.payment_method || "Not specified"}</div></div>
-              <div style={S.it}>
-                <div style={S.lbl}>Finance Status</div>
-                <div style={{ ...S.val, color: payCfg.color, fontWeight: 800 }}>
-                  {o.payment_status === "Confirmed" ? "✅ Confirmed" : o.payment_status === "Rejected" ? "❌ Rejected" : "⏳ Pending"}
-                </div>
-              </div>
-              {o.payment_reference && (
-                <div style={S.it}>
-                  <div style={S.lbl}>Transaction Reference</div>
-                  <div style={{ ...S.val, fontFamily: "monospace", background: "#f8fafc", padding: "4px 8px", borderRadius: 6 }}>{o.payment_reference}</div>
-                </div>
-              )}
-              <div style={S.it}><div style={S.lbl}>Order Placed</div><div style={S.val}>{new Date(o.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</div></div>
-            </div>
-          </div>
-
-          <div style={S.sec}>
-            <h3 style={S.secTit}><FileText size={16} /> Document Attachment</h3>
-            {!docSrc ? (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8" }}>
-                <FileText size={36} /><div style={{ marginTop: 8 }}>No document attached — bring it to the shop.</div>
-              </div>
-            ) : imgError || !isImage ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <FileText size={36} color="#64748b" />
-                <div>
-                  <div style={{ fontWeight: 700 }}>{attachment?.originalName || "Document File"}</div>
-                  <a href={docSrc} target="_blank" rel="noreferrer" style={{ ...S.btnPri, display: "inline-block", marginTop: 8, textDecoration: "none" }}>Download File</a>
-                </div>
-              </div>
-            ) : (
-              <div onClick={() => setSelectedImage(docSrc)} style={{ cursor: "pointer", borderRadius: 10, overflow: "hidden", maxWidth: 360 }}>
-                <img src={docSrc} alt="Attached Document" style={{ width: "100%" }} onError={() => setImgError(true)} />
-              </div>
-            )}
-          </div>
-
-          {o.status_code === "received" && (
-            <button style={S.btnDgr} onClick={() => handleCancel(o.id)}>
-              <XCircle size={16} /> Cancel Order
+    return (
+      <>
+        {selectedImage && (
+          <div className={styles.modal} onClick={() => setSelectedImage(null)}>
+            <button className={styles.modalClose} onClick={() => setSelectedImage(null)}>
+              <XCircle size={32} />
             </button>
-          )}
-        </div>
+            <img src={selectedImage} alt="Document" className={styles.modalImg} onClick={e => e.stopPropagation()} />
+          </div>
+        )}
 
-      ) : (
-        <div style={S.wrap}>
-          <div style={S.hdr}>
-            <h1 style={S.title}><Printer size={24} /> My Printing Orders</h1>
-            <div style={S.actRow}>
-              <button style={S.btnIco} onClick={handleRefresh} disabled={refreshing} title="Refresh">
-                {refreshing ? <SegmentedSpinner size={18} /> : <RefreshCw size={18} />}
-              </button>
-              <button style={S.btnPri} onClick={() => navigate("/services/printing")}>+ New Order</button>
+        <div className={styles.page}>
+          <div className={styles.wrap}>
+            <button className={styles.backBtn} onClick={() => setSelectedOrder(null)}>
+              <ArrowLeft size={16} /> Back to Printing Orders
+            </button>
+
+            <div className={styles.header}>
+              <h1 className={styles.pageTitle}>
+                <Printer size={24} /> Order #{o.order_number}
+              </h1>
+              <span
+                className={styles.badge}
+                style={{ background: jobCfg.bg, color: jobCfg.color }}
+              >
+                <span className={styles.dot} style={{ background: jobCfg.dot }} />
+                {jobCfg.label}
+              </span>
             </div>
-          </div>
-          <div style={S.tabs}>
-            {STATUS_TABS.map(t => (
-              <button key={t.key} style={tabStyle(activeTab === t.key)} onClick={() => setActiveTab(t.key)}>{t.label}</button>
-            ))}
-          </div>
-          {loading ? (
-            <div style={S.empty}>Loading orders...</div>
-          ) : filtered.length === 0 ? (
-            <div style={S.empty}>
-              <Printer size={48} />
-              <div style={{ fontWeight: 700, margin: "12px 0" }}>No printing orders found.</div>
-              <button style={S.btnPri} onClick={() => navigate("/services/printing")}>Order Print Service</button>
+
+            {/* Payment banner */}
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: "0.75rem",
+              padding: "1rem 1.25rem", borderRadius: "0.75rem",
+              background: payCfg.bg, border: `1.5px solid ${payCfg.border}`,
+              color: payCfg.color, fontWeight: 600, fontSize: "0.875rem",
+              marginBottom: "1.5rem", lineHeight: 1.6,
+            }}>
+              {o.payment_status === "Confirmed"
+                ? <CheckCircle2 size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+                : o.payment_status === "Rejected"
+                ? <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+                : <Clock size={20} style={{ flexShrink: 0, marginTop: 2 }} />}
+              <div>
+                {o.payment_status === "Confirmed"
+                  ? "✅ Payment confirmed by Finance — your order is being processed by the printing team."
+                  : o.payment_status === "Rejected"
+                  ? "❌ Payment rejected by Finance — please contact support to resolve this."
+                  : "⏳ Awaiting Finance confirmation — printing starts once your payment is approved."}
+              </div>
             </div>
-          ) : (
-            <div style={S.list}>
-              {filtered.map(order => {
-                const jCfg = getJobCfg(order.status_code);
-                const pCfg = getPayCfg(order.payment_status);
-                return (
-                  <div key={order.id} style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #e2e8f0", padding: "18px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
-                    onClick={() => { setImgError(false); setSelectedOrder(order); }} role="button" tabIndex={0} onKeyDown={e => e.key === "Enter" && setSelectedOrder(order)}>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#2563eb", letterSpacing: 0.5, marginBottom: 4 }}>ORDER #{order.order_number}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
-                        {order.product_type}
-                        <span style={S.chip}>{order.color_printing ? "Color" : "B&W"}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: "#64748b", display: "flex", gap: 8, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ display: "flex", gap: 4, alignItems: "center" }}><BookOpen size={12} />{order.paper_type}</span>
-                        <span>|</span>
-                        <span>Qty {order.quantity} x {order.pages_per_copy}pp</span>
-                        <span>|</span>
-                        <span style={{ fontWeight: 700, color: "#059669", fontSize: 13 }}>{parseFloat(order.total_price || 0).toFixed(2)} ETB</span>
-                      </div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: pCfg.bg, border: `1px solid ${pCfg.border}`, color: pCfg.color, fontSize: 11, fontWeight: 700 }}>
-                        {order.payment_status === "Confirmed" ? <CheckCircle2 size={12} /> : order.payment_status === "Rejected" ? <AlertTriangle size={12} /> : <Clock size={12} />}
-                        {pCfg.label}
+
+            {/* Two-column detail grid */}
+            <div className={styles.detailGrid}>
+              {/* Left column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {/* Printing Details */}
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>
+                    <BookOpen size={16} /> Printing Details
+                  </h3>
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Service Type</div>
+                      <div className={styles.infoValue}>{o.product_type || "—"}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Paper Type</div>
+                      <div className={styles.infoValue}>{o.paper_type || "—"}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Binding</div>
+                      <div className={styles.infoValue}>{o.binding_type || "None"}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Color</div>
+                      <div className={styles.infoValue}>{o.color_printing ? "Color" : "Black & White"}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Quantity</div>
+                      <div className={styles.infoValue}>{o.quantity} copy × {o.pages_per_copy} pages</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Due Date</div>
+                      <div className={styles.infoValue}>{fmtDate(o.due_date)}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Subtotal</div>
+                      <div className={styles.infoValue}>{parseFloat(o.subtotal || 0).toFixed(2)} ETB</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>VAT</div>
+                      <div className={styles.infoValue}>{parseFloat(o.vat_amount || 0).toFixed(2)} ETB</div>
+                    </div>
+                    <div className={`${styles.infoItem} ${styles.infoFullRow}`}>
+                      <div className={styles.infoLabel}>Total (incl. VAT)</div>
+                      <div className={styles.infoValueLarge}>
+                        {parseFloat(o.total_price || 0).toLocaleString("en-ET", { minimumFractionDigits: 2 })} ETB
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8", display: "flex", gap: 4, alignItems: "center" }}>
-                        <Calendar size={12} />
-                        {new Date(order.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    {o.special_instructions && (
+                      <div className={`${styles.infoItem} ${styles.infoFullRow}`}>
+                        <div className={styles.infoLabel}>Special Instructions</div>
+                        <div style={{ fontSize: "0.875rem", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "0.5rem", padding: "0.75rem 1rem", color: "#92400e", lineHeight: 1.6 }}>
+                          {o.special_instructions}
+                        </div>
                       </div>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: jCfg.bg, color: jCfg.color, fontWeight: 700, fontSize: 12 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: jCfg.dot, display: "inline-block" }} />
-                          {jCfg.label}
-                        </span>
-                        {['delivered', 'completed', 'ready', 'ready_for_pickup'].includes((order.status_code || '').toLowerCase()) && (
-                          <button 
-                            onClick={(e) => handleHideOrder(e, order.id, order.order_number)} 
-                            style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', padding: '4px' }}
-                            title="Delete from dashboard"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div className={styles.detailCard}>
+                  <h3 className={styles.detailCardTitle}>
+                    <CreditCard size={16} /> Payment Details
+                  </h3>
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Payment Method</div>
+                      <div className={styles.infoValue}>{o.payment_method || "Not specified"}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Finance Status</div>
+                      <div className={styles.infoValue} style={{ color: payCfg.color, fontWeight: 700 }}>
+                        {o.payment_status === "Confirmed" ? "✅ Confirmed" : o.payment_status === "Rejected" ? "❌ Rejected" : "⏳ Pending"}
+                      </div>
+                    </div>
+                    {o.payment_reference && (
+                      <div className={styles.infoItem}>
+                        <div className={styles.infoLabel}>Transaction Reference</div>
+                        <div style={{ fontFamily: "monospace", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "0.375rem", padding: "0.375rem 0.625rem", fontSize: "0.875rem", color: "#0f172a" }}>
+                          {o.payment_reference}
+                        </div>
+                      </div>
+                    )}
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoLabel}>Order Placed</div>
+                      <div className={styles.infoValue}>
+                        {new Date(o.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+
+                {o.status_code === "received" && (
+                  <div className={styles.cancelWrap}>
+                    <button
+                      onClick={() => handleCancel(o.id)}
+                      className={styles.btnSecondary}
+                      style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                    >
+                      <XCircle size={16} /> Cancel Order
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right column — Document */}
+              <div className={styles.detailCard}>
+                <h3 className={styles.detailCardTitle}>
+                  <FileText size={16} /> Document Attachment
+                </h3>
+                {!docSrc ? (
+                  <div className={styles.attachEmpty}>
+                    <FileText size={40} style={{ color: "#94a3b8" }} />
+                    <div className={styles.attachEmptyTitle}>No file attached</div>
+                    <div className={styles.attachEmptyDesc}>Bring your document directly to the print shop.</div>
+                  </div>
+                ) : imgError || !isImage ? (
+                  <div className={styles.attachFile}>
+                    <FileText size={40} style={{ color: "#059669" }} />
+                    <div className={styles.attachFileName}>{attachment?.originalName || "Document File"}</div>
+                    <a
+                      href={docSrc}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={styles.btnPrimary}
+                      style={{ textDecoration: "none" }}
+                    >
+                      Download File
+                    </a>
+                  </div>
+                ) : (
+                  <div className={styles.attachImg} onClick={() => setSelectedImage(docSrc)}>
+                    <img
+                      src={docSrc}
+                      alt="Attached Document"
+                      onError={() => setImgError(true)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        {toast && (
+          <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 9100, background: toast.type === "success" ? "#059669" : "#dc2626", color: "#fff", padding: "0.875rem 1.5rem", borderRadius: "0.75rem", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {toast.type === "success" ? "✅" : "❌"} {toast.msg}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  /* ─── LIST VIEW ───────────────────────────────────────────────── */
+  return (
+    <>
+      {selectedImage && (
+        <div className={styles.modal} onClick={() => setSelectedImage(null)}>
+          <button className={styles.modalClose} onClick={() => setSelectedImage(null)}>
+            <XCircle size={32} />
+          </button>
+          <img src={selectedImage} alt="Doc" className={styles.modalImg} onClick={e => e.stopPropagation()} />
         </div>
       )}
 
-      {/* ── In-app confirmation dialog ── */}
+      <div className={styles.page}>
+        <div className={styles.wrap}>
+          {/* Header */}
+          <div className={styles.header}>
+            <h1 className={styles.pageTitle}>
+              <Printer size={24} /> My Printing Orders
+            </h1>
+            <div className={styles.actions}>
+              <button className={styles.btnIcon} onClick={handleRefresh} disabled={refreshing} title="Refresh">
+                {refreshing ? <SegmentedSpinner size={18} /> : <RefreshCw size={18} />}
+              </button>
+              <button className={styles.btnPrimary} onClick={() => navigate("/services/printing")}>
+                + New Order
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className={styles.tabs}>
+            {STATUS_TABS.map(t => (
+              <button
+                key={t.key}
+                className={`${styles.tab}${activeTab === t.key ? ` ${styles.tabActive}` : ""}`}
+                onClick={() => setActiveTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className={styles.empty}>
+              <SegmentedSpinner size={36} />
+              <div className={styles.emptyTitle} style={{ marginTop: "1rem" }}>Loading orders…</div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className={styles.empty}>
+              <Printer size={48} style={{ color: "#94a3b8" }} />
+              <div className={styles.emptyTitle}>No printing orders found.</div>
+              <button className={styles.btnPrimary} onClick={() => navigate("/services/printing")}>
+                Order Print Service
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* ── DESKTOP TABLE VIEW ── */}
+              <div className={styles.tableContainer}>
+                <div className={styles.tableHeader}>
+                  <span>Order / Date</span>
+                  <span>Service</span>
+                  <span>Qty / Pages</span>
+                  <span>Payment</span>
+                  <span>Job Status</span>
+                  <span style={{ textAlign: "right" }}>Actions</span>
+                </div>
+
+                {filtered.map((order) => {
+                  const jCfg = getJobCfg(order.status_code);
+                  const pCfg = getPayCfg(order.payment_status);
+                  const isTerminal = TERMINAL.includes((order.status_code || "").toLowerCase());
+                  
+                  return (
+                    <div
+                      key={order.id}
+                      className={styles.tableRow}
+                      onClick={() => { setImgError(false); setSelectedOrder(order); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === "Enter" && setSelectedOrder(order)}
+                    >
+                      <div className={styles.tableCol}>
+                        <div className={styles.textPrimary} style={{ color: "#2563eb", letterSpacing: "0.02em" }}>
+                          #{order.order_number}
+                        </div>
+                        <div className={styles.textSecondary}>
+                          <Calendar size={11} />
+                          {fmtDate(order.created_at)}
+                        </div>
+                      </div>
+
+                      <div className={styles.tableCol}>
+                        <div className={styles.textPrimary} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {order.product_type}
+                        </div>
+                        <span className={styles.chip} style={{ width: "fit-content" }}>
+                          {order.color_printing ? "Color" : "B&W"}
+                        </span>
+                      </div>
+
+                      <div className={styles.tableCol}>
+                        <div className={styles.textPrimary}>{order.quantity} copies</div>
+                        <div className={styles.textSecondary}>{order.pages_per_copy} pages</div>
+                      </div>
+
+                      <div className={styles.tableCol}>
+                        <div className={styles.textPrice}>
+                          {parseFloat(order.total_price || 0).toFixed(2)} ETB
+                        </div>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                          fontSize: "0.6875rem", fontWeight: 700,
+                          padding: "0.2rem 0.5rem", borderRadius: "999px",
+                          background: pCfg.bg, border: `1px solid ${pCfg.border}`, color: pCfg.color,
+                          width: "fit-content",
+                        }}>
+                          {order.payment_status === "Confirmed"
+                            ? <CheckCircle2 size={11} />
+                            : order.payment_status === "Rejected"
+                            ? <AlertTriangle size={11} />
+                            : <Clock size={11} />}
+                          {pCfg.label}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                          padding: "0.3rem 0.625rem", borderRadius: "999px",
+                          background: jCfg.bg, color: jCfg.color,
+                          fontSize: "0.6875rem", fontWeight: 700, whiteSpace: "nowrap",
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: jCfg.dot, display: "inline-block", flexShrink: 0 }} />
+                          {jCfg.label}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.375rem" }}>
+                        {isTerminal && (
+                          <button
+                            onClick={e => handleHideOrder(e, order.id, order.order_number)}
+                            title="Remove from dashboard"
+                            style={{ background: "none", border: "none", color: "#e53e3e", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "flex", alignItems: "center", transition: "background 0.15s ease" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                            onMouseLeave={e => e.currentTarget.style.background = "none"}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                        <button
+                          onClick={e => { e.stopPropagation(); setImgError(false); setSelectedOrder(order); }}
+                          title="View order details"
+                          style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", fontWeight: 600, transition: "background 0.15s ease" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#eff6ff"}
+                          onMouseLeave={e => e.currentTarget.style.background = "none"}
+                        >
+                          <Package size={14} /> View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── MOBILE CARD VIEW ── */}
+              <div className={styles.list}>
+                {filtered.map((order) => {
+                  const jCfg = getJobCfg(order.status_code);
+                  const pCfg = getPayCfg(order.payment_status);
+                  const isTerminal = TERMINAL.includes((order.status_code || "").toLowerCase());
+                  
+                  return (
+                    <div
+                      key={order.id}
+                      className={styles.card}
+                      onClick={() => { setImgError(false); setSelectedOrder(order); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === "Enter" && setSelectedOrder(order)}
+                    >
+                      <div className={styles.cardLeft}>
+                        <div className={styles.orderNum}>#{order.order_number}</div>
+                        <div className={styles.orderName}>
+                          {order.product_type}
+                          <span className={styles.chip}>{order.color_printing ? "Color" : "B&W"}</span>
+                        </div>
+                        
+                        <div className={styles.meta}>
+                          <div className={styles.metaIcon}>
+                            <Calendar size={13} /> {fmtDate(order.created_at)}
+                          </div>
+                          <span className={styles.divider}>•</span>
+                          <div className={styles.metaIcon}>
+                            <BookOpen size={13} /> {order.paper_type}
+                          </div>
+                          <span className={styles.divider}>•</span>
+                          <div>{order.quantity} copy × {order.pages_per_copy} pp</div>
+                        </div>
+                      </div>
+
+                      <div className={styles.cardRight}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                          <div style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#059669' }}>
+                            {parseFloat(order.total_price || 0).toFixed(2)} ETB
+                          </div>
+                          <div className={styles.badge} style={{ background: pCfg.bg, color: pCfg.color, border: `1px solid ${pCfg.border}` }}>
+                            {order.payment_status === "Confirmed" ? <CheckCircle2 size={12} /> : order.payment_status === "Rejected" ? <AlertTriangle size={12} /> : <Clock size={12} />}
+                            {pCfg.label}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className={styles.badge} style={{ background: jCfg.bg, color: jCfg.color }}>
+                            <span className={styles.dot} style={{ background: jCfg.dot }} />
+                            {jCfg.label}
+                          </span>
+                          
+                          {isTerminal && (
+                            <button
+                              onClick={e => handleHideOrder(e, order.id, order.order_number)}
+                              title="Remove from dashboard"
+                              style={{ background: "none", border: "none", color: "#e53e3e", cursor: "pointer", padding: "0.375rem", borderRadius: "0.375rem", display: "flex", alignItems: "center", transition: "background 0.15s ease" }}
+                              onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                              onMouseLeave={e => e.currentTarget.style.background = "none"}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── In-app confirmation modal ── */}
       {confirmDelete && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: '2rem', maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: '0.75rem' }}>🗑️</div>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Remove Order?</h3>
-            <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.6 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: "1rem", padding: "2rem", maxWidth: 380, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", textAlign: "center" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🗑️</div>
+            <h3 style={{ margin: "0 0 0.5rem", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Remove Order?</h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.875rem", color: "#64748b", lineHeight: 1.6 }}>
               Order <strong>#{confirmDelete.orderNumber}</strong> will be removed from your dashboard.<br />
               This only hides it for you — the print shop still has your order.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button
-                onClick={() => setConfirmDelete(null)}
-                style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "1.5px solid #e2e8f0", background: "#f8fafc", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" }}>
                 Cancel
               </button>
-              <button
-                onClick={confirmHideOrder}
-                style={{ padding: '0.625rem 1.5rem', borderRadius: 10, border: 'none', background: '#e53e3e', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
+              <button onClick={confirmHideOrder} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none", background: "#e53e3e", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}>
                 Yes, Remove
               </button>
             </div>
@@ -382,19 +612,12 @@ export default function CustomerPrintingOrders() {
         </div>
       )}
 
-      {/* ── Toast notification ── */}
+      {/* ── Toast ── */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 9100,
-          background: toast.type === 'success' ? '#059669' : '#dc2626',
-          color: '#fff', padding: '0.875rem 1.5rem', borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontSize: '0.9rem', fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: '0.5rem',
-          animation: 'slideIn 0.2s ease'
-        }}>
-          {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+        <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", zIndex: 9100, background: toast.type === "success" ? "#059669" : "#dc2626", color: "#fff", padding: "0.875rem 1.5rem", borderRadius: "0.75rem", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          {toast.type === "success" ? "✅" : "❌"} {toast.msg}
         </div>
       )}
-    </div>
+    </>
   );
 }
