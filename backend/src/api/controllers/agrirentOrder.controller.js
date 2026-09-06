@@ -6,6 +6,7 @@ const carRentalAudit = require('../../services/carRentalAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
 const { generateInvoiceNumber } = require('../../utils/orderNumber');
 const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
+const { notifyWaitlistForTractor } = require('../../services/agriRentWaitlist.service');
 
 // ── HELPER: Sync to Finance ───────────────────────────────────────────────────
 const syncToFinance = async (order, userId) => {
@@ -83,8 +84,11 @@ const isStartReached = (order) => {
   return start <= today;
 };
 
-// 🔒 Prevent the same machine being booked twice before it is released back,
-// even when the first order is still pending (unpaid / unapproved).
+// 🔒 Prevent the same machine being booked twice while it is actually OUT with a
+// customer. A rental only "occupies" the machine from the moment it is released
+// (released_at set) until it is returned/completed (completed_at set). Once a
+// rental is released AND completed/cancelled the machine is free again, so a
+// stale pending row no longer freezes the fleet.
 const checkTractorAvailable = async (tractorId) => {
   if (!tractorId) return { ok: true };
   const tractor = await db('tractors').where({ id: tractorId }).first();
@@ -99,8 +103,12 @@ const checkTractorAvailable = async (tractorId) => {
 
   const conflict = await db('agrirent_orders')
     .where({ tractor_id: tractorId })
-    .whereIn('status', ['pending', 'approved', 'confirmed', 'active'])
     .whereNull('deleted_at')
+    .where(function () {
+      // Released to the field but not yet returned / completed — still occupies.
+      this.whereNotNull('released_at').whereNull('completed_at')
+        .orWhere('status', 'active');
+    })
     .select('order_number', 'id')
     .first();
   if (conflict) {
@@ -314,13 +322,20 @@ exports.createManualOrder = async (req, res) => {
       tractorId, customerName, customerPhone, customerEmail,
       startDate, endDate, dailyRateOverride, fieldLocation,
       fieldSizeHectares, farmingPurpose, specialInstructions,
-      paymentMethod, paymentReference, paymentStatus
+      paymentMethod, paymentReference, paymentStatus,
+      scheduleLater, waitlistId
     } = req.body;
 
     if (!customerName || !customerPhone) {
       return res.status(400).json({ status: 'error', message: 'Customer name and phone are required' });
     }
-    if (!startDate || !endDate) {
+
+    const isScheduleLater = scheduleLater === true || scheduleLater === 'true' || (!startDate && !endDate);
+
+    // "Schedule later" walk-ins: created today with NO dates because the machine
+    // is still booked by the current order. The manager fills start/end later
+    // (PATCH /:id/dates) once the machine is actually available.
+    if (!isScheduleLater && (!startDate || !endDate)) {
       return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
     }
 
@@ -329,25 +344,44 @@ exports.createManualOrder = async (req, res) => {
       paymentScreenshot = req.file.filename;
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-
+    let totalDays = 0;
     let dailyRate = parseFloat(dailyRateOverride || 0);
-    if (!dailyRateOverride && tractorId) {
-      const tractor = await db('tractors').where({ id: tractorId }).first();
-      if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
+    let subtotal = 0;
+    let vatAmount = 0;
+    let totalAmount = 0;
+
+    if (!isScheduleLater) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+      if (!dailyRateOverride && tractorId) {
+        const tractor = await db('tractors').where({ id: tractorId }).first();
+        if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
+      }
+      const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
+      vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+      totalAmount = dailyRate * totalDays + vatAmount;
+    } else {
+      // Dates come later — keep the machine unaffected. It is already booked by
+      // the CURRENT order, so the normal availability guard would reject us;
+      // that is expected and desired here.
+      dailyRate = parseFloat(dailyRateOverride || 0);
+      if (!dailyRateOverride && tractorId) {
+        const tractor = await db('tractors').where({ id: tractorId }).first();
+        if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
+      }
     }
 
-    // A machine that is already reserved cannot be booked again before release
-    const availCheck = await checkTractorAvailable(tractorId);
-    if (!availCheck.ok) {
-      return res.status(400).json({ status: 'error', message: availCheck.message });
+    // A machine that is already reserved cannot be booked with actual dates
+    // before release — but schedule-later holds are allowed (the waitlist
+    // customer is simply next in line for that machine).
+    if (!isScheduleLater && tractorId) {
+      const availCheck = await checkTractorAvailable(tractorId);
+      if (!availCheck.ok) {
+        return res.status(400).json({ status: 'error', message: availCheck.message });
+      }
     }
 
-    const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
-    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
-    const totalAmount = dailyRate * totalDays + vatAmount;
     const orderNumber = generateOrderNumber();
 
     const [id] = await db('agrirent_orders').insert({
@@ -356,11 +390,11 @@ exports.createManualOrder = async (req, res) => {
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_email: customerEmail || null,
-      start_date: startDate,
-      end_date: endDate,
+      start_date: isScheduleLater ? null : startDate,
+      end_date: isScheduleLater ? null : endDate,
       total_days: totalDays,
       daily_rate: dailyRate,
-      subtotal: dailyRate * totalDays,
+      subtotal: subtotal,
       vat_amount: vatAmount,
       total_amount: totalAmount,
       field_location: fieldLocation || null,
@@ -373,18 +407,22 @@ exports.createManualOrder = async (req, res) => {
       payment_status: paymentStatus || 'Pending',
       status: 'approved', // manual = auto-approved
       is_manual: true,
+      scheduled_later: isScheduleLater ? true : false,
+      waitlist_id: waitlistId || null,
       created_by: req.user.id,
       approved_at: new Date(),
       created_at: new Date(),
       updated_at: new Date()
     });
 
-    // Reserve the machine immediately so it cannot be re-booked before release
-    if (tractorId) {
+    // Reserve the machine immediately so it cannot be re-booked before release —
+    // but NOT for a schedule-later hold (that machine is already booked by the
+    // current order; we are simply reserving a place for the next customer).
+    if (tractorId && !isScheduleLater) {
       await db('tractors').where({ id: tractorId }).update({ availability: 'Booked' });
     }
     // Walk-in orders that are already paid get released immediately on the paid line
-    if (isPaidStatus(paymentStatus || '') && isStartReached({ start_date: startDate })) {
+    if (!isScheduleLater && isPaidStatus(paymentStatus || '') && isStartReached({ start_date: startDate })) {
       await maybeAutoRelease({
         id,
         order_number: orderNumber,
@@ -397,33 +435,36 @@ exports.createManualOrder = async (req, res) => {
       });
     }
 
-    // Invoice is recorded immediately (with the correct VAT) so finance approval
-    // only attaches the receipt — manual/walk-in orders get an invoice too.
-    try {
-      await recordInvoiceForOrder(db, {
-        source: 'agrirent',
-        saleId: id,
-        saleType: /cash/i.test(paymentMethod || '') ? 'walk_in' : 'online',
-        invoiceNo: await generateInvoiceNumber(),
-        customer: customerName || null,
-        customerTin: null,
-        lines: [{
-          itemId: tractorId || 0,
-          name: 'Tractor Rental',
-          qty: totalDays,
-          unitPrice: dailyRate,
-          amount: dailyRate * totalDays,
-          rate: vatCalc.rate,
-          treatment: vatCalc.treatment
-        }],
-        createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
-      });
-    } catch (err) {
-      logger.error('Failed to record AgriRent manual invoice:', err.message);
+    // Invoice is recorded immediately (with the correct VAT). Schedule-later
+    // holds have no amount yet, so the invoice is minted later via order dates.
+    if (!isScheduleLater) {
+      try {
+        await recordInvoiceForOrder(db, {
+          source: 'agrirent',
+          saleId: id,
+          saleType: /cash/i.test(paymentMethod || '') ? 'walk_in' : 'online',
+          invoiceNo: await generateInvoiceNumber(),
+          customer: customerName || null,
+          customerTin: null,
+          lines: [{
+            itemId: tractorId || 0,
+            name: 'Tractor Rental',
+            qty: totalDays,
+            unitPrice: dailyRate,
+            amount: dailyRate * totalDays,
+            rate: vatCalc.rate,
+            treatment: vatCalc.treatment
+          }],
+          createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
+        });
+      } catch (err) {
+        logger.error('Failed to record AgriRent manual invoice:', err.message);
+      }
     }
 
-    // Automatically send to Finance Live Income for verification (if not Cash or if explicitly entered payment details)
-    if (paymentMethod !== 'Cash' || paymentReference || paymentScreenshot) {
+    // Automatically send to Finance Live Income for verification. Skip for
+    // schedule-later holds (no amount yet).
+    if (!isScheduleLater && (paymentMethod !== 'Cash' || paymentReference || paymentScreenshot)) {
       try {
         await db('finance_income_submissions').insert({
           department: 'AgriRent',
@@ -455,17 +496,22 @@ exports.createManualOrder = async (req, res) => {
       }
     }
 
-    carRentalAudit.log(req, 'AgriRent Order Created (Manual)', orderNumber, null, {
+    carRentalAudit.log(req, isScheduleLater
+      ? 'AgriRent Order Created (Schedule Later)'
+      : 'AgriRent Order Created (Manual)', orderNumber, null, {
       order_number: orderNumber, tractor_id: tractorId || null, customer_name: customerName,
       total_days: totalDays, daily_rate: dailyRate, total_amount: totalAmount,
+      scheduled_later: !!isScheduleLater, waitlist_id: waitlistId || null,
       field_location: fieldLocation || null, field_size_hectares: fieldSizeHectares || null,
       payment_method: paymentMethod || 'Cash', status: 'approved', is_manual: true
     });
 
     res.status(201).json({
       status: 'success',
-      message: 'Manual order created successfully',
-      data: { id, orderNumber, totalAmount, totalDays }
+      message: isScheduleLater
+        ? 'Schedule-later order created. Fill in the hire dates once the machine is available.'
+        : 'Manual order created successfully',
+      data: { id, orderNumber, totalAmount, totalDays, scheduledLater: !!isScheduleLater }
     });
   } catch (error) {
     logger.error('Error creating manual agrirent order:', error);
@@ -510,7 +556,12 @@ exports.getMyOrders = async (req, res) => {
         't.tractor_type as tractor_type_label',
         't.image1 as tractor_image'
       )
-      .where('ao.customer_id', req.user.id)
+      .where(function () {
+        // Orders belonging to this account (by user id), or recorded under the
+        // same email (manual/walk-in orders) must also appear on the dashboard.
+        this.where('ao.customer_id', req.user.id)
+          .orWhere('ao.customer_email', req.user.email || '');
+      })
       .where(function() {
         this.where('ao.is_deleted_by_customer', false).orWhereNull('ao.is_deleted_by_customer');
       })
@@ -571,6 +622,135 @@ exports.getAllOrders = async (req, res) => {
 
 // ── ARCHIVE / HISTORY / DELETE (Manager) ──────────────────────────────────────
 const AGRI_TERMINAL_STATUSES = ['completed', 'cancelled'];
+
+// ── MANAGER: Schedule-later orders that still need their hire dates set ──────
+// Created for waitlist customers while their machine was still booked. The
+// manager fills in start/end dates here (PATCH /:id/dates) once it is free.
+exports.getScheduleLaterOrders = async (req, res) => {
+  try {
+    const orders = await db('agrirent_orders as ao')
+      .leftJoin('tractors as t', 'ao.tractor_id', 't.id')
+      .where('ao.scheduled_later', true)
+      .whereNull('ao.deleted_at')
+      .whereNotIn('ao.status', ['completed', 'cancelled', 'rejected'])
+      .select(
+        'ao.id', 'ao.order_number', 'ao.customer_name', 'ao.customer_phone',
+        'ao.customer_email', 'ao.tractor_id', 'ao.payment_method',
+        'ao.payment_status', 'ao.farming_purpose', 'ao.field_location',
+        'ao.field_size_hectares', 'ao.total_days', 'ao.start_date', 'ao.end_date',
+        'ao.daily_rate', 'ao.created_at',
+        't.name as tractor_name', 't.availability as tractor_availability'
+      )
+      .orderBy('ao.created_at', 'desc')
+      .limit(200);
+    res.status(200).json({ status: 'success', data: orders });
+  } catch (error) {
+    logger.error('Error fetching schedule-later agrirent orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch orders awaiting dates' });
+  }
+};
+
+// ── MANAGER: Set hire start/end dates on a schedule-later order ──────────────
+// Called once the machine has returned to 'Available'. This finalizes the
+// booking: computes the amount, mints the invoice, submits to finance, and
+// marks the machine Booked again for this (confirmed) customer.
+exports.setOrderDates = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, dailyRateOverride } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ status: 'error', message: 'Both start and end dates are required' });
+    }
+
+    const order = await db('agrirent_orders').where({ id }).whereNull('deleted_at').first();
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) return res.status(400).json({ status: 'error', message: 'End date must be after start date' });
+    const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+
+    let dailyRate = parseFloat(dailyRateOverride || order.daily_rate || 0);
+    if (!dailyRateOverride && order.tractor_id) {
+      const tractor = await db('tractors').where({ id: order.tractor_id }).first();
+      if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
+    }
+    const vatCalc = await vatConfigService.computeVatForItem('agrirent', order.tractor_id || null, dailyRate * totalDays);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const subtotal = dailyRate * totalDays;
+    const totalAmount = dailyRate * totalDays + vatAmount;
+
+    await db('agrirent_orders').where({ id }).update({
+      start_date: startDate,
+      end_date: endDate,
+      total_days: totalDays,
+      daily_rate: dailyRate,
+      subtotal,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      scheduled_later: false,
+      updated_at: new Date()
+    });
+
+    // Machine is now reserved for this (confirmed) customer.
+    if (order.tractor_id) {
+      await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Booked' });
+    }
+
+    // Mint the invoice now that the amount is known.
+    try {
+      await recordInvoiceForOrder(db, {
+        source: 'agrirent',
+        saleId: id,
+        saleType: /cash/i.test(order.payment_method || '') ? 'walk_in' : 'online',
+        invoiceNo: await generateInvoiceNumber(),
+        customer: order.customer_name || null,
+        customerTin: null,
+        lines: [{
+          itemId: order.tractor_id || 0,
+          name: 'Tractor Rental',
+          qty: totalDays,
+          unitPrice: dailyRate,
+          amount: dailyRate * totalDays,
+          rate: vatCalc.rate,
+          treatment: vatCalc.treatment
+        }],
+        createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
+      });
+    } catch (err) {
+      logger.error('Failed to record AgriRent invoice on date set:', err.message);
+    }
+
+    carRentalAudit.log(req, 'AgriRent Order Dates Set', order.order_number, null, {
+      start_date: startDate, end_date: endDate, total_days: totalDays, total_amount: totalAmount
+    });
+
+    // The availability request is now fulfilled — this customer is confirmed
+    // for the machine. Mark it converted (it stayed 'waiting' until now).
+    if (order.waitlist_id) {
+      try {
+        await db('agrirent_waitlist').where({ id: order.waitlist_id }).update({
+          status: 'converted',
+          converted_order_id: id,
+          converted_at: new Date()
+        });
+      } catch (err) {
+        logger.error('Error converting waitlist entry on date set:', err.message);
+      }
+    }
+
+    const updated = await db('agrirent_orders').where({ id }).first();
+    res.status(200).json({
+      status: 'success',
+      message: 'Hire dates set. The customer is now booked for this machine.',
+      data: updated
+    });
+  } catch (error) {
+    logger.error('Error setting agrirent order dates:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to set the hire dates' });
+  }
+};
 
 const agriOrderSelect = () => db('agrirent_orders as ao')
   .leftJoin('tractors as t', 'ao.tractor_id', 't.id')
@@ -768,6 +948,8 @@ exports.updateOrderStatus = async (req, res) => {
         await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Booked' });
       } else if (['completed', 'cancelled', 'rejected'].includes(status)) {
         await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Available' });
+        // Machine is back in the yard — wake up customers waiting for it.
+        notifyWaitlistForTractor(order.tractor_id, req.app?.get('io'));
       }
     }
 
