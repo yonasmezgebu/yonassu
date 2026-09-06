@@ -62,9 +62,16 @@ const AgriRentCreateOrder = () => {
     fieldLocation: '', fieldSizeHectares: '', farmingPurpose: 'Plowing',
     specialInstructions: '',
     paymentMethod: 'Telebirr', paymentReference: '',
-    // Manager-only fields
-    customerName: '', customerPhone: '', customerEmail: '',
+    // Manager-only fields (pre-filled when opened from the waitlist panel)
+    customerName: location.state?.customerName || '',
+    customerPhone: location.state?.customerPhone || '',
+    customerEmail: location.state?.customerEmail || '',
   });
+  const [scheduleLater, setScheduleLater] = useState(
+    // Prefer schedule-later when opened straight from the waitlist (the machine
+    // is still booked; dates come later once it is free).
+    !!location.state?.waitlistId
+  );
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [pricing, setPricing] = useState(null);
@@ -131,11 +138,12 @@ const AgriRentCreateOrder = () => {
     if (!authService.isAuthenticated()) { navigate('/login'); return; }
 
     if (!form.tractorId) { toast('Please select a machine to hire.', 'error'); return; }
-    if (!form.startDate || !form.endDate) { toast('Hire start and end dates are required.', 'error'); return; }
-    if (new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
+    if (!scheduleLater && !form.startDate) { toast('Hire start date is required.', 'error'); return; }
+    if (!scheduleLater && !form.endDate) { toast('Hire end date is required.', 'error'); return; }
+    if (!scheduleLater && new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
     if (isManager && !form.customerName) { toast('Customer name is required.', 'error'); return; }
     if (isManager && !form.customerPhone) { toast('Customer phone is required.', 'error'); return; }
-    if (!form.paymentReference && !screenshotFile) {
+    if (!scheduleLater && !form.paymentReference && !screenshotFile) {
       toast('Please provide either a Payment Reference or upload a Payment Screenshot.', 'error');
       return;
     }
@@ -147,6 +155,10 @@ const AgriRentCreateOrder = () => {
 
       Object.entries(form).forEach(([k, v]) => { if (v !== '') formData.append(k, v); });
       formData.set('tractorId', parseInt(form.tractorId));
+      if (scheduleLater) {
+        formData.set('scheduleLater', 'true');
+        if (location.state?.waitlistId) formData.set('waitlistId', location.state.waitlistId);
+      }
       if (form.fieldSizeHectares) formData.set('fieldSizeHectares', parseFloat(form.fieldSizeHectares));
       if (screenshotFile) formData.append('paymentScreenshot', screenshotFile);
 
@@ -157,6 +169,10 @@ const AgriRentCreateOrder = () => {
       if (res.status === 'success' || res.status === 201) {
         const orderNum = res.data?.orderNumber || '';
         toast(`Order ${orderNum} submitted successfully!`, 'success');
+        // Schedule-later holds keep the availability request WAITING until the
+        // machine is actually available and the manager fills in the dates
+        // (via the "Awaiting Dates" action in the orders list). We do NOT
+        // mark it converted here.
         setLoading(false);
         setTimeout(() => {
           if (isManager) navigate('/car-renting/manager/agri-orders');
@@ -297,20 +313,35 @@ const AgriRentCreateOrder = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={LABEL_STYLE}><Calendar size={12} /> Start Date *</label>
-                  <input type="date" value={form.startDate} min={minDate}
+                  <label style={LABEL_STYLE}><Calendar size={12} /> Start Date {scheduleLater && <span style={{ color: C.textSec, fontWeight: 400, textTransform: 'none' }}>— later</span>}</label>
+                  <input type="date" value={form.startDate} min={minDate} disabled={scheduleLater}
                     onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                     onFocus={() => setFocusedField('startDate')} onBlur={() => setFocusedField('')}
-                    style={fInput('startDate')} />
+                    style={{ ...fInput('startDate'), opacity: scheduleLater ? 0.55 : 1 }} />
                 </div>
                 <div>
-                  <label style={LABEL_STYLE}><Calendar size={12} /> End Date *</label>
-                  <input type="date" value={form.endDate} min={form.startDate || minDate}
+                  <label style={LABEL_STYLE}><Calendar size={12} /> End Date {scheduleLater && <span style={{ color: C.textSec, fontWeight: 400, textTransform: 'none' }}>— later</span>}</label>
+                  <input type="date" value={form.endDate} min={form.startDate || minDate} disabled={scheduleLater}
                     onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                     onFocus={() => setFocusedField('endDate')} onBlur={() => setFocusedField('')}
-                    style={fInput('endDate')} />
+                    style={{ ...fInput('endDate'), opacity: scheduleLater ? 0.55 : 1 }} />
                 </div>
               </div>
+
+              {isManager && (
+                <div style={{ marginTop: '1rem', background: scheduleLater ? '#E8F5E9' : C.lightGray, border: `1px solid ${scheduleLater ? C.forestGreen : C.border}`, padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.darkGray }}>
+                    <input type="checkbox" checked={scheduleLater} onChange={e => setScheduleLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: C.forestGreen }} />
+                    Machine still booked — set dates later
+                  </label>
+                  {location.state?.waitlistId && (
+                    <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: C.forestGreen, background: '#fff', border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
+                      FROM AVAILABILITY REQUEST
+                    </span>
+                  )}
+                </div>
+              )}
+
             </div>
 
             {/* ── PRICE ESTIMATE ── */}
