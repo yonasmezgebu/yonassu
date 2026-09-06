@@ -39,12 +39,29 @@ const fmtDateTime = (d) => {
   return new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/* Live rental countdown — mirrors the car rental dashboard */
+const rentalStats = (order) => {
+  const start = new Date(order.start_date);
+  const end = new Date(order.end_date);
+  const totalDays = Math.max(1, parseInt(order.total_days || Math.ceil((end - start) / DAY_MS), 10));
+  const begun = order.released_at;
+  const now = Date.now();
+  const elapsedDays = begun ? Math.max(0, Math.floor((now - new Date(begun).getTime()) / DAY_MS)) : 0;
+  const diff = end.getTime() - now;
+  const overdue = diff < 0;
+  const remaining = diff < 0 ? Math.abs(Math.ceil(diff / DAY_MS)) : Math.ceil(diff / DAY_MS);
+  const pct = totalDays > 0 ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100))) : 0;
+  return { start, end, totalDays, begun, elapsedDays, remaining, overdue, pct };
+};
+
 const STATUS_CFG = {
   pending:   { bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', label: 'PENDING APPROVAL' },
   approved:  { bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', label: 'APPROVED' },
-  confirmed: { bg: '#E8F5E9', color: '#1B5E20', border: '#81C784', label: 'CONFIRMED' },
-  active:    { bg: '#E3F2FD', color: '#0D47A1', border: '#90CAF9', label: 'ACTIVE' },
-  completed: { bg: '#F3E5F5', color: '#4A148C', border: '#CE93D8', label: 'COMPLETED' },
+  confirmed: { bg: '#DDEFD4', color: '#1B5E20', border: '#81C784', label: 'PAID — READY' },
+  active:    { bg: '#E3F2FD', color: '#0D47A1', border: '#90CAF9', label: 'RELEASED · ON FIELD' },
+  completed: { bg: '#F3E5F5', color: '#4A148C', border: '#CE93D8', label: 'COMPLETED · RELEASED' },
   cancelled: { bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', label: 'CANCELLED' },
 };
 
@@ -210,8 +227,8 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
 
   /* ── Action handlers ── */
   const handleApprove  = () => doAction('approve',  () => axios.patch(`/agrirent-orders/${orderId}/status`,         { status: 'approved' }),  'Order approved successfully.');
-  const handleActivate = () => doAction('activate', () => axios.patch(`/agrirent-orders/${orderId}/status`,         { status: 'active' }),    'Order activated — tractor is now rented.');
-  const handleComplete = () => doAction('complete', () => axios.patch(`/agrirent-orders/${orderId}/status`,         { status: 'completed' }), 'Order marked as completed.');
+  const handleRelease  = () => doAction('release',  () => axios.patch(`/agrirent-orders/${orderId}/status`,         { status: 'active' }),    'Machine released — rental started.');
+  const handleComplete = () => doAction('complete', () => axios.patch(`/agrirent-orders/${orderId}/status`,         { status: 'completed' }), 'Rental completed — machine released back.');
   const handleCancel   = () => {
     setModal({
       title: '✕ Cancel Order — Enter Reason',
@@ -306,6 +323,7 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
   const vatAmt      = parseFloat(order.vat_amount || 0);
   const subAmt      = parseFloat(order.subtotal) || Math.max(0, totalAmount - vatAmt);
   const isPaid     = ['Confirmed', 'PAID', 'PAYMENT_VERIFIED'].includes(order.payment_status);
+  const r          = order.status === 'active' ? rentalStats(order) : null;
 
   /* ── Action button component ── */
   const Btn = ({ id, label, onClick, bg, border, disabled }) => (
@@ -375,9 +393,11 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
         <span style={{ fontSize: 11, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 4 }}>Actions:</span>
 
         {/* Manager workflow — gated on payment */}
-        {order.status === 'pending'   && <Btn id="approve"  label="✓ Approve"          onClick={handleApprove}  bg="#2E7D32" border="#1B5E20" disabled={!isPaid} />}
-        {order.status === 'approved'  && <Btn id="activate" label="▶ Activate Rental"   onClick={handleActivate} bg="#0D47A1" border="#0a3370" disabled={!isPaid} />}
-        {order.status === 'active'    && <Btn id="complete" label="✓ Mark Completed"    onClick={handleComplete} bg="#4A148C" border="#38006b" disabled={!isPaid} />}
+        {order.status === 'pending'   && <Btn id="approve" label="✓ Approve"          onClick={handleApprove}  bg="#2E7D32" border="#1B5E20" disabled={!isPaid} />}
+        {(['approved', 'confirmed'].includes(order.status) && !['active', 'completed', 'cancelled'].includes(order.status)) && (
+          <Btn id="release" label="🚜 Release Machine" onClick={handleRelease} bg="#0D47A1" border="#0a3370" disabled={!isPaid} />
+        )}
+        {order.status === 'active'    && <Btn id="complete" label="✓ Complete & Release Back" onClick={handleComplete} bg="#4A148C" border="#38006b" disabled={!isPaid} />}
         {!['completed','cancelled'].includes(order.status) && <Btn id="cancel" label="✕ Cancel Order" onClick={handleCancel} bg="#B71C1C" border="#880e0e" />}
 
         {/* Finance-only payment actions — shown only to Finance/Admin roles */}
@@ -472,6 +492,38 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
               <InfoCard label="Daily Rate" value={`ETB ${fmt(dailyRate)} / day`} icon={<Star size={11} />} accent={C.forestGreen} />
               <InfoCard label="Payment Method" value={order.payment_method} icon={<Package size={11} />} accent={C.earthBrown} />
             </div>
+
+            {/* ══ RENTAL COUNTDOWN — released / on field ══ */}
+            {r && (
+              <div style={{ marginTop: 16, border: `2px solid #90CAF9`, background: '#F3F9FF', padding: '18px 22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: C.blue, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                      <Clock size={13} style={{ display: 'inline', verticalAlign: -2, marginRight: 6 }} />Rental Countdown — On Field
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textSec, fontWeight: 600 }}>
+                      Started: <strong style={{ color: C.blue }}>{fmtDateTime(r.begun)}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textSec, fontWeight: 600, marginTop: 3 }}>
+                      Ends: <strong style={{ color: C.blue }}>{fmtDateTime(r.end)}</strong>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: C.blue }}>
+                      Day {Math.min(r.elapsedDays + 1, r.totalDays)} of {r.totalDays}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: r.overdue ? C.red : C.forestGreen, marginTop: 3 }}>
+                      {r.overdue
+                        ? `${r.remaining} day${r.remaining !== 1 ? 's' : ''} overdue`
+                        : `${r.remaining} day${r.remaining !== 1 ? 's' : ''} remaining`}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ height: 10, background: '#E3F2FD', border: '1px solid #90CAF9', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: r.overdue ? C.red : C.blue, width: `${r.pct}%`, transition: 'width 0.3s' }} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ══════════════════════════════════════════
@@ -615,6 +667,8 @@ const AgriRentOrderDetail = ({ orderId, onBack }) => {
               <DataRow label="Order Number" value={order.order_number} accent />
               {order.approved_at && <DataRow label="Approved On" value={fmtDateTime(order.approved_at)} />}
               {order.verified_at && <DataRow label="Finance Verified" value={fmtDateTime(order.verified_at)} />}
+              {order.released_at && <DataRow label="Started / Released On" value={fmtDateTime(order.released_at)} highlight />}
+              {order.completed_at && <DataRow label="Released Back On" value={fmtDateTime(order.completed_at)} highlight />}
               {order.cancelled_at && <DataRow label="Cancelled On" value={fmtDateTime(order.cancelled_at)} />}
               {order.manager_note && (
                 <div style={{ gridColumn: '1 / -1', padding: '12px', borderBottom: `1px solid ${C.midGray}`, background: '#FFF8E1' }}>
