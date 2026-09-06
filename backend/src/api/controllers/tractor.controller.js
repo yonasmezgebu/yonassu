@@ -7,11 +7,27 @@ exports.getAllTractorsPublic = async (req, res) => {
   try {
     const { db } = require('../../config/database');
     const tractors = await db('tractors').whereNull('deleted_at').orderBy('created_at', 'desc');
+
+    // Release dates come from the active AgriRent orders (the same schedule the
+    // Car Renting/AgriRent manager dashboard tracks). For each Booked machine we
+    // surface the latest hire end date so customers see when it will be free.
+    const releaseRows = await db('agrirent_orders')
+      .whereNull('deleted_at')
+      .whereNotIn('status', ['completed', 'cancelled', 'rejected'])
+      .whereIn('tractor_id', tractors.map(t => t.id))
+      .select('tractor_id')
+      .max('end_date as release_date')
+      .groupBy('tractor_id');
+    const releaseByTractor = {};
+    releaseRows.forEach(r => { releaseByTractor[r.tractor_id] = r.release_date; });
+
     const TractorModel = require('../../models/Tractor.model');
-    res.status(200).json({
-      status: 'success',
-      data: tractors.map(t => TractorModel.fromDatabase(t).toJSON())
+    const data = tractors.map(t => {
+      const json = TractorModel.fromDatabase(t).toJSON();
+      json.bookingEndDate = releaseByTractor[t.id] || null;
+      return json;
     });
+    res.status(200).json({ status: 'success', data });
   } catch (error) {
     logger.error('Error fetching public tractors:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch tractors' });
