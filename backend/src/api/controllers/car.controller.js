@@ -7,11 +7,26 @@ exports.getAllCarsPublic = async (req, res) => {
   try {
     const { db } = require('../../config/database');
     const cars = await db('cars').whereNull('deleted_at').orderBy('created_at', 'desc');
+
+    // Release dates come from the current rentals (the same schedule the Car
+    // Rental manager dashboard tracks). For each damaged-out/booked car we
+    // surface the latest expected return date so customers see when it frees up.
+    const releaseRows = await db('rental_orders')
+      .whereNull('deleted_at')
+      .whereNotIn('status', ['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED', 'ABANDONED'])
+      .whereIn('car_id', cars.map(c => c.id))
+      .select('car_id', db.raw('MAX(COALESCE(extended_return_date, return_date)) as release_date'))
+      .groupBy('car_id');
+    const releaseByCar = {};
+    releaseRows.forEach(r => { releaseByCar[r.car_id] = r.release_date; });
+
     const CarModel = require('../../models/Car.model');
-    res.status(200).json({
-      status: 'success',
-      data: cars.map(car => CarModel.fromDatabase(car).toJSON())
+    const data = cars.map(car => {
+      const json = CarModel.fromDatabase(car).toJSON();
+      json.bookingEndDate = releaseByCar[car.id] || null;
+      return json;
     });
+    res.status(200).json({ status: 'success', data });
   } catch (error) {
     logger.error('Error fetching public cars:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch vehicles' });
