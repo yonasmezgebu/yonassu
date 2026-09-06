@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { PublicNav } from './PublicNavFooter';
 import authService from '../../services/authService';
 import axios from '../../services/apiClient';
-import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2 } from 'lucide-react';
+import { Search, Sprout, Leaf, MapPin, Package, X, ChevronDown, ChevronUp, Calendar, Info, ShoppingCart, Shield, Droplets, Wrench, FileText, Phone, Mail, PhoneCall, HelpCircle, Tractor, Clock, CreditCard, Wallet, Fuel, Upload, CheckCircle2, Bell } from 'lucide-react';
 import tractorService from '../../services/tractorService';
 import PrescriptionViewer from '../shared/PrescriptionViewer';
 import { loadVatSafe, getVatForItem, fmtPct } from '../../services/vatService';
@@ -90,6 +90,17 @@ const FarmingServicePage = () => {
   const [vatCtx, setVatCtx] = useState(null);
   useEffect(() => { loadVatSafe().then(setVatCtx).catch(() => {}); }, []);
 
+  // ── Availability Waitlist Modal State ─────────────────────────────
+  const [waitlistModal, setWaitlistModal] = useState({ open: false, tractor: null });
+  const [waitlistForm, setWaitlistForm] = useState({
+    fullName: '', phone: '', email: '',
+    fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '',
+    preferredStartDate: '', preferredEndDate: '', message: ''
+  });
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
+  const [waitlistError, setWaitlistError] = useState('');
+  const [waitlistSuccess, setWaitlistSuccess] = useState(null);
+
   // ── Load finance accounts (same pattern as PharmacySalesForm) ─────────────
   const loadFinanceAccounts = async () => {
     try {
@@ -161,6 +172,27 @@ const FarmingServicePage = () => {
     }
   }, [location.state]);
 
+  // Auto-open waitlist modal after returning from login
+  useEffect(() => {
+    if (location.state?.openAgriWaitlist && authService.isAuthenticated()) {
+      const tractor = location.state.tractor;
+      if (tractor) {
+        const user = authService.getCurrentUser();
+        setCurrentUser(user);
+        setWaitlistModal({ open: true, tractor: tractor });
+        setWaitlistForm({
+          fullName: user?.fullName || user?.full_name || user?.name || '',
+          phone: user?.phone || '', email: user?.email || '',
+          fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '',
+          preferredStartDate: '', preferredEndDate: '', message: ''
+        });
+        setWaitlistError('');
+        setWaitlistSuccess(null);
+      }
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const handleSearch = () => {
     let filtered = allProducts;
     if (searchQuery.trim()) {
@@ -202,6 +234,67 @@ const FarmingServicePage = () => {
     if (orderSubmitting) return;
     setOrderModal({ open: false, tractor: null });
     setOrderSuccess(null);
+  };
+
+  const openWaitlistModal = (product) => {
+    if (!authService.isAuthenticated()) {
+      navigate('/login', { state: { openAgriWaitlist: true, tractor: product, from: '/services/farming' } });
+      return;
+    }
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+    setWaitlistModal({ open: true, tractor: product });
+    setWaitlistForm({
+      fullName: user?.fullName || user?.full_name || user?.name || '',
+      phone: user?.phone || '', email: user?.email || '',
+      fieldLocation: '', fieldSizeHectares: '', farmingPurpose: '',
+      preferredStartDate: '', preferredEndDate: '', message: ''
+    });
+    setWaitlistError('');
+    setWaitlistSuccess(null);
+  };
+
+  const closeWaitlistModal = () => {
+    if (waitlistSubmitting) return;
+    setWaitlistModal({ open: false, tractor: null });
+    setWaitlistSuccess(null);
+    setWaitlistError('');
+  };
+
+  const handleWaitlistSubmit = async (e) => {
+    e.preventDefault();
+    if (!waitlistForm.fullName.trim()) { setWaitlistError('Please enter your full name.'); return; }
+    if (!/^09\d{8}$/.test((waitlistForm.phone || '').replace(/\D/g, ''))) {
+      setWaitlistError('Please enter a valid Ethiopian phone number (format 09xxxxxxxx) so we can reach you.');
+      return;
+    }
+    setWaitlistSubmitting(true);
+    setWaitlistError('');
+    try {
+      const payload = {
+        tractorId: waitlistModal.tractor.id,
+        customerName: waitlistForm.fullName,
+        customerPhone: waitlistForm.phone,
+        customerEmail: waitlistForm.email,
+        fieldLocation: waitlistForm.fieldLocation,
+        fieldSizeHectares: waitlistForm.fieldSizeHectares || undefined,
+        farmingPurpose: waitlistForm.farmingPurpose,
+        preferredStartDate: waitlistForm.preferredStartDate || undefined,
+        preferredEndDate: waitlistForm.preferredEndDate || undefined,
+        message: waitlistForm.message,
+      };
+      const res = await axios.post('/agrirent-waitlist', payload);
+      if (res?.status === 'success') {
+        setWaitlistSuccess(res.data);
+        showToast('success', '🔔 You are on the list!', res.data?.message || 'We will call and notify you as soon as this machine is free.');
+      } else {
+        setWaitlistError(res?.message || 'Failed to join the list. Please try again.');
+      }
+    } catch (err) {
+      setWaitlistError(err?.response?.data?.message || err?.message || 'An error occurred. Please try again.');
+    } finally {
+      setWaitlistSubmitting(false);
+    }
   };
 
   const totalDays = (() => {
@@ -453,9 +546,9 @@ const FarmingServicePage = () => {
                         <button
                           className={styles.orderBtn}
                           style={{ width: '100%', justifyContent: 'center', background: '#6B8E23', gap: 8, padding: '10px 16px', marginTop: 'auto' }}
-                          onClick={() => window.location.href = 'tel:+251911000000'}
+                          onClick={() => openWaitlistModal(product)}
                         >
-                          <Phone size={15} /> Contact When Available
+                          <Bell size={15} /> Contact When Available
                         </button>
                       )}
 
@@ -582,7 +675,9 @@ const FarmingServicePage = () => {
             {/* SUCCESS */}
             {orderSuccess ? (
               <div className="fsp-success">
-                <span className="fsp-success-icon">✅</span>
+                <span className="fsp-success-icon" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <CheckCircle2 size={72} color="hsl(var(--primary))" strokeWidth={1.6} />
+                </span>
                 <h3 className="fsp-success-title">Order Placed Successfully!</h3>
                 <p className="fsp-success-sub">
                   Order <strong>{orderSuccess.orderNumber}</strong> has been received.<br />
@@ -825,6 +920,144 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
 
       {viewImage && <PrescriptionViewer imageUrl={viewImage.url} onClose={handleCloseViewer} />}
 
+      {/* ── AgriRent Availability Waitlist Modal ────────────────── */}
+      {waitlistModal.open && (
+        <div className="fsp-overlay" onClick={closeWaitlistModal}>
+          <div className="fsp-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="fsp-modal-header">
+              <div>
+                <h3 className="fsp-modal-title"><Bell size={22} /> Contact When Available</h3>
+                <p className="fsp-modal-subtitle">{waitlistModal.tractor?.name} — currently booked. Leave your details and we will call you the moment it is free.</p>
+              </div>
+              <button className="fsp-close-btn" onClick={closeWaitlistModal}><X size={22} /></button>
+            </div>
+
+            {/* Release date — pulled from the current hire's end date (manager dashboard schedule) */}
+            {waitlistModal.tractor?.bookingEndDate && (
+              <div className="fsp-release-banner">
+                <Calendar size={16} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'hsl(var(--foreground))' }}>
+                    Back on {new Date(waitlistModal.tractor.bookingEndDate).toLocaleDateString('en-US', {
+                      timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'long', day: 'numeric'
+                    })}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
+                    This machine is hired until that date. Join the list and we will confirm you the moment it returns.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {waitlistSuccess ? (
+              <div className="fsp-success">
+                <span className="fsp-success-icon" style={{ display: 'flex', justifyContent: 'center' }}>
+                  <Bell size={72} color="hsl(var(--primary))" strokeWidth={1.6} />
+                </span>
+                <h3 className="fsp-success-title">You're on the list!</h3>
+                <p className="fsp-success-sub">
+                  We saved your contact details for <strong>{waitlistModal.tractor?.name}</strong>.<br />
+                  As soon as the machine is available again, we will call and message you right away.
+                </p>
+                <button className="fsp-btn-primary" onClick={closeWaitlistModal}>
+                  <CheckCircle2 size={18} /> Done — Back to Machines
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleWaitlistSubmit}>
+                <div className="fsp-modal-body">
+
+                  {waitlistError && (
+                    <div className="fsp-error"><X size={15} /> {waitlistError}</div>
+                  )}
+
+                  {/* Contact info (phone/name/email — editable) */}
+                  <div style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', padding: '1rem', borderRadius: 'var(--radius)' }}>
+                    <div className="fsp-section-div" style={{ marginBottom: '1rem' }}>
+                      <Phone size={14} /> Your Contact Details
+                    </div>
+                    <div className="fsp-form-row">
+                      <div className="fsp-form-group">
+                        <label className="fsp-form-label">Full Name *</label>
+                        <input className="fsp-input" required value={waitlistForm.fullName}
+                          onChange={e => setWaitlistForm(p => ({ ...p, fullName: e.target.value }))} placeholder="Your full name" />
+                      </div>
+                      <div className="fsp-form-group">
+                        <label className="fsp-form-label">Phone Number *</label>
+                        <input className="fsp-input" required value={waitlistForm.phone}
+                          onChange={e => setWaitlistForm(p => ({ ...p, phone: e.target.value }))} placeholder="09xxxxxxxx" />
+                      </div>
+                    </div>
+                    <div className="fsp-form-group" style={{ marginTop: '1rem' }}>
+                      <label className="fsp-form-label"><Mail size={14} /> Email (Optional)</label>
+                      <input type="email" className="fsp-input" value={waitlistForm.email}
+                        onChange={e => setWaitlistForm(p => ({ ...p, email: e.target.value }))} placeholder="you@email.com" />
+                    </div>
+                  </div>
+
+                  {/* Machine summary */}
+                  <div style={{ background: 'hsl(var(--primary) / 0.08)', border: '1px solid hsl(var(--primary) / 0.2)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderRadius: 'var(--radius)' }}>
+                    <Tractor size={28} color="hsl(var(--primary))" />
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', color: 'hsl(var(--foreground))' }}>{waitlistModal.tractor?.name}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'hsl(var(--primary))', fontWeight: 600 }}>
+                        ETB {parseFloat(waitlistModal.tractor?.daily_rate || waitlistModal.tractor?.dailyRate || 0).toLocaleString()}/day • {waitlistModal.tractor?.tractor_type || waitlistModal.tractor?.tractorType}
+                      </div>
+                    </div>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: '#8D6E63', background: '#F5F5F5', border: '1px solid #8D6E63', padding: '4px 10px', borderRadius: 8 }}>
+                      {waitlistModal.tractor?.availability === 'Available' ? 'AVAILABLE' : 'CURRENTLY BOOKED'}
+                    </span>
+                  </div>
+
+                  {/* Field info */}
+                  <div className="fsp-section-div"><MapPin size={14} /> Additional Information</div>
+                  <div className="fsp-form-row">
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Field Location</label>
+                      <input type="text" className="fsp-input" placeholder="e.g. Bishoftu, East Shewa"
+                        value={waitlistForm.fieldLocation} onChange={e => setWaitlistForm(p => ({ ...p, fieldLocation: e.target.value }))} />
+                    </div>
+                    <div className="fsp-form-group">
+                      <label className="fsp-form-label">Field Size (Hectares)</label>
+                      <input type="number" min="0" step="0.1" className="fsp-input" placeholder="e.g. 2.5"
+                        value={waitlistForm.fieldSizeHectares} onChange={e => setWaitlistForm(p => ({ ...p, fieldSizeHectares: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="fsp-form-group">
+                    <label className="fsp-form-label">Farming Purpose</label>
+                    <select className="fsp-input" value={waitlistForm.farmingPurpose} onChange={e => setWaitlistForm(p => ({ ...p, farmingPurpose: e.target.value }))}>
+                      <option value="">Select purpose…</option>
+                      <option>Plowing</option><option>Planting / Seeding</option><option>Harvesting</option>
+                      <option>Land Preparation</option><option>Irrigation</option><option>Other</option>
+                    </select>
+                  </div>
+
+                  <div className="fsp-form-group">
+                    <label className="fsp-form-label">Your Message <span>(Optional — anything we should know)</span></label>
+                    <textarea className="fsp-input" rows={3} maxLength={1000}
+                      placeholder="e.g. I need the tractor for 3 days for plowing my maize field…"
+                      value={waitlistForm.message}
+                      onChange={e => setWaitlistForm(p => ({ ...p, message: e.target.value }))}
+                      style={{ resize: 'vertical', minHeight: '5rem' }} />
+                  </div>
+
+                </div>
+
+                {/* Footer */}
+                <div className="fsp-modal-footer">
+                  <button type="button" className="fsp-btn-outline" onClick={closeWaitlistModal} disabled={waitlistSubmitting}>Cancel</button>
+                  <button type="submit" className="fsp-btn-primary" disabled={waitlistSubmitting}>
+                    {waitlistSubmitting ? <>⏳ Submitting…</> : <><Bell size={18} /> Notify Me When Available</>}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <style>{`
         /* ── FSP Standard Component Classes (Master Design System) ── */
         .fsp-section { padding: 4rem 1.5rem; }
@@ -869,6 +1102,8 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
         .fsp-modal-subtitle { font-size: 0.875rem; color: hsl(var(--primary-foreground) / 0.8); margin: 0.25rem 0 0; }
         .fsp-close-btn { background: rgba(255,255,255,0.15); border: none; color: inherit; cursor: pointer; padding: 0.5rem; border-radius: 0.5rem; transition: background 0.2s; display: flex; }
         .fsp-close-btn:hover { background: rgba(255,255,255,0.3); }
+        .fsp-release-banner { display: flex; align-items: flex-start; gap: 0.75rem; margin: 1rem 2rem 0; padding: 0.9rem 1.1rem; background: hsl(var(--secondary)); border: 1.5px solid hsl(var(--primary) / 0.35); border-left: 4px solid hsl(var(--primary)); border-radius: var(--radius); }
+        .fsp-release-banner svg { margin-top: 2px; color: hsl(var(--primary)); flex-shrink: 0; }
         
         .fsp-modal-body { padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
         .fsp-modal-footer { padding: 1.5rem 2rem; border-top: 1px solid hsl(var(--border)); display: flex; justify-content: flex-end; gap: 1rem; background: hsl(var(--muted)); border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); }
