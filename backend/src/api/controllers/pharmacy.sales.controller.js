@@ -26,7 +26,7 @@ const salesController = {
 
   // ── Sales (A2/A3) ──
   createSale: async (req, res) => {
-    const { branch_id, worker_id, sale_type, items, payment, skip_stock_deduction } = req.body;
+    const { branch_id, worker_id, sale_type, items, payment, skip_stock_deduction, is_unsubmitted } = req.body;
     if (!items || items.length === 0) throw new AppError('At least one item required', HTTP_STATUS.BAD_REQUEST);
     if (!payment) throw new AppError('Payment details required', HTTP_STATUS.BAD_REQUEST);
 
@@ -95,7 +95,8 @@ const salesController = {
         branch_id, worker_id: effectiveWorkerId, sale_type: sale_type || 'WALK-IN',
         recipient_name: payment.recipient_name || null,
         recipient_phone: payment.recipient_phone || null,
-        total_products: totalProducts, subtotal, vat_amount: vatAmount, total_amount: totalAmount, receipt_no: receiptNo
+        total_products: totalProducts, subtotal, vat_amount: vatAmount, total_amount: totalAmount, receipt_no: receiptNo,
+        is_submitted: !is_unsubmitted
       });
 
       const saleItems = items.map((it, idx) => ({
@@ -215,7 +216,7 @@ const salesController = {
         }
       }
 
-      if (effectiveWorkerId) {
+      if (effectiveWorkerId && !is_unsubmitted) {
         await trx('pharmacy_audit_trail').insert({
           branch_id, worker_id: effectiveWorkerId, action: payment.status || 'PAID',
           recipient: payment.recipient_name || 'N/A', amount: payment.amount || totalAmount
