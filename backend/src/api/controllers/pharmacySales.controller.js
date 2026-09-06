@@ -25,7 +25,7 @@ exports.listDrugs = async (req, res) => {
     const { search, category, requires_prescription } = req.query;
     let query = db('drugs')
       .select('id', 'name', 'strength', 'unit', 'unit_price', 'category',
-              'classification', 'therapeutic_use', 'requires_prescription', 'vat_rate', 'status')
+              'classification', 'therapeutic_use', 'requires_prescription', 'vat_rate', 'status', 'drug_image', 'cover_image')
       .where('status', 'ACTIVE');
 
     // exclude hidden drugs
@@ -556,34 +556,11 @@ exports.createSale = async (req, res) => {
 
     const [paymentId] = await trx('payments').insert(paymentData);
 
-    // Invoice + receipt are recorded at sale time — payment is collected here.
-    const invNo = await generateInvoiceNumber();
-    const invRes = await recordInvoiceForOrder(trx, {
-      source: 'pharmacy',
-      saleId,
-      saleType: String(sale_type || 'WALK_IN').toUpperCase() === 'ONLINE' ? 'online' : 'walk_in',
-      invoiceNo: invNo,
-      customer: customer_id ? (await trx('customers').where('id', customer_id).first())?.name || null : null,
-      customerTin: null,
-      lines: enrichedItems.map((ei) => ({
-        itemId: ei.drug_id,
-        name: ei.name,
-        qty: ei.quantity,
-        unitPrice: ei.unit_price,
-        costPrice: ei.cost_price,
-        amount: ei.line_subtotal,
-        rate: ei.rate,
-        treatment: ei.treatment
-      })),
-      createdBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Staff'
-    });
-    await recordReceiptForOrder(trx, {
-      invoiceId: invRes.invoiceId,
-      amountPaid: totalAmount,
-      paymentMethod: paymentData.method || 'CASH',
-      paymentReference: paymentData.reference || receipt_code,
-      receivedBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Staff'
-    });
+    // We no longer record Invoice and Receipt immediately for Walk-in sales.
+    // They will be recorded in bulk when the daily report is submitted to the manager.
+    
+    // Update sale status to UNSUBMITTED so they appear in the POS "Unsubmitted Sales" tab
+    await trx('sales').where('id', saleId).update({ status: 'UNSUBMITTED' });
 
     await trx.commit();
 
@@ -713,18 +690,67 @@ exports.listHandovers = async (req, res) => {
 // ─── DAILY SALES REPORTS ──────────────────────────────────────────────────────
 
 exports.submitDailyReport = async (req, res) => {
+  const trx = await db.transaction();
   try {
     const { branch_id, report_date } = req.body;
     const submittedBy = req.user?.id;
-    if (!report_date) return res.status(400).json({ success: false, message: 'report_date is required' });
+    if (!report_date) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'report_date is required' });
+    }
 
-    // auto-aggregate from sales table
     const dateStr = report_date;
-    let salesQuery = db('sales').whereRaw('DATE(created_at) = ?', [dateStr]).where('status', 'COMPLETED');
+    
+    // Process all UNSUBMITTED sales for this date
+    let salesQuery = trx('sales').where('status', 'UNSUBMITTED').whereRaw('DATE(created_at) = ?', [dateStr]);
     if (branch_id) salesQuery = salesQuery.where('branch_id', branch_id);
+    
+    const unsubmittedSales = await salesQuery.select('*');
+    if (unsubmittedSales.length === 0) {
+      await trx.rollback();
+      return res.status(400).json({ success: false, message: 'No unsubmitted sales found for this date.' });
+    }
 
-    const [agg] = await salesQuery.select(db.raw('COUNT(*) as cnt, COALESCE(SUM(total_amount),0) as total'));
-    const [id] = await db('daily_sales_reports').insert({
+    // Generate Invoice & Receipt for each unsubmitted walk-in sale so they hit Finance Revenue now
+    for (const sale of unsubmittedSales) {
+      const items = await trx('sale_items').where('sale_id', sale.id);
+      
+      const invNo = await generateInvoiceNumber();
+      const invRes = await recordInvoiceForOrder(trx, {
+        source: 'pharmacy',
+        saleId: sale.id,
+        saleType: 'walk_in',
+        invoiceNo: invNo,
+        customer: 'Walk-in Customer',
+        customerTin: null,
+        lines: items.map(item => ({
+          itemId: item.drug_id,
+          name: 'Pharmacy Item',
+          qty: item.quantity,
+          unitPrice: item.unit_price,
+          amount: item.line_subtotal,
+          rate: item.vat_amount > 0 ? 15 : 0 // simplify rate
+        })),
+        createdBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Manager'
+      });
+      
+      await recordReceiptForOrder(trx, {
+        invoiceId: invRes.invoiceId,
+        amountPaid: sale.total_amount,
+        paymentMethod: 'CASH', // default for walk-ins
+        paymentReference: sale.receipt_code,
+        receivedBy: req.user?.fullName || req.user?.full_name || 'Pharmacy Manager'
+      });
+      
+      await trx('sales').where('id', sale.id).update({ status: 'COMPLETED' });
+    }
+
+    // Aggregate for the report (count COMPLETED ones that match today)
+    let aggQuery = trx('sales').whereRaw('DATE(created_at) = ?', [dateStr]).where('status', 'COMPLETED');
+    if (branch_id) aggQuery = aggQuery.where('branch_id', branch_id);
+    const [agg] = await aggQuery.select(db.raw('COUNT(*) as cnt, COALESCE(SUM(total_amount),0) as total'));
+
+    const [id] = await trx('daily_sales_reports').insert({
       branch_id: branch_id || null,
       report_date: dateStr,
       total_sales_count: agg.cnt,
@@ -732,6 +758,9 @@ exports.submitDailyReport = async (req, res) => {
       submitted_by: submittedBy,
       status: 'PENDING_FINANCE',
     });
+    
+    await trx.commit();
+
     logPharmacyAction(req, 'Daily Report Submitted', `Branch #${branch_id} - ${dateStr}`, null, { total_sales_count: agg.cnt, total_amount: agg.total }, 'Pharmacy Sales');
     await sendFinanceNotification({
       title: 'New Sales Report Pending',
@@ -740,8 +769,10 @@ exports.submitDailyReport = async (req, res) => {
       link: '/finance/pharmacy-sales',
       related_entity_id: id
     }, req.app?.get('io')).catch(e => console.error('Failed to notify Finance:', e));
+    
     return res.status(201).json({ success: true, data: { id, total_sales_count: agg.cnt, total_amount: agg.total } });
   } catch (err) {
+    await trx.rollback();
     return res.status(500).json({ success: false, message: err.message });
   }
 };
