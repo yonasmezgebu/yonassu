@@ -39,6 +39,22 @@ function resolveImg(url) {
   return `${axios.defaults.baseURL.replace('/api/v1', '')}${url}`;
 }
 
+// Turn a finance_account row into the real payment-method name that Live Income
+// verification should display (Telebirr / CBE Bank / Cash) — never the account
+// name ('sutana' is shared by every account in the DB).
+function resolvePaymentMethodName(acc) {
+  if (!acc) return '';
+  const type = String(acc.account_type || '').toLowerCase();
+  const provider = String(acc.bank_provider || '').trim();
+  const name = String(acc.account_name || '').toLowerCase();
+  if (name.includes('cash') || type === 'cash') return 'Cash';
+  if (type === 'mobile wallet') return provider ? `Mobile / ${provider}` : 'Mobile / Telebirr';
+  if (type === 'bank' || type === 'savings' || type.includes('saving')) {
+    return provider ? `${provider} Bank` : 'Bank Transfer';
+  }
+  return provider ? `${provider} Bank` : (acc.account_name || 'Bank');
+}
+
 const FarmingServicePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -215,9 +231,10 @@ const FarmingServicePage = () => {
       fd.append('fieldSizeHectares', orderForm.fieldSizeHectares);
       fd.append('farmingPurpose', orderForm.farmingPurpose);
       fd.append('specialInstructions', orderForm.specialInstructions);
-      // paymentMethod stores the account ID; resolve to human-readable account name for backend
+      // paymentMethod stores the account ID; resolve to the real payment-method
+      // name so Live Income verification shows Telebirr / CBE Bank / Cash.
       const selectedAcc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
-      fd.append('paymentMethod', selectedAcc ? selectedAcc.account_name : orderForm.paymentMethod);
+      fd.append('paymentMethod', selectedAcc ? resolvePaymentMethodName(selectedAcc) : orderForm.paymentMethod);
       fd.append('paymentReference', orderForm.paymentReference);
       if (orderFile) fd.append('paymentScreenshot', orderFile);
 
@@ -722,7 +739,7 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
                             setOrderForm(p => ({
                               ...p,
                               paymentMethod: selectedId,
-                              paymentAccountName: acc ? acc.account_name : ''
+                              paymentAccountName: acc ? resolvePaymentMethodName(acc) : ''
                             }));
                           }}
                         >
@@ -734,7 +751,7 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
                               <optgroup key={type} label={type}>
                                 {group.map(acc => (
                                   <option key={acc.id} value={acc.id}>
-                                    {acc.account_name}{acc.account_number ? ` — ${acc.account_number}` : ''}{acc.bank_provider ? ` (${acc.bank_provider})` : ''}
+                                    {resolvePaymentMethodName(acc)}{acc.account_number ? ` — ${acc.account_number}` : ''}
                                   </option>
                                 ))}
                               </optgroup>
@@ -759,7 +776,7 @@ ${orderSuccess.orderNumber?`<p style="font-family:monospace;letter-spacing:3px;f
                         <Wallet size={18} color="hsl(var(--primary))" style={{ flexShrink: 0, marginTop: 1 }} />
                         <div>
                           <div style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'hsl(var(--primary))' }}>Transfer Payment To:</div>
-                          <div><strong>Account Name:</strong> {acc.account_name}</div>
+                          <div><strong>Method:</strong> {resolvePaymentMethodName(acc)}</div>
                           {acc.account_number && <div><strong>Account Number:</strong> {acc.account_number}</div>}
                           {acc.bank_provider && <div><strong>Bank / Provider:</strong> {acc.bank_provider}</div>}
                           {acc.branch && <div><strong>Branch:</strong> {acc.branch}</div>}
