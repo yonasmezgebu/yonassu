@@ -91,6 +91,37 @@ const syncRentalToFinance = async (order, userId, verifiedAmount) => {
   }
 };
 
+// 🔒 Prevent the same car being reserved twice while it is actually OUT with a
+// customer (or explicitly Booked / under Maintenance). Once a rental has been
+// returned (COMPLETED/CLOSED) or cancelled the car is free again, so a stale
+// booking row no longer freezes the fleet — mirrors the AgriRent guard.
+const checkCarAvailable = async (carId) => {
+  if (!carId) return { ok: true };
+  const car = await carRepository.findById(carId);
+  if (!car) return { ok: false, message: 'The selected vehicle was not found.' };
+
+  if (car.availability && car.availability !== 'Available') {
+    return {
+      ok: false,
+      message: `"${car.name}" is currently ${car.availability} for another rental. It becomes bookable again automatically once that rental is returned, released or cancelled. Please choose another vehicle or contact us.`
+    };
+  }
+
+  const conflict = await db('rental_orders')
+    .where({ car_id: carId })
+    .whereNull('deleted_at')
+    .whereIn('status', ['ACTIVE', 'ON_TRIP'])
+    .select('order_number', 'id')
+    .first();
+  if (conflict) {
+    return {
+      ok: false,
+      message: `"${car.name}" is already reserved under order ${conflict.order_number}. A booked vehicle cannot be reserved again until that rental is returned and completed.`
+    };
+  }
+  return { ok: true };
+};
+
 exports.createOrder = async (req, res, next) => {
   try {
     const data = req.body;
@@ -107,6 +138,13 @@ exports.createOrder = async (req, res, next) => {
     const car = await carRepository.findById(data.carId);
     if (!car) {
       return res.status(404).json({ status: 'error', message: 'Car not found' });
+    }
+
+    // A car that is booked / under maintenance (or already out on a trip) cannot
+    // be reserved again with dates until the current rental is returned/closed.
+    const availCheck = await checkCarAvailable(car.id);
+    if (!availCheck.ok) {
+      return res.status(400).json({ status: 'error', message: availCheck.message });
     }
 
     const rentalAmount = car.dailyRate * totalDays;
@@ -411,7 +449,11 @@ exports.getOrderById = async (req, res, next) => {
 
 exports.getCustomerOrders = async (req, res, next) => {
   try {
-    const allOrders = await rentalOrderRepository.findAll({ filters: { customerId: req.user.id } });
+    // Orders belonging to this account (by user id), or recorded under the same
+    // email (manual/walk-in orders) must also appear on the customer dashboard.
+    const allOrders = await rentalOrderRepository.findAll({
+      filters: { customerId: req.user.id, customerEmail: req.user.email }
+    });
     const orders = allOrders.filter(o => !o.is_deleted_by_customer);
     res.status(200).json({
       status: 'success',
@@ -634,6 +676,11 @@ exports.createManualOrder = async (req, res) => {
         dailyRate = parseFloat(car.dailyRate || car.daily_rate || car.price_per_day || 0);
         carName = `${car.brand || ''} ${car.model || ''}`.trim() || car.name || 'Car';
         licensePlate = car.licensePlate || car.license_plate || '';
+      }
+      // A booked / maintenance car cannot be booked again with dates here.
+      const availCheck = await checkCarAvailable(parseInt(carId));
+      if (!availCheck.ok) {
+        return res.status(400).json({ status: 'error', message: availCheck.message });
       }
     }
 
