@@ -502,6 +502,17 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   const payMethodRaw = txPayMethod || mdPayMethod;
   const payMethod = String(payMethodRaw || '').toLowerCase().trim();
 
+  // Normalize the raw method (e.g. "Mobile Wallet / TELEBIR", "Bank / CBE",
+  // "Bank Transfer") into tokens so Bank / Mobile / Cash are detected the same
+  // way no matter how the module stored the value.
+  const pm = payMethod.replace(/[\/_#-]/g, ' ').replace(/\s+/g, ' ').trim();
+  const isCBE = /cbe/.test(pm) || pm === 'cbe';
+  const isCashMethod = pm === 'cash' || /cash on|cash_on|in person|in-person|delivered/.test(pm) || pm.includes('cash');
+  const isCashRaw = isCashMethod;
+  const isTelebirr = isCBE === false && !isCashRaw && (/telebirr?|tele birr|telbir|wallet|mobile|chapa|amole/.test(pm));
+  const isAwash = /awash/.test(pm);
+  const isBankTransfer = isCBE || isAwash || /bank|transfer|credit/.test(pm);
+
   // Aggregate the distinct payment methods used across transactions so the
   // confirm block reflects reality (e.g. a mix of cash + telebirr sales).
   const usedMethods = {};
@@ -513,13 +524,8 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
   }
   const hasTxnPayment = Object.keys(usedMethods).length > 0;
 
-  const isCBE = payMethod === 'cbe bank' || payMethod === 'cbe' || payMethod.includes('cbe bank');
-  const isTelebirr = payMethod === 'telebirr' || payMethod.includes('telebirr') || payMethod === 'telbir' || payMethod.includes('wallet');
-  const isAwash = payMethod.includes('awash');
-  const isBankTransfer = payMethod.includes('bank') || isCBE || isAwash || payMethod === 'bank_transfer';
-  const isCashMethod = payMethod === 'cash' || payMethod === 'cash_on_delivery' || payMethod.includes('cash');
   // Across all transactions: cash only when NONE of them is bank/telebirr.
-  const isCash = isCashMethod || (hasTxnPayment && !Object.keys(usedMethods).some(m => m.includes('bank') || m.includes('tele') || m.includes('wallet') || m.includes('cbe') || m.includes('awash') || m.includes('transfer')));
+  const isCash = isCashMethod || (hasTxnPayment && !Object.keys(usedMethods).some(m => { const t = String(m).toLowerCase(); return /bank|tele|wallet|cbe|awash|transfer|mobile/.test(t); }));
 
   // The exact numbers to verify against (first available wins)
   const bankName = firstTxnPayment?.bank_name || manualDetails?.bankName || manualDetails?.bankDetails?.bankName;
@@ -644,16 +650,18 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#2563EB' }}>ETB {fmt(submission.amount || systemTotal)}</div>
                 </div>
 
-                <div style={{ marginTop: 24, padding: '20px 24px', background: isCash ? '#DCFCE7' : '#E0F2FE', border: `1px solid ${isCash ? '#16A34A' : '#0284C7'}`, textAlign: 'left', borderRadius: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isCash ? '#16A34A' : '#0284C7', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>Payment Method</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: isCash ? '#16A34A' : '#0284C7' }}>
-                    {isCash ? 'CASH' : isTelebirr ? 'TELEBIRR' : 'BANK'}
+                <div style={{ marginTop: 24, padding: '20px 24px', background: isCash ? '#DCFCE7' : (isTelebirr ? '#FEF3C7' : '#E0F2FE'), border: `1px solid ${isCash ? '#16A34A' : (isTelebirr ? '#D97706' : '#0284C7')}`, textAlign: 'left', borderRadius: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isCash ? '#16A34A' : (isTelebirr ? '#D97706' : '#0284C7'), textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>Payment Method</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: isCash ? '#16A34A' : (isTelebirr ? '#D97706' : '#0284C7') }}>
+                    {isCash ? 'CASH' : isTelebirr ? 'TELEBIRR' : isBankTransfer ? 'BANK' : String(payMethodRaw || 'PAYMENT').toUpperCase()}
                   </div>
                   {!isCash && (
                     <div style={{ fontSize: 13, color: '#6B7280', marginTop: 8 }}>
                       {isTelebirr
                         ? <>Number: <strong style={{ color: '#111827' }}>{telebirrNum || '0901407032'} — SUTANA WALLET</strong></>
-                        : <>Account: <strong style={{ color: '#111827' }}>{bankAcct ? `${bankName || 'Bank'} ${bankAcct}` : '1000675227776 — SUTANA'}</strong></>}
+                        : isBankTransfer
+                          ? <>Account: <strong style={{ color: '#111827' }}>{bankAcct ? `${bankName || 'Bank'} ${bankAcct}` : '1000675227776 — SUTANA'}</strong></>
+                          : <strong style={{ color: '#111827' }}>{String(payMethodRaw || 'verify against screenshot').toUpperCase()}</strong>}
                     </div>
                   )}
                 </div>
@@ -972,10 +980,10 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                 // Prefer aggregated transaction methods when available (bulk
                 // sales), falling back to the single manual method.
                 const aggKey = Object.keys(usedMethods).map(k => k.toLowerCase());
-                const aggIsTele = aggKey.some(m => /tele|telbir|wallet/.test(m));
+                const aggIsTele = aggKey.some(m => /tele|telbir|wallet|mobile/.test(m));
                 const aggIsBank = aggKey.some(m => /bank|cbe|awash|transfer/.test(m));
-                const isTele = aggIsTele || isTelebirr || /tele|telbir|wallet/.test(method);
-                const isBank = aggIsBank || isBankTransfer || isCBE || isAwash || /bank|cbe|awash/.test(method);
+                const isTele = aggIsTele || isTelebirr || /tele|telbir|wallet|mobile/.test(method);
+                const isBank = aggIsBank || isBankTransfer || isCBE || isAwash || /bank|cbe|awash|transfer/.test(method);
                 const txRef = paymentRef;
                 const payerDetail = telebirrNum || bankAcct || firstTxn?.recipient_phone || firstTxn?.sender_phone || manualDetails?.telebirrNumber || manualDetails?.accountNumber || '';
                 const custName = manualDetails?.receivedFrom || firstTxn?.recipient_name || '';
@@ -987,9 +995,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                     </div>
 
                     {/* Destination account / wallet */}
-                    <div style={{ background: isCashVerify ? '#E7F6EF' : (isTele ? '#FEF3C7' : '#E0F2FE'), border: `1px solid ${isCashVerify ? '#16A34A' : (isTele ? '#D97706' : '#0284C7')}`, padding: '16px 18px', marginBottom: 14, borderRadius: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: isCashVerify ? '#15803D' : (isTele ? '#D97706' : '#0284C7'), textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>
-                        {isCashVerify ? '💵 Expected — Cash Payment' : (isTele ? '📱 Expected Destination — Telebirr Wallet' : '🏦 Expected Destination — Bank Account')}
+                    <div style={{ background: isCashVerify ? '#E7F6EF' : (isTele ? '#FEF3C7' : (isBank ? '#E0F2FE' : '#FEF2F2')), border: `1px solid ${isCashVerify ? '#16A34A' : (isTele ? '#D97706' : (isBank ? '#0284C7' : '#DC2626'))}`, padding: '16px 18px', marginBottom: 14, borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: isCashVerify ? '#15803D' : (isTele ? '#D97706' : (isBank ? '#0284C7' : '#DC2626')), textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 8 }}>
+                        {isCashVerify ? '💵 Expected — Cash Payment' : (isTele ? '📱 Expected Destination — Telebirr Wallet' : (isBank ? '🏦 Expected Destination — Bank Account' : '💳 Payment Method — verify from screenshot'))}
                       </div>
                       {isCashVerify ? (
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>Cash of ETB {fmt(systemTotal)} received at the store counter / office</div>
@@ -997,10 +1005,14 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                         telebirrNum
                           ? <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{telebirrNum}{telebirrName ? ' — ' + telebirrName : ''}</div>
                           : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>0901407032 — SUTANA WALLET</div>
-                      ) : (
+                      ) : isBank ? (
                         bankAcct
                           ? <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>{bankName || 'Bank'} {bankAcct}{bankHolder ? ' — ' + bankHolder : ''}</div>
                           : <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>CBE Bank 1000675227776 — SUTANA</div>
+                      ) : (
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+                          Paid to SUTANA via <strong>{String(method || mdPayMethod || 'unspecified method').toUpperCase()}</strong> — confirm the exact channel (Bank / Telebirr / Cash) from the customer's screenshot below.
+                        </div>
                       )}
                     </div>
 
@@ -1021,7 +1033,7 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                           ? <>Paid by: <strong style={{ color: '#111827' }}>{manualDetails.receivedFrom}</strong></>
                           : <>
                               {custName ? <>Customer/Payer: <strong style={{ color: '#111827' }}>{custName}</strong></> : null}
-                              {payerDetail ? <> {custName ? '·' : ''} Payer {isTele ? 'Telebirr' : 'Bank'} #: <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{payerDetail}</strong></> : null}
+                              {payerDetail ? <> {custName ? '·' : ''} Payer {isTele ? 'Telebirr' : isBank ? 'Bank' : ''} #: <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{payerDetail}</strong></> : null}
                             </>}
                       </div>
                     )}
@@ -1029,10 +1041,13 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                     <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '14px 0 12px' }}>
                       {isCashVerify ? (
                         <>Confirm the <strong style={{ color: '#111827' }}>cash of ETB {fmt(systemTotal)}</strong> was received and counted at the store, matching the receipt / transaction above.</>
-                      ) : (
+                      ) : isTele || isBank ? (
                         <>Check the <strong style={{ color: '#111827' }}>{isTele ? 'Telebirr app' : 'bank statement / app'}</strong> for an incoming
                         transfer of <strong style={{ color: '#16A34A' }}>ETB {fmt(systemTotal)}</strong> with reference
                         <strong style={{ color: '#111827', fontFamily: 'monospace' }}> {txRef}</strong> to the destination above, then confirm.</>
+                      ) : (
+                        <>Review the customer's payment screenshot / reference <strong style={{ color: '#111827', fontFamily: 'monospace' }}>{txRef}</strong> and confirm the
+                        <strong style={{ color: '#16A34A' }}> ETB {fmt(systemTotal)}</strong> payment arrived via bank, Telebirr or cash before approving.</>
                       )}
                     </p>
 
@@ -1047,7 +1062,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                         <span>
                           {isCashVerify
                             ? <>✅ I confirmed the CASH of ETB {fmt(systemTotal)} was received and counted at the store.</>
-                            : <>✅ I verified this EXACT payment ({isTele ? 'Telebirr ' + txRef : 'Bank ' + txRef}) of ETB {fmt(systemTotal)} in the {isTele ? 'Telebirr app' : 'bank account'} above.</>}
+                            : isTele || isBank
+                              ? <>✅ I verified this EXACT payment ({isTele ? 'Telebirr ' + txRef : 'Bank ' + txRef}) of ETB {fmt(systemTotal)} in the {isTele ? 'Telebirr app' : 'bank account'} above.</>
+                              : <>✅ I reviewed the screenshot / reference and confirmed ETB {fmt(systemTotal)} was received via {String(manualDetails?.paymentMethod || 'bank, Telebirr or cash').toUpperCase()}.</>}
                         </span>
                       </label>
                     )}
@@ -1062,8 +1079,9 @@ const DetailView = ({ submissionId, onBack, onApproved }) => {
                 isTelebirr && { key: 'telebirrChecked', label: '📱 Checked Telebirr — ETB ' + fmt(systemTotal) + ' payment found confirmed' },
                 isAwash && { key: 'bankChecked', label: '🏦 Checked Awash Bank — found ETB ' + fmt(systemTotal) + ' transfer confirmed' },
                 isCash && { key: 'confirmedInPerson', label: '💵 Cash of ETB ' + fmt(systemTotal) + ' received and counted in person' },
-                !isCBE && !isTelebirr && !isAwash && !isCash && { key: 'bankChecked', label: '🏦 Checked ' + (manualDetails?.paymentMethod || 'bank') + ' — payment confirmed' },
-                !isCash && { key: 'confirmedInPerson', label: '💵 Payment received and verified in person / office' },
+                isBankTransfer && isCBE === false && isAwash === false && { key: 'bankChecked', label: '🏦 Confirmed the bank transfer of ETB ' + fmt(systemTotal) + ' in the bank account' },
+                !isBankTransfer && !isTelebirr && !isCash && { key: 'confirmedInPerson', label: '💵 Payment of ETB ' + fmt(systemTotal) + ' received and verified in person — method: ' + (manualDetails?.paymentMethod || 'unspecified') },
+                !isCash && !isTelebirr && { key: 'confirmedInPerson', label: '💵 Payment received and verified in person / office' },
               ].filter(Boolean).map(({ key, label }) => (
                 <label key={key + label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 0', borderBottom: '1px solid var(--color-border)', fontSize: 13, fontWeight: 500, color: verifyChecks[key] ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                   <input
