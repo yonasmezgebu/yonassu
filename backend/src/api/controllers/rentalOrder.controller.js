@@ -135,6 +135,7 @@ exports.createOrder = async (req, res, next) => {
       subtotal: rentalAmount,
       vat_amount: vatAmount,
       total_amount: totalAmount,
+      pickup_location: data.pickupLocation || '',
       payment_method: data.paymentMethod || 'Cash',
       special_requests: data.specialRequests || '',
       status: 'PENDING_APPROVAL'
