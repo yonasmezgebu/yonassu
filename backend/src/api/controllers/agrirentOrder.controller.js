@@ -4,6 +4,8 @@ const { sendFinanceNotification, sendCustomerNotification } = require('../../ser
 const { logger } = require('../../config/logger');
 const carRentalAudit = require('../../services/carRentalAudit.service');
 const vatConfigService = require('../../services/vatConfig.service');
+const { generateInvoiceNumber } = require('../../utils/orderNumber');
+const { recordInvoiceForOrder, recordReceiptForOrder, findInvoiceForOrder } = require('../../services/invoiceDocument.service');
 
 // ── HELPER: Sync to Finance ───────────────────────────────────────────────────
 const syncToFinance = async (order, userId) => {
@@ -140,6 +142,32 @@ exports.createOrder = async (req, res) => {
       updated_at: new Date()
     });
 
+    // Invoice is recorded immediately when the AgriRent booking is placed, with
+    // the correct VAT — finance approval then only attaches the receipt (never
+    // mints a second/VAT-free invoice).
+    try {
+      await recordInvoiceForOrder(db, {
+        source: 'agrirent',
+        saleId: id,
+        saleType: /cash/i.test(paymentMethod || '') ? 'walk_in' : 'online',
+        invoiceNo: await generateInvoiceNumber(),
+        customer: req.user.fullName || req.user.full_name || null,
+        customerTin: null,
+        lines: [{
+          itemId: tractorId || 0,
+          name: 'Tractor Rental',
+          qty: totalDays,
+          unitPrice: dailyRate,
+          amount: dailyRate * totalDays,
+          rate: vatCalc.rate,
+          treatment: vatCalc.treatment
+        }],
+        createdBy: req.user.fullName || req.user.full_name || 'Customer Portal'
+      });
+    } catch (err) {
+      logger.error('Failed to record AgriRent invoice:', err.message);
+    }
+
     // Automatically send to Finance Live Income for verification
     try {
       await db('finance_income_submissions').insert({
@@ -256,6 +284,31 @@ exports.createManualOrder = async (req, res) => {
       created_at: new Date(),
       updated_at: new Date()
     });
+
+    // Invoice is recorded immediately (with the correct VAT) so finance approval
+    // only attaches the receipt — manual/walk-in orders get an invoice too.
+    try {
+      await recordInvoiceForOrder(db, {
+        source: 'agrirent',
+        saleId: id,
+        saleType: /cash/i.test(paymentMethod || '') ? 'walk_in' : 'online',
+        invoiceNo: await generateInvoiceNumber(),
+        customer: customerName || null,
+        customerTin: null,
+        lines: [{
+          itemId: tractorId || 0,
+          name: 'Tractor Rental',
+          qty: totalDays,
+          unitPrice: dailyRate,
+          amount: dailyRate * totalDays,
+          rate: vatCalc.rate,
+          treatment: vatCalc.treatment
+        }],
+        createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
+      });
+    } catch (err) {
+      logger.error('Failed to record AgriRent manual invoice:', err.message);
+    }
 
     // Automatically send to Finance Live Income for verification (if not Cash or if explicitly entered payment details)
     if (paymentMethod !== 'Cash' || paymentReference || paymentScreenshot) {
@@ -682,6 +735,10 @@ exports.verifyPayment = async (req, res) => {
     const order = await db('agrirent_orders').where({ id }).first();
     if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
 
+    if (isVerified && ['Confirmed', 'PAID'].includes(order.payment_status)) {
+      return res.status(400).json({ status: 'error', message: 'Payment is already confirmed and recorded in Finance.' });
+    }
+
     const updateData = {
       payment_status: isVerified ? 'Confirmed' : 'Rejected',
       finance_notes: notes || null,
@@ -694,6 +751,62 @@ exports.verifyPayment = async (req, res) => {
       updateData.status = 'confirmed';
       // Push to finance book automatically when finance verifies
       await syncToFinance(order, req.user.id);
+
+      // Attach the sales receipt to the order-time invoice (created at order time
+      // with the correct VAT), so the invoice shows PAID — never a duplicate.
+      try {
+        let invoice = await findInvoiceForOrder(db, 'agrirent', order.id);
+        if (!invoice) {
+          const invNo = await generateInvoiceNumber();
+          const vatCalc = await vatConfigService.computeVatForItem('agrirent', order.tractor_id || null, parseFloat(order.subtotal || 0));
+          const created = await recordInvoiceForOrder(db, {
+            source: 'agrirent',
+            saleId: order.id,
+            saleType: /cash/i.test(order.payment_method || '') ? 'walk_in' : 'online',
+            invoiceNo: invNo,
+            customer: order.customer_name || null,
+            customerTin: null,
+            lines: [{
+              itemId: order.tractor_id || 0,
+              name: 'Tractor Rental',
+              qty: parseFloat(order.total_days) || 1,
+              unitPrice: parseFloat(order.daily_rate) || 0,
+              amount: parseFloat(order.subtotal) || 0,
+              rate: vatCalc.rate,
+              treatment: vatCalc.treatment
+            }],
+            createdBy: req.user.fullName || req.user.full_name || 'Finance Officer'
+          });
+          invoice = { id: created.invoiceId };
+        }
+        await recordReceiptForOrder(db, {
+          invoiceId: invoice.id,
+          amountPaid: parseFloat(order.total_amount) || 0,
+          paymentMethod: order.payment_method || 'Cash',
+          paymentReference: order.payment_reference || null,
+          receivedBy: req.user.fullName || req.user.full_name || 'Finance Officer'
+        });
+      } catch (err) {
+        logger.error('Failed to record AgriRent receipt:', err.message);
+      }
+
+      // Record income into the canonical ledger (CRV + cashbook + revenue book).
+      // Keyed by order number so the revenue-book row merges with syncToFinance.
+      try {
+        const { recordIncomeToLedger } = require('../../utils/financeIncome.service');
+        await recordIncomeToLedger({
+          receivedFrom: order.customer_name || 'AgriRent Customer',
+          amount: parseFloat(order.total_amount) || 0,
+          paymentMethod: order.payment_method || 'Cash',
+          description: `AgriRent income − ${order.order_number}`,
+          referenceNo: order.payment_reference || `AGR-${order.order_number}`,
+          receivableInvoiceNo: order.order_number,
+          department: 'AgriRent',
+          extraReceivableDetails: { order_id: String(order.id), orderNumber: order.order_number },
+        });
+      } catch (err) {
+        logger.error('Failed to record AgriRent income into ledger:', err.message);
+      }
     }
 
     await db('agrirent_orders').where({ id }).update(updateData);
