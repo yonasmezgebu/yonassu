@@ -5,7 +5,7 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Tractor, User,
   Calendar, FileText, MapPin, Plus, Leaf,
-  Archive, Trash2, AlertTriangle,
+  Archive, Trash2, AlertTriangle, Bell, Phone, Mail, BellRing,
 } from 'lucide-react';
 import AgriRentOrderDetail from './AgriRentOrderDetail';
 import SegmentedSpinner from '../../../components/ui/SegmentedSpinner';
@@ -34,7 +34,7 @@ const C = {
 /* ─────────────── STATIC CONFIG ─────────────── */
 const STATUS_LABELS = {
   pending: 'Pending', approved: 'Approved', confirmed: 'Confirmed',
-  active: 'Active', completed: 'Completed', cancelled: 'Cancelled',
+  active: 'Released', completed: 'Completed', cancelled: 'Cancelled',
 };
 
 const STATUS_CFG = {
@@ -50,6 +50,20 @@ const PAY_CFG = {
   Pending:   { label: 'Awaiting Payment', bg: '#FFF3E0', color: '#E65100', border: '#FFCC80', Icon: Clock },
   Confirmed: { label: 'Payment Confirmed', bg: '#E8F5E9', color: '#2E7D32', border: '#A5D6A7', Icon: CheckCircle },
   Rejected:  { label: 'Payment Rejected',  bg: '#FFEBEE', color: '#B71C1C', border: '#EF9A9A', Icon: XCircle },
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/* Live rental countdown — mirrors the car rental dashboard */
+const rentalStats = (order) => {
+  const end = new Date(order.end_date);
+  const totalDays = Math.max(1, parseInt(order.total_days || 1, 10));
+  const begun = order.released_at;
+  const now = Date.now();
+  const elapsedDays = begun ? Math.max(0, Math.floor((now - new Date(begun).getTime()) / DAY_MS)) : 0;
+  const diff = end.getTime() - now;
+  const overdue = diff < 0;
+  const remaining = diff < 0 ? Math.abs(Math.ceil(diff / DAY_MS)) : Math.ceil(diff / DAY_MS);
+  return { end, totalDays, begun: begun ? new Date(begun) : null, elapsedDays, remaining, overdue };
 };
 
 /* ─────────────── BADGE COMPONENTS ─────────────── */
@@ -298,6 +312,12 @@ const AgriRentOrders = () => {
   const [spinning, setSpinning] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { variant, id, orderNumber }
+  const [waitlist, setWaitlist] = useState([]);
+  const [waitlistCount, setWaitlistCount] = useState(0);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [awaitDates, setAwaitDates] = useState([]);
+  const [awaitDatesLoading, setAwaitDatesLoading] = useState(false);
+  const [datesModal, setDatesModal] = useState(null); // { order, startDate, endDate, dailyRateOverride }
 
   const TERMINAL_STATUSES = ['completed', 'cancelled'];
   const terminalOrders = orders.filter(o => TERMINAL_STATUSES.includes(o.status) && !o.is_manual);
@@ -354,6 +374,93 @@ const AgriRentOrders = () => {
 
   useEffect(() => { load(filter); }, [filter.page, filter.status, filter.paymentStatus, load]);
 
+  const loadWaitlist = useCallback(async () => {
+    try {
+      setWaitlistLoading(true);
+      const res = await axios.get('/agrirent-waitlist');
+      if (res.status === 'success') {
+        setWaitlist(Array.isArray(res.data) ? res.data : []);
+        setWaitlistCount(res.counts?.waiting ?? 0);
+      }
+    } catch (err) {
+      console.error('Failed to load agrirent waitlist:', err);
+    } finally {
+      setWaitlistLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadWaitlist(); }, [loadWaitlist]);
+
+  const loadAwaitDates = useCallback(async () => {
+    try {
+      setAwaitDatesLoading(true);
+      const res = await axios.get('/agrirent-orders/schedule-later');
+      if (res.status === 'success') setAwaitDates(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Failed to load awaiting-dates orders:', err);
+    } finally {
+      setAwaitDatesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAwaitDates(); }, [loadAwaitDates]);
+
+  const openDatesModal = (order) => {
+    setDatesModal({ order, startDate: '', endDate: '', dailyRateOverride: '' });
+  };
+
+  const submitDates = async (e) => {
+    e.preventDefault();
+    if (!datesModal) return;
+    const { order, startDate, endDate, dailyRateOverride } = datesModal;
+    if (!startDate || !endDate) { toast('Both start and end dates are required.', 'error'); return; }
+    if (new Date(endDate) <= new Date(startDate)) { toast('End date must be after start date.', 'error'); return; }
+    try {
+      const body = { startDate, endDate };
+      if (dailyRateOverride) body.dailyRateOverride = parseFloat(dailyRateOverride);
+      const res = await axios.patch(`/agrirent-orders/${order.id}/dates`, body);
+      toast(res?.message || `Dates set for ${order.customer_name}.`, 'success');
+      setDatesModal(null);
+      loadAwaitDates();
+      load(filter);
+      loadWaitlist();
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Failed to set dates.', 'error');
+    }
+  };
+
+  const handleWaitlistMarkNotified = async (entry) => {
+    try {
+      await axios.patch(`/agrirent-waitlist/${entry.id}`, { status: 'notified' });
+      toast(`${entry.customer_name} marked as notified.`, 'success');
+      loadWaitlist();
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    }
+  };
+
+  const handleWaitlistRemove = async (entry) => {
+    try {
+      await axios.delete(`/agrirent-waitlist/${entry.id}`);
+      toast('Availability request removed.', 'success');
+      loadWaitlist();
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
+    }
+  };
+
+  const handleWaitlistCreateOrder = (entry) => {
+    navigate('/car-renting/manager/agri-orders/new', {
+      state: {
+        tractorId: entry.tractor_id,
+        customerName: entry.customer_name,
+        customerPhone: entry.customer_phone,
+        customerEmail: entry.customer_email || '',
+        waitlistId: entry.id,
+      }
+    });
+  };
+
     useEffect(() => {
     if (location.state?.autoSelectSearchItem) {
       const item = location.state.autoSelectSearchItem.item;
@@ -401,6 +508,16 @@ const AgriRentOrders = () => {
     await load(filter);
     setTimeout(() => setSpinning(false), 600);
     toast('Orders refreshed successfully.', 'success');
+  };
+
+  const handleQuickRelease = async (order) => {
+    try {
+      await axios.patch(`/agrirent-orders/${order.id}/status`, { status: 'active' });
+      toast(`${order.order_number} — machine released to field.`, 'success');
+      load(filter);
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || 'Release failed.', 'error');
+    }
   };
 
 
@@ -480,7 +597,7 @@ const AgriRentOrders = () => {
         {[
           { label: 'TOTAL ORDERS',     val: stats.total,      accent: C.darkGreen, filterKey: null,            filterVal: '' },
           { label: 'PENDING ORDERS',   val: stats.pending,    accent: '#E65100',   filterKey: 'status',        filterVal: 'pending' },
-          { label: 'ACTIVE ORDERS',    val: stats.active,     accent: '#0288D1',   filterKey: 'status',        filterVal: 'active' },
+          { label: 'RELEASED ORDERS',  val: stats.active,     accent: '#0288D1',   filterKey: 'status',        filterVal: 'active' },
           { label: 'AWAITING PAYMENT', val: stats.payPending, accent: C.red,       filterKey: 'paymentStatus', filterVal: 'Pending' },
         ].map(s => {
           const isActive = s.filterKey
@@ -508,6 +625,183 @@ const AgriRentOrders = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* ── ORDERS AWAITING DATES (schedule-later holds) ── */}
+      {awaitDates.length > 0 && (
+        <div style={{
+          background: '#FFFDF5', border: `2px solid ${C.orange}`, borderTop: 'none',
+          borderLeft: `6px solid ${C.orange}`, padding: '1.1rem 1.5rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.75rem' }}>
+            <Calendar size={20} color={C.orange} />
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 15, color: '#6D4C41' }}>Orders Awaiting Dates ({awaitDates.length})</div>
+              <div style={{ fontSize: 11, color: C.textSec }}>Reserved for waitlist customers while the machine was booked — fill in the hire dates now.</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1rem' }}>
+            {awaitDates.map(order => (
+              <div key={order.id} style={{ background: '#fff', border: `1.5px solid ${C.border}`, padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Tractor size={14} color={C.emerald} />
+                  <span style={{ fontWeight: 800, fontSize: 13.5, color: C.darkGreen }}>{order.tractor_name || 'Unknown Machine'}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: C.orange, background: '#FFF3E0', border: `1px solid ${C.orange}`, padding: '2px 7px' }}>
+                    DATES PENDING
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <User size={12} color={C.forestGreen} /> {order.customer_name}
+                  <span style={{ marginLeft: 'auto', fontSize: 11.5, color: C.textSec, fontFamily: 'monospace' }}>{order.customer_phone}</span>
+                </div>
+                {order.farming_purpose && <div style={{ fontSize: 11.5, color: C.textSec }}>{order.farming_purpose}{order.field_location ? ` · ${order.field_location}` : ''}</div>}
+                <button
+                  onClick={() => openDatesModal(order)}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 12px', background: C.forestGreen, color: '#fff', border: `1px solid ${C.darkGreen}`, fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: `0 3px 0 ${C.darkGreen}` }}
+                >
+                  <Calendar size={13} /> Set Dates
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── AVAILABILITY REQUESTS (WAITLIST) ── */}
+      <div style={{
+        background: C.white, border: `2px solid ${C.border}`, borderTop: 'none',
+        borderLeft: `6px solid ${C.forestGreen}`, padding: '1.1rem 1.5rem',
+        display: 'flex', alignItems: 'flex-start', gap: '1.25rem', flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 240, paddingTop: 4 }}>
+          <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <Bell size={22} color={C.forestGreen} />
+            {waitlistCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -8, right: -8, background: C.red, color: '#fff',
+                borderRadius: '50%', minWidth: 18, height: 18, fontSize: 10, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
+              }}>
+                {waitlistCount}
+              </span>
+            )}
+          </span>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 15, color: C.darkGreen }}>Availability Requests</div>
+            <div style={{ fontSize: 11, color: C.textSec }}>Customers waiting for a booked machine</div>
+          </div>
+        </div>
+
+        {waitlistLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.emerald, fontSize: 13, fontWeight: 600, paddingTop: 8 }}>
+            <SegmentedSpinner size={16} /> Loading requests...
+          </div>
+        ) : waitlist.length === 0 ? (
+          <div style={{ paddingTop: 8, fontSize: 12.5, color: '#9E9E9E' }}>
+            No availability requests right now. When a customer clicks "Contact When Available" on the booking page while a machine is booked, their details and message appear here.
+          </div>
+        ) : (
+          <div style={{ flex: '1 1 100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1rem', marginTop: '0.25rem' }}>
+            {waitlist.map(entry => {
+              const isWaiting = entry.status === 'waiting';
+              const isNotified = entry.status === 'notified';
+              const isConverted = entry.status === 'converted';
+              const statusCfg = isWaiting
+                ? { bg: '#FFF8E1', color: '#E65100', label: 'Waiting' }
+                : isNotified
+                  ? { bg: '#E8F5E9', color: '#2E7D32', label: 'Notified' }
+                  : isConverted
+                    ? { bg: '#E3F2FD', color: '#0D47A1', label: 'Converted' }
+                    : { bg: '#F5F5F5', color: '#757575', label: 'Removed' };
+              return (
+                <div key={entry.id} style={{
+                  background: isWaiting ? '#FFFDF5' : '#FAFAFA',
+                  border: `1.5px solid ${isWaiting ? C.forestGreen : C.border}`,
+                  padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Tractor size={15} color={C.emerald} />
+                    <span style={{ fontWeight: 800, fontSize: 13.5, color: C.darkGreen }}>{entry.tractor_name || 'Unknown Machine'}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', padding: '3px 8px', background: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.color}` }}>
+                      {statusCfg.label}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: C.darkGray, flexWrap: 'wrap' }}>
+                    <User size={13} color={C.forestGreen} /> {entry.customer_name}
+                    <span style={{ marginLeft: 'auto', fontSize: 11.5, color: C.textSec, fontWeight: 600, fontFamily: 'monospace' }}>{entry.customer_phone}</span>
+                  </div>
+                  {entry.customer_email && (
+                    <div style={{ fontSize: 11, color: C.skyBlue, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Mail size={11} /> {entry.customer_email}
+                    </div>
+                  )}
+
+                  {(entry.field_location || entry.farming_purpose || entry.preferred_start_date || entry.preferred_end_date) && (
+                    <div style={{ fontSize: 11.5, color: C.textSec, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                      <MapPin size={11} />
+                      {entry.field_location ? `${entry.field_location}${entry.field_size_hectares ? ` · ${entry.field_size_hectares} ha` : ''}` : 'Location not given'}
+                      {entry.farming_purpose && <span>· {entry.farming_purpose}</span>}
+                      {entry.preferred_start_date && (
+                        <span>· needs {new Date(entry.preferred_start_date).toLocaleDateString()}{entry.preferred_end_date ? ` → ${new Date(entry.preferred_end_date).toLocaleDateString()}` : ''}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {entry.message && (
+                    <div style={{ fontSize: 12, color: '#5D4037', fontStyle: 'italic', background: '#F5F0EB', padding: '7px 10px', border: '1px solid #E0D3C6' }}>
+                      “{entry.message}”
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 'auto', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleWaitlistCreateOrder(entry)}
+                      disabled={isConverted}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                        background: C.forestGreen, color: '#fff', border: `1px solid ${C.darkGreen}`,
+                        fontWeight: 700, fontSize: 11.5, cursor: isConverted ? 'not-allowed' : 'pointer',
+                        opacity: isConverted ? 0.5 : 1, boxShadow: `0 3px 0 ${C.darkGreen}`,
+                      }}
+                      title={isConverted ? 'Already converted to an order' : 'Reserve this customer next-in-line (dates set later when the machine is free)'}
+                    >
+                      <Plus size={13} /> Reserve Next / Walk-in
+                    </button>
+                    {(isWaiting || isNotified) && !isConverted && (
+                      <>
+                        <button
+                          onClick={() => handleWaitlistMarkNotified(entry)}
+                          disabled={isNotified}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                            background: C.leafGreen, color: '#fff', border: `1px solid ${C.darkGreen}`,
+                            fontWeight: 700, fontSize: 11.5, cursor: isNotified ? 'not-allowed' : 'pointer',
+                            opacity: isNotified ? 0.55 : 1, boxShadow: `0 3px 0 ${C.darkGreen}`,
+                          }}
+                          title={isNotified ? 'This customer has already been notified' : 'Mark as contacted / notified'}
+                        >
+                          <BellRing size={13} /> {isNotified ? 'Notified' : 'Mark Notified'}
+                        </button>
+                        <button
+                          onClick={() => handleWaitlistRemove(entry)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                            background: '#C62828', color: '#fff', border: '1px solid #8E0000',
+                            fontWeight: 700, fontSize: 11.5, cursor: 'pointer', boxShadow: `0 3px 0 #8E0000`,
+                          }}
+                          title="Remove this request"
+                        >
+                          <Trash2 size={13} /> Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── FILTER BAR ── */}
@@ -641,6 +935,15 @@ const AgriRentOrders = () => {
                     {new Date(order.start_date).toLocaleDateString()} → {new Date(order.end_date).toLocaleDateString()}
                     &nbsp;·&nbsp;<strong>{order.total_days} days</strong>
                   </div>
+                  {order.status === 'active' && order.released_at && (() => {
+                    const rs = rentalStats(order);
+                    return (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: rs.overdue ? C.red : C.blue, backgroundColor: rs.overdue ? '#FFEBEE' : '#E3F2FD', padding: '2px 6px', marginTop: 4, display: 'inline-block' }}>
+                        🚜 Released {new Date(order.released_at).toLocaleDateString()} · Day {Math.min(rs.elapsedDays + 1, rs.totalDays)}/{rs.totalDays}
+                        &nbsp;·&nbsp;{rs.overdue ? `${rs.remaining}d overdue` : `${rs.remaining}d left`}
+                      </div>
+                    );
+                  })()}
                 </td>
 
                 {/* Financials */}
@@ -686,6 +989,21 @@ const AgriRentOrders = () => {
                     >
                       <FileText size={12} /> View Detail
                     </button>
+                    {['approved', 'confirmed'].includes(order.status)
+                      && ['Confirmed', 'PAID', 'PAYMENT_VERIFIED'].includes(order.payment_status)
+                      && (
+                        <button
+                          onClick={() => handleQuickRelease(order)}
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 16px', background: '#0D47A1', color: '#fff', border: '1px solid #0a3370', fontWeight: 700, fontSize: 12, cursor: 'pointer', boxShadow: '0 3px 0 rgba(10,51,112,0.5)', transition: 'all 0.12s', whiteSpace: 'nowrap' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#1565C0'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#0D47A1'; }}
+                          onMouseDown={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(3px)'; }}
+                          onMouseUp={e => { e.currentTarget.style.boxShadow = '0 3px 0 rgba(10,51,112,0.5)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                          title="Release the machine to the field (paid order)"
+                        >
+                          🚜 Release
+                        </button>
+                      )}
                     {TERMINAL_STATUSES.includes(order.status) && !order.is_manual && (
                       <>
                         <button
@@ -748,6 +1066,58 @@ const AgriRentOrders = () => {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* ── SET DATES MODAL ── */}
+      {datesModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', maxWidth: 480, width: '100%', border: `2px solid ${C.border}`, boxShadow: '8px 8px 0 rgba(0,0,0,0.2)', padding: '26px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <Calendar size={20} color={C.forestGreen} />
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.darkGray }}>Set Hire Dates</h3>
+            </div>
+            <p style={{ fontSize: 13, color: C.textSec, marginTop: 6, marginBottom: 18 }}>
+              {datesModal.order.customer_name} · <strong>{datesModal.order.tractor_name}</strong><br />
+              Setting these dates confirms the booking (amount is calculated and the machine becomes Booked again).
+            </p>
+            <form onSubmit={submitDates}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', marginBottom: 5, display: 'block' }}>Start Date *</label>
+                  <input type="date" className="fsp-input" required min={new Date().toISOString().split('T')[0]}
+                    value={datesModal.startDate}
+                    onChange={e => setDatesModal(d => ({ ...d, startDate: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.border}`, fontSize: 14 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', marginBottom: 5, display: 'block' }}>End Date *</label>
+                  <input type="date" className="fsp-input" required min={datesModal.startDate || new Date().toISOString().split('T')[0]}
+                    value={datesModal.endDate}
+                    onChange={e => setDatesModal(d => ({ ...d, endDate: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.border}`, fontSize: 14 }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: '1.2rem' }}>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: C.textSec, textTransform: 'uppercase', marginBottom: 5, display: 'block' }}>Daily Rate Override (ETB) — optional</label>
+                <input type="number" min="0" step="0.01"
+                  value={datesModal.dailyRateOverride}
+                  onChange={e => setDatesModal(d => ({ ...d, dailyRateOverride: e.target.value }))}
+                  placeholder={`Default: ${parseFloat(datesModal.order.daily_rate || 0).toFixed(2)} ETB/day`}
+                  style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.border}`, fontSize: 14 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button type="button" onClick={() => setDatesModal(null)}
+                  style={{ flex: 1, padding: '11px 0', background: C.lightGray, color: C.darkGray, border: `1px solid ${C.border}`, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit"
+                  style={{ flex: 1, padding: '11px 0', background: C.forestGreen, color: '#fff', border: `1px solid ${C.darkGreen}`, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 3px 0 ${C.darkGreen}` }}>
+                  Confirm Dates
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── CONFIRM MODAL ── */}
       {confirmAction && (
