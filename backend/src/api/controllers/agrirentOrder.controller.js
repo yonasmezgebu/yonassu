@@ -73,6 +73,83 @@ const generateOrderNumber = () => {
   return `AGR-${ts}-${rnd}`;
 };
 
+// ── HELPER: Rental / payment state ────────────────────────────────────────────
+const isPaidStatus = (s) => ['Confirmed', 'PAID', 'PAYMENT_VERIFIED'].includes(s || '');
+const isStartReached = (order) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(order.start_date);
+  start.setHours(0, 0, 0, 0);
+  return start <= today;
+};
+
+// 🔒 Prevent the same machine being booked twice before it is released back,
+// even when the first order is still pending (unpaid / unapproved).
+const checkTractorAvailable = async (tractorId) => {
+  if (!tractorId) return { ok: true };
+  const tractor = await db('tractors').where({ id: tractorId }).first();
+  if (!tractor) return { ok: false, message: 'The selected machine was not found.' };
+
+  if (tractor.availability && tractor.availability !== 'Available') {
+    return {
+      ok: false,
+      message: `"${tractor.name}" is currently ${tractor.availability} for another AgriRent order. It becomes bookable again automatically once that rental is released, returned or cancelled. Please choose another machine or contact us.`
+    };
+  }
+
+  const conflict = await db('agrirent_orders')
+    .where({ tractor_id: tractorId })
+    .whereIn('status', ['pending', 'approved', 'confirmed', 'active'])
+    .whereNull('deleted_at')
+    .select('order_number', 'id')
+    .first();
+  if (conflict) {
+    return {
+      ok: false,
+      message: `"${tractor.name}" is already reserved under order ${conflict.order_number}. A booked machine cannot be reserved again until that rental is released and completed.`
+    };
+  }
+  return { ok: true };
+};
+
+// 🚜 Release the machine to the field once the paid line is reached
+// (payment confirmed) and the order has been approved. Manual release is done
+// through the updateOrderStatus endpoint (status: 'active').
+const maybeAutoRelease = async (order) => {
+  try {
+    if (!order || order.id == null) return false;
+    if (!isPaidStatus(order.payment_status)) return false;
+    if (!['approved', 'confirmed'].includes(order.status)) return false;
+    if (!isStartReached(order)) return false;
+
+    await db('agrirent_orders').where({ id: order.id }).update({
+      status: 'active',
+      released_at: new Date(),
+      updated_at: new Date()
+    });
+    if (order.tractor_id) {
+      await db('tractors').where({ id: order.tractor_id }).update({ availability: 'Booked' });
+    }
+    if (order.customer_id) {
+      try {
+        await sendCustomerNotification({
+          user_id: order.customer_id,
+          title: `AgriRent Order ${order.order_number}`,
+          message: 'Payment confirmed — your hired machine has been released and is now active on your field.',
+          type: 'agri',
+          link: '/customer/farming-orders',
+          related_entity_id: order.id
+        }, null);
+      } catch (e) { /* non-fatal */ }
+    }
+    logger.info(`AgriRent order ${order.order_number} auto-released (paid line reached)`);
+    return true;
+  } catch (e) {
+    logger.error('Failed to auto-release AgriRent order:', e.message);
+    return false;
+  }
+};
+
 // ── PUBLIC: Customer submits an online order ─────────────────────────────────
 exports.createOrder = async (req, res) => {
   try {
@@ -108,6 +185,12 @@ exports.createOrder = async (req, res) => {
       }
     }
 
+    // A machine that is already reserved cannot be booked again before release
+    const availCheck = await checkTractorAvailable(tractorId);
+    if (!availCheck.ok) {
+      return res.status(400).json({ status: 'error', message: availCheck.message });
+    }
+
     const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
     const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
     const totalAmount = dailyRate * totalDays + vatAmount;
@@ -141,6 +224,11 @@ exports.createOrder = async (req, res) => {
       created_at: new Date(),
       updated_at: new Date()
     });
+
+    // Reserve the machine immediately so it cannot be re-booked before release
+    if (tractorId) {
+      await db('tractors').where({ id: tractorId }).update({ availability: 'Booked' });
+    }
 
     // Invoice is recorded immediately when the AgriRent booking is placed, with
     // the correct VAT — finance approval then only attaches the receipt (never
@@ -251,6 +339,12 @@ exports.createManualOrder = async (req, res) => {
       if (tractor) dailyRate = parseFloat(tractor.dailyRate || tractor.daily_rate || 0);
     }
 
+    // A machine that is already reserved cannot be booked again before release
+    const availCheck = await checkTractorAvailable(tractorId);
+    if (!availCheck.ok) {
+      return res.status(400).json({ status: 'error', message: availCheck.message });
+    }
+
     const vatCalc = await vatConfigService.computeVatForItem('agrirent', tractorId || null, dailyRate * totalDays);
     const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
     const totalAmount = dailyRate * totalDays + vatAmount;
@@ -284,6 +378,24 @@ exports.createManualOrder = async (req, res) => {
       created_at: new Date(),
       updated_at: new Date()
     });
+
+    // Reserve the machine immediately so it cannot be re-booked before release
+    if (tractorId) {
+      await db('tractors').where({ id: tractorId }).update({ availability: 'Booked' });
+    }
+    // Walk-in orders that are already paid get released immediately on the paid line
+    if (isPaidStatus(paymentStatus || '') && isStartReached({ start_date: startDate })) {
+      await maybeAutoRelease({
+        id,
+        order_number: orderNumber,
+        tractor_id: tractorId || null,
+        customer_id: null,
+        customer_name: null,
+        status: 'approved',
+        payment_status: paymentStatus,
+        start_date: startDate
+      });
+    }
 
     // Invoice is recorded immediately (with the correct VAT) so finance approval
     // only attaches the receipt — manual/walk-in orders get an invoice too.
@@ -644,6 +756,8 @@ exports.updateOrderStatus = async (req, res) => {
       updated_at: new Date()
     };
     if (status === 'approved') updateData.approved_at = new Date();
+    if (status === 'active' && !order.released_at) updateData.released_at = new Date();
+    if (status === 'completed') updateData.completed_at = new Date();
     if (status === 'cancelled') updateData.cancelled_at = new Date();
 
     await db('agrirent_orders').where({ id }).update(updateData);
@@ -657,12 +771,19 @@ exports.updateOrderStatus = async (req, res) => {
       }
     }
 
+    // Release automatically once the manager approves a paid order whose
+    // start date has been reached (the paid line has been reached).
+    if (status === 'approved') {
+      const refreshed = await db('agrirent_orders').where({ id }).first();
+      await maybeAutoRelease(refreshed);
+    }
+
     // Notify customer
     const messages = {
       approved: 'Your AgriRent order has been approved! Await payment confirmation.',
       confirmed: 'Payment confirmed! Your machine will be dispatched on the scheduled date.',
-      active: 'Your hired machine is now active on your field.',
-      completed: 'AgriRent service completed. Thank you!',
+      active: 'Your hired machine has been released and is now active on your field.',
+      completed: 'AgriRent service completed — the machine has been released back. Thank you!',
       cancelled: `Your AgriRent order was cancelled. ${managerNote ? 'Note: ' + managerNote : ''}`
     };
 
@@ -717,6 +838,8 @@ exports.updatePaymentStatus = async (req, res) => {
     // If confirmed, push to finance book automatically
     if (paymentStatus === 'Confirmed') {
       await syncToFinance(order, req.user.id);
+      // Release the machine once the paid line is reached
+      await maybeAutoRelease({ ...order, payment_status: 'Confirmed' });
     }
 
     res.status(200).json({ status: 'success', message: 'Payment status updated' });
@@ -810,6 +933,12 @@ exports.verifyPayment = async (req, res) => {
     }
 
     await db('agrirent_orders').where({ id }).update(updateData);
+
+    // Release the machine automatically once the paid line is reached
+    // (payment verified on an approved/due order).
+    if (isVerified) {
+      await maybeAutoRelease({ ...order, payment_status: 'Confirmed' });
+    }
 
     if (order.customer_id) {
       try {
