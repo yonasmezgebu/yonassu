@@ -122,7 +122,7 @@ const FleetGalleryPage = () => {
     setReserveModalOpen(false);
     showToast(
       'success',
-      '🎉 Reservation Confirmed!',
+      'Reservation Confirmed!',
       `Your order #${orderData.orderNumber} has been submitted. A manager will review it shortly. Redirecting to your dashboard...`,
       3000
     );
@@ -145,10 +145,10 @@ const FleetGalleryPage = () => {
         ...notifyFormData
       });
       setNotifyModalOpen(false);
-      showToast('success', '✅ Request Sent!', `We will notify you when ${selectedCarForNotify.name} becomes available.`);
+      showToast('success', 'Request Sent!', `We will notify you when ${selectedCarForNotify.name} becomes available.`);
     } catch (error) {
       console.error('Failed to submit notify request', error);
-      showToast('error', '❌ Failed to Send', 'Something went wrong. Please try again.');
+      showToast('error', 'Failed to Send', 'Something went wrong. Please try again.');
     }
   };
 
@@ -180,12 +180,19 @@ const FleetGalleryPage = () => {
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           display: 'flex', flexDirection: 'column', gap: '4px'
         }}>
-          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: toast.type === 'success' ? '#15803d' : '#dc2626' }}>
-            {toast.title}
-          </p>
-          <p style={{ margin: 0, fontSize: '13px', color: toast.type === 'success' ? '#166534' : '#991b1b' }}>
-            {toast.message}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {toast.type === 'success'
+              ? <CheckCircle2 size={22} color="#15803d" style={{ flexShrink: 0 }} />
+              : <AlertTriangle size={22} color="#dc2626" style={{ flexShrink: 0 }} />}
+            <div>
+              <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: toast.type === 'success' ? '#15803d' : '#dc2626' }}>
+                {toast.title}
+              </p>
+              <p style={{ margin: 0, fontSize: '13px', color: toast.type === 'success' ? '#166534' : '#991b1b' }}>
+                {toast.message}
+              </p>
+            </div>
+          </div>
         </div>
       )}
       
@@ -734,6 +741,26 @@ const FleetGalleryPage = () => {
               <div>Status: {selectedCarForNotify.availability}</div>
               <div>Rate: ETB {Number(selectedCarForNotify.dailyRate).toLocaleString()}/day</div>
             </div>
+
+            {selectedCarForNotify.bookingEndDate && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+                background: '#eff6ff', border: '1.5px solid #bfdbfe', borderLeft: '4px solid #2563eb',
+                borderRadius: '8px', padding: '0.7rem 0.9rem', margin: '0.75rem 0 0.25rem',
+              }}>
+                <Calendar size={16} style={{ marginTop: 2, color: '#2563eb', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#1e3a8a' }}>
+                    Back on {new Date(selectedCarForNotify.bookingEndDate).toLocaleDateString('en-US', {
+                      timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'long', day: 'numeric'
+                    })}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#1e40af', marginTop: 2 }}>
+                    This vehicle is rented until that date. Leave your details and we will call you the moment it is returned.
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleNotifySubmit} className={styles.modalForm}>
               <input
