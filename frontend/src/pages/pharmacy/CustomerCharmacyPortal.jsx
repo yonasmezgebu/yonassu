@@ -108,6 +108,9 @@ export default function CustomerCharmacyPortal() {
           headers: { Authorization: `Bearer ${mainToken}` }
         });
         const reqs = res.data.data || [];
+        
+        const existingRefs = new Set(all.map(r => r.reference_code || r.request_number));
+
         const mapped = reqs.map(r => ({
           id: `req_${r.id}`,
           reference_code: r.request_number,
@@ -120,7 +123,7 @@ export default function CustomerCharmacyPortal() {
           delivery_option: r.delivery_option,
           delivery_address: r.delivery_address,
           file_url: r.prescription_image,
-        }));
+        })).filter(r => !existingRefs.has(r.reference_code));
         all = [...all, ...mapped];
       } catch { }
     }
@@ -215,10 +218,15 @@ export default function CustomerCharmacyPortal() {
 
   const needsRx = cart.some(i => i.requires_prescription);
 
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentReference, setPaymentReference] = useState('');
+
   const handleCheckout = async () => {
     if (!token) { setCheckoutError('Please log in to place an order.'); return; }
     if (cart.length === 0) { setCheckoutError('Your cart is empty.'); return; }
     if (!checkoutBranch) { setCheckoutError('Please select a branch.'); return; }
+    if (paymentMethod !== 'CASH' && !paymentReference.trim()) { setCheckoutError('Reference number is required for digital payments.'); return; }
+
     setSubmitting(true);
     setCheckoutError('');
     try {
@@ -227,9 +235,13 @@ export default function CustomerCharmacyPortal() {
         items: cart.map(i => ({ drug_id: i.id, quantity: i.qty })),
         delivery_type: deliveryType,
         delivery_address: deliveryAddress || null,
+        paymentMethod: paymentMethod,
+        paymentReference: paymentMethod !== 'CASH' ? paymentReference : null,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setOrderSuccess(res.data.data);
       setCart([]);
+      setPaymentReference('');
+      setPaymentMethod('CASH');
     } catch (err) {
       setCheckoutError(err.response?.data?.message || 'Failed to place order');
     }
@@ -318,7 +330,15 @@ export default function CustomerCharmacyPortal() {
                   return (
                     <div key={d.id} className="cp-drug-card">
                       <div className="cp-drug-header">
-                        <div className="cp-drug-icon">💊</div>
+                        {d.drug_image || d.cover_image ? (
+                          <img
+                            src={`http://localhost:5000${d.drug_image || d.cover_image}`}
+                            alt={d.name}
+                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(71,85,105,0.4)' }}
+                            onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+                          />
+                        ) : null}
+                        <div className="cp-drug-icon" style={{ display: d.drug_image || d.cover_image ? 'none' : 'flex' }}>💊</div>
                         {d.requires_prescription && <span className="cp-rx-badge">Rx Required</span>}
                       </div>
                       <div className="cp-drug-name">{d.name}</div>
@@ -456,6 +476,32 @@ export default function CustomerCharmacyPortal() {
 
                     <div className="cp-divider" />
 
+                    <div className="cp-section-label">Payment Method</div>
+                    <div className="cp-delivery-types">
+                      {[
+                        { id: 'CASH', label: 'Cash on Delivery' },
+                        { id: 'Bank Transfer', label: 'Bank Transfer' },
+                        { id: 'Telebirr', label: 'Telebirr' },
+                      ].map(t => (
+                        <div key={t.id} className={`cp-delivery-type ${paymentMethod === t.id ? 'active' : ''}`}
+                          onClick={() => setPaymentMethod(t.id)}
+                          style={{ padding: '8px 12px', fontSize: 12 }}>
+                          <div className="label">{t.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {paymentMethod !== 'CASH' && (
+                      <div className="cp-input-group" style={{ marginTop: 10 }}>
+                        <label className="cp-input-label">Reference Number *
+                          <input className="cp-input" placeholder="Enter transaction reference" value={paymentReference}
+                            onChange={e => setPaymentReference(e.target.value)} />
+                        </label>
+                      </div>
+                    )}
+
+                    <div className="cp-divider" />
+
                     <div className="cp-summary-row"><span>Subtotal</span><span>{fmt(cartTotals.subtotal)}</span></div>
                     <div className="cp-summary-row"><span>VAT</span><span>{fmt(cartTotals.vat)}</span></div>
                     <div className="cp-summary-total">
@@ -471,7 +517,7 @@ export default function CustomerCharmacyPortal() {
                     </button>
 
                     <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 10 }}>
-                      Payment collected at pickup / upon delivery
+                      {paymentMethod === 'CASH' ? 'Payment collected at pickup / upon delivery' : 'Your payment will be verified by finance'}
                     </p>
                   </div>
                 )}
