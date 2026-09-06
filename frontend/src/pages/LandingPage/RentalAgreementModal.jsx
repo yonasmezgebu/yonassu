@@ -158,7 +158,9 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
 
         {successData ? (
           <div className="ram-success-body">
-            <span className="ram-success-emoji">✅</span>
+            <span className="ram-success-emoji" style={{ display: 'flex', justifyContent: 'center' }}>
+            <CheckCircle2 size={64} color="#059669" strokeWidth={1.6} />
+          </span>
             <h3 className="ram-success-title">Order Placed Successfully!</h3>
             <p className="ram-success-sub">
               Order <strong>{successData.orderNumber}</strong> has been received.<br />
