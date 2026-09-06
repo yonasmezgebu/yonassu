@@ -22,6 +22,8 @@ router.delete('/my-orders/:id', authenticate, async (req, res) => {
 // Manager
 router.post('/manual', authenticate, authorizeRoles(MANAGER_ROLES), uploads.generic.single('paymentScreenshot'), handleUploadError, ctrl.createManualOrder);
 router.get('/', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.getAllOrders);
+router.get('/schedule-later', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.getScheduleLaterOrders);
+router.patch('/:id/dates', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.setOrderDates);
 
 // Archive / History / Delete (Manager) — defined before /:id routes
 router.get('/history', authenticate, authorizeRoles(MANAGER_ROLES), ctrl.getArchivedOrders);
