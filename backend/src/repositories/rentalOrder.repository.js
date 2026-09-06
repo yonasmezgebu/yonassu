@@ -35,7 +35,12 @@ class RentalOrderRepository extends BaseRepository {
           query = query.where('ro.payment_status', filters.paymentStatus);
         }
       }
-      if (filters.customerId) query = query.where('ro.customer_id', filters.customerId);
+      if (filters.customerId || filters.customerEmail) {
+        query = query.where(function () {
+          if (filters.customerId) this.where('ro.customer_id', filters.customerId);
+          if (filters.customerEmail) this.orWhere('ro.customer_email', filters.customerEmail);
+        });
+      }
 
       const rows = await query;
       return rows.map(r => RentalOrder.fromDatabase(r));
