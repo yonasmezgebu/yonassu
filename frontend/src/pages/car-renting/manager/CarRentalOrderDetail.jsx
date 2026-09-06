@@ -47,7 +47,7 @@ const ord = (order, ...keys) => {
 };
 
 /* field reads — model toJSON emits camelCase, DB rows emit snake_case */
-const f = (order, keys) => ord(order, ...keys);
+const f = (order, ...keys) => ord(order, ...keys);
 
 const getImgUrl = p => {
   if (!p) return null;
@@ -287,6 +287,11 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
   const vatAmt     = Number(f(order, 'vatAmount', 'vat_amount') || 0);
   const deposit    = Number(f(order, 'securityDeposit', 'security_deposit') || 0);
   const subAmt     = Number(f(order, 'subtotal', 'sub_total')) || Math.max(0, totalAmt - vatAmt - deposit);
+  const extensionFee = Number(f(order, 'extensionFee', 'extension_fee') || 0);
+  const damageFee = Number(f(order, 'damageFee', 'damage_fee') || 0);
+  const fuelFee = Number(f(order, 'fuelFee', 'fuel_fee') || 0);
+  const lateFee = Number(f(order, 'lateFee', 'late_fee') || 0);
+  const refundAmt = Number(f(order, 'refundAmount', 'refund_amount') || 0);
 
   const proofUrl   = getImgUrl(f(order, 'paymentProofUrl', 'payment_proof_url', 'paymentProof', 'payment_screenshot'));
   const paymentRef = f(order, 'paymentReference', 'payment_reference');
@@ -462,6 +467,41 @@ const CarRentalOrderDetail = ({ orderId, onBack }) => {
                     <td className="num" colSpan="2"></td>
                     <td className="num">{fmt(vatAmt)}</td>
                   </tr>
+                  {extensionFee > 0 && (
+                    <tr>
+                      <td>Extension Fee</td>
+                      <td className="num" colSpan="2"></td>
+                      <td className="num">{fmt(extensionFee)}</td>
+                    </tr>
+                  )}
+                  {damageFee > 0 && (
+                    <tr>
+                      <td>Damage Fee</td>
+                      <td className="num" colSpan="2"></td>
+                      <td className="num">{fmt(damageFee)}</td>
+                    </tr>
+                  )}
+                  {fuelFee > 0 && (
+                    <tr>
+                      <td>Fuel Fee</td>
+                      <td className="num" colSpan="2"></td>
+                      <td className="num">{fmt(fuelFee)}</td>
+                    </tr>
+                  )}
+                  {lateFee > 0 && (
+                    <tr>
+                      <td>Late Fee</td>
+                      <td className="num" colSpan="2"></td>
+                      <td className="num">{fmt(lateFee)}</td>
+                    </tr>
+                  )}
+                  {refundAmt > 0 && (
+                    <tr style={{ color: 'hsl(var(--danger))' }}>
+                      <td>Refund Amount</td>
+                      <td className="num" colSpan="2"></td>
+                      <td className="num">-{fmt(refundAmt)}</td>
+                    </tr>
+                  )}
                   <tr className="d2-table__total">
                     <td colSpan="3">TOTAL AMOUNT DUE (incl. VAT)</td>
                     <td className="num">ETB {fmt(totalAmt)}</td>
