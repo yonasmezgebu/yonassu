@@ -830,20 +830,46 @@ router.put('/live-income/:id/approve', authenticate, async (req, res) => {
         customerName = manualDetails.receivedFrom;
       }
 
+      // Guard against double-recording: if an AgriRent order was already
+      // confirmed + recorded (e.g. verified directly on the order page), never
+      // write a second CRV/cashbook pair. The receipt attach below stays
+      // idempotent so approving an already-recorded order is still safe. The
+      // receivable is keyed by the ORDER NUMBER so it merges with the row
+      // syncToFinance pushes (no duplicate in the Revenue Book).
+      let skipLedgerRecording = false;
+      let receivableInvoiceNo = null;
+      try {
+        const deptKey = String(submission.department || '').toLowerCase().trim();
+        if (deptKey === 'agrirent' && manualDetails.order_id) {
+          const ao = await trx('agrirent_orders').where({ id: manualDetails.order_id }).first();
+          if (ao) {
+            receivableInvoiceNo = ao.order_number;
+            if (['Confirmed', 'PAID'].includes(ao.payment_status)) {
+              skipLedgerRecording = true;
+            }
+          }
+        }
+      } catch (e) {
+        skipLedgerRecording = false;
+      }
+
       // Record approved income into the canonical ledger (CRV + cashbook +
       // revenue book) — includes the Receivables Book row via the service.
-      await recordLedgerIncome(trx, {
-        amount: systemTotal,
-        department: submission.department,
-        manualDetails,
-        receivedFrom: customerName,
-        referenceNo: submission.reference_no,
-        receivableExtras: {
-          departmentSource: submission.department,
-          financeSignature: manualDetails.financeSignature || finance_signature || null,
-          financeName: manualDetails.financeName || finance_name || (req.user && req.user.fullName) || 'Finance Officer',
-        },
-      });
+      if (!skipLedgerRecording) {
+        await recordLedgerIncome(trx, {
+          amount: systemTotal,
+          department: submission.department,
+          manualDetails,
+          receivedFrom: customerName,
+          referenceNo: submission.reference_no,
+          receivableInvoiceNo,
+          receivableExtras: {
+            departmentSource: submission.department,
+            financeSignature: manualDetails.financeSignature || finance_signature || null,
+            financeName: manualDetails.financeName || finance_name || (req.user && req.user.fullName) || 'Finance Officer',
+          },
+        });
+      }
 
       // Mint + link a Sales Invoice and Receipt for the approved income so it always
 // shows on the Sales Invoice & Receipt page. Departments whose modules already
