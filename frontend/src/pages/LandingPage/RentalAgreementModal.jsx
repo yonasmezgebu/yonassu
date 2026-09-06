@@ -78,6 +78,17 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
   const vatCalc = getVatForItem(vatCtx, 'car_rental', car?.id, rentalTotal);
   const grandTotal = rentalTotal + vatCalc.vat + securityDeposit;
 
+  // All finance accounts currently share the same name ("sutana"), so derive an
+  // explicit, unambiguous method (Cash / Mobile / <Bank> Bank) from the account's
+  // type / provider — used for the order payload AND the printed receipt.
+  const derivePaymentMethodName = (acc) => {
+    if (!acc) return '';
+    if (acc.account_type === 'Cash') return 'Cash';
+    if (acc.account_type === 'Mobile Wallet') return `Mobile / ${acc.bank_provider || 'Telebirr'}`;
+    if (acc.bank_provider) return `${acc.bank_provider} Bank`;
+    return `${acc.account_name || 'sutana'} / ${acc.account_type || 'Bank'}`;
+  };
+
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
     if (totalDays <= 0) { setError('Return date must be after pickup date.'); return; }
@@ -92,7 +103,7 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
       const returnDateTime = new Date(`${orderForm.returnDate}T10:00`);
 
       const selectedAcc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
-      const paymentMethodName = selectedAcc ? selectedAcc.account_name : orderForm.paymentMethod;
+      const paymentMethodName = selectedAcc ? derivePaymentMethodName(selectedAcc) : orderForm.paymentMethod;
 
       const payload = {
         carId: car.id,
@@ -159,7 +170,7 @@ const RentalAgreementModal = ({ car, isOpen, onClose, onSuccess }) => {
                 const u = currentUser || {};
                 const userName = u.fullName || u.full_name || u.name || 'Customer';
                 const selectedAcc = financeAccounts.find(a => String(a.id) === String(orderForm.paymentMethod));
-                const paymentName = selectedAcc ? selectedAcc.account_name : orderForm.paymentMethod;
+                const paymentName = selectedAcc ? derivePaymentMethodName(selectedAcc) : orderForm.paymentMethod;
                 win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Car Rental Receipt – ${successData.orderNumber}</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f5f5f5;padding:20px;color:#1a1a1a}.wrap{max-width:700px;margin:0 auto;background:white;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12)}.hdr{background:linear-gradient(135deg,#1a2b4b,#0D7C66);padding:30px 36px;display:flex;justify-content:space-between;align-items:center}.hdr-l h1{color:#FFD700;font-size:20px;font-weight:900;margin-bottom:4px}.hdr-l p{color:rgba(255,255,255,0.7);font-size:12px}.ord-no{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:8px 16px;color:white;font-size:13px;font-weight:700;text-align:right}.ord-no span{display:block;font-size:10px;font-weight:400;color:rgba(255,255,255,0.6);margin-bottom:3px}.sbar{background:#0D7C66;padding:8px 36px;font-size:12px;font-weight:700;color:white}.body{padding:28px 36px}.sec-title{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}.cell{background:#f8fafc;border:1px solid #e2e8f0;padding:12px}.cell .lbl{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#94a3b8;margin-bottom:3px}.cell .val{font-size:14px;font-weight:700;color:#0f172a}.total{background:#f0fdf4;border:2px solid #86efac;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.total .lbl{font-size:12px;color:#166534;font-weight:700}.total .val{font-size:22px;font-weight:900;color:#059669}.ftr{background:#0f172a;padding:20px 36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}.ftr-l{color:rgba(255,255,255,0.6);font-size:11px;line-height:1.7}.ftr-r{color:rgba(255,255,255,0.4);font-size:11px}@media print{body{background:white;padding:0}.wrap{box-shadow:none}}</style></head><body>
 <div class="wrap"><div class="hdr"><div class="hdr-l"><h1>🚗 SUTANA Car Rental</h1><p>Vehicle Rental Service — Addis Ababa, Ethiopia</p></div><div class="ord-no"><span>ORDER NO.</span>${successData.orderNumber}</div></div>
