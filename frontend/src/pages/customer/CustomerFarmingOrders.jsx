@@ -21,10 +21,39 @@ const getImageUrl = (path) => {
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   bg: 'hsl(28 40% 88%)',  color: 'hsl(28 50% 30%)' },
   approved:  { label: 'Approved',  bg: 'hsl(77 55% 88%)',  color: 'hsl(77 55% 28%)' },
-  confirmed: { label: 'Confirmed', bg: 'hsl(142 55% 86%)', color: 'hsl(142 60% 24%)' },
-  active:    { label: 'Active',    bg: 'hsl(200 60% 88%)', color: 'hsl(200 60% 28%)' },
-  completed: { label: 'Completed', bg: 'hsl(142 70% 86%)', color: 'hsl(142 70% 22%)' },
+  confirmed: { label: 'Paid · Ready', bg: 'hsl(142 55% 86%)', color: 'hsl(142 60% 24%)' },
+  active:    { label: 'On Field · Released', bg: 'hsl(200 60% 88%)', color: 'hsl(200 60% 28%)' },
+  completed: { label: 'Completed · Released', bg: 'hsl(142 70% 86%)', color: 'hsl(142 70% 22%)' },
   cancelled: { label: 'Cancelled', bg: 'hsl(0 72% 92%)',   color: 'hsl(0 72% 38%)' },
+};
+
+const PAY_STATUS_CONFIG = {
+  Pending:   { label: 'Awaiting Payment', bg: 'hsl(28 40% 88%)',  color: 'hsl(28 50% 30%)' },
+  Confirmed: { label: 'Payment Confirmed', bg: 'hsl(142 55% 86%)', color: 'hsl(142 60% 24%)' },
+  Rejected:  { label: 'Payment Rejected',  bg: 'hsl(0 72% 92%)',   color: 'hsl(0 72% 38%)' },
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/* Live rental countdown — mirrors the car rental dashboard */
+const rentalStats = (order) => {
+  const start = new Date(order.start_date);
+  const end = new Date(order.end_date);
+  const totalDays = Math.max(1, parseInt(order.total_days || Math.ceil((end - start) / DAY_MS), 10));
+  const begun = order.released_at;
+  const now = Date.now();
+  const elapsedDays = begun ? Math.max(0, Math.floor((now - new Date(begun).getTime()) / DAY_MS)) : 0;
+  const diff = end.getTime() - now;
+  const overdue = diff < 0;
+  const remaining = diff < 0 ? Math.abs(Math.ceil(diff / DAY_MS)) : Math.ceil(diff / DAY_MS);
+  const pct = totalDays > 0 ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100))) : 0;
+  return { start, end, totalDays, begun: begun ? new Date(begun) : null, elapsedDays, remaining, overdue, pct };
+};
+
+const fmtShort = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 const STATUS_TABS = [
@@ -122,6 +151,8 @@ export default function CustomerFarmingOrders() {
   if (selectedOrder) {
     const o          = selectedOrder;
     const cfg        = STATUS_CONFIG[o.status] || STATUS_CONFIG.pending;
+    const payCfg     = PAY_STATUS_CONFIG[o.payment_status] || PAY_STATUS_CONFIG.Pending;
+    const r          = o.status === 'active' ? rentalStats(o) : null;
     const tractorImg = getImageUrl(o.tractor_image);
 
     return (
@@ -152,9 +183,14 @@ export default function CustomerFarmingOrders() {
                 </div>
               </div>
             </div>
-            <span className={styles.badge} style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-              {cfg.label}
-            </span>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className={styles.badge} style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                {cfg.label}
+              </span>
+              <span className={styles.badge} style={{ backgroundColor: payCfg.bg, color: payCfg.color }}>
+                {payCfg.label}
+              </span>
+            </div>
           </div>
 
           {/* Machine Information card */}
@@ -256,7 +292,84 @@ export default function CustomerFarmingOrders() {
             </div>
           </div>
 
-          {/* Special Instructions + Danger Zone */}
+          {/* Rental Progress — started / released / countdown, same as car rental dashboard */}
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}><Activity size={18} /> Rental Progress</h2>
+            {o.status === 'active' && r && (
+              <div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Started</span>
+                  <span className={styles.infoValue} style={{ color: 'hsl(200 60% 28%)', fontWeight: 800 }}>
+                    {r.begun ? new Date(r.begun).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Ends</span>
+                  <span className={styles.infoValue}>{fmtShort(o.end_date)}</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Day</span>
+                  <span className={styles.infoValue}>
+                    Day {Math.min(r.elapsedDays + 1, r.totalDays)} of {r.totalDays}
+                  </span>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6 }}>
+                    <span style={{ color: r.overdue ? 'hsl(0 72% 38%)' : 'hsl(142 60% 24%)' }}>
+                      {r.overdue
+                        ? `${r.remaining} day${r.remaining !== 1 ? 's' : ''} overdue`
+                        : `${r.remaining} day${r.remaining !== 1 ? 's' : ''} rented left`}
+                    </span>
+                    <span style={{ color: 'hsl(200 60% 28%)' }}>
+                      {r.overdue ? 'Rental overdue — contact us' : r.elapsedDays === 0 ? 'Machine working today' : 'Machine on your field'}
+                    </span>
+                  </div>
+                  <div style={{ height: 10, background: 'hsl(200 60% 88%)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: r.overdue ? 'hsl(0 72% 45%)' : 'hsl(200 60% 35%)', width: `${r.pct}%`, borderRadius: 999, transition: 'width 0.3s' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+            {o.status === 'completed' && (
+              <div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Started</span>
+                  <span className={styles.infoValue}>{o.released_at ? fmtShort(o.released_at) : fmtShort(o.start_date)}</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Released On</span>
+                  <span className={styles.infoValue} style={{ fontWeight: 800 }}>
+                    {o.completed_at ? fmtShort(o.completed_at) : '—'}
+                  </span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Duration</span>
+                  <span className={styles.infoValue}>{o.total_days} Days</span>
+                </div>
+              </div>
+            )}
+            {['pending', 'approved', 'confirmed'].includes(o.status) && (
+              <div className={styles.infoRowRows}>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Started</span>
+                  <span className={styles.infoValue}>Not started yet</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Planned</span>
+                  <span className={styles.infoValue}>
+                    {fmtShort(o.start_date)} → {fmtShort(o.end_date)} · {o.total_days} days
+                  </span>
+                </div>
+                <p style={{ margin: '10px 0 0', fontSize: '0.8rem', color: 'hsl(28 50% 30%)', background: 'hsl(28 40% 92%)', padding: '0.6rem 0.8rem', borderRadius: 8 }}>
+                  The machine is released to your field automatically once your payment is confirmed
+                  {o.status === 'pending' ? ' and the order is approved' : ''}.
+                </p>
+              </div>
+            )}
+            {o.status === 'cancelled' && (
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'hsl(0 72% 38%)' }}>This order was cancelled and never released.</p>
+            )}
+          </div>
           {(o.special_instructions || ['pending', 'approved'].includes(o.status)) && (
             <div className={styles.bottomRow}>
               {o.special_instructions && (
@@ -389,6 +502,8 @@ export default function CustomerFarmingOrders() {
               <tbody>
                 {filtered.map((order) => {
                   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                  const payCfg = PAY_STATUS_CONFIG[order.payment_status] || PAY_STATUS_CONFIG.Pending;
+                  const rs = order.status === 'active' ? rentalStats(order) : null;
                   return (
                     <tr
                       key={order.id}
@@ -404,17 +519,40 @@ export default function CustomerFarmingOrders() {
                           day: '2-digit', month: 'short', year: 'numeric',
                         })}
                       </td>
-                      <td>{order.total_days} Days</td>
+                      <td>
+                        <div>{order.total_days} Days</div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, marginTop: 3 }}>
+                          {order.status === 'active' && rs ? (
+                            <span style={{ color: rs.overdue ? 'hsl(0 72% 42%)' : 'hsl(200 60% 30%)' }}>
+                              Day {Math.min(rs.elapsedDays + 1, rs.totalDays)} of {rs.totalDays} · {rs.overdue ? `${rs.remaining}d overdue` : `${rs.remaining}d left`}
+                            </span>
+                          ) : order.status === 'completed' ? (
+                            <span style={{ color: 'hsl(142 60% 24%)' }}>
+                              Started {fmtShort(order.released_at || order.start_date)} · Released {fmtShort(order.completed_at)}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'hsl(28 50% 30%)' }}>Not started yet</span>
+                          )}
+                        </div>
+                      </td>
                       <td className={styles.colAmount}>
                         {parseFloat(order.total_amount || 0).toFixed(2)} ETB
                       </td>
                       <td>
-                        <span
-                          className={styles.badge}
-                          style={{ backgroundColor: cfg.bg, color: cfg.color }}
-                        >
-                          {cfg.label}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          <span
+                            className={styles.badge}
+                            style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                          >
+                            {cfg.label}
+                          </span>
+                          <span
+                            className={styles.badge}
+                            style={{ backgroundColor: payCfg.bg, color: payCfg.color }}
+                          >
+                            {payCfg.label}
+                          </span>
+                        </div>
                       </td>
                       <td className={styles.colRight}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
