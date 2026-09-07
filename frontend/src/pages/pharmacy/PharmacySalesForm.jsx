@@ -197,25 +197,25 @@ export default function PharmacySalesForm() {
   };
 
   const submitDailySales = async () => {
-    if (unsubmittedSales.length === 0) return showToast('No unsubmitted sales.', 'warning');
+    if (unsubmittedSales.length === 0) return showToast('No unsubmitted sales to send to Finance.', 'warning');
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const selectedBranch = branches.find(b => String(b.id) === String(branchId));
-      await apiClient.post('/pharmacy/reports/daily', {
+      const res = await apiClient.post('/pharmacy/sales/submit-daily', {
         branch_id: branchId ? parseInt(branchId) : null,
-        report_date: today,
+        worker_name: workerName || user?.fullName || user?.email || 'Pharmacy Worker',
       });
-      showToast('Daily sales submitted to Manager successfully!', 'success');
+      const msg = res?.data?.message || 'Daily sales submitted to Finance successfully!';
+      showToast(msg, 'success');
       await loadUnsubmittedSales();
       setTab('audit');
       loadAuditTrail(auditPeriod);
     } catch (e) {
-      showToast(e.response?.data?.message || 'Failed to submit sales', 'error');
+      showToast(e.message || 'Failed to submit sales', 'error');
     } finally {
       setLoading(false);
     }
   };
+
 
   const processOnlineOrder = (order) => {
     const newCart = (order.items || []).map(item => ({
