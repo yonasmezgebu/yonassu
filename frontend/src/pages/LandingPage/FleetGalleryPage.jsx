@@ -5,13 +5,14 @@ import {
   CarFront, CheckCircle2, Clock, AlertTriangle, ArrowRight, X,
   ChevronLeft, ChevronRight,
   Shield, FileText, Info, Phone, Mail, CreditCard, ChevronDown, ChevronUp, 
-  MapPin, Key, Calendar, FileBadge, Wallet, HelpCircle,
-  Car, PhoneCall, Image as ImageIcon, Building2, RefreshCw
+  MapPin, Key, Calendar, FileBadge, Wallet, HelpCircle, Bell,
+  Car, Image as ImageIcon, Building2, RefreshCw
 } from 'lucide-react';
 import { PublicNav } from './ServicesPage';
 import RentalAgreementModal from './RentalAgreementModal';
 import carService from '../../services/carService';
 import authService from '../../services/authService';
+import axios from '../../services/apiClient';
 import styles from './FleetGalleryPage.module.css';
 import carHero from '../../assets/hero-section/car rental.jpg';
 
@@ -30,11 +31,11 @@ const FleetGalleryPage = () => {
   const [notifyModalOpen, setNotifyModalOpen] = useState(false);
   const [selectedCarForNotify, setSelectedCarForNotify] = useState(null);
   const [notifyFormData, setNotifyFormData] = useState({
-    customerName: '',
-    phone: '',
-    email: '',
-    message: ''
+    fullName: '', phone: '', email: '', driverName: '', driverLicense: '', pickupLocation: '', message: ''
   });
+  const [notifySubmitting, setNotifySubmitting] = useState(false);
+  const [notifyError, setNotifyError] = useState('');
+  const [notifySuccess, setNotifySuccess] = useState(null);
   
   // Reservation Modal State
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
@@ -52,6 +53,26 @@ const FleetGalleryPage = () => {
       if (car) {
         setSelectedCarForReserve(car);
         setReserveModalOpen(true);
+      }
+      window.history.replaceState({}, document.title);
+    }
+    if (location.state?.openCarWaitlist && authService.isAuthenticated()) {
+      const car = location.state.car;
+      if (car) {
+        const user = authService.getCurrentUser();
+        setSelectedCarForNotify(car);
+        setNotifyFormData({
+          fullName: user?.fullName || user?.full_name || user?.name || '',
+          phone: user?.phone || '',
+          email: user?.email || '',
+          driverName: '',
+          driverLicense: '',
+          pickupLocation: '',
+          message: ''
+        });
+        setNotifyError('');
+        setNotifySuccess(null);
+        setNotifyModalOpen(true);
       }
       window.history.replaceState({}, document.title);
     }
@@ -129,26 +150,56 @@ const FleetGalleryPage = () => {
   };
 
   const handleNotify = (car) => {
+    if (!authService.isAuthenticated()) {
+      navigate('/login', { state: { from: location.pathname, openCarWaitlist: true, car: car } });
+      return;
+    }
+    const user = authService.getCurrentUser();
     setSelectedCarForNotify(car);
+    setNotifyFormData({
+      fullName: user?.fullName || user?.full_name || user?.name || '',
+      phone: user?.phone || '',
+      email: user?.email || '',
+      driverName: '',
+      driverLicense: '',
+      pickupLocation: '',
+      message: ''
+    });
+    setNotifyError('');
+    setNotifySuccess(null);
     setNotifyModalOpen(true);
-    setNotifyFormData({ customerName: '', phone: '', email: '', message: '' });
   };
 
   const handleNotifySubmit = async (e) => {
     e.preventDefault();
+    if (!notifyFormData.fullName.trim()) { setNotifyError('Please enter your full name.'); return; }
+    if (!/^09\d{8}$/.test((notifyFormData.phone || '').replace(/\D/g, ''))) {
+      setNotifyError('Please enter a valid Ethiopian phone number (format 09xxxxxxxx) so we can reach you.');
+      return;
+    }
+    setNotifySubmitting(true);
+    setNotifyError('');
     try {
-      await carService.submitNotifyRequest({
+      const res = await axios.post('/car-waitlist', {
         carId: selectedCarForNotify.id,
-        carName: selectedCarForNotify.name,
-        carRate: selectedCarForNotify.dailyRate,
-        carStatus: selectedCarForNotify.availability,
-        ...notifyFormData
+        customerName: notifyFormData.fullName,
+        customerPhone: notifyFormData.phone,
+        customerEmail: notifyFormData.email,
+        driverName: notifyFormData.driverName,
+        driverLicense: notifyFormData.driverLicense,
+        pickupLocation: notifyFormData.pickupLocation,
+        message: notifyFormData.message,
       });
-      setNotifyModalOpen(false);
-      showToast('success', 'Request Sent!', `We will notify you when ${selectedCarForNotify.name} becomes available.`);
-    } catch (error) {
-      console.error('Failed to submit notify request', error);
-      showToast('error', 'Failed to Send', 'Something went wrong. Please try again.');
+      if (res?.status === 'success') {
+        setNotifySuccess(res.data);
+        showToast('success', 'You are on the list!', res.data?.message || 'We will call and notify you as soon as this vehicle is free.');
+      } else {
+        setNotifyError(res?.message || 'Failed to join the list. Please try again.');
+      }
+    } catch (err) {
+      setNotifyError(err?.response?.data?.message || err?.message || 'An error occurred. Please try again.');
+    } finally {
+      setNotifySubmitting(false);
     }
   };
 
@@ -288,8 +339,8 @@ const FleetGalleryPage = () => {
                     </button>
                   ) : (
                     <button className={styles.notifyBtn} onClick={() => handleNotify(currentCar)}>
-                      <PhoneCall size={20} />
-                      Contact for Availability
+                      <Bell size={18} />
+                      Contact When Available
                     </button>
                   )}
                 </div>
@@ -730,7 +781,7 @@ const FleetGalleryPage = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <h2>Notify Me When Available</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bell size={22} /> Contact When Available</h2>
               <button onClick={() => setNotifyModalOpen(false)} className={styles.closeBtn}>
                 <X size={24} />
               </button>
@@ -762,39 +813,89 @@ const FleetGalleryPage = () => {
               </div>
             )}
 
-            <form onSubmit={handleNotifySubmit} className={styles.modalForm}>
-              <input
-                type="text"
-                placeholder="Your Full Name *"
-                value={notifyFormData.customerName}
-                onChange={e => setNotifyFormData({...notifyFormData, customerName: e.target.value})}
-                required
-              />
-              <input
-                type="tel"
-                placeholder="Phone Number *"
-                value={notifyFormData.phone}
-                onChange={e => setNotifyFormData({...notifyFormData, phone: e.target.value})}
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email Address *"
-                value={notifyFormData.email}
-                onChange={e => setNotifyFormData({...notifyFormData, email: e.target.value})}
-                required
-              />
-              <textarea
-                placeholder="Optional Message"
-                value={notifyFormData.message}
-                onChange={e => setNotifyFormData({...notifyFormData, message: e.target.value})}
-                rows="3"
-              />
-              <div className={styles.modalActions}>
-                <button type="submit" className={styles.submitBtn}>Send Notification</button>
-                <button type="button" onClick={() => setNotifyModalOpen(false)} className={styles.cancelBtn}>Cancel</button>
+            {notifySuccess ? (
+              <div style={{ textAlign: 'center', padding: '2rem 0.5rem 1.25rem' }}>
+                <Bell size={72} color="#2563eb" strokeWidth={1.6} />
+                <h3 style={{ margin: '0.75rem 0 0.4rem', fontSize: '20px', fontWeight: 800, color: '#1e3a8a' }}>
+                  You are on the list!
+                </h3>
+                <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.6 }}>
+                  We saved your contact details for <strong>{selectedCarForNotify.name}</strong>.<br />
+                  Our team will call you the moment it is free.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setNotifyModalOpen(false); setNotifySuccess(null); setNotifyError(''); }}
+                  className={styles.submitBtn}
+                  style={{ marginTop: '1.25rem', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                >
+                  <CheckCircle2 size={18} /> Done
+                </button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleNotifySubmit} className={styles.modalForm}>
+                {notifyError && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8, background: '#fef2f2',
+                    border: '1.5px solid #fca5a5', color: '#991b1b', padding: '0.6rem 0.8rem',
+                    fontSize: '13px', fontWeight: 600, marginBottom: '0.75rem',
+                  }}>
+                    <AlertTriangle size={15} style={{ flexShrink: 0 }} /> {notifyError}
+                  </div>
+                )}
+
+                <input
+                  type="text"
+                  placeholder="Your Full Name *"
+                  value={notifyFormData.fullName}
+                  onChange={e => setNotifyFormData({...notifyFormData, fullName: e.target.value})}
+                  required
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone Number (09xxxxxxxx) *"
+                  value={notifyFormData.phone}
+                  onChange={e => setNotifyFormData({...notifyFormData, phone: e.target.value})}
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={notifyFormData.email}
+                  onChange={e => setNotifyFormData({...notifyFormData, email: e.target.value})}
+                />
+                <input
+                  type="text"
+                  placeholder="Driver Name (if different from you)"
+                  value={notifyFormData.driverName}
+                  onChange={e => setNotifyFormData({...notifyFormData, driverName: e.target.value})}
+                />
+                <input
+                  type="text"
+                  placeholder="Driver License Number (optional)"
+                  value={notifyFormData.driverLicense}
+                  onChange={e => setNotifyFormData({...notifyFormData, driverLicense: e.target.value})}
+                />
+                <input
+                  type="text"
+                  placeholder="Preferred Pickup Location (optional)"
+                  value={notifyFormData.pickupLocation}
+                  onChange={e => setNotifyFormData({...notifyFormData, pickupLocation: e.target.value})}
+                />
+                <textarea
+                  placeholder="Message (optional)"
+                  value={notifyFormData.message}
+                  onChange={e => setNotifyFormData({...notifyFormData, message: e.target.value})}
+                  rows="3"
+                />
+                <div className={styles.modalActions}>
+                  <button type="submit" disabled={notifySubmitting} className={styles.submitBtn}>
+                    {notifySubmitting ? 'Submitting…' : <><Bell size={18} /> Notify Me When Available</>}
+                  </button>
+                  <button type="button" onClick={() => setNotifyModalOpen(false)} className={styles.cancelBtn}>Cancel</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
