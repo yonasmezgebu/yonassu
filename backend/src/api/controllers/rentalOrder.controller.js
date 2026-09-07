@@ -642,13 +642,19 @@ exports.createManualOrder = async (req, res) => {
       carId, customerName, customerPhone, customerEmail,
       startDate, endDate, pickupLocation, notes,
       paymentMethod, paymentReference,
-      driverName, driverLicense
+      driverName, driverLicense, scheduleLater, waitlistId
     } = req.body;
 
     if (!customerName || !customerPhone) {
       return res.status(400).json({ status: 'error', message: 'Customer name and phone are required' });
     }
-    if (!startDate || !endDate) {
+
+    const isScheduleLater = scheduleLater === true || scheduleLater === 'true' || (!startDate && !endDate);
+
+    // "Schedule later" waitlist holds: created today with NO dates because the
+    // car is still booked by the current rental. The manager fills pickup/return
+    // dates later (PATCH /:id/dates) once the car is actually available.
+    if (!isScheduleLater && (!startDate || !endDate)) {
       return res.status(400).json({ status: 'error', message: 'Start and end dates are required' });
     }
 
@@ -658,13 +664,13 @@ exports.createManualOrder = async (req, res) => {
       proofUrl = `/uploads/receipts/${req.file.filename}`;
     }
 
-    if (!paymentReference && !proofUrl) {
+    if (!isScheduleLater && !paymentReference && !proofUrl) {
       return res.status(400).json({ status: 'error', message: 'Either payment reference or screenshot is required' });
     }
 
-    const pickup = new Date(startDate);
-    const returnDate = new Date(endDate);
-    const totalDays = Math.max(1, Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24)));
+    const pickup = startDate ? new Date(startDate) : null;
+    const returnDate = endDate ? new Date(endDate) : null;
+    const totalDays = pickup && returnDate ? Math.max(1, Math.ceil((returnDate - pickup) / (1000 * 60 * 60 * 24))) : 0;
 
     // Fetch car details
     let dailyRate = 0;
@@ -677,22 +683,28 @@ exports.createManualOrder = async (req, res) => {
         carName = `${car.brand || ''} ${car.model || ''}`.trim() || car.name || 'Car';
         licensePlate = car.licensePlate || car.license_plate || '';
       }
-      // A booked / maintenance car cannot be booked again with dates here.
-      const availCheck = await checkCarAvailable(parseInt(carId));
-      if (!availCheck.ok) {
-        return res.status(400).json({ status: 'error', message: availCheck.message });
+      // A booked / maintenance car cannot be booked again with dates here — but
+      // schedule-later holds are allowed (the waitlist customer is next in line).
+      if (!isScheduleLater) {
+        const availCheck = await checkCarAvailable(parseInt(carId));
+        if (!availCheck.ok) {
+          return res.status(400).json({ status: 'error', message: availCheck.message });
+        }
       }
     }
 
     const rentalAmount  = dailyRate * totalDays;
     const securityDeposit = 0; // manager-created orders may not require deposit
-    const vatCalc = await vatConfigService.computeVatForItem('car_rental', carId ? parseInt(carId) : null, rentalAmount);
+    const vatCalc = !isScheduleLater
+      ? await vatConfigService.computeVatForItem('car_rental', carId ? parseInt(carId) : null, rentalAmount)
+      : { vat: 0, rate: null, treatment: null };
     const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
     const totalAmount   = rentalAmount + vatAmount + securityDeposit;
 
     const orderNumber = RentalOrder.generateOrderNumber();
 
     const [orderId] = await db('rental_orders').insert({
+      customer_id:      req.body.customerId ? parseInt(req.body.customerId) : null,
       car_id:           carId ? parseInt(carId) : null,
       customer_name:    customerName,
       customer_phone:   customerPhone,
@@ -714,27 +726,200 @@ exports.createManualOrder = async (req, res) => {
       payment_method:   paymentMethod || 'Bank/Telebirr',
       payment_reference: paymentReference || null,
       payment_proof_url: proofUrl,
-      payment_status:   proofUrl || paymentReference ? 'PENDING_VERIFICATION' : 'UNPAID',
+      payment_status:   isScheduleLater ? 'UNPAID' : (proofUrl || paymentReference ? 'PENDING_VERIFICATION' : 'UNPAID'),
       status:           'APPROVED', // manager-created = already approved
       is_manual:        true,
+      scheduled_later:  isScheduleLater ? true : false,
+      waitlist_id:      waitlistId || null,
       approved_at:      new Date(),
       created_at:       new Date(),
       updated_at:       new Date()
     });
 
-    // Invoice is recorded immediately when the (manual/walk-in) order is placed.
+    // Invoice + Finance submission are minted later (via order dates) for a
+    // schedule-later hold — there is no amount yet. Only a real booking with
+    // dates is invoiced immediately.
+    if (!isScheduleLater) {
+      // Invoice is recorded immediately when the (manual/walk-in) order is placed.
+      try {
+        const invNo = await generateInvoiceNumber();
+        await recordInvoiceForOrder(db, {
+          source: 'car_rental',
+          saleId: orderId,
+          saleType: 'walk_in',
+          invoiceNo: invNo,
+          customer: customerName || null,
+          customerTin: null,
+          lines: [{
+            itemId: carId ? parseInt(carId) : 0,
+            name: carName || 'Car Rental',
+            qty: totalDays,
+            unitPrice: dailyRate,
+            amount: rentalAmount,
+            rate: vatCalc.rate,
+            treatment: vatCalc.treatment
+          }],
+          createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
+        });
+      } catch (err) {
+        logger.error('Failed to record manual car rental invoice:', err.message);
+      }
+
+      // Auto-submit to Finance Live Income for payment verification
+      try {
+        await db('finance_income_submissions').insert({
+          department:   'Car Rental',
+          submitted_by: req.user.fullName || req.user.full_name || 'Car Renting Manager',
+          amount:       totalAmount,
+          reference_no: paymentReference || (proofUrl ? `CAR-PROOF-${orderNumber}` : `CAR-${orderNumber}`),
+          description:  `Car Rental Order ${orderNumber} – ${customerName}`,
+          status:       'Pending',
+          manual_details: JSON.stringify({
+            order_id:         String(orderId),
+            orderNumber,
+            paymentMethod:    paymentMethod || 'Bank/Telebirr',
+            paymentReference: paymentReference || null,
+            proofImagePath:   proofUrl,
+            amount:           totalAmount,
+            receivedFrom:     customerName,
+            // Car / booking details so Finance can see full context
+            carName,
+            licensePlate,
+            pickupDate:   startDate,
+            returnDate:   endDate,
+            totalDays,
+            dailyRate,
+            driverName:   driverName || customerName,
+            pickupLocation: pickupLocation || null
+          }),
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      } catch (err) {
+        logger.error('Failed to submit manual Car Rental to finance live income:', err.message);
+      }
+
+      // Notify Finance
+      sendFinanceNotification({
+        title: 'New Income Submission',
+        message: `ETB ${Number(totalAmount || 0).toLocaleString()} Car Rental order income submitted for verification (Ref: ${paymentReference || `CAR-${orderNumber}`}).`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list',
+        related_entity_id: orderNumber
+      }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
+    }
+
+    carRentalAudit.log(req, isScheduleLater
+      ? 'Rental Order Created (Schedule Later)'
+      : 'Rental Order Created (Manual)', orderNumber, null, {
+      order_number: orderNumber, car_id: carId ? parseInt(carId) : null, customer_name: customerName,
+      total_days: totalDays, daily_rate: dailyRate, rental_amount: rentalAmount, total_amount: totalAmount,
+      payment_method: paymentMethod || 'Bank/Telebirr', status: 'APPROVED', is_manual: true,
+      scheduled_later: !!isScheduleLater, waitlist_id: waitlistId || null
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: isScheduleLater
+        ? 'Reservation created for the waitlist customer. Fill in the pickup/return dates once the vehicle is available.'
+        : 'Car Rental order created and sent to Finance for verification',
+      data: { id: orderId, orderNumber, totalAmount, totalDays, scheduledLater: !!isScheduleLater }
+    });
+  } catch (error) {
+    logger.error('Error creating manual car rental order:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to create order' });
+  }
+};
+
+// ── MANAGER: Schedule-later orders that still need their rental dates set ─────
+// Created for waitlist customers while their car was still rented out. The
+// manager fills in pickup/return dates here (PATCH /:id/dates) once it is free.
+exports.getScheduleLaterOrders = async (req, res) => {
+  try {
+    const orders = await db('rental_orders as ro')
+      .leftJoin('cars as c', 'ro.car_id', 'c.id')
+      .where('ro.scheduled_later', true)
+      .whereNull('ro.deleted_at')
+      .whereNotIn('ro.status', ['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED', 'ABANDONED'])
+      .select(
+        'ro.id', 'ro.order_number', 'ro.customer_name', 'ro.customer_phone',
+        'ro.customer_email', 'ro.car_id', 'ro.payment_method',
+        'ro.payment_status', 'ro.driver_name', 'ro.driver_license', 'ro.pickup_location',
+        'ro.total_days', 'ro.pickup_date', 'ro.return_date',
+        'ro.daily_rate', 'ro.created_at',
+        'c.name as car_name', 'c.availability as car_availability', 'c.daily_rate as car_daily_rate'
+      )
+      .orderBy('ro.created_at', 'desc')
+      .limit(200);
+    res.status(200).json({ status: 'success', data: orders });
+  } catch (error) {
+    logger.error('Error fetching schedule-later car rental orders:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch orders awaiting dates' });
+  }
+};
+
+// ── MANAGER: Set pickup/return dates on a schedule-later order ────────────────
+// Called once the car has returned to 'Available'. This finalizes the booking:
+// computes the amount, mints the invoice, re-marks the car Booked for this
+// (confirmed) customer and converts the waitlist entry.
+exports.setOrderDates = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, dailyRateOverride } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ status: 'error', message: 'Both pickup and return dates are required' });
+    }
+
+    const order = await db('rental_orders').where({ id }).whereNull('deleted_at').first();
+    if (!order) return res.status(404).json({ status: 'error', message: 'Order not found' });
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) return res.status(400).json({ status: 'error', message: 'Return date must be after pickup date' });
+    const totalDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+
+    let dailyRate = parseFloat(dailyRateOverride || order.daily_rate || 0);
+    if (!dailyRateOverride && order.car_id) {
+      const car = await db('cars').where({ id: order.car_id }).first();
+      if (car) dailyRate = parseFloat(car.dailyRate || car.daily_rate || car.price_per_day || 0);
+    }
+    const vatCalc = await vatConfigService.computeVatForItem('car_rental', order.car_id || null, dailyRate * totalDays);
+    const vatAmount = parseFloat(vatCalc.vat.toFixed(2));
+    const rentalAmount = dailyRate * totalDays;
+    const totalAmount = rentalAmount + vatAmount + parseFloat(order.security_deposit || 0);
+
+    await db('rental_orders').where({ id }).update({
+      pickup_date: startDate,
+      return_date: endDate,
+      total_days: totalDays,
+      daily_rate: dailyRate,
+      rental_amount: rentalAmount,
+      subtotal: rentalAmount,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      scheduled_later: false,
+      updated_at: new Date()
+    });
+
+    // Car is now reserved for this (confirmed) customer.
+    if (order.car_id) {
+      await db('cars').where({ id: order.car_id }).update({ availability: 'Booked' });
+    }
+
+    // Mint the invoice now that the amount is known.
     try {
-      const invNo = await generateInvoiceNumber();
+      const car = order.car_id ? await db('cars').where({ id: order.car_id }).select('name').first() : null;
       await recordInvoiceForOrder(db, {
         source: 'car_rental',
-        saleId: orderId,
+        saleId: id,
         saleType: 'walk_in',
-        invoiceNo: invNo,
-        customer: customerName || null,
+        invoiceNo: await generateInvoiceNumber(),
+        customer: order.customer_name || null,
         customerTin: null,
         lines: [{
-          itemId: carId ? parseInt(carId) : 0,
-          name: carName || 'Car Rental',
+          itemId: order.car_id || 0,
+          name: car?.name || 'Car Rental',
           qty: totalDays,
           unitPrice: dailyRate,
           amount: rentalAmount,
@@ -744,66 +929,36 @@ exports.createManualOrder = async (req, res) => {
         createdBy: req.user.fullName || req.user.full_name || 'Car Renting Manager'
       });
     } catch (err) {
-      logger.error('Failed to record manual car rental invoice:', err.message);
+      logger.error('Failed to record car rental invoice on date set:', err.message);
     }
 
-    // Auto-submit to Finance Live Income for payment verification
-    try {
-      await db('finance_income_submissions').insert({
-        department:   'Car Rental',
-        submitted_by: req.user.fullName || req.user.full_name || 'Car Renting Manager',
-        amount:       totalAmount,
-        reference_no: paymentReference || (proofUrl ? `CAR-PROOF-${orderNumber}` : `CAR-${orderNumber}`),
-        description:  `Car Rental Order ${orderNumber} – ${customerName}`,
-        status:       'Pending',
-        manual_details: JSON.stringify({
-          order_id:         String(orderId),
-          orderNumber,
-          paymentMethod:    paymentMethod || 'Bank/Telebirr',
-          paymentReference: paymentReference || null,
-          proofImagePath:   proofUrl,
-          amount:           totalAmount,
-          receivedFrom:     customerName,
-          // Car / booking details so Finance can see full context
-          carName,
-          licensePlate,
-          pickupDate:   startDate,
-          returnDate:   endDate,
-          totalDays,
-          dailyRate,
-          driverName:   driverName || customerName,
-          pickupLocation: pickupLocation || null
-        }),
-        created_at: new Date(),
-        updated_at: new Date()
-      });
-    } catch (err) {
-      logger.error('Failed to submit manual Car Rental to finance live income:', err.message);
-    }
-
-    // Notify Finance
-    sendFinanceNotification({
-      title: 'New Income Submission',
-      message: `ETB ${Number(totalAmount || 0).toLocaleString()} Car Rental order income submitted for verification (Ref: ${paymentReference || `CAR-${orderNumber}`}).`,
-      type: 'finance',
-      link: '/finance/pharmacy-sales?tab=list',
-      related_entity_id: orderNumber
-    }, req.app?.get('io')).catch(e => console.error('Failed to notify finance:', e.message));
-
-    carRentalAudit.log(req, 'Rental Order Created (Manual)', orderNumber, null, {
-      order_number: orderNumber, car_id: carId ? parseInt(carId) : null, customer_name: customerName,
-      total_days: totalDays, daily_rate: dailyRate, rental_amount: rentalAmount, total_amount: totalAmount,
-      payment_method: paymentMethod || 'Bank/Telebirr', status: 'APPROVED', is_manual: true
+    carRentalAudit.log(req, 'Rental Order Dates Set', order.order_number, null, {
+      start_date: startDate, end_date: endDate, total_days: totalDays, total_amount: totalAmount
     });
 
-    res.status(201).json({
+    // The availability request is now fulfilled — this customer is confirmed
+    // for the car. Mark it converted (it stayed 'waiting' until now).
+    if (order.waitlist_id) {
+      try {
+        await db('car_waitlist').where({ id: order.waitlist_id }).update({
+          status: 'converted',
+          converted_order_id: id,
+          converted_at: new Date()
+        });
+      } catch (err) {
+        logger.error('Error converting car waitlist entry on date set:', err.message);
+      }
+    }
+
+    const updated = await db('rental_orders').where({ id }).first();
+    res.status(200).json({
       status: 'success',
-      message: 'Car Rental order created and sent to Finance for verification',
-      data: { id: orderId, orderNumber, totalAmount, totalDays }
+      message: 'Rental dates set. The customer is now booked for this vehicle.',
+      data: updated
     });
   } catch (error) {
-    logger.error('Error creating manual car rental order:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to create order' });
+    logger.error('Error setting car rental order dates:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to set the rental dates' });
   }
 };
 
