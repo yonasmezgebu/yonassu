@@ -216,10 +216,14 @@ const salesController = {
         }
       }
 
-      if (effectiveWorkerId && !is_unsubmitted) {
+      // Always record audit trail for every sale (walk-in shown as UNSUBMITTED, submitted immediately if not is_unsubmitted)
+      if (effectiveWorkerId || branchId) {
         await trx('pharmacy_audit_trail').insert({
-          branch_id, worker_id: effectiveWorkerId, action: payment.status || 'PAID',
-          recipient: payment.recipient_name || 'N/A', amount: payment.amount || totalAmount
+          branch_id,
+          worker_id: effectiveWorkerId,
+          action: is_unsubmitted ? 'PAID' : (payment.status || 'PAID'),
+          recipient: payment.recipient_name || 'Walk-in Customer',
+          amount: payment.amount || totalAmount
         });
       }
 
@@ -230,7 +234,7 @@ const salesController = {
   },
 
   listSales: async (req, res) => {
-    const { branch_id, worker_id, start_date, end_date } = req.query;
+    const { branch_id, worker_id, start_date, end_date, all: showAll } = req.query;
     let query = db('pharmacy_sales')
       .leftJoin('pharmacy_branches', 'pharmacy_sales.branch_id', 'pharmacy_branches.id')
       .leftJoin('pharmacy_workers', 'pharmacy_sales.worker_id', 'pharmacy_workers.id')
@@ -239,13 +243,24 @@ const salesController = {
         'pharmacy_sales.*',
         'pharmacy_branches.name as branch_name',
         'pharmacy_workers.name as worker_name',
-        'pharmacy_payments.payment_method'
+        'pharmacy_payments.payment_method',
+        'pharmacy_payments.bank_name',
+        'pharmacy_payments.account_holder',
+        'pharmacy_payments.account_number',
+        'pharmacy_payments.telbir_number',
+        'pharmacy_payments.recipient_name as payment_recipient_name',
+        'pharmacy_payments.recipient_phone as payment_recipient_phone',
+        'pharmacy_payments.status as payment_status',
+        'pharmacy_payments.receipt_no'
       )
       .orderBy('pharmacy_sales.created_at', 'desc');
 
-    query = query.where(function() {
-      this.where('pharmacy_sales.is_submitted', false).orWhereNull('pharmacy_sales.is_submitted');
-    });
+    // ?all=true shows both submitted and unsubmitted (for manager/finance views)
+    if (!showAll || showAll === 'false') {
+      query = query.where(function() {
+        this.where('pharmacy_sales.is_submitted', false).orWhereNull('pharmacy_sales.is_submitted');
+      });
+    }
 
     if (branch_id) query = query.where('pharmacy_sales.branch_id', branch_id);
     if (worker_id) query = query.where('pharmacy_sales.worker_id', worker_id);
@@ -253,13 +268,23 @@ const salesController = {
     if (end_date) query = query.where('pharmacy_sales.created_at', '<=', new Date(end_date));
     
     const rows = await query;
+    // Attach sale items if there are not too many rows (limit to keep response fast)
+    if (rows.length <= 200) {
+      for (const row of rows) {
+        row.items = await db('pharmacy_sale_items').where({ sale_id: row.id });
+      }
+    }
     res.json({ status: 'success', data: rows });
   },
 
   submitDaily: async (req, res) => {
-    const unsubmitted = await db('pharmacy_sales')
-      .where('is_submitted', false)
-      .orWhereNull('is_submitted');
+    const { branch_id: reqBranchId, worker_name: reqWorkerName } = req.body || {};
+
+    // Fetch all unsubmitted sales (optionally scoped to branch)
+    let salesQuery = db('pharmacy_sales')
+      .where(function() { this.where('is_submitted', false).orWhereNull('is_submitted'); });
+    if (reqBranchId) salesQuery = salesQuery.where('branch_id', reqBranchId);
+    const unsubmitted = await salesQuery;
 
     if (unsubmitted.length === 0) {
       throw new AppError('No pending sales to submit', HTTP_STATUS.BAD_REQUEST);
@@ -269,8 +294,8 @@ const salesController = {
     const totalAmount = unsubmitted.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
 
     let workerId = unsubmitted[0].worker_id;
-    let branchId = unsubmitted[0].branch_id || 1;
-    
+    let branchId = reqBranchId || unsubmitted[0].branch_id || 1;
+
     // Ensure workerId is valid
     let validWorker = await db('pharmacy_workers').where({ id: workerId || 0 }).first();
     if (!validWorker) {
@@ -282,29 +307,115 @@ const salesController = {
         workerId = null;
       }
     }
-    
+    const workerName = reqWorkerName || (validWorker ? validWorker.name : null) ||
+      (req.user ? req.user.fullName || req.user.email : 'Pharmacy Worker');
+
+    // Fetch branch name
+    const branch = await db('pharmacy_branches').where({ id: branchId }).first() ||
+      await db('branches').where({ id: branchId }).first();
+    const branchName = branch ? branch.name : 'Main Pharmacy';
+
+    // Collect full payment details from all unsubmitted sales
+    const saleIds = unsubmitted.map(s => s.id);
+    const payments = await db('pharmacy_payments').whereIn('sale_id', saleIds);
+    const saleItems = await db('pharmacy_sale_items').whereIn('sale_id', saleIds);
+
+    // Build payment breakdown summary
+    const methodBreakdown = {};
+    for (const p of payments) {
+      const m = p.payment_method || 'CASH';
+      if (!methodBreakdown[m]) methodBreakdown[m] = { count: 0, amount: 0 };
+      methodBreakdown[m].count++;
+      methodBreakdown[m].amount += parseFloat(p.amount || 0);
+    }
+
+    // Build a rich snapshot for Finance to verify
+    const financeDetails = {
+      paymentMethod: payments.length > 0 ? (payments[0].payment_method || 'CASH') : 'CASH',
+      receivedFrom: workerName,
+      paymentReference: null,
+      totalTransactions,
+      totalAmount,
+      branchName,
+      workerName,
+      submittedAt: new Date().toISOString(),
+      methodBreakdown,
+      sales: unsubmitted.map(sale => {
+        const pmt = payments.find(p => p.sale_id === sale.id);
+        const items = saleItems.filter(i => i.sale_id === sale.id);
+        return {
+          receipt_no: sale.receipt_no,
+          sale_id: sale.id,
+          amount: sale.total_amount,
+          sale_type: sale.sale_type,
+          customer: sale.recipient_name || 'Walk-in',
+          customer_phone: sale.recipient_phone || null,
+          payment_method: pmt ? pmt.payment_method : 'CASH',
+          bank_name: pmt ? pmt.bank_name : null,
+          account_holder: pmt ? pmt.account_holder : null,
+          account_number: pmt ? pmt.account_number : null,
+          telbir_number: pmt ? pmt.telbir_number : null,
+          reference_no: pmt ? pmt.receipt_no : null,
+          screenshot: pmt ? pmt.screenshot_path : null,
+          items: items.map(i => ({
+            drug_name: i.drug_name,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            subtotal: i.total_price
+          }))
+        };
+      })
+    };
+
     await db.transaction(async (trx) => {
-      // Create audit trail
+      // 1. Audit trail entry
       await trx('pharmacy_audit_trail').insert({
         branch_id: branchId,
         worker_id: workerId,
         action: 'DAILY_SUBMIT',
-        recipient: `Submitted ${totalTransactions} transactions`,
+        recipient: `Submitted ${totalTransactions} transactions — ETB ${totalAmount.toFixed(2)}`,
         amount: totalAmount
       });
 
-      // Mark sales as submitted
+      // 2. Mark all unsubmitted sales as submitted
       await trx('pharmacy_sales')
-        .where('is_submitted', false)
-        .orWhereNull('is_submitted')
+        .whereIn('id', saleIds)
         .update({ is_submitted: true });
-        
-      // Avoid sending to Finance Live Income again to prevent double submission
+
+      // 3. Push to Finance Live Income with all payment details
+      const refNo = `PHARM-${branchName.replace(/\s+/g, '')}-${new Date().toISOString().split('T')[0]}-${Date.now().toString().slice(-5)}`;
+      await trx('finance_income_submissions').insert({
+        department: 'Pharmacy',
+        submitted_by: workerName,
+        amount: totalAmount,
+        reference_no: refNo,
+        description: `Pharmacy Sales Submission — ${totalTransactions} transaction(s) from ${branchName} by ${workerName}`,
+        status: 'Pending',
+        manual_details: JSON.stringify(financeDetails),
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now()
+      });
     });
+
+    // 4. Fire Finance notification
+    try {
+      const { sendFinanceNotification } = require('../../services/notification.service');
+      sendFinanceNotification({
+        title: '💊 Pharmacy Sales Submitted',
+        message: `ETB ${totalAmount.toFixed(2)} — ${totalTransactions} transaction(s) from ${branchName} (by ${workerName}). Awaiting Finance approval.`,
+        type: 'finance',
+        link: '/finance/pharmacy-sales?tab=list'
+      }, req.app?.get('io')).catch(() => {});
+    } catch (_) {}
 
     res.json({
       status: 'success',
-      data: { message: 'Daily sales moved to audit successfully', totalTransactions, totalAmount }
+      data: {
+        message: `Daily sales submitted to Finance successfully! ${totalTransactions} transaction(s) — ETB ${totalAmount.toFixed(2)}`,
+        totalTransactions,
+        totalAmount,
+        branchName
+      }
     });
   },
 
