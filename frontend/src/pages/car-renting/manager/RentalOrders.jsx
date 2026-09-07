@@ -5,7 +5,7 @@ import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   Clock, CheckCircle, XCircle, Car, User,
   Calendar, FileText, Plus, Archive, Trash2, AlertTriangle,
-  Play, Ban, RotateCcw, ListChecks, X,
+  Play, Ban, RotateCcw, ListChecks, X, Bell, CalendarClock,
 } from 'lucide-react';
 import CarRentalOrderDetail  from './CarRentalOrderDetail';
 import CarRentalCreateOrder  from './CarRentalCreateOrder';
@@ -100,10 +100,14 @@ const RentalOrders = () => {
   const [spinning,   setSpinning]   = useState(false);
   const [view,       setView]       = useState('list'); // 'list' | 'detail' | 'create'
   const [selectedId, setSelectedId] = useState(null);
+  const [waitlistState, setWaitlistState] = useState(null);
+  const [waitlist,    setWaitlist]    = useState([]);
+  const [awaiting,    setAwaiting]    = useState([]);
   const [modal,      setModal]      = useState(null);   // { type, order }
   const [form,       setForm]       = useState({
     startNote: '', damageFee: '', fuelFee: '', lateFee: '', odometer: '',
     notes: '', cancelReason: '', status: '', statusNote: '',
+    startDate: '', endDate: '', dailyRate: '',
   });
 
   const toast = useCallback((message, type = 'info') => {
@@ -144,6 +148,26 @@ const RentalOrders = () => {
 
   useEffect(() => { load(filter); }, [filter.page, filter.status, filter.paymentStatus, load]);
 
+  /* ── Availability requests (car waitlist) ── */
+  const loadWaitlist = useCallback(async () => {
+    try {
+      const res = await axios.get('/car-waitlist');
+      const arr = res?.data?.items || res?.data?.list  || res?.data?.rows || (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+      setWaitlist(arr);
+    } catch (_) { /* non-fatal */ }
+  }, []);
+
+  /* ── Orders awaiting dates (schedule-later reservations) ── */
+  const loadAwaiting = useCallback(async () => {
+    try {
+      const res = await axios.get('/rental-orders/schedule-later');
+      const arr = res?.data?.orders || res?.data?.items || (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+      setAwaiting(arr);
+    } catch (_) { /* non-fatal */ }
+  }, []);
+
+  useEffect(() => { loadWaitlist(); loadAwaiting(); }, [loadWaitlist, loadAwaiting]);
+
   /* ── Global navbar search listener ── */
   useEffect(() => {
     const handler = (e) => {
@@ -178,14 +202,26 @@ const RentalOrders = () => {
 
   const handleRefresh = async () => {
     setSpinning(true);
-    await load(filter);
+    await Promise.all([load(filter), loadWaitlist(), loadAwaiting()]);
     setTimeout(() => setSpinning(false), 600);
     toast('Orders refreshed.', 'success');
   };
 
   const openModal = (type, order) => {
-    setForm({ startNote: '', damageFee: '', fuelFee: '', lateFee: '', odometer: '', notes: '', cancelReason: '', status: '', statusNote: '' });
+    setForm({ startNote: '', damageFee: '', fuelFee: '', lateFee: '', odometer: '', notes: '', cancelReason: '', status: '', statusNote: '', startDate: '', endDate: '', dailyRate: '' });
     setModal({ type, order });
+  }; 
+
+  const createOrderFromWaitlist = (w) => {
+    setWaitlistState({
+      carId:          w.car_id,
+      customerName:   w.customer_name,
+      customerPhone:  w.customer_phone,
+      customerEmail:  w.customer_email,
+      customerId:     w.user_id,
+      waitlistId:     w.id,
+    });
+    setView('create');
   };
 
   const runModal = async () => {
@@ -218,9 +254,18 @@ const RentalOrders = () => {
       } else if (m.type === 'delete') {
         const res = await axios.delete(`/rental-orders/${id}`);
         toast(res.message || `${oNum} deleted`, 'success');
+      } else if (m.type === 'dates') {
+        const res = await axios.patch(`/rental-orders/${id}/dates`, {
+          startDate: form.startDate,
+          endDate:   form.endDate,
+          dailyRateOverride: form.dailyRate || null,
+        });
+        toast(res.message || `${oNum} — dates set, booking finalized`, 'success');
       }
       setModal(null);
       load(filter);
+      loadWaitlist();
+      loadAwaiting();
     } catch (err) {
       toast(err?.response?.data?.message || err.message || 'Action failed', 'error');
     }
@@ -247,8 +292,9 @@ const RentalOrders = () => {
   if (view === 'create') {
     return (
       <CarRentalCreateOrder
-        onBack={() => { setView('list'); load(filter); }}
-        onSuccess={() => { setView('list'); load(filter); toast('Manual order created successfully!', 'success'); }}
+        waitlistState={waitlistState}
+        onBack={() => { setWaitlistState(null); setView('list'); load(filter); loadWaitlist(); }}
+        onSuccess={() => { setWaitlistState(null); setView('list'); load(filter); loadWaitlist(); loadAwaiting(); toast('Manual order created successfully!', 'success'); }}
       />
     );
   }
@@ -269,7 +315,7 @@ const RentalOrders = () => {
     const m = modal;
     const o = m.order;
     const oNum = o.orderNumber || o.order_number;
-    const carName = o.carName || (o.car ? `${o.car.brand || ''} ${o.car.model || ''}`.trim() : 'N/A');
+    const carName = o.carName || o.car_name || (o.car ? `${o.car.brand || ''} ${o.car.model || ''}`.trim() : 'N/A');
 
     const titleMap = {
       start:   'Start Rental',
@@ -278,8 +324,9 @@ const RentalOrders = () => {
       status:  'Change Order Status',
       archive: 'Move Order to History',
       delete:  'Delete Order',
+      dates:   'Set Rental Dates (Finalize Reservation)',
     };
-    const iconMap = { start: Play, return: RotateCcw, cancel: Ban, status: ListChecks, archive: Archive, delete: Trash2 };
+    const iconMap = { start: Play, return: RotateCcw, cancel: Ban, status: ListChecks, archive: Archive, delete: Trash2, dates: CalendarClock };
     const Icon = iconMap[m.type];
 
     return (
@@ -372,6 +419,29 @@ const RentalOrders = () => {
                 <p className="ro2-hint ro2-hint--danger"><AlertTriangle size={14} style={{ verticalAlign: 'text-bottom' }} /> This action is irreversible.</p>
               </>
             )}
+
+            {m.type === 'dates' && (
+              <>
+                <p>
+                  The vehicle <strong>{carName}</strong> was still rented when this reservation was created. Once it is free, pick the confirmed pickup and return dates below — the amount, invoice and customer booking are finalized automatically.
+                </p>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="date-start">Pickup date *</label>
+                  <input id="date-start" type="date" className="ro2-input" value={form.startDate} min={new Date().toISOString().split('T')[0]}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
+                </div>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="date-end">Return date *</label>
+                  <input id="date-end" type="date" className="ro2-input" value={form.endDate} min={form.startDate || new Date().toISOString().split('T')[0]}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
+                </div>
+                <div className="ro2-field">
+                  <label className="ro2-label" htmlFor="date-rate">Daily rate (ETB) <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>— optional override</span></label>
+                  <input id="date-rate" type="number" min="0" className="ro2-input" placeholder={`Stored rate: ${fmtMoney(o.daily_rate || o.car_daily_rate || 0)}`} value={form.dailyRate} onChange={e => setForm(f => ({ ...f, dailyRate: e.target.value }))} />
+                  <p className="ro2-hint">Leave empty to use the stored rate on the order.</p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="ro2-modal__actions">
@@ -399,6 +469,9 @@ const RentalOrders = () => {
             )}
             {m.type === 'return' && (
               <button className="ro2-btn ro2-btn--primary" onClick={runModal}><RotateCcw size={15} /> Complete & Release</button>
+            )}
+            {m.type === 'dates' && (
+              <button className="ro2-btn ro2-btn--success" disabled={!form.startDate || !form.endDate} onClick={runModal}><CalendarClock size={15} /> Set Dates & Finalize</button>
             )}
           </div>
         </div>
@@ -483,6 +556,116 @@ const RentalOrders = () => {
           <option value="REJECTED">Rejected</option>
         </select>
         <button className="ro2-btn ro2-btn--primary" onClick={handleSearch}><Search size={15} /> Search</button>
+      </div>
+
+      {/* ── ORDERS AWAITING DATES (schedule-later reservations) ── */}
+      <div className="ro2-card" style={{ marginBottom: '1rem', borderTop: `3px solid hsl(var(--primary-strong))` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.85rem 1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+          <CalendarClock size={16} style={{ color: 'hsl(var(--primary-strong))' }} />
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>Orders Awaiting Dates</h3>
+          <span className="ro2-tag ro2-tag--manual">{awaiting.length}</span>
+          <span className="ro2-meta" style={{ marginLeft: 'auto' }}>Reservations made while the vehicle was still rented — finalize them when the car is free</span>
+        </div>
+        {awaiting.length === 0 ? (
+          <div className="ro2-empty" style={{ padding: '1.25rem' }}>
+            <p className="ro2-empty__hint" style={{ margin: 0 }}>No reservations are waiting for dates right now.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {awaiting.map(o => {
+              const carFree = o.car_availability === 'Available';
+              return (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '0.8rem 1rem', borderBottom: '1px solid hsl(var(--border))', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="ro2-order__id">{o.order_number}</span>
+                      <span className="ro2-tag ro2-tag--manual">HOLD</span>
+                      {carFree && <span style={{ color: 'hsl(var(--success))', fontSize: 11, fontWeight: 800 }}>● Car is free now</span>}
+                    </div>
+                    <div className="ro2-meta" style={{ marginTop: 2 }}>
+                      <User size={12} /> {o.customer_name} · {o.customer_phone || ''}
+                    </div>
+                    <div className="ro2-meta"><Car size={12} /> {o.car_name || 'N/A'} · {fmtMoney(o.daily_rate || o.car_daily_rate || 0)} ETB/day {o.pickup_location ? `· Pickup: ${o.pickup_location}` : ''}</div>
+                    <div className="ro2-meta ro2-muted">Requested {fmtDate(o.created_at || o.createdAt)}</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto' }}>
+                    <button className="ro2-btn ro2-btn--primary ro2-btn--sm" onClick={() => openModal('dates', o)}>
+                      <CalendarClock size={13} /> Set Dates & Finalize
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── AVAILABILITY REQUESTS (car waitlist) ── */}
+      <div className="ro2-card" style={{ marginBottom: '1rem', borderTop: `3px solid #2563eb` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.85rem 1rem', borderBottom: '1px solid hsl(var(--border))' }}>
+          <Bell size={16} style={{ color: '#2563eb' }} />
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>Availability Requests</h3>
+          <span className="ro2-tag ro2-tag--manual">{waitlist.length}</span>
+          <span className="ro2-meta" style={{ marginLeft: 'auto' }}>Customers who asked to be called when a busy / maintenance vehicle is free</span>
+        </div>
+        {waitlist.length === 0 ? (
+          <div className="ro2-empty" style={{ padding: '1.25rem' }}>
+            <p className="ro2-empty__hint" style={{ margin: 0 }}>Nobody has requested availability alerts yet.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {waitlist.map(w => {
+              const isWaiting = w.status === 'waiting';
+              return (
+                <div key={w.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '0.8rem 1rem', borderBottom: '1px solid hsl(var(--border))', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span><Car size={13} style={{ verticalAlign: 'text-bottom' }} /> {w.car_name || 'N/A'}</span>
+                      <span className={`ro2-badge ro2-badge--${isWaiting ? 'pending' : 'approved'}`} style={{ padding: '2px 8px', fontSize: 11 }}>
+                        {isWaiting ? 'WAITING' : 'NOTIFIED'}
+                      </span>
+                      {w.car_availability && <span className="ro2-meta">{w.car_availability}</span>}
+                    </div>
+                    <div className="ro2-meta" style={{ marginTop: 2 }}>
+                      <User size={12} /> {w.customer_name} · {w.customer_phone}{w.customer_email ? ` · ${w.customer_email}` : ''}
+                    </div>
+                    <div className="ro2-meta">
+                      Driver: {w.driver_name || '—'}{w.driver_license ? ` · License: ${w.driver_license}` : ''}
+                      {w.pickup_location ? ` · Pickup: ${w.pickup_location}` : ''}
+                    </div>
+                    {w.message && <div className="ro2-meta ro2-muted"><FileText size={12} /> {w.message}</div>}
+                    <div className="ro2-meta ro2-muted">Asked {fmtDate(w.created_at || w.createdAt)} · {w.preferred_start_date || w.preferred_end_date ? `Preferred: ${fmtDate(w.preferred_start_date)} → ${fmtDate(w.preferred_end_date)}` : ''}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button className="ro2-btn ro2-btn--success ro2-btn--sm" onClick={() => createOrderFromWaitlist(w)}>
+                      <Plus size={13} /> Create Order
+                    </button>
+                    {isWaiting && (
+                      <button
+                        className="ro2-btn ro2-btn--outline ro2-btn--sm"
+                        onClick={async () => {
+                          try { await axios.patch(`/car-waitlist/${w.id}`, { status: 'notified' }); toast('Marked as notified — customer has been contacted.', 'success'); loadWaitlist(); }
+                          catch (err) { toast(err?.response?.data?.message || err.message || 'Action failed', 'error'); }
+                        }}
+                      >
+                        <Bell size={13} /> Mark Notified
+                      </button>
+                    )}
+                    <button
+                      className="ro2-btn ro2-btn--danger ro2-btn--sm"
+                      onClick={async () => {
+                        try { await axios.delete(`/car-waitlist/${w.id}`); toast('Availability request removed.', 'success'); loadWaitlist(); }
+                        catch (err) { toast(err?.response?.data?.message || err.message || 'Action failed', 'error'); }
+                      }}
+                    >
+                      <Trash2 size={13} /> Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── TABLE ── */}
