@@ -39,6 +39,7 @@ const tds = { padding: '7px 10px', fontSize: 12, color: '#374151' };
 
 function SaleRow({ sale, idx }) {
   const [open, setOpen] = useState(false);
+  const isSubmitted = !!sale.is_submitted;
   return (
     <>
       <tr style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
@@ -46,10 +47,19 @@ function SaleRow({ sale, idx }) {
         <td style={td}>{fmtDate(sale.created_at)}</td>
         <td style={td}>{sale.worker_name || sale.cashier_name || '—'}</td>
         <td style={td}>{sale.branch_name || sale.branch_id || '—'}</td>
-        <td style={td}>{sale.customer_name || 'Walk-in'}</td>
+        <td style={td}>{sale.recipient_name || 'Walk-in'}</td>
+        <td style={td}>
+          <span style={{
+            background: isSubmitted ? '#dbeafe' : '#fef9c3',
+            color: isSubmitted ? '#1e40af' : '#854d0e',
+            borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 600
+          }}>
+            {isSubmitted ? '✅ Submitted' : '⏳ Pending'}
+          </span>
+        </td>
         <td style={td}>
           <span style={{ background: '#dcfce7', color: '#166534', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-            {sale.payment_status || sale.status || '—'}
+            {sale.payment_method || sale.payment_status || '—'}
           </span>
         </td>
         <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#059669' }}>{fmt(sale.total_amount)} ETB</td>
@@ -57,11 +67,14 @@ function SaleRow({ sale, idx }) {
       </tr>
       {open && (
         <tr>
-          <td colSpan={8} style={{ background: '#f1f5f9', padding: '12px 20px' }}>
+          <td colSpan={9} style={{ background: '#f1f5f9', padding: '12px 20px' }}>
             <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
-              <strong>Payment Method:</strong> {sale.payment_method || '—'} &nbsp;·&nbsp;
-              <strong>Sale Type:</strong> {sale.sale_type || 'walk_in'} &nbsp;·&nbsp;
+              <strong>Payment:</strong> {sale.payment_method || '—'} &nbsp;·&nbsp;
+              <strong>Sale Type:</strong> {sale.sale_type || 'WALK-IN'} &nbsp;·&nbsp;
               <strong>Receipt:</strong> {sale.receipt_no || '—'}
+              {sale.bank_name && <>&nbsp;·&nbsp;<strong>Bank:</strong> {sale.bank_name} — {sale.account_number || ''}</>}
+              {sale.telbir_number && <>&nbsp;·&nbsp;<strong>TeleBirr:</strong> {sale.telbir_number}</>}
+              {sale.account_holder && <>&nbsp;·&nbsp;<strong>Account Holder:</strong> {sale.account_holder}</>}
             </div>
             {sale.items && sale.items.length > 0 && (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -79,7 +92,7 @@ function SaleRow({ sale, idx }) {
                       <td style={tds}>{it.drug_name}</td>
                       <td style={{ ...tds, textAlign: 'right' }}>{it.quantity}</td>
                       <td style={{ ...tds, textAlign: 'right' }}>{fmt(it.unit_price)}</td>
-                      <td style={{ ...tds, textAlign: 'right', fontWeight: 600 }}>{fmt(it.subtotal)}</td>
+                      <td style={{ ...tds, textAlign: 'right', fontWeight: 600 }}>{fmt(it.total_price || it.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -156,12 +169,13 @@ export default function PharmacyManagerSales() {
   const [sales, setSales]         = useState([]);
   const [audit, setAudit]         = useState([]);
   const [loading, setLoading]     = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch]       = useState('');
 
   const loadSales = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/pharmacy/sales?limit=200');
+      const res = await apiClient.get('/pharmacy/sales?all=true&limit=200');
       setSales(Array.isArray(res.data) ? res.data : (res.data?.sales || res.data?.data || []));
     } catch (e) { console.error('Failed to load sales', e); }
     finally { setLoading(false); }
@@ -175,6 +189,22 @@ export default function PharmacyManagerSales() {
     } catch (e) { console.error('Failed to load audit trail', e); }
     finally { setLoading(false); }
   }, []);
+
+  const handleSubmitToFinance = async () => {
+    const pending = sales.filter(s => !s.is_submitted);
+    if (pending.length === 0) { alert('No pending sales to submit.'); return; }
+    if (!window.confirm(`Submit ${pending.length} sale(s) to Finance for verification?`)) return;
+    setSubmitting(true);
+    try {
+      const res = await apiClient.post('/pharmacy/sales/submit-daily', {});
+      alert(res?.data?.message || 'Submitted to Finance successfully!');
+      await loadSales(); await loadAudit();
+    } catch (e) {
+      alert(e.message || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => { loadSales(); loadAudit(); }, [loadSales, loadAudit]);
 
@@ -200,19 +230,39 @@ export default function PharmacyManagerSales() {
   const todaySales   = sales.filter(s => new Date(s.created_at).toDateString() === new Date().toDateString());
   const todayRevenue = todaySales.reduce((s, x) => s + parseFloat(x.total_amount || 0), 0);
 
+  const pendingCount = sales.filter(s => !s.is_submitted).length;
+  const submittedCount = sales.filter(s => !!s.is_submitted).length;
+
   return (
     <div style={{ padding: 24, fontFamily: 'Inter, sans-serif', minHeight: '100vh', background: '#f8fafc' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>💊 Worker Sales Overview</h1>
-        <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: 14 }}>View-only — All pharmacy worker sales and audit trail</p>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>💊 Worker Sales Overview</h1>
+          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: 14 }}>All pharmacy worker sales and audit trail</p>
+        </div>
+        {pendingCount > 0 && (
+          <button
+            onClick={handleSubmitToFinance}
+            disabled={submitting}
+            style={{
+              background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '10px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8, opacity: submitting ? 0.7 : 1
+            }}
+          >
+            📤 {submitting ? 'Submitting...' : `Submit ${pendingCount} Sale(s) to Finance`}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Transactions', value: sales.length, color: '#2563eb', icon: '🛒' },
           { label: 'Total Revenue', value: `${fmt(totalRevenue)} ETB`, color: '#059669', icon: '💰' },
-          { label: "Today's Sales", value: todaySales.length, color: '#7c3aed', icon: '📅' },
-          { label: "Today's Revenue", value: `${fmt(todayRevenue)} ETB`, color: '#d97706', icon: '💵' },
+          { label: 'Pending Submission', value: pendingCount, color: '#d97706', icon: '⏳' },
+          { label: 'Submitted to Finance', value: submittedCount, color: '#7c3aed', icon: '✅' },
+          { label: "Today's Sales", value: todaySales.length, color: '#0891b2', icon: '📅' },
+          { label: "Today's Revenue", value: `${fmt(todayRevenue)} ETB`, color: '#dc2626', icon: '💵' },
         ].map(card => (
           <div key={card.label} style={{ background: '#fff', borderRadius: 10, padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,.07)', borderLeft: `4px solid ${card.color}` }}>
             <div style={{ fontSize: 22 }}>{card.icon}</div>
@@ -258,14 +308,14 @@ export default function PharmacyManagerSales() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#1e1b4b' }}>
-                  {['ID', 'Date & Time', 'Worker', 'Branch', 'Customer', 'Status', 'Total', ''].map(h => <th key={h} style={th}>{h}</th>)}
+                  {['ID', 'Date & Time', 'Worker', 'Branch', 'Customer', 'Status', 'Payment', 'Total', ''].map(h => <th key={h} style={th}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading…</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Loading…</td></tr>
                 ) : filteredSales.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No sales records found.</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No sales records found.</td></tr>
                 ) : filteredSales.map((s, i) => <SaleRow key={s.id} sale={s} idx={i} />)}
               </tbody>
             </table>
