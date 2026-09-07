@@ -27,20 +27,6 @@ exports.joinWaitlist = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'A valid Ethiopian phone number (09xxxxxxxx) is required so we can call you.' });
     }
 
-    // You can only join the list when the car is NOT free — if it is bookable,
-    // reserve it directly instead.
-    if (car.availability === 'Available') {
-      const freeNow = !(await db('rental_orders')
-        .where({ car_id: carId })
-        .whereIn('status', ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'ACTIVE', 'ON_TRIP'])
-        .whereNull('deleted_at')
-        .select('id')
-        .first());
-      if (freeNow) {
-        return res.status(400).json({ status: 'error', message: `"${car.name}" is available right now — please reserve it directly.` });
-      }
-    }
-
     // One active request per customer + car.
     const dup = await db('car_waitlist')
       .where({ user_id: req.user.id, car_id: carId, status: 'waiting' })
@@ -84,8 +70,10 @@ exports.joinWaitlist = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
-      message: 'You have been added to the availability list. We will call and notify you the moment the vehicle is free.',
-      data: { id, status: 'waiting', carName: car.name }
+      message: car.availability === 'Available'
+        ? `Your request for "${car.name}" was recorded. The vehicle is currently available — you can reserve it directly online too.`
+        : 'You have been added to the availability list. We will call and notify you the moment the vehicle is free.',
+      data: { id, status: 'waiting', carName: car.name, availability: car.availability }
     });
   } catch (error) {
     logger.error('Error joining car rental waitlist:', error);
@@ -106,9 +94,27 @@ exports.myWaitlist = async (req, res) => {
         'w.driver_name', 'w.driver_license', 'w.pickup_location',
         'w.preferred_start_date', 'w.preferred_end_date', 'w.message',
         'w.status', 'w.notified_at', 'w.converted_at', 'w.created_at',
-        'c.name as car_name'
+        'c.name as car_name', 'c.availability as car_availability',
+        'c.daily_rate as car_daily_rate', 'c.image1 as car_image'
       );
-    res.status(200).json({ status: 'success', data: rows });
+
+    // Next free date — same schedule logic the fleet gallery shows
+    // (latest expected return among live rentals).
+    const releaseRows = await db('rental_orders')
+      .whereNull('deleted_at')
+      .whereNotIn('status', ['COMPLETED', 'CLOSED', 'CANCELLED', 'REJECTED', 'ABANDONED'])
+      .whereIn('car_id', rows.map(r => r.car_id).filter(Boolean))
+      .select('car_id', db.raw('MAX(COALESCE(extended_return_date, return_date)) as release_date'))
+      .groupBy('car_id');
+    const releaseByCar = {};
+    releaseRows.forEach(r => { releaseByCar[r.car_id] = r.release_date; });
+
+    const data = rows.map(r => ({ ...r,
+      car_availability: r.car_availability || 'Available',
+      bookingEndDate: releaseByCar[r.car_id] || null
+    }));
+
+    res.status(200).json({ status: 'success', data });
   } catch (error) {
     logger.error('Error fetching my car rental waitlist:', error);
     res.status(500).json({ status: 'error', message: 'Failed to load your availability list' });
