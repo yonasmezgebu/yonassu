@@ -8,6 +8,7 @@ import CustomerFarmingOrders  from './CustomerFarmingOrders';
 import CustomerPrintingOrders from './CustomerPrintingOrders';
 import CustomerRetailOrders   from './CustomerRetailOrders';
 import CustomerRentals        from './CustomerRentals';
+import CustomerAvailabilityRequests from './CustomerAvailabilityRequests';
 import CustomerPrescriptions  from './CustomerPrescriptions';
 import CustomerBids           from './CustomerBids';
 import CustomerInvoices       from './CustomerInvoices';
@@ -27,6 +28,7 @@ const CustomerPortal = () => {
         { label: 'AgriRent Orders',   path: '/customer/farming-orders',  icon: 'leaf',          color: '#059669' },
         { label: 'Retail Orders',    path: '/customer/retail-orders',   icon: 'package',       color: '#d97706' },
         { label: 'Car Rentals',      path: '/customer/rentals',         icon: 'car',           color: '#8b5cf6' },
+        { label: 'Availability Requests', path: '/customer/availability-requests', icon: 'inbox', color: '#2563eb' },
         { label: 'Pharmacy',         path: '/customer/prescriptions',   icon: 'pill',          color: '#ec4899' },
         { label: 'Tender Bids',      path: '/customer/bids',            icon: 'award',         color: '#eab308' },
       ],
@@ -66,6 +68,7 @@ const CustomerPortal = () => {
         <Route path="farming-orders"  element={<CustomerFarmingOrders />} />
         <Route path="retail-orders"   element={<CustomerRetailOrders />} />
         <Route path="rentals"         element={<CustomerRentals />} />
+        <Route path="availability-requests" element={<CustomerAvailabilityRequests />} />
         <Route path="prescriptions"   element={<CustomerPrescriptions />} />
         <Route path="bids"            element={<CustomerBids />} />
 
