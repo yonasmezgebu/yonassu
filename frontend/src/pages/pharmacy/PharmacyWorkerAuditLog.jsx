@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../services/apiClient';
+import { useAuth } from '../../hooks/useAuth';
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 const fmt = (n) =>
@@ -186,6 +187,8 @@ const tdS = { padding: '8px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 
 
 /* ── Main component ─────────────────────────────────────────────────────── */
 export default function PharmacyWorkerAuditLog() {
+  const { user } = useAuth();
+  const [workerId, setWorkerId]       = useState(null);
   const [logs, setLogs]               = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -195,6 +198,21 @@ export default function PharmacyWorkerAuditLog() {
   const [timeFilter, setTimeFilter]   = useState('ALL');
   const [activityFilter, setActivityFilter] = useState('ALL');
   const PAGE_SIZE = 30;
+
+  useEffect(() => {
+    const fetchWorker = async () => {
+      try {
+        if (user?.id) {
+          const res = await apiClient.get('/pharmacy/workers');
+          if (res.data) {
+            const me = res.data.find(w => w.user_id === user.id);
+            if (me) setWorkerId(me.id);
+          }
+        }
+      } catch (e) { console.error('Failed to fetch worker:', e); }
+    };
+    fetchWorker();
+  }, [user]);
 
   useEffect(() => {
     const handleDashSearch = (e) => {
@@ -208,12 +226,15 @@ export default function PharmacyWorkerAuditLog() {
   }, []);
 
   const fetchLogs = useCallback(async () => {
+    // Only fetch once we know the workerId, or if we confirmed there isn't one
+    if (workerId === null && user?.id) return;
+    
     setLoading(true);
     try {
-      // Fetch up to 1000 so we can comfortably filter locally for quarterly reports
-      const res = await apiClient.get('/pharmacy/audit-trail', {
-        params: { search, limit: 1000 },
-      });
+      const params = { search, limit: 1000 };
+      if (workerId) params.worker_id = workerId;
+      
+      const res = await apiClient.get('/pharmacy/audit-trail', { params });
       const data = Array.isArray(res?.data) ? res.data
                  : Array.isArray(res?.data?.data) ? res.data.data
                  : Array.isArray(res) ? res : [];
@@ -223,7 +244,7 @@ export default function PharmacyWorkerAuditLog() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, workerId, user]);
 
   useEffect(() => {
     const t = setTimeout(fetchLogs, 300);
