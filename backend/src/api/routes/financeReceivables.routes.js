@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth.middleware');
 const { sendFinanceNotification, sendPrintingNotification, sendCustomerNotification } = require('../../services/notification.service');
 const { recordIncomeToLedger, normalizePaymentMethod } = require('../../utils/financeIncome.service');
 const { generateInvoiceNumber, generateReceiptNumber } = require('../../utils/orderNumber');
+const vatConfigService = require('../../services/vatConfig.service');
 
 // Record an approved income into the canonical finance ledger (CRV + cashbook +
 // revenue book) so it shows up in the Revenue Book, Accounts and Reconciliation.
@@ -78,6 +79,25 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
     const invoiceNo = await generateInvoiceNumber();
     const saleType = normalizePaymentMethod(paymentMethod) === 'Cash' ? 'walk_in' : 'online';
 
+    // Determine correct tax treatment using vatConfigService. We treat the collected `amount` as the grand total.
+    let rate = 0.15;
+    let treatment = 'standard';
+    try {
+      const eff = await vatConfigService.effectiveRateFor(source, saleId);
+      if (eff) {
+        rate = eff.rate;
+        treatment = eff.treatment;
+      } else {
+        const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: 1 }).orderBy('updated_at', 'desc').first();
+        if (std) rate = parseFloat(std.rate);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch effective rate, defaulting to 15% standard', e.message);
+    }
+
+    const subtotal = amount / (1 + rate);
+    const vat = amount - subtotal;
+
     await trx('sales_invoices').insert({
       id: invoiceId,
       invoice_no: invoiceNo,
@@ -85,12 +105,12 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
       sale_id: saleId,
       customer_name: customer || 'Walk-in Customer',
       customer_tin: null,
-      subtotal: amount,
-      vat_standard: 0,
-      vat_standard_rate: 0.15,
-      vat_exempt: 0,
-      vat_zero_rated: 0,
-      vat_total: 0,
+      subtotal: subtotal,
+      vat_standard: treatment === 'standard' ? vat : 0,
+      vat_standard_rate: rate,
+      vat_exempt: treatment === 'exempt' ? vat : 0,
+      vat_zero_rated: treatment === 'zero_rated' || treatment === 'zero-rated' ? vat : 0,
+      vat_total: vat,
       total_amount: amount,
       status: 'active',
       created_by_name: receivedBy || 'Finance',
@@ -102,12 +122,12 @@ const ensureInvoiceAndReceipt = async (trx, { source, saleId, customer, amount, 
       item_id: saleId,
       name: (description || 'Approved Income').slice(0, 255),
       qty: 1,
-      unit_price: amount,
+      unit_price: subtotal,
       cost_price: 0,
-      treatment: 'zero_rated',
-      rate: 0,
-      vat_amount: 0,
-      subtotal: amount,
+      treatment: treatment,
+      rate: rate,
+      vat_amount: vat,
+      subtotal: subtotal,
       total: amount,
     });
 
@@ -154,6 +174,25 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
       const invoiceId = `${source}-${orderId}-${Date.now().toString().slice(-4)}`;
       const invoiceNo = await generateInvoiceNumber();
       const saleType = normalizePaymentMethod(md.paymentMethod || 'Cash') === 'Cash' ? 'walk_in' : 'online';
+      
+      let rate = 0.15;
+      let treatment = 'standard';
+      try {
+        const eff = await vatConfigService.effectiveRateFor(source, String(orderId));
+        if (eff) {
+          rate = eff.rate;
+          treatment = eff.treatment;
+        } else {
+          const std = await trx('vat_configurations').where({ treatment: 'standard', is_active: 1 }).orderBy('updated_at', 'desc').first();
+          if (std) rate = parseFloat(std.rate);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch effective rate for invoice backfill', e.message);
+      }
+
+      const subtotal = amount / (1 + rate);
+      const vat = amount - subtotal;
+
       await trx('sales_invoices').insert({
         id: invoiceId,
         invoice_no: invoiceNo,
@@ -161,12 +200,12 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
         sale_id: String(orderId),
         customer_name: md.receivedFrom || `Internal - ${department}`,
         customer_tin: null,
-        subtotal: amount,
-        vat_standard: 0,
-        vat_standard_rate: 0.15,
-        vat_exempt: 0,
-        vat_zero_rated: 0,
-        vat_total: 0,
+        subtotal: subtotal,
+        vat_standard: treatment === 'standard' ? vat : 0,
+        vat_standard_rate: rate,
+        vat_exempt: treatment === 'exempt' ? vat : 0,
+        vat_zero_rated: treatment === 'zero_rated' || treatment === 'zero-rated' ? vat : 0,
+        vat_total: vat,
         total_amount: amount,
         status: 'active',
         created_by_name: receivedBy || 'Finance',
@@ -177,12 +216,12 @@ const ensureReceiptForInvoicedSubmission = async (trx, { department, manualDetai
         item_id: orderId,
         name: (`${department} income`).slice(0, 255),
         qty: 1,
-        unit_price: amount,
+        unit_price: subtotal,
         cost_price: 0,
-        treatment: 'zero_rated',
-        rate: 0,
-        vat_amount: 0,
-        subtotal: amount,
+        treatment: treatment,
+        rate: rate,
+        vat_amount: vat,
+        subtotal: subtotal,
         total: amount,
       });
       invoice = await trx('sales_invoices').where({ id: invoiceId }).first();
@@ -411,31 +450,60 @@ router.get('/live-income/:id/detail', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Submission not found' });
     }
 
-    let transactions = [];
+    // For Pharmacy dept — use the sales snapshot from manual_details if present (new format),
+    // otherwise fall back to querying pharmacy_sales directly (legacy format)
+    if (submission.department === 'Pharmacy') {
+      let parsedDetails = null;
+      if (submission.manual_details) {
+        try { parsedDetails = typeof submission.manual_details === 'string'
+          ? JSON.parse(submission.manual_details) : submission.manual_details; } catch (_) {}
+      }
 
-    // For Pharmacy dept — fetch the real individual sale transactions if it's not a manual walk-in
-    if (submission.department === 'Pharmacy' && !submission.manual_details) {
-      const sales = await knex('pharmacy_sales as ps')
-        .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
-        .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
-        .leftJoin('pharmacy_payments as pp', 'ps.id', 'pp.sale_id')
-        .where('ps.is_submitted', true)
-        .select(
-          'ps.id', 'ps.receipt_no', 'ps.sale_type', 'ps.recipient_name',
-          'ps.recipient_phone', 'ps.total_products', 'ps.total_amount', 'ps.created_at',
-          'pw.name as worker_name', 'pb.name as branch_name', 'pp.payment_method',
-          'pp.bank_name', 'pp.account_holder', 'pp.account_number', 'pp.telbir_number',
-          'pp.recipient_name as pp_recipient_name', 'pp.recipient_phone as pp_recipient_phone'
-        )
-        .orderBy('ps.created_at', 'asc');
+      if (parsedDetails && Array.isArray(parsedDetails.sales)) {
+        // New format: rich snapshot embedded in manual_details
+        transactions = parsedDetails.sales.map(s => ({
+          id: s.sale_id,
+          receipt_no: s.receipt_no,
+          sale_type: s.sale_type,
+          recipient_name: s.customer,
+          recipient_phone: s.customer_phone,
+          total_amount: s.amount,
+          payment_method: s.payment_method,
+          bank_name: s.bank_name,
+          account_holder: s.account_holder,
+          account_number: s.account_number,
+          telbir_number: s.telbir_number,
+          reference_no: s.reference_no,
+          screenshot: s.screenshot,
+          worker_name: parsedDetails.workerName,
+          branch_name: parsedDetails.branchName,
+          items: s.items || []
+        }));
+      } else {
+        // Legacy: query pharmacy_sales directly
+        const sales = await knex('pharmacy_sales as ps')
+          .leftJoin('pharmacy_workers as pw', 'ps.worker_id', 'pw.id')
+          .leftJoin('pharmacy_branches as pb', 'ps.branch_id', 'pb.id')
+          .leftJoin('pharmacy_payments as pp', 'ps.id', 'pp.sale_id')
+          .where('ps.is_submitted', true)
+          .select(
+            'ps.id', 'ps.receipt_no', 'ps.sale_type', 'ps.recipient_name',
+            'ps.recipient_phone', 'ps.total_products', 'ps.total_amount', 'ps.created_at',
+            'pw.name as worker_name', 'pb.name as branch_name', 'pp.payment_method',
+            'pp.bank_name', 'pp.account_holder', 'pp.account_number', 'pp.telbir_number',
+            'pp.recipient_name as pp_recipient_name', 'pp.recipient_phone as pp_recipient_phone'
+          )
+          .orderBy('ps.created_at', 'asc');
 
-      for (const sale of sales) {
-        const items = await knex('pharmacy_sale_items')
-          .where('sale_id', sale.id)
-          .select('drug_name', 'quantity', 'unit_price', 'total_price');
-        transactions.push({ ...sale, items });
+        for (const sale of sales) {
+          const items = await knex('pharmacy_sale_items')
+            .where('sale_id', sale.id)
+            .select('drug_name', 'quantity', 'unit_price', 'total_price');
+          transactions.push({ ...sale, items });
+        }
       }
     }
+
 
     // For Retail dept — fetch submitted retail_transactions
     if (submission.department === 'Retail') {
