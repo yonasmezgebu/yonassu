@@ -56,22 +56,27 @@ const SECTION_TITLE = {
 };
 
 /* ─────────────── MAIN COMPONENT ─────────────── */
-const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
+const CarRentalCreateOrder = ({ onBack, onSuccess, waitlistState }) => {
   const fileRef = useRef(null);
 
   const [cars, setCars] = useState([]);
   const [form, setForm] = useState({
-    carId:           '',
+    carId:           waitlistState?.carId ? String(waitlistState.carId) : '',
     startDate:       '',
     endDate:         '',
     pickupLocation:  '',
     notes:           '',
     paymentMethod:   'Telebirr',
     paymentReference:'',
-    customerName:    '',
-    customerPhone:   '',
-    customerEmail:   '',
+    customerName:    waitlistState?.customerName || '',
+    customerPhone:   waitlistState?.customerPhone || '',
+    customerEmail:   waitlistState?.customerEmail || '',
   });
+  const [scheduleLater, setScheduleLater] = useState(
+    // Prefer schedule-later when opened straight from the availability request
+    // (the vehicle is still rented; dates come later once it is free).
+    !!waitlistState?.waitlistId
+  );
   const [screenshotFile,    setScreenshotFile]    = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [pricing,           setPricing]           = useState(null);
@@ -86,24 +91,24 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4500);
   };
 
-  /* ── Load available cars ── */
+  /* ── Load cars (all of them — schedule-later holds can target a booked car) ── */
   useEffect(() => {
     api.get('/cars').then(res => {
       const list = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
-      setCars(list.filter(c => c.availability !== 'Maintenance' && c.availability !== 'Booked'));
+      setCars(list);
     }).catch(() => {});
   }, []);
 
   /* ── Auto-compute pricing ── */
   useEffect(() => {
-    if (!form.startDate || !form.endDate || !form.carId) { setPricing(null); return; }
+    if (scheduleLater || !form.startDate || !form.endDate || !form.carId) { setPricing(null); return; }
     const start = new Date(form.startDate), end = new Date(form.endDate);
     if (end <= start) { setPricing(null); return; }
     const days     = Math.max(1, Math.ceil((end - start) / 86400000));
     const car      = cars.find(c => String(c.id) === String(form.carId));
     const dailyRate = carRate(car);
     setPricing({ days, dailyRate, total: days * dailyRate, carName: carLabel(car) });
-  }, [form.startDate, form.endDate, form.carId, cars]);
+  }, [form.startDate, form.endDate, form.carId, cars, scheduleLater]);
 
   const handleScreenshot = (e) => {
     const file = e.target.files[0];
@@ -119,12 +124,12 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.carId)          { toast('Please select a car.', 'error'); return; }
-    if (!form.startDate)      { toast('Start date is required.', 'error'); return; }
-    if (!form.endDate)        { toast('End date is required.', 'error'); return; }
-    if (new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
+    if (!scheduleLater && !form.startDate)      { toast('Start date is required.', 'error'); return; }
+    if (!scheduleLater && !form.endDate)        { toast('End date is required.', 'error'); return; }
+    if (!scheduleLater && new Date(form.endDate) <= new Date(form.startDate)) { toast('End date must be after start date.', 'error'); return; }
     if (!form.customerName)   { toast('Customer name is required.', 'error'); return; }
     if (!form.customerPhone)  { toast('Customer phone is required.', 'error'); return; }
-    if (!form.paymentReference && !screenshotFile) {
+    if (!scheduleLater && !form.paymentReference && !screenshotFile) {
       toast('Provide a payment reference or upload a payment screenshot.', 'error'); return;
     }
 
@@ -134,6 +139,11 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
       Object.entries(form).forEach(([k, v]) => { if (v !== '') formData.append(k, v); });
       formData.set('carId',   parseInt(form.carId));
       formData.set('isManual', 'true');
+      if (waitlistState?.customerId) formData.set('customerId', waitlistState.customerId);
+      if (scheduleLater) {
+        formData.set('scheduleLater', 'true');
+        if (waitlistState?.waitlistId) formData.set('waitlistId', waitlistState.waitlistId);
+      }
       if (screenshotFile) formData.append('paymentProof', screenshotFile);
 
       const res = await api.post('/rental-orders/manual', formData, {
@@ -142,7 +152,7 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
 
       if (res.status === 'success' || res.status === 201 || res.id) {
         const orderNum = res.data?.orderNumber || res.orderNumber || '';
-        toast(`Order ${orderNum} created successfully!`, 'success');
+        toast(scheduleLater ? 'Reservation created — set dates once the car is available.' : `Order ${orderNum} created successfully!`, 'success');
         setLoading(false);
         setTimeout(() => onSuccess && onSuccess(), 1500);
       } else {
@@ -191,7 +201,11 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
               <Car size={22} color={C.sage} />
               <span style={{ color: '#fff', fontWeight: 800, fontSize: 17 }}>New Manual Car Rental Order</span>
             </div>
-            <div style={{ color: C.sage, fontSize: 12, fontWeight: 500 }}>Register a walk-in or phone-in rental booking</div>
+            <div style={{ color: C.sage, fontSize: 12, fontWeight: 500 }}>
+              {waitlistState?.waitlistId
+                ? 'Converting the customer availability request into a car rental order (dates set once the vehicle is free)'
+                : 'Register a walk-in or phone-in rental booking'}
+            </div>
           </div>
         </div>
       </div>
@@ -237,14 +251,17 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
               <label style={LABEL}><Car size={12} /> Select Vehicle *</label>
               <div style={{ position: 'relative' }}>
                 <select value={form.carId} onChange={e => setForm(f => ({ ...f, carId: e.target.value }))}
-                  style={{ ...fInput('carId'), appearance: 'none', paddingRight: 36, cursor: 'pointer' }}
+                  disabled={!!waitlistState?.waitlistId}
+                  style={{ ...fInput('carId'), appearance: 'none', paddingRight: 36, cursor: waitlistState?.waitlistId ? 'not-allowed' : 'pointer', opacity: waitlistState?.waitlistId ? 0.75 : 1 }}
                   onFocus={() => setFocusedField('carId')} onBlur={() => setFocusedField('')}>
-                  <option value="">— Choose an available vehicle —</option>
-                  {cars.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {carLabel(c)} · {c.carType || ''} · {carRate(c).toFixed(0)} ETB/day
-                    </option>
-                  ))}
+                  <option value="">— Choose a vehicle —</option>
+                  {cars
+                    .filter(c => scheduleLater || c.availability === 'Available')
+                    .map(c => (
+                      <option key={c.id} value={c.id}>
+                        {carLabel(c)} · {c.carType || ''} · {carRate(c).toFixed(0)} ETB/day · {c.availability || 'Available'}
+                      </option>
+                    ))}
                 </select>
                 <ChevronDown size={15} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
               </div>
@@ -268,8 +285,8 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
                     Rate: <strong>{carRate(selectedCar).toFixed(2)} ETB/day</strong>
                   </div>
                 </div>
-                <div style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: C.forestGreen, background: C.white, border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
-                  AVAILABLE
+                <div style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: selectedCar.availability === 'Available' ? C.forestGreen : '#8D6E63', background: C.white, border: `1px solid ${selectedCar.availability === 'Available' ? C.forestGreen : '#8D6E63'}`, padding: '3px 9px' }}>
+                  {(selectedCar.availability || 'Available').toUpperCase()}
                 </div>
               </div>
             )}
@@ -277,19 +294,32 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
             {/* Dates */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
-                <label style={LABEL}><Calendar size={12} /> Start Date *</label>
-                <input type="date" value={form.startDate} min={minDate}
+                <label style={LABEL}><Calendar size={12} /> Start Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
+                <input type="date" value={form.startDate} min={minDate} disabled={scheduleLater}
                   onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                   onFocus={() => setFocusedField('startDate')} onBlur={() => setFocusedField('')}
-                  style={fInput('startDate')} />
+                  style={{ ...fInput('startDate'), opacity: scheduleLater ? 0.55 : 1 }} />
               </div>
               <div>
-                <label style={LABEL}><Calendar size={12} /> End Date *</label>
-                <input type="date" value={form.endDate} min={form.startDate || minDate}
+                <label style={LABEL}><Calendar size={12} /> End Date {scheduleLater && <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, textTransform: 'none' }}>— later</span>}</label>
+                <input type="date" value={form.endDate} min={form.startDate || minDate} disabled={scheduleLater}
                   onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                   onFocus={() => setFocusedField('endDate')} onBlur={() => setFocusedField('')}
-                  style={fInput('endDate')} />
+                  style={{ ...fInput('endDate'), opacity: scheduleLater ? 0.55 : 1 }} />
               </div>
+            </div>
+
+            {/* Schedule-later toggle (walk-in hold for a still-booked vehicle) */}
+            <div style={{ marginBottom: '1rem', background: scheduleLater ? '#E8F5E9' : C.lightGray, border: `1px solid ${scheduleLater ? C.forestGreen : C.border}`, padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: C.darkGray }}>
+                <input type="checkbox" checked={scheduleLater} onChange={e => setScheduleLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: C.forestGreen }} />
+                Vehicle still rented — set dates later
+              </label>
+              {waitlistState?.waitlistId && (
+                <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: C.forestGreen, background: '#fff', border: `1px solid ${C.forestGreen}`, padding: '3px 9px' }}>
+                  FROM AVAILABILITY REQUEST
+                </span>
+              )}
             </div>
 
             {/* Pickup location */}
@@ -333,80 +363,89 @@ const CarRentalCreateOrder = ({ onBack, onSuccess }) => {
           </div>
 
           {/* ══ SECTION 4: PAYMENT ══ */}
-          <div style={{ ...SECTION, borderTop: `4px solid ${C.earthBrown}` }}>
-            <h3 style={SECTION_TITLE}><CreditCard size={18} color={C.forestGreen} /> Payment Verification</h3>
-
-            {/* Payment info banner */}
-            <div style={{ padding: '14px 16px', background: C.lightGray, border: `1px solid ${C.border}`, marginBottom: '1.2rem', fontSize: 13, color: C.darkGray }}>
-              <div style={{ fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Info size={14} color={C.emerald} /> Pay the total amount to SUTANA:
-              </div>
-              <div style={{ marginBottom: 4 }}>📱 <strong>Telebirr:</strong> 0901407032 (SUTANA WALLET)</div>
-              <div>🏦 <strong>CBE Bank:</strong> 1000675227776 (SUTANA)</div>
+          {scheduleLater ? (
+            <div style={{ ...SECTION, borderTop: `4px solid ${C.forestGreen}`, background: '#F0FAF0' }}>
+              <h3 style={SECTION_TITLE}><CreditCard size={18} color={C.forestGreen} /> Payment — Collected Later</h3>
+              <p style={{ margin: 0, fontSize: 13, color: C.darkGray, lineHeight: 1.6 }}>
+                <strong>Reservation is on hold.</strong> No payment is collected now. When the vehicle is free and you ({waitlistState?.customerName || 'the customer'}) set the rental dates, the order will be finalized, the invoice issued, and payment followed up then.
+              </p>
             </div>
+          ) : (
+            <div style={{ ...SECTION, borderTop: `4px solid ${C.earthBrown}` }}>
+              <h3 style={SECTION_TITLE}><CreditCard size={18} color={C.forestGreen} /> Payment Verification</h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1.2rem' }}>
-              <div>
-                <label style={LABEL}><CreditCard size={12} /> Payment Method</label>
-                <div style={{ position: 'relative' }}>
-                  <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                    style={{ ...INPUT, appearance: 'none', paddingRight: 36, cursor: 'pointer', fontWeight: 600 }}>
-                    <option value="Telebirr">📱 Telebirr</option>
-                    <option value="CBE Bank">🏦 CBE Bank</option>
-                    <option value="Cash">💵 Cash</option>
-                    <option value="Awash Bank">🏦 Awash Bank</option>
-                  </select>
-                  <ChevronDown size={14} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              {/* Payment info banner */}
+              <div style={{ padding: '14px 16px', background: C.lightGray, border: `1px solid ${C.border}`, marginBottom: '1.2rem', fontSize: 13, color: C.darkGray }}>
+                <div style={{ fontWeight: 800, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Info size={14} color={C.emerald} /> Pay the total amount to SUTANA:
                 </div>
+                <div style={{ marginBottom: 4 }}>📱 <strong>Telebirr:</strong> 0901407032 (SUTANA WALLET)</div>
+                <div>🏦 <strong>CBE Bank:</strong> 1000675227776 (SUTANA)</div>
               </div>
-              <div>
-                <label style={LABEL}><Hash size={12} /> Transaction Reference <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4, textTransform: 'none' }}>— optional if screenshot provided</span></label>
-                <input value={form.paymentReference} onChange={e => setForm(f => ({ ...f, paymentReference: e.target.value }))}
-                  placeholder="e.g. FT123456789"
-                  onFocus={() => setFocusedField('payRef')} onBlur={() => setFocusedField('')}
-                  style={fInput('payRef')} />
-              </div>
-            </div>
 
-            {/* OR divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.2rem' }}>
-              <div style={{ flex: 1, height: 1, background: C.border }} />
-              <span style={{ fontSize: 11, fontWeight: 800, color: C.darkGray, padding: '4px 10px', border: `1px solid ${C.border}`, background: C.lightGray }}>OR</span>
-              <div style={{ flex: 1, height: 1, background: C.border }} />
-            </div>
-
-            {/* Screenshot upload */}
-            <div>
-              <label style={LABEL}>
-                <ImagePlus size={12} /> Payment Screenshot
-                <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4, textTransform: 'none' }}>— optional if reference provided</span>
-              </label>
-              {screenshotPreview ? (
-                <div style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${C.forestGreen}`, maxWidth: 280 }}>
-                  <img src={screenshotPreview} alt="Payment" style={{ width: '100%', display: 'block', maxHeight: 180, objectFit: 'cover' }} />
-                  <button type="button" onClick={() => { setScreenshotFile(null); setScreenshotPreview(null); if (fileRef.current) fileRef.current.value = ''; }}
-                    style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, border: 'none', background: 'rgba(0,0,0,0.8)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <X size={13} />
-                  </button>
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 12px', background: C.white, color: C.forestGreen, borderTop: `1px solid ${C.forestGreen}`, fontSize: 11, fontWeight: 800 }}>
-                    ✓ SCREENSHOT UPLOADED
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1.2rem' }}>
+                <div>
+                  <label style={LABEL}><CreditCard size={12} /> Payment Method</label>
+                  <div style={{ position: 'relative' }}>
+                    <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                      style={{ ...INPUT, appearance: 'none', paddingRight: 36, cursor: 'pointer', fontWeight: 600 }}>
+                      <option value="Telebirr">📱 Telebirr</option>
+                      <option value="CBE Bank">🏦 CBE Bank</option>
+                      <option value="Cash">💵 Cash</option>
+                      <option value="Awash Bank">🏦 Awash Bank</option>
+                    </select>
+                    <ChevronDown size={14} color={C.border} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                   </div>
                 </div>
-              ) : (
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{ border: `2px dashed ${C.border}`, padding: '1.5rem', textAlign: 'center', cursor: 'pointer', background: C.lightGray, transition: 'all 0.15s', maxWidth: 360 }}
-                  onMouseOver={e => { e.currentTarget.style.borderColor = C.forestGreen; e.currentTarget.style.background = C.white; }}
-                  onMouseOut={e  => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.lightGray; }}
-                >
-                  <Upload size={22} color={C.darkGray} style={{ marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray }}>Click to upload screenshot</div>
-                  <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>PNG, JPG, WEBP — max 5MB</div>
+                <div>
+                  <label style={LABEL}><Hash size={12} /> Transaction Reference <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4, textTransform: 'none' }}>— optional if screenshot provided</span></label>
+                  <input value={form.paymentReference} onChange={e => setForm(f => ({ ...f, paymentReference: e.target.value }))}
+                    placeholder="e.g. FT123456789"
+                    onFocus={() => setFocusedField('payRef')} onBlur={() => setFocusedField('')}
+                    style={fInput('payRef')} />
                 </div>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleScreenshot} style={{ display: 'none' }} />
+              </div>
+
+              {/* OR divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.2rem' }}>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.darkGray, padding: '4px 10px', border: `1px solid ${C.border}`, background: C.lightGray }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
+              </div>
+
+              {/* Screenshot upload */}
+              <div>
+                <label style={LABEL}>
+                  <ImagePlus size={12} /> Payment Screenshot
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginLeft: 4, textTransform: 'none' }}>— optional if reference provided</span>
+                </label>
+                {screenshotPreview ? (
+                  <div style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${C.forestGreen}`, maxWidth: 280 }}>
+                    <img src={screenshotPreview} alt="Payment" style={{ width: '100%', display: 'block', maxHeight: 180, objectFit: 'cover' }} />
+                    <button type="button" onClick={() => { setScreenshotFile(null); setScreenshotPreview(null); if (fileRef.current) fileRef.current.value = ''; }}
+                      style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, border: 'none', background: 'rgba(0,0,0,0.8)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <X size={13} />
+                    </button>
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 12px', background: C.white, color: C.forestGreen, borderTop: `1px solid ${C.forestGreen}`, fontSize: 11, fontWeight: 800 }}>
+                      ✓ SCREENSHOT UPLOADED
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    style={{ border: `2px dashed ${C.border}`, padding: '1.5rem', textAlign: 'center', cursor: 'pointer', background: C.lightGray, transition: 'all 0.15s', maxWidth: 360 }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = C.forestGreen; e.currentTarget.style.background = C.white; }}
+                    onMouseOut={e  => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.lightGray; }}
+                  >
+                    <Upload size={22} color={C.darkGray} style={{ marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray }}>Click to upload screenshot</div>
+                    <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>PNG, JPG, WEBP — max 5MB</div>
+                  </div>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleScreenshot} style={{ display: 'none' }} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ══ ACTION BUTTONS ══ */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center', paddingTop: '0.5rem' }}>
