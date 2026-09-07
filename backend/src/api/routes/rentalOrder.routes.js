@@ -25,6 +25,10 @@ router.post('/manual', authenticate, authorizeRoles(['Car Renting Manager', 'Adm
 // Manager routes
 router.get('/', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getAllOrders);
 
+// Schedule-later (waitlist holds awaiting dates) — defined before /:id routes
+router.get('/schedule-later', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getScheduleLaterOrders);
+router.patch('/:id/dates', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.setOrderDates);
+
 // Archive / History / Delete (Manager) — defined before /:id routes
 router.get('/history', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.getArchivedOrders);
 router.post('/bulk-archive', authenticate, authorizeRoles(['Car Renting Manager', 'Admin', 'CEO']), rentalOrderController.bulkArchiveOrders);
